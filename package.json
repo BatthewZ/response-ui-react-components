@@ -1,0 +1,94 @@
+{
+  "name": "@batthewz/response-ui-react-components",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "React component library for the response-ui design system. Pairs with @batthewz/response-ui-css.",
+  "sideEffects": false,
+  "files": ["dist", "src", "docs", "AGENTS.md", "README.md", "LICENSE"],
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./util/style": {
+      "types": "./src/util/style.ts",
+      "import": "./src/util/style.ts"
+    }
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./components/*": {
+        "types": "./dist/components/*.d.ts",
+        "import": "./dist/components/*.js"
+      },
+      "./hooks/*": {
+        "types": "./dist/hooks/*.d.ts",
+        "import": "./dist/hooks/*.js"
+      },
+      "./util/style": {
+        "types": "./dist/util/style.d.ts",
+        "import": "./dist/util/style.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@floating-ui/react": "^0.27.0",
+    "lucide-react": "^0.500.0",
+    "@batthewz/response-ui-css": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@batthewz/response-ui-css": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "@floating-ui/react": "^0.27.19",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "ajv": "^8.20.0",
+    "glob": "^13.0.6",
+    "jsdom": "^29.0.1",
+    "lucide-react": "^0.564.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "typescript": "^5.9.0",
+    "vite": "^8.0.0",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.1.2"
+  },
+  "keywords": ["design-system", "react", "ui", "components", "tailwind", "tailwindcss-v4"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BatthewZ/response-ui-react-components.git"
+  },
+  "homepage": "https://github.com/BatthewZ/response-ui-react-components#readme",
+  "bugs": "https://github.com/BatthewZ/response-ui-react-components/issues",
+  "author": "BatthewZ"
+}
