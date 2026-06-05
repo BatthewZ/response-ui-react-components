@@ -2,6 +2,8 @@
 
 React 19 component library for the response-ui design system. ~60 components, accessibility-first, zero CSS-in-JS — all styling comes from [`@batthewz/response-ui-css`](https://github.com/BatthewZ/response-ui-css/) (Tailwind v4 + design tokens). Router-agnostic via an injection adapter, headless auth gating.
 
+> **Live demo:** [ai-website-starter.benmatthews-it.workers.dev/demo](https://ai-website-starter.benmatthews-it.workers.dev/demo) — every component, every theme, every responsive scale, in one place.
+
 ## Install
 
 ```bash
@@ -12,10 +14,15 @@ bun add -D tailwindcss @tailwindcss/vite
 
 ## Use
 
+Two CSS imports in your app's CSS entry — foundation (tokens, themes, responsive scales, animations) first, then per-component styles:
+
 ```css
 /* src/app.css */
 @import "@batthewz/response-ui-css";
+@import "@batthewz/response-ui-react-components/styles";
 ```
+
+Order matters: each per-component file reads `var(--…)` tokens defined by `response-ui-css`, so the foundation has to load first.
 
 ```tsx
 import { Button, Card, Stack } from "@batthewz/response-ui-react-components";

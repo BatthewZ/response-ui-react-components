@@ -1,0 +1,19 @@
+.popover-trigger {
+  display: inline-flex;
+  width: fit-content;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.popover-content {
+  background: var(--C-SURFACE-0);
+  border: 1px solid var(--C-BORDER-DEFAULT);
+  border-radius: var(--RADIUS-MD);
+  box-shadow: var(--SHADOW-LG);
+  padding: 0.75rem 1rem;
+  z-index: 40;
+  outline: none;
+}

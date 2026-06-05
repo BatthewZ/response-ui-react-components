@@ -5,6 +5,7 @@
     "": {
       "name": "@batthewz/response-ui-react-components",
       "dependencies": {
+        "@batthewz/response-ui-css": "^0.1.0",
         "clsx": "^2.1.1",
         "tailwind-merge": "^3.5.0",
       },
@@ -28,15 +29,11 @@
         "vitest": "^4.1.2",
       },
       "peerDependencies": {
-        "@batthewz/response-ui-css": "^0.1.0",
         "@floating-ui/react": "^0.27.0",
         "lucide-react": "^0.500.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
       },
-      "optionalPeers": [
-        "@batthewz/response-ui-css",
-      ],
     },
   },
   "packages": {
@@ -61,6 +58,8 @@
     "@babel/runtime": ["@babel/runtime@7.29.2", "", {}, "sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g=="],
 
     "@babel/types": ["@babel/types@7.29.0", "", { "dependencies": { "@babel/helper-string-parser": "^7.27.1", "@babel/helper-validator-identifier": "^7.28.5" } }, "sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A=="],
+
+    "@batthewz/response-ui-css": ["@batthewz/response-ui-css@0.1.0", "", { "bin": { "theme-from-json": "scripts/theme-from-json.mjs" } }, "sha512-jpTLIyuBz2lBnaXU2FqYPRSb8XXlg2COaECUGmerePXJchu2PciGqTrRdZvUIpbfdqt4GLTCL0cgat/elrCC5w=="],
 
     "@bramus/specificity": ["@bramus/specificity@2.4.2", "", { "dependencies": { "css-tree": "^3.0.0" }, "bin": { "specificity": "bin/cli.js" } }, "sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw=="],
 

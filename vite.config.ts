@@ -1,9 +1,30 @@
+import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import react from "@vitejs/plugin-react";
 import { glob } from "glob";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import dts from "vite-plugin-dts";
+
+// Copy plain CSS files from src/ to dist/ at the same relative path.
+// Vite's lib mode only emits JS for the glob'd .ts/.tsx entries; per-component
+// CSS (Accordion.css, etc.) and the aggregator (styles.css) need to ship too.
+function copyCssAssets(): Plugin {
+  return {
+    name: "copy-css-assets",
+    apply: "build",
+    async closeBundle() {
+      const files = await glob("src/**/*.css");
+      await Promise.all(
+        files.map(async (file) => {
+          const dest = path.join("dist", path.relative("src", file));
+          await fs.mkdir(path.dirname(dest), { recursive: true });
+          await fs.copyFile(file, dest);
+        }),
+      );
+    },
+  };
+}
 
 // Library mode build for @batthewz/response-ui-react-components.
 // - ESM only (no CJS).
@@ -34,6 +55,7 @@ export default defineConfig({
       entryRoot: "src",
       outDir: "dist",
     }),
+    copyCssAssets(),
   ],
   build: {
     lib: {
@@ -50,6 +72,7 @@ export default defineConfig({
         /^lucide-react($|\/)/,
         "clsx",
         "tailwind-merge",
+        /^@batthewz\/response-ui-tw-merge($|\/)/,
       ],
       output: {
         preserveModules: true,

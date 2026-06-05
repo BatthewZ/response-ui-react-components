@@ -5,9 +5,25 @@ Machine-readable reference for AI assistants working with this package. Concise,
 ## Hard requirements
 
 - React 19+. Heavy use of `forwardRef`, `useSyncExternalStore`, dialog `<dialog>`.
-- Consumer must `@import "@batthewz/response-ui-css"` in their app CSS — components ship NO CSS-in-JS; they expect Tailwind v4 utilities + design tokens to be present.
+- Consumer must add **two** CSS imports, in this order, in their app CSS:
+  ```css
+  @import "@batthewz/response-ui-css";
+  @import "@batthewz/response-ui-react-components/styles";
+  ```
+  The first provides tokens, themes, responsive scales, animations, base; the second provides per-component CSS (Accordion, Button, etc.) co-located with each `.tsx`. Order matters — per-component CSS reads `var(--…)` from the foundation. Components ship NO CSS-in-JS.
 - Tailwind v4 must be in the consumer's build (e.g. `@tailwindcss/vite`).
-- Peer deps: `react`, `react-dom`, `@floating-ui/react`, `lucide-react`, `@batthewz/response-ui-css`.
+- Peer deps: `react`, `react-dom`, `@floating-ui/react`, `lucide-react`. Regular dep: `@batthewz/response-ui-css` (auto-installed; the consumer still does the `@import` themselves so Tailwind v4 picks it up).
+
+## CSS layout
+
+Per-component CSS is co-located with each `.tsx`: `src/components/ui/Accordion.tsx` ↔ `src/components/ui/Accordion.css`, `src/components/form/SearchInput.tsx` ↔ `src/components/form/SearchInput.css`, etc. The aggregator [`src/styles.css`](./src/styles.css) `@imports` all of them and is exposed as the `./styles` subpath export.
+
+When adding a new component that needs CSS:
+1. Create `MyComponent.css` next to `MyComponent.tsx`.
+2. Add an `@import` line to [`src/styles.css`](./src/styles.css).
+3. The CSS file is copied to `dist/` automatically by the `copyCssAssets` plugin in [`vite.config.ts`](./vite.config.ts).
+
+Class-name convention: kebab-case rooted on the component name (e.g. `.accordion`, `.accordion-trigger`, `.accordion-content-inner`). Use `cn()` to apply, so consumer-passed `className` can merge cleanly.
 
 ## Public surface
 

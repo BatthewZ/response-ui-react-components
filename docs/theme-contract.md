@@ -223,7 +223,7 @@ When extending utilities (adding new colors, etc.), also extend the `tailwindMer
    setTheme("aurora");
    ```
 
-Or generate from JSON (e.g. exported from the showcase's ThemeEditor):
+Or generate from JSON:
 
 ```bash
 bunx @batthewz/response-ui-css theme-from-json my-theme.json --name aurora > src/themes/aurora.css
