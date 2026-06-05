@@ -84,7 +84,7 @@ THEMES (= ["default","events","grimdark","tech"]), STORAGE_KEY
 ### util
 
 ```
-cn, twMerge, tailwindMergeExtension, mergeRefs, formatBytes
+cn, createCn, mergeExtension, twMerge, tailwindMergeExtension, mergeRefs, formatBytes
 ```
 
 ## Patterns and conventions
@@ -98,22 +98,25 @@ import { cn } from "@batthewz/response-ui-react-components";
 const className = cn("p-r3 bg-surface-1", customClass, isActive && "bg-primary");
 ```
 
-### Custom utilities — extending `tailwindMergeExtension`
+### Custom utilities — extending the merge config
 
-If a consumer adds new design tokens, they extend the merge config:
+If a consumer adds new design tokens, the ergonomic path is `createCn`:
 
 ```ts
-import { tailwindMergeExtension } from "@batthewz/response-ui-react-components";
-import { extendTailwindMerge } from "tailwind-merge";
-const twMerge = extendTailwindMerge({
-  extend: {
-    theme: {
-      ...tailwindMergeExtension.theme,
-      color: [...tailwindMergeExtension.theme.color, "brand-foo"],
-    },
+import { createCn } from "@batthewz/response-ui-react-components";
+
+// app/cn.ts
+export const cn = createCn({
+  theme: {
+    color: ["brand-primary", "brand-accent"],
+    spacing: ["xtra-tight"],
   },
 });
 ```
+
+`createCn` concatenates user theme arrays onto the built-in arrays, so customising one key (e.g. `color`) can't accidentally wipe awareness of other built-ins (`spacing`, `text`) — the way the older spread pattern could. Non-theme `tailwind-merge` config (`classGroups`, `conflictingClassGroups`, `cacheSize`) passes through.
+
+For power users who need to drive `extendTailwindMerge` themselves, `mergeExtension` and the raw frozen `tailwindMergeExtension` are also exported. See [`@batthewz/response-ui-tw-merge`](../response-ui-tw-merge/README.md) for full details.
 
 ### Router adapter — `RouterAdapterProvider` + `useLink` / `usePathname`
 

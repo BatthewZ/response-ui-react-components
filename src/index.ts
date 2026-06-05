@@ -26,5 +26,7 @@ export * from "./hooks";
 // Util — cn(), mergeRefs, formatBytes
 export * from "./util";
 
-// Re-export the tailwind-merge extension so consumers can extend it.
-export { tailwindMergeExtension, twMerge } from "./util/style";
+// Re-export the tailwind-merge extension helpers so consumers can extend it.
+// `createCn` is the ergonomic path for apps with custom tokens; `mergeExtension`
+// and `tailwindMergeExtension` are escape hatches for power users.
+export { createCn, mergeExtension, tailwindMergeExtension, twMerge } from "./util/style";

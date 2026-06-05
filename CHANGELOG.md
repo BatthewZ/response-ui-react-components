@@ -28,6 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **`./styles` subpath export** — single CSS entry point that `@imports` all 24 per-component CSS files in stable order. See [`src/styles.css`](./src/styles.css).
 - **Co-located component CSS** — `src/components/ui/Accordion.css` next to `Accordion.tsx`, `src/components/form/SearchInput.css` next to `SearchInput.tsx`, etc. (24 files total).
 - **`copyCssAssets` Vite plugin** in [`vite.config.ts`](./vite.config.ts) — globs `src/**/*.css` and copies to `dist/` at build time, so the `./styles` export resolves correctly in published consumers.
+- **`createCn(extension?)` re-export** — ergonomic factory for apps that add custom tokens on top of the design system. Sourced from [`@batthewz/response-ui-tw-merge@0.1.0`](../response-ui-tw-merge/CHANGELOG.md), now a required dep. Safe against the "forgot to spread" footgun the older `tailwindMergeExtension` spread pattern had.
+- **`mergeExtension(extension?)` re-export** — low-level helper for power users who drive `extendTailwindMerge` themselves.
 - **Live demo link** in the README pointing at <https://ai-website-starter.benmatthews-it.workers.dev/demo>.
 
 ### Changed

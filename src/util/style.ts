@@ -11,6 +11,8 @@
  */
 export {
   cn,
+  createCn,
+  mergeExtension,
   tailwindMergeExtension,
   twMerge,
 } from "@batthewz/response-ui-tw-merge";
