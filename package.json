@@ -1,6 +1,6 @@
 {
   "name": "@batthewz/response-ui-react-components",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "React component library for the response-ui design system. Pairs with @batthewz/response-ui-css.",
   "sideEffects": false,
@@ -20,6 +20,7 @@
     }
   },
   "publishConfig": {
+    "access": "public",
     "main": "./dist/index.js",
     "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
@@ -47,7 +48,8 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "bun run build && bun run typecheck && bun run test"
   },
   "peerDependencies": {
     "react": "^19.0.0",

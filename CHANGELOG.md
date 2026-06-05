@@ -4,6 +4,22 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.2.1] — 2026-06-05
+
+### Added
+
+- **`createCn(extension?)` export** — ergonomic factory for apps that add custom tokens on top of the design system. Sourced from [`@batthewz/response-ui-tw-merge@0.1.0`](../response-ui-tw-merge/CHANGELOG.md). Safe against the "forgot to spread" footgun the older `tailwindMergeExtension` spread pattern had.
+- **`mergeExtension(extension?)` export** — low-level helper for power users who drive `extendTailwindMerge` themselves.
+
+### Changed
+
+- **`prepublishOnly` hook added** — `bun run build && bun run typecheck && bun run test`. Prevents shipping a stale `dist/` or a build that doesn't pass tests/typecheck.
+- **`publishConfig.access`** set to `"public"` explicitly so a fresh-clone publish can't accidentally ship a private package.
+
+### Notes
+
+`0.2.0` published with a hard dep on `@batthewz/response-ui-tw-merge@^0.1.0` that did not yet exist on npm — installs of 0.2.0 fail to resolve until `@batthewz/response-ui-tw-merge@0.1.0` publishes. Upgrade to `0.2.1` once tw-merge is on npm.
+
 ## [0.2.0] — 2026-06-05
 
 ### Breaking
