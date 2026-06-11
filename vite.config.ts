@@ -54,6 +54,9 @@ export default defineConfig({
       rollupTypes: false,
       entryRoot: "src",
       outDir: "dist",
+      // .d.ts.map files let consumers' go-to-definition land in the real
+      // source — `src/` ships in the npm package alongside `dist/`.
+      compilerOptions: { declarationMap: true },
     }),
     copyCssAssets(),
   ],

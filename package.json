@@ -1,51 +1,38 @@
 {
   "name": "@batthewz/response-ui-react-components",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "description": "React component library for the response-ui design system. Pairs with @batthewz/response-ui-css.",
   "sideEffects": false,
   "files": ["dist", "src", "docs", "AGENTS.md", "CHANGELOG.md", "README.md", "LICENSE"],
-  "main": "./src/index.ts",
-  "module": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
-    "./styles": "./src/styles.css",
+    "./styles": "./dist/styles.css",
+    "./components/*": {
+      "types": "./dist/components/*.d.ts",
+      "import": "./dist/components/*.js"
+    },
+    "./hooks/*": {
+      "types": "./dist/hooks/*.d.ts",
+      "import": "./dist/hooks/*.js"
+    },
     "./util/style": {
-      "types": "./src/util/style.ts",
-      "import": "./src/util/style.ts"
+      "types": "./dist/util/style.d.ts",
+      "import": "./dist/util/style.js"
     }
   },
   "publishConfig": {
-    "access": "public",
-    "main": "./dist/index.js",
-    "module": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      },
-      "./styles": "./dist/styles.css",
-      "./components/*": {
-        "types": "./dist/components/*.d.ts",
-        "import": "./dist/components/*.js"
-      },
-      "./hooks/*": {
-        "types": "./dist/hooks/*.d.ts",
-        "import": "./dist/hooks/*.js"
-      },
-      "./util/style": {
-        "types": "./dist/util/style.d.ts",
-        "import": "./dist/util/style.js"
-      }
-    }
+    "access": "public"
   },
   "scripts": {
     "build": "vite build",
+    "prepack": "bun run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -58,7 +45,7 @@
     "lucide-react": "^0.500.0"
   },
   "dependencies": {
-    "@batthewz/response-ui-css": "^0.2.0",
+    "@batthewz/response-ui-css": "^0.5.0",
     "@batthewz/response-ui-tw-merge": "^0.1.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.5.0"

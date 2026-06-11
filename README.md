@@ -24,6 +24,8 @@ Two CSS imports in your app's CSS entry — foundation (tokens, themes, responsi
 
 Order matters: each per-component file reads `var(--…)` tokens defined by `response-ui-css`, so the foundation has to load first.
 
+The `styles` import also registers this package's sources with Tailwind v4 (a self-relative `@source`), so the utility classes used inside the components are generated automatically — no manual `@source` workaround needed, regardless of package manager or `node_modules` layout (hoisted npm, bun's isolated store, pnpm).
+
 ```tsx
 import { Button, Card, Stack } from "@batthewz/response-ui-react-components";
 

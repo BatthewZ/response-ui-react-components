@@ -4,6 +4,23 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.3.0] — 2026-06-11
+
+### Added
+
+- **Self-relative Tailwind `@source` in [`src/styles.css`](./src/styles.css)** — importing `@batthewz/response-ui-react-components/styles` now registers this package's own sources with Tailwind v4, so the utility classes used inside the components are generated under any node_modules layout (hoisted npm, bun's isolated store, pnpm, linked workspaces). Previously scanning relied on sideways `@source` globs inside `@batthewz/response-ui-css`, which silently matched nothing under isolated stores — adopters needed a manual `@source "../../node_modules/@batthewz/response-ui-react-components/src/**/*.{ts,tsx}"` workaround. That workaround can now be removed.
+- **Declaration maps** (`.d.ts.map`) — consumers' go-to-definition now lands in the real `src/*.tsx` source, which ships in the tarball alongside `dist/`.
+
+### Changed
+
+- **`@batthewz/response-ui-css` dependency bumped `^0.2.0` → `^0.5.0`** — the old caret range could never resolve to newer published releases (0.x caret semantics), leaving transitive installs behind. Now tracks the latest css release (0.5.0, which pairs with this release's self-relative `@source`).
+- **Local/linked development now resolves `dist/` like published installs do** (see the packaging fix below) — run `bun run build` (or `vite build --watch`) after editing source when consuming the package via a link.
+
+### Fixed
+
+- **Published packaging: the `exports` map now actually points at `dist/` (`.js` + `.d.ts`).** Previously `main`/`types`/`exports` pointed at raw `src/*.ts(x)` and the dist mappings lived in `publishConfig` — but overriding entry points via `publishConfig` is a pnpm-only feature that npm/bun publish silently ignore. Published consumers were served raw TSX (working only where esbuild prebundles `node_modules`, e.g. Vite) and typechecked the library's source instead of `.d.ts` stubs, while the entire built `dist/` shipped as dead weight. The dead `publishConfig` overrides are removed; a `prepack` build guards against stale `dist` in tarballs.
+- **Deep subpath imports (`./components/*`, `./hooks/*`) are now live on the published package** — on 0.2.1 they only existed in the ignored `publishConfig` block, so the README's documented `…/components/ui/Button` import never resolved from npm.
+
 ## [0.2.1] — 2026-06-05
 
 ### Added

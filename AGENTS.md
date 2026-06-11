@@ -13,10 +13,13 @@ Machine-readable reference for AI assistants working with this package. Concise,
   The first provides tokens, themes, responsive scales, animations, base; the second provides per-component CSS (Accordion, Button, etc.) co-located with each `.tsx`. Order matters — per-component CSS reads `var(--…)` from the foundation. Components ship NO CSS-in-JS.
 - Tailwind v4 must be in the consumer's build (e.g. `@tailwindcss/vite`).
 - Peer deps: `react`, `react-dom`, `@floating-ui/react`, `lucide-react`. Regular dep: `@batthewz/response-ui-css` (auto-installed; the consumer still does the `@import` themselves so Tailwind v4 picks it up).
+- **Packaging: the single `exports` map points at `dist/` (`.js` + `.d.ts` + `.d.ts.map`), built by `vite build`.** Do NOT move entry points back to `src/*.ts` or stash a dist map inside `publishConfig` — overriding `main`/`types`/`exports` via `publishConfig` is a pnpm-only feature that npm/bun publish silently ignore (this shipped raw TSX to consumers up to 0.2.1). `src/` still ships in the tarball: the `@source` in `styles.css` and the declaration maps point into it. When consuming this package via a local link, run `bun run build` (or `vite build --watch`) so `dist/` tracks your edits.
 
 ## CSS layout
 
 Per-component CSS is co-located with each `.tsx`: `src/components/ui/Accordion.tsx` ↔ `src/components/ui/Accordion.css`, `src/components/form/SearchInput.tsx` ↔ `src/components/form/SearchInput.css`, etc. The aggregator [`src/styles.css`](./src/styles.css) `@imports` all of them and is exposed as the `./styles` subpath export.
+
+The aggregator also ends with `@source "../src/**/*.{ts,tsx}";` — a **self-relative** Tailwind v4 registration of this package's own sources, so consumers' builds generate the utility classes used inside the components under any node_modules layout (hoisted npm, bun's isolated store, pnpm). It must stay self-relative and must keep working from both `src/styles.css` (dev/linked) and the verbatim copy at `dist/styles.css` (published) — `../src` satisfies both because `src/` ships in the npm package. Don't move source scanning into `@batthewz/response-ui-css`; a sideways path from another package silently breaks under isolated stores.
 
 When adding a new component that needs CSS:
 1. Create `MyComponent.css` next to `MyComponent.tsx`.

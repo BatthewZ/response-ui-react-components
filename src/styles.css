@@ -32,3 +32,11 @@
 
 /* form */
 @import "./components/form/SearchInput.css";
+
+/* Tailwind v4 — register this package's own sources so the utility classes
+   used inside the components are generated in the consumer's build. The path
+   is relative to THIS file, so it resolves under any node_modules layout
+   (hoisted npm, bun's isolated store, pnpm, linked workspaces). `../src` is
+   correct from both `src/styles.css` (dev/linked) and `dist/styles.css`
+   (published copy — `src` ships in the npm package too). */
+@source "../src/**/*.{ts,tsx}";
