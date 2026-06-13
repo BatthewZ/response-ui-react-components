@@ -36,6 +36,9 @@ import {
   Drawer,
   DropdownMenu,
   Field,
+  FieldError,
+  FormActions,
+  FormProvider,
   HoverCard,
   Input,
   Kbd,
@@ -65,6 +68,9 @@ import {
   Tooltip,
   VirtualizedDataTable,
   type ColumnDef,
+  useFieldArray,
+  useForm,
+  type StandardSchemaV1,
 } from "../src";
 
 /* ------------------------------------------------------------------ */
@@ -149,11 +155,196 @@ const VIEWPORTS = {
 type ViewportKey = keyof typeof VIEWPORTS;
 
 /* ------------------------------------------------------------------ */
+/*  Forms demo (separate tab) — exercises the headless useForm         */
+/* ------------------------------------------------------------------ */
+
+type FormDemoValues = {
+  email: string;
+  username: string;
+  role: string;
+  skills: string[];
+  links: { url: string }[];
+};
+
+/**
+ * A hand-rolled Standard Schema validator — proves the zero-dependency path
+ * (no Zod/Valibot needed). A real app would pass a Zod/Valibot/ArkType schema
+ * here instead; they all conform to this same `~standard` contract.
+ */
+const formDemoSchema: StandardSchemaV1<unknown, FormDemoValues> = {
+  "~standard": {
+    version: 1,
+    vendor: "dev-demo",
+    validate(value) {
+      const v = (value ?? {}) as Partial<FormDemoValues>;
+      const issues: { message: string; path: (string | number)[] }[] = [];
+      if (!v.email) issues.push({ message: "Email is required", path: ["email"] });
+      else if (!String(v.email).includes("@"))
+        issues.push({ message: "Enter a valid email address", path: ["email"] });
+      if (!v.username || String(v.username).length < 3)
+        issues.push({ message: "Username needs at least 3 characters", path: ["username"] });
+      if (!v.role) issues.push({ message: "Pick a role", path: ["role"] });
+      if (!v.skills || v.skills.length === 0)
+        issues.push({ message: "Add at least one skill", path: ["skills"] });
+      (v.links ?? []).forEach((link, i) => {
+        if (!link?.url || !String(link.url).startsWith("http"))
+          issues.push({ message: "Links must start with http", path: ["links", i, "url"] });
+      });
+      if (issues.length > 0) return { issues };
+      return { value: v as FormDemoValues };
+    },
+  },
+};
+
+const ROLE_OPTIONS = [
+  { value: "", label: "Choose a role…" },
+  { value: "engineer", label: "Engineer" },
+  { value: "designer", label: "Designer" },
+  { value: "pm", label: "Product Manager" },
+];
+
+function FormsDemo() {
+  const [submitted, setSubmitted] = useState<FormDemoValues | null>(null);
+  const form = useForm<FormDemoValues>({
+    schema: formDemoSchema,
+    mode: "onBlur",
+    defaultValues: { email: "", username: "", role: "", skills: [], links: [{ url: "" }] },
+    onSubmit: (values) => setSubmitted(values),
+  });
+  const links = useFieldArray({ form, name: "links" });
+  const skills = (form.watch("skills") as string[]) ?? [];
+
+  return (
+    <main className="mx-auto flex max-w-xl flex-col gap-r3 p-r3">
+      <div className="flex flex-col gap-r6">
+        <h2 className="text-h3 text-fg-primary">Sign-up form</h2>
+        <p className="text-body-3 text-fg-muted">
+          Headless <code>useForm</code> + a hand-rolled Standard Schema validator. Mode is{" "}
+          <code>onBlur</code> (re-validates on change after the first submit). Submit empty to
+          see errors surface, focus jump to the first invalid field, and the live state below.
+        </p>
+      </div>
+
+      <FormProvider form={form}>
+        <form {...form.props} className="flex flex-col gap-r3">
+          <Field name="email">
+            <Label htmlFor="fd-email">Email</Label>
+            <Input id="fd-email" placeholder="you@example.com" {...form.field("email")} />
+            <FieldError />
+          </Field>
+
+          <Field name="username">
+            <Label htmlFor="fd-username">Username</Label>
+            <Input id="fd-username" placeholder="at least 3 chars" {...form.field("username")} />
+            <FieldError />
+          </Field>
+
+          <Field name="role">
+            <Label htmlFor="fd-role">Role</Label>
+            <Select id="fd-role" {...form.field("role")}>
+              {ROLE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+            <FieldError />
+          </Field>
+
+          <Field name="skills">
+            <Label>Skills (controlled TagInput, bound via watch/setValue)</Label>
+            <TagInput
+              id="fd-skills"
+              placeholder="type a skill, press Enter"
+              value={skills}
+              onValueChange={(next) => form.setValue("skills", next, { shouldTouch: true })}
+            />
+            <FieldError />
+          </Field>
+
+          <div className="flex flex-col gap-r5">
+            <Label>Links (useFieldArray)</Label>
+            {links.fields.map((f, i) => (
+              <div key={f.id} className="flex items-start gap-r5">
+                <Field name={`${f.name}.url`} className="flex-1">
+                  <Input placeholder="https://…" {...form.field(`${f.name}.url`)} />
+                  <FieldError />
+                </Field>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => links.remove(i)}
+                  disabled={links.fields.length === 1}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <div>
+              <Button type="button" variant="secondary" onClick={() => links.append({ url: "" })}>
+                Add link
+              </Button>
+            </div>
+          </div>
+
+          <FormActions>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                form.reset();
+                setSubmitted(null);
+              }}
+            >
+              Reset
+            </Button>
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Submitting…" : "Create account"}
+            </Button>
+          </FormActions>
+        </form>
+      </FormProvider>
+
+      <div className="flex flex-col gap-r6 rounded-md border border-border-default bg-surface-1 p-r4">
+        <span className="text-body-3 font-semibold uppercase tracking-wide text-fg-muted">
+          Live form state
+        </span>
+        <pre className="overflow-x-auto text-body-3 text-fg-secondary">
+          {JSON.stringify(
+            {
+              isValid: form.formState.isValid,
+              isDirty: form.formState.isDirty,
+              isSubmitted: form.formState.isSubmitted,
+              submitCount: form.formState.submitCount,
+              values: form.watch(),
+            },
+            null,
+            2,
+          )}
+        </pre>
+      </div>
+
+      {submitted && (
+        <Alert variant="success">
+          <div className="flex flex-col gap-r6">
+            <strong>Submitted ✓</strong>
+            <pre className="overflow-x-auto text-body-3">
+              {JSON.stringify(submitted, null, 2)}
+            </pre>
+          </div>
+        </Alert>
+      )}
+    </main>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  App                                                                */
 /* ------------------------------------------------------------------ */
 
 export function App() {
   const [viewport, setViewport] = useState<ViewportKey>("full");
+  const [tab, setTab] = useState<"gallery" | "forms">("gallery");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [checked, setChecked] = useState(true);
@@ -237,6 +428,22 @@ export function App() {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-r3">
+          <div className="flex items-center gap-r6 rounded-md border border-border-default p-r6">
+            <Button
+              size="sm"
+              variant={tab === "gallery" ? "primary" : "ghost"}
+              onClick={() => setTab("gallery")}
+            >
+              Gallery
+            </Button>
+            <Button
+              size="sm"
+              variant={tab === "forms" ? "primary" : "ghost"}
+              onClick={() => setTab("forms")}
+            >
+              Forms
+            </Button>
+          </div>
           <ThemeSwitcher />
           <div className="flex items-center gap-r6 rounded-md border border-border-default p-r6">
             {(Object.keys(VIEWPORTS) as ViewportKey[]).map((key) => (
@@ -253,11 +460,14 @@ export function App() {
         </div>
       </header>
 
-      {/* Preview area constrained by the chosen viewport width. */}
-      <main
-        className="mx-auto flex flex-col gap-r2 p-r3"
-        style={{ maxWidth, transition: "max-width 150ms ease" }}
-      >
+      {tab === "forms" ? (
+        <FormsDemo />
+      ) : (
+        /* Preview area constrained by the chosen viewport width. */
+        <main
+          className="mx-auto flex flex-col gap-r2 p-r3"
+          style={{ maxWidth, transition: "max-width 150ms ease" }}
+        >
         {/* ============================================================ */}
         {/*  GROUP: ui                                                   */}
         {/*  src/components/ui — buttons, feedback, overlays, etc.       */}
@@ -975,7 +1185,8 @@ export function App() {
           </div>
 
         </Group>
-      </main>
+        </main>
+      )}
     </div>
   );
 }
