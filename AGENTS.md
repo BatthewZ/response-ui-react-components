@@ -52,11 +52,21 @@ ToastProvider, useToast, Tooltip, VirtualizedDataTable + type
 VirtualizedDataTableProps
 ```
 
-### components/form (17)
+### components/form (17 + orchestration)
 
 ```
 Checkbox, Combobox, DatePicker, Field, FieldError, FormActions, Input, Label,
 NumberInput, OTPInput, Radio, SearchInput, Select, Slider, Switch, TagInput, Textarea
+```
+
+Headless form orchestration (from `components/form/use-form.tsx`, `form-store.ts`, `standard-schema.ts`):
+
+```
+useForm, useFieldArray, useFieldState, useFormState, useFormContext, FormProvider,
+type FieldBindings, type SubmitHelpers, type UseFormOptions, type FormApi,
+type FieldArrayItem, type UseFieldArrayReturn,
+type FieldSnapshot, type FormStateSnapshot, type ValidationMode, type ReValidateMode,
+type StandardSchemaV1, type InferInput, type InferOutput
 ```
 
 ### components/data-display (5)
@@ -207,6 +217,26 @@ function GuestGuard({ children }: { children: ReactNode }) {
     </RequireAuth>
   );
 }
+```
+
+### Form orchestration — headless `useForm`
+
+Store-backed, dependency-free form layer. Design points an AI should not violate:
+
+- **Validation = Standard Schema.** `useForm` takes `schema?: StandardSchemaV1<unknown, T>` and validates against the *interface* (`~standard.validate`). Consumers bring Zod/Valibot/ArkType — do NOT add a validator as a runtime dependency. Schema output (post-coercion) is what `onSubmit` receives.
+- **One unified `field(name)` accessor — no register-vs-Controller split.** `form.field(name)` returns `{ name, value, onChange, onBlur, ref, "aria-invalid", disabled }`, spreadable onto a native input OR a controlled component (`Combobox`, `TagInput`, `Slider`, `Select`, …). `onChange` accepts either a raw value or a DOM `ChangeEvent` (it extracts `.value`, or `.checked` for checkboxes). For non-string values annotate the generic: `field<string[]>("tags")`. `checked`-based controls (`Checkbox`, `Switch`) are bound via `watch`/`setValue`, not `field()`.
+- **Store + `useSyncExternalStore`.** `FormStore` (in `form-store.ts`) is framework-agnostic (no React imports) and owns values/errors/touched/dirty + Standard Schema validation. `useForm` re-renders its caller on every change (subscribes to a monotonic `version`). `useFieldState(form, name)` / `useFormState(form)` are opt-in render isolation — they subscribe to a per-field / form-level snapshot that's reference-stable when unchanged. `FormProvider` exposes the `FormApi` via context; `useFormContext()` returns it or `null`.
+- **Error surfacing rules (do not change the precedence):** manual/server errors (`setError`) always win and survive a validation pass; schema errors surface for a field only once `submitCount > 0` OR the field is touched OR dirty — so errors never flash at fields the user hasn't reached. `setValue` clears that field's manual error. `Field name="x"` wires the surfaced error into `FieldContext`; `<FieldError />` with no children renders it.
+- **`useFieldArray({ form, name })`** — `append/prepend/insert/remove/move/swap/update/replace`, plus `fields` whose `id` is a stable key surviving reorders (use as React `key`, not the index).
+- **Validation modes:** `mode` (`onSubmit` | `onBlur` | `onChange` | `onTouched` | `all`, default `onSubmit`), `reValidateMode` (`onChange` | `onBlur`, default `onChange`, applies after first submit), `criteriaMode` (`firstError` | `all`, default `firstError`). `shouldFocusError` (default true) focuses the first invalid field after a failed submit.
+
+```tsx
+const form = useForm({ defaultValues, schema, mode: "onBlur", onSubmit });
+<FormProvider form={form}>
+  <form {...form.props}>
+    <Field name="email"><Input {...form.field("email")} /><FieldError /></Field>
+  </form>
+</FormProvider>
 ```
 
 ### `useTheme` — typed multi-theme

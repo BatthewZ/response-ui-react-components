@@ -13,7 +13,9 @@ export const FieldError = forwardRef<HTMLParagraphElement, FieldErrorProps>(func
   ref
 ) {
   const field = useFieldContext();
-  if (!children) return null;
+  // Explicit children win; otherwise render the form/field-derived error.
+  const content = children ?? field?.error;
+  if (!content) return null;
 
   return (
     <p
@@ -23,7 +25,7 @@ export const FieldError = forwardRef<HTMLParagraphElement, FieldErrorProps>(func
       className={cn("text-body-3 text-status-error", className)}
       {...props}
     >
-      {children}
+      {content}
     </p>
   );
 });

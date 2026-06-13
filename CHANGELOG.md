@@ -4,6 +4,16 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [Unreleased]
+
+### Added
+
+- **Headless form orchestration (`useForm`)** — a store-backed, dependency-free form layer for the existing form controls. Validation is via [**Standard Schema**](https://github.com/standard-schema/standard-schema) (Zod, Valibot, ArkType, … all conform) — the consumer brings the validator, no runtime dependency is added. A single unified `field(name)` accessor binds BOTH native inputs and the library's controlled components (`Combobox`, `TagInput`, `Slider`, `Select`, …) — there is no register-vs-Controller split. For non-string values, annotate the bind: `field<string[]>("tags")`; `checked`-based controls (`Checkbox`, `Switch`) are wired via `watch`/`setValue` instead. Validation modes: `mode` (`onSubmit` | `onBlur` | `onChange` | `onTouched` | `all`), `reValidateMode` (`onChange` | `onBlur`), and `criteriaMode` (`firstError` | `all`). Manual/server errors (`setError`) always win and survive a validation pass; schema errors only surface once a field is touched/dirty or the form has been submitted, so errors never flash at fields the user hasn't reached. Also: `reset`/`resetField`, `trigger`, `clearErrors`, `focusFirstError` (`shouldFocusError` on by default), and a reactive external `values` prop that re-seeds the form when its identity changes. ([`src/components/form/use-form.tsx`](./src/components/form/use-form.tsx), [`form-store.ts`](./src/components/form/form-store.ts), [`standard-schema.ts`](./src/components/form/standard-schema.ts))
+- **`FormProvider` + `Field`/`FieldError` auto-wiring** — `Field` now takes optional `name` and `error` props (backward compatible). Inside a `FormProvider`, `<Field name="x">` auto-wires that field's surfaced error into context, `<FieldError />` with no children renders the form-derived error (with `role="alert"` and `aria-describedby` wiring), and bound inputs reflect the error state via `aria-invalid`. ([`src/components/form/Field.tsx`](./src/components/form/Field.tsx), [`FieldError.tsx`](./src/components/form/FieldError.tsx))
+- **Store-backed reactivity via `useSyncExternalStore`** — the component calling `useForm` re-renders on any change; `useFieldState(form, name)` and `useFormState(form)` give opt-in render isolation (re-render only when that field's slice / a form-level flag changes).
+- **`useFieldArray`** — dynamic lists with stable keys (`id` survives reorders): `append`, `prepend`, `insert`, `remove`, `move`, `swap`, `update`, `replace`.
+- **New form exports** — `useForm`, `useFieldArray`, `useFieldState`, `useFormState`, `useFormContext`, `FormProvider`, and types `FieldBindings`, `SubmitHelpers`, `UseFormOptions`, `FormApi`, `FieldArrayItem`, `UseFieldArrayReturn`, `FieldSnapshot`, `FormStateSnapshot`, `ValidationMode`, `ReValidateMode`, `StandardSchemaV1`, `InferInput`, `InferOutput`.
+
 ## [0.5.0] — 2026-06-13
 
 ### Added

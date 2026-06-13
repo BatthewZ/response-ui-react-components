@@ -10,7 +10,7 @@ import {
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { cn } from "../../util/style";
 
-import { useFieldErrorProps } from "./Field";
+import { useFieldError } from "./Field";
 
 type OTPMode = "numeric" | "alphanumeric";
 
@@ -55,7 +55,7 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
   },
   ref
 ) {
-  const fieldErrorProps = useFieldErrorProps(error);
+  const { invalid, ariaProps } = useFieldError(error);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
   const completedRef = useRef(false);
 
@@ -177,14 +177,14 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
             disabled={disabled}
             value={slots[i] ?? ""}
             aria-label={`Digit ${i + 1}`}
-            {...fieldErrorProps}
+            {...ariaProps}
             className={cn(
               "size-12 text-center text-h5 text-fg-primary",
               "bg-surface-0 border border-border-strong rounded-md",
               "duration-fast",
               "focus:outline-none focus:ring-2 focus:ring-border-focus focus:border-border-focus",
               "disabled:bg-surface-3 disabled:cursor-not-allowed",
-              error && "border-status-error focus:ring-status-error"
+              invalid && "border-status-error focus:ring-status-error"
             )}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}

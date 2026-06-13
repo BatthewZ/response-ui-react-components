@@ -29,7 +29,7 @@ import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 import { Spinner } from "../ui/Spinner";
 
-import { useFieldErrorProps } from "./Field";
+import { useFieldError } from "./Field";
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                           */
@@ -252,7 +252,7 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
       selectIndex,
     } = useComboboxContext("Combobox.Input");
 
-    const fieldErrorProps = useFieldErrorProps(error);
+    const { invalid, ariaProps } = useFieldError(error);
 
     return (
       <div className="combobox-input-wrap">
@@ -266,8 +266,8 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
             "aria-autocomplete": "list",
             "aria-activedescendant": activeOptionId,
             value: inputValue,
-            className: cn("combobox-input", error && "combobox-input-error", className),
-            ...fieldErrorProps,
+            className: cn("combobox-input", invalid && "combobox-input-error", className),
+            ...ariaProps,
             ...props,
             onChange(event: React.ChangeEvent<HTMLInputElement>) {
               onChange?.(event);

@@ -110,6 +110,79 @@ export function AuthGuard({ children }) {
 }
 ```
 
+## Forms — headless `useForm`
+
+A store-backed, dependency-free form layer for the form controls. Validation is via [**Standard Schema**](https://github.com/standard-schema/standard-schema), so bring any conforming validator (Zod, Valibot, ArkType, …) — no runtime dependency is added. A single `field(name)` accessor binds both native inputs and the library's controlled components (Combobox, TagInput, Slider, Select, …) — no register-vs-Controller split.
+
+```tsx
+import {
+  FormProvider,
+  Field,
+  FieldError,
+  Input,
+  Label,
+  useForm,
+} from "@batthewz/response-ui-react-components";
+import { z } from "zod";
+
+const schema = z.object({
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(8, "At least 8 characters"),
+});
+
+export function SignIn() {
+  const form = useForm({
+    defaultValues: { email: "", password: "" },
+    schema,
+    mode: "onBlur", // onSubmit | onBlur | onChange | onTouched | all
+    onSubmit: async (values, { setError }) => {
+      const res = await api.signIn(values);
+      if (!res.ok) setError("password", "Wrong email or password"); // server error
+    },
+  });
+
+  return (
+    <FormProvider form={form}>
+      <form {...form.props}>
+        <Field name="email">
+          <Label>Email</Label>
+          <Input type="email" {...form.field("email")} />
+          <FieldError />
+        </Field>
+        <Field name="password">
+          <Label>Password</Label>
+          <Input type="password" {...form.field("password")} />
+          <FieldError />
+        </Field>
+        <Button type="submit">Sign in</Button>
+      </form>
+    </FormProvider>
+  );
+}
+```
+
+`<Field name="x">` auto-wires that field's error into context; `<FieldError />` with no children renders it (with `role="alert"` + `aria-describedby`), and the bound input reflects `aria-invalid`. Manual/server errors set via `setError` always win and survive a validation pass; schema errors surface only once a field is touched/dirty or the form has been submitted — so errors never flash at a field the user hasn't reached.
+
+For non-string values, annotate the bind: `form.field<string[]>("tags")`. `checked`-based controls (Checkbox, Switch) are wired via `watch`/`setValue` instead of `field()`:
+
+```tsx
+<Switch checked={Boolean(form.watch("subscribe"))}
+  onChange={(v) => form.setValue("subscribe", v)} />
+```
+
+`useFieldArray` drives dynamic lists with stable keys (`id` survives reorders):
+
+```tsx
+const { fields, append, remove } = useFieldArray({ form, name: "items" });
+fields.map((item) => (
+  <Field key={item.id} name={`${item.name}.label`}>
+    <Input {...form.field(`${item.name}.label`)} />
+  </Field>
+));
+```
+
+The component calling `useForm` re-renders on any change. For render isolation, `useFieldState(form, name)` and `useFormState(form)` subscribe to a single field slice / form-level flags only. Other knobs: `reValidateMode`, `criteriaMode`, `trigger`, `reset`/`resetField`, `focusFirstError`, and a reactive external `values` prop that re-seeds the form when its identity changes.
+
 ## Adding custom Tailwind tokens
 
 If you add custom design tokens (e.g. `bg-brand-foo`), extend the package's `tailwind-merge` config so `cn()` knows how to merge them:
@@ -132,6 +205,7 @@ export const twMerge = extendTailwindMerge({
 
 - **UI** (48): Accordion, Alert, AppShell, Avatar (+AvatarGroup), AvatarUpload, Badge, Breadcrumbs, Button, Calendar, Card, Carousel, CodeBlock, Collapsible, CommandPalette, ContextMenu, CopyButton, DataTable, Dialog, Drawer, DropdownMenu, EmptyState, ErrorBoundary, FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination, Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper, Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast (+ToastProvider/useToast), Tooltip, VirtualizedDataTable
 - **Form** (17): Checkbox, Combobox, DatePicker, Field, FieldError, FormActions, Input, Label, NumberInput, OTPInput, Radio, SearchInput, Select, Slider, Switch, TagInput, Textarea
+- **Form orchestration** (headless): `useForm`, `FormProvider`, `useFormContext`, `useFieldState`, `useFormState`, `useFieldArray` — Standard Schema validation, a unified `field()` accessor, `useSyncExternalStore`-backed reactivity
 - **Data display** (5): Sparkline, ProgressRing, Meter, DescriptionList, ActivityFeed
 - **Layout** (6): Center, Container, Divider, Row, Spacer, Stack
 - **Animation** (5): AnimatePresence, Parallax, ScrollReveal, Stagger, ViewTransition (+`useViewTransition`)
