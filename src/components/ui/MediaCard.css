@@ -29,11 +29,11 @@
 }
 
 .media-card__image-container--landscape {
-  aspect-ratio: var(--MEDIA-ASPECT-WIDE);
+  aspect-ratio: var(--ASPECT-WIDE);
 }
 
 .media-card__image-container--square {
-  aspect-ratio: var(--MEDIA-ASPECT-SQUARE);
+  aspect-ratio: var(--ASPECT-SQUARE);
 }
 
 .media-card__overlay {

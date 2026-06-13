@@ -1,0 +1,799 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: response-ui gallery
+      - generic [ref=e7]: Theme switches default / events / grimdark / tech. Light vs dark follows the OS color-scheme via the foundation tokens.
+    - generic [ref=e8]:
+      - radiogroup "Theme" [ref=e9]:
+        - radio "Default" [checked] [ref=e10] [cursor=pointer]
+        - radio "Events" [ref=e11] [cursor=pointer]
+        - radio "Grimdark" [ref=e12] [cursor=pointer]
+        - radio "Tech" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - button "Full" [ref=e15] [cursor=pointer]
+        - button "Desktop (1024)" [ref=e16] [cursor=pointer]
+        - button "Mobile (375)" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - heading "UI" [level=2] [ref=e20]
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e23]: Button — variants
+          - generic [ref=e24]:
+            - button "Primary" [ref=e25] [cursor=pointer]
+            - button "Secondary" [ref=e26] [cursor=pointer]
+            - button "Ghost" [ref=e27] [cursor=pointer]
+            - button "Danger" [ref=e28] [cursor=pointer]
+            - button "Link" [ref=e29] [cursor=pointer]
+        - generic [ref=e30]:
+          - generic [ref=e31]: Button — sizes
+          - generic [ref=e32]:
+            - button "Small" [ref=e33] [cursor=pointer]
+            - button "Medium" [ref=e34] [cursor=pointer]
+            - button "Large" [ref=e35] [cursor=pointer]
+        - generic [ref=e36]:
+          - generic [ref=e37]: Button — disabled
+          - generic [ref=e38]:
+            - button "Primary" [disabled] [ref=e39]
+            - button "Secondary" [disabled] [ref=e40]
+        - generic [ref=e41]:
+          - generic [ref=e42]: Card
+          - generic [ref=e45]:
+            - generic [ref=e46]: Card title
+            - generic [ref=e47]: Surface container with padding + shadow tokens.
+            - button "Action" [ref=e48] [cursor=pointer]
+        - generic [ref=e49]:
+          - generic [ref=e50]: Alert
+          - generic [ref=e52]:
+            - alert [ref=e53]: Informational message.
+            - alert [ref=e54]: Saved successfully.
+            - alert [ref=e55]: Heads up — check this.
+            - alert [ref=e56]: Something went wrong.
+        - generic [ref=e57]:
+          - generic [ref=e58]: Badge
+          - generic [ref=e59]:
+            - generic [ref=e60]: Default
+            - generic [ref=e61]: Success
+            - generic [ref=e62]: Warning
+            - generic [ref=e63]: Error
+            - generic [ref=e64]: Info
+        - generic [ref=e65]:
+          - generic [ref=e66]: Spinner
+          - generic [ref=e67]:
+            - status [ref=e68]:
+              - generic [ref=e69]: Loading
+            - status [ref=e70]:
+              - generic [ref=e71]: Loading
+            - status [ref=e72]:
+              - generic [ref=e73]: Loading
+        - generic [ref=e74]:
+          - generic [ref=e75]: ProgressBar
+          - generic [ref=e77]:
+            - progressbar [ref=e78]
+            - progressbar [ref=e80]
+            - progressbar [ref=e82]
+        - generic [ref=e84]:
+          - generic [ref=e85]: Dialog
+          - button "Open dialog" [ref=e87] [cursor=pointer]
+        - generic [ref=e88]:
+          - generic [ref=e89]: Popover
+          - button "Toggle popover" [ref=e91] [cursor=pointer]
+        - generic [ref=e92]:
+          - generic [ref=e93]: DropdownMenu
+          - button "Open menu" [ref=e95] [cursor=pointer]
+        - generic [ref=e96]:
+          - generic [ref=e97]: Tooltip
+          - button "Hover me" [ref=e99] [cursor=pointer]
+        - generic [ref=e100]:
+          - generic [ref=e101]: Calendar
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - generic [ref=e105]:
+                - generic [ref=e106]:
+                  - button "Previous month" [ref=e107] [cursor=pointer]:
+                    - img [ref=e108]
+                  - generic [ref=e110]: June 2026
+                  - button "Next month" [ref=e111] [cursor=pointer]:
+                    - img [ref=e112]
+                - grid "June 2026" [ref=e114]:
+                  - row "Mon Tue Wed Thu Fri Sat Sun" [ref=e115]:
+                    - columnheader "Mon" [ref=e116]
+                    - columnheader "Tue" [ref=e117]
+                    - columnheader "Wed" [ref=e118]
+                    - columnheader "Thu" [ref=e119]
+                    - columnheader "Fri" [ref=e120]
+                    - columnheader "Sat" [ref=e121]
+                    - columnheader "Sun" [ref=e122]
+                  - row "1 2 3 4 5 6 7" [ref=e123]:
+                    - gridcell "1" [ref=e124]:
+                      - button "1" [ref=e125] [cursor=pointer]
+                    - gridcell "2" [ref=e126]:
+                      - button "2" [ref=e127] [cursor=pointer]
+                    - gridcell "3" [ref=e128]:
+                      - button "3" [ref=e129] [cursor=pointer]
+                    - gridcell "4" [ref=e130]:
+                      - button "4" [ref=e131] [cursor=pointer]
+                    - gridcell "5" [ref=e132]:
+                      - button "5" [ref=e133] [cursor=pointer]
+                    - gridcell "6" [ref=e134]:
+                      - button "6" [ref=e135] [cursor=pointer]
+                    - gridcell "7" [ref=e136]:
+                      - button "7" [ref=e137] [cursor=pointer]
+                  - row "8 9 10 11 12 13 14" [ref=e138]:
+                    - gridcell "8" [ref=e139]:
+                      - button "8" [ref=e140] [cursor=pointer]
+                    - gridcell "9" [ref=e141]:
+                      - button "9" [ref=e142] [cursor=pointer]
+                    - gridcell "10" [ref=e143]:
+                      - button "10" [ref=e144] [cursor=pointer]
+                    - gridcell "11" [ref=e145]:
+                      - button "11" [ref=e146] [cursor=pointer]
+                    - gridcell "12" [ref=e147]:
+                      - button "12" [ref=e148] [cursor=pointer]
+                    - gridcell "13" [ref=e149]:
+                      - button "13" [ref=e150] [cursor=pointer]
+                    - gridcell "14" [ref=e151]:
+                      - button "14" [ref=e152] [cursor=pointer]
+                  - row "15 16 17 18 19 20 21" [ref=e153]:
+                    - gridcell "15" [ref=e154]:
+                      - button "15" [ref=e155] [cursor=pointer]
+                    - gridcell "16" [ref=e156]:
+                      - button "16" [ref=e157] [cursor=pointer]
+                    - gridcell "17" [ref=e158]:
+                      - button "17" [ref=e159] [cursor=pointer]
+                    - gridcell "18" [ref=e160]:
+                      - button "18" [ref=e161] [cursor=pointer]
+                    - gridcell "19" [ref=e162]:
+                      - button "19" [ref=e163] [cursor=pointer]
+                    - gridcell "20" [ref=e164]:
+                      - button "20" [ref=e165] [cursor=pointer]
+                    - gridcell "21" [ref=e166]:
+                      - button "21" [ref=e167] [cursor=pointer]
+                  - row "22 23 24 25 26 27 28" [ref=e168]:
+                    - gridcell "22" [ref=e169]:
+                      - button "22" [ref=e170] [cursor=pointer]
+                    - gridcell "23" [ref=e171]:
+                      - button "23" [ref=e172] [cursor=pointer]
+                    - gridcell "24" [ref=e173]:
+                      - button "24" [ref=e174] [cursor=pointer]
+                    - gridcell "25" [ref=e175]:
+                      - button "25" [ref=e176] [cursor=pointer]
+                    - gridcell "26" [ref=e177]:
+                      - button "26" [ref=e178] [cursor=pointer]
+                    - gridcell "27" [ref=e179]:
+                      - button "27" [ref=e180] [cursor=pointer]
+                    - gridcell "28" [ref=e181]:
+                      - button "28" [ref=e182] [cursor=pointer]
+                  - row "29 30 1 2 3 4 5" [ref=e183]:
+                    - gridcell "29" [ref=e184]:
+                      - button "29" [ref=e185] [cursor=pointer]
+                    - gridcell "30" [ref=e186]:
+                      - button "30" [ref=e187] [cursor=pointer]
+                    - gridcell "1" [ref=e188]:
+                      - button "1" [ref=e189] [cursor=pointer]
+                    - gridcell "2" [ref=e190]:
+                      - button "2" [ref=e191] [cursor=pointer]
+                    - gridcell "3" [ref=e192]:
+                      - button "3" [ref=e193] [cursor=pointer]
+                    - gridcell "4" [ref=e194]:
+                      - button "4" [ref=e195] [cursor=pointer]
+                    - gridcell "5" [ref=e196]:
+                      - button "5" [ref=e197] [cursor=pointer]
+                  - row "6 7 8 9 10 11 12" [ref=e198]:
+                    - gridcell "6" [ref=e199]:
+                      - button "6" [ref=e200] [cursor=pointer]
+                    - gridcell "7" [ref=e201]:
+                      - button "7" [ref=e202] [cursor=pointer]
+                    - gridcell "8" [ref=e203]:
+                      - button "8" [ref=e204] [cursor=pointer]
+                    - gridcell "9" [ref=e205]:
+                      - button "9" [ref=e206] [cursor=pointer]
+                    - gridcell "10" [ref=e207]:
+                      - button "10" [ref=e208] [cursor=pointer]
+                    - gridcell "11" [ref=e209]:
+                      - button "11" [ref=e210] [cursor=pointer]
+                    - gridcell "12" [ref=e211]:
+                      - button "12" [ref=e212] [cursor=pointer]
+              - generic [ref=e213]: "Selected: none"
+            - generic [ref=e214]:
+              - generic [ref=e215]:
+                - button "Previous month" [ref=e216] [cursor=pointer]:
+                  - img [ref=e217]
+                - generic [ref=e219]: janvier 2026
+                - button "Next month" [ref=e220] [cursor=pointer]:
+                  - img [ref=e221]
+              - grid "janvier 2026" [ref=e223]:
+                - row "lun. mar. mer. jeu. ven. sam. dim." [ref=e224]:
+                  - columnheader "lun." [ref=e225]
+                  - columnheader "mar." [ref=e226]
+                  - columnheader "mer." [ref=e227]
+                  - columnheader "jeu." [ref=e228]
+                  - columnheader "ven." [ref=e229]
+                  - columnheader "sam." [ref=e230]
+                  - columnheader "dim." [ref=e231]
+                - row "29 30 31 1 2 3 4" [ref=e232]:
+                  - gridcell "29" [ref=e233]:
+                    - button "29" [ref=e234] [cursor=pointer]
+                  - gridcell "30" [ref=e235]:
+                    - button "30" [ref=e236] [cursor=pointer]
+                  - gridcell "31" [ref=e237]:
+                    - button "31" [ref=e238] [cursor=pointer]
+                  - gridcell "1" [ref=e239]:
+                    - button "1" [ref=e240] [cursor=pointer]
+                  - gridcell "2" [ref=e241]:
+                    - button "2" [ref=e242] [cursor=pointer]
+                  - gridcell "3" [ref=e243]:
+                    - button "3" [ref=e244] [cursor=pointer]
+                  - gridcell "4" [ref=e245]:
+                    - button "4" [ref=e246] [cursor=pointer]
+                - row "5 6 7 8 9 10 11" [ref=e247]:
+                  - gridcell "5" [ref=e248]:
+                    - button "5" [ref=e249] [cursor=pointer]
+                  - gridcell "6" [ref=e250]:
+                    - button "6" [ref=e251] [cursor=pointer]
+                  - gridcell "7" [ref=e252]:
+                    - button "7" [ref=e253] [cursor=pointer]
+                  - gridcell "8" [ref=e254]:
+                    - button "8" [ref=e255] [cursor=pointer]
+                  - gridcell "9" [ref=e256]:
+                    - button "9" [ref=e257] [cursor=pointer]
+                  - gridcell "10" [ref=e258]:
+                    - button "10" [ref=e259] [cursor=pointer]
+                  - gridcell "11" [ref=e260]:
+                    - button "11" [ref=e261] [cursor=pointer]
+                - row "12 13 14 15 16 17 18" [ref=e262]:
+                  - gridcell "12" [ref=e263]:
+                    - button "12" [ref=e264] [cursor=pointer]
+                  - gridcell "13" [ref=e265]:
+                    - button "13" [ref=e266] [cursor=pointer]
+                  - gridcell "14" [ref=e267]:
+                    - button "14" [ref=e268] [cursor=pointer]
+                  - gridcell "15" [ref=e269]:
+                    - button "15" [ref=e270] [cursor=pointer]
+                  - gridcell "16" [ref=e271]:
+                    - button "16" [ref=e272] [cursor=pointer]
+                  - gridcell "17" [ref=e273]:
+                    - button "17" [ref=e274] [cursor=pointer]
+                  - gridcell "18" [ref=e275]:
+                    - button "18" [ref=e276] [cursor=pointer]
+                - row "19 20 21 22 23 24 25" [ref=e277]:
+                  - gridcell "19" [ref=e278]:
+                    - button "19" [ref=e279] [cursor=pointer]
+                  - gridcell "20" [ref=e280]:
+                    - button "20" [ref=e281] [cursor=pointer]
+                  - gridcell "21" [ref=e282]:
+                    - button "21" [ref=e283] [cursor=pointer]
+                  - gridcell "22" [ref=e284]:
+                    - button "22" [ref=e285] [cursor=pointer]
+                  - gridcell "23" [ref=e286]:
+                    - button "23" [ref=e287] [cursor=pointer]
+                  - gridcell "24" [ref=e288]:
+                    - button "24" [ref=e289] [cursor=pointer]
+                  - gridcell "25" [ref=e290]:
+                    - button "25" [ref=e291] [cursor=pointer]
+                - row "26 27 28 29 30 31 1" [ref=e292]:
+                  - gridcell "26" [ref=e293]:
+                    - button "26" [ref=e294] [cursor=pointer]
+                  - gridcell "27" [ref=e295]:
+                    - button "27" [ref=e296] [cursor=pointer]
+                  - gridcell "28" [ref=e297]:
+                    - button "28" [ref=e298] [cursor=pointer]
+                  - gridcell "29" [ref=e299]:
+                    - button "29" [ref=e300] [cursor=pointer]
+                  - gridcell "30" [ref=e301]:
+                    - button "30" [ref=e302] [cursor=pointer]
+                  - gridcell "31" [ref=e303]:
+                    - button "31" [ref=e304] [cursor=pointer]
+                  - gridcell "1" [ref=e305]:
+                    - button "1" [ref=e306] [cursor=pointer]
+                - row "2 3 4 5 6 7 8" [ref=e307]:
+                  - gridcell "2" [ref=e308]:
+                    - button "2" [ref=e309] [cursor=pointer]
+                  - gridcell "3" [ref=e310]:
+                    - button "3" [ref=e311] [cursor=pointer]
+                  - gridcell "4" [ref=e312]:
+                    - button "4" [ref=e313] [cursor=pointer]
+                  - gridcell "5" [ref=e314]:
+                    - button "5" [ref=e315] [cursor=pointer]
+                  - gridcell "6" [ref=e316]:
+                    - button "6" [ref=e317] [cursor=pointer]
+                  - gridcell "7" [ref=e318]:
+                    - button "7" [ref=e319] [cursor=pointer]
+                  - gridcell "8" [ref=e320]:
+                    - button "8" [ref=e321] [cursor=pointer]
+        - generic [ref=e322]:
+          - generic [ref=e323]: CodeBlock
+          - generic [ref=e325]:
+            - region "App.tsx" [ref=e326]:
+              - generic [ref=e327]:
+                - generic [ref=e328]: App.tsx
+                - generic [ref=e329]: typescript
+                - button "Copy" [ref=e330] [cursor=pointer]:
+                  - img [ref=e331]
+              - code [ref=e336]:
+                - generic [ref=e337]: "import { Button } from \"@batthewz/response-ui-react-components\";"
+                - generic [ref=e339]: "export function App() {"
+                - generic [ref=e340]: return <Button variant="primary">Click me</Button>;
+                - generic [ref=e341]: "}"
+            - region "Code block" [ref=e342]:
+              - generic [ref=e343]:
+                - generic [ref=e344]: bash
+                - button "Copy" [ref=e345] [cursor=pointer]:
+                  - img [ref=e346]
+              - code [ref=e351]: bun add @batthewz/response-ui-react-components
+        - generic [ref=e352]:
+          - generic [ref=e353]: Rating
+          - generic [ref=e355]:
+            - radiogroup "Rate this product" [ref=e356]:
+              - radio "1 stars" [ref=e357] [cursor=pointer]:
+                - generic [ref=e358]: 1 stars
+                - generic [ref=e359]:
+                  - img [ref=e360]
+                  - generic:
+                    - img
+              - radio "2 stars" [ref=e362] [cursor=pointer]:
+                - generic [ref=e363]: 2 stars
+                - generic [ref=e364]:
+                  - img [ref=e365]
+                  - generic:
+                    - img
+              - radio "3 stars" [checked] [ref=e367] [cursor=pointer]:
+                - generic [ref=e368]: 3 stars
+                - generic [ref=e369]:
+                  - img [ref=e370]
+                  - generic:
+                    - img
+              - radio "4 stars" [ref=e372] [cursor=pointer]:
+                - generic [ref=e373]: 4 stars
+                - generic [ref=e374]:
+                  - img [ref=e375]
+                  - img
+              - radio "5 stars" [ref=e377] [cursor=pointer]:
+                - generic [ref=e378]: 5 stars
+                - generic [ref=e379]:
+                  - img [ref=e380]
+                  - img
+            - radiogroup "Rate this product (half steps)" [ref=e382]:
+              - radio "0.5 stars" [ref=e383] [cursor=pointer]:
+                - generic [ref=e384]: 0.5 stars
+                - generic [ref=e385]:
+                  - img [ref=e386]
+                  - generic:
+                    - img
+              - radio "1.5 stars" [ref=e388] [cursor=pointer]:
+                - generic [ref=e389]: 1.5 stars
+                - generic [ref=e390]:
+                  - img [ref=e391]
+                  - generic:
+                    - img
+              - radio "2.5 stars" [ref=e393] [cursor=pointer]:
+                - generic [ref=e394]: 2.5 stars
+                - generic [ref=e395]:
+                  - img [ref=e396]
+                  - generic:
+                    - img
+              - radio "3.5 stars" [checked] [ref=e398] [cursor=pointer]:
+                - generic [ref=e399]: 3.5 stars
+                - generic [ref=e400]:
+                  - img [ref=e401]
+                  - generic:
+                    - img
+              - radio "4.5 stars" [ref=e403] [cursor=pointer]:
+                - generic [ref=e404]: 4.5 stars
+                - generic [ref=e405]:
+                  - img [ref=e406]
+                  - img
+            - img "4 out of 5 stars" [ref=e408]:
+              - generic [ref=e409]:
+                - img [ref=e410]
+                - generic:
+                  - img
+              - generic [ref=e412]:
+                - img [ref=e413]
+                - generic:
+                  - img
+              - generic [ref=e415]:
+                - img [ref=e416]
+                - generic:
+                  - img
+              - generic [ref=e418]:
+                - img [ref=e419]
+                - generic:
+                  - img
+              - generic [ref=e421]:
+                - img [ref=e422]
+                - img
+        - generic [ref=e424]:
+          - generic [ref=e425]: Kbd
+          - generic [ref=e427]:
+            - generic [ref=e428]: ⌘
+            - generic [ref=e429]: K
+            - generic [ref=e430]: to search,
+            - generic [ref=e431]: Esc
+            - generic [ref=e432]: to close
+        - generic [ref=e433]:
+          - generic [ref=e434]: CopyButton
+          - generic [ref=e436]:
+            - code [ref=e437]: npm i response-ui
+            - button "Copy" [ref=e438] [cursor=pointer]:
+              - img [ref=e439]
+        - generic [ref=e443]:
+          - generic [ref=e444]: Collapsible
+          - generic [ref=e446]:
+            - button "What is response-ui? +" [ref=e447]:
+              - generic [ref=e448]: What is response-ui?
+              - generic [ref=e449]: +
+            - region:
+              - paragraph [ref=e450]: A themeable React component library built on design tokens and Tailwind v4.
+        - generic [ref=e451]:
+          - generic [ref=e452]: Drawer
+          - generic [ref=e454]:
+            - button "Right" [ref=e455] [cursor=pointer]
+            - button "Left" [ref=e456] [cursor=pointer]
+            - button "Top" [ref=e457] [cursor=pointer]
+            - button "Bottom" [ref=e458] [cursor=pointer]
+        - generic [ref=e459]:
+          - generic [ref=e460]: ContextMenu
+          - generic [ref=e463]: right-click me
+        - generic [ref=e464]:
+          - generic [ref=e465]: HoverCard
+          - button "@ada" [ref=e467] [cursor=pointer]
+        - generic [ref=e468]:
+          - generic [ref=e469]: Stepper — horizontal
+          - list [ref=e472]:
+            - listitem [ref=e473]:
+              - img [ref=e475]
+              - generic [ref=e477]:
+                - generic [ref=e478]: Account
+                - generic [ref=e479]: Your details
+            - listitem [ref=e481]:
+              - generic [ref=e482]: "2"
+              - generic [ref=e483]:
+                - generic [ref=e484]: Plan
+                - generic [ref=e485]: Pick a tier
+            - listitem [ref=e487]:
+              - generic [ref=e488]: "3"
+              - generic [ref=e489]:
+                - generic [ref=e490]: Confirm
+                - generic [ref=e491]: Review & pay
+        - generic [ref=e492]:
+          - generic [ref=e493]: Stepper — vertical
+          - list [ref=e495]:
+            - listitem [ref=e496]:
+              - img [ref=e498]
+              - generic [ref=e500]:
+                - generic [ref=e501]: Cart
+                - generic [ref=e502]: 2 items
+            - listitem [ref=e504]:
+              - img [ref=e506]
+              - generic [ref=e508]:
+                - generic [ref=e509]: Shipping
+                - generic [ref=e510]: Address entered
+            - listitem [ref=e512]:
+              - generic [ref=e513]: "3"
+              - generic [ref=e514]:
+                - generic [ref=e515]: Payment
+                - generic [ref=e516]: Card details
+            - listitem [ref=e518]:
+              - generic [ref=e519]: "4"
+              - generic [ref=e520]:
+                - generic [ref=e521]: Done
+                - generic [ref=e522]: Order placed
+        - generic [ref=e523]:
+          - generic [ref=e524]: CommandPalette
+          - generic [ref=e525]:
+            - button "Open command palette" [ref=e526] [cursor=pointer]
+            - generic [ref=e527]:
+              - text: or press
+              - generic [ref=e528]: ⌘
+              - generic [ref=e529]: K
+        - generic [ref=e530]:
+          - generic [ref=e531]: MediaCard — orientations
+          - generic [ref=e533]:
+            - article [ref=e535]:
+              - img "portrait sample" [ref=e537]
+              - generic [ref=e538]: portraitaspect-ratio token
+            - article [ref=e540]:
+              - img "landscape sample" [ref=e542]
+              - generic [ref=e543]: landscapeaspect-ratio token
+            - article [ref=e545]:
+              - img "square sample" [ref=e547]
+              - generic [ref=e548]: squareaspect-ratio token
+        - generic [ref=e549]:
+          - generic [ref=e550]: Carousel
+          - generic "Featured" [ref=e553]:
+            - generic [ref=e554]: Featured
+            - region "Carousel items" [ref=e555]:
+              - group [ref=e556]:
+                - generic [ref=e558]: "1"
+              - group [ref=e559]:
+                - generic [ref=e561]: "2"
+              - group [ref=e562]:
+                - generic [ref=e564]: "3"
+              - group [ref=e565]:
+                - generic [ref=e567]: "4"
+              - group [ref=e568]:
+                - generic [ref=e570]: "5"
+              - group [ref=e571]:
+                - generic [ref=e573]: "6"
+              - group [ref=e574]:
+                - generic [ref=e576]: "7"
+              - group [ref=e577]:
+                - generic [ref=e579]: "8"
+            - button "Previous" [ref=e580] [cursor=pointer]:
+              - img [ref=e581]
+            - button "Next" [ref=e583] [cursor=pointer]:
+              - img [ref=e584]
+    - generic [ref=e586]:
+      - heading "Form" [level=2] [ref=e587]
+      - generic [ref=e588]:
+        - generic [ref=e589]:
+          - generic [ref=e590]: Input
+          - generic [ref=e592]:
+            - generic [ref=e593]: Email
+            - textbox "you@example.com" [ref=e594]
+        - generic [ref=e595]:
+          - generic [ref=e596]: Input (error)
+          - generic [ref=e598]:
+            - generic [ref=e599]: Email
+            - textbox "you@example.com" [ref=e600]: not-an-email
+        - generic [ref=e601]:
+          - generic [ref=e602]: Textarea
+          - generic [ref=e604]:
+            - generic [ref=e605]: Notes
+            - textbox "Type here…" [ref=e606]
+        - generic [ref=e607]:
+          - generic [ref=e608]: Select
+          - generic [ref=e610]:
+            - generic [ref=e611]: Role
+            - combobox [ref=e612]:
+              - option "Engineer" [selected]
+              - option "Designer"
+              - option "Manager"
+        - generic [ref=e613]:
+          - generic [ref=e614]: Checkbox
+          - generic [ref=e616]:
+            - checkbox "Subscribe" [checked] [ref=e617]
+            - text: Subscribe
+        - generic [ref=e618]:
+          - generic [ref=e619]: Radio
+          - generic [ref=e620]:
+            - generic [ref=e621]:
+              - radio "Option A" [checked] [ref=e622]
+              - text: Option A
+            - generic [ref=e623]:
+              - radio "Option B" [ref=e624]
+              - text: Option B
+        - generic [ref=e625]:
+          - generic [ref=e626]: Combobox
+          - generic [ref=e628]:
+            - generic [ref=e629]:
+              - combobox "Fruit" [ref=e630]
+              - button "Open" [ref=e631] [cursor=pointer]:
+                - img [ref=e632]
+            - generic [ref=e634]: "Selected: none"
+        - generic [ref=e635]:
+          - generic [ref=e636]: Switch
+          - generic [ref=e638]:
+            - switch [checked] [ref=e639] [cursor=pointer]
+            - switch [ref=e641] [cursor=pointer]
+            - switch [checked] [ref=e643] [cursor=pointer]
+            - switch [checked] [disabled]
+        - generic [ref=e645]:
+          - generic [ref=e646]: Slider
+          - generic [ref=e648]:
+            - slider "Volume" [ref=e649] [cursor=pointer]: "40"
+            - generic [ref=e650]: "Value: 40"
+            - slider "Brightness" [disabled] [ref=e651]: "75"
+        - generic [ref=e652]:
+          - generic [ref=e653]: NumberInput
+          - generic [ref=e655]:
+            - generic [ref=e656]:
+              - spinbutton "Quantity" [ref=e657]: "8"
+              - generic [ref=e658]:
+                - button [ref=e659] [cursor=pointer]:
+                  - img [ref=e660]
+                - button [ref=e662] [cursor=pointer]:
+                  - img [ref=e663]
+            - generic [ref=e665]: "Value: 8"
+        - generic [ref=e666]:
+          - generic [ref=e667]: TagInput
+          - generic [ref=e670]:
+            - generic [ref=e671]:
+              - generic [ref=e672]:
+                - text: react
+                - button "Remove react" [ref=e673] [cursor=pointer]:
+                  - img [ref=e674]
+              - generic [ref=e677]:
+                - text: typescript
+                - button "Remove typescript" [ref=e678] [cursor=pointer]:
+                  - img [ref=e679]
+              - textbox "Tags" [ref=e682]
+            - paragraph [ref=e683]
+        - generic [ref=e684]:
+          - generic [ref=e685]: OTPInput
+          - generic [ref=e687]:
+            - group "One-time code" [ref=e688]:
+              - textbox "Digit 1" [ref=e689]
+              - textbox "Digit 2" [ref=e690]
+              - textbox "Digit 3" [ref=e691]
+              - textbox "Digit 4" [ref=e692]
+              - textbox "Digit 5" [ref=e693]
+              - textbox "Digit 6" [ref=e694]
+            - generic [ref=e695]: "Code: —"
+    - generic [ref=e696]:
+      - heading "Layout" [level=2] [ref=e697]
+      - generic [ref=e698]:
+        - generic [ref=e699]:
+          - generic [ref=e700]: Stack (gap=r3)
+          - generic [ref=e702]:
+            - generic [ref=e703]: One
+            - generic [ref=e704]: Two
+            - generic [ref=e705]: Three
+        - generic [ref=e706]:
+          - generic [ref=e707]: Stack (gap=r6, tight)
+          - generic [ref=e709]:
+            - generic [ref=e710]: A
+            - generic [ref=e711]: B
+            - generic [ref=e712]: C
+    - generic [ref=e713]:
+      - heading "Data display" [level=2] [ref=e714]
+      - generic [ref=e715]:
+        - generic [ref=e716]:
+          - generic [ref=e717]:
+            - generic [ref=e718]: Revenue
+            - generic [ref=e719]: $48,250
+            - generic [ref=e720]:
+              - img [ref=e721]
+              - text: +12%
+          - generic [ref=e723]:
+            - generic [ref=e724]: Churn
+            - generic [ref=e725]: 0%
+            - generic [ref=e726]:
+              - img [ref=e727]
+              - text: "-2%"
+          - generic [ref=e729]:
+            - generic [ref=e730]: Active users
+            - generic [ref=e731]: 1,280
+            - generic [ref=e732]: 0%
+          - generic [ref=e733]:
+            - generic [ref=e734]: Sessions
+            - generic [ref=e735]: 9,402
+            - generic [ref=e736]:
+              - img [ref=e737]
+              - text: +8.4% WoW
+            - img "Sparkline of 8 values" [ref=e740]
+        - generic [ref=e743]:
+          - generic [ref=e744]: Sparkline
+          - generic [ref=e746]:
+            - img "Sparkline of 8 values" [ref=e747]
+            - img "Sparkline of 8 values" [ref=e749]
+            - img "Sparkline of 8 values" [ref=e752]
+            - img "Sparkline of 5 values" [ref=e760]
+        - generic [ref=e761]:
+          - generic [ref=e762]: ProgressRing
+          - generic [ref=e763]:
+            - progressbar [ref=e764]:
+              - img [ref=e765]
+              - generic [ref=e769]: 25%
+            - progressbar [ref=e770]:
+              - img [ref=e771]
+              - generic [ref=e775]: 66%
+            - progressbar [ref=e776]:
+              - img [ref=e777]
+              - generic [ref=e781]: 80%
+            - progressbar [ref=e782]:
+              - img [ref=e783]
+              - generic [ref=e787]: 95%
+        - generic [ref=e788]:
+          - generic [ref=e789]: Meter
+          - generic [ref=e791]:
+            - meter "Disk — ok" [ref=e792]
+            - meter "Disk — warning" [ref=e803]
+            - meter "Disk — critical" [ref=e814]
+        - generic [ref=e825]:
+          - generic [ref=e826]: DescriptionList — horizontal
+          - generic [ref=e828]:
+            - term [ref=e829]: Name
+            - definition [ref=e830]: Ada Lovelace
+            - term [ref=e831]: Role
+            - definition [ref=e832]: Engineer
+            - term [ref=e833]: Status
+            - definition [ref=e834]: Active
+        - generic [ref=e835]:
+          - generic [ref=e836]: DescriptionList — vertical
+          - generic [ref=e838]:
+            - term [ref=e839]: Name
+            - definition [ref=e840]: Grace Hopper
+            - term [ref=e841]: Role
+            - definition [ref=e842]: Admiral
+        - generic [ref=e843]:
+          - generic [ref=e844]: ActivityFeed
+          - list [ref=e846]:
+            - listitem [ref=e847]:
+              - img "Ada Lovelace" [ref=e849]:
+                - generic [ref=e851]: AL
+              - generic [ref=e853]:
+                - generic [ref=e854]: Ada
+                - generic [ref=e855]: commented on
+                - generic [ref=e856]: "PR #42"
+                - generic [ref=e857]: 2h ago
+            - listitem [ref=e858]:
+              - img [ref=e861]
+              - generic [ref=e864]:
+                - generic [ref=e865]: Grace
+                - generic [ref=e866]: pushed to
+                - generic [ref=e867]: main
+                - generic [ref=e868]: 1h ago
+            - listitem [ref=e869]:
+              - img [ref=e872]
+              - generic [ref=e875]:
+                - generic [ref=e876]:
+                  - generic [ref=e877]: Alan
+                  - generic [ref=e878]: joined the
+                  - generic [ref=e879]: project
+                  - generic [ref=e880]: just now
+                - generic [ref=e881]:
+                  - img [ref=e882]
+                  - text: Welcome aboard!
+        - generic [ref=e885]:
+          - table [ref=e887]:
+            - rowgroup [ref=e888]:
+              - row "Name Role Visits" [ref=e889]:
+                - columnheader "Name" [ref=e890] [cursor=pointer]:
+                  - text: Name
+                  - img [ref=e892]
+                - columnheader "Role" [ref=e894] [cursor=pointer]:
+                  - text: Role
+                  - img [ref=e896]
+                - columnheader "Visits" [ref=e899] [cursor=pointer]:
+                  - text: Visits
+                  - img [ref=e901]
+            - rowgroup [ref=e904]:
+              - row "Ada Lovelace Engineer 42" [ref=e905]:
+                - cell "Ada Lovelace" [ref=e906]
+                - cell "Engineer" [ref=e907]
+                - cell "42" [ref=e908]
+              - row "Alan Turing Researcher 17" [ref=e909]:
+                - cell "Alan Turing" [ref=e910]
+                - cell "Researcher" [ref=e911]
+                - cell "17" [ref=e912]
+              - row "Barbara Liskov Professor 51" [ref=e913]:
+                - cell "Barbara Liskov" [ref=e914]
+                - cell "Professor" [ref=e915]
+                - cell "51" [ref=e916]
+              - row "Donald Knuth Author 74" [ref=e917]:
+                - cell "Donald Knuth" [ref=e918]
+                - cell "Author" [ref=e919]
+                - cell "74" [ref=e920]
+          - navigation "Pagination" [ref=e922]:
+            - list [ref=e923]:
+              - listitem [ref=e924]:
+                - button "First page" [disabled] [ref=e925]:
+                  - img [ref=e926]
+              - listitem [ref=e929]:
+                - button "Previous page" [disabled] [ref=e930]:
+                  - img [ref=e931]
+              - listitem [ref=e933]:
+                - button "Page 1": "1"
+              - listitem [ref=e934]:
+                - button "Page 2" [ref=e935] [cursor=pointer]: "2"
+              - listitem [ref=e936]:
+                - button "Next page" [ref=e937] [cursor=pointer]:
+                  - img [ref=e938]
+              - listitem [ref=e940]:
+                - button "Last page" [ref=e941] [cursor=pointer]:
+                  - img [ref=e942]
+        - generic [ref=e946]:
+          - generic [ref=e950]:
+            - generic [ref=e951]: Mon
+            - heading "Order placed" [level=3] [ref=e952]
+            - generic [ref=e953]: Your order was received.
+          - generic [ref=e957]:
+            - generic [ref=e958]: Tue
+            - heading "Shipped" [level=3] [ref=e959]
+            - generic [ref=e960]: Package left the warehouse.
+          - generic [ref=e964]:
+            - generic [ref=e965]: Thu
+            - heading "Delivered" [level=3] [ref=e966]
+            - generic [ref=e967]: Left on the porch.

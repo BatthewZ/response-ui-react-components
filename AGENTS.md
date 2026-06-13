@@ -21,6 +21,8 @@ Per-component CSS is co-located with each `.tsx`: `src/components/ui/Accordion.t
 
 The aggregator also ends with `@source "../src/**/*.{ts,tsx}";` — a **self-relative** Tailwind v4 registration of this package's own sources, so consumers' builds generate the utility classes used inside the components under any node_modules layout (hoisted npm, bun's isolated store, pnpm). It must stay self-relative and must keep working from both `src/styles.css` (dev/linked) and the verbatim copy at `dist/styles.css` (published) — `../src` satisfies both because `src/` ships in the npm package. Don't move source scanning into `@batthewz/response-ui-css`; a sideways path from another package silently breaks under isolated stores.
 
+Domain tokens (trend, chart, media-card/carousel/poster) live in [`src/tokens.css`](./src/tokens.css) (this package's extension of the universal css contract); the exported `cn` is built with `createCn` so it dedupes these utilities.
+
 When adding a new component that needs CSS:
 1. Create `MyComponent.css` next to `MyComponent.tsx`.
 2. Add an `@import` line to [`src/styles.css`](./src/styles.css).

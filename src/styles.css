@@ -5,6 +5,11 @@
    tokens, themes, and responsive scales are defined before these rules read
    `var(--…)`.                                                                 */
 
+/* This package's domain-token layer (trend + chart + media). Imported FIRST so
+   the tokens and their `@theme inline` utilities are defined before the
+   per-component CSS below reads `var(--…)`. */
+@import "./tokens.css";
+
 /* ui */
 @import "./components/ui/Accordion.css";
 @import "./components/ui/AppShell.css";

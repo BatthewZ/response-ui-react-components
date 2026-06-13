@@ -18,6 +18,7 @@ import {
   Button,
   Calendar,
   Card,
+  Carousel,
   Checkbox,
   CodeBlock,
   Collapsible,
@@ -36,6 +37,7 @@ import {
   Input,
   Kbd,
   Label,
+  MediaCard,
   Meter,
   NumberInput,
   OTPInput,
@@ -537,6 +539,40 @@ export function App() {
               onClose={() => setPaletteOpen(false)}
               items={COMMANDS}
             />
+          </Tile>
+          <Tile label="MediaCard — orientations">
+            <div className="flex flex-wrap items-start gap-r4">
+              {(["portrait", "landscape", "square"] as const).map((o) => (
+                <div key={o} className="w-44">
+                  <MediaCard orientation={o}>
+                    <MediaCard.Image
+                      src={`https://picsum.photos/seed/${o}/600/600`}
+                      alt={`${o} sample`}
+                    />
+                    <MediaCard.Overlay />
+                    <MediaCard.Content>
+                      <span className="text-body-1 font-semibold capitalize">{o}</span>
+                      <span className="text-body-3">aspect-ratio token</span>
+                    </MediaCard.Content>
+                  </MediaCard>
+                </div>
+              ))}
+            </div>
+          </Tile>
+          <Tile label="Carousel">
+            <div className="w-full min-w-0 max-w-2xl">
+              <Carousel title="Featured">
+                <Carousel.Track>
+                  {Array.from({ length: 8 }, (_, i) => (
+                    <Carousel.Item key={i} style={{ width: "12rem" }}>
+                      <Card className="flex h-32 items-center justify-center">
+                        <span className="text-h4">{i + 1}</span>
+                      </Card>
+                    </Carousel.Item>
+                  ))}
+                </Carousel.Track>
+              </Carousel>
+            </div>
           </Tile>
         </Group>
 

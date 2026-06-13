@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "@batthewz/response-ui-css": "^0.6.0",
-    "@batthewz/response-ui-tw-merge": "^0.2.0",
+    "@batthewz/response-ui-tw-merge": "^0.1.1",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.5.0"
   },

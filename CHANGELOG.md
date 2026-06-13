@@ -18,7 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - **DataTable** — Date- and nullish-aware sorting; `defaultSort` for uncontrolled initial sort; client-side `pageSize` pagination (table slices and derives pages itself); a footer slot.
-- **Dependency bumps** — `@batthewz/response-ui-css` `^0.5.0` → `^0.6.0` (trend + chart tokens) and `@batthewz/response-ui-tw-merge` `^0.1.0` → `^0.2.0` (those tokens taught to `cn()`).
+- **Domain tokens now owned by this package** — `response-ui-css` is the universal contract and no longer mints data-viz / single-component tokens. This package now OWNS its trend (`--C-TREND-*`), chart (`--C-CHART-1..5`), and media (`--MEDIA-ASPECT-POSTER`, `--MEDIA-CARD-HOVER-*`, `--MEDIA-CAROUSEL-*`) tokens in [`src/tokens.css`](./src/tokens.css) — imported first by `styles.css`, including their `@theme inline` mappings and per-theme (grimdark/tech/events) re-tuning. Since `@batthewz/response-ui-tw-merge` no longer carries `trend-*`/`chart-*` in its built-in color list, the exported `cn` is now built with `createCn({ theme: { color: [...] } })` so those utilities (`text-trend-up`, `bg-chart-3`, …) still dedupe. `MediaCard`'s landscape/square ratios now read the contract's renamed `--ASPECT-WIDE`/`--ASPECT-SQUARE`.
+- **Dependency bump** — `@batthewz/response-ui-css` `^0.5.0` → `^0.6.0` (renames its generic aspect ratios to `--ASPECT-WIDE`/`--ASPECT-SQUARE` and sheds the relocated domain tokens). `@batthewz/response-ui-tw-merge` `^0.1.0` → `^0.1.1` (its `createCn`/`mergeExtension` types now accept the top-level `theme` key that this package's domain-token `createCn` relies on).
 
 ## [0.3.0] — 2026-06-11
 

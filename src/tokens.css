@@ -1,0 +1,58 @@
+/* Domain tokens owned by response-ui-react-components.
+   The universal contract (@batthewz/response-ui-css) defines status/surface/etc;
+   these are this package's data-viz + component-feel extensions. They cascade by
+   name, so a consumer theme can still override them. */
+:root {
+  /* Trend (data-viz) — alias the contract's status colors so they track the theme */
+  --C-TREND-UP: var(--C-STATUS-SUCCESS);
+  --C-TREND-UP-BG: var(--C-STATUS-SUCCESS-BG);
+  --C-TREND-DOWN: var(--C-STATUS-ERROR);
+  --C-TREND-DOWN-BG: var(--C-STATUS-ERROR-BG);
+  /* Chart — categorical palette */
+  --C-CHART-1: oklch(0.5461 0.2152 262.88);
+  --C-CHART-2: oklch(0.6271 0.1699 149.21);
+  --C-CHART-3: oklch(0.6658 0.1574 58.32);
+  --C-CHART-4: oklch(0.5413 0.2466 293.01);
+  --C-CHART-5: oklch(0.6896 0.1037 218.62);
+  /* Media domain (relocated from css) */
+  --MEDIA-ASPECT-POSTER: 2 / 3;
+  --MEDIA-CARD-HOVER-SCALE: 1.02;
+  --MEDIA-CARD-HOVER-LIFT: -0.25rem;
+  --MEDIA-CAROUSEL-PEEK: 3rem;
+  --MEDIA-CAROUSEL-GAP: var(--R-SIZE-5);
+}
+@theme inline {
+  /* Only trend + chart are consumed as Tailwind utilities (text-trend-up, bg-chart-3, …) */
+  --color-trend-up: var(--C-TREND-UP);
+  --color-trend-up-bg: var(--C-TREND-UP-BG);
+  --color-trend-down: var(--C-TREND-DOWN);
+  --color-trend-down-bg: var(--C-TREND-DOWN-BG);
+  --color-chart-1: var(--C-CHART-1);
+  --color-chart-2: var(--C-CHART-2);
+  --color-chart-3: var(--C-CHART-3);
+  --color-chart-4: var(--C-CHART-4);
+  --color-chart-5: var(--C-CHART-5);
+}
+/* Dark-theme chart re-tuning + media-card feel per theme (relocated from css themes) */
+:root[data-theme="grimdark"] {
+  --C-CHART-1: oklch(0.68 0.17 262.88);
+  --C-CHART-2: oklch(0.72 0.19 149.58);
+  --C-CHART-3: oklch(0.78 0.16 58.32);
+  --C-CHART-4: oklch(0.66 0.21 293.01);
+  --C-CHART-5: oklch(0.74 0.11 218.62);
+  --MEDIA-CARD-HOVER-SCALE: 1.02;
+  --MEDIA-CARD-HOVER-LIFT: -0.125rem;
+}
+:root[data-theme="tech"] {
+  --C-CHART-1: oklch(0.70 0.18 262.88);
+  --C-CHART-2: oklch(0.78 0.21 152.55);
+  --C-CHART-3: oklch(0.77 0.16 58.32);
+  --C-CHART-4: oklch(0.68 0.22 293.01);
+  --C-CHART-5: oklch(0.75 0.13 233.78);
+  --MEDIA-CARD-HOVER-SCALE: 1.03;
+  --MEDIA-CARD-HOVER-LIFT: -0.1875rem;
+}
+:root[data-theme="events"] {
+  --MEDIA-CARD-HOVER-SCALE: 1.03;
+  --MEDIA-CARD-HOVER-LIFT: -0.25rem;
+}
