@@ -40,7 +40,9 @@ export function useFloating(config: UseFloatingConfig = {}) {
 export {
   FloatingFocusManager,
   FloatingPortal,
+  safePolygon,
   useClick,
+  useClientPoint,
   useDismiss,
   useFocus,
   useHover,

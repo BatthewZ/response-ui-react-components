@@ -1,8 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { type ColumnDef,DataTable } from "./DataTable";
+import { type ColumnDef,DataTable, type SortState } from "./DataTable";
 
 type Item = { id: number; name: string; age: number };
 
@@ -187,5 +187,254 @@ describe("DataTable", () => {
     );
 
     expect(screen.getByText("Nothing to see here")).toBeInTheDocument();
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  Row-order assertions                                            */
+  /* ---------------------------------------------------------------- */
+
+  // The body is the second rowgroup (first is the <thead>). Reads the text of
+  // the first cell of each body row, in DOM order.
+  function bodyFirstCells(): string[] {
+    const rowgroups = screen.getAllByRole("rowgroup");
+    const body = rowgroups[rowgroups.length - 1];
+    const rows = within(body).getAllByRole("row");
+    return rows.map((r) => within(r).getAllByRole("cell")[0].textContent ?? "");
+  }
+
+  const sortableColumns: ColumnDef<Item>[] = [
+    { key: "name", header: "Name", sortable: true },
+    { key: "age", header: "Age" },
+  ];
+
+  it("clicking a sortable string header reorders rows (asc, desc, none)", async () => {
+    const user = userEvent.setup();
+    const unsorted: Item[] = [
+      { id: 1, name: "Charlie", age: 1 },
+      { id: 2, name: "Alice", age: 2 },
+      { id: 3, name: "Bob", age: 3 },
+    ];
+
+    render(<DataTable data={unsorted} columns={sortableColumns} rowKey={rowKey} />);
+
+    // Initial: source order.
+    expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+
+    await user.click(screen.getByText("Name")); // asc
+    expect(bodyFirstCells()).toEqual(["Alice", "Bob", "Charlie"]);
+
+    await user.click(screen.getByText("Name")); // desc
+    expect(bodyFirstCells()).toEqual(["Charlie", "Bob", "Alice"]);
+
+    await user.click(screen.getByText("Name")); // none -> source order
+    expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+  });
+
+  it("sorts a Date column chronologically via the default comparator", async () => {
+    const user = userEvent.setup();
+    type Dated = { id: number; when: Date };
+    const dated: Dated[] = [
+      { id: 1, when: new Date("2022-01-01") },
+      { id: 2, when: new Date("2020-01-01") },
+      { id: 3, when: new Date("2021-01-01") },
+    ];
+    const cols: ColumnDef<Dated>[] = [
+      { key: "when", header: "When", sortable: true, render: (r) => String(r.id) },
+    ];
+
+    render(<DataTable data={dated} columns={cols} rowKey={(r) => r.id} />);
+
+    await user.click(screen.getByText("When")); // asc -> 2020, 2021, 2022
+    expect(bodyFirstCells()).toEqual(["2", "3", "1"]);
+
+    await user.click(screen.getByText("When")); // desc
+    expect(bodyFirstCells()).toEqual(["1", "3", "2"]);
+  });
+
+  it("places nullish values last in both asc and desc", async () => {
+    const user = userEvent.setup();
+    type Nullable = { id: number; name: string | null };
+    const rows: Nullable[] = [
+      { id: 1, name: "Beta" },
+      { id: 2, name: null },
+      { id: 3, name: "Alpha" },
+    ];
+    const cols: ColumnDef<Nullable>[] = [
+      { key: "name", header: "Name", sortable: true, render: (r) => String(r.id) },
+    ];
+
+    render(<DataTable data={rows} columns={cols} rowKey={(r) => r.id} />);
+
+    await user.click(screen.getByText("Name")); // asc: Alpha(3), Beta(1), null(2)
+    expect(bodyFirstCells()).toEqual(["3", "1", "2"]);
+
+    await user.click(screen.getByText("Name")); // desc: Beta(1), Alpha(3), null(2) last
+    expect(bodyFirstCells()).toEqual(["1", "3", "2"]);
+  });
+
+  it("renders pre-sorted with defaultSort and still cycles on header click", async () => {
+    const user = userEvent.setup();
+    const unsorted: Item[] = [
+      { id: 1, name: "Charlie", age: 1 },
+      { id: 2, name: "Alice", age: 2 },
+      { id: 3, name: "Bob", age: 3 },
+    ];
+    const defaultSort: SortState = { key: "name", direction: "asc" };
+
+    render(
+      <DataTable
+        data={unsorted}
+        columns={sortableColumns}
+        rowKey={rowKey}
+        defaultSort={defaultSort}
+      />,
+    );
+
+    // Pre-sorted ascending on mount.
+    expect(bodyFirstCells()).toEqual(["Alice", "Bob", "Charlie"]);
+
+    // Header click advances asc -> desc.
+    await user.click(screen.getByText("Name"));
+    expect(bodyFirstCells()).toEqual(["Charlie", "Bob", "Alice"]);
+  });
+
+  it("client paginates with pageSize: renders one slice and navigates pages", async () => {
+    const user = userEvent.setup();
+    const five: Item[] = [
+      { id: 1, name: "A", age: 1 },
+      { id: 2, name: "B", age: 2 },
+      { id: 3, name: "C", age: 3 },
+      { id: 4, name: "D", age: 4 },
+      { id: 5, name: "E", age: 5 },
+    ];
+
+    render(<DataTable data={five} columns={columns} rowKey={rowKey} pageSize={2} />);
+
+    // 2 rows on page 1.
+    expect(bodyFirstCells()).toEqual(["A", "B"]);
+
+    // 5 rows / 2 per page => 3 pages.
+    expect(
+      screen.getByRole("navigation", { name: /pagination/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^page 3$/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^page 4$/i }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^page 2$/i }));
+    expect(bodyFirstCells()).toEqual(["C", "D"]);
+  });
+
+  it("sorts the whole dataset BEFORE slicing to a page", async () => {
+    const user = userEvent.setup();
+    // "Aaa" sits at the tail of `data` but sorts to the front; it must land on page 1.
+    const rows: Item[] = [
+      { id: 1, name: "Zoe", age: 1 },
+      { id: 2, name: "Yan", age: 2 },
+      { id: 3, name: "Xena", age: 3 },
+      { id: 4, name: "Wade", age: 4 },
+      { id: 5, name: "Aaa", age: 5 },
+    ];
+
+    render(<DataTable data={rows} columns={sortableColumns} rowKey={rowKey} pageSize={2} />);
+
+    await user.click(screen.getByText("Name")); // asc
+    // Whole set sorted: Aaa, Wade, Xena, Yan, Zoe. Page 1 slice = Aaa, Wade.
+    expect(bodyFirstCells()).toEqual(["Aaa", "Wade"]);
+  });
+
+  it("controlled page + pageSize renders the given slice and does not self-advance", async () => {
+    const user = userEvent.setup();
+    const onPageChange = vi.fn();
+    const five: Item[] = [
+      { id: 1, name: "A", age: 1 },
+      { id: 2, name: "B", age: 2 },
+      { id: 3, name: "C", age: 3 },
+      { id: 4, name: "D", age: 4 },
+      { id: 5, name: "E", age: 5 },
+    ];
+
+    render(
+      <DataTable
+        data={five}
+        columns={columns}
+        rowKey={rowKey}
+        pageSize={2}
+        page={2}
+        onPageChange={onPageChange}
+      />,
+    );
+
+    // Controlled page 2 slice.
+    expect(bodyFirstCells()).toEqual(["C", "D"]);
+
+    await user.click(screen.getByRole("button", { name: /^page 3$/i }));
+    expect(onPageChange).toHaveBeenCalledWith(3);
+    // Page did not self-advance (still showing controlled page 2).
+    expect(bodyFirstCells()).toEqual(["C", "D"]);
+  });
+
+  it("resets uncontrolled page to 1 when sorting changes", async () => {
+    const user = userEvent.setup();
+    const five: Item[] = [
+      { id: 1, name: "A", age: 1 },
+      { id: 2, name: "B", age: 2 },
+      { id: 3, name: "C", age: 3 },
+      { id: 4, name: "D", age: 4 },
+      { id: 5, name: "E", age: 5 },
+    ];
+
+    render(<DataTable data={five} columns={sortableColumns} rowKey={rowKey} pageSize={2} />);
+
+    await user.click(screen.getByRole("button", { name: /^page 3$/i }));
+    expect(bodyFirstCells()).toEqual(["E"]);
+
+    // Sorting resets to page 1.
+    await user.click(screen.getByText("Name")); // asc
+    expect(bodyFirstCells()).toEqual(["A", "B"]);
+  });
+
+  it("does NOT reorder client-side when sort is controlled", async () => {
+    const user = userEvent.setup();
+    const onSortChange = vi.fn();
+    const unsorted: Item[] = [
+      { id: 1, name: "Charlie", age: 1 },
+      { id: 2, name: "Alice", age: 2 },
+      { id: 3, name: "Bob", age: 3 },
+    ];
+
+    render(
+      <DataTable
+        data={unsorted}
+        columns={sortableColumns}
+        rowKey={rowKey}
+        sort={{ key: "name", direction: "asc" }}
+        onSortChange={onSortChange}
+      />,
+    );
+
+    // Controlled: server owns sorting; rows stay in source order.
+    expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+
+    await user.click(screen.getByText("Name"));
+    // Still source order; only the callback fired.
+    expect(onSortChange).toHaveBeenCalled();
+    expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+  });
+
+  it("renders the footer slot", () => {
+    render(
+      <DataTable
+        data={data}
+        columns={columns}
+        rowKey={rowKey}
+        footer={<button type="button">Load more</button>}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /load more/i }),
+    ).toBeInTheDocument();
   });
 });

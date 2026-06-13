@@ -31,6 +31,7 @@
     "access": "public"
   },
   "scripts": {
+    "dev": "vite --config dev/vite.config.ts",
     "build": "vite build",
     "prepack": "bun run build",
     "typecheck": "tsc --noEmit",
@@ -52,6 +53,7 @@
   },
   "devDependencies": {
     "@floating-ui/react": "^0.27.19",
+    "@tailwindcss/vite": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

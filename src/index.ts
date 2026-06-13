@@ -8,6 +8,9 @@ export * from "./components/ui";
 // Components — form
 export * from "./components/form";
 
+// Components — data-display (dashboard primitives)
+export * from "./components/data-display";
+
 // Components — layout
 export * from "./components/layout";
 

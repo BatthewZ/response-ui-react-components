@@ -1,5 +1,6 @@
 import { type ReactNode, useMemo, useState } from "react";
 
+import { cn } from "../../util/style";
 import { Checkbox } from "../form/Checkbox";
 import { EmptyState, EmptyStateDescription, EmptyStateTitle } from "./EmptyState";
 import { Pagination } from "./Pagination";
@@ -19,7 +20,7 @@ export interface ColumnDef<T> {
   align?: "left" | "center" | "right";
 }
 
-type SortState = { key: string; direction: "asc" | "desc" };
+export type SortState = { key: string; direction: "asc" | "desc" };
 
 type DataTableProps<T> = {
   // Data
@@ -28,7 +29,14 @@ type DataTableProps<T> = {
   rowKey: (row: T, index: number) => string | number;
 
   // Sorting (controlled/uncontrolled)
+  /**
+   * Controlled sort state. When provided, the table assumes the server (or
+   * consumer) performs sorting and the table will NOT reorder rows itself.
+   * If both `sort` and `defaultSort` are passed, `sort` (controlled) wins.
+   */
   sort?: SortState;
+  /** Seeds the uncontrolled sort state on mount. Ignored when `sort` is controlled. */
+  defaultSort?: SortState;
   onSortChange?: (sort: SortState | null) => void;
   sortComparator?: (a: T, b: T, columnKey: string, direction: "asc" | "desc") => number;
 
@@ -38,7 +46,16 @@ type DataTableProps<T> = {
   onSelectionChange?: (keys: Set<string | number>) => void;
 
   // Pagination
+  /**
+   * Enables client-side pagination. When set (> 0), the table slices the
+   * (already sorted) dataset down to the current page. Derives
+   * `totalPages = max(1, ceil(data.length / pageSize))`. If both `pageSize`
+   * and `totalPages` are passed, the `pageSize` derivation wins.
+   */
+  pageSize?: number;
+  /** Current page (1-based). Controlled when provided alongside `onPageChange`. */
   page?: number;
+  /** Total page count for pure server-side display pagination (ignored when `pageSize` is set). */
   totalPages?: number;
   onPageChange?: (page: number) => void;
 
@@ -53,6 +70,14 @@ type DataTableProps<T> = {
 
   // Empty state
   emptyContent?: ReactNode;
+
+  /**
+   * Optional slot rendered between the table and the pagination block. Use for
+   * lazy/infinite loading: the consumer accumulates rows into `data`, keeps
+   * `sort` controlled, passes a "Load more" button / IntersectionObserver
+   * sentinel here, and omits the pagination props.
+   */
+  footer?: ReactNode;
 };
 
 /* ------------------------------------------------------------------ */
@@ -63,19 +88,33 @@ function cellToString(val: unknown): string {
   if (val == null) return "";
   if (typeof val === "string") return val;
   if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (val instanceof Date) return val.toLocaleString();
   return "";
 }
 
 /* ------------------------------------------------------------------ */
-/*  Default sort comparator                                            */
+/*  Default sort comparator                                           */
 /* ------------------------------------------------------------------ */
 
 function defaultComparator<T>(a: T, b: T, columnKey: string, direction: "asc" | "desc"): number {
   const aVal = (a as Record<string, unknown>)[columnKey];
   const bVal = (b as Record<string, unknown>)[columnKey];
 
+  // Nullish ALWAYS sorts last regardless of direction. Handle before the
+  // asc/desc flip so the placement is direction-independent.
+  const aNull = aVal == null;
+  const bNull = bVal == null;
+  if (aNull || bNull) {
+    if (aNull && bNull) return 0;
+    return aNull ? 1 : -1;
+  }
+
   let result: number;
-  if (typeof aVal === "number" && typeof bVal === "number") {
+  if (aVal instanceof Date && bVal instanceof Date) {
+    result = aVal.getTime() - bVal.getTime();
+  } else if (typeof aVal === "boolean" && typeof bVal === "boolean") {
+    result = Number(aVal) - Number(bVal);
+  } else if (typeof aVal === "number" && typeof bVal === "number") {
     result = aVal - bVal;
   } else {
     result = cellToString(aVal).localeCompare(cellToString(bVal));
@@ -91,21 +130,39 @@ function defaultComparator<T>(a: T, b: T, columnKey: string, direction: "asc" | 
 /**
  * Generic data table with sorting, selection, pagination, loading, and empty states.
  *
- * When pagination is server-side (page/totalPages provided without client data slicing),
- * sorting should use controlled mode via the `sort` and `onSortChange` props.
+ * Three wiring modes:
+ *
+ * 1. **Client-everything** — pass `pageSize` (and optionally `defaultSort`).
+ *    The table sorts the WHOLE dataset, slices it to the current page, and
+ *    derives the page count itself. Uncontrolled sort + page state are managed
+ *    internally. Select-all selects the visible page.
+ *
+ * 2. **Server-controlled** — pass `sort` + `onSortChange` together with
+ *    `page` + `totalPages` + `onPageChange`, and DO NOT pass `pageSize`. The
+ *    table is pure display: it never reorders or slices rows; the server owns
+ *    sorting and paging.
+ *
+ * 3. **Hybrid / server-paged** — when paging is server-side, never enable
+ *    uncontrolled sorting: it would sort only the currently visible page.
+ *    Use controlled `sort` so the server sorts the full dataset.
+ *
+ * Lazy loading: do not look for an onEndReached prop — instead accumulate rows
+ * into `data`, keep `sort` controlled, and render a sentinel via `footer`.
  */
 export function DataTable<T>({
   data,
   columns,
   rowKey,
   sort: sortProp,
+  defaultSort,
   onSortChange,
   sortComparator,
   selectable = false,
   selectedKeys,
   onSelectionChange,
-  page,
-  totalPages,
+  pageSize,
+  page: pageProp,
+  totalPages: totalPagesProp,
   onPageChange,
   density = "comfortable",
   striped = false,
@@ -113,11 +170,28 @@ export function DataTable<T>({
   loading = false,
   loadingRowCount = 5,
   emptyContent,
+  footer,
 }: DataTableProps<T>) {
-  // Uncontrolled sort state
-  const [internalSort, setInternalSort] = useState<SortState | null>(null);
+  // Uncontrolled sort state (seeded by defaultSort).
+  const [internalSort, setInternalSort] = useState<SortState | null>(defaultSort ?? null);
   const isControlledSort = sortProp !== undefined;
   const currentSort = isControlledSort ? sortProp : internalSort;
+
+  // Client pagination is active when pageSize is a positive number.
+  const clientPaged = typeof pageSize === "number" && pageSize > 0;
+
+  // Uncontrolled page state.
+  const [internalPage, setInternalPage] = useState(1);
+  const isControlledPage = pageProp !== undefined;
+
+  function setPage(next: number) {
+    if (isControlledPage) {
+      onPageChange?.(next);
+    } else {
+      setInternalPage(next);
+      onPageChange?.(next);
+    }
+  }
 
   function handleSort(columnKey: string) {
     let next: SortState | null;
@@ -134,13 +208,17 @@ export function DataTable<T>({
     } else {
       setInternalSort(next);
       onSortChange?.(next);
+      // In client mode, a sort change resets the uncontrolled page to 1.
+      if (clientPaged && !isControlledPage) {
+        setInternalPage(1);
+      }
     }
   }
 
-  // Sort data (only for client-side / uncontrolled)
+  // Sort the WHOLE dataset first (client/uncontrolled only). When sort is
+  // controlled, assume the server already sorted.
   const sortedData = useMemo(() => {
     if (!currentSort) return data;
-    // If sort is controlled, assume server handles sorting
     if (isControlledSort) return data;
     const comparator = sortComparator ?? defaultComparator;
     return [...data].sort((a, b) =>
@@ -148,10 +226,30 @@ export function DataTable<T>({
     );
   }, [data, currentSort, isControlledSort, sortComparator]);
 
-  // Selection helpers
+  // Derive client pagination state. totalPages derives from pageSize when
+  // client-paged (this wins over any passed totalPages).
+  const derivedTotalPages = clientPaged
+    ? Math.max(1, Math.ceil(sortedData.length / pageSize))
+    : (totalPagesProp ?? 1);
+
+  // Current page value, clamped so shrinking data can't strand an out-of-range page.
+  const rawPage = isControlledPage ? (pageProp as number) : internalPage;
+  const currentPage = clientPaged
+    ? Math.min(Math.max(1, rawPage), derivedTotalPages)
+    : rawPage;
+
+  // Slice the SORTED data down to the current page (AFTER sorting).
+  const pageData = useMemo(() => {
+    if (!clientPaged) return sortedData;
+    const start = (currentPage - 1) * pageSize;
+    return sortedData.slice(start, start + pageSize);
+  }, [sortedData, clientPaged, currentPage, pageSize]);
+
+  // Selection helpers operate on the CURRENT PAGE slice. Select-all selects the
+  // visible page only.
   const visibleKeys = useMemo(
-    () => sortedData.map((row, i) => rowKey(row, i)),
-    [sortedData, rowKey]
+    () => pageData.map((row, i) => rowKey(row, i)),
+    [pageData, rowKey]
   );
   const allSelected = selectedKeys != null && visibleKeys.length > 0 && visibleKeys.every((k) => selectedKeys.has(k));
   const someSelected = selectedKeys != null && visibleKeys.some((k) => selectedKeys.has(k));
@@ -183,13 +281,36 @@ export function DataTable<T>({
   // Column count (including selection checkbox column)
   const totalColumns = columns.length + (selectable ? 1 : 0);
 
+  // Decide whether to render pagination:
+  // - client mode: when derived page count > 1 (no onPageChange required)
+  // - server mode: the existing page + totalPages + onPageChange triple
+  const showClientPagination = clientPaged && derivedTotalPages > 1;
+  const showServerPagination =
+    !clientPaged && pageProp != null && totalPagesProp != null && !!onPageChange;
+  const showPagination = showClientPagination || showServerPagination;
+  const paginationPage = clientPaged ? currentPage : (pageProp as number);
+  const paginationTotalPages = clientPaged ? derivedTotalPages : (totalPagesProp as number);
+
+  function renderPaginationBlock() {
+    if (!showPagination) return null;
+    return (
+      <div className={cn("mt-r3 flex justify-center")}>
+        <Pagination
+          page={paginationPage}
+          totalPages={paginationTotalPages}
+          onPageChange={(p) => setPage(p)}
+        />
+      </div>
+    );
+  }
+
   // Render loading skeleton
   if (loading) {
     return (
       <Table density={density} striped={false} stickyHeader={stickyHeader}>
         <Table.Head>
           <Table.Row>
-            {selectable && <Table.HeaderCell style={{ width: 40 }} />}
+            {selectable && <Table.HeaderCell className="w-10" />}
             {columns.map((col) => (
               <Table.HeaderCell key={col.key} style={{ width: col.width }}>
                 {col.header}
@@ -224,7 +345,7 @@ export function DataTable<T>({
         <Table density={density} striped={false} stickyHeader={stickyHeader}>
           <Table.Head>
             <Table.Row>
-              {selectable && <Table.HeaderCell style={{ width: 40 }} />}
+              {selectable && <Table.HeaderCell className="w-10" />}
               {columns.map((col) => (
                 <Table.HeaderCell key={col.key} style={{ width: col.width }}>
                   {col.header}
@@ -256,7 +377,7 @@ export function DataTable<T>({
         <Table.Head>
           <Table.Row>
             {selectable && (
-              <Table.HeaderCell style={{ width: 40 }}>
+              <Table.HeaderCell className="w-10">
                 <Checkbox
                   checked={allSelected}
                   ref={(el) => {
@@ -289,7 +410,7 @@ export function DataTable<T>({
           </Table.Row>
         </Table.Head>
         <Table.Body>
-          {sortedData.map((row, i) => {
+          {pageData.map((row, i) => {
             const key = rowKey(row, i);
             return (
               <Table.Row key={key} selected={selectedKeys?.has(key)}>
@@ -313,15 +434,9 @@ export function DataTable<T>({
         </Table.Body>
       </Table>
 
-      {page != null && totalPages != null && onPageChange && (
-        <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            onPageChange={onPageChange}
-          />
-        </div>
-      )}
+      {footer}
+
+      {renderPaginationBlock()}
     </div>
   );
 }

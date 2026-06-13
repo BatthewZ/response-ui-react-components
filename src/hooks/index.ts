@@ -1,5 +1,10 @@
 export { useActiveSection } from "./use-active-section";
 export { useClickOutside } from "./use-click-outside";
+export {
+  useControllableState,
+  type UseControllableStateParams,
+  type UseControllableStateReturn,
+} from "./use-controllable-state";
 export { useDebounce } from "./use-debounce";
 export { useDocumentTitle } from "./use-document-title";
 export { type Placement, useFloating } from "./use-floating";

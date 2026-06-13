@@ -1,0 +1,27 @@
+/* DEV-ONLY gallery stylesheet.
+   Tailwind v4 entry + the design system's two ordered imports.
+
+   Order matters (per AGENTS.md / README.md — consumers wire CSS as two imports,
+   the css-package foundation first, then this package's per-component styles):
+
+   1. Tailwind itself (the utilities the components and gallery use).
+   2. The foundation CSS — tokens, themes, responsive scales, animations, base.
+      Imported from the LOCAL SIBLING SOURCE so every token (including the new
+      trend/chart tokens) is available without a published build. Path is
+      relative to this file: dev/ -> ../ (package root) -> ../ (repo root) ->
+      response-ui-css/src/index.css.
+   3. The local component styles (../src/styles.css) — imported from SOURCE so
+      live edits to component CSS show up without a build. Its trailing
+      self-relative @source registers the library's own sources with Tailwind
+      v4 automatically.
+
+   NOTE: response-ui-css/src/index.css already does `@import "tailwindcss";`
+   itself, so we rely on that single Tailwind entry rather than importing it
+   twice here. */
+
+@import "../../response-ui-css/src/index.css";
+@import "../src/styles.css";
+
+/* Make the gallery's own files scannable by Tailwind v4. */
+@source "./App.tsx";
+@source "./main.tsx";
