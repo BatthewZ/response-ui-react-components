@@ -1,3 +1,4 @@
+"use client";
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import { type Theme, useTheme } from "../../hooks/use-theme";

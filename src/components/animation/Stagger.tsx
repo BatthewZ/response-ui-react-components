@@ -1,3 +1,4 @@
+"use client";
 import { Children, type ElementType, forwardRef, type ReactNode } from "react";
 
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";

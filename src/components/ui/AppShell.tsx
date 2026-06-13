@@ -1,3 +1,4 @@
+"use client";
 import { type LucideIcon,Menu, PanelLeft, PanelLeftClose } from "lucide-react";
 import {
   type ComponentPropsWithRef,

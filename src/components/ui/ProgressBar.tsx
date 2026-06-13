@@ -1,3 +1,4 @@
+"use client";
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";

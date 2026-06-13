@@ -37,7 +37,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "bun run build && bun run typecheck && bun run test"
+    "verify:directives": "node scripts/verify-directives.mjs",
+    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && bun run typecheck && bun run test"
   },
   "peerDependencies": {
     "react": "^19.0.0",

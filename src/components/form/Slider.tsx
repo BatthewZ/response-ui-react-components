@@ -1,3 +1,4 @@
+"use client";
 import { type ComponentPropsWithRef, type CSSProperties, forwardRef } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";

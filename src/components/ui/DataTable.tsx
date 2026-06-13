@@ -1,3 +1,4 @@
+"use client";
 import { type ReactNode, useMemo, useState } from "react";
 
 import { cn } from "../../util/style";

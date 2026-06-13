@@ -1,3 +1,4 @@
+"use client";
 import { Children, type ComponentPropsWithRef, createContext, forwardRef, useContext } from "react";
 
 import { Parallax } from "../animation/Parallax";

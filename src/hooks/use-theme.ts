@@ -1,3 +1,4 @@
+"use client";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 /** Default themes shipped with @batthewz/response-ui-css. */

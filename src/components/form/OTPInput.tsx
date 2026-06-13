@@ -1,3 +1,4 @@
+"use client";
 import {
   type ClipboardEvent,
   type ComponentPropsWithRef,

@@ -1,3 +1,4 @@
+"use client";
 import { type ComponentPropsWithRef, forwardRef, useEffect, useMemo, useRef } from "react";
 
 import { mergeRefs } from "../../util/merge-refs";
