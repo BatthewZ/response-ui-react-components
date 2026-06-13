@@ -16,9 +16,12 @@ import {
   Avatar,
   Badge,
   Button,
+  Calendar,
   Card,
   Checkbox,
+  CodeBlock,
   Collapsible,
+  Combobox,
   CommandPalette,
   type CommandItem,
   ContextMenu,
@@ -150,8 +153,36 @@ export function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSide, setDrawerSide] = useState<"left" | "right" | "top" | "bottom">("right");
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [calendarDate, setCalendarDate] = useState<Date | null>(null);
+  const [fruit, setFruit] = useState<string | null>(null);
+  const [fruitQuery, setFruitQuery] = useState("");
 
   const maxWidth = VIEWPORTS[viewport].width;
+
+  // Combobox is filter-agnostic: the consumer filters the item set itself.
+  const FRUITS = [
+    { value: "apple", label: "Apple" },
+    { value: "banana", label: "Banana" },
+    { value: "cherry", label: "Cherry" },
+    { value: "dragonfruit", label: "Dragonfruit" },
+    { value: "elderberry", label: "Elderberry" },
+    { value: "fig", label: "Fig" },
+    { value: "grape", label: "Grape" },
+  ];
+  const filteredFruits = FRUITS.filter((f) =>
+    f.label.toLowerCase().includes(fruitQuery.toLowerCase()),
+  );
+
+  // A bounded window around "today" for the Calendar min/max example.
+  const calMin = new Date(2026, 0, 1);
+  const calMax = new Date(2026, 11, 31);
+
+  const SAMPLE_CODE = `import { Button } from "@batthewz/response-ui-react-components";
+
+export function App() {
+  return <Button variant="primary">Click me</Button>;
+}
+`;
 
   const openDrawer = (side: "left" | "right" | "top" | "bottom") => {
     setDrawerSide(side);
@@ -315,8 +346,44 @@ export function App() {
             </Tooltip>
           </Tile>
 
-          {/* TODO (later phase): add ui components here as they land —
-              e.g. Drawer, Combobox, Calendar. One <Tile> each. */}
+          <Tile label="Calendar">
+            <div className="flex flex-wrap items-start gap-r4">
+              <div className="flex flex-col gap-r5">
+                <Calendar
+                  value={calendarDate}
+                  onValueChange={setCalendarDate}
+                  min={calMin}
+                  max={calMax}
+                  weekStartsOn={1}
+                />
+                <span className="text-body-3 text-fg-muted">
+                  Selected:{" "}
+                  {calendarDate
+                    ? calendarDate.toLocaleDateString("en-GB")
+                    : "none"}
+                </span>
+              </div>
+              {/* Second locale + week start (fr-FR, Monday) */}
+              <Calendar
+                defaultMonth={calMin}
+                locale="fr-FR"
+                weekStartsOn={1}
+              />
+            </div>
+          </Tile>
+
+          <Tile label="CodeBlock">
+            <div className="flex w-full max-w-2xl flex-col gap-r4">
+              <CodeBlock
+                code={SAMPLE_CODE}
+                filename="App.tsx"
+                language="TypeScript"
+                showLineNumbers
+              />
+              <CodeBlock code={`bun add @batthewz/response-ui-react-components`} language="bash" />
+            </div>
+          </Tile>
+
           <Tile label="Rating">
             <div className="flex flex-col gap-r5">
               <Rating
@@ -523,7 +590,31 @@ export function App() {
             </Label>
           </Tile>
 
-          {/* TODO (later phase): add form components here as they land. */}
+          <Tile label="Combobox">
+            <div className="flex w-64 flex-col gap-r4">
+              <Combobox
+                value={fruit}
+                onValueChange={setFruit}
+                onInputValueChange={setFruitQuery}
+              >
+                <Combobox.Input placeholder="Search fruit…" aria-label="Fruit" />
+                <Combobox.Content>
+                  {filteredFruits.length === 0 ? (
+                    <Combobox.Empty>No fruit found</Combobox.Empty>
+                  ) : (
+                    filteredFruits.map((f, index) => (
+                      <Combobox.Item key={f.value} index={index} value={f.value}>
+                        {f.label}
+                      </Combobox.Item>
+                    ))
+                  )}
+                </Combobox.Content>
+              </Combobox>
+              <span className="text-body-3 text-fg-muted">
+                Selected: {fruit ?? "none"}
+              </span>
+            </div>
+          </Tile>
           <Tile label="Switch">
             <div className="flex flex-col gap-r4">
               <Switch checked={switchOn} onCheckedChange={setSwitchOn} />

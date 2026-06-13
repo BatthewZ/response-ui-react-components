@@ -1,0 +1,108 @@
+.combobox-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.combobox-input {
+  width: 100%;
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  font: inherit;
+  font-size: var(--BodyText-2);
+  color: var(--C-TEXT-PRIMARY);
+  background: var(--C-SURFACE-0);
+  border: 1px solid var(--C-BORDER-STRONG);
+  border-radius: var(--RADIUS-MD);
+  outline: none;
+}
+
+.combobox-input::placeholder {
+  color: var(--C-TEXT-MUTED);
+}
+
+.combobox-input:focus-visible {
+  border-color: var(--C-BORDER-FOCUS);
+  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
+}
+
+.combobox-input:disabled {
+  background: var(--C-SURFACE-3);
+  cursor: not-allowed;
+}
+
+.combobox-input-error {
+  border-color: var(--C-STATUS-ERROR);
+}
+
+.combobox-input-error:focus-visible {
+  box-shadow: 0 0 0 2px var(--C-STATUS-ERROR);
+}
+
+.combobox-toggle {
+  position: absolute;
+  right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--C-TEXT-SECONDARY);
+  cursor: pointer;
+}
+
+.combobox-content {
+  background: var(--C-SURFACE-0);
+  border: 1px solid var(--C-BORDER-DEFAULT);
+  border-radius: var(--RADIUS-MD);
+  box-shadow: var(--SHADOW-LG);
+  padding: 0.25rem 0;
+  min-width: 11.25rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  z-index: 40;
+  outline: none;
+}
+
+.combobox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  color: var(--C-TEXT-PRIMARY);
+  font: inherit;
+  font-size: var(--BodyText-2);
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+}
+
+.combobox-item[data-active] {
+  background: var(--C-SURFACE-1);
+}
+
+.combobox-item[aria-selected="true"] {
+  font-weight: 600;
+  color: var(--C-TEXT-PRIMARY);
+}
+
+.combobox-item[aria-disabled="true"] {
+  color: var(--C-TEXT-MUTED);
+  cursor: default;
+}
+
+.combobox-empty {
+  padding: 0.5rem 0.75rem;
+  font-size: var(--BodyText-2);
+  color: var(--C-TEXT-MUTED);
+}
+
+.combobox-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  color: var(--C-TEXT-SECONDARY);
+}

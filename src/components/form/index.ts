@@ -1,4 +1,5 @@
 export { Checkbox } from "./Checkbox";
+export { Combobox } from "./Combobox";
 export { Field } from "./Field";
 export { FieldError } from "./FieldError";
 export { FormActions } from "./FormActions";

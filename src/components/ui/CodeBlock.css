@@ -1,0 +1,97 @@
+/* ------------------------------------------------------------------ */
+/*  CodeBlock                                                          */
+/* ------------------------------------------------------------------ */
+
+.code-block {
+  overflow: hidden;
+  border: 1px solid var(--C-BORDER-DEFAULT);
+  border-radius: var(--RADIUS-MD);
+  background-color: var(--C-SURFACE-0);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Header bar                                                         */
+/* ------------------------------------------------------------------ */
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  gap: var(--R-SIZE-5);
+  padding: var(--R-SIZE-6) var(--R-SIZE-5);
+  border-bottom: 1px solid var(--C-BORDER-DEFAULT);
+  background-color: var(--C-SURFACE-1);
+}
+
+.code-block-filename {
+  font-family: var(--DEFAULT-MONO-FONT);
+  font-size: var(--BodyText-3, 0.75rem);
+  color: var(--C-TEXT-SECONDARY);
+}
+
+/* Language label — Badge-style chip */
+.code-block-language {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--R-SIZE-6) var(--R-SIZE-5);
+  border-radius: var(--RADIUS-SM);
+  background-color: var(--C-SURFACE-2);
+  font-family: var(--DEFAULT-MONO-FONT);
+  font-size: var(--BodyText-3, 0.75rem);
+  font-weight: var(--Semibold-Weight, 600);
+  line-height: 1;
+  color: var(--C-TEXT-SECONDARY);
+}
+
+/* Push the copy button to the right edge of the header. */
+.code-block-copy {
+  margin-left: auto;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Code surface                                                       */
+/* ------------------------------------------------------------------ */
+
+.code-block-pre {
+  margin: 0;
+  padding: var(--R-SIZE-5);
+  overflow-x: auto;
+  font-family: var(--DEFAULT-MONO-FONT);
+  font-size: var(--BodyText-3, 0.8125rem);
+  line-height: 1.6;
+  color: var(--C-TEXT-PRIMARY);
+  tab-size: 2;
+  -moz-tab-size: 2;
+}
+
+.code-block-code {
+  font-family: inherit;
+  white-space: pre;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Line numbers                                                       */
+/* ------------------------------------------------------------------ */
+
+/* Each rendered line becomes a counter row; the number is a pseudo-element
+   so it is never part of the selectable / copyable text. */
+.code-block-line {
+  counter-increment: code-block-line;
+  display: block;
+}
+
+.code-block-line::before {
+  content: counter(code-block-line);
+  display: inline-block;
+  width: 2.5ch;
+  margin-right: var(--R-SIZE-5);
+  text-align: right;
+  color: var(--C-TEXT-MUTED);
+  /* Critical: keep line numbers out of selections / clipboard copies. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Reset the counter on the code element so numbering starts at 1. */
+.code-block-code {
+  counter-reset: code-block-line;
+}
