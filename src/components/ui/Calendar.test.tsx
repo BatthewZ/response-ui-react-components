@@ -10,15 +10,16 @@ import { Calendar } from "./Calendar";
 const JUNE_2026 = new Date(2026, 5, 15);
 
 /**
- * The in-month day button for a given day-of-month. The grid pads with
- * leading/trailing days from adjacent months, so a bare label like "1" can
- * appear twice; we pick the one that belongs to the displayed month
- * (i.e. not `data-outside`).
+ * The in-month day button for a given day-of-month. Day buttons carry a full-date
+ * `aria-label` (e.g. "June 10, 2026"), so we match on the visible text (the day
+ * number) instead. The grid pads with leading/trailing days from adjacent months,
+ * so a bare label like "1" can appear twice; we pick the one that belongs to the
+ * displayed month (i.e. not `data-outside`).
  */
 function dayButton(label: string): HTMLButtonElement {
-  const matches = screen
-    .getAllByRole("button", { name: label })
-    .filter((el): el is HTMLButtonElement => !el.hasAttribute("data-outside"));
+  const matches = Array.from(
+    document.querySelectorAll<HTMLButtonElement>("button.calendar-day"),
+  ).filter((el) => el.textContent === label && !el.hasAttribute("data-outside"));
   if (matches.length !== 1) {
     throw new Error(`Expected exactly one in-month day button "${label}", found ${matches.length}`);
   }
@@ -149,14 +150,83 @@ describe("Calendar", () => {
     );
 
     const before = dayButton("5");
-    expect(before).toBeDisabled();
     expect(before).toHaveAttribute("aria-disabled", "true");
+    // aria-disabled, not the native attribute, so the button stays focusable.
+    expect(before).not.toBeDisabled();
 
     const within = dayButton("15");
-    expect(within).not.toBeDisabled();
+    expect(within).not.toHaveAttribute("aria-disabled");
 
     const after = dayButton("25");
-    expect(after).toBeDisabled();
+    expect(after).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("keeps keyboard focus reachable when navigating onto a disabled day", async () => {
+    const user = userEvent.setup();
+    render(
+      <Calendar
+        defaultValue={new Date(2026, 5, 11)}
+        defaultMonth={JUNE_2026}
+        min={new Date(2026, 5, 10)}
+      />,
+    );
+
+    const eleventh = dayButton("11");
+    eleventh.focus();
+    // ArrowLeft lands on the 10th (the min boundary, still enabled)...
+    await user.keyboard("{ArrowLeft}");
+    expect(dayButton("10")).toHaveFocus();
+    // ...ArrowLeft again lands on the 9th, which is disabled but must still take focus.
+    await user.keyboard("{ArrowLeft}");
+    const ninth = dayButton("9");
+    expect(ninth).toHaveAttribute("aria-disabled", "true");
+    expect(ninth).toHaveFocus();
+    expect(ninth).toHaveAttribute("tabindex", "0");
+
+    // And it cannot be selected.
+    await user.keyboard("{Enter}");
+    expect(ninth).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("does not select a disabled day on click", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <Calendar
+        defaultMonth={JUNE_2026}
+        min={new Date(2026, 5, 10)}
+        onValueChange={onValueChange}
+      />,
+    );
+
+    await user.click(dayButton("5"));
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(dayButton("5")).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("gives each day button a full-date accessible name", () => {
+    render(<Calendar defaultMonth={JUNE_2026} />);
+    // The visible text is just "13", but screen readers get the full date.
+    expect(dayButton("13")).toHaveAccessibleName("June 13, 2026");
+  });
+
+  it("disables individual days via isDateDisabled (composed with min/max)", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    // Disable weekends (Sat/Sun). June 13 2026 is a Saturday, June 15 a Monday.
+    const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
+    render(
+      <Calendar defaultMonth={JUNE_2026} isDateDisabled={isWeekend} onValueChange={onValueChange} />,
+    );
+
+    expect(dayButton("13")).toHaveAttribute("aria-disabled", "true"); // Saturday
+    expect(dayButton("15")).not.toHaveAttribute("aria-disabled"); // Monday
+
+    await user.click(dayButton("13"));
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    await user.click(dayButton("15"));
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 
   it("respects a controlled value", () => {
@@ -227,5 +297,52 @@ describe("Calendar", () => {
     render(<Harness />);
     await user.click(dayButton("8"));
     expect(screen.getByTestId("picked")).toHaveTextContent("8");
+  });
+
+  it("jumps months/years via the caption quick-navigation", async () => {
+    const user = userEvent.setup();
+    render(<Calendar defaultMonth={JUNE_2026} />);
+
+    // Day view -> month picker (caption shows the year).
+    await user.click(screen.getByRole("button", { name: getMonthLabel(JUNE_2026, "en-US") }));
+    expect(screen.getByRole("button", { name: "2026" })).toBeInTheDocument();
+
+    // Month picker -> year picker. The decade page aligns to a multiple of 12
+    // (2016–2027 for 2026), so 2024 is on the page.
+    await user.click(screen.getByRole("button", { name: "2026" }));
+    expect(screen.getByRole("button", { name: "2024" })).toBeInTheDocument();
+
+    // Pick 2024 -> back to month picker, then pick March -> back to the day grid.
+    await user.click(screen.getByRole("button", { name: "2024" }));
+    await user.click(screen.getByRole("button", { name: "Mar" }));
+
+    expect(screen.getByRole("grid")).toHaveAccessibleName(
+      getMonthLabel(new Date(2024, 2, 1), "en-US"),
+    );
+  });
+
+  it("navigates and selects today via the Today footer button", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    // Seed a far-away month so 'today' is off-screen.
+    render(
+      <Calendar defaultMonth={new Date(2020, 0, 1)} showToday onValueChange={onValueChange} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Today" }));
+
+    const now = new Date();
+    expect(screen.getByRole("grid")).toHaveAccessibleName(getMonthLabel(now, "en-US"));
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    const picked = onValueChange.mock.calls[0][0] as Date;
+    expect(picked.getDate()).toBe(now.getDate());
+  });
+
+  it("renders multiple month grids with numberOfMonths", () => {
+    render(<Calendar defaultMonth={JUNE_2026} numberOfMonths={2} />);
+    const grids = screen.getAllByRole("grid");
+    expect(grids).toHaveLength(2);
+    expect(grids[0]).toHaveAccessibleName(getMonthLabel(new Date(2026, 5, 1), "en-US"));
+    expect(grids[1]).toHaveAccessibleName(getMonthLabel(new Date(2026, 6, 1), "en-US"));
   });
 });

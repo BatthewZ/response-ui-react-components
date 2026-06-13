@@ -8,6 +8,14 @@
   --_stepper-line-width: 2px;
   --_stepper-gap: var(--R-SIZE-4);
 
+  /* Colour of the current step's ring/number and the completed progress
+     track. Defaults to the theme's primary text ink, which — unlike
+     --C-PRIMARY (a fill token paired with --C-TEXT-ON-PRIMARY) — is
+     guaranteed to read against the surface in every theme, including
+     custom ones. Override per instance to re-skin the stepper without
+     touching global theme tokens. */
+  --stepper-progress-color: var(--C-TEXT-PRIMARY);
+
   display: flex;
   list-style: none;
   margin: 0;
@@ -95,16 +103,23 @@ button.stepper-indicator:focus-visible {
 }
 
 /* Status colors */
+/* Done: filled with --C-PRIMARY (vivid brand chip in most themes). The ring
+   uses --C-TEXT-ON-PRIMARY rather than --C-PRIMARY so the circle's silhouette
+   survives themes where primary ≈ surface (e.g. grimdark/tech): whenever the
+   fill blends into the surface it's because primary ≈ surface, and
+   --C-TEXT-ON-PRIMARY is guaranteed to contrast primary — so it's guaranteed
+   to contrast the surface in exactly those cases, while staying a quiet halo
+   in light themes where the fill already reads. */
 .stepper-step[data-status="done"] .stepper-indicator {
-  border-color: var(--C-PRIMARY);
+  border-color: var(--C-TEXT-ON-PRIMARY);
   background-color: var(--C-PRIMARY);
   color: var(--C-TEXT-ON-PRIMARY);
 }
 
 .stepper-step[data-status="active"] .stepper-indicator {
-  border-color: var(--C-PRIMARY);
+  border-color: var(--stepper-progress-color);
   background-color: var(--C-SURFACE-1);
-  color: var(--C-PRIMARY);
+  color: var(--stepper-progress-color);
 }
 
 .stepper-step[data-status="upcoming"] .stepper-indicator {
@@ -155,10 +170,14 @@ button.stepper-indicator:focus-visible {
   display: none;
 }
 
-/* Done/active steps draw a filled connector toward the next step */
+/* Done/active steps draw a filled connector toward the next step.
+   Uses --stepper-progress-color (text ink) rather than --C-PRIMARY so the
+   track stays visible on the surface in every theme — --C-PRIMARY is a fill
+   token whose only guaranteed contrast partner is --C-TEXT-ON-PRIMARY, not
+   --C-SURFACE-1. */
 .stepper-step[data-status="done"] .stepper-connector,
 .stepper-step[data-status="active"] .stepper-connector {
-  background-color: var(--C-PRIMARY);
+  background-color: var(--stepper-progress-color);
 }
 
 /* Horizontal: line runs from the indicator center toward the next step */
@@ -169,11 +188,17 @@ button.stepper-indicator:focus-visible {
   height: var(--_stepper-line-width);
 }
 
-/* Vertical: line runs down from the indicator center to the next step */
+/* Vertical: line runs down from this indicator toward the next one, inset by
+   the same R-SIZE-6 gap at BOTH ends. The next step's indicator sits flush at
+   this step's bottom edge, so a symmetric `top`/`bottom` inset leaves an equal
+   gap above and below — mirroring the horizontal connector, which also stops
+   short of both dots. A negative `bottom` here would overshoot into the next
+   dot, connecting the bottom end while the top end stays gapped — reading as an
+   inconsistent, only-sometimes-connected line. */
 .stepper-step[data-orientation="vertical"] .stepper-connector {
   left: calc(var(--_stepper-indicator-size) / 2 - var(--_stepper-line-width) / 2);
   top: calc(var(--_stepper-indicator-size) + var(--R-SIZE-6));
-  bottom: calc(-1 * var(--R-SIZE-6));
+  bottom: var(--R-SIZE-6);
   width: var(--_stepper-line-width);
 }
 

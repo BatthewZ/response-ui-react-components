@@ -164,6 +164,73 @@ describe("DatePicker", () => {
     expect((input as HTMLInputElement).value).toBe(fmt(new Date(2026, 8, 9)));
   });
 
+  it("exposes a machine-readable ISO value via a hidden input for form submission", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <DatePicker name="dob" defaultValue={new Date(2026, 0, 5)} aria-label="Date" />,
+    );
+
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"][name="dob"]');
+    expect(hidden).not.toBeNull();
+    expect(hidden!.value).toBe("2026-01-05");
+    // The visible text input must not carry the name (it would submit a localized string).
+    const input = screen.getByRole("textbox", { name: "Date" });
+    expect(input).not.toHaveAttribute("name");
+
+    await user.clear(input);
+    await user.keyboard("{Enter}");
+    expect(hidden!.value).toBe("");
+  });
+
+  it("renders no hidden input when name is omitted", () => {
+    const { container } = render(<DatePicker defaultValue={new Date(2026, 0, 5)} aria-label="Date" />);
+    expect(container.querySelector('input[type="hidden"]')).toBeNull();
+  });
+
+  it("round-trips a textual-month format on blur (does not revert)", async () => {
+    const user = userEvent.setup();
+    const formatOptions: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    render(
+      <>
+        <DatePicker formatOptions={formatOptions} aria-label="Date" />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Date" });
+    await user.type(input, "June 13, 2026");
+    await user.click(screen.getByText("elsewhere"));
+
+    // Before the fix the digit-only parser saw "June 13, 2026" as invalid and reverted to "".
+    expect((input as HTMLInputElement).value).toBe(
+      formatDate(new Date(2026, 5, 13), LOCALE, formatOptions),
+    );
+  });
+
+  it("clears the value via the clear button when clearable", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <DatePicker clearable defaultValue={new Date(2026, 3, 12)} onValueChange={onValueChange} aria-label="Date" />,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Date" });
+    expect((input as HTMLInputElement).value).toBe(fmt(new Date(2026, 3, 12)));
+
+    await user.click(screen.getByRole("button", { name: "Clear date" }));
+    expect(onValueChange).toHaveBeenCalledWith(null);
+    expect((input as HTMLInputElement).value).toBe("");
+  });
+
+  it("shows no clear button when there is no value", () => {
+    render(<DatePicker clearable aria-label="Date" />);
+    expect(screen.queryByRole("button", { name: "Clear date" })).not.toBeInTheDocument();
+  });
+
   it("clearing the input commits null", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();

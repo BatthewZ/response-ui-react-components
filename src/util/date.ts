@@ -121,6 +121,34 @@ export function formatDate(d: Date, locale: string, options?: Intl.DateTimeForma
   return new Intl.DateTimeFormat(locale, options).format(d);
 }
 
+/**
+ * Machine-readable `YYYY-MM-DD` in LOCAL time, suitable for an `<input type="hidden">`
+ * value or native form submission. Deliberately not `toISOString()` (which is UTC and
+ * shifts the calendar day for non-UTC users).
+ */
+export function toISODate(d: Date): string {
+  const year = String(d.getFullYear()).padStart(4, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Localized month names (length 12, index 0 = January) for `style`.
+ * Derived from `Intl.DateTimeFormat` so they match what `formatDate` renders.
+ */
+export function getMonthNames(
+  locale: string,
+  style: "long" | "short" = "long",
+): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { month: style });
+  const names: string[] = [];
+  for (let m = 0; m < 12; m++) {
+    names.push(fmt.format(new Date(2021, m, 1)));
+  }
+  return names;
+}
+
 /** Unambiguous reference date used to read field ordering: 22 Dec 3333. */
 const FIELD_ORDER_REFERENCE = new Date(3333, 11, 22);
 
@@ -145,15 +173,30 @@ export function getDateFieldOrder(locale: string): ("day" | "month" | "year")[] 
   return order;
 }
 
+/** Build a local `Date` from 1-based month, validating it is a real calendar day. */
+function makeDate(day: number, month: number, year: number): Date | null {
+  if (month < 1 || month > 12) return null;
+  if (day < 1) return null;
+  if (year < 1) return null;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  if (day > daysInMonth) return null;
+  return new Date(year, month - 1, day);
+}
+
+/** Lowercase, strip diacritics and non-alphanumerics, for tolerant month-name matching. */
+function normalizeForMatch(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^\p{L}\p{N}]/gu, "");
+}
+
 /**
- * Parse a user-typed date string into a local `Date`, or `null` if invalid.
- *
- * Splits the input into runs of digits and maps them, in order, to the locale's
- * field order (from `getDateFieldOrder`). A 2-digit year is interpreted as `2000 + yy`.
- * Returns `null` for the wrong number of fields, non-calendar values
- * (month > 12, day > days-in-month), or non-positive values.
+ * All-numeric parse: three runs of digits mapped, in order, to the locale's field
+ * order (from `getDateFieldOrder`). A 2-digit year maps into the 2000s.
  */
-export function parseDateInput(text: string, locale: string): Date | null {
+function parseNumericDate(text: string, locale: string): Date | null {
   const runs = text.match(/\d+/g);
   if (!runs || runs.length !== 3) return null;
 
@@ -164,17 +207,70 @@ export function parseDateInput(text: string, locale: string): Date | null {
     const value = Number.parseInt(raw, 10);
     if (!Number.isFinite(value)) return null;
     const field = order[i];
-    // A 2-digit year maps into the 2000s.
     fields[field] = field === "year" && raw.length <= 2 ? 2000 + value : value;
   }
 
-  const { day, month, year } = fields;
-  if (month < 1 || month > 12) return null;
-  if (day < 1) return null;
-  if (year < 1) return null;
+  return makeDate(fields.day, fields.month, fields.year);
+}
 
-  const daysInMonth = new Date(year, month, 0).getDate();
-  if (day > daysInMonth) return null;
+/**
+ * Month-name parse: a localized long/short month name plus two numbers (day + year)
+ * in any order, e.g. "13 June 2026", "Jun 13 2026", "June 13, 2026". This is what
+ * lets the field round-trip when `formatOptions` renders a textual month.
+ */
+function parseMonthNameDate(text: string, locale: string): Date | null {
+  const haystack = normalizeForMatch(text);
 
-  return new Date(year, month - 1, day);
+  // Match the longest month name that appears, so "March" wins over a stray "Mar".
+  let monthIndex = -1;
+  let bestLen = 0;
+  for (const style of ["long", "short"] as const) {
+    const names = getMonthNames(locale, style);
+    for (let m = 0; m < 12; m++) {
+      const name = normalizeForMatch(names[m]);
+      if (name.length > bestLen && haystack.includes(name)) {
+        monthIndex = m;
+        bestLen = name.length;
+      }
+    }
+  }
+  if (monthIndex < 0) return null;
+
+  const runs = text.match(/\d+/g);
+  if (!runs || runs.length !== 2) return null;
+
+  // The year is the run that can't be a day (3+ digits, or value > 31); the other is the day.
+  let dayRaw: string | undefined;
+  let yearRaw: string | undefined;
+  for (const run of runs) {
+    const isYearish = run.length >= 3 || Number.parseInt(run, 10) > 31;
+    if (isYearish && !yearRaw) yearRaw = run;
+    else if (!dayRaw) dayRaw = run;
+    else yearRaw = run;
+  }
+  // Both ambiguous (e.g. "05 06"): assume day precedes year.
+  if (!yearRaw) {
+    dayRaw = runs[0];
+    yearRaw = runs[1];
+  }
+  if (!dayRaw || !yearRaw) return null;
+
+  const day = Number.parseInt(dayRaw, 10);
+  const year = yearRaw.length <= 2 ? 2000 + Number.parseInt(yearRaw, 10) : Number.parseInt(yearRaw, 10);
+  return makeDate(day, monthIndex + 1, year);
+}
+
+/**
+ * Parse a user-typed date string into a local `Date`, or `null` if invalid.
+ *
+ * Tries an all-numeric parse first (mapped by the locale's field order), then falls
+ * back to a localized month-name parse so textual formats (e.g. "13 June 2026") survive
+ * the format→type→reparse round-trip. A 2-digit year is interpreted as `2000 + yy`.
+ * Returns `null` for unrecognized input or non-calendar values (month > 12,
+ * day > days-in-month, non-positive values). Locales whose month names embed digits
+ * (e.g. some CJK locales) rely on the numeric path only.
+ */
+export function parseDateInput(text: string, locale: string): Date | null {
+  if (text.trim() === "") return null;
+  return parseNumericDate(text, locale) ?? parseMonthNameDate(text, locale);
 }

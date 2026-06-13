@@ -142,39 +142,43 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
             {title}
           </div>
         )}
-        {children}
-        <IconButton
-          aria-label="Previous"
-          className="carousel-arrow carousel-arrow--prev"
-          data-hidden={!canScrollPrev}
-          onClick={scrollPrev}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path
-              d="M10 12L6 8L10 4"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </IconButton>
-        <IconButton
-          aria-label="Next"
-          className="carousel-arrow carousel-arrow--next"
-          data-hidden={!canScrollNext}
-          onClick={scrollNext}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path
-              d="M6 4L10 8L6 12"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </IconButton>
+        {/* Viewport wraps the track + arrows so the arrows center on the
+            track itself, not the title-inclusive root. */}
+        <div className="carousel-viewport">
+          {children}
+          <IconButton
+            aria-label="Previous"
+            className="carousel-arrow carousel-arrow--prev"
+            data-hidden={!canScrollPrev}
+            onClick={scrollPrev}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M10 12L6 8L10 4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </IconButton>
+          <IconButton
+            aria-label="Next"
+            className="carousel-arrow carousel-arrow--next"
+            data-hidden={!canScrollNext}
+            onClick={scrollNext}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M6 4L10 8L6 12"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </IconButton>
+        </div>
       </div>
     </CarouselContext.Provider>
   );

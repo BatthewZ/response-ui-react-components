@@ -28,6 +28,9 @@ import {
   ContextMenu,
   CopyButton,
   DataTable,
+  DatePicker,
+  type DateRange,
+  DateRangePicker,
   DescriptionList,
   Dialog,
   Drawer,
@@ -45,6 +48,7 @@ import {
   ProgressBar,
   ProgressRing,
   Radio,
+  RangeCalendar,
   Rating,
   Select,
   Slider,
@@ -156,6 +160,12 @@ export function App() {
   const [drawerSide, setDrawerSide] = useState<"left" | "right" | "top" | "bottom">("right");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState<Date | null>(null);
+  const [pickerDate, setPickerDate] = useState<Date | null>(new Date(2026, 5, 13));
+  const [range, setRange] = useState<DateRange>({
+    start: new Date(2026, 5, 8),
+    end: new Date(2026, 5, 14),
+  });
+  const [pickerRange, setPickerRange] = useState<DateRange>({ start: null, end: null });
   const [fruit, setFruit] = useState<string | null>(null);
   const [fruitQuery, setFruitQuery] = useState("");
 
@@ -178,6 +188,8 @@ export function App() {
   // A bounded window around "today" for the Calendar min/max example.
   const calMin = new Date(2026, 0, 1);
   const calMax = new Date(2026, 11, 31);
+  // Disable weekends — exercises the isDateDisabled matcher.
+  const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
 
   const SAMPLE_CODE = `import { Button } from "@batthewz/response-ui-react-components";
 
@@ -371,6 +383,32 @@ export function App() {
                 locale="fr-FR"
                 weekStartsOn={1}
               />
+            </div>
+          </Tile>
+          <Tile label="Calendar — Today + disabled weekends">
+            <Calendar
+              defaultMonth={calMin}
+              min={calMin}
+              max={calMax}
+              isDateDisabled={isWeekend}
+              weekStartsOn={1}
+              showToday
+            />
+          </Tile>
+          <Tile label="RangeCalendar — 2 months">
+            <div className="flex flex-col gap-r5">
+              <RangeCalendar
+                value={range}
+                onValueChange={setRange}
+                defaultMonth={calMin}
+                weekStartsOn={1}
+              />
+              <span className="text-body-3 text-fg-muted">
+                Range:{" "}
+                {range.start ? range.start.toLocaleDateString("en-GB") : "—"}
+                {" → "}
+                {range.end ? range.end.toLocaleDateString("en-GB") : "—"}
+              </span>
             </div>
           </Tile>
 
@@ -702,6 +740,40 @@ export function App() {
               <span className="text-body-3 text-fg-muted">Code: {otp || "—"}</span>
             </div>
           </Tile>
+          <Tile label="DatePicker — clearable, long format">
+            <div className="flex w-[18rem] flex-col gap-r4">
+              <DatePicker
+                value={pickerDate}
+                onValueChange={setPickerDate}
+                min={calMin}
+                max={calMax}
+                clearable
+                formatOptions={{ year: "numeric", month: "long", day: "numeric" }}
+                placeholder="Pick a date"
+                aria-label="Appointment date"
+              />
+              <DatePicker error placeholder="Error state" aria-label="Errored date" />
+              <DatePicker disabled placeholder="Disabled" aria-label="Disabled date" />
+            </div>
+          </Tile>
+          <Tile label="DateRangePicker">
+            <div className="flex w-[22rem] flex-col gap-r4">
+              <DateRangePicker
+                value={pickerRange}
+                onValueChange={setPickerRange}
+                defaultMonth={calMin}
+                min={calMin}
+                max={calMax}
+                startPlaceholder="Start"
+                endPlaceholder="End"
+              />
+              <span className="text-body-3 text-fg-muted">
+                {pickerRange.start ? pickerRange.start.toLocaleDateString("en-GB") : "—"}
+                {" → "}
+                {pickerRange.end ? pickerRange.end.toLocaleDateString("en-GB") : "—"}
+              </span>
+            </div>
+          </Tile>
         </Group>
 
         {/* ============================================================ */}
@@ -832,14 +904,14 @@ export function App() {
                 timestamp="2h ago"
               />
               <ActivityFeed.Item
-                icon={<GitCommit size={10} />}
+                icon={<GitCommit />}
                 actor="Grace"
                 action="pushed to"
                 target="main"
                 timestamp="1h ago"
               />
               <ActivityFeed.Item
-                icon={<UserPlus size={10} />}
+                icon={<UserPlus />}
                 actor="Alan"
                 action="joined the"
                 target="project"

@@ -11,6 +11,12 @@
   margin-bottom: var(--R-SIZE-4);
 }
 
+/* Viewport — positioning context for the arrows so they center on the track
+   (not the title-inclusive root) and aren't thrown off by the title height. */
+.carousel-viewport {
+  position: relative;
+}
+
 /* Track — the scrollable container */
 .carousel-track {
   display: flex;
@@ -19,6 +25,9 @@
   scroll-behavior: smooth;
   gap: var(--MEDIA-CAROUSEL-GAP);
   padding-inline: var(--MEDIA-CAROUSEL-PEEK);
+  /* overflow-x: auto forces overflow-y to clip, so reserve vertical room for
+     item shadows and keyboard focus rings (otherwise both get cut off). */
+  padding-block: var(--R-SIZE-5);
   scrollbar-width: none; /* Firefox */
   -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
 }

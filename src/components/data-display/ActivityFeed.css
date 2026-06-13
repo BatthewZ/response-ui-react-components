@@ -9,7 +9,12 @@
   --_activity-feed-aside-width: 2rem;
   --_activity-feed-gutter: var(--R-SIZE-5);
   --_activity-feed-gap: var(--R-SIZE-3);
-  --_activity-feed-dot-size: 0.875rem;
+  /* Marker diameter matches the aside width so the avatar fallback (dot) and a
+     real Avatar (size="sm" = 2rem) present the same circle — one consistent
+     rail. It also makes the connector's `top: aside-width` origin correct for
+     every row regardless of which marker is used. */
+  --_activity-feed-dot-size: var(--_activity-feed-aside-width);
+  --_activity-feed-icon-size: 1rem;
   --_activity-feed-line-width: 2px;
 
   list-style: none;
@@ -73,7 +78,18 @@
   border-radius: var(--RADIUS-FULL);
   background-color: var(--C-SURFACE-2);
   color: var(--C-TEXT-SECONDARY);
-  box-shadow: 0 0 0 var(--_activity-feed-line-width) var(--C-SURFACE-0);
+  /* No background-coloured ring: the filled 2rem circle already masks the
+     connector line, and the line starts at the marker's edge — same treatment
+     as a real Avatar. A surface-0 ring would otherwise show as a mismatched
+     halo whenever the feed sits on any surface but the page background (e.g. a
+     card) or under a custom theme. */
+}
+
+/* The dot owns its glyph size so consumers don't have to hand-tune an icon
+   `size` prop to match the marker. */
+.activity-feed-dot > svg {
+  width: var(--_activity-feed-icon-size);
+  height: var(--_activity-feed-icon-size);
 }
 
 /* ------------------------------------------------------------------ */

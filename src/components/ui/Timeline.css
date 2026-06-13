@@ -56,7 +56,10 @@
   height: var(--_timeline-dot-size);
   border-radius: var(--RADIUS-FULL);
   background-color: var(--C-ACCENT);
-  border: var(--_timeline-line-width) solid var(--C-SURFACE-0);
+  /* No surface-coloured border: the filled accent dot already masks the line
+     it sits on. A hardcoded surface-0 border would otherwise read as a
+     mismatched halo whenever the timeline sits on any surface but the page
+     background (e.g. a card) or under a custom theme. */
 }
 
 /* ------------------------------------------------------------------ */

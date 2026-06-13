@@ -31,6 +31,7 @@ export { Pagination } from "./Pagination";
 export { Popover } from "./Popover";
 export { Portal } from "./Portal";
 export { ProgressBar } from "./ProgressBar";
+export { type DateRange, RangeCalendar } from "./RangeCalendar";
 export { Rating } from "./Rating";
 export { Skeleton } from "./Skeleton";
 export { Spinner } from "./Spinner";

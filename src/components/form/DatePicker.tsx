@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, X } from "lucide-react";
 
 import {
   FloatingFocusManager,
@@ -18,7 +18,7 @@ import {
   useRole,
 } from "../../hooks/use-floating";
 import { useControllableState } from "../../hooks/use-controllable-state";
-import { clampDate, formatDate, parseDateInput } from "../../util/date";
+import { clampDate, formatDate, parseDateInput, toISODate } from "../../util/date";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 import { Calendar } from "../ui/Calendar";
@@ -32,11 +32,15 @@ type DatePickerProps = {
   onValueChange?: (d: Date | null) => void;
   min?: Date;
   max?: Date;
+  /** Disable individual dates beyond `[min, max]` (e.g. weekends, holidays). */
+  isDateDisabled?: (date: Date) => boolean;
   locale?: string;
   formatOptions?: Intl.DateTimeFormatOptions;
   placeholder?: string;
   error?: boolean;
   disabled?: boolean;
+  /** Show a clear button that resets the value to null when a date is set. */
+  clearable?: boolean;
   // `value`/`defaultValue`/`min`/`max` are native input attrs typed string|number;
   // omit them so our Date-typed props don't intersect to `never` for consumers.
 } & Omit<ComponentPropsWithRef<"input">, "value" | "defaultValue" | "onChange" | "min" | "max">;
@@ -58,12 +62,15 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       onValueChange,
       min,
       max,
+      isDateDisabled,
       locale = "en-US",
       formatOptions,
       placeholder,
       error,
       disabled,
+      clearable,
       className,
+      name,
       onKeyDown,
       onBlur,
       ...props
@@ -112,16 +119,18 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         return;
       }
       const parsed = parseDateInput(draft, locale);
-      if (parsed) {
-        const clamped = clampDate(parsed, min, max);
+      // Reject unparseable input and dates the matcher disables (after clamping to
+      // [min, max], so a typed out-of-range date snaps in rather than being rejected).
+      const clamped = parsed ? clampDate(parsed, min, max) : null;
+      if (clamped && !(isDateDisabled?.(clamped) ?? false)) {
         setSelected(clamped);
         setDraft(display(clamped, locale, formatOptions));
         lastFormattedRef.current = clamped;
       } else {
-        // Invalid non-empty input: revert to the last valid formatted value.
+        // Invalid or disabled input: revert to the last valid formatted value.
         setDraft(display(selected, locale, formatOptions));
       }
-    }, [draft, locale, formatOptions, min, max, selected, setSelected]);
+    }, [draft, locale, formatOptions, min, max, isDateDisabled, selected, setSelected]);
 
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLInputElement>) => {
@@ -143,6 +152,13 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       [commit, onBlur],
     );
 
+    const handleClear = useCallback(() => {
+      setSelected(null);
+      setDraft("");
+      lastFormattedRef.current = null;
+      inputRef.current?.focus();
+    }, [setSelected]);
+
     const handleCalendarSelect = useCallback(
       (date: Date) => {
         setSelected(date);
@@ -161,6 +177,11 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
 
     return (
       <div ref={refs.setReference} className={cn("relative", className)}>
+        {/* Native form submission carries a machine-readable YYYY-MM-DD, not the
+            localized display string. The visible input is intentionally unnamed. */}
+        {name !== undefined && (
+          <input type="hidden" name={name} value={selected ? toISODate(selected) : ""} />
+        )}
         <Input
           ref={mergeRefs(ref, inputRef)}
           type="text"
@@ -170,22 +191,28 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
           disabled={disabled}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className="pr-r1"
+          className={clearable ? "pr-[4rem]" : "pr-r1"}
           onChange={(e) => setDraft(e.target.value)}
           {...props}
           {...referenceProps}
         />
-        <IconButton
-          type="button"
-          aria-label="Open calendar"
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          disabled={disabled}
-          className="absolute inset-y-0 right-r6 my-auto"
-          onClick={() => setOpen((v) => !v)}
-        >
-          <CalendarDays aria-hidden="true" size={18} />
-        </IconButton>
+        <div className="absolute inset-y-0 right-r6 my-auto flex items-center gap-r6">
+          {clearable && selected != null && !disabled && (
+            <IconButton type="button" aria-label="Clear date" onClick={handleClear}>
+              <X aria-hidden="true" size={16} />
+            </IconButton>
+          )}
+          <IconButton
+            type="button"
+            aria-label="Open calendar"
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            disabled={disabled}
+            onClick={() => setOpen((v) => !v)}
+          >
+            <CalendarDays aria-hidden="true" size={18} />
+          </IconButton>
+        </div>
 
         {open && (
           <FloatingPortal>
@@ -201,6 +228,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                   value={selected}
                   min={min}
                   max={max}
+                  isDateDisabled={isDateDisabled}
                   locale={locale}
                   onValueChange={handleCalendarSelect}
                 />

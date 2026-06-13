@@ -286,6 +286,7 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
 - Don't reach into `node_modules/@batthewz/response-ui-css/src/...` from JS. CSS goes in CSS via `@import`.
 - Don't write CSS-in-JS. The library's styling boundary is Tailwind utilities + design tokens.
 - Don't add new public exports without also adding them to the relevant barrel (`components/ui/index.ts`, etc.) AND the root `src/index.ts`.
+- When a component paints marks directly on a surface, follow the **Contrast contract** in `response-ui-css/AGENTS.md` (Colour): use text tokens (`--C-TEXT-*`) for ink/lines/borders on `--C-SURFACE-*`, and outline filled chips in their `on-*` token. Don't use `--C-PRIMARY` / `--C-ACCENT` as a border/line/text colour on a surface — a theme may set them ≈ the surface.
 
 ## File layout
 

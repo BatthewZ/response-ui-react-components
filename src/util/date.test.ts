@@ -8,6 +8,7 @@ import {
   formatDate,
   getDateFieldOrder,
   getMonthLabel,
+  getMonthNames,
   getWeekdayNames,
   isAfter,
   isBefore,
@@ -15,6 +16,7 @@ import {
   parseDateInput,
   startOfDay,
   startOfMonth,
+  toISODate,
 } from "./date";
 
 describe("isSameDay", () => {
@@ -291,5 +293,45 @@ describe("parseDateInput", () => {
     expect(parseDateInput("not a date", "en-US")).toBeNull();
     expect(parseDateInput("", "en-US")).toBeNull();
     expect(parseDateInput("6/13", "en-US")).toBeNull();
+  });
+
+  it("parses a textual month name (long and short, any order)", () => {
+    const expected = new Date(2026, 5, 13);
+    for (const text of ["June 13, 2026", "13 June 2026", "Jun 13 2026", "2026 June 13"]) {
+      const parsed = parseDateInput(text, "en-US");
+      expect(parsed, text).not.toBeNull();
+      expect(isSameDay(parsed!, expected), text).toBe(true);
+    }
+  });
+
+  it("round-trips with a textual-month formatOptions (the bug: month:'long')", () => {
+    const original = new Date(2026, 5, 13);
+    for (const locale of ["en-US", "en-GB", "fr-FR"]) {
+      const text = formatDate(original, locale, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      const parsed = parseDateInput(text, locale);
+      expect(parsed, `${locale}: ${text}`).not.toBeNull();
+      expect(isSameDay(parsed!, original), `${locale}: ${text}`).toBe(true);
+    }
+  });
+});
+
+describe("toISODate", () => {
+  it("formats local YYYY-MM-DD with zero-padding (not UTC)", () => {
+    expect(toISODate(new Date(2026, 0, 5))).toBe("2026-01-05");
+    expect(toISODate(new Date(2026, 11, 31))).toBe("2026-12-31");
+  });
+});
+
+describe("getMonthNames", () => {
+  it("returns 12 localized names indexed from January", () => {
+    const long = getMonthNames("en-US", "long");
+    expect(long).toHaveLength(12);
+    expect(long[0]).toBe("January");
+    expect(long[11]).toBe("December");
+    expect(getMonthNames("en-US", "short")[2]).toBe("Mar");
   });
 });

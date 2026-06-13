@@ -8,3 +8,6 @@ dist/
 .env
 .env.local
 coverage/
+
+# Playwright CLI verification artifacts (screenshots/snapshots)
+.playwright-cli/

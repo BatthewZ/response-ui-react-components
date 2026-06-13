@@ -1,6 +1,7 @@
 export { Checkbox } from "./Checkbox";
 export { Combobox } from "./Combobox";
 export { DatePicker } from "./DatePicker";
+export { DateRangePicker } from "./DateRangePicker";
 export { Field } from "./Field";
 export { FieldError } from "./FieldError";
 export { FormActions } from "./FormActions";
