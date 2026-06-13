@@ -1,0 +1,188 @@
+/* ------------------------------------------------------------------ */
+/*  Stepper                                                            */
+/* ------------------------------------------------------------------ */
+
+.stepper {
+  /* Component geometry tokens — interdependent, defined together */
+  --_stepper-indicator-size: 2rem;
+  --_stepper-line-width: 2px;
+  --_stepper-gap: var(--R-SIZE-4);
+
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stepper[data-orientation="horizontal"] {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.stepper[data-orientation="vertical"] {
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Step                                                              */
+/* ------------------------------------------------------------------ */
+
+.stepper-step {
+  position: relative;
+  display: flex;
+  gap: var(--R-SIZE-5);
+}
+
+.stepper-step[data-orientation="horizontal"] {
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stepper-step[data-orientation="vertical"] {
+  flex-direction: row;
+  align-items: flex-start;
+  padding-bottom: var(--R-SIZE-3);
+}
+
+.stepper-step[data-orientation="vertical"]:last-child {
+  padding-bottom: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Indicator                                                         */
+/* ------------------------------------------------------------------ */
+
+.stepper-indicator {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--_stepper-indicator-size);
+  height: var(--_stepper-indicator-size);
+  border-radius: var(--RADIUS-FULL);
+  border: var(--_stepper-line-width) solid var(--C-BORDER-DEFAULT);
+  background-color: var(--C-SURFACE-1);
+  color: var(--C-TEXT-MUTED);
+  font-size: var(--BodyText-3);
+  line-height: var(--BodyText-3-line-height);
+  font-weight: var(--Bold-Weight);
+}
+
+/* Button variant resets */
+button.stepper-indicator {
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+button.stepper-indicator:hover {
+  border-color: var(--C-BORDER-STRONG);
+}
+
+button.stepper-indicator:focus-visible {
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: 2px;
+}
+
+.stepper-indicator svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Status colors */
+.stepper-step[data-status="done"] .stepper-indicator {
+  border-color: var(--C-PRIMARY);
+  background-color: var(--C-PRIMARY);
+  color: var(--C-TEXT-ON-PRIMARY);
+}
+
+.stepper-step[data-status="active"] .stepper-indicator {
+  border-color: var(--C-PRIMARY);
+  background-color: var(--C-SURFACE-1);
+  color: var(--C-PRIMARY);
+}
+
+.stepper-step[data-status="upcoming"] .stepper-indicator {
+  border-color: var(--C-BORDER-DEFAULT);
+  background-color: var(--C-SURFACE-1);
+  color: var(--C-TEXT-MUTED);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Content                                                           */
+/* ------------------------------------------------------------------ */
+
+.stepper-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--R-SIZE-6);
+}
+
+.stepper-title {
+  font-size: var(--BodyText-2);
+  line-height: var(--BodyText-2-line-height);
+  font-weight: var(--Bold-Weight);
+  color: var(--C-TEXT-PRIMARY);
+}
+
+.stepper-step[data-status="upcoming"] .stepper-title {
+  color: var(--C-TEXT-MUTED);
+}
+
+.stepper-description {
+  font-size: var(--BodyText-3);
+  line-height: var(--BodyText-3-line-height);
+  color: var(--C-TEXT-SECONDARY);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Connector line (Timeline ::before/::after technique)              */
+/*  Filled when this step is done/active; muted when upcoming.        */
+/*  Last step has no trailing connector.                              */
+/* ------------------------------------------------------------------ */
+
+.stepper-connector {
+  position: absolute;
+  background-color: var(--C-BORDER-DEFAULT);
+}
+
+.stepper-step:last-child .stepper-connector {
+  display: none;
+}
+
+/* Done/active steps draw a filled connector toward the next step */
+.stepper-step[data-status="done"] .stepper-connector,
+.stepper-step[data-status="active"] .stepper-connector {
+  background-color: var(--C-PRIMARY);
+}
+
+/* Horizontal: line runs from the indicator center toward the next step */
+.stepper-step[data-orientation="horizontal"] .stepper-connector {
+  top: calc(var(--_stepper-indicator-size) / 2 - var(--_stepper-line-width) / 2);
+  left: calc(50% + var(--_stepper-indicator-size) / 2 + var(--_stepper-gap));
+  right: calc(-50% + var(--_stepper-indicator-size) / 2 + var(--_stepper-gap));
+  height: var(--_stepper-line-width);
+}
+
+/* Vertical: line runs down from the indicator center to the next step */
+.stepper-step[data-orientation="vertical"] .stepper-connector {
+  left: calc(var(--_stepper-indicator-size) / 2 - var(--_stepper-line-width) / 2);
+  top: calc(var(--_stepper-indicator-size) + var(--R-SIZE-6));
+  bottom: calc(-1 * var(--R-SIZE-6));
+  width: var(--_stepper-line-width);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reduced motion                                                    */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  button.stepper-indicator {
+    transition: none;
+  }
+}

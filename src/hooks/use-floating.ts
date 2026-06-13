@@ -42,7 +42,6 @@ export {
   FloatingPortal,
   safePolygon,
   useClick,
-  useClientPoint,
   useDismiss,
   useFocus,
   useHover,

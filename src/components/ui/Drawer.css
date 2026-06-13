@@ -1,0 +1,125 @@
+/* Drawer — a side sheet built on the native <dialog> element.
+   The dialog *is* the panel: margins pin it to one edge and stretch it
+   across the cross axis, so the top-layer modal reads as a side sheet. */
+
+.drawer {
+  padding: var(--R-SIZE-2);
+  border: none;
+  background: var(--C-SURFACE-0);
+  color: var(--C-TEXT-DEFAULT);
+  box-shadow: var(--SHADOW-LG);
+  /* Enter/exit: animate transform + opacity, and discrete props (overlay,
+     display) so the panel stays in the top layer while it slides out. */
+  transition-property: transform, opacity, overlay, display;
+  transition-duration: var(--MOTION-DURATION-ENTER, 0.2s);
+  transition-timing-function: var(--MOTION-EASE-ENTER, ease);
+  transition-behavior: allow-discrete;
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+.drawer::backdrop {
+  background: var(--OVERLAY-SCRIM-COLOR, rgb(0 0 0 / 0.5));
+  transition-property: opacity, overlay, display;
+  transition-duration: var(--MOTION-DURATION-ENTER, 0.2s);
+  transition-timing-function: var(--MOTION-EASE-ENTER, ease);
+  transition-behavior: allow-discrete;
+  opacity: 1;
+}
+
+/* ---- right (default) ---- */
+.drawer[data-side="right"] {
+  margin: 0 0 0 auto;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: min(24rem, 90vw);
+  border-radius: var(--RADIUS-LG) 0 0 var(--RADIUS-LG);
+}
+
+/* ---- left ---- */
+.drawer[data-side="left"] {
+  margin: 0 auto 0 0;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: min(24rem, 90vw);
+  border-radius: 0 var(--RADIUS-LG) var(--RADIUS-LG) 0;
+}
+
+/* ---- top ---- */
+.drawer[data-side="top"] {
+  margin: 0 auto auto auto;
+  width: 100vw;
+  max-width: 100vw;
+  height: min(24rem, 90dvh);
+  border-radius: 0 0 var(--RADIUS-LG) var(--RADIUS-LG);
+}
+
+/* ---- bottom ---- */
+.drawer[data-side="bottom"] {
+  margin: auto auto 0 auto;
+  width: 100vw;
+  max-width: 100vw;
+  height: min(24rem, 90dvh);
+  border-radius: var(--RADIUS-LG) var(--RADIUS-LG) 0 0;
+}
+
+/* ---- exit / pre-open off-edge positions (translate off the relevant edge) ---- */
+.drawer[data-side="right"]:not([open]),
+.drawer[data-side="left"]:not([open]),
+.drawer[data-side="top"]:not([open]),
+.drawer[data-side="bottom"]:not([open]) {
+  opacity: 0;
+}
+
+.drawer[data-side="right"]:not([open]) {
+  transform: translateX(100%);
+}
+.drawer[data-side="left"]:not([open]) {
+  transform: translateX(-100%);
+}
+.drawer[data-side="top"]:not([open]) {
+  transform: translateY(-100%);
+}
+.drawer[data-side="bottom"]:not([open]) {
+  transform: translateY(100%);
+}
+
+/* ---- enter: starting state before the open transition runs ---- */
+@starting-style {
+  .drawer[open] {
+    opacity: 0;
+  }
+  .drawer[data-side="right"][open] {
+    transform: translateX(100%);
+  }
+  .drawer[data-side="left"][open] {
+    transform: translateX(-100%);
+  }
+  .drawer[data-side="top"][open] {
+    transform: translateY(-100%);
+  }
+  .drawer[data-side="bottom"][open] {
+    transform: translateY(100%);
+  }
+  .drawer[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+.drawer:not([open])::backdrop {
+  opacity: 0;
+}
+
+/* ---- respect reduced-motion: no slide/fade, just appear/disappear ---- */
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .drawer::backdrop {
+    transition: none;
+  }
+  .drawer[data-side="right"]:not([open]),
+  .drawer[data-side="left"]:not([open]),
+  .drawer[data-side="top"]:not([open]),
+  .drawer[data-side="bottom"]:not([open]) {
+    transform: none;
+  }
+}

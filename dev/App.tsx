@@ -1,4 +1,13 @@
-import { GitCommit, MessageSquare, UserPlus } from "lucide-react";
+import {
+  Copy,
+  FileText,
+  GitCommit,
+  MessageSquare,
+  Settings,
+  Trash2,
+  User,
+  UserPlus,
+} from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -10,12 +19,17 @@ import {
   Card,
   Checkbox,
   Collapsible,
+  CommandPalette,
+  type CommandItem,
+  ContextMenu,
   CopyButton,
   DataTable,
   DescriptionList,
   Dialog,
+  Drawer,
   DropdownMenu,
   Field,
+  HoverCard,
   Input,
   Kbd,
   Label,
@@ -33,6 +47,7 @@ import {
   Spinner,
   Stack,
   StatCard,
+  Stepper,
   Switch,
   TagInput,
   Textarea,
@@ -77,16 +92,6 @@ function Tile({ label, children }: { label: string; children: React.ReactNode })
         {label}
       </span>
       <div className="flex flex-wrap items-center gap-r4">{children}</div>
-    </div>
-  );
-}
-
-/** A clearly-labeled empty placeholder for a component built in a later phase. */
-function TodoTile({ name }: { name: string }) {
-  return (
-    <div className="flex min-h-24 w-48 flex-col items-center justify-center gap-r6 rounded-md border border-dashed border-border-default bg-surface-1 p-r4 text-center">
-      <span className="text-body-3 font-semibold text-fg-muted">{name}</span>
-      <span className="text-body-3 text-fg-muted">TODO — later phase</span>
     </div>
   );
 }
@@ -142,8 +147,25 @@ export function App() {
   const [rating, setRating] = useState(3);
   const [halfRating, setHalfRating] = useState(3.5);
   const [collapsibleOpen, setCollapsibleOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerSide, setDrawerSide] = useState<"left" | "right" | "top" | "bottom">("right");
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const maxWidth = VIEWPORTS[viewport].width;
+
+  const openDrawer = (side: "left" | "right" | "top" | "bottom") => {
+    setDrawerSide(side);
+    setDrawerOpen(true);
+  };
+
+  const COMMANDS: CommandItem[] = [
+    { id: "new-file", label: "New File", group: "Actions", icon: <FileText size={16} />, shortcut: "⌘N", keywords: ["create", "document"], onSelect: () => {} },
+    { id: "copy", label: "Copy", group: "Actions", icon: <Copy size={16} />, shortcut: "⌘C", onSelect: () => {} },
+    { id: "delete", label: "Delete", group: "Actions", icon: <Trash2 size={16} />, shortcut: "⌫", disabled: true, onSelect: () => {} },
+    { id: "profile", label: "View Profile", group: "Navigation", icon: <User size={16} />, keywords: ["account", "me"], onSelect: () => {} },
+    { id: "settings", label: "Open Settings", group: "Navigation", icon: <Settings size={16} />, shortcut: "⌘,", onSelect: () => {} },
+    { id: "messages", label: "Messages", group: "Navigation", icon: <MessageSquare size={16} />, onSelect: () => {} },
+  ];
 
   return (
     <div className="min-h-screen bg-surface-0 text-fg-primary">
@@ -344,9 +366,111 @@ export function App() {
               </Collapsible.Content>
             </Collapsible>
           </Tile>
-          <TodoTile name="Combobox" />
-          <TodoTile name="Drawer" />
-          <TodoTile name="Calendar" />
+          <Tile label="Drawer">
+            <div className="flex flex-wrap gap-r5">
+              <Button onClick={() => openDrawer("right")}>Right</Button>
+              <Button variant="secondary" onClick={() => openDrawer("left")}>
+                Left
+              </Button>
+              <Button variant="secondary" onClick={() => openDrawer("top")}>
+                Top
+              </Button>
+              <Button variant="secondary" onClick={() => openDrawer("bottom")}>
+                Bottom
+              </Button>
+            </div>
+            <Drawer open={drawerOpen} side={drawerSide} onClose={() => setDrawerOpen(false)}>
+              <div className="flex h-full flex-col gap-r4">
+                <h3 className="text-h4">Drawer ({drawerSide})</h3>
+                <p className="text-body-2 text-fg-secondary">
+                  A side sheet built on the native &lt;dialog&gt;. Press Escape or
+                  click the backdrop to dismiss.
+                </p>
+                <div className="mt-auto flex justify-end">
+                  <Button variant="ghost" onClick={() => setDrawerOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </Drawer>
+          </Tile>
+
+          <Tile label="ContextMenu">
+            <ContextMenu>
+              <ContextMenu.Trigger>
+                <div className="flex h-24 w-48 items-center justify-center rounded-md border border-dashed border-border-default bg-surface-2 text-body-3 text-fg-muted">
+                  right-click me
+                </div>
+              </ContextMenu.Trigger>
+              <ContextMenu.Content>
+                <ContextMenu.Label>Actions</ContextMenu.Label>
+                <ContextMenu.Item index={0} icon={<Copy size={14} />} onSelect={() => {}}>
+                  Copy
+                </ContextMenu.Item>
+                <ContextMenu.Item index={1} icon={<FileText size={14} />} onSelect={() => {}}>
+                  Duplicate
+                </ContextMenu.Item>
+                <ContextMenu.Divider />
+                <ContextMenu.Item index={2} icon={<Trash2 size={14} />} onSelect={() => {}}>
+                  Delete
+                </ContextMenu.Item>
+              </ContextMenu.Content>
+            </ContextMenu>
+          </Tile>
+
+          <Tile label="HoverCard">
+            <HoverCard>
+              <HoverCard.Trigger asChild>
+                <Button variant="link">@ada</Button>
+              </HoverCard.Trigger>
+              <HoverCard.Content>
+                <div className="flex gap-r4">
+                  <Avatar name="Ada Lovelace" size="lg" />
+                  <div className="flex flex-col gap-r6">
+                    <span className="text-body-1 font-semibold text-fg-primary">
+                      Ada Lovelace
+                    </span>
+                    <span className="text-body-3 text-fg-secondary">
+                      First computer programmer. Writes about analytical engines
+                      and Bernoulli numbers.
+                    </span>
+                  </div>
+                </div>
+              </HoverCard.Content>
+            </HoverCard>
+          </Tile>
+
+          <Tile label="Stepper — horizontal">
+            <div className="w-full min-w-72">
+              <Stepper activeStep={1}>
+                <Stepper.Step title="Account" description="Your details" />
+                <Stepper.Step title="Plan" description="Pick a tier" />
+                <Stepper.Step title="Confirm" description="Review & pay" />
+              </Stepper>
+            </div>
+          </Tile>
+
+          <Tile label="Stepper — vertical">
+            <Stepper activeStep={2} orientation="vertical" className="w-56">
+              <Stepper.Step title="Cart" description="2 items" />
+              <Stepper.Step title="Shipping" description="Address entered" />
+              <Stepper.Step title="Payment" description="Card details" />
+              <Stepper.Step title="Done" description="Order placed" />
+            </Stepper>
+          </Tile>
+
+          <Tile label="CommandPalette">
+            <Button onClick={() => setPaletteOpen(true)}>Open command palette</Button>
+            <span className="flex items-center gap-r6 text-body-3 text-fg-muted">
+              or press <Kbd>⌘</Kbd>
+              <Kbd>K</Kbd>
+            </span>
+            <CommandPalette
+              open={paletteOpen}
+              onClose={() => setPaletteOpen(false)}
+              items={COMMANDS}
+            />
+          </Tile>
         </Group>
 
         {/* ============================================================ */}

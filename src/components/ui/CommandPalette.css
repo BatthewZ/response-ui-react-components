@@ -1,0 +1,181 @@
+/* ------------------------------------------------------------------ */
+/*  CommandPalette                                                     */
+/* ------------------------------------------------------------------ */
+
+.command-palette {
+  width: 100%;
+  max-width: 36rem;
+  /* Positioned near the top-center rather than vertically centered. */
+  margin: 0 auto;
+  margin-top: 12vh;
+  padding: 0;
+  border: 1px solid var(--C-BORDER-DEFAULT);
+  border-radius: var(--RADIUS-LG);
+  background: var(--C-SURFACE-0);
+  box-shadow: var(--SHADOW-LG);
+  color: var(--C-TEXT-PRIMARY);
+  overflow: hidden;
+  animation: command-palette-in var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER);
+}
+
+.command-palette::backdrop {
+  background: var(--OVERLAY-SCRIM-COLOR, rgb(0 0 0 / 0.5));
+  animation: command-palette-backdrop-in var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER);
+}
+
+@keyframes command-palette-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes command-palette-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Search                                                             */
+/* ------------------------------------------------------------------ */
+
+.command-palette-search {
+  border-bottom: 1px solid var(--C-BORDER-DEFAULT);
+}
+
+.command-palette-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--R-SIZE-4) var(--R-SIZE-3);
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--C-TEXT-PRIMARY);
+  font-size: var(--BodyText-1);
+  line-height: var(--BodyText-1-line-height);
+}
+
+.command-palette-input::placeholder {
+  color: var(--C-TEXT-MUTED);
+}
+
+/* ------------------------------------------------------------------ */
+/*  List                                                               */
+/* ------------------------------------------------------------------ */
+
+.command-palette-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--R-SIZE-6);
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.command-palette-group {
+  list-style: none;
+}
+
+.command-palette-group + .command-palette-group {
+  margin-top: var(--R-SIZE-5);
+}
+
+.command-palette-group-header {
+  padding: var(--R-SIZE-6) var(--R-SIZE-5);
+  font-size: var(--BodyText-3);
+  line-height: var(--BodyText-3-line-height);
+  font-weight: var(--Semibold-Weight);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--C-TEXT-MUTED);
+}
+
+.command-palette-group-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Option                                                             */
+/* ------------------------------------------------------------------ */
+
+.command-palette-option {
+  display: flex;
+  align-items: center;
+  gap: var(--R-SIZE-4);
+  padding: var(--R-SIZE-5) var(--R-SIZE-5);
+  border-radius: var(--RADIUS-MD);
+  cursor: pointer;
+  color: var(--C-TEXT-PRIMARY);
+  font-size: var(--BodyText-2);
+  line-height: var(--BodyText-2-line-height);
+  transition: background-color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
+}
+
+.command-palette-option[data-active] {
+  background: var(--C-SURFACE-2);
+}
+
+.command-palette-option[data-disabled] {
+  color: var(--C-TEXT-MUTED);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.command-palette-option-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--C-TEXT-SECONDARY);
+}
+
+.command-palette-option-label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette-option-shortcut {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Empty                                                              */
+/* ------------------------------------------------------------------ */
+
+.command-palette-empty {
+  list-style: none;
+  padding: var(--R-SIZE-3) var(--R-SIZE-5);
+  text-align: center;
+  color: var(--C-TEXT-MUTED);
+  font-size: var(--BodyText-2);
+  line-height: var(--BodyText-2-line-height);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reduced motion                                                     */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .command-palette,
+  .command-palette::backdrop {
+    animation: none;
+  }
+
+  .command-palette-option {
+    transition: none;
+  }
+}

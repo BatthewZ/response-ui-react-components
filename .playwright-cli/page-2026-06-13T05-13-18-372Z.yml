@@ -1,0 +1,517 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: response-ui gallery
+      - generic [ref=e7]: Theme switches default / events / grimdark / tech. Light vs dark follows the OS color-scheme via the foundation tokens.
+    - generic [ref=e8]:
+      - radiogroup "Theme" [ref=e9]:
+        - radio "Default" [checked] [ref=e10] [cursor=pointer]
+        - radio "Events" [ref=e11] [cursor=pointer]
+        - radio "Grimdark" [ref=e12] [cursor=pointer]
+        - radio "Tech" [ref=e13] [cursor=pointer]
+      - generic [ref=e14]:
+        - button "Full" [ref=e15] [cursor=pointer]
+        - button "Desktop (1024)" [ref=e16] [cursor=pointer]
+        - button "Mobile (375)" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - heading "UI" [level=2] [ref=e20]
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e23]: Button — variants
+          - generic [ref=e24]:
+            - button "Primary" [ref=e25] [cursor=pointer]
+            - button "Secondary" [ref=e26] [cursor=pointer]
+            - button "Ghost" [ref=e27] [cursor=pointer]
+            - button "Danger" [ref=e28] [cursor=pointer]
+            - button "Link" [ref=e29] [cursor=pointer]
+        - generic [ref=e30]:
+          - generic [ref=e31]: Button — sizes
+          - generic [ref=e32]:
+            - button "Small" [ref=e33] [cursor=pointer]
+            - button "Medium" [ref=e34] [cursor=pointer]
+            - button "Large" [ref=e35] [cursor=pointer]
+        - generic [ref=e36]:
+          - generic [ref=e37]: Button — disabled
+          - generic [ref=e38]:
+            - button "Primary" [disabled] [ref=e39]
+            - button "Secondary" [disabled] [ref=e40]
+        - generic [ref=e41]:
+          - generic [ref=e42]: Card
+          - generic [ref=e45]:
+            - generic [ref=e46]: Card title
+            - generic [ref=e47]: Surface container with padding + shadow tokens.
+            - button "Action" [ref=e48] [cursor=pointer]
+        - generic [ref=e49]:
+          - generic [ref=e50]: Alert
+          - generic [ref=e52]:
+            - alert [ref=e53]: Informational message.
+            - alert [ref=e54]: Saved successfully.
+            - alert [ref=e55]: Heads up — check this.
+            - alert [ref=e56]: Something went wrong.
+        - generic [ref=e57]:
+          - generic [ref=e58]: Badge
+          - generic [ref=e59]:
+            - generic [ref=e60]: Default
+            - generic [ref=e61]: Success
+            - generic [ref=e62]: Warning
+            - generic [ref=e63]: Error
+            - generic [ref=e64]: Info
+        - generic [ref=e65]:
+          - generic [ref=e66]: Spinner
+          - generic [ref=e67]:
+            - status [ref=e68]:
+              - generic [ref=e69]: Loading
+            - status [ref=e70]:
+              - generic [ref=e71]: Loading
+            - status [ref=e72]:
+              - generic [ref=e73]: Loading
+        - generic [ref=e74]:
+          - generic [ref=e75]: ProgressBar
+          - generic [ref=e77]:
+            - progressbar [ref=e78]
+            - progressbar [ref=e80]
+            - progressbar [ref=e82]
+        - generic [ref=e84]:
+          - generic [ref=e85]: Dialog
+          - button "Open dialog" [ref=e87] [cursor=pointer]
+        - generic [ref=e88]:
+          - generic [ref=e89]: Popover
+          - button "Toggle popover" [ref=e91] [cursor=pointer]
+        - generic [ref=e92]:
+          - generic [ref=e93]: DropdownMenu
+          - button "Open menu" [ref=e95] [cursor=pointer]
+        - generic [ref=e96]:
+          - generic [ref=e97]: Tooltip
+          - button "Hover me" [ref=e99] [cursor=pointer]
+        - generic [ref=e100]:
+          - generic [ref=e101]: Rating
+          - generic [ref=e103]:
+            - radiogroup "Rate this product" [ref=e104]:
+              - radio "1 stars" [ref=e105] [cursor=pointer]:
+                - generic [ref=e106]: 1 stars
+                - generic [ref=e107]:
+                  - img [ref=e108]
+                  - generic:
+                    - img
+              - radio "2 stars" [ref=e110] [cursor=pointer]:
+                - generic [ref=e111]: 2 stars
+                - generic [ref=e112]:
+                  - img [ref=e113]
+                  - generic:
+                    - img
+              - radio "3 stars" [checked] [ref=e115] [cursor=pointer]:
+                - generic [ref=e116]: 3 stars
+                - generic [ref=e117]:
+                  - img [ref=e118]
+                  - generic:
+                    - img
+              - radio "4 stars" [ref=e120] [cursor=pointer]:
+                - generic [ref=e121]: 4 stars
+                - generic [ref=e122]:
+                  - img [ref=e123]
+                  - img
+              - radio "5 stars" [ref=e125] [cursor=pointer]:
+                - generic [ref=e126]: 5 stars
+                - generic [ref=e127]:
+                  - img [ref=e128]
+                  - img
+            - radiogroup "Rate this product (half steps)" [ref=e130]:
+              - radio "0.5 stars" [ref=e131] [cursor=pointer]:
+                - generic [ref=e132]: 0.5 stars
+                - generic [ref=e133]:
+                  - img [ref=e134]
+                  - generic:
+                    - img
+              - radio "1.5 stars" [ref=e136] [cursor=pointer]:
+                - generic [ref=e137]: 1.5 stars
+                - generic [ref=e138]:
+                  - img [ref=e139]
+                  - generic:
+                    - img
+              - radio "2.5 stars" [ref=e141] [cursor=pointer]:
+                - generic [ref=e142]: 2.5 stars
+                - generic [ref=e143]:
+                  - img [ref=e144]
+                  - generic:
+                    - img
+              - radio "3.5 stars" [checked] [ref=e146] [cursor=pointer]:
+                - generic [ref=e147]: 3.5 stars
+                - generic [ref=e148]:
+                  - img [ref=e149]
+                  - generic:
+                    - img
+              - radio "4.5 stars" [ref=e151] [cursor=pointer]:
+                - generic [ref=e152]: 4.5 stars
+                - generic [ref=e153]:
+                  - img [ref=e154]
+                  - img
+            - img "4 out of 5 stars" [ref=e156]:
+              - generic [ref=e157]:
+                - img [ref=e158]
+                - generic:
+                  - img
+              - generic [ref=e160]:
+                - img [ref=e161]
+                - generic:
+                  - img
+              - generic [ref=e163]:
+                - img [ref=e164]
+                - generic:
+                  - img
+              - generic [ref=e166]:
+                - img [ref=e167]
+                - generic:
+                  - img
+              - generic [ref=e169]:
+                - img [ref=e170]
+                - img
+        - generic [ref=e172]:
+          - generic [ref=e173]: Kbd
+          - generic [ref=e175]:
+            - generic [ref=e176]: ⌘
+            - generic [ref=e177]: K
+            - generic [ref=e178]: to search,
+            - generic [ref=e179]: Esc
+            - generic [ref=e180]: to close
+        - generic [ref=e181]:
+          - generic [ref=e182]: CopyButton
+          - generic [ref=e184]:
+            - code [ref=e185]: npm i response-ui
+            - button "Copy" [ref=e186] [cursor=pointer]:
+              - img [ref=e187]
+        - generic [ref=e191]:
+          - generic [ref=e192]: Collapsible
+          - generic [ref=e194]:
+            - button "What is response-ui? +" [ref=e195]:
+              - generic [ref=e196]: What is response-ui?
+              - generic [ref=e197]: +
+            - region:
+              - paragraph [ref=e198]: A themeable React component library built on design tokens and Tailwind v4.
+        - generic [ref=e199]:
+          - generic [ref=e200]: Drawer
+          - generic [ref=e202]:
+            - button "Right" [ref=e203] [cursor=pointer]
+            - button "Left" [ref=e204] [cursor=pointer]
+            - button "Top" [ref=e205] [cursor=pointer]
+            - button "Bottom" [ref=e206] [cursor=pointer]
+        - generic [ref=e207]:
+          - generic [ref=e208]: ContextMenu
+          - generic [ref=e211]: right-click me
+        - generic [ref=e212]:
+          - generic [ref=e213]: HoverCard
+          - button "@ada" [ref=e215] [cursor=pointer]
+        - generic [ref=e216]:
+          - generic [ref=e217]: Stepper — horizontal
+          - list [ref=e220]:
+            - listitem [ref=e221]:
+              - img [ref=e223]
+              - generic [ref=e225]:
+                - generic [ref=e226]: Account
+                - generic [ref=e227]: Your details
+            - listitem [ref=e229]:
+              - generic [ref=e230]: "2"
+              - generic [ref=e231]:
+                - generic [ref=e232]: Plan
+                - generic [ref=e233]: Pick a tier
+            - listitem [ref=e235]:
+              - generic [ref=e236]: "3"
+              - generic [ref=e237]:
+                - generic [ref=e238]: Confirm
+                - generic [ref=e239]: Review & pay
+        - generic [ref=e240]:
+          - generic [ref=e241]: Stepper — vertical
+          - list [ref=e243]:
+            - listitem [ref=e244]:
+              - img [ref=e246]
+              - generic [ref=e248]:
+                - generic [ref=e249]: Cart
+                - generic [ref=e250]: 2 items
+            - listitem [ref=e252]:
+              - img [ref=e254]
+              - generic [ref=e256]:
+                - generic [ref=e257]: Shipping
+                - generic [ref=e258]: Address entered
+            - listitem [ref=e260]:
+              - generic [ref=e261]: "3"
+              - generic [ref=e262]:
+                - generic [ref=e263]: Payment
+                - generic [ref=e264]: Card details
+            - listitem [ref=e266]:
+              - generic [ref=e267]: "4"
+              - generic [ref=e268]:
+                - generic [ref=e269]: Done
+                - generic [ref=e270]: Order placed
+        - generic [ref=e271]:
+          - generic [ref=e272]: CommandPalette
+          - generic [ref=e273]:
+            - button "Open command palette" [ref=e274] [cursor=pointer]
+            - generic [ref=e275]:
+              - text: or press
+              - generic [ref=e276]: ⌘
+              - generic [ref=e277]: K
+    - generic [ref=e278]:
+      - heading "Form" [level=2] [ref=e279]
+      - generic [ref=e280]:
+        - generic [ref=e281]:
+          - generic [ref=e282]: Input
+          - generic [ref=e284]:
+            - generic [ref=e285]: Email
+            - textbox "you@example.com" [ref=e286]
+        - generic [ref=e287]:
+          - generic [ref=e288]: Input (error)
+          - generic [ref=e290]:
+            - generic [ref=e291]: Email
+            - textbox "you@example.com" [ref=e292]: not-an-email
+        - generic [ref=e293]:
+          - generic [ref=e294]: Textarea
+          - generic [ref=e296]:
+            - generic [ref=e297]: Notes
+            - textbox "Type here…" [ref=e298]
+        - generic [ref=e299]:
+          - generic [ref=e300]: Select
+          - generic [ref=e302]:
+            - generic [ref=e303]: Role
+            - combobox [ref=e304]:
+              - option "Engineer" [selected]
+              - option "Designer"
+              - option "Manager"
+        - generic [ref=e305]:
+          - generic [ref=e306]: Checkbox
+          - generic [ref=e308]:
+            - checkbox "Subscribe" [checked] [ref=e309]
+            - text: Subscribe
+        - generic [ref=e310]:
+          - generic [ref=e311]: Radio
+          - generic [ref=e312]:
+            - generic [ref=e313]:
+              - radio "Option A" [checked] [ref=e314]
+              - text: Option A
+            - generic [ref=e315]:
+              - radio "Option B" [ref=e316]
+              - text: Option B
+        - generic [ref=e317]:
+          - generic [ref=e318]: Switch
+          - generic [ref=e320]:
+            - switch [checked] [ref=e321] [cursor=pointer]
+            - switch [ref=e323] [cursor=pointer]
+            - switch [checked] [ref=e325] [cursor=pointer]
+            - switch [checked] [disabled]
+        - generic [ref=e327]:
+          - generic [ref=e328]: Slider
+          - generic [ref=e330]:
+            - slider "Volume" [ref=e331] [cursor=pointer]: "40"
+            - generic [ref=e332]: "Value: 40"
+            - slider "Brightness" [disabled] [ref=e333]: "75"
+        - generic [ref=e334]:
+          - generic [ref=e335]: NumberInput
+          - generic [ref=e337]:
+            - generic [ref=e338]:
+              - spinbutton "Quantity" [ref=e339]: "8"
+              - generic [ref=e340]:
+                - button [ref=e341] [cursor=pointer]:
+                  - img [ref=e342]
+                - button [ref=e344] [cursor=pointer]:
+                  - img [ref=e345]
+            - generic [ref=e347]: "Value: 8"
+        - generic [ref=e348]:
+          - generic [ref=e349]: TagInput
+          - generic [ref=e352]:
+            - generic [ref=e353]:
+              - generic [ref=e354]:
+                - text: react
+                - button "Remove react" [ref=e355] [cursor=pointer]:
+                  - img [ref=e356]
+              - generic [ref=e359]:
+                - text: typescript
+                - button "Remove typescript" [ref=e360] [cursor=pointer]:
+                  - img [ref=e361]
+              - textbox "Tags" [ref=e364]
+            - paragraph [ref=e365]
+        - generic [ref=e366]:
+          - generic [ref=e367]: OTPInput
+          - generic [ref=e369]:
+            - group "One-time code" [ref=e370]:
+              - textbox "Digit 1" [ref=e371]
+              - textbox "Digit 2" [ref=e372]
+              - textbox "Digit 3" [ref=e373]
+              - textbox "Digit 4" [ref=e374]
+              - textbox "Digit 5" [ref=e375]
+              - textbox "Digit 6" [ref=e376]
+            - generic [ref=e377]: "Code: —"
+    - generic [ref=e378]:
+      - heading "Layout" [level=2] [ref=e379]
+      - generic [ref=e380]:
+        - generic [ref=e381]:
+          - generic [ref=e382]: Stack (gap=r3)
+          - generic [ref=e384]:
+            - generic [ref=e385]: One
+            - generic [ref=e386]: Two
+            - generic [ref=e387]: Three
+        - generic [ref=e388]:
+          - generic [ref=e389]: Stack (gap=r6, tight)
+          - generic [ref=e391]:
+            - generic [ref=e392]: A
+            - generic [ref=e393]: B
+            - generic [ref=e394]: C
+    - generic [ref=e395]:
+      - heading "Data display" [level=2] [ref=e396]
+      - generic [ref=e397]:
+        - generic [ref=e398]:
+          - generic [ref=e399]:
+            - generic [ref=e400]: Revenue
+            - generic [ref=e401]: $48,250
+            - generic [ref=e402]:
+              - img [ref=e403]
+              - text: +12%
+          - generic [ref=e405]:
+            - generic [ref=e406]: Churn
+            - generic [ref=e407]: 0%
+            - generic [ref=e408]:
+              - img [ref=e409]
+              - text: "-2%"
+          - generic [ref=e411]:
+            - generic [ref=e412]: Active users
+            - generic [ref=e413]: 1,280
+            - generic [ref=e414]: 0%
+          - generic [ref=e415]:
+            - generic [ref=e416]: Sessions
+            - generic [ref=e417]: 9,402
+            - generic [ref=e418]:
+              - img [ref=e419]
+              - text: +8.4% WoW
+            - img "Sparkline of 8 values" [ref=e422]
+        - generic [ref=e425]:
+          - generic [ref=e426]: Sparkline
+          - generic [ref=e428]:
+            - img "Sparkline of 8 values" [ref=e429]
+            - img "Sparkline of 8 values" [ref=e431]
+            - img "Sparkline of 8 values" [ref=e434]
+            - img "Sparkline of 5 values" [ref=e442]
+        - generic [ref=e443]:
+          - generic [ref=e444]: ProgressRing
+          - generic [ref=e445]:
+            - progressbar [ref=e446]:
+              - img [ref=e447]
+              - generic [ref=e451]: 25%
+            - progressbar [ref=e452]:
+              - img [ref=e453]
+              - generic [ref=e457]: 66%
+            - progressbar [ref=e458]:
+              - img [ref=e459]
+              - generic [ref=e463]: 80%
+            - progressbar [ref=e464]:
+              - img [ref=e465]
+              - generic [ref=e469]: 95%
+        - generic [ref=e470]:
+          - generic [ref=e471]: Meter
+          - generic [ref=e473]:
+            - meter "Disk — ok" [ref=e474]
+            - meter "Disk — warning" [ref=e485]
+            - meter "Disk — critical" [ref=e496]
+        - generic [ref=e507]:
+          - generic [ref=e508]: DescriptionList — horizontal
+          - generic [ref=e510]:
+            - term [ref=e511]: Name
+            - definition [ref=e512]: Ada Lovelace
+            - term [ref=e513]: Role
+            - definition [ref=e514]: Engineer
+            - term [ref=e515]: Status
+            - definition [ref=e516]: Active
+        - generic [ref=e517]:
+          - generic [ref=e518]: DescriptionList — vertical
+          - generic [ref=e520]:
+            - term [ref=e521]: Name
+            - definition [ref=e522]: Grace Hopper
+            - term [ref=e523]: Role
+            - definition [ref=e524]: Admiral
+        - generic [ref=e525]:
+          - generic [ref=e526]: ActivityFeed
+          - list [ref=e528]:
+            - listitem [ref=e529]:
+              - img "Ada Lovelace" [ref=e531]:
+                - generic [ref=e533]: AL
+              - generic [ref=e535]:
+                - generic [ref=e536]: Ada
+                - generic [ref=e537]: commented on
+                - generic [ref=e538]: "PR #42"
+                - generic [ref=e539]: 2h ago
+            - listitem [ref=e540]:
+              - img [ref=e543]
+              - generic [ref=e546]:
+                - generic [ref=e547]: Grace
+                - generic [ref=e548]: pushed to
+                - generic [ref=e549]: main
+                - generic [ref=e550]: 1h ago
+            - listitem [ref=e551]:
+              - img [ref=e554]
+              - generic [ref=e557]:
+                - generic [ref=e558]:
+                  - generic [ref=e559]: Alan
+                  - generic [ref=e560]: joined the
+                  - generic [ref=e561]: project
+                  - generic [ref=e562]: just now
+                - generic [ref=e563]:
+                  - img [ref=e564]
+                  - text: Welcome aboard!
+        - generic [ref=e567]:
+          - table [ref=e569]:
+            - rowgroup [ref=e570]:
+              - row "Name Role Visits" [ref=e571]:
+                - columnheader "Name" [ref=e572] [cursor=pointer]:
+                  - text: Name
+                  - img [ref=e574]
+                - columnheader "Role" [ref=e576] [cursor=pointer]:
+                  - text: Role
+                  - img [ref=e578]
+                - columnheader "Visits" [ref=e581] [cursor=pointer]:
+                  - text: Visits
+                  - img [ref=e583]
+            - rowgroup [ref=e586]:
+              - row "Ada Lovelace Engineer 42" [ref=e587]:
+                - cell "Ada Lovelace" [ref=e588]
+                - cell "Engineer" [ref=e589]
+                - cell "42" [ref=e590]
+              - row "Alan Turing Researcher 17" [ref=e591]:
+                - cell "Alan Turing" [ref=e592]
+                - cell "Researcher" [ref=e593]
+                - cell "17" [ref=e594]
+              - row "Barbara Liskov Professor 51" [ref=e595]:
+                - cell "Barbara Liskov" [ref=e596]
+                - cell "Professor" [ref=e597]
+                - cell "51" [ref=e598]
+              - row "Donald Knuth Author 74" [ref=e599]:
+                - cell "Donald Knuth" [ref=e600]
+                - cell "Author" [ref=e601]
+                - cell "74" [ref=e602]
+          - navigation "Pagination" [ref=e604]:
+            - list [ref=e605]:
+              - listitem [ref=e606]:
+                - button "First page" [disabled] [ref=e607]:
+                  - img [ref=e608]
+              - listitem [ref=e611]:
+                - button "Previous page" [disabled] [ref=e612]:
+                  - img [ref=e613]
+              - listitem [ref=e615]:
+                - button "Page 1": "1"
+              - listitem [ref=e616]:
+                - button "Page 2" [ref=e617] [cursor=pointer]: "2"
+              - listitem [ref=e618]:
+                - button "Next page" [ref=e619] [cursor=pointer]:
+                  - img [ref=e620]
+              - listitem [ref=e622]:
+                - button "Last page" [ref=e623] [cursor=pointer]:
+                  - img [ref=e624]
+        - generic [ref=e628]:
+          - generic [ref=e632]:
+            - generic [ref=e633]: Mon
+            - heading "Order placed" [level=3] [ref=e634]
+            - generic [ref=e635]: Your order was received.
+          - generic [ref=e639]:
+            - generic [ref=e640]: Tue
+            - heading "Shipped" [level=3] [ref=e641]
+            - generic [ref=e642]: Package left the warehouse.
+          - generic [ref=e646]:
+            - generic [ref=e647]: Thu
+            - heading "Delivered" [level=3] [ref=e648]
+            - generic [ref=e649]: Left on the porch.
