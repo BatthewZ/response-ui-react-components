@@ -4,6 +4,10 @@
 
 .code-block {
   overflow: hidden;
+  /* Allow shrinking below intrinsic content width when placed in a flex/grid
+     parent, so the inner `.code-block-pre { overflow-x: auto }` scrolls the long
+     code lines instead of forcing the whole card (and page) to overflow. */
+  min-width: 0;
   border: 1px solid var(--C-BORDER-DEFAULT);
   border-radius: var(--RADIUS-MD);
   background-color: var(--C-SURFACE-0);

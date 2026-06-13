@@ -4,6 +4,22 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.4.0] — 2026-06-13
+
+### Added
+
+- **18 new ui/form components** — `Switch`, `Slider`, `NumberInput`, `TagInput`, `OTPInput`, `Combobox`, `DatePicker` (form); `CodeBlock`, `CopyButton`, `Kbd`, `Rating`, `Collapsible`, `CommandPalette`, `ContextMenu`, `HoverCard`, `Drawer`, `Stepper`, `Calendar` (ui).
+- **`components/data-display` group** — a discoverable home for dashboard primitives: `Sparkline`, `ProgressRing`, `Meter`, `DescriptionList`, `ActivityFeed`. (Existing `StatCard`, `Timeline`, `Table`, `DataTable` stay where they are.)
+- **`StatCard.Sparkline` slot and `StatCard.Trend` format** — `StatCard` now composes the new `Sparkline` primitive as a slot, and `StatCard.Trend` takes an optional `format(value)` for custom delta rendering.
+- **`useControllableState` hook** — controlled/uncontrolled state helper, used by the new interactive components.
+- **Date utilities** (`src/util/date.ts`) — `addDays`, `addMonths`, `buildMonthGrid`, `clampDate`, `formatDate`, `getDateFieldOrder`, `getMonthLabel`, `getWeekdayNames`, `isAfter`, `isBefore`, `isSameDay`, `parseDateInput`, `startOfDay`, `startOfMonth` — backing `Calendar` and `DatePicker`.
+- **RSC support** — interactive modules ship a `"use client"` directive so the components work in React Server Component frameworks (Next.js App Router, etc.). Pure presentational components (Button, Text, layout) stay server-renderable. A `verify:directives` script enforces dist mirroring and a secret-free invariant.
+
+### Changed
+
+- **DataTable** — Date- and nullish-aware sorting; `defaultSort` for uncontrolled initial sort; client-side `pageSize` pagination (table slices and derives pages itself); a footer slot.
+- **Dependency bumps** — `@batthewz/response-ui-css` `^0.5.0` → `^0.6.0` (trend + chart tokens) and `@batthewz/response-ui-tw-merge` `^0.1.0` → `^0.2.0` (those tokens taught to `cn()`).
+
 ## [0.3.0] — 2026-06-11
 
 ### Added

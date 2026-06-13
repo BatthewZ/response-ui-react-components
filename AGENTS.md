@@ -28,27 +28,43 @@ When adding a new component that needs CSS:
 
 Class-name convention: kebab-case rooted on the component name (e.g. `.accordion`, `.accordion-trigger`, `.accordion-content-inner`). Use `cn()` to apply, so consumer-passed `className` can merge cleanly.
 
+## RSC
+
+`"use client"` is applied selectively to interactive modules; barrels and pure presentational components (Button, Text, layout) stay directive-neutral so they remain server-renderable. `verify:directives` enforces both the dist mirroring (built `dist/` files carry the same directive as their `src/`) and a secret-free invariant (these are presentational Client Components — props serialize to the browser, so they access no server state/secrets).
+
 ## Public surface
 
 Top-level barrel exports everything. The grouping below mirrors the source layout (`src/`).
 
-### components/ui (36)
+### components/ui (47)
 
 ```
 Accordion, Alert, AppShell, Avatar, AvatarGroup, AvatarUpload, Badge, Breadcrumbs,
-Button, Card, Carousel, DataTable, Dialog, DropdownMenu, EmptyState +
-EmptyState{Title,Description,Icon,Actions}, ErrorBoundary, FileUpload, Hero,
-IconButton, MasonryGrid, MediaCard, Pagination, Popover, Portal, ProgressBar,
-Skeleton, Spinner, Spotlight, StatCard, Swimlane, Table, Tabs, Text,
-ThemeSwitcher, Timeline, Toast, ToastProvider, useToast, Tooltip
+Button, Calendar, Card, Carousel, CodeBlock, Collapsible, CommandPalette + type
+CommandItem, ContextMenu, CopyButton, DataTable + type ColumnDef, Dialog, Drawer,
+DropdownMenu, EmptyState + EmptyState{Title,Description,Icon,Actions}, ErrorBoundary,
+FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination,
+Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper,
+Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast + type ToastVariant,
+ToastProvider, useToast, Tooltip
 ```
 
-### components/form (10)
+### components/form (17)
 
 ```
-Checkbox, Field, FieldError, FormActions, Input, Label, Radio, SearchInput,
-Select, Textarea
+Checkbox, Combobox, DatePicker, Field, FieldError, FormActions, Input, Label,
+NumberInput, OTPInput, Radio, SearchInput, Select, Slider, Switch, TagInput, Textarea
 ```
+
+### components/data-display (5)
+
+```
+Sparkline, ProgressRing, Meter + type MeterProps, DescriptionList, ActivityFeed
+```
+
+Dashboard primitives, its own group alongside ui/form/layout so the category is
+discoverable. Existing dashboard-ish components (StatCard, Timeline, Table, DataTable)
+are NOT moved here — they stay in components/ui.
 
 ### components/layout (6)
 
@@ -78,8 +94,10 @@ type RouterAdapterValue, type RouterLinkComponent, type RouterLinkProps
 ### hooks
 
 ```
-useActiveSection, useClickOutside, useDebounce, useDocumentTitle, useFloating
-+ type Placement, useFocusTrap, usePrefersReducedMotion, useRovingFocus,
+useActiveSection, useClickOutside, useControllableState + type
+UseControllableStateParams + type UseControllableStateReturn, useDebounce,
+useDocumentTitle, useFloating + type Placement, useFocusTrap,
+usePrefersReducedMotion, useRovingFocus,
 useTheme + type Theme + type UseThemeOptions + type UseThemeReturn,
 THEMES (= ["default","events","grimdark","tech"]), STORAGE_KEY
 ```
@@ -87,7 +105,10 @@ THEMES (= ["default","events","grimdark","tech"]), STORAGE_KEY
 ### util
 
 ```
-cn, createCn, mergeExtension, twMerge, tailwindMergeExtension, mergeRefs, formatBytes
+cn, createCn, mergeExtension, twMerge, tailwindMergeExtension, mergeRefs, formatBytes,
+date helpers: addDays, addMonths, buildMonthGrid, clampDate, formatDate,
+getDateFieldOrder, getMonthLabel, getWeekdayNames, isAfter, isBefore, isSameDay,
+parseDateInput, startOfDay, startOfMonth
 ```
 
 ## Patterns and conventions
@@ -230,6 +251,14 @@ Takes `onUpload(file): Promise<{ url: string }>`. Without it, just shows a local
   onUploadError={(e) => toast(e.message, { variant: "error" })}
 />
 ```
+
+### `DataTable` — three wiring modes
+
+Pick one, don't mix:
+
+1. **Client-everything** — `pageSize` (+ optional `defaultSort`). Table sorts, slices, and derives pages from the full `data` array itself.
+2. **Server-controlled** — `sort` + `onSortChange` and `page` + `totalPages` + `onPageChange`; no `pageSize`. Table renders the rows given and reports sort/page intent.
+3. **Hybrid / server-paged (lazy-load)** — never enable uncontrolled sorting; use controlled `sort`. Accumulate fetched rows into `data` and use a footer slot sentinel to trigger the next load.
 
 ### `useFloating` — Floating UI wrapper
 

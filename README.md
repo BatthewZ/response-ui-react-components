@@ -1,6 +1,6 @@
 # @batthewz/response-ui-react-components
 
-React 19 component library for the response-ui design system. ~60 components, accessibility-first, zero CSS-in-JS — all styling comes from [`@batthewz/response-ui-css`](https://github.com/BatthewZ/response-ui-css/) (Tailwind v4 + design tokens). Router-agnostic via an injection adapter, headless auth gating.
+React 19 component library for the response-ui design system. ~80 components, accessibility-first, zero CSS-in-JS — all styling comes from [`@batthewz/response-ui-css`](https://github.com/BatthewZ/response-ui-css/) (Tailwind v4 + design tokens). Router-agnostic via an injection adapter, headless auth gating.
 
 > **Live demo:** [ai-website-starter.benmatthews-it.workers.dev/demo](https://ai-website-starter.benmatthews-it.workers.dev/demo) — every component, every theme, every responsive scale, in one place.
 
@@ -130,14 +130,29 @@ export const twMerge = extendTailwindMerge({
 
 ## What ships
 
-- **UI** (36): Accordion, Alert, AppShell, Avatar, AvatarUpload, Badge, Breadcrumbs, Button, Card, Carousel, DataTable, Dialog, DropdownMenu, EmptyState, ErrorBoundary, FileUpload, Hero, IconButton, MasonryGrid, MediaCard, Pagination, Popover, Portal, ProgressBar, Skeleton, Spinner, Spotlight, StatCard, Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast (+ToastProvider/useToast), Tooltip
-- **Form** (10): Checkbox, Field, FieldError, FormActions, Input, Label, Radio, SearchInput, Select, Textarea
+- **UI** (47): Accordion, Alert, AppShell, Avatar (+AvatarGroup), AvatarUpload, Badge, Breadcrumbs, Button, Calendar, Card, Carousel, CodeBlock, Collapsible, CommandPalette, ContextMenu, CopyButton, DataTable, Dialog, Drawer, DropdownMenu, EmptyState, ErrorBoundary, FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination, Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper, Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast (+ToastProvider/useToast), Tooltip
+- **Form** (17): Checkbox, Combobox, DatePicker, Field, FieldError, FormActions, Input, Label, NumberInput, OTPInput, Radio, SearchInput, Select, Slider, Switch, TagInput, Textarea
+- **Data display** (5): Sparkline, ProgressRing, Meter, DescriptionList, ActivityFeed
 - **Layout** (6): Center, Container, Divider, Row, Spacer, Stack
 - **Animation** (5): AnimatePresence, Parallax, ScrollReveal, Stagger, ViewTransition (+`useViewTransition`)
 - **Guards** (1): RequireAuth (headless)
 - **Router** (1): RouterAdapterProvider, useLink, usePathname
-- **Hooks**: useActiveSection, useClickOutside, useDebounce, useDocumentTitle, useFloating, useFocusTrap, usePrefersReducedMotion, useRovingFocus, useTheme
-- **Util**: `cn`, `tailwindMergeExtension`, `twMerge`, `mergeRefs`, `formatBytes`
+- **Hooks**: useActiveSection, useClickOutside, useControllableState, useDebounce, useDocumentTitle, useFloating, useFocusTrap, usePrefersReducedMotion, useRovingFocus, useTheme
+- **Util**: `cn`, `createCn`, `mergeExtension`, `tailwindMergeExtension`, `twMerge`, `mergeRefs`, `formatBytes`, plus date helpers (`formatDate`, `parseDateInput`, `buildMonthGrid`, `addDays`, `addMonths`, …)
+
+## RSC / Server Components
+
+Interactive modules ship a `"use client"` directive, so the components work out of the box in React Server Component frameworks (Next.js App Router, etc.). Pure presentational components (Button, Text, the layout primitives) carry no directive and stay server-renderable — you can use them directly in server components.
+
+**Security:** these are presentational Client Components — as with any client component, never pass server-only secrets as props (props are serialized to the browser). The components themselves access no server state or secrets (enforced by `bun run verify:directives`).
+
+## DataTable wiring modes
+
+`DataTable` supports three wiring modes — pick one and stick to it:
+
+- **Client-everything** — pass `pageSize` (and optionally `defaultSort`). The table sorts, slices, and derives pages entirely on the client from the full `data` array. No `onSortChange` / `onPageChange` needed.
+- **Server-controlled** — pass `sort` + `onSortChange` and `page` + `totalPages` + `onPageChange`, and omit `pageSize`. The table renders exactly the rows you give it and reports sort/page intent back to you; you do the sorting and paging server-side.
+- **Hybrid / server-paged (lazy-load)** — never enable uncontrolled sorting here; use controlled `sort`. Accumulate fetched rows into the `data` array as the user pages, and render a footer sentinel (via the footer slot) to trigger the next load.
 
 ## Subpath imports for tree-shaking
 
