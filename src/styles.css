@@ -11,6 +11,7 @@
 @import "./components/ui/Breadcrumbs.css";
 @import "./components/ui/Button.css";
 @import "./components/ui/Carousel.css";
+@import "./components/ui/Collapsible.css";
 @import "./components/ui/DropdownMenu.css";
 @import "./components/ui/EmptyState.css";
 @import "./components/ui/FileUpload.css";
@@ -20,6 +21,7 @@
 @import "./components/ui/Pagination.css";
 @import "./components/ui/Popover.css";
 @import "./components/ui/ProgressBar.css";
+@import "./components/ui/Rating.css";
 @import "./components/ui/Skeleton.css";
 @import "./components/ui/Spotlight.css";
 @import "./components/ui/StatCard.css";
@@ -32,6 +34,8 @@
 
 /* form */
 @import "./components/form/SearchInput.css";
+@import "./components/form/Slider.css";
+@import "./components/form/Switch.css";
 
 /* Tailwind v4 — register this package's own sources so the utility classes
    used inside the components are generated in the consumer's build. The path

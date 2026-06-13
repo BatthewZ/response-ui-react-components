@@ -1,0 +1,143 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { createRef } from "react";
+import { describe, expect, it, vi } from "vitest";
+
+import { TagInput } from "./TagInput";
+
+describe("TagInput", () => {
+  it("adds a tag on Enter", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<TagInput aria-label="Tags" onValueChange={onValueChange} />);
+
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    await user.type(input, "apple{Enter}");
+    expect(onValueChange).toHaveBeenLastCalledWith(["apple"]);
+    expect(screen.getByText("apple")).toBeInTheDocument();
+    expect(input).toHaveValue("");
+  });
+
+  it("rejects duplicate tags", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <TagInput aria-label="Tags" defaultValue={["apple"]} onValueChange={onValueChange} />
+    );
+
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    await user.type(input, "apple{Enter}");
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  it("adds a tag when a delimiter char is typed", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<TagInput aria-label="Tags" onValueChange={onValueChange} />);
+
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    await user.type(input, "apple,");
+    expect(onValueChange).toHaveBeenLastCalledWith(["apple"]);
+  });
+
+  it("pastes 'a, b, c' as three chips", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<TagInput aria-label="Tags" onValueChange={onValueChange} />);
+
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    input.focus();
+    await user.paste("a, b, c");
+    expect(onValueChange).toHaveBeenLastCalledWith(["a", "b", "c"]);
+  });
+
+  it("removes the last tag on Backspace with empty input", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <TagInput aria-label="Tags" defaultValue={["a", "b"]} onValueChange={onValueChange} />
+    );
+
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    input.focus();
+    await user.keyboard("{Backspace}");
+    expect(onValueChange).toHaveBeenLastCalledWith(["a"]);
+  });
+
+  it("enforces maxTags cap", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <TagInput aria-label="Tags" maxTags={2} defaultValue={["a", "b"]} onValueChange={onValueChange} />
+    );
+
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    await user.type(input, "c{Enter}");
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  it("remove button has the correct aria-label and removes the tag", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <TagInput aria-label="Tags" defaultValue={["apple", "pear"]} onValueChange={onValueChange} />
+    );
+
+    const button = screen.getByRole("button", { name: "Remove apple" });
+    await user.click(button);
+    expect(onValueChange).toHaveBeenLastCalledWith(["pear"]);
+  });
+
+  it("shows a validation message when validateTag returns a string", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <TagInput
+        aria-label="Tags"
+        validateTag={() => "Too short"}
+        onValueChange={onValueChange}
+      />
+    );
+
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    await user.type(input, "x{Enter}");
+    expect(screen.getByText("Too short")).toBeInTheDocument();
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  it("rejects silently when validateTag returns false", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <TagInput aria-label="Tags" validateTag={() => false} onValueChange={onValueChange} />
+    );
+
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    await user.type(input, "x{Enter}");
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(screen.queryByText("x")).not.toBeInTheDocument();
+  });
+
+  it("disables the input and remove buttons", () => {
+    render(<TagInput aria-label="Tags" defaultValue={["a"]} disabled />);
+    expect(screen.getByRole("textbox", { name: "Tags" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Remove a" })).toBeDisabled();
+  });
+
+  it("renders the placeholder when empty", () => {
+    render(<TagInput aria-label="Tags" placeholder="Add tags..." />);
+    expect(screen.getByPlaceholderText("Add tags...")).toBeInTheDocument();
+  });
+
+  it("renders a controlled value", () => {
+    render(<TagInput aria-label="Tags" value={["x", "y"]} onValueChange={vi.fn()} />);
+    expect(screen.getByText("x")).toBeInTheDocument();
+    expect(screen.getByText("y")).toBeInTheDocument();
+  });
+
+  it("forwards ref to the inner input", () => {
+    const ref = createRef<HTMLInputElement>();
+    render(<TagInput ref={ref} aria-label="Tags" />);
+    expect(ref.current).toBeInstanceOf(HTMLInputElement);
+  });
+});

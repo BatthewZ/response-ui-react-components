@@ -1,0 +1,81 @@
+/* ------------------------------------------------------------------ */
+/*  Rating                                                             */
+/* ------------------------------------------------------------------ */
+
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--R-SIZE-6);
+  color: var(--C-STATUS-WARNING);
+}
+
+.rating--disabled {
+  opacity: 0.5;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Button (interactive radio)                                         */
+/* ------------------------------------------------------------------ */
+
+.rating-button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  cursor: pointer;
+  border-radius: var(--RADIUS-SM);
+}
+
+.rating-button:disabled {
+  cursor: not-allowed;
+}
+
+.rating-button:focus-visible {
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Star (two-layer: empty base + clipped filled overlay)              */
+/* ------------------------------------------------------------------ */
+
+.rating-star {
+  position: relative;
+  display: inline-block;
+  width: 1.5em;
+  height: 1.5em;
+  line-height: 0;
+}
+
+.rating-star-base {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  opacity: 0.45;
+}
+
+.rating-star-fill {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+  transition: width var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
+}
+
+.rating-star-fill-icon {
+  width: 1.5em;
+  height: 1.5em;
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reduced motion                                                     */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .rating-star-fill {
+    transition: none;
+  }
+}

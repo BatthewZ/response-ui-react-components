@@ -6,19 +6,28 @@ import {
   Button,
   Card,
   Checkbox,
+  Collapsible,
+  CopyButton,
   DataTable,
   Dialog,
   DropdownMenu,
   Field,
   Input,
+  Kbd,
   Label,
+  NumberInput,
+  OTPInput,
   Popover,
   ProgressBar,
   Radio,
+  Rating,
   Select,
+  Slider,
   Spinner,
   Stack,
   StatCard,
+  Switch,
+  TagInput,
   Textarea,
   ThemeSwitcher,
   Timeline,
@@ -118,6 +127,14 @@ export function App() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [checked, setChecked] = useState(true);
   const [radio, setRadio] = useState("a");
+  const [switchOn, setSwitchOn] = useState(true);
+  const [sliderValue, setSliderValue] = useState(40);
+  const [numberValue, setNumberValue] = useState<number | null>(8);
+  const [tags, setTags] = useState<string[]>(["react", "typescript"]);
+  const [otp, setOtp] = useState("");
+  const [rating, setRating] = useState(3);
+  const [halfRating, setHalfRating] = useState(3.5);
+  const [collapsibleOpen, setCollapsibleOpen] = useState(false);
 
   const maxWidth = VIEWPORTS[viewport].width;
 
@@ -271,7 +288,55 @@ export function App() {
 
           {/* TODO (later phase): add ui components here as they land —
               e.g. Drawer, Combobox, Calendar. One <Tile> each. */}
-          <TodoTile name="Switch" />
+          <Tile label="Rating">
+            <div className="flex flex-col gap-r5">
+              <Rating
+                aria-label="Rate this product"
+                value={rating}
+                onValueChange={setRating}
+              />
+              <Rating
+                aria-label="Rate this product (half steps)"
+                allowHalf
+                value={halfRating}
+                onValueChange={setHalfRating}
+              />
+              <Rating aria-label="Average rating" value={4} readOnly />
+            </div>
+          </Tile>
+          <Tile label="Kbd">
+            <span className="flex items-center gap-r6 text-body-2 text-fg-secondary">
+              <Kbd>⌘</Kbd>
+              <Kbd>K</Kbd>
+              <span>to search,</span>
+              <Kbd>Esc</Kbd>
+              <span>to close</span>
+            </span>
+          </Tile>
+          <Tile label="CopyButton">
+            <div className="flex items-center gap-r5">
+              <code className="text-body-2 text-fg-secondary">npm i response-ui</code>
+              <CopyButton value="npm i response-ui" />
+            </div>
+          </Tile>
+          <Tile label="Collapsible">
+            <Collapsible
+              open={collapsibleOpen}
+              onOpenChange={setCollapsibleOpen}
+              className="w-64"
+            >
+              <Collapsible.Trigger className="flex w-full items-center justify-between rounded-md border border-border-default bg-surface-2 px-r4 py-r5 text-body-2 font-medium text-fg-primary">
+                <span>What is response-ui?</span>
+                <span className="text-fg-muted">{collapsibleOpen ? "−" : "+"}</span>
+              </Collapsible.Trigger>
+              <Collapsible.Content>
+                <p className="px-r4 py-r5 text-body-3 text-fg-secondary">
+                  A themeable React component library built on design tokens and
+                  Tailwind v4.
+                </p>
+              </Collapsible.Content>
+            </Collapsible>
+          </Tile>
           <TodoTile name="Combobox" />
           <TodoTile name="Drawer" />
           <TodoTile name="Calendar" />
@@ -328,7 +393,57 @@ export function App() {
           </Tile>
 
           {/* TODO (later phase): add form components here as they land. */}
-          <TodoTile name="Slider" />
+          <Tile label="Switch">
+            <div className="flex flex-col gap-r4">
+              <Switch checked={switchOn} onCheckedChange={setSwitchOn} />
+              <Switch defaultChecked={false} />
+              <Switch size="sm" defaultChecked />
+              <Switch defaultChecked disabled />
+            </div>
+          </Tile>
+          <Tile label="Slider">
+            <div className="flex w-64 flex-col gap-r4">
+              <Slider
+                value={sliderValue}
+                onValueChange={setSliderValue}
+                aria-label="Volume"
+              />
+              <span className="text-body-3 text-fg-muted">Value: {sliderValue}</span>
+              <Slider defaultValue={75} step={5} aria-label="Brightness" disabled />
+            </div>
+          </Tile>
+          <Tile label="NumberInput">
+            <div className="flex w-48 flex-col gap-r4">
+              <NumberInput
+                value={numberValue}
+                onValueChange={setNumberValue}
+                min={0}
+                max={20}
+                step={1}
+                aria-label="Quantity"
+              />
+              <span className="text-body-3 text-fg-muted">
+                Value: {numberValue ?? "null"}
+              </span>
+            </div>
+          </Tile>
+          <Tile label="TagInput">
+            <div className="w-64">
+              <TagInput
+                value={tags}
+                onValueChange={setTags}
+                placeholder="Add a tag…"
+                maxTags={6}
+                aria-label="Tags"
+              />
+            </div>
+          </Tile>
+          <Tile label="OTPInput">
+            <div className="flex flex-col gap-r4">
+              <OTPInput length={6} value={otp} onValueChange={setOtp} />
+              <span className="text-body-3 text-fg-muted">Code: {otp || "—"}</span>
+            </div>
+          </Tile>
         </Group>
 
         {/* ============================================================ */}

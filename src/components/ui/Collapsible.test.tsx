@@ -1,0 +1,136 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+import { describe, expect, it, vi } from "vitest";
+
+import { Collapsible } from "./Collapsible";
+
+function renderCollapsible(
+  props: {
+    open?: boolean;
+    defaultOpen?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    disabled?: boolean;
+  } = {}
+) {
+  return render(
+    <Collapsible {...props}>
+      <Collapsible.Trigger>Toggle</Collapsible.Trigger>
+      <Collapsible.Content>Panel content</Collapsible.Content>
+    </Collapsible>
+  );
+}
+
+describe("Collapsible", () => {
+  it("is collapsed by default", () => {
+    renderCollapsible();
+
+    expect(screen.getByRole("button", { name: "Toggle" })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+    expect(screen.getByRole("region")).toHaveAttribute("data-state", "closed");
+  });
+
+  it("trigger toggles aria-expanded and data-state on Root and Content", async () => {
+    const user = userEvent.setup();
+    const { container } = renderCollapsible();
+
+    const trigger = screen.getByRole("button", { name: "Toggle" });
+    const root = container.querySelector(".collapsible")!;
+    const content = screen.getByRole("region");
+
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).toHaveAttribute("data-state", "closed");
+    expect(root).toHaveAttribute("data-state", "closed");
+    expect(content).toHaveAttribute("data-state", "closed");
+
+    await user.click(trigger);
+
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(trigger).toHaveAttribute("data-state", "open");
+    expect(root).toHaveAttribute("data-state", "open");
+    expect(content).toHaveAttribute("data-state", "open");
+
+    await user.click(trigger);
+
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(content).toHaveAttribute("data-state", "closed");
+  });
+
+  it("aria-controls points to the Content id", () => {
+    renderCollapsible();
+
+    const trigger = screen.getByRole("button", { name: "Toggle" });
+    const content = screen.getByRole("region");
+
+    expect(trigger.getAttribute("aria-controls")).toBe(content.id);
+    expect(content.id).toBeTruthy();
+  });
+
+  it("content stays mounted when closed", () => {
+    renderCollapsible();
+
+    expect(screen.getByText("Panel content")).toBeInTheDocument();
+  });
+
+  it("controlled mode: internal toggle does not change state without onOpenChange updating it", async () => {
+    const user = userEvent.setup();
+    renderCollapsible({ open: false });
+
+    const trigger = screen.getByRole("button", { name: "Toggle" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(trigger);
+
+    // Controlled and parent didn't update `open`, so it stays closed.
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("region")).toHaveAttribute("data-state", "closed");
+  });
+
+  it("controlled mode: updates when parent passes new open prop", async () => {
+    const user = userEvent.setup();
+
+    function Controlled() {
+      const [open, setOpen] = useState(false);
+      return (
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <Collapsible.Trigger>Toggle</Collapsible.Trigger>
+          <Collapsible.Content>Panel content</Collapsible.Content>
+        </Collapsible>
+      );
+    }
+
+    render(<Controlled />);
+    const trigger = screen.getByRole("button", { name: "Toggle" });
+
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("fires onOpenChange with the next state", async () => {
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderCollapsible({ onOpenChange });
+
+    await user.click(screen.getByRole("button", { name: "Toggle" }));
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+
+    await user.click(screen.getByRole("button", { name: "Toggle" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("disabled prevents toggle", async () => {
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderCollapsible({ disabled: true, onOpenChange });
+
+    const trigger = screen.getByRole("button", { name: "Toggle" });
+    expect(trigger).toBeDisabled();
+
+    await user.click(trigger);
+
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+});
