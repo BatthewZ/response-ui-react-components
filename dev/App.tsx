@@ -1,7 +1,10 @@
+import { GitCommit, MessageSquare, UserPlus } from "lucide-react";
 import { useState } from "react";
 
 import {
+  ActivityFeed,
   Alert,
+  Avatar,
   Badge,
   Button,
   Card,
@@ -9,20 +12,24 @@ import {
   Collapsible,
   CopyButton,
   DataTable,
+  DescriptionList,
   Dialog,
   DropdownMenu,
   Field,
   Input,
   Kbd,
   Label,
+  Meter,
   NumberInput,
   OTPInput,
   Popover,
   ProgressBar,
+  ProgressRing,
   Radio,
   Rating,
   Select,
   Slider,
+  Sparkline,
   Spinner,
   Stack,
   StatCard,
@@ -490,7 +497,107 @@ export function App() {
               <StatCard.Value>1,280</StatCard.Value>
               <StatCard.Trend value={0} direction="neutral" />
             </StatCard>
+            {/* StatCard using the new .Sparkline slot + .Trend `format` */}
+            <StatCard>
+              <StatCard.Label>Sessions</StatCard.Label>
+              <StatCard.Value>9,402</StatCard.Value>
+              <StatCard.Trend value={8.4} direction="up" format={(v) => `+${v.toFixed(1)}% WoW`} />
+              <StatCard.Sparkline
+                direction="up"
+                values={[4, 6, 5, 8, 7, 10, 9, 12]}
+                variant="area"
+              />
+            </StatCard>
           </div>
+
+          <Tile label="Sparkline">
+            <div className="flex flex-col gap-r5">
+              <Sparkline className="text-chart-1" values={[3, 7, 4, 9, 6, 11, 8, 13]} />
+              <Sparkline
+                className="text-trend-up"
+                variant="area"
+                values={[3, 7, 4, 9, 6, 11, 8, 13]}
+              />
+              <Sparkline
+                className="text-trend-down"
+                variant="bar"
+                values={[13, 8, 11, 6, 9, 4, 7, 3]}
+              />
+              {/* Flat / edge case: all-equal values render a centreline with no NaN */}
+              <Sparkline className="text-fg-muted" values={[5, 5, 5, 5, 5]} />
+            </div>
+          </Tile>
+
+          <Tile label="ProgressRing">
+            <ProgressRing value={25}>
+              <span className="text-body-3 font-semibold text-fg-primary">25%</span>
+            </ProgressRing>
+            <ProgressRing value={66} color="success">
+              <span className="text-body-3 font-semibold text-fg-primary">66%</span>
+            </ProgressRing>
+            <ProgressRing value={80} color="warning">
+              <span className="text-body-3 font-semibold text-fg-primary">80%</span>
+            </ProgressRing>
+            <ProgressRing value={95} color="error">
+              <span className="text-body-3 font-semibold text-fg-primary">95%</span>
+            </ProgressRing>
+          </Tile>
+
+          <Tile label="Meter">
+            <div className="flex w-64 flex-col gap-r4">
+              <Meter value={35} warningAt={70} criticalAt={90} aria-label="Disk — ok" />
+              <Meter value={78} warningAt={70} criticalAt={90} aria-label="Disk — warning" />
+              <Meter value={94} warningAt={70} criticalAt={90} aria-label="Disk — critical" />
+            </div>
+          </Tile>
+
+          <Tile label="DescriptionList — horizontal">
+            <DescriptionList className="w-64">
+              <DescriptionList.Term>Name</DescriptionList.Term>
+              <DescriptionList.Detail>Ada Lovelace</DescriptionList.Detail>
+              <DescriptionList.Term>Role</DescriptionList.Term>
+              <DescriptionList.Detail>Engineer</DescriptionList.Detail>
+              <DescriptionList.Term>Status</DescriptionList.Term>
+              <DescriptionList.Detail>Active</DescriptionList.Detail>
+            </DescriptionList>
+          </Tile>
+
+          <Tile label="DescriptionList — vertical">
+            <DescriptionList layout="vertical" className="w-64">
+              <DescriptionList.Term>Name</DescriptionList.Term>
+              <DescriptionList.Detail>Grace Hopper</DescriptionList.Detail>
+              <DescriptionList.Term>Role</DescriptionList.Term>
+              <DescriptionList.Detail>Admiral</DescriptionList.Detail>
+            </DescriptionList>
+          </Tile>
+
+          <Tile label="ActivityFeed">
+            <ActivityFeed className="w-72">
+              <ActivityFeed.Item
+                avatar={<Avatar name="Ada Lovelace" size="sm" />}
+                actor="Ada"
+                action="commented on"
+                target="PR #42"
+                timestamp="2h ago"
+              />
+              <ActivityFeed.Item
+                icon={<GitCommit size={10} />}
+                actor="Grace"
+                action="pushed to"
+                target="main"
+                timestamp="1h ago"
+              />
+              <ActivityFeed.Item
+                icon={<UserPlus size={10} />}
+                actor="Alan"
+                action="joined the"
+                target="project"
+                timestamp="just now"
+              >
+                <MessageSquare className="inline-block" size={12} /> Welcome aboard!
+              </ActivityFeed.Item>
+            </ActivityFeed>
+          </Tile>
 
           <div className="w-full">
             <DataTable<Person>
@@ -516,10 +623,6 @@ export function App() {
             </Timeline>
           </div>
 
-          {/* TODO (later phase): dashboard primitives land here —
-              e.g. Sparkline (uses the new trend/chart tokens), ProgressRing,
-              Meter, DescriptionList, ActivityFeed. One <Tile> each. */}
-          <TodoTile name="Sparkline" />
         </Group>
       </main>
     </div>

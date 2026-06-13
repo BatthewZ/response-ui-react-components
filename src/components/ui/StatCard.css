@@ -74,6 +74,13 @@
   transform: rotate(180deg);
 }
 
+/* Sparkline slot */
+.stat-card__sparkline {
+  display: block;
+  margin-top: var(--R-SIZE-2);
+  max-height: var(--R-SIZE-4);
+}
+
 /* ------------------------------------------------------------------ */
 /*  Reduced motion                                                     */
 /* ------------------------------------------------------------------ */

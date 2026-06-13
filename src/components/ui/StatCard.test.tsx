@@ -147,6 +147,25 @@ describe("StatCard", () => {
       expect(screen.getByTestId("trend").textContent).toContain("8%");
     });
 
+    it("uses default formatting when no format prop is provided", () => {
+      render(<StatCard.Trend value={7} direction="up" data-testid="trend" />);
+      expect(screen.getByTestId("trend").textContent).toContain("+7%");
+    });
+
+    it("renders custom format text when format prop is provided", () => {
+      render(
+        <StatCard.Trend
+          value={42}
+          direction="up"
+          format={(v) => `${v} pts`}
+          data-testid="trend"
+        />
+      );
+      const el = screen.getByTestId("trend");
+      expect(el.textContent).toContain("42 pts");
+      expect(el.textContent).not.toContain("%");
+    });
+
     it("merges custom className", () => {
       render(<StatCard.Trend value={1} direction="up" className="extra" data-testid="trend" />);
       const el = screen.getByTestId("trend");
@@ -158,6 +177,54 @@ describe("StatCard", () => {
       const ref = createRef<HTMLSpanElement>();
       render(<StatCard.Trend ref={ref} value={1} direction="up" />);
       expect(ref.current).toBeInstanceOf(HTMLSpanElement);
+    });
+  });
+
+  describe("Sparkline", () => {
+    it("renders an svg with role img", () => {
+      render(<StatCard.Sparkline values={[1, 2, 3]} />);
+      expect(screen.getByRole("img")).toBeInTheDocument();
+    });
+
+    it("wraps the sparkline in a stat-card__sparkline container", () => {
+      const { container } = render(<StatCard.Sparkline values={[1, 2, 3]} />);
+      const wrapper = container.querySelector(".stat-card__sparkline");
+      expect(wrapper).toBeInTheDocument();
+      expect(wrapper?.querySelector("svg")).toBeInTheDocument();
+    });
+
+    it("applies the up tint class when direction is up", () => {
+      render(<StatCard.Sparkline values={[1, 2, 3]} direction="up" />);
+      expect(screen.getByRole("img").getAttribute("class")).toContain("text-trend-up");
+    });
+
+    it("applies the down tint class when direction is down", () => {
+      render(<StatCard.Sparkline values={[3, 2, 1]} direction="down" />);
+      expect(screen.getByRole("img").getAttribute("class")).toContain("text-trend-down");
+    });
+
+    it("applies the neutral tint class when direction is neutral", () => {
+      render(<StatCard.Sparkline values={[1, 1, 1]} direction="neutral" />);
+      expect(screen.getByRole("img").getAttribute("class")).toContain("text-fg-muted");
+    });
+
+    it("leaves color to inherit when direction is omitted", () => {
+      render(<StatCard.Sparkline values={[1, 2, 3]} />);
+      const cls = screen.getByRole("img").getAttribute("class") ?? "";
+      expect(cls).not.toContain("text-trend-up");
+      expect(cls).not.toContain("text-trend-down");
+      expect(cls).not.toContain("text-fg-muted");
+    });
+
+    it("forwards ref to the svg element", () => {
+      const ref = createRef<SVGSVGElement>();
+      render(<StatCard.Sparkline ref={ref} values={[1, 2, 3]} />);
+      expect(ref.current).toBeInstanceOf(SVGSVGElement);
+    });
+
+    it("merges custom className onto the sparkline", () => {
+      render(<StatCard.Sparkline values={[1, 2, 3]} className="extra-spark" />);
+      expect(screen.getByRole("img").getAttribute("class")).toContain("extra-spark");
     });
   });
 

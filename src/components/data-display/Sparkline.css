@@ -1,0 +1,87 @@
+/* ------------------------------------------------------------------ */
+/*  Sparkline                                                          */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Color flows through `--sparkline-color`, which falls back to
+ * `currentColor`. Consumers tint via text utilities on the <svg>
+ * (e.g. `text-chart-1`, `text-trend-up`) — no per-instance CSS needed.
+ */
+.sparkline {
+  display: inline-block;
+  vertical-align: middle;
+  --sparkline-color: currentColor;
+}
+
+/* Line / area stroke */
+.sparkline-line {
+  stroke: var(--sparkline-color, currentColor);
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Area fill — same hue, reduced opacity */
+.sparkline-area {
+  fill: var(--sparkline-color, currentColor);
+  fill-opacity: 0.15;
+  stroke: none;
+}
+
+/* Bars */
+.sparkline-bar {
+  fill: var(--sparkline-color, currentColor);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Draw-in animation                                                  */
+/* ------------------------------------------------------------------ */
+
+@keyframes sparkline-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes sparkline-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Stroke draws in via dasharray/offset tied to pathLength=1. */
+.sparkline--animate .sparkline-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sparkline-draw var(--MOTION-DURATION-SHIFT, 320ms) var(--MOTION-EASE-SHIFT, ease-out)
+    forwards;
+}
+
+/* Area fill and bars fade in. */
+.sparkline--animate .sparkline-area,
+.sparkline--animate .sparkline-bar {
+  opacity: 0;
+  animation: sparkline-fade var(--MOTION-DURATION-SHIFT, 320ms) var(--MOTION-EASE-SHIFT, ease-out)
+    forwards;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reduced motion                                                     */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .sparkline--animate .sparkline-line,
+  .sparkline--animate .sparkline-area,
+  .sparkline--animate .sparkline-bar {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}

@@ -1,0 +1,133 @@
+/* ------------------------------------------------------------------ */
+/*  ActivityFeed                                                       */
+/* ------------------------------------------------------------------ */
+
+.activity-feed {
+  /* Component geometry tokens — interdependent, so defined together */
+  /* Avatar/icon column — fixed to fit a small avatar (matches Avatar size="sm").
+     A component dimension, not page spacing, so it's a literal (cf. Timeline). */
+  --_activity-feed-aside-width: 2rem;
+  --_activity-feed-gutter: var(--R-SIZE-5);
+  --_activity-feed-gap: var(--R-SIZE-3);
+  --_activity-feed-dot-size: 0.875rem;
+  --_activity-feed-line-width: 2px;
+
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Item — two-column grid (avatar column + content column)            */
+/* ------------------------------------------------------------------ */
+
+.activity-feed-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--_activity-feed-aside-width) 1fr;
+  column-gap: var(--_activity-feed-gutter);
+  padding-bottom: var(--_activity-feed-gap);
+}
+
+.activity-feed-item:last-child {
+  padding-bottom: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Connector line — anchored to the avatar column center, runs from   */
+/*  below the dot to the bottom of the item. Suppressed on last item.  */
+/* ------------------------------------------------------------------ */
+
+.activity-feed-item::before {
+  content: "";
+  position: absolute;
+  top: var(--_activity-feed-aside-width);
+  bottom: 0;
+  left: calc(var(--_activity-feed-aside-width) / 2 - var(--_activity-feed-line-width) / 2);
+  width: var(--_activity-feed-line-width);
+  background-color: var(--C-BORDER-DEFAULT);
+}
+
+.activity-feed-item:last-child::before {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Aside (avatar / icon-dot column)                                   */
+/* ------------------------------------------------------------------ */
+
+.activity-feed-aside {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+}
+
+/* Icon fallback — token-ringed dot when no avatar is supplied */
+.activity-feed-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--_activity-feed-dot-size);
+  height: var(--_activity-feed-dot-size);
+  border-radius: var(--RADIUS-FULL);
+  background-color: var(--C-SURFACE-2);
+  color: var(--C-TEXT-SECONDARY);
+  box-shadow: 0 0 0 var(--_activity-feed-line-width) var(--C-SURFACE-0);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main (content column)                                              */
+/* ------------------------------------------------------------------ */
+
+.activity-feed-main {
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sentence row (actor · action · target · timestamp)                 */
+/* ------------------------------------------------------------------ */
+
+.activity-feed-sentence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--R-SIZE-6);
+  font-size: var(--BodyText-2);
+  line-height: var(--BodyText-2-line-height);
+  color: var(--C-TEXT-SECONDARY);
+}
+
+.activity-feed-actor {
+  font-weight: var(--Bold-Weight);
+  color: var(--C-TEXT-PRIMARY);
+}
+
+.activity-feed-action {
+  color: var(--C-TEXT-SECONDARY);
+}
+
+.activity-feed-target {
+  font-weight: var(--Bold-Weight);
+  color: var(--C-TEXT-PRIMARY);
+}
+
+.activity-feed-timestamp {
+  margin-left: auto;
+  padding-left: var(--R-SIZE-5);
+  font-size: var(--BodyText-3);
+  line-height: var(--BodyText-3-line-height);
+  color: var(--C-TEXT-MUTED);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Body (optional block below the sentence line)                      */
+/* ------------------------------------------------------------------ */
+
+.activity-feed-body {
+  margin-top: var(--R-SIZE-5);
+  font-size: var(--BodyText-2);
+  line-height: var(--BodyText-2-line-height);
+  color: var(--C-TEXT-SECONDARY);
+}

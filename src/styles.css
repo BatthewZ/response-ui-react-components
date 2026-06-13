@@ -32,6 +32,11 @@
 @import "./components/ui/Timeline.css";
 @import "./components/ui/Tooltip.css";
 
+/* data-display */
+@import "./components/data-display/ActivityFeed.css";
+@import "./components/data-display/ProgressRing.css";
+@import "./components/data-display/Sparkline.css";
+
 /* form */
 @import "./components/form/SearchInput.css";
 @import "./components/form/Slider.css";

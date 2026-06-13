@@ -1,4 +1,5 @@
 import {
+  type ComponentProps,
   type ComponentPropsWithRef,
   forwardRef,
   useCallback,
@@ -10,6 +11,7 @@ import {
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
+import { Sparkline } from "../data-display/Sparkline";
 
 const defaultFormat = new Intl.NumberFormat();
 
@@ -131,6 +133,7 @@ const StatCardLabel = forwardRef<HTMLSpanElement, StatCardLabelProps>(function S
 type StatCardTrendProps = {
   value: number;
   direction: "up" | "down" | "neutral";
+  format?: (value: number) => string;
 } & Omit<ComponentPropsWithRef<"span">, "children">;
 
 const directionClass: Record<string, string> = {
@@ -152,7 +155,7 @@ const TrendArrow = () => (
 );
 
 const StatCardTrend = forwardRef<HTMLSpanElement, StatCardTrendProps>(function StatCardTrend(
-  { value, direction, className, ...props },
+  { value, direction, format, className, ...props },
   ref
 ) {
   const sign = direction === "down" ? "-" : direction === "up" ? "+" : "";
@@ -164,8 +167,7 @@ const StatCardTrend = forwardRef<HTMLSpanElement, StatCardTrendProps>(function S
       {...props}
     >
       {direction !== "neutral" && <TrendArrow />}
-      {sign}
-      {Math.abs(value)}%
+      {format ? format(value) : `${sign}${Math.abs(value)}%`}
     </span>
   );
 });
@@ -184,6 +186,34 @@ const StatCardIcon = forwardRef<HTMLDivElement, StatCardIconProps>(function Stat
 });
 
 /* ------------------------------------------------------------------ */
+/*  StatCard.Sparkline                                                 */
+/* ------------------------------------------------------------------ */
+
+type StatCardSparklineProps = {
+  direction?: "up" | "down" | "neutral";
+} & ComponentProps<typeof Sparkline>;
+
+const sparklineDirectionClass: Record<string, string> = {
+  up: "text-trend-up",
+  down: "text-trend-down",
+  neutral: "text-fg-muted",
+};
+
+const StatCardSparkline = forwardRef<SVGSVGElement, StatCardSparklineProps>(
+  function StatCardSparkline({ direction, className, ...props }, ref) {
+    return (
+      <div className="stat-card__sparkline">
+        <Sparkline
+          ref={ref}
+          className={cn(direction && sparklineDirectionClass[direction], className)}
+          {...props}
+        />
+      </div>
+    );
+  }
+);
+
+/* ------------------------------------------------------------------ */
 /*  Compound export                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -192,4 +222,5 @@ export const StatCard = Object.assign(StatCardRoot, {
   Label: StatCardLabel,
   Trend: StatCardTrend,
   Icon: StatCardIcon,
+  Sparkline: StatCardSparkline,
 });
