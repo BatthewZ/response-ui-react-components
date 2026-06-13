@@ -1,0 +1,18 @@
+/* ------------------------------------------------------------------ */
+/*  VirtualizedDataTable                                               */
+/* ------------------------------------------------------------------ */
+
+/* The Table root wrapper doubles as the vertical scroll container; height is
+   applied inline (it's prop-driven). The sticky header (`.table--sticky-header`)
+   pins to this scroller. */
+.table-virtual-scroll {
+  overflow-y: auto;
+}
+
+/* Spacer rows that offset the windowed slice and preserve total scroll height.
+   They carry no visible chrome. */
+.table-virtual-spacer,
+.table-virtual-spacer > td {
+  padding: 0;
+  border: 0;
+}

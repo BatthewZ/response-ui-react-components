@@ -47,3 +47,7 @@ export { Timeline } from "./Timeline";
 export { Toast, type ToastVariant } from "./Toast";
 export { ToastProvider, useToast } from "./ToastContext";
 export { Tooltip } from "./Tooltip";
+export {
+  VirtualizedDataTable,
+  type VirtualizedDataTableProps,
+} from "./VirtualizedDataTable";

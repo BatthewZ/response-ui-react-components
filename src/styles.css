@@ -41,6 +41,7 @@
 @import "./components/ui/ThemeSwitcher.css";
 @import "./components/ui/Timeline.css";
 @import "./components/ui/Tooltip.css";
+@import "./components/ui/VirtualizedDataTable.css";
 
 /* data-display */
 @import "./components/data-display/ActivityFeed.css";

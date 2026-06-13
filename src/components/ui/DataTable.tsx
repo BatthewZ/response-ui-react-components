@@ -3,25 +3,29 @@ import { type ReactNode, useMemo, useState } from "react";
 
 import { cn } from "../../util/style";
 import { Checkbox } from "../form/Checkbox";
+import {
+  areAllSelected,
+  cellToString,
+  type ColumnDef,
+  cycleSort,
+  defaultComparator,
+  isSomeSelected,
+  type SortState,
+  toggleAllKeys,
+  toggleKey,
+} from "./data-table-utils";
 import { EmptyState, EmptyStateDescription, EmptyStateTitle } from "./EmptyState";
 import { Pagination } from "./Pagination";
 import { Skeleton } from "./Skeleton";
 import { Table } from "./Table";
 
+// Re-export shared types so existing import paths (`./DataTable`, the `ui`
+// barrel) stay valid.
+export type { ColumnDef, SortState } from "./data-table-utils";
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
-
-export interface ColumnDef<T> {
-  key: string;
-  header: ReactNode;
-  render?: (row: T, index: number) => ReactNode;
-  sortable?: boolean;
-  width?: string | number;
-  align?: "left" | "center" | "right";
-}
-
-export type SortState = { key: string; direction: "asc" | "desc" };
 
 type DataTableProps<T> = {
   // Data
@@ -80,49 +84,6 @@ type DataTableProps<T> = {
    */
   footer?: ReactNode;
 };
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-function cellToString(val: unknown): string {
-  if (val == null) return "";
-  if (typeof val === "string") return val;
-  if (typeof val === "number" || typeof val === "boolean") return String(val);
-  if (val instanceof Date) return val.toLocaleString();
-  return "";
-}
-
-/* ------------------------------------------------------------------ */
-/*  Default sort comparator                                           */
-/* ------------------------------------------------------------------ */
-
-function defaultComparator<T>(a: T, b: T, columnKey: string, direction: "asc" | "desc"): number {
-  const aVal = (a as Record<string, unknown>)[columnKey];
-  const bVal = (b as Record<string, unknown>)[columnKey];
-
-  // Nullish ALWAYS sorts last regardless of direction. Handle before the
-  // asc/desc flip so the placement is direction-independent.
-  const aNull = aVal == null;
-  const bNull = bVal == null;
-  if (aNull || bNull) {
-    if (aNull && bNull) return 0;
-    return aNull ? 1 : -1;
-  }
-
-  let result: number;
-  if (aVal instanceof Date && bVal instanceof Date) {
-    result = aVal.getTime() - bVal.getTime();
-  } else if (typeof aVal === "boolean" && typeof bVal === "boolean") {
-    result = Number(aVal) - Number(bVal);
-  } else if (typeof aVal === "number" && typeof bVal === "number") {
-    result = aVal - bVal;
-  } else {
-    result = cellToString(aVal).localeCompare(cellToString(bVal));
-  }
-
-  return direction === "desc" ? -result : result;
-}
 
 /* ------------------------------------------------------------------ */
 /*  DataTable                                                          */
@@ -195,14 +156,7 @@ export function DataTable<T>({
   }
 
   function handleSort(columnKey: string) {
-    let next: SortState | null;
-    if (!currentSort || currentSort.key !== columnKey) {
-      next = { key: columnKey, direction: "asc" };
-    } else if (currentSort.direction === "asc") {
-      next = { key: columnKey, direction: "desc" };
-    } else {
-      next = null;
-    }
+    const next = cycleSort(currentSort, columnKey);
 
     if (isControlledSort) {
       onSortChange?.(next);
@@ -252,31 +206,17 @@ export function DataTable<T>({
     () => pageData.map((row, i) => rowKey(row, i)),
     [pageData, rowKey]
   );
-  const allSelected = selectedKeys != null && visibleKeys.length > 0 && visibleKeys.every((k) => selectedKeys.has(k));
-  const someSelected = selectedKeys != null && visibleKeys.some((k) => selectedKeys.has(k));
+  const allSelected = selectedKeys != null && areAllSelected(visibleKeys, selectedKeys);
+  const someSelected = selectedKeys != null && isSomeSelected(visibleKeys, selectedKeys);
 
   function handleSelectAll() {
     if (!onSelectionChange || !selectedKeys) return;
-    if (allSelected) {
-      const next = new Set(selectedKeys);
-      for (const k of visibleKeys) next.delete(k);
-      onSelectionChange(next);
-    } else {
-      const next = new Set(selectedKeys);
-      for (const k of visibleKeys) next.add(k);
-      onSelectionChange(next);
-    }
+    onSelectionChange(toggleAllKeys(selectedKeys, visibleKeys));
   }
 
   function handleSelectRow(key: string | number) {
     if (!onSelectionChange || !selectedKeys) return;
-    const next = new Set(selectedKeys);
-    if (next.has(key)) {
-      next.delete(key);
-    } else {
-      next.add(key);
-    }
-    onSelectionChange(next);
+    onSelectionChange(toggleKey(selectedKeys, key));
   }
 
   // Column count (including selection checkbox column)

@@ -4,6 +4,13 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.5.0] — 2026-06-13
+
+### Added
+
+- **`VirtualizedDataTable`** — a row-virtualizing data table for large datasets (10,000+ rows). Only a small window of rows is mounted in the DOM, so scrolling stays smooth and memory stays flat. Built on the same `Table` primitive and `ColumnDef` contract as `DataTable`, sharing its sort comparator and cycle logic (extracted to [`src/components/ui/data-table-utils.ts`](./src/components/ui/data-table-utils.ts) as a single source of truth). Fixed/uniform `rowHeight`; the `Table` root doubles as the scroll container so the sticky header pins for free. Optional `onEndReached` for infinite/lazy loading. Select-all spans the **entire** dataset (vs `DataTable`'s page-scoped select-all). Use it instead of `DataTable` when you want continuous scrolling rather than pagination.
+- **`useVirtualRows` hook** — table-agnostic, dependency-free fixed-height windowing primitive (`src/hooks/use-virtual-rows.ts`). Tracks scroll offset and viewport height (passive `scroll` listener + `ResizeObserver`) and returns the row slice to mount plus top/bottom spacer heights.
+
 ## [0.4.0] — 2026-06-13
 
 ### Added

@@ -19,3 +19,8 @@ export {
   type UseThemeOptions,
   type UseThemeReturn,
 } from "./use-theme";
+export {
+  type UseVirtualRowsParams,
+  type UseVirtualRowsReturn,
+  useVirtualRows,
+} from "./use-virtual-rows";

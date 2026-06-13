@@ -48,7 +48,8 @@ DropdownMenu, EmptyState + EmptyState{Title,Description,Icon,Actions}, ErrorBoun
 FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination,
 Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper,
 Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast + type ToastVariant,
-ToastProvider, useToast, Tooltip
+ToastProvider, useToast, Tooltip, VirtualizedDataTable + type
+VirtualizedDataTableProps
 ```
 
 ### components/form (17)
@@ -101,7 +102,8 @@ UseControllableStateParams + type UseControllableStateReturn, useDebounce,
 useDocumentTitle, useFloating + type Placement, useFocusTrap,
 usePrefersReducedMotion, useRovingFocus,
 useTheme + type Theme + type UseThemeOptions + type UseThemeReturn,
-THEMES (= ["default","events","grimdark","tech"]), STORAGE_KEY
+THEMES (= ["default","events","grimdark","tech"]), STORAGE_KEY,
+useVirtualRows + type UseVirtualRowsParams + type UseVirtualRowsReturn
 ```
 
 ### util
@@ -261,6 +263,10 @@ Pick one, don't mix:
 1. **Client-everything** — `pageSize` (+ optional `defaultSort`). Table sorts, slices, and derives pages from the full `data` array itself.
 2. **Server-controlled** — `sort` + `onSortChange` and `page` + `totalPages` + `onPageChange`; no `pageSize`. Table renders the rows given and reports sort/page intent.
 3. **Hybrid / server-paged (lazy-load)** — never enable uncontrolled sorting; use controlled `sort`. Accumulate fetched rows into `data` and use a footer slot sentinel to trigger the next load.
+
+### `VirtualizedDataTable` — large datasets (10k+ rows)
+
+Use instead of `DataTable` when you want continuous scrolling rather than pagination. Same `ColumnDef`/sorting contract (shared via `data-table-utils.ts`); windows rows via the `useVirtualRows` hook so only a small slice mounts. Requires a fixed `rowHeight` (content must fit — truncate overflow); `height` sets the scroll viewport. The `Table` root is the scroll container, so `stickyHeader` (default true) pins for free. Differs from `DataTable`: **no pagination**, **select-all spans the whole dataset**, and an optional `onEndReached` for infinite loading (accumulate into `data`, keep `sort` controlled when the server sorts).
 
 ### `useFloating` — Floating UI wrapper
 

@@ -130,14 +130,14 @@ export const twMerge = extendTailwindMerge({
 
 ## What ships
 
-- **UI** (47): Accordion, Alert, AppShell, Avatar (+AvatarGroup), AvatarUpload, Badge, Breadcrumbs, Button, Calendar, Card, Carousel, CodeBlock, Collapsible, CommandPalette, ContextMenu, CopyButton, DataTable, Dialog, Drawer, DropdownMenu, EmptyState, ErrorBoundary, FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination, Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper, Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast (+ToastProvider/useToast), Tooltip
+- **UI** (48): Accordion, Alert, AppShell, Avatar (+AvatarGroup), AvatarUpload, Badge, Breadcrumbs, Button, Calendar, Card, Carousel, CodeBlock, Collapsible, CommandPalette, ContextMenu, CopyButton, DataTable, Dialog, Drawer, DropdownMenu, EmptyState, ErrorBoundary, FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination, Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper, Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast (+ToastProvider/useToast), Tooltip, VirtualizedDataTable
 - **Form** (17): Checkbox, Combobox, DatePicker, Field, FieldError, FormActions, Input, Label, NumberInput, OTPInput, Radio, SearchInput, Select, Slider, Switch, TagInput, Textarea
 - **Data display** (5): Sparkline, ProgressRing, Meter, DescriptionList, ActivityFeed
 - **Layout** (6): Center, Container, Divider, Row, Spacer, Stack
 - **Animation** (5): AnimatePresence, Parallax, ScrollReveal, Stagger, ViewTransition (+`useViewTransition`)
 - **Guards** (1): RequireAuth (headless)
 - **Router** (1): RouterAdapterProvider, useLink, usePathname
-- **Hooks**: useActiveSection, useClickOutside, useControllableState, useDebounce, useDocumentTitle, useFloating, useFocusTrap, usePrefersReducedMotion, useRovingFocus, useTheme
+- **Hooks**: useActiveSection, useClickOutside, useControllableState, useDebounce, useDocumentTitle, useFloating, useFocusTrap, usePrefersReducedMotion, useRovingFocus, useTheme, useVirtualRows
 - **Util**: `cn`, `createCn`, `mergeExtension`, `tailwindMergeExtension`, `twMerge`, `mergeRefs`, `formatBytes`, plus date helpers (`formatDate`, `parseDateInput`, `buildMonthGrid`, `addDays`, `addMonths`, …)
 
 ## RSC / Server Components
@@ -153,6 +153,20 @@ Interactive modules ship a `"use client"` directive, so the components work out 
 - **Client-everything** — pass `pageSize` (and optionally `defaultSort`). The table sorts, slices, and derives pages entirely on the client from the full `data` array. No `onSortChange` / `onPageChange` needed.
 - **Server-controlled** — pass `sort` + `onSortChange` and `page` + `totalPages` + `onPageChange`, and omit `pageSize`. The table renders exactly the rows you give it and reports sort/page intent back to you; you do the sorting and paging server-side.
 - **Hybrid / server-paged (lazy-load)** — never enable uncontrolled sorting here; use controlled `sort`. Accumulate fetched rows into the `data` array as the user pages, and render a footer sentinel (via the footer slot) to trigger the next load.
+
+### Large datasets: `VirtualizedDataTable`
+
+For tens of thousands of rows, reach for `VirtualizedDataTable` instead of paginating. It shares `DataTable`'s `ColumnDef` and sorting contract but **windows** the rows (via the `useVirtualRows` hook) so only a small visible slice is mounted in the DOM — scrolling stays smooth and memory flat. Pass a fixed `rowHeight` (cell content must fit it — truncate overflow) and a `height` for the scroll viewport; the sticky header is on by default. Differences from `DataTable`: there's no pagination, select-all toggles the **entire** dataset, and an optional `onEndReached` callback supports infinite loading (accumulate into `data`, keep `sort` controlled when the server sorts).
+
+```tsx
+<VirtualizedDataTable
+  data={tenThousandRows}
+  columns={columns}
+  rowKey={(r) => r.id}
+  rowHeight={44}
+  height={480}
+/>
+```
 
 ## Subpath imports for tree-shaking
 

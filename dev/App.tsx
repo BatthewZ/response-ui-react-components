@@ -63,6 +63,7 @@ import {
   ThemeSwitcher,
   Timeline,
   Tooltip,
+  VirtualizedDataTable,
   type ColumnDef,
 } from "../src";
 
@@ -127,6 +128,15 @@ const COLUMNS: ColumnDef<Person>[] = [
   { key: "visits", header: "Visits", sortable: true, render: (r) => r.visits },
 ];
 
+/* 10,000-row dataset to exercise VirtualizedDataTable. */
+const ROLES = ["Engineer", "Researcher", "Professor", "Author", "Admiral"];
+const BIG_PEOPLE: Person[] = Array.from({ length: 10000 }, (_, i) => ({
+  id: i,
+  name: `Person ${i}`,
+  role: ROLES[i % ROLES.length],
+  visits: (i * 37) % 500,
+}));
+
 /* ------------------------------------------------------------------ */
 /*  Viewport harness                                                   */
 /* ------------------------------------------------------------------ */
@@ -157,6 +167,7 @@ export function App() {
   const [halfRating, setHalfRating] = useState(3.5);
   const [collapsibleOpen, setCollapsibleOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [virtualSelection, setVirtualSelection] = useState<Set<string | number>>(new Set());
   const [drawerSide, setDrawerSide] = useState<"left" | "right" | "top" | "bottom">("right");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState<Date | null>(null);
@@ -929,6 +940,23 @@ export function App() {
               rowKey={(r) => r.id}
               defaultSort={{ key: "name", direction: "asc" }}
               pageSize={4}
+            />
+          </div>
+
+          <div className="w-full">
+            <p className="mb-r4 text-body-3 text-fg-muted">
+              VirtualizedDataTable — 10,000 rows, only a small window in the DOM.
+            </p>
+            <VirtualizedDataTable<Person>
+              data={BIG_PEOPLE}
+              columns={COLUMNS}
+              rowKey={(r) => r.id}
+              defaultSort={{ key: "name", direction: "asc" }}
+              rowHeight={44}
+              height={480}
+              selectable
+              selectedKeys={virtualSelection}
+              onSelectionChange={setVirtualSelection}
             />
           </div>
 
