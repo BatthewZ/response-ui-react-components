@@ -224,7 +224,7 @@ For data-viz / dashboard UIs. All optional.
 | `--MOTION-EASE-ENTER` | `ease-enter` |
 | `--DURATION-FAST` | `duration-fast` |
 
-When extending utilities (adding new colors, etc.), also extend the `tailwindMergeExtension` config from `@batthewz/response-ui-react-components` so `cn()` collapses them correctly. See [the React package README](../packages/response-ui-react-components/README.md#adding-custom-tailwind-tokens).
+When extending utilities (adding new colors, etc.), expose them via `@theme inline` so the classes are generated, then teach `cn()` about them with `createCn` so conflicting classes still collapse correctly. See [docs/extending.md](./extending.md).
 
 ---
 

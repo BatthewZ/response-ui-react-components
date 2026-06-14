@@ -1,6 +1,8 @@
 "use client";
-import { type ReactNode, useMemo, useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { useControllableState } from "../../hooks/use-controllable-state";
 import { cn } from "../../util/style";
 import { Checkbox } from "../form/Checkbox";
 import {
@@ -49,6 +51,17 @@ type DataTableProps<T> = {
   selectable?: boolean;
   selectedKeys?: Set<string | number>;
   onSelectionChange?: (keys: Set<string | number>) => void;
+
+  // Expansion
+  /**
+   * When provided, every row gains a leading expander toggle. Expanding a row
+   * renders this content in a full-width detail row beneath it. Expansion state
+   * is uncontrolled by default; pass `expandedKeys` + `onExpandedChange` to
+   * control it.
+   */
+  renderExpanded?: (row: T, index: number) => ReactNode;
+  expandedKeys?: Set<string | number>;
+  onExpandedChange?: (keys: Set<string | number>) => void;
 
   // Pagination
   /**
@@ -122,6 +135,9 @@ export function DataTable<T>({
   selectable = false,
   selectedKeys,
   onSelectionChange,
+  renderExpanded,
+  expandedKeys,
+  onExpandedChange,
   pageSize,
   page: pageProp,
   totalPages: totalPagesProp,
@@ -219,8 +235,21 @@ export function DataTable<T>({
     onSelectionChange(toggleKey(selectedKeys, key));
   }
 
-  // Column count (including selection checkbox column)
-  const totalColumns = columns.length + (selectable ? 1 : 0);
+  // Expansion (controllable; uncontrolled by default so it works out of the box).
+  const expandable = typeof renderExpanded === "function";
+  const [expanded, setExpanded] = useControllableState<Set<string | number>>({
+    value: expandedKeys,
+    defaultValue: new Set(),
+    onChange: onExpandedChange,
+  });
+
+  function toggleExpanded(key: string | number) {
+    setExpanded(toggleKey(expanded, key));
+  }
+
+  // Column count (including the optional expander and selection columns).
+  const totalColumns =
+    columns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0);
 
   // Decide whether to render pagination:
   // - client mode: when derived page count > 1 (no onPageChange required)
@@ -251,6 +280,7 @@ export function DataTable<T>({
       <Table density={density} striped={false} stickyHeader={stickyHeader}>
         <Table.Head>
           <Table.Row>
+            {expandable && <Table.HeaderCell className="w-10" />}
             {selectable && <Table.HeaderCell className="w-10" />}
             {columns.map((col) => (
               <Table.HeaderCell key={col.key} style={{ width: col.width }}>
@@ -262,6 +292,11 @@ export function DataTable<T>({
         <Table.Body>
           {Array.from({ length: loadingRowCount }, (_, i) => (
             <Table.Row key={i}>
+              {expandable && (
+                <Table.Cell>
+                  <Skeleton variant="rectangular" width={16} height={16} />
+                </Table.Cell>
+              )}
               {selectable && (
                 <Table.Cell>
                   <Skeleton variant="rectangular" width={16} height={16} />
@@ -317,6 +352,7 @@ export function DataTable<T>({
       <Table density={density} striped={striped} stickyHeader={stickyHeader}>
         <Table.Head>
           <Table.Row>
+            {expandable && <Table.HeaderCell className="w-10" />}
             {selectable && (
               <Table.HeaderCell className="w-10">
                 <Checkbox
@@ -353,23 +389,52 @@ export function DataTable<T>({
         <Table.Body>
           {pageData.map((row, i) => {
             const key = rowKey(row, i);
+            const isExpanded = expandable && expanded.has(key);
             return (
-              <Table.Row key={key} selected={selectedKeys?.has(key)}>
-                {selectable && (
-                  <Table.Cell>
-                    <Checkbox
-                      checked={selectedKeys?.has(key) ?? false}
-                      onChange={() => handleSelectRow(key)}
-                      aria-label={`Select row ${key}`}
-                    />
-                  </Table.Cell>
+              <Fragment key={key}>
+                <Table.Row selected={selectedKeys?.has(key)}>
+                  {expandable && (
+                    <Table.Cell>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center rounded-md p-r6 text-fg-secondary hover:bg-surface-2 cursor-pointer duration-fast"
+                        aria-label={isExpanded ? "Collapse row" : "Expand row"}
+                        aria-expanded={isExpanded}
+                        onClick={() => toggleExpanded(key)}
+                      >
+                        <ChevronRight
+                          size={16}
+                          aria-hidden="true"
+                          className={cn("duration-fast", isExpanded && "rotate-90")}
+                        />
+                      </button>
+                    </Table.Cell>
+                  )}
+                  {selectable && (
+                    <Table.Cell>
+                      <Checkbox
+                        checked={selectedKeys?.has(key) ?? false}
+                        onChange={() => handleSelectRow(key)}
+                        aria-label={`Select row ${key}`}
+                      />
+                    </Table.Cell>
+                  )}
+                  {columns.map((col) => (
+                    <Table.Cell key={col.key} style={{ textAlign: col.align }}>
+                      {col.render ? col.render(row, i) : cellToString((row as Record<string, unknown>)[col.key])}
+                    </Table.Cell>
+                  ))}
+                </Table.Row>
+                {expandable && renderExpanded && (
+                  <ExpandableDetailRow
+                    open={isExpanded}
+                    colSpan={totalColumns}
+                    density={density}
+                  >
+                    {() => renderExpanded(row, i)}
+                  </ExpandableDetailRow>
                 )}
-                {columns.map((col) => (
-                  <Table.Cell key={col.key} style={{ textAlign: col.align }}>
-                    {col.render ? col.render(row, i) : cellToString((row as Record<string, unknown>)[col.key])}
-                  </Table.Cell>
-                ))}
-              </Table.Row>
+              </Fragment>
             );
           })}
         </Table.Body>
@@ -379,5 +444,108 @@ export function DataTable<T>({
 
       {renderPaginationBlock()}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ExpandableDetailRow                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Longest transition duration declared on `el`, in milliseconds. Reads the
+ * resolved value so it tracks the `--MOTION-DURATION-SHIFT` token, and returns
+ * 0 under `prefers-reduced-motion` (where the CSS disables the transition) so
+ * the row collapses instantly instead of waiting on a transition that never runs.
+ */
+function transitionDurationMs(el: HTMLElement): number {
+  const value = getComputedStyle(el).transitionDuration;
+  if (!value) return 0;
+  return value.split(",").reduce((max, part) => {
+    const t = part.trim();
+    const ms = t.endsWith("ms") ? parseFloat(t) : parseFloat(t) * 1000;
+    return Number.isFinite(ms) ? Math.max(max, ms) : max;
+  }, 0);
+}
+
+/**
+ * Full-width detail row that reveals/hides its content with an accordion-style
+ * grid-template-rows transition (see `.data-table-expanded-*` in Table.css).
+ *
+ * To animate BOTH directions the row must outlive the `open=false` flip: it
+ * stays mounted while the `1fr -> 0fr` collapse plays, then unmounts once that
+ * duration elapses. We schedule the unmount off the resolved transition duration
+ * rather than a `transitionend` listener — `transitionend` for
+ * `grid-template-rows` is unreliable across browsers (it can fire early or not
+ * at all), which would yank the row out mid-collapse and make it snap shut.
+ *
+ * `children` is a thunk so the consumer's `renderExpanded` is only invoked while
+ * the row is actually mounted (open or animating closed) — never for collapsed rows.
+ */
+function ExpandableDetailRow({
+  open,
+  colSpan,
+  density,
+  children,
+}: {
+  open: boolean;
+  colSpan: number;
+  density: "dense" | "comfortable" | "spacious";
+  children: () => ReactNode;
+}) {
+  // `present` drives DOM mounting; `expanded` drives the 0fr/1fr grid reveal.
+  // Both seed from `open` so an initially-expanded row renders open with no
+  // first-paint animation.
+  const [present, setPresent] = useState(open);
+  const [expanded, setExpanded] = useState(open);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const unmountTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => {
+    // Any state change cancels a pending collapse-then-unmount.
+    clearTimeout(unmountTimer.current);
+
+    if (open) {
+      setPresent(true);
+    } else {
+      setExpanded(false);
+      const el = contentRef.current;
+      const duration = el ? transitionDurationMs(el) : 0;
+      if (duration <= 0) {
+        setPresent(false); // reduced motion / no transition: collapse instantly
+      } else {
+        unmountTimer.current = setTimeout(() => setPresent(false), duration);
+      }
+    }
+  }, [open]);
+
+  // Once mounted for an open request, flip to expanded on the next frame so the
+  // browser observes 0fr -> 1fr and animates the reveal (rather than snapping).
+  useEffect(() => {
+    if (present && open) {
+      const id = requestAnimationFrame(() => setExpanded(true));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [present, open]);
+
+  useEffect(() => () => clearTimeout(unmountTimer.current), []);
+
+  if (!present) return null;
+
+  return (
+    <Table.Row className="data-table-expanded-row">
+      <Table.Cell colSpan={colSpan} className="data-table-expanded-cell bg-surface-1">
+        <div
+          ref={contentRef}
+          className="data-table-expanded-content"
+          data-state={expanded ? "open" : "closed"}
+        >
+          <div className="data-table-expanded-inner">
+            <div className={cn("data-table-expanded-body", `data-table-expanded-body--${density}`)}>
+              {children()}
+            </div>
+          </div>
+        </div>
+      </Table.Cell>
+    </Table.Row>
   );
 }

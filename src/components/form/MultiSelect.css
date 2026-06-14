@@ -1,0 +1,198 @@
+/* ------------------------------------------------------------------ */
+/*  MultiSelect — chip-filled control + floating listbox               */
+/* ------------------------------------------------------------------ */
+
+.multiselect {
+  position: relative;
+  width: 100%;
+}
+
+.multiselect-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.5rem;
+  /* Match the px-r4 py-r5 padding the other form controls (Input/Select/
+     TagInput) use so the control isn't slimmer than its siblings. */
+  padding: var(--R-SIZE-5) var(--R-SIZE-4);
+  background: var(--C-SURFACE-0);
+  border: 1px solid var(--C-BORDER-STRONG);
+  border-radius: var(--RADIUS-MD);
+  cursor: text;
+}
+
+.multiselect-control:focus-within {
+  border-color: var(--C-BORDER-FOCUS);
+  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
+}
+
+.multiselect-control--error {
+  border-color: var(--C-STATUS-ERROR);
+}
+
+.multiselect-control--error:focus-within {
+  box-shadow: 0 0 0 2px var(--C-STATUS-ERROR);
+}
+
+.multiselect[data-disabled] .multiselect-control {
+  background: var(--C-SURFACE-3);
+  cursor: not-allowed;
+}
+
+/* Tags + inline search share a wrapping row */
+.multiselect-tags {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.multiselect-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.25rem 0.125rem 0.5rem;
+  font-size: var(--BodyText-3);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--C-TEXT-SECONDARY);
+  background: var(--C-SURFACE-2);
+  border-radius: var(--RADIUS-SM);
+}
+
+.multiselect-tag__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--RADIUS-SM);
+  color: var(--C-TEXT-MUTED);
+  cursor: pointer;
+}
+
+.multiselect-tag__remove:hover {
+  color: var(--C-TEXT-PRIMARY);
+}
+
+.multiselect-tag__remove:disabled {
+  cursor: not-allowed;
+}
+
+.multiselect-input {
+  /* Grow into whatever space is left on the chip row, but ask for almost
+     nothing of its own so it stays inline beside the chips instead of wrapping
+     onto an empty second row. It only wraps once the chip row is genuinely
+     full — at which point a full-width input row is the correct outcome. */
+  flex: 1 1 2rem;
+  min-width: 2rem;
+  padding: 0.25rem 0;
+  font: inherit;
+  font-size: var(--BodyText-2);
+  color: var(--C-TEXT-PRIMARY);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+/* When the control holds chips but isn't focused, collapse the input to zero
+   width so it doesn't render as an empty row beneath the tags — the control
+   stays exactly as tall as the chips need. It springs back to a real input the
+   moment the control is focused (i.e. when the user is about to type), and is
+   always present while there are no chips so the placeholder shows.
+
+   The `:placeholder-shown` guard keeps the input visible when it still holds a
+   half-typed query: collapsing it on blur would hide that text, leaving the
+   user unable to see the unconfirmed query isn't part of their selection. */
+.multiselect-control[data-has-selection]:not(:focus-within)
+  .multiselect-input:placeholder-shown {
+  flex: 0 0 0;
+  min-width: 0;
+  width: 0;
+  padding: 0;
+}
+
+.multiselect-input::placeholder {
+  color: var(--C-TEXT-MUTED);
+}
+
+.multiselect-input:read-only {
+  cursor: pointer;
+}
+
+.multiselect-input:disabled {
+  cursor: not-allowed;
+}
+
+.multiselect-toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--C-TEXT-SECONDARY);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Listbox                                                            */
+/* ------------------------------------------------------------------ */
+
+.multiselect-content {
+  background: var(--C-SURFACE-0);
+  border: 1px solid var(--C-BORDER-DEFAULT);
+  border-radius: var(--RADIUS-MD);
+  box-shadow: var(--SHADOW-LG);
+  padding: 0.25rem 0;
+  min-width: 11.25rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  z-index: 40;
+  outline: none;
+}
+
+.multiselect-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  color: var(--C-TEXT-PRIMARY);
+  font: inherit;
+  font-size: var(--BodyText-2);
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+}
+
+.multiselect-item[data-active] {
+  background: var(--C-SURFACE-1);
+}
+
+.multiselect-item[data-selected] {
+  font-weight: 600;
+}
+
+.multiselect-item[aria-disabled="true"] {
+  color: var(--C-TEXT-MUTED);
+  cursor: not-allowed;
+}
+
+/* Fixed-width check gutter keeps labels aligned whether or not selected. */
+.multiselect-item__check {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--C-ACCENT);
+}
+
+.multiselect-empty {
+  padding: 0.5rem 0.75rem;
+  font-size: var(--BodyText-2);
+  color: var(--C-TEXT-MUTED);
+}

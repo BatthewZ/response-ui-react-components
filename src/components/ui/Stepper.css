@@ -8,12 +8,15 @@
   --_stepper-line-width: 2px;
   --_stepper-gap: var(--R-SIZE-4);
 
-  /* Colour of the current step's ring/number and the completed progress
-     track. Defaults to the theme's primary text ink, which — unlike
-     --C-PRIMARY (a fill token paired with --C-TEXT-ON-PRIMARY) — is
-     guaranteed to read against the surface in every theme, including
-     custom ones. Override per instance to re-skin the stepper without
-     touching global theme tokens. */
+  /* The progress ink: colours the active step's ring/number and the completed
+     connector segments (those trailing a "done" step). Both are strokes drawn
+     directly on the surface, so per the design-system contrast contract this
+     MUST be a text token, never a fill token — --C-PRIMARY is only guaranteed
+     to contrast --C-TEXT-ON-PRIMARY, not the surface (grimdark/tech both set
+     --C-PRIMARY ≈ surface, which would make a primary-coloured line vanish).
+     The done chips, by contrast, CAN fill with --C-PRIMARY because they letter
+     it in on-primary. Defaults to the primary text ink; override per instance
+     to re-skin the track without touching global theme tokens. */
   --stepper-progress-color: var(--C-TEXT-PRIMARY);
 
   display: flex;
@@ -103,19 +106,25 @@ button.stepper-indicator:focus-visible {
 }
 
 /* Status colors */
-/* Done: filled with --C-PRIMARY (vivid brand chip in most themes). The ring
-   uses --C-TEXT-ON-PRIMARY rather than --C-PRIMARY so the circle's silhouette
-   survives themes where primary ≈ surface (e.g. grimdark/tech): whenever the
-   fill blends into the surface it's because primary ≈ surface, and
-   --C-TEXT-ON-PRIMARY is guaranteed to contrast primary — so it's guaranteed
-   to contrast the surface in exactly those cases, while staying a quiet halo
-   in light themes where the fill already reads. */
+/* Done: covered ground — a filled --C-PRIMARY brand chip with a check glyph,
+   lettered and ringed in --C-TEXT-ON-PRIMARY. Per the contrast contract a fill
+   token is only guaranteed to contrast its on-* partner, never the surface;
+   pairing the fill with --C-TEXT-ON-PRIMARY (and using it for the ring) keeps
+   the chip legible even where --C-PRIMARY ≈ surface (grimdark/tech) — there the
+   ring/glyph provably contrast the surface, while staying a quiet halo in themes
+   where the fill already pops. */
 .stepper-step[data-status="done"] .stepper-indicator {
   border-color: var(--C-TEXT-ON-PRIMARY);
   background-color: var(--C-PRIMARY);
   color: var(--C-TEXT-ON-PRIMARY);
 }
 
+/* Active (current): "you are here" — NOT yet covered, so it stays an UNFILLED
+   ring rather than a brand chip. The hollow (surface) fill sets it apart from
+   the filled done steps; the strong progress-ink ring/number sets it apart from
+   the muted upcoming steps. Uses a text token (--stepper-progress-color), not
+   --C-PRIMARY, because the ring is a stroke on the surface — see the contrast
+   contract note on --stepper-progress-color above. */
 .stepper-step[data-status="active"] .stepper-indicator {
   border-color: var(--stepper-progress-color);
   background-color: var(--C-SURFACE-1);
@@ -170,13 +179,17 @@ button.stepper-indicator:focus-visible {
   display: none;
 }
 
-/* Done/active steps draw a filled connector toward the next step.
-   Uses --stepper-progress-color (text ink) rather than --C-PRIMARY so the
-   track stays visible on the surface in every theme — --C-PRIMARY is a fill
-   token whose only guaranteed contrast partner is --C-TEXT-ON-PRIMARY, not
-   --C-SURFACE-1. */
-.stepper-step[data-status="done"] .stepper-connector,
-.stepper-step[data-status="active"] .stepper-connector {
+/* A step's connector runs FORWARD to the next step, so fill it only when THIS
+   step is done — meaning we've completed it and moved on, and the segment now
+   sits behind the current position. The active step's forward connector stays
+   muted on purpose: it points at a step we haven't reached, and filling it would
+   read as a false "you're already past here" arrow. Upcoming steps stay muted
+   too. Net effect: the filled track extends backward from the current step
+   through the completed ones, never ahead of it.
+   Uses --stepper-progress-color (text ink) rather than --C-PRIMARY so the track
+   stays visible on the surface in every theme — --C-PRIMARY is a fill token
+   whose only guaranteed contrast partner is --C-TEXT-ON-PRIMARY, not the surface. */
+.stepper-step[data-status="done"] .stepper-connector {
   background-color: var(--stepper-progress-color);
 }
 

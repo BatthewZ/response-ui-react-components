@@ -1,4 +1,16 @@
 export { Checkbox } from "./Checkbox";
+export { ColorPicker } from "./ColorPicker";
+export {
+  type Hsv,
+  hexToHsv,
+  hexToRgb,
+  hsvToHex,
+  hsvToRgb,
+  normalizeHex,
+  type Rgb,
+  rgbToHex,
+  rgbToHsv,
+} from "./color";
 export { Combobox } from "./Combobox";
 export { DatePicker } from "./DatePicker";
 export { DateRangePicker } from "./DateRangePicker";
@@ -34,9 +46,12 @@ export {
 } from "./standard-schema";
 export { Input } from "./Input";
 export { Label } from "./Label";
+export { MultiSelect, type MultiSelectOption } from "./MultiSelect";
 export { NumberInput } from "./NumberInput";
 export { OTPInput } from "./OTPInput";
 export { Radio } from "./Radio";
+export { RangeSlider, type RangeSliderValue } from "./RangeSlider";
+export { Repeater, type RepeaterItem } from "./Repeater";
 export { SearchInput } from "./SearchInput";
 export { Select } from "./Select";
 export { Slider } from "./Slider";

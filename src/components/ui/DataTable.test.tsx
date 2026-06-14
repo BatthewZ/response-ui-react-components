@@ -437,4 +437,79 @@ describe("DataTable", () => {
       screen.getByRole("button", { name: /load more/i }),
     ).toBeInTheDocument();
   });
+
+  describe("expandable rows", () => {
+    it("adds a leading expander toggle when renderExpanded is provided", () => {
+      render(
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          renderExpanded={(row) => <div>Detail for {row.name}</div>}
+        />,
+      );
+      expect(screen.getAllByRole("button", { name: "Expand row" })).toHaveLength(2);
+    });
+
+    it("reveals and hides the detail row on toggle (uncontrolled)", async () => {
+      const user = userEvent.setup();
+      render(
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          renderExpanded={(row) => <div>Detail for {row.name}</div>}
+        />,
+      );
+
+      expect(screen.queryByText("Detail for Alice")).not.toBeInTheDocument();
+      const [firstToggle] = screen.getAllByRole("button", { name: "Expand row" });
+      await user.click(firstToggle);
+      expect(screen.getByText("Detail for Alice")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Collapse row" }));
+      expect(screen.queryByText("Detail for Alice")).not.toBeInTheDocument();
+    });
+
+    it("spans the detail cell across every column (expander + selection + data)", async () => {
+      const user = userEvent.setup();
+      render(
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          selectable
+          selectedKeys={new Set()}
+          onSelectionChange={() => {}}
+          renderExpanded={(row) => <div>Detail for {row.name}</div>}
+        />,
+      );
+      await user.click(screen.getAllByRole("button", { name: "Expand row" })[0]);
+      const detailCell = screen.getByText("Detail for Alice").closest("td");
+      // 2 data columns + selection + expander = 4
+      expect(detailCell).toHaveAttribute("colspan", "4");
+    });
+
+    it("supports controlled expansion via expandedKeys", () => {
+      const onExpandedChange = vi.fn();
+      render(
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          expandedKeys={new Set([1])}
+          onExpandedChange={onExpandedChange}
+          renderExpanded={(row) => <div>Detail for {row.name}</div>}
+        />,
+      );
+      // Row 1 starts expanded because it's in the controlled set.
+      expect(screen.getByText("Detail for Alice")).toBeInTheDocument();
+      expect(screen.queryByText("Detail for Bob")).not.toBeInTheDocument();
+    });
+
+    it("does not render an expander column when renderExpanded is omitted", () => {
+      render(<DataTable data={data} columns={columns} rowKey={rowKey} />);
+      expect(screen.queryByRole("button", { name: "Expand row" })).not.toBeInTheDocument();
+    });
+  });
 });

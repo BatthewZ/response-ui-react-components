@@ -42,6 +42,7 @@
 @import "./components/ui/Timeline.css";
 @import "./components/ui/Tooltip.css";
 @import "./components/ui/VirtualizedDataTable.css";
+@import "./components/ui/Wizard.css";
 
 /* data-display */
 @import "./components/data-display/ActivityFeed.css";
@@ -49,7 +50,10 @@
 @import "./components/data-display/Sparkline.css";
 
 /* form */
+@import "./components/form/ColorPicker.css";
 @import "./components/form/Combobox.css";
+@import "./components/form/MultiSelect.css";
+@import "./components/form/RangeSlider.css";
 @import "./components/form/SearchInput.css";
 @import "./components/form/Slider.css";
 @import "./components/form/Switch.css";

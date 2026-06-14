@@ -38,7 +38,7 @@ Class-name convention: kebab-case rooted on the component name (e.g. `.accordion
 
 Top-level barrel exports everything. The grouping below mirrors the source layout (`src/`).
 
-### components/ui (47)
+### components/ui (48)
 
 ```
 Accordion, Alert, AppShell, Avatar, AvatarGroup, AvatarUpload, Badge, Breadcrumbs,
@@ -49,15 +49,21 @@ FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination
 Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper,
 Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast + type ToastVariant,
 ToastProvider, useToast, Tooltip, VirtualizedDataTable + type
-VirtualizedDataTableProps
+VirtualizedDataTableProps, Wizard + useWizard + types
+WizardProps/WizardStep/UseWizardOptions/UseWizardReturn
 ```
 
-### components/form (17 + orchestration)
+### components/form (21 + orchestration)
 
 ```
-Checkbox, Combobox, DatePicker, Field, FieldError, FormActions, Input, Label,
-NumberInput, OTPInput, Radio, SearchInput, Select, Slider, Switch, TagInput, Textarea
+Checkbox, ColorPicker, Combobox, DatePicker, Field, FieldError, FormActions, Input,
+Label, MultiSelect + type MultiSelectOption, NumberInput, OTPInput, Radio,
+RangeSlider + type RangeSliderValue, Repeater + type RepeaterItem, SearchInput, Select,
+Slider, Switch, TagInput, Textarea
 ```
+
+Plus dependency-free `color` helpers backing `ColorPicker` (`hexToRgb`, `rgbToHex`,
+`rgbToHsv`, `hsvToRgb`, `hsvToHex`, `hexToHsv`, `normalizeHex` + types `Rgb`/`Hsv`).
 
 Headless form orchestration (from `components/form/use-form.tsx`, `form-store.ts`, `standard-schema.ts`):
 
@@ -154,7 +160,7 @@ export const cn = createCn({
 
 `createCn` concatenates user theme arrays onto the built-in arrays, so customising one key (e.g. `color`) can't accidentally wipe awareness of other built-ins (`spacing`, `text`) — the way the older spread pattern could. Non-theme `tailwind-merge` config (`classGroups`, `conflictingClassGroups`, `cacheSize`) passes through.
 
-For power users who need to drive `extendTailwindMerge` themselves, `mergeExtension` and the raw frozen `tailwindMergeExtension` are also exported. See [`@batthewz/response-ui-tw-merge`](../response-ui-tw-merge/README.md) for full details.
+For power users who need to drive `extendTailwindMerge` themselves, `mergeExtension` and the raw frozen `tailwindMergeExtension` are also exported. See [`@batthewz/response-ui-tw-merge`](https://github.com/BatthewZ/response-ui-tw-merge) for full details.
 
 ### Router adapter — `RouterAdapterProvider` + `useLink` / `usePathname`
 

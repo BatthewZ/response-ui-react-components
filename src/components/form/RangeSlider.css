@@ -1,0 +1,114 @@
+/* ------------------------------------------------------------------ */
+/*  RangeSlider — two overlaid native range inputs                     */
+/* ------------------------------------------------------------------ */
+
+.range-slider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 1.25rem;
+}
+
+.range-slider[data-disabled] {
+  opacity: 0.5;
+}
+
+/* Unfilled rail */
+.range-slider__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.5rem;
+  border-radius: var(--RADIUS-FULL);
+  background: var(--C-SURFACE-2);
+}
+
+/* Selected segment between the two thumbs (driven by --range-lo / --range-hi) */
+.range-slider__fill {
+  position: absolute;
+  left: var(--range-lo, 0%);
+  right: var(--range-hi, 0%);
+  height: 0.5rem;
+  border-radius: var(--RADIUS-FULL);
+  background: var(--C-ACCENT);
+}
+
+.range-slider[aria-invalid="true"] .range-slider__fill {
+  background: var(--C-STATUS-ERROR);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Inputs — transparent, stacked, pointer-events confined to thumbs   */
+/* ------------------------------------------------------------------ */
+
+.range-slider__input {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 1.25rem;
+  margin: 0;
+  background: transparent;
+  /* Let clicks fall through the rail to whichever thumb is underneath. */
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.range-slider__input:disabled {
+  cursor: not-allowed;
+}
+
+.range-slider[aria-invalid="true"] .range-slider__input:focus-visible {
+  outline: none;
+}
+
+/* WebKit thumb */
+.range-slider__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--C-SURFACE-0);
+  border-radius: var(--RADIUS-FULL);
+  background-color: var(--C-ACCENT);
+  cursor: pointer;
+}
+
+.range-slider[aria-invalid="true"] .range-slider__input::-webkit-slider-thumb {
+  background-color: var(--C-STATUS-ERROR);
+}
+
+.range-slider__input:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+
+.range-slider__input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--C-SURFACE-0), 0 0 0 4px var(--C-BORDER-FOCUS);
+}
+
+/* Firefox thumb */
+.range-slider__input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--C-SURFACE-0);
+  border-radius: var(--RADIUS-FULL);
+  background-color: var(--C-ACCENT);
+  cursor: pointer;
+}
+
+.range-slider[aria-invalid="true"] .range-slider__input::-moz-range-thumb {
+  background-color: var(--C-STATUS-ERROR);
+}
+
+.range-slider__input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 2px var(--C-SURFACE-0), 0 0 0 4px var(--C-BORDER-FOCUS);
+}
+
+/* Firefox paints a default track — keep it invisible so our rail shows. */
+.range-slider__input::-moz-range-track {
+  background: transparent;
+}

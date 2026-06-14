@@ -9,7 +9,7 @@ import {
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { cn } from "../../util/style";
 
-import { useFieldErrorProps } from "./Field";
+import { useFieldError } from "./Field";
 
 type TagInputProps = {
   value?: string[];
@@ -54,7 +54,11 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
     const [draft, setDraft] = useState("");
     const [message, setMessage] = useState<string | null>(null);
 
-    const fieldErrorProps = useFieldErrorProps(error || message != null);
+    // Drive the visual error state from the same source as Input/Select: an
+    // explicit `error` prop OR the surrounding Field's invalid state, plus any
+    // local tag-validation message. Without the Field fallback the border would
+    // stay neutral inside a <Field> even when the form marks it invalid.
+    const { invalid, ariaProps } = useFieldError(error);
 
     /**
      * Validate + dedupe a single candidate against the live set. Pure — no
@@ -143,7 +147,13 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
       onBlur?.(e);
     }
 
-    const hasError = error || message != null;
+    const hasError = invalid || message != null;
+    // aria-invalid tracks the full visual error state (Field/error prop + local
+    // message); aria-describedby keeps pointing at the Field's error element.
+    const fieldErrorProps = {
+      ...ariaProps,
+      "aria-invalid": hasError ? ("true" as const) : undefined,
+    };
 
     return (
       <div>

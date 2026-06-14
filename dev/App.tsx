@@ -22,6 +22,7 @@ import {
   Checkbox,
   CodeBlock,
   Collapsible,
+  ColorPicker,
   Combobox,
   CommandPalette,
   type CommandItem,
@@ -37,6 +38,7 @@ import {
   DropdownMenu,
   Field,
   FieldError,
+  type FormApi,
   FormActions,
   FormProvider,
   HoverCard,
@@ -45,6 +47,8 @@ import {
   Label,
   MediaCard,
   Meter,
+  MultiSelect,
+  type MultiSelectOption,
   NumberInput,
   OTPInput,
   Popover,
@@ -52,7 +56,10 @@ import {
   ProgressRing,
   Radio,
   RangeCalendar,
+  RangeSlider,
+  type RangeSliderValue,
   Rating,
+  Repeater,
   Select,
   Slider,
   Sparkline,
@@ -67,8 +74,11 @@ import {
   Timeline,
   Tooltip,
   VirtualizedDataTable,
+  Wizard,
+  type WizardStep,
   type ColumnDef,
   useFieldArray,
+  useFieldState,
   useForm,
   type StandardSchemaV1,
 } from "../src";
@@ -163,7 +173,11 @@ type FormDemoValues = {
   username: string;
   role: string;
   skills: string[];
+  interests: string[];
+  brandColor: string;
+  budget: RangeSliderValue;
   links: { url: string }[];
+  contacts: { name: string; email: string }[];
 };
 
 /**
@@ -186,9 +200,23 @@ const formDemoSchema: StandardSchemaV1<unknown, FormDemoValues> = {
       if (!v.role) issues.push({ message: "Pick a role", path: ["role"] });
       if (!v.skills || v.skills.length === 0)
         issues.push({ message: "Add at least one skill", path: ["skills"] });
+      if (!v.interests || v.interests.length === 0)
+        issues.push({ message: "Select at least one interest", path: ["interests"] });
+      if (!v.brandColor || !/^#[0-9a-f]{6}$/i.test(String(v.brandColor)))
+        issues.push({ message: "Pick a brand colour", path: ["brandColor"] });
+      if (!Array.isArray(v.budget) || v.budget[1] < 100)
+        issues.push({ message: "Maximum budget must be at least 100", path: ["budget"] });
       (v.links ?? []).forEach((link, i) => {
         if (!link?.url || !String(link.url).startsWith("http"))
           issues.push({ message: "Links must start with http", path: ["links", i, "url"] });
+      });
+      if (!v.contacts || v.contacts.length === 0)
+        issues.push({ message: "Add at least one contact", path: ["contacts"] });
+      (v.contacts ?? []).forEach((contact, i) => {
+        if (!contact?.name || String(contact.name).trim().length === 0)
+          issues.push({ message: "Contact name is required", path: ["contacts", i, "name"] });
+        if (!contact?.email || !String(contact.email).includes("@"))
+          issues.push({ message: "Enter a valid email", path: ["contacts", i, "email"] });
       });
       if (issues.length > 0) return { issues };
       return { value: v as FormDemoValues };
@@ -203,16 +231,130 @@ const ROLE_OPTIONS = [
   { value: "pm", label: "Product Manager" },
 ];
 
+const SKILL_OPTIONS: MultiSelectOption[] = [
+  { value: "react", label: "React" },
+  { value: "typescript", label: "TypeScript" },
+  { value: "css", label: "CSS" },
+  { value: "node", label: "Node.js" },
+  { value: "graphql", label: "GraphQL" },
+  { value: "rust", label: "Rust" },
+  { value: "go", label: "Go", disabled: true },
+];
+
+const COLOR_PRESETS = [
+  "#ef4444", "#f59e0b", "#10b981", "#3b82f6",
+  "#6366f1", "#8b5cf6", "#ec4899", "#64748b",
+];
+
+const WIZARD_STEPS: WizardStep[] = [
+  {
+    title: "Account",
+    description: "Your details",
+    content: (
+      <p className="text-body-2 text-fg-secondary">
+        Step 1 — tell us who you are. In a real flow this panel would host the
+        account fields.
+      </p>
+    ),
+  },
+  {
+    title: "Plan",
+    description: "Pick a tier",
+    content: (
+      <p className="text-body-2 text-fg-secondary">
+        Step 2 — choose a subscription plan. Back is enabled now; completed steps
+        in the header are clickable.
+      </p>
+    ),
+  },
+  {
+    title: "Confirm",
+    description: "Review & pay",
+    content: (
+      <p className="text-body-2 text-fg-secondary">
+        Step 3 — review everything. The primary button now reads “Finish”.
+      </p>
+    ),
+  },
+];
+
+/** Repeater demo — needs its own headless form, like FormsDemo. */
+type RepeaterDemoValues = { contacts: { name: string; email: string }[] };
+
+function RepeaterDemo() {
+  const form = useForm<RepeaterDemoValues>({
+    defaultValues: {
+      contacts: [{ name: "Ada Lovelace", email: "ada@example.com" }],
+    },
+  });
+  return (
+    <FormProvider form={form}>
+      <Repeater
+        form={form}
+        name="contacts"
+        defaultItem={() => ({ name: "", email: "" })}
+        addLabel="Add contact"
+        min={1}
+        max={4}
+        reorderable
+      >
+        {({ name }) => (
+          <div className="flex flex-1 flex-wrap gap-r5">
+            <Field name={`${name}.name`} className="flex-1 min-w-[8rem]">
+              <Input placeholder="Name" {...form.field(`${name}.name`)} />
+            </Field>
+            <Field name={`${name}.email`} className="flex-1 min-w-[10rem]">
+              <Input placeholder="email@example.com" {...form.field(`${name}.email`)} />
+            </Field>
+          </div>
+        )}
+      </Repeater>
+    </FormProvider>
+  );
+}
+
+/**
+ * Bind a controlled component (the `value` / `onValueChange` shape that
+ * ColorPicker / MultiSelect / RangeSlider expose) to a useForm field. Mirrors
+ * the watch/setValue pattern, plus surfaces the field's error and re-validates
+ * on change so the form stays live.
+ */
+function useControlledField<V>(form: FormApi<FormDemoValues>, name: string) {
+  const state = useFieldState(form, name);
+  return {
+    value: state.value as V,
+    error: state.error !== undefined,
+    onValueChange: (next: V) => {
+      form.setValue(name, next, { shouldTouch: true });
+      void form.trigger();
+    },
+  };
+}
+
 function FormsDemo() {
   const [submitted, setSubmitted] = useState<FormDemoValues | null>(null);
   const form = useForm<FormDemoValues>({
     schema: formDemoSchema,
     mode: "onBlur",
-    defaultValues: { email: "", username: "", role: "", skills: [], links: [{ url: "" }] },
+    defaultValues: {
+      email: "",
+      username: "",
+      role: "",
+      skills: [],
+      interests: [],
+      brandColor: "#3366cc",
+      budget: [200, 800],
+      links: [{ url: "" }],
+      contacts: [{ name: "", email: "" }],
+    },
     onSubmit: (values) => setSubmitted(values),
   });
   const links = useFieldArray({ form, name: "links" });
   const skills = (form.watch("skills") as string[]) ?? [];
+
+  const interests = useControlledField<string[]>(form, "interests");
+  const brandColor = useControlledField<string>(form, "brandColor");
+  const budget = useControlledField<RangeSliderValue>(form, "budget");
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-r3 p-r3">
@@ -262,6 +404,49 @@ function FormsDemo() {
             <FieldError />
           </Field>
 
+          <Field name="interests">
+            <Label>Interests (MultiSelect, bound via watch/setValue)</Label>
+            <MultiSelect
+              options={SKILL_OPTIONS}
+              placeholder="Pick a few interests…"
+              aria-label="Interests"
+              value={interests.value}
+              onValueChange={interests.onValueChange}
+              error={interests.error}
+            />
+            <FieldError />
+          </Field>
+
+          <Field name="brandColor">
+            <Label>Brand colour (ColorPicker)</Label>
+            <ColorPicker
+              presets={COLOR_PRESETS}
+              aria-label="Brand colour"
+              value={brandColor.value}
+              onValueChange={brandColor.onValueChange}
+              error={brandColor.error}
+            />
+            <FieldError />
+          </Field>
+
+          <Field name="budget">
+            <Label>
+              Budget range (RangeSlider) — {budget.value[0]}–{budget.value[1]}
+            </Label>
+            <RangeSlider
+              min={0}
+              max={1000}
+              step={50}
+              minDistance={50}
+              minLabel="Minimum budget"
+              maxLabel="Maximum budget"
+              value={budget.value}
+              onValueChange={budget.onValueChange}
+              error={budget.error}
+            />
+            <FieldError />
+          </Field>
+
           <div className="flex flex-col gap-r5">
             <Label>Links (useFieldArray)</Label>
             {links.fields.map((f, i) => (
@@ -285,6 +470,32 @@ function FormsDemo() {
                 Add link
               </Button>
             </div>
+          </div>
+
+          <div className="flex flex-col gap-r5">
+            <Label>Contacts (Repeater)</Label>
+            <Repeater
+              form={form}
+              name="contacts"
+              defaultItem={() => ({ name: "", email: "" })}
+              addLabel="Add contact"
+              min={1}
+              max={4}
+              reorderable
+            >
+              {({ name }) => (
+                <div className="flex flex-1 flex-wrap gap-r5">
+                  <Field name={`${name}.name`} className="flex-1 min-w-[8rem]">
+                    <Input placeholder="Name" {...form.field(`${name}.name`)} />
+                    <FieldError />
+                  </Field>
+                  <Field name={`${name}.email`} className="flex-1 min-w-[10rem]">
+                    <Input placeholder="email@example.com" {...form.field(`${name}.email`)} />
+                    <FieldError />
+                  </Field>
+                </div>
+              )}
+            </Repeater>
           </div>
 
           <FormActions>
@@ -339,8 +550,181 @@ function FormsDemo() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Wizard + useForm demo (separate Forms-tab example)                 */
+/* ------------------------------------------------------------------ */
+
+type WizardFormValues = { fullName: string; email: string; plan: string };
+
+const wizardFormSchema: StandardSchemaV1<unknown, WizardFormValues> = {
+  "~standard": {
+    version: 1,
+    vendor: "dev-demo",
+    validate(value) {
+      const v = (value ?? {}) as Partial<WizardFormValues>;
+      const issues: { message: string; path: (string | number)[] }[] = [];
+      if (!v.fullName || String(v.fullName).trim().length === 0)
+        issues.push({ message: "Name is required", path: ["fullName"] });
+      if (!v.email || !String(v.email).includes("@"))
+        issues.push({ message: "Enter a valid email address", path: ["email"] });
+      if (!v.plan) issues.push({ message: "Choose a plan", path: ["plan"] });
+      if (issues.length > 0) return { issues };
+      return { value: v as WizardFormValues };
+    },
+  },
+};
+
+const PLAN_OPTIONS = [
+  { value: "", label: "Choose a plan…" },
+  { value: "free", label: "Free" },
+  { value: "pro", label: "Pro" },
+  { value: "team", label: "Team" },
+];
+
+/**
+ * Drives a multi-step <Wizard> from a single headless useForm: each step hosts
+ * its own fields, and pressing "Finish" on the last step submits the form
+ * (surfacing validation if anything across the steps is invalid).
+ */
+function WizardFormDemo() {
+  const [submitted, setSubmitted] = useState<WizardFormValues | null>(null);
+  const form = useForm<WizardFormValues>({
+    schema: wizardFormSchema,
+    mode: "onBlur",
+    defaultValues: { fullName: "", email: "", plan: "" },
+    onSubmit: (values) => setSubmitted(values),
+  });
+
+  const steps: WizardStep[] = [
+    {
+      title: "Account",
+      description: "Who you are",
+      content: (
+        <div className="flex flex-col gap-r3">
+          <Field name="fullName">
+            <Label htmlFor="wf-name">Full name</Label>
+            <Input id="wf-name" placeholder="Ada Lovelace" {...form.field("fullName")} />
+            <FieldError />
+          </Field>
+          <Field name="email">
+            <Label htmlFor="wf-email">Email</Label>
+            <Input id="wf-email" placeholder="you@example.com" {...form.field("email")} />
+            <FieldError />
+          </Field>
+        </div>
+      ),
+    },
+    {
+      title: "Plan",
+      description: "Pick a tier",
+      content: (
+        <Field name="plan">
+          <Label htmlFor="wf-plan">Plan</Label>
+          <Select id="wf-plan" {...form.field("plan")}>
+            {PLAN_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+          <FieldError />
+        </Field>
+      ),
+    },
+    {
+      title: "Confirm",
+      description: "Review & finish",
+      content: (
+        <div className="flex flex-col gap-r5">
+          <p className="text-body-2 text-fg-secondary">
+            Review your details, then press <strong>Finish</strong> to submit. If anything
+            is missing the form re-validates and the offending field's error surfaces.
+          </p>
+          <pre className="overflow-x-auto text-body-3 text-fg-secondary">
+            {JSON.stringify(form.watch(), null, 2)}
+          </pre>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <section className="mx-auto flex max-w-xl flex-col gap-r3 p-r3">
+      <div className="flex flex-col gap-r6">
+        <h2 className="text-h3 text-fg-primary">Wizard + useForm</h2>
+        <p className="text-body-3 text-fg-muted">
+          A multi-step <code>Wizard</code> whose steps host fields from one headless{" "}
+          <code>useForm</code>. <strong>Finish</strong> submits and validates across every step.
+        </p>
+      </div>
+
+      <FormProvider form={form}>
+        <Wizard
+          steps={steps}
+          onComplete={() => {
+            void form.handleSubmit()();
+          }}
+        />
+      </FormProvider>
+
+      {submitted && (
+        <Alert variant="success">
+          <div className="flex flex-col gap-r6">
+            <strong>Submitted ✓</strong>
+            <pre className="overflow-x-auto text-body-3">
+              {JSON.stringify(submitted, null, 2)}
+            </pre>
+          </div>
+        </Alert>
+      )}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  App                                                                */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Keeps the controlled RangeSlider's state local. A range slider fires
+ * onValueChange on every pointer move during a drag, so hoisting this state up
+ * into the gallery would re-render the entire page each tick and make the drag
+ * stutter. Consumers should keep slider state as close to the slider as
+ * possible for the same reason.
+ */
+function PriceRangeDemo() {
+  const [priceRange, setPriceRange] = useState<RangeSliderValue>([25, 70]);
+  return (
+    <>
+      <RangeSlider
+        value={priceRange}
+        onValueChange={setPriceRange}
+        minDistance={5}
+        minLabel="Minimum price"
+        maxLabel="Maximum price"
+      />
+      <span className="text-body-3 text-fg-muted">
+        ${priceRange[0]} – ${priceRange[1]}
+      </span>
+    </>
+  );
+}
+
+/**
+ * Keeps the controlled Slider's state local. Like the range slider it fires
+ * onValueChange on every pointer move during a drag, so hoisting this state up
+ * into the gallery would re-render the entire page each tick and make the drag
+ * stutter. Consumers should keep slider state as close to the slider as
+ * possible for the same reason.
+ */
+function VolumeSliderDemo() {
+  const [sliderValue, setSliderValue] = useState(40);
+  return (
+    <>
+      <Slider value={sliderValue} onValueChange={setSliderValue} aria-label="Volume" />
+      <span className="text-body-3 text-fg-muted">Value: {sliderValue}</span>
+    </>
+  );
+}
 
 export function App() {
   const [viewport, setViewport] = useState<ViewportKey>("full");
@@ -350,7 +734,6 @@ export function App() {
   const [checked, setChecked] = useState(true);
   const [radio, setRadio] = useState("a");
   const [switchOn, setSwitchOn] = useState(true);
-  const [sliderValue, setSliderValue] = useState(40);
   const [numberValue, setNumberValue] = useState<number | null>(8);
   const [tags, setTags] = useState<string[]>(["react", "typescript"]);
   const [otp, setOtp] = useState("");
@@ -370,6 +753,9 @@ export function App() {
   const [pickerRange, setPickerRange] = useState<DateRange>({ start: null, end: null });
   const [fruit, setFruit] = useState<string | null>(null);
   const [fruitQuery, setFruitQuery] = useState("");
+  const [skills, setSkills] = useState<string[]>(["react", "typescript"]);
+  const [brandColor, setBrandColor] = useState("#3366cc");
+  const [expandedRows, setExpandedRows] = useState<Set<string | number>>(new Set([2]));
 
   const maxWidth = VIEWPORTS[viewport].width;
 
@@ -461,7 +847,10 @@ export function App() {
       </header>
 
       {tab === "forms" ? (
-        <FormsDemo />
+        <div className="flex flex-col gap-r2 pb-r2">
+          <FormsDemo />
+          <WizardFormDemo />
+        </div>
       ) : (
         /* Preview area constrained by the chosen viewport width. */
         <main
@@ -787,6 +1176,12 @@ export function App() {
             </Stepper>
           </Tile>
 
+          <Tile label="Wizard (drives Stepper)">
+            <div className="w-full min-w-80 max-w-xl">
+              <Wizard steps={WIZARD_STEPS} />
+            </div>
+          </Tile>
+
           <Tile label="CommandPalette">
             <Button onClick={() => setPaletteOpen(true)}>Open command palette</Button>
             <span className="flex items-center gap-r6 text-body-3 text-fg-muted">
@@ -920,12 +1315,7 @@ export function App() {
           </Tile>
           <Tile label="Slider">
             <div className="flex w-64 flex-col gap-r4">
-              <Slider
-                value={sliderValue}
-                onValueChange={setSliderValue}
-                aria-label="Volume"
-              />
-              <span className="text-body-3 text-fg-muted">Value: {sliderValue}</span>
+              <VolumeSliderDemo />
               <Slider defaultValue={75} step={5} aria-label="Brightness" disabled />
             </div>
           </Tile>
@@ -993,6 +1383,54 @@ export function App() {
                 {" → "}
                 {pickerRange.end ? pickerRange.end.toLocaleDateString("en-GB") : "—"}
               </span>
+            </div>
+          </Tile>
+
+          <Tile label="MultiSelect">
+            <div className="flex w-72 flex-col gap-r4">
+              <MultiSelect
+                options={SKILL_OPTIONS}
+                value={skills}
+                onValueChange={setSkills}
+                placeholder="Add skills…"
+                aria-label="Skills"
+              />
+              <span className="text-body-3 text-fg-muted">
+                Selected: {skills.length ? skills.join(", ") : "none"}
+              </span>
+              <MultiSelect
+                options={SKILL_OPTIONS}
+                defaultValue={["css"]}
+                searchable={false}
+                maxItems={3}
+                placeholder="Pick up to 3 (no search)"
+                aria-label="Skills capped"
+              />
+            </div>
+          </Tile>
+
+          <Tile label="RangeSlider">
+            <div className="flex w-64 flex-col gap-r4">
+              <PriceRangeDemo />
+              <RangeSlider defaultValue={[30, 80]} disabled minLabel="Min" maxLabel="Max" />
+            </div>
+          </Tile>
+
+          <Tile label="ColorPicker">
+            <div className="flex flex-col gap-r4">
+              <ColorPicker
+                value={brandColor}
+                onValueChange={setBrandColor}
+                presets={COLOR_PRESETS}
+                aria-label="Brand color"
+              />
+              <span className="text-body-3 text-fg-muted">Value: {brandColor}</span>
+            </div>
+          </Tile>
+
+          <Tile label="Repeater (over useFieldArray)">
+            <div className="w-[24rem] max-w-full">
+              <RepeaterDemo />
             </div>
           </Tile>
         </Group>
@@ -1150,6 +1588,32 @@ export function App() {
               rowKey={(r) => r.id}
               defaultSort={{ key: "name", direction: "asc" }}
               pageSize={4}
+            />
+          </div>
+
+          <div className="w-full">
+            <p className="mb-r4 text-body-3 text-fg-muted">
+              DataTable — expandable rows (controlled) + selection. Toggle the
+              chevrons to reveal a detail panel beneath each row.
+            </p>
+            <DataTable<Person>
+              data={PEOPLE}
+              columns={COLUMNS}
+              rowKey={(r) => r.id}
+              expandedKeys={expandedRows}
+              onExpandedChange={setExpandedRows}
+              renderExpanded={(r) => (
+                <div className="flex flex-col gap-r6 px-r5 py-r5">
+                  <span className="text-body-3 font-semibold uppercase tracking-wide text-fg-muted">
+                    Details — {r.name}
+                  </span>
+                  <span className="text-body-2 text-fg-secondary">
+                    {r.name} is a {r.role.toLowerCase()} with {r.visits} recorded
+                    visits. Expanded content can hold any node — forms, charts,
+                    nested tables.
+                  </span>
+                </div>
+              )}
             />
           </div>
 

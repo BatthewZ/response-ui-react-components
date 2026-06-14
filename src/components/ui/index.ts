@@ -51,3 +51,11 @@ export {
   VirtualizedDataTable,
   type VirtualizedDataTableProps,
 } from "./VirtualizedDataTable";
+export {
+  type UseWizardOptions,
+  type UseWizardReturn,
+  useWizard,
+  Wizard,
+  type WizardProps,
+  type WizardStep,
+} from "./Wizard";

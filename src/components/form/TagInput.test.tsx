@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { Field } from "./Field";
 import { TagInput } from "./TagInput";
 
 describe("TagInput", () => {
@@ -133,6 +134,31 @@ describe("TagInput", () => {
     render(<TagInput aria-label="Tags" value={["x", "y"]} onValueChange={vi.fn()} />);
     expect(screen.getByText("x")).toBeInTheDocument();
     expect(screen.getByText("y")).toBeInTheDocument();
+  });
+
+  it("paints the error border and sets aria-invalid from the error prop", () => {
+    render(<TagInput aria-label="Tags" error />);
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    expect(input.parentElement).toHaveClass("border-status-error");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("inherits the error state from a surrounding Field", () => {
+    render(
+      <Field error="Required">
+        <TagInput aria-label="Tags" />
+      </Field>
+    );
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    expect(input.parentElement).toHaveClass("border-status-error");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("stays neutral when there is no error", () => {
+    render(<TagInput aria-label="Tags" />);
+    const input = screen.getByRole("textbox", { name: "Tags" });
+    expect(input.parentElement).not.toHaveClass("border-status-error");
+    expect(input).not.toHaveAttribute("aria-invalid");
   });
 
   it("forwards ref to the inner input", () => {

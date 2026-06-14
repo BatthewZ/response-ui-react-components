@@ -122,9 +122,58 @@
   box-shadow: var(--SHADOW-SM);
 }
 
+/* ------------------------------------------------------------------ */
+/*  Expandable detail row — accordion-style reveal                     */
+/* ------------------------------------------------------------------ */
+
+/* Zero the cell padding so the row can collapse to zero height; the visible
+   padding lives on the inner body instead. Declared after the density classes
+   so it overrides their padding at equal specificity. */
+.data-table-expanded-cell {
+  padding: 0;
+}
+
+/* Animate height via grid-template-rows: 0fr (collapsed) -> 1fr (natural). */
+.data-table-expanded-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
+}
+
+.data-table-expanded-content[data-state="open"] {
+  grid-template-rows: 1fr;
+}
+
+/* The grid item must clip its overflow and allow a zero min-height for the
+   collapse to reach 0. */
+.data-table-expanded-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Padding mirrors the cell density so expanded content lines up with the row. */
+.data-table-expanded-body--dense {
+  padding: 0.25rem 0.75rem;
+  font-size: var(--BodyText-2);
+}
+
+.data-table-expanded-body--comfortable {
+  padding: 0.625rem 1rem;
+  font-size: var(--BodyText-1);
+}
+
+.data-table-expanded-body--spacious {
+  padding: 1rem;
+  font-size: var(--BodyText-1);
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .table-header-cell--sortable {
+    transition: none;
+  }
+
+  .data-table-expanded-content {
     transition: none;
   }
 }

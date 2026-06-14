@@ -185,26 +185,34 @@ The component calling `useForm` re-renders on any change. For render isolation, 
 
 ## Adding custom Tailwind tokens
 
-If you add custom design tokens (e.g. `bg-brand-foo`), extend the package's `tailwind-merge` config so `cn()` knows how to merge them:
+If you add custom design tokens (e.g. `bg-brand-foo`), build a project-local `cn` with `createCn` so it merges both the built-in tokens and yours:
 
 ```ts
-import { tailwindMergeExtension } from "@batthewz/response-ui-react-components";
-import { extendTailwindMerge } from "tailwind-merge";
+// app/cn.ts
+import { createCn } from "@batthewz/response-ui-react-components";
 
-export const twMerge = extendTailwindMerge({
-  extend: {
-    theme: {
-      ...tailwindMergeExtension.theme,
-      color: [...tailwindMergeExtension.theme.color, "brand-foo"],
-    },
+export const cn = createCn({
+  theme: {
+    color: ["brand-foo", "brand-accent"],
+    spacing: ["xtra-tight"],
   },
 });
 ```
 
+Then import `cn` from `app/cn` everywhere instead of from the package directly. `createCn` **concatenates** your arrays onto the built-ins, so customising one key (e.g. `color`) can't accidentally wipe awareness of the others (`spacing`, `text`) — the way a manual spread could. For power users, `mergeExtension` and the raw frozen `tailwindMergeExtension` are also exported. See [docs/extending.md](./docs/extending.md).
+
+## Building your own components
+
+Want to use this library as a base — keep the components you like and add your own that
+share the design tokens (charts, dashboards, domain widgets)? See
+[docs/extending.md](./docs/extending.md) for the build-on-top model, the token-compliant
+component pattern, custom tokens, and the shipped dashboard vocabulary
+(`bg-chart-*`, `text-trend-*`, `Sparkline`, `Meter`, …).
+
 ## What ships
 
-- **UI** (48): Accordion, Alert, AppShell, Avatar (+AvatarGroup), AvatarUpload, Badge, Breadcrumbs, Button, Calendar, Card, Carousel, CodeBlock, Collapsible, CommandPalette, ContextMenu, CopyButton, DataTable, Dialog, Drawer, DropdownMenu, EmptyState, ErrorBoundary, FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination, Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper, Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast (+ToastProvider/useToast), Tooltip, VirtualizedDataTable
-- **Form** (17): Checkbox, Combobox, DatePicker, Field, FieldError, FormActions, Input, Label, NumberInput, OTPInput, Radio, SearchInput, Select, Slider, Switch, TagInput, Textarea
+- **UI** (49): Accordion, Alert, AppShell, Avatar (+AvatarGroup), AvatarUpload, Badge, Breadcrumbs, Button, Calendar, Card, Carousel, CodeBlock, Collapsible, CommandPalette, ContextMenu, CopyButton, DataTable, Dialog, Drawer, DropdownMenu, EmptyState, ErrorBoundary, FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination, Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper, Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast (+ToastProvider/useToast), Tooltip, VirtualizedDataTable, Wizard (+`useWizard`)
+- **Form** (21): Checkbox, ColorPicker, Combobox, DatePicker, Field, FieldError, FormActions, Input, Label, MultiSelect, NumberInput, OTPInput, Radio, RangeSlider, Repeater, SearchInput, Select, Slider, Switch, TagInput, Textarea
 - **Form orchestration** (headless): `useForm`, `FormProvider`, `useFormContext`, `useFieldState`, `useFormState`, `useFieldArray` — Standard Schema validation, a unified `field()` accessor, `useSyncExternalStore`-backed reactivity
 - **Data display** (5): Sparkline, ProgressRing, Meter, DescriptionList, ActivityFeed
 - **Layout** (6): Center, Container, Divider, Row, Spacer, Stack
@@ -227,6 +235,10 @@ Interactive modules ship a `"use client"` directive, so the components work out 
 - **Client-everything** — pass `pageSize` (and optionally `defaultSort`). The table sorts, slices, and derives pages entirely on the client from the full `data` array. No `onSortChange` / `onPageChange` needed.
 - **Server-controlled** — pass `sort` + `onSortChange` and `page` + `totalPages` + `onPageChange`, and omit `pageSize`. The table renders exactly the rows you give it and reports sort/page intent back to you; you do the sorting and paging server-side.
 - **Hybrid / server-paged (lazy-load)** — never enable uncontrolled sorting here; use controlled `sort`. Accumulate fetched rows into the `data` array as the user pages, and render a footer sentinel (via the footer slot) to trigger the next load.
+
+### Expandable rows
+
+Pass `renderExpanded` to give every row a leading expander toggle that reveals a full-width detail panel beneath it (accordion-animated, respects `prefers-reduced-motion`). Expansion is uncontrolled by default; pass `expandedKeys` + `onExpandedChange` to control it. Composes with `selectable` — the detail cell spans the expander, selection, and data columns.
 
 ### Large datasets: `VirtualizedDataTable`
 
