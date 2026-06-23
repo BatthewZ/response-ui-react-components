@@ -60,6 +60,7 @@ import {
   type RangeSliderValue,
   Rating,
   Repeater,
+  SearchInput,
   Select,
   Slider,
   Sparkline,
@@ -111,9 +112,20 @@ function Group({
   );
 }
 
-function Tile({ label, children }: { label: string; children: React.ReactNode }) {
+function Tile({
+  label,
+  id,
+  children,
+}: {
+  label: string;
+  id?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-r5 rounded-md border border-border-default bg-surface-1 p-r4">
+    <div
+      id={id}
+      className="flex flex-col gap-r5 rounded-md border border-border-default bg-surface-1 p-r4"
+    >
       <span className="text-body-3 font-semibold text-fg-muted uppercase tracking-wide">
         {label}
       </span>
@@ -753,6 +765,7 @@ export function App() {
   const [pickerRange, setPickerRange] = useState<DateRange>({ start: null, end: null });
   const [fruit, setFruit] = useState<string | null>(null);
   const [fruitQuery, setFruitQuery] = useState("");
+  const [search, setSearch] = useState("invoices");
   const [skills, setSkills] = useState<string[]>(["react", "typescript"]);
   const [brandColor, setBrandColor] = useState("#3366cc");
   const [expandedRows, setExpandedRows] = useState<Set<string | number>>(new Set([2]));
@@ -1005,7 +1018,7 @@ export function App() {
               showToday
             />
           </Tile>
-          <Tile label="RangeCalendar — 2 months">
+          <Tile label="RangeCalendar — 2 months" id="tile-rangecalendar">
             <div className="flex flex-col gap-r5">
               <RangeCalendar
                 value={range}
@@ -1253,6 +1266,17 @@ export function App() {
               <Textarea placeholder="Type here…" rows={3} />
             </Field>
           </Tile>
+          <Tile label="SearchInput" id="tile-search">
+            <div className="flex w-[18rem] flex-col gap-r4">
+              <SearchInput value={search} onChange={setSearch} placeholder="Search…" />
+              <SearchInput
+                size="sm"
+                value={search}
+                onChange={setSearch}
+                placeholder="Search (sm)…"
+              />
+            </div>
+          </Tile>
           <Tile label="Select">
             <Field>
               <Label>Role</Label>
@@ -1367,7 +1391,7 @@ export function App() {
               <DatePicker disabled placeholder="Disabled" aria-label="Disabled date" />
             </div>
           </Tile>
-          <Tile label="DateRangePicker">
+          <Tile label="DateRangePicker" id="tile-daterangepicker">
             <div className="flex w-[22rem] flex-col gap-r4">
               <DateRangePicker
                 value={pickerRange}

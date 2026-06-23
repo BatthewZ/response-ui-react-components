@@ -1,6 +1,7 @@
 "use client";
 import {
   type ComponentPropsWithRef,
+  type CSSProperties,
   forwardRef,
   type KeyboardEvent,
   useEffect,
@@ -10,6 +11,7 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
+import { useMediaQuery } from "../../hooks/use-media-query";
 import {
   addDays,
   addMonths,
@@ -111,11 +113,18 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
     todayLabel = "Today",
     onTodayClick,
     className,
+    style,
     ...props
   },
   ref,
 ) {
-  const monthCount = Math.max(1, numberOfMonths);
+  // Below the design system's 40rem breakpoint, collapse a multi-month calendar
+  // to a single paged month. Stacked months overflow a phone-width popover and
+  // force an awkward nested scrollbar; instead the ‹ › nav pages between months,
+  // and the single-month layout turns the header label into a tappable month/year
+  // quick-jump (it's an inert spacer in the multi-month layout).
+  const isCompact = useMediaQuery("(width < 40rem)");
+  const monthCount = isCompact ? 1 : Math.max(1, numberOfMonths);
   const today = new Date();
 
   function isDayDisabled(d: Date): boolean {
@@ -432,6 +441,10 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
     <div
       ref={mergeRefs(ref, rootRef)}
       className={cn("calendar", className)}
+      // Tells Calendar.css how many month grids are shown so it can size itself
+      // to exactly that many on wide layouts. `max-width: 100%` then lets it
+      // collapse to a single fluid column on narrow screens / mobile.
+      style={{ "--calendar-months": monthCount, ...style } as CSSProperties}
       onPointerLeave={onDayHover ? () => onDayHover(null) : undefined}
       {...props}
     >

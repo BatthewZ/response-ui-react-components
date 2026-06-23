@@ -3,14 +3,53 @@
 /* ------------------------------------------------------------------ */
 
 .calendar {
-  display: inline-flex;
+  /* Sizing knobs. A month grid is 7 day cells + 6 gaps wide (`--calendar-month-width`);
+     `--calendar-months` (set inline by CalendarBase) is how many months are shown.
+     `--calendar-ideal-width` is the natural width of all of them laid out in a row
+     (+ gaps, padding, and `+ 2px` for the 1px L/R borders under border-box).
+
+     On desktop (≥ 40rem) the calendar takes that *definite* ideal width: it opens at
+     the full multi-month size inside a shrink-to-fit popover and resists being
+     squeezed in a flex row, while staying compact (never stretching the day cells).
+     Below 40rem the rule flips to `width: 100%` so the calendar fills — and shrinks
+     with — its container (phone viewport, viewport-capped popover, flex parent),
+     where `.calendar-months` wraps the grids into a single fluid column. The ideal
+     width then only acts as the upper cap. */
+  --calendar-day-size: 2.25rem;
+  --calendar-col-gap: var(--R-SIZE-6);
+  --calendar-month-gap: var(--R-SIZE-4);
+  --calendar-month-width: calc(
+    7 * var(--calendar-day-size) + 6 * var(--calendar-col-gap)
+  );
+  --calendar-months: 1;
+  --calendar-ideal-width: calc(
+    var(--calendar-months) * var(--calendar-month-width) +
+      (var(--calendar-months) - 1) * var(--calendar-month-gap) +
+      2 * var(--R-SIZE-4) + 2px
+  );
+
+  box-sizing: border-box;
+  display: flex;
   flex-direction: column;
   gap: var(--R-SIZE-4);
+  width: var(--calendar-ideal-width);
+  max-width: 100%;
   padding: var(--R-SIZE-4);
   background-color: var(--C-SURFACE-0);
   border: 1px solid var(--C-BORDER-DEFAULT);
   border-radius: var(--RADIUS-LG);
   color: var(--C-TEXT-PRIMARY);
+}
+
+/* 640px — the design system's responsive breakpoint (mirrors `width >= 40rem`).
+   Below it the calendar fills its container and CalendarBase collapses to a single
+   paged month, so the one grid grows into large touch targets and fits a popover
+   without a nested scrollbar. */
+@media (width < 40rem) {
+  .calendar {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -61,13 +100,20 @@
 /*  Multi-month layout                                                 */
 /* ------------------------------------------------------------------ */
 
+/* Months sit side by side and wrap to a vertical stack whenever the calendar's
+   content box is too narrow to hold them in a row — a continuous reflow, so it
+   covers narrow desktop containers as well as the mobile width flip above. The
+   `flex-basis` keeps each month's intrinsic (max-content) width correct so a
+   shrink-to-fit popover still opens at the full multi-month width on desktop. */
 .calendar-months {
   display: flex;
-  flex-direction: row;
-  gap: var(--R-SIZE-4);
+  flex-wrap: wrap;
+  gap: var(--calendar-month-gap);
 }
 
 .calendar-month {
+  flex: 1 1 var(--calendar-month-width);
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--R-SIZE-6);
@@ -93,7 +139,11 @@
 .calendar-weekdays,
 .calendar-week {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* Each of the seven columns is at least one day-size (a touch-target floor that
+     also gives the grid a stable intrinsic width for shrink-to-fit parents) and
+     grows to `1fr` to fill — so day cells stay ≥ the compact desktop size and
+     expand on a full-width mobile month. */
+  grid-template-columns: repeat(7, minmax(var(--calendar-day-size), 1fr));
   gap: var(--R-SIZE-6);
 }
 
@@ -124,8 +174,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  /* Fluid: fill the grid column and stay square. On desktop the column resolves
+     to `--calendar-day-size`; on mobile the single-column months let the cells
+     grow into comfortable touch targets. */
+  width: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: var(--RADIUS-MD);
   font-size: var(--BodyText-2);
   color: var(--C-TEXT-PRIMARY);

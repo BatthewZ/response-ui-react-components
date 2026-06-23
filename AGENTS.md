@@ -115,7 +115,7 @@ type RouterAdapterValue, type RouterLinkComponent, type RouterLinkProps
 ```
 useActiveSection, useClickOutside, useControllableState + type
 UseControllableStateParams + type UseControllableStateReturn, useDebounce,
-useDocumentTitle, useFloating + type Placement, useFocusTrap,
+useDocumentTitle, useFloating + type Placement, useFocusTrap, useMediaQuery,
 usePrefersReducedMotion, useRovingFocus,
 useTheme + type Theme + type UseThemeOptions + type UseThemeReturn,
 THEMES (= ["default","events","grimdark","tech"]), STORAGE_KEY,

@@ -24,6 +24,7 @@ import { cn } from "../../util/style";
 import { Calendar } from "../ui/Calendar";
 import { IconButton } from "../ui/IconButton";
 
+import { datePickerPopoverClassName } from "./date-picker-internals";
 import { Input } from "./Input";
 
 type DatePickerProps = {
@@ -221,7 +222,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                 ref={refs.setFloating}
                 style={floatingStyles}
                 aria-label="Choose date"
-                className="z-50 rounded-md border border-border-default bg-surface-0 p-r5 shadow-md"
+                className={datePickerPopoverClassName}
                 {...getFloatingProps()}
               >
                 <Calendar

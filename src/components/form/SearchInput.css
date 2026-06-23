@@ -24,6 +24,23 @@
   font-size: var(--BodyText-3);
 }
 
+/* `type="search"` renders a native clear affordance (WebKit/Chromium show one
+   while the field is focused with content; legacy Edge/IE via ::-ms-clear). The
+   component already renders its own `.search-input__clear`, so suppress the
+   built-in one to avoid the duplicate "x". */
+.search-input__input::-webkit-search-cancel-button,
+.search-input__input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-input__input::-ms-clear,
+.search-input__input::-ms-reveal {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .search-input__clear {
   position: absolute;
   right: 0.5rem;

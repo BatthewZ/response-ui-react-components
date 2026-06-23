@@ -24,6 +24,7 @@ import { cn } from "../../util/style";
 import { type DateRange, RangeCalendar } from "../ui/RangeCalendar";
 import { IconButton } from "../ui/IconButton";
 
+import { datePickerPopoverClassName } from "./date-picker-internals";
 import { Input } from "./Input";
 
 const EMPTY_RANGE: DateRange = { start: null, end: null };
@@ -212,7 +213,7 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
                 ref={refs.setFloating}
                 style={floatingStyles}
                 aria-label="Choose date range"
-                className="z-50 rounded-md border border-border-default bg-surface-0 p-r5 shadow-md"
+                className={datePickerPopoverClassName}
                 {...getFloatingProps()}
               >
                 <RangeCalendar
