@@ -99,21 +99,13 @@
   outline: none;
 }
 
-/* When the control holds chips but isn't focused, collapse the input to zero
-   width so it doesn't render as an empty row beneath the tags — the control
-   stays exactly as tall as the chips need. It springs back to a real input the
-   moment the control is focused (i.e. when the user is about to type), and is
-   always present while there are no chips so the placeholder shows.
-
-   The `:placeholder-shown` guard keeps the input visible when it still holds a
-   half-typed query: collapsing it on blur would hide that text, leaving the
-   user unable to see the unconfirmed query isn't part of their selection. */
+/* Idle input collapses width-only (not padding — that shifts height on focus)
+   so it tucks beside the chips. :placeholder-shown keeps a half-typed query visible. */
 .multiselect-control[data-has-selection]:not(:focus-within)
   .multiselect-input:placeholder-shown {
   flex: 0 0 0;
   min-width: 0;
   width: 0;
-  padding: 0;
 }
 
 .multiselect-input::placeholder {
