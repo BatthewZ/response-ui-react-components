@@ -72,3 +72,21 @@
     transition: none;
   }
 }
+
+/* Touch: grow hit targets to ~44px and widen the gap. */
+@media (pointer: coarse) {
+  .pagination__list {
+    gap: var(--R-SIZE-5);
+  }
+
+  .pagination__page,
+  .pagination__ellipsis {
+    min-width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .pagination__nav {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+}

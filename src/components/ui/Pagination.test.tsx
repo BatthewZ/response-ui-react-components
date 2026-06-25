@@ -42,7 +42,7 @@ describe("Pagination", () => {
 
   it("first and last are disabled at boundaries", () => {
     const { rerender } = render(
-      <Pagination page={1} totalPages={5} onPageChange={() => {}} />,
+      <Pagination page={1} totalPages={5} showEdges onPageChange={() => {}} />,
     );
     expect(
       screen.getByRole("button", { name: "First page" }),
@@ -52,7 +52,7 @@ describe("Pagination", () => {
     ).not.toBeDisabled();
 
     rerender(
-      <Pagination page={5} totalPages={5} onPageChange={() => {}} />,
+      <Pagination page={5} totalPages={5} showEdges onPageChange={() => {}} />,
     );
     expect(
       screen.getByRole("button", { name: "Last page" }),
@@ -66,7 +66,7 @@ describe("Pagination", () => {
     const user = userEvent.setup();
     const onPageChange = vi.fn();
     render(
-      <Pagination page={3} totalPages={5} onPageChange={onPageChange} />,
+      <Pagination page={3} totalPages={5} showEdges onPageChange={onPageChange} />,
     );
 
     await user.click(screen.getByRole("button", { name: "Next page" }));
@@ -133,8 +133,38 @@ describe("Pagination", () => {
     ).toBeInTheDocument();
   });
 
+  it("full variant hides edge buttons by default (numbers cover boundaries)", () => {
+    render(<Pagination page={3} totalPages={12} onPageChange={() => {}} />);
+    expect(
+      screen.queryByRole("button", { name: "First page" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Last page" }),
+    ).not.toBeInTheDocument();
+    // Boundaries still reachable as numbers.
+    expect(screen.getByRole("button", { name: "Page 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Page 12" })).toBeInTheDocument();
+  });
+
+  it("compact variant shows edge buttons by default (no numbers to reach boundaries)", () => {
+    render(
+      <Pagination
+        page={3}
+        totalPages={12}
+        variant="compact"
+        onPageChange={() => {}}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "First page" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Last page" }),
+    ).toBeInTheDocument();
+  });
+
   it("single page disables all navigation buttons", () => {
-    render(<Pagination page={1} totalPages={1} onPageChange={() => {}} />);
+    render(<Pagination page={1} totalPages={1} showEdges onPageChange={() => {}} />);
     expect(
       screen.getByRole("button", { name: "Previous page" }),
     ).toBeDisabled();
@@ -154,5 +184,89 @@ describe("Pagination", () => {
       (el) => el.textContent === "\u2026" || el.textContent === "...",
     );
     expect(hasEllipsis).toBe(true);
+  });
+
+  const slotCount = (container: HTMLElement) =>
+    container.querySelectorAll(".pagination__page").length +
+    container.querySelectorAll(".pagination__ellipsis").length;
+
+  it("renders a constant slot count across every page (no layout shift)", () => {
+    const counts = new Set<number>();
+    for (let page = 1; page <= 12; page++) {
+      const { container, unmount } = render(
+        <Pagination page={page} totalPages={12} onPageChange={() => {}} />,
+      );
+      counts.add(slotCount(container));
+      unmount();
+    }
+    // Constant slot count = constant width.
+    expect(counts.size).toBe(1);
+    expect([...counts][0]).toBe(7); // siblingCount(1) * 2 + 5
+  });
+
+  it("always renders the current page button while paging", () => {
+    for (let page = 1; page <= 12; page++) {
+      const { unmount } = render(
+        <Pagination page={page} totalPages={12} onPageChange={() => {}} />,
+      );
+      const current = screen.getByRole("button", { name: `Page ${page}` });
+      expect(current).toHaveAttribute("aria-current", "page");
+      unmount();
+    }
+  });
+
+  it("slot count scales with siblingCount and stays constant", () => {
+    const counts = new Set<number>();
+    for (let page = 1; page <= 20; page++) {
+      const { container, unmount } = render(
+        <Pagination
+          page={page}
+          totalPages={20}
+          siblingCount={2}
+          onPageChange={() => {}}
+        />,
+      );
+      counts.add(slotCount(container));
+      unmount();
+    }
+    expect(counts.size).toBe(1);
+    expect([...counts][0]).toBe(9); // siblingCount(2) * 2 + 5
+  });
+
+  it("collapses to compact below the configured breakpoint", () => {
+    const original = window.matchMedia;
+    // jsdom lacks matchMedia; stub a match.
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+
+    try {
+      render(
+        <Pagination
+          page={2}
+          totalPages={12}
+          compactBelow="40rem"
+          onPageChange={() => {}}
+        />,
+      );
+      // Compact: "Page X of Y", no page-number buttons.
+      expect(screen.getByText(/Page/)).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Page 5" }),
+      ).not.toBeInTheDocument();
+      // Edges appear (compact default).
+      expect(
+        screen.getByRole("button", { name: "First page" }),
+      ).toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });

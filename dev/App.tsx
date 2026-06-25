@@ -51,6 +51,7 @@ import {
   type MultiSelectOption,
   NumberInput,
   OTPInput,
+  Pagination,
   Popover,
   ProgressBar,
   ProgressRing,
@@ -769,6 +770,10 @@ export function App() {
   const [skills, setSkills] = useState<string[]>(["react", "typescript"]);
   const [brandColor, setBrandColor] = useState("#3366cc");
   const [expandedRows, setExpandedRows] = useState<Set<string | number>>(new Set([2]));
+  const [fullPage, setFullPage] = useState(1);
+  const [edgesPage, setEdgesPage] = useState(1);
+  const [compactPage, setCompactPage] = useState(3);
+  const [responsivePage, setResponsivePage] = useState(1);
 
   const maxWidth = VIEWPORTS[viewport].width;
 
@@ -1657,6 +1662,63 @@ export function App() {
               onSelectionChange={setVirtualSelection}
             />
           </div>
+
+          <Tile label="Pagination — standalone">
+            <div className="flex flex-col gap-r5">
+              <div className="flex flex-col gap-r6">
+                <span className="text-body-3 text-fg-muted">
+                  Full (controlled) — page {fullPage} of 12. Constant width:
+                  clicking next never shifts the layout. No edge chevrons by
+                  default (page 1 / 12 are always shown).
+                </span>
+                <Pagination
+                  page={fullPage}
+                  totalPages={12}
+                  onPageChange={setFullPage}
+                />
+              </div>
+
+              <div className="flex flex-col gap-r6">
+                <span className="text-body-3 text-fg-muted">
+                  Full — opt-in first/last chevrons (showEdges), wider sibling
+                  window (siblingCount=2).
+                </span>
+                <Pagination
+                  page={edgesPage}
+                  totalPages={12}
+                  onPageChange={setEdgesPage}
+                  showEdges
+                  siblingCount={2}
+                />
+              </div>
+
+              <div className="flex flex-col gap-r6">
+                <span className="text-body-3 text-fg-muted">
+                  Compact — "Page X of Y" with prev/next and first/last (edges
+                  default on here, since there are no numbers to jump to).
+                </span>
+                <Pagination
+                  variant="compact"
+                  page={compactPage}
+                  totalPages={8}
+                  onPageChange={setCompactPage}
+                />
+              </div>
+
+              <div className="flex flex-col gap-r6">
+                <span className="text-body-3 text-fg-muted">
+                  Responsive — collapses to compact below 40rem
+                  (compactBelow="40rem"). Narrow the window to see it switch.
+                </span>
+                <Pagination
+                  page={responsivePage}
+                  totalPages={12}
+                  onPageChange={setResponsivePage}
+                  compactBelow="40rem"
+                />
+              </div>
+            </div>
+          </Tile>
 
           <div className="w-full max-w-xl">
             <Timeline>

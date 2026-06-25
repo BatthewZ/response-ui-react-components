@@ -7,54 +7,55 @@ import {
 } from "lucide-react";
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
+import { useMediaQuery } from "../../hooks/use-media-query";
 import { cn } from "../../util/style";
 
 import { IconButton } from "./IconButton";
 
+function range(start: number, end: number): number[] {
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+}
+
+/**
+ * Page items to render. When windowed, always returns `siblingCount * 2 + 5`
+ * items regardless of page — fixed-width slots + constant count = no layout
+ * shift. Ellipsis only when a gap hides 2+ pages; a single hidden page shows
+ * as its number.
+ */
 function getPageRange(
   page: number,
   totalPages: number,
   siblingCount: number
 ): (number | "ellipsis")[] {
-  const totalPageNumbers = siblingCount * 2 + 5;
+  const totalSlots = siblingCount * 2 + 5;
 
-  if (totalPages <= totalPageNumbers) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  // Few enough to show all.
+  if (totalPages <= totalSlots) {
+    return range(1, totalPages);
   }
 
-  const leftSiblingIndex = Math.max(page - siblingCount, 1);
-  const rightSiblingIndex = Math.min(page + siblingCount, totalPages);
+  // Contiguous block at the un-collapsed end; keeps head/tail count == totalSlots.
+  const blockSize = siblingCount * 2 + 3;
 
-  const showLeftEllipsis = leftSiblingIndex > 2;
-  const showRightEllipsis = rightSiblingIndex < totalPages - 1;
+  const leftSibling = Math.max(page - siblingCount, 1);
+  const rightSibling = Math.min(page + siblingCount, totalPages);
 
-  const result: (number | "ellipsis")[] = [];
+  // Ellipsis only when the gap hides 2+ pages.
+  const showLeftEllipsis = leftSibling > 3;
+  const showRightEllipsis = rightSibling < totalPages - 2;
 
-  // Always include page 1
-  result.push(1);
-
-  if (showLeftEllipsis) {
-    result.push("ellipsis");
-  } else {
-    // Fill pages between 1 and leftSiblingIndex
-    for (let i = 2; i < leftSiblingIndex; i++) result.push(i);
+  // Near the start: [1 … blockSize, ellipsis, last]
+  if (!showLeftEllipsis && showRightEllipsis) {
+    return [...range(1, blockSize), "ellipsis", totalPages];
   }
 
-  // Sibling pages + current page
-  for (let i = leftSiblingIndex; i <= rightSiblingIndex; i++) {
-    if (i !== 1 && i !== totalPages) result.push(i);
+  // Near the end: [1, ellipsis, last-blockSize+1 … last]
+  if (showLeftEllipsis && !showRightEllipsis) {
+    return [1, "ellipsis", ...range(totalPages - blockSize + 1, totalPages)];
   }
 
-  if (showRightEllipsis) {
-    result.push("ellipsis");
-  } else {
-    for (let i = rightSiblingIndex + 1; i < totalPages; i++) result.push(i);
-  }
-
-  // Always include last page
-  if (totalPages > 1) result.push(totalPages);
-
-  return result;
+  // Middle: [1, ellipsis, leftSibling … rightSibling, ellipsis, last]
+  return [1, "ellipsis", ...range(leftSibling, rightSibling), "ellipsis", totalPages];
 }
 
 type PaginationProps = {
@@ -62,8 +63,11 @@ type PaginationProps = {
   totalPages: number;
   onPageChange: (page: number) => void;
   siblingCount?: number;
+  /** First/last chevrons. Default: off for `full` (numbers cover boundaries), on for `compact`. */
   showEdges?: boolean;
   variant?: "full" | "compact";
+  /** Collapse to `compact` below this viewport width. Number (px) or CSS length ("40rem"). */
+  compactBelow?: number | string;
 } & Omit<ComponentPropsWithRef<"nav">, "children">;
 
 export const Pagination = forwardRef<HTMLElement, PaginationProps>(
@@ -73,13 +77,28 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
       totalPages,
       onPageChange,
       siblingCount = 1,
-      showEdges = true,
+      showEdges,
       variant = "full",
+      compactBelow,
       className,
       ...props
     },
     ref
   ) {
+    // "not all" never matches, keeping the hook inert when `compactBelow` is unset.
+    const compactQuery =
+      compactBelow == null
+        ? null
+        : typeof compactBelow === "number"
+          ? `(width < ${compactBelow}px)`
+          : `(width < ${compactBelow})`;
+    const belowBreakpoint = useMediaQuery(compactQuery ?? "not all");
+    const effectiveVariant =
+      compactQuery && belowBreakpoint ? "compact" : variant;
+
+    // Redundant in `full` (numbers shown), essential in `compact` (none).
+    const edges = showEdges ?? effectiveVariant === "compact";
+
     const isFirst = page <= 1;
     const isLast = page >= totalPages;
 
@@ -91,8 +110,8 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
         {...props}
       >
         <ul className="pagination__list">
-          {/* First page button (full only, when showEdges) */}
-          {variant === "full" && showEdges && (
+          {/* First page */}
+          {edges && (
             <li>
               <IconButton
                 aria-label="First page"
@@ -117,7 +136,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
             </IconButton>
           </li>
 
-          {variant === "full" ? (
+          {effectiveVariant === "full" ? (
             // Page number buttons
             getPageRange(page, totalPages, siblingCount).map((item, i) =>
               item === "ellipsis" ? (
@@ -166,8 +185,8 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
             </IconButton>
           </li>
 
-          {/* Last page button (full only, when showEdges) */}
-          {variant === "full" && showEdges && (
+          {/* Last page */}
+          {edges && (
             <li>
               <IconButton
                 aria-label="Last page"
