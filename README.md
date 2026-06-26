@@ -1,10 +1,39 @@
 # @batthewz/response-ui-react-components
 
-React 19 component library for the response-ui design system. ~80 components, accessibility-first, zero CSS-in-JS — all styling comes from [`@batthewz/response-ui-css`](https://github.com/BatthewZ/response-ui-css/) (Tailwind v4 + design tokens). Router-agnostic via an injection adapter, headless auth gating.
+**~80 accessibility-first React 19 components you re-skin from ~1 page of CSS — without touching a single component.**
 
-> **Live demo:** [ai-website-starter.benmatthews-it.workers.dev/demo](https://ai-website-starter.benmatthews-it.workers.dev/demo) — every component, every theme, every responsive scale, in one place.
+Every visual decision — colour, spacing, type, radii, shadows, motion — comes from a framework-agnostic [CSS token contract](https://github.com/BatthewZ/response-ui-css), not from the components. Flip one attribute and the whole app re-skins, at runtime, with no rebuild:
 
-## Install
+```tsx
+// The whole idea: same components, different theme, zero component edits.
+<html data-theme="grimdark">
+  {" "}
+  {/* try: default · events · tech · grimdark */}
+  <Button variant="primary">Continue</Button>
+</html>
+```
+
+> **See it live:** [ai-website-starter.benmatthews-it.workers.dev/demo](https://ai-website-starter.benmatthews-it.workers.dev/demo) — every component, every theme, every responsive scale, in one place. The theme switcher is the whole pitch: same components, one-file theme swaps, live.
+
+_Also: zero CSS-in-JS, router-agnostic, headless where it counts, RSC-friendly._
+
+## Why this over another React component library?
+
+The headline reason is **reskinnability**. In most libraries the look is welded to the components — a large JS theme object (MUI, Chakra), per-component source you fork and own forever (shadcn/ui), or a styled-components runtime. Re-skinning means editing components, wrangling a theme config, or a rebuild. Here the look lives _outside_ the components, in a framework-agnostic CSS token contract — and everything below follows from that one decision:
+
+- **Re-skin the entire library from ~1 page of CSS.** Override ~30 custom properties — colours, spacing, fonts, radii, shadows, motion timing — and every component re-tunes at once. Flip `data-theme` and the whole app changes _at runtime_: no rebuild, no JS theme object, no component edits. Four themes (`default`, `events`, `grimdark`, `tech`) ship as proof.
+- **The same theme re-skins more than React.** Because the design language is pure CSS, one theme file restyles your React components _and_ your Astro / Rails / Phoenix / plain-HTML pages alike. The brand is a single source of truth across your whole stack, not duplicated per framework.
+- **Responsive tokens, not breakpoint soup.** `text-h2`, `gap-r3`, `p-r4` each carry both breakpoints — and headings/body carry their paired line-height and weight step-ups too. You stop hand-writing `sm:` variants and `leading-*`.
+- **Zero CSS-in-JS, zero runtime styling cost.** Styling is co-located plain CSS that self-registers with Tailwind v4. Nothing computes styles at render time; presentational primitives carry no `"use client"` and stay server-renderable (RSC-friendly out of the box).
+- **Headless where it matters.** Router-agnostic links, auth gating that takes a status string, and a Standard-Schema form layer with no validator lock-in — behaviour is decoupled from whichever router / auth / validation library you happen to use.
+- **Breadth _and_ correctness.** ~80 components — including DataTable (three wiring modes), VirtualizedDataTable, CommandPalette, Wizard — with accessibility and a contrast contract baked in, not bolted on.
+- **Lighter on AI tokens.** Terse token syntax plus a shipped [`AGENTS.md`](./AGENTS.md) mean agents read and generate far less to style a screen.
+
+Want only the design language, no React? It ships standalone as [`@batthewz/response-ui-css`](https://github.com/BatthewZ/response-ui-css) — pure CSS, zero JS, usable from any framework.
+
+> **Is this for you?** Best fit: you want one brand applied consistently across an app — and ideally across non-React stacks too — expressed in tokens (`p-r3`, `bg-surface-1`, `text-h2`); If ever you think your project (or sections of it) will need to be reskinned/rethemed/rebranded at any point; If your product services many clients or stakeholders who want their own flexible styling.
+
+## Quick start
 
 ```bash
 bun add @batthewz/response-ui-react-components @batthewz/response-ui-css \
@@ -12,9 +41,7 @@ bun add @batthewz/response-ui-react-components @batthewz/response-ui-css \
 bun add -D tailwindcss @tailwindcss/vite
 ```
 
-## Use
-
-Two CSS imports in your app's CSS entry — foundation (tokens, themes, responsive scales, animations) first, then per-component styles:
+Then two CSS imports in your app's CSS entry — foundation (tokens, themes, responsive scales, animations) first, then per-component styles:
 
 ```css
 /* src/app.css */
@@ -41,7 +68,20 @@ export function Hello() {
 }
 ```
 
-## Theming
+That renders a themed `Card`. Now set `data-theme` on your `<html>` (or any ancestor element) and everything inside re-skins at once — no other change. That's the whole model; full theming below.
+
+## Theming & reskinning the whole library
+
+Every component renders with `var(--…)` tokens defined by `response-ui-css` — none of them hard-code a colour, size, or font. So **reskinning is editing the foundation, never the components.** A theme is just one CSS file overriding the documented custom properties under a `data-theme` selector.
+
+**You don't need the `useTheme` hook — or any library JS — to apply a theme.** Switching is just setting a `data-theme` attribute, so the simplest path is to set it declaratively on the root element:
+
+```tsx
+// a Next.js root layout, your index.html, your top-level App — wherever <html> lives
+<html data-theme="grimdark">
+```
+
+Reach for `useTheme` only when you want a theme _switcher_: it adds reactive state, `localStorage` persistence, and SSR-safe hydration on top of that same attribute.
 
 ```tsx
 import { useTheme } from "@batthewz/response-ui-react-components";
@@ -50,12 +90,43 @@ const { theme, setTheme, themes } = useTheme();
 setTheme("grimdark"); // also: "events", "tech", "default"
 ```
 
-Custom theme: write a CSS file matching the [theme contract](./docs/theme-contract.md), `@import` it after `@batthewz/response-ui-css`, then:
+It's pure convenience over the attribute — `document.documentElement.setAttribute("data-theme", "grimdark")` does the same thing.
+
+> **Scope a theme to a subtree.** The built-in themes target `<html>` via a `:root[data-theme="…"]` selector. Author your own theme with a _bare_ `[data-theme="aurora"]` selector instead, and you can drop `data-theme="aurora"` on **any** element — a single panel, a dark island in a light page — and only that subtree re-skins, because the tokens cascade to its descendants.
+
+**Write your own theme:** copy the template, override the contract in ~1 page of CSS, `@import` it _after_ the foundation, then register its name with the hook:
+
+```css
+/* src/app.css */
+@import "@batthewz/response-ui-css";
+@import "./themes/aurora.css"; /* your ~1 page of token overrides */
+@import "@batthewz/response-ui-react-components/styles";
+```
 
 ```tsx
 const { setTheme } = useTheme({ themes: ["default", "aurora"] as const });
 setTheme("aurora");
 ```
+
+The full reskinning surface lives in the foundation package. These are the canonical, live docs on GitHub:
+
+- **[Theme contract](https://github.com/BatthewZ/response-ui-css/blob/main/docs/theme-contract.md)** — the authoritative list of every overridable token (colours, spacing, type, radii, shadows, motion) and the contrast contract themes must honour.
+- **[Extending the foundation](https://github.com/BatthewZ/response-ui-css/blob/main/docs/extending.md)** — add your own tokens, responsive/theme-aware values, and register sources with Tailwind.
+- **[Theme template](https://github.com/BatthewZ/response-ui-css/blob/main/src/_theme-template.css)** — a blank theme to copy as your starting point.
+- **[`response-ui-css` README](https://github.com/BatthewZ/response-ui-css#readme)** — the foundation in full: responsive scales, the four built-in themes, subpath exports, and how the token system fits together.
+
+## What ships
+
+- **UI** (50): Accordion, Alert, AppShell, Avatar (+AvatarGroup), AvatarUpload, Badge, Breadcrumbs, Button, Calendar, RangeCalendar, Card, Carousel, CodeBlock, Collapsible, CommandPalette, ContextMenu, CopyButton, DataTable, Dialog, Drawer, DropdownMenu, EmptyState, ErrorBoundary, FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination, Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper, Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast (+ToastProvider/useToast), Tooltip, VirtualizedDataTable, Wizard (+`useWizard`)
+- **Form** (22): Checkbox, ColorPicker, Combobox, DatePicker, DateRangePicker, Field, FieldError, FormActions, Input, Label, MultiSelect, NumberInput, OTPInput, Radio, RangeSlider, Repeater, SearchInput, Select, Slider, Switch, TagInput, Textarea
+- **Form orchestration** (headless): `useForm`, `FormProvider`, `useFormContext`, `useFieldState`, `useFormState`, `useFieldArray` — Standard Schema validation, a unified `field()` accessor, `useSyncExternalStore`-backed reactivity
+- **Data display** (5): Sparkline, ProgressRing, Meter, DescriptionList, ActivityFeed
+- **Layout** (6): Center, Container, Divider, Row, Spacer, Stack
+- **Animation** (5): AnimatePresence, Parallax, ScrollReveal, Stagger, ViewTransition (+`useViewTransition`)
+- **Guards** (1): RequireAuth (headless)
+- **Router** (1): RouterAdapterProvider, useLink, usePathname
+- **Hooks**: useActiveSection, useClickOutside, useControllableState, useDebounce, useDocumentTitle, useFloating, useFocusTrap, useMediaQuery, usePrefersReducedMotion, useRovingFocus, useTheme, useVirtualRows
+- **Util**: `cn`, `createCn`, `mergeExtension`, `tailwindMergeExtension`, `twMerge`, `mergeRefs`, `formatBytes`, plus date helpers (`formatDate`, `parseDateInput`, `buildMonthGrid`, `addDays`, `addMonths`, …)
 
 ## Router adapter — wire your router once
 
@@ -70,12 +141,20 @@ import {
 import { forwardRef } from "react";
 import { BrowserRouter, Link as RRLink, useLocation } from "react-router-dom";
 
-const AdapterLink: RouterLinkComponent = forwardRef<HTMLAnchorElement, RouterLinkProps>(
-  function AdapterLink({ to, replace, children, ...rest }, ref) {
-    return <RRLink ref={ref} to={to} replace={replace} {...rest}>{children}</RRLink>;
-  },
-);
-const adapter = { Link: AdapterLink, usePathname: () => useLocation().pathname };
+const AdapterLink: RouterLinkComponent = forwardRef<
+  HTMLAnchorElement,
+  RouterLinkProps
+>(function AdapterLink({ to, replace, children, ...rest }, ref) {
+  return (
+    <RRLink ref={ref} to={to} replace={replace} {...rest}>
+      {children}
+    </RRLink>
+  );
+});
+const adapter = {
+  Link: AdapterLink,
+  usePathname: () => useLocation().pathname,
+};
 
 export function App() {
   return (
@@ -101,9 +180,16 @@ import { useSession } from "your-auth-library";
 
 export function AuthGuard({ children }) {
   const { data: session, isPending } = useSession();
-  const status = isPending ? "loading" : session ? "authenticated" : "unauthenticated";
+  const status = isPending
+    ? "loading"
+    : session
+      ? "authenticated"
+      : "unauthenticated";
   return (
-    <RequireAuth status={status} unauthenticatedFallback={<Navigate to="/login" replace />}>
+    <RequireAuth
+      status={status}
+      unauthenticatedFallback={<Navigate to="/login" replace />}
+    >
       {children}
     </RequireAuth>
   );
@@ -166,8 +252,10 @@ export function SignIn() {
 For non-string values, annotate the bind: `form.field<string[]>("tags")`. `checked`-based controls (Checkbox, Switch) are wired via `watch`/`setValue` instead of `field()`:
 
 ```tsx
-<Switch checked={Boolean(form.watch("subscribe"))}
-  onChange={(v) => form.setValue("subscribe", v)} />
+<Switch
+  checked={Boolean(form.watch("subscribe"))}
+  onChange={(v) => form.setValue("subscribe", v)}
+/>
 ```
 
 `useFieldArray` drives dynamic lists with stable keys (`id` survives reorders):
@@ -204,29 +292,18 @@ Then import `cn` from `app/cn` everywhere instead of from the package directly. 
 ## Building your own components
 
 Want to use this library as a base — keep the components you like and add your own that
-share the design tokens (charts, dashboards, domain widgets)? See
-[docs/extending.md](./docs/extending.md) for the build-on-top model, the token-compliant
-component pattern, custom tokens, and the shipped dashboard vocabulary
-(`bg-chart-*`, `text-trend-*`, `Sparkline`, `Meter`, …).
+share the design tokens (charts, dashboards, domain widgets)? Because you style new
+components with the same tokens, they **inherit every theme for free**: a component built on
+`bg-surface-1` / `text-fg-primary` / `p-r3` re-skins alongside the built-ins when you flip
+`data-theme`, with no extra wiring. See [docs/extending.md](./docs/extending.md) for the
+build-on-top model, the token-compliant component pattern, custom tokens, and the shipped
+dashboard vocabulary (`bg-chart-*`, `text-trend-*`, `Sparkline`, `Meter`, …).
 
-## What ships
-
-- **UI** (49): Accordion, Alert, AppShell, Avatar (+AvatarGroup), AvatarUpload, Badge, Breadcrumbs, Button, Calendar, Card, Carousel, CodeBlock, Collapsible, CommandPalette, ContextMenu, CopyButton, DataTable, Dialog, Drawer, DropdownMenu, EmptyState, ErrorBoundary, FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination, Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper, Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast (+ToastProvider/useToast), Tooltip, VirtualizedDataTable, Wizard (+`useWizard`)
-- **Form** (21): Checkbox, ColorPicker, Combobox, DatePicker, Field, FieldError, FormActions, Input, Label, MultiSelect, NumberInput, OTPInput, Radio, RangeSlider, Repeater, SearchInput, Select, Slider, Switch, TagInput, Textarea
-- **Form orchestration** (headless): `useForm`, `FormProvider`, `useFormContext`, `useFieldState`, `useFormState`, `useFieldArray` — Standard Schema validation, a unified `field()` accessor, `useSyncExternalStore`-backed reactivity
-- **Data display** (5): Sparkline, ProgressRing, Meter, DescriptionList, ActivityFeed
-- **Layout** (6): Center, Container, Divider, Row, Spacer, Stack
-- **Animation** (5): AnimatePresence, Parallax, ScrollReveal, Stagger, ViewTransition (+`useViewTransition`)
-- **Guards** (1): RequireAuth (headless)
-- **Router** (1): RouterAdapterProvider, useLink, usePathname
-- **Hooks**: useActiveSection, useClickOutside, useControllableState, useDebounce, useDocumentTitle, useFloating, useFocusTrap, usePrefersReducedMotion, useRovingFocus, useTheme, useVirtualRows
-- **Util**: `cn`, `createCn`, `mergeExtension`, `tailwindMergeExtension`, `twMerge`, `mergeRefs`, `formatBytes`, plus date helpers (`formatDate`, `parseDateInput`, `buildMonthGrid`, `addDays`, `addMonths`, …)
-
-## RSC / Server Components
-
-Interactive modules ship a `"use client"` directive, so the components work out of the box in React Server Component frameworks (Next.js App Router, etc.). Pure presentational components (Button, Text, the layout primitives) carry no directive and stay server-renderable — you can use them directly in server components.
-
-**Security:** these are presentational Client Components — as with any client component, never pass server-only secrets as props (props are serialized to the browser). The components themselves access no server state or secrets (enforced by `bun run verify:directives`).
+The conventions that keep extensions on-theme and consistent are machine-encoded in
+[AGENTS.md](./AGENTS.md) — token-only styling (never raw `p-4` / `bg-gray-100`), `cn()`
+composition, `forwardRef` + semantic HTML, the contrast contract, and a "don'ts" list.
+Point your AI assistant at it and generated components follow the same patterns the library
+applies to itself.
 
 ## DataTable wiring modes
 
@@ -254,16 +331,22 @@ For tens of thousands of rows, reach for `VirtualizedDataTable` instead of pagin
 />
 ```
 
+## RSC / Server Components
+
+Interactive modules ship a `"use client"` directive, so the components work out of the box in React Server Component frameworks (Next.js App Router, etc.). Pure presentational components (Button, Text, the layout primitives) carry no directive and stay server-renderable — you can use them directly in server components.
+
+**Security:** these are presentational Client Components — as with any client component, never pass server-only secrets as props (props are serialized to the browser). The components themselves access no server state or secrets (enforced by `bun run verify:directives`).
+
 ## Subpath imports for tree-shaking
 
-Once published, deep imports are supported:
+Deep imports are supported, so you can pull in a single component or hook without going through the barrel:
 
 ```ts
 import { Button } from "@batthewz/response-ui-react-components/components/ui/Button";
 import { useDebounce } from "@batthewz/response-ui-react-components/hooks/use-debounce";
 ```
 
-In dev (workspace links), import from the root barrel — both work.
+Importing from the root barrel works too — both resolve to the same tree-shakeable modules.
 
 ## License
 

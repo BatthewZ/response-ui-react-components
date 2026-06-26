@@ -1,6 +1,6 @@
 {
   "name": "@batthewz/response-ui-react-components",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "type": "module",
   "description": "React component library for the response-ui design system. Pairs with @batthewz/response-ui-css.",
   "sideEffects": false,
@@ -46,7 +46,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:directives": "node scripts/verify-directives.mjs",
-    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && bun run typecheck && bun run test"
+    "verify:docs": "node scripts/verify-docs.mjs",
+    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && bun run typecheck && bun run test"
   },
   "peerDependencies": {
     "react": "^19.0.0",

@@ -1,6 +1,8 @@
 # AGENTS — @batthewz/response-ui-react-components
 
-Machine-readable reference for AI assistants working with this package. Concise, exact, opinionated.
+Machine-readable reference for AI assistants **using** this package — its public surface, usage patterns, and conventions for code that consumes it. Concise, exact, opinionated.
+
+> Working **on** this package itself (build, packaging, CSS/RSC internals, adding exports)? That guidance lives in [CONTRIBUTING.md](./CONTRIBUTING.md) — repo-only, not shipped in the npm package.
 
 ## Hard requirements
 
@@ -13,36 +15,20 @@ Machine-readable reference for AI assistants working with this package. Concise,
   The first provides tokens, themes, responsive scales, animations, base; the second provides per-component CSS (Accordion, Button, etc.) co-located with each `.tsx`. Order matters — per-component CSS reads `var(--…)` from the foundation. Components ship NO CSS-in-JS.
 - Tailwind v4 must be in the consumer's build (e.g. `@tailwindcss/vite`).
 - Peer deps: `react`, `react-dom`, `@floating-ui/react`, `lucide-react`. Regular dep: `@batthewz/response-ui-css` (auto-installed; the consumer still does the `@import` themselves so Tailwind v4 picks it up).
-- **Packaging: the single `exports` map points at `dist/` (`.js` + `.d.ts` + `.d.ts.map`), built by `vite build`.** Do NOT move entry points back to `src/*.ts` or stash a dist map inside `publishConfig` — overriding `main`/`types`/`exports` via `publishConfig` is a pnpm-only feature that npm/bun publish silently ignore (this shipped raw TSX to consumers up to 0.2.1). `src/` still ships in the tarball: the `@source` in `styles.css` and the declaration maps point into it. When consuming this package via a local link, run `bun run build` (or `vite build --watch`) so `dist/` tracks your edits.
-
-## CSS layout
-
-Per-component CSS is co-located with each `.tsx`: `src/components/ui/Accordion.tsx` ↔ `src/components/ui/Accordion.css`, `src/components/form/SearchInput.tsx` ↔ `src/components/form/SearchInput.css`, etc. The aggregator [`src/styles.css`](./src/styles.css) `@imports` all of them and is exposed as the `./styles` subpath export.
-
-The aggregator also ends with `@source "../src/**/*.{ts,tsx}";` — a **self-relative** Tailwind v4 registration of this package's own sources, so consumers' builds generate the utility classes used inside the components under any node_modules layout (hoisted npm, bun's isolated store, pnpm). It must stay self-relative and must keep working from both `src/styles.css` (dev/linked) and the verbatim copy at `dist/styles.css` (published) — `../src` satisfies both because `src/` ships in the npm package. Don't move source scanning into `@batthewz/response-ui-css`; a sideways path from another package silently breaks under isolated stores.
-
-Domain tokens (trend, chart, media-card/carousel/poster) live in [`src/tokens.css`](./src/tokens.css) (this package's extension of the universal css contract); the exported `cn` is built with `createCn` so it dedupes these utilities.
-
-When adding a new component that needs CSS:
-1. Create `MyComponent.css` next to `MyComponent.tsx`.
-2. Add an `@import` line to [`src/styles.css`](./src/styles.css).
-3. The CSS file is copied to `dist/` automatically by the `copyCssAssets` plugin in [`vite.config.ts`](./vite.config.ts).
-
-Class-name convention: kebab-case rooted on the component name (e.g. `.accordion`, `.accordion-trigger`, `.accordion-content-inner`). Use `cn()` to apply, so consumer-passed `className` can merge cleanly.
 
 ## RSC
 
-`"use client"` is applied selectively to interactive modules; barrels and pure presentational components (Button, Text, layout) stay directive-neutral so they remain server-renderable. `verify:directives` enforces both the dist mirroring (built `dist/` files carry the same directive as their `src/`) and a secret-free invariant (these are presentational Client Components — props serialize to the browser, so they access no server state/secrets).
+`"use client"` is applied selectively to interactive modules; barrels and pure presentational components (Button, Text, layout) stay directive-neutral, so they're server-renderable in RSC frameworks (Next.js App Router, etc.) with no extra wiring. These are presentational Client Components — props serialize to the browser, so **never pass server-only secrets as props.**
 
 ## Public surface
 
 Top-level barrel exports everything. The grouping below mirrors the source layout (`src/`).
 
-### components/ui (48)
+### components/ui (50)
 
 ```
 Accordion, Alert, AppShell, Avatar, AvatarGroup, AvatarUpload, Badge, Breadcrumbs,
-Button, Calendar, Card, Carousel, CodeBlock, Collapsible, CommandPalette + type
+Button, Calendar, RangeCalendar + type DateRange, Card, Carousel, CodeBlock, Collapsible, CommandPalette + type
 CommandItem, ContextMenu, CopyButton, DataTable + type ColumnDef, Dialog, Drawer,
 DropdownMenu, EmptyState + EmptyState{Title,Description,Icon,Actions}, ErrorBoundary,
 FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination,
@@ -53,10 +39,10 @@ VirtualizedDataTableProps, Wizard + useWizard + types
 WizardProps/WizardStep/UseWizardOptions/UseWizardReturn
 ```
 
-### components/form (21 + orchestration)
+### components/form (22 + orchestration)
 
 ```
-Checkbox, ColorPicker, Combobox, DatePicker, Field, FieldError, FormActions, Input,
+Checkbox, ColorPicker, Combobox, DatePicker, DateRangePicker, Field, FieldError, FormActions, Input,
 Label, MultiSelect + type MultiSelectOption, NumberInput, OTPInput, Radio,
 RangeSlider + type RangeSliderValue, Repeater + type RepeaterItem, SearchInput, Select,
 Slider, Switch, TagInput, Textarea
@@ -139,7 +125,11 @@ Always use `cn()` from this package, not raw `clsx` or `tailwind-merge`. The exp
 
 ```ts
 import { cn } from "@batthewz/response-ui-react-components";
-const className = cn("p-r3 bg-surface-1", customClass, isActive && "bg-primary");
+const className = cn(
+  "p-r3 bg-surface-1",
+  customClass,
+  isActive && "bg-primary",
+);
 ```
 
 ### Custom utilities — extending the merge config
@@ -167,18 +157,30 @@ For power users who need to drive `extendTailwindMerge` themselves, `mergeExtens
 Components that render links (`AppShell.SidebarLink`, `Breadcrumbs.Item`) call `useLink()` to get a Link component, defaulting to plain `<a href>`. To use react-router-dom (or any other router), wrap once at the root:
 
 ```tsx
-import { RouterAdapterProvider, type RouterLinkComponent, type RouterLinkProps } from "@batthewz/response-ui-react-components";
+import {
+  RouterAdapterProvider,
+  type RouterLinkComponent,
+  type RouterLinkProps,
+} from "@batthewz/response-ui-react-components";
 import { forwardRef } from "react";
 import { Link as RRLink, useLocation } from "react-router-dom";
 
-const AdapterLink: RouterLinkComponent = forwardRef<HTMLAnchorElement, RouterLinkProps>(
-  function AdapterLink({ to, replace, children, ...rest }, ref) {
-    return <RRLink ref={ref} to={to} replace={replace} {...rest}>{children}</RRLink>;
-  },
-);
-const adapter = { Link: AdapterLink, usePathname: () => useLocation().pathname };
+const AdapterLink: RouterLinkComponent = forwardRef<
+  HTMLAnchorElement,
+  RouterLinkProps
+>(function AdapterLink({ to, replace, children, ...rest }, ref) {
+  return (
+    <RRLink ref={ref} to={to} replace={replace} {...rest}>
+      {children}
+    </RRLink>
+  );
+});
+const adapter = {
+  Link: AdapterLink,
+  usePathname: () => useLocation().pathname,
+};
 
-<RouterAdapterProvider value={adapter}>{/* app */}</RouterAdapterProvider>
+<RouterAdapterProvider value={adapter}>{/* app */}</RouterAdapterProvider>;
 ```
 
 `RouterLinkProps` shape: `{ to: string; replace?: boolean; children?: ReactNode } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">`. `RouterLinkComponent` is a `ForwardRefExoticComponent` — implementations MUST use `forwardRef`.
@@ -192,12 +194,12 @@ type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 <RequireAuth
   status={status}
-  redirect="/login"                  // optional, only used if no fallback
-  loadingFallback={<MySpinner />}    // optional, defaults to centered Spinner
-  unauthenticatedFallback={<Navigate to="/login" replace />}  // pass router-specific Navigate
+  redirect="/login" // optional, only used if no fallback
+  loadingFallback={<MySpinner />} // optional, defaults to centered Spinner
+  unauthenticatedFallback={<Navigate to="/login" replace />} // pass router-specific Navigate
 >
   {children}
-</RequireAuth>
+</RequireAuth>;
 ```
 
 App-side wrappers wire up the auth library:
@@ -205,9 +207,16 @@ App-side wrappers wire up the auth library:
 ```tsx
 function AuthGuard({ children }: { children: ReactNode }) {
   const { data: session, isPending } = useSession();
-  const status = isPending ? "loading" : session ? "authenticated" : "unauthenticated";
+  const status = isPending
+    ? "loading"
+    : session
+      ? "authenticated"
+      : "unauthenticated";
   return (
-    <RequireAuth status={status} unauthenticatedFallback={<Navigate to="/login" replace />}>
+    <RequireAuth
+      status={status}
+      unauthenticatedFallback={<Navigate to="/login" replace />}
+    >
       {children}
     </RequireAuth>
   );
@@ -216,9 +225,16 @@ function AuthGuard({ children }: { children: ReactNode }) {
 // GuestGuard inverts: render children when *not* authenticated, redirect when authenticated.
 function GuestGuard({ children }: { children: ReactNode }) {
   const { data: session, isPending } = useSession();
-  const status = isPending ? "loading" : session ? "unauthenticated" : "authenticated";
+  const status = isPending
+    ? "loading"
+    : session
+      ? "unauthenticated"
+      : "authenticated";
   return (
-    <RequireAuth status={status} unauthenticatedFallback={<Navigate to="/dashboard" replace />}>
+    <RequireAuth
+      status={status}
+      unauthenticatedFallback={<Navigate to="/dashboard" replace />}
+    >
       {children}
     </RequireAuth>
   );
@@ -229,7 +245,7 @@ function GuestGuard({ children }: { children: ReactNode }) {
 
 Store-backed, dependency-free form layer. Design points an AI should not violate:
 
-- **Validation = Standard Schema.** `useForm` takes `schema?: StandardSchemaV1<unknown, T>` and validates against the *interface* (`~standard.validate`). Consumers bring Zod/Valibot/ArkType — do NOT add a validator as a runtime dependency. Schema output (post-coercion) is what `onSubmit` receives.
+- **Validation = Standard Schema.** `useForm` takes `schema?: StandardSchemaV1<unknown, T>` and validates against the _interface_ (`~standard.validate`). Consumers bring Zod/Valibot/ArkType — do NOT add a validator as a runtime dependency. Schema output (post-coercion) is what `onSubmit` receives.
 - **One unified `field(name)` accessor — no register-vs-Controller split.** `form.field(name)` returns `{ name, value, onChange, onBlur, ref, "aria-invalid", disabled }`, spreadable onto a native input OR a controlled component (`Combobox`, `TagInput`, `Slider`, `Select`, …). `onChange` accepts either a raw value or a DOM `ChangeEvent` (it extracts `.value`, or `.checked` for checkboxes). For non-string values annotate the generic: `field<string[]>("tags")`. `checked`-based controls (`Checkbox`, `Switch`) are bound via `watch`/`setValue`, not `field()`.
 - **Store + `useSyncExternalStore`.** `FormStore` (in `form-store.ts`) is framework-agnostic (no React imports) and owns values/errors/touched/dirty + Standard Schema validation. `useForm` re-renders its caller on every change (subscribes to a monotonic `version`). `useFieldState(form, name)` / `useFormState(form)` are opt-in render isolation — they subscribe to a per-field / form-level snapshot that's reference-stable when unchanged. `FormProvider` exposes the `FormApi` via context; `useFormContext()` returns it or `null`.
 - **Error surfacing rules (do not change the precedence):** manual/server errors (`setError`) always win and survive a validation pass; schema errors surface for a field only once `submitCount > 0` OR the field is touched OR dirty — so errors never flash at fields the user hasn't reached. `setValue` clears that field's manual error. `Field name="x"` wires the surfaced error into `FieldContext`; `<FieldError />` with no children renders it.
@@ -240,9 +256,12 @@ Store-backed, dependency-free form layer. Design points an AI should not violate
 const form = useForm({ defaultValues, schema, mode: "onBlur", onSubmit });
 <FormProvider form={form}>
   <form {...form.props}>
-    <Field name="email"><Input {...form.field("email")} /><FieldError /></Field>
+    <Field name="email">
+      <Input {...form.field("email")} />
+      <FieldError />
+    </Field>
   </form>
-</FormProvider>
+</FormProvider>;
 ```
 
 ### `useTheme` — typed multi-theme
@@ -258,6 +277,8 @@ const { theme, setTheme } = useTheme({
 ```
 
 `themes[0]` is the fallback / "default" (no `data-theme` attribute when set; cleared from localStorage). All others write `data-theme="<name>"` and persist to `localStorage["theme"]`.
+
+The hook is **optional** — a theme is applied by the `data-theme` attribute alone. `<html data-theme="grimdark">` (declarative, in a root layout / `index.html`) or `document.documentElement.setAttribute("data-theme", "grimdark")` both work with zero JS from this package. Use `useTheme` only when you need a reactive switcher (state + persistence + SSR-safe hydration). Scope: built-in themes use a `:root[data-theme="…"]` selector (matches `<html>` only); a theme authored with a **bare** `[data-theme="…"]` selector can be set on any element to re-skin just that subtree (tokens cascade to descendants).
 
 ### `useViewTransition` — adapter for any router's navigate
 
@@ -324,32 +345,13 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
 
 - Don't import from deep paths in the main app's source — import from the root barrel: `import { Button } from "@batthewz/response-ui-react-components"`. Subpath imports work but are usually unnecessary.
 - Don't use `clsx` or `twMerge` directly — always go through `cn()`.
-- Don't import from `react-router-dom` inside a generic component you're contributing to this package — use `useLink()` / `usePathname()` from the router adapter.
 - Don't reach into `node_modules/@batthewz/response-ui-css/src/...` from JS. CSS goes in CSS via `@import`.
 - Don't write CSS-in-JS. The library's styling boundary is Tailwind utilities + design tokens.
-- Don't add new public exports without also adding them to the relevant barrel (`components/ui/index.ts`, etc.) AND the root `src/index.ts`.
 - When a component paints marks directly on a surface, follow the **Contrast contract** in `response-ui-css/AGENTS.md` (Colour): use text tokens (`--C-TEXT-*`) for ink/lines/borders on `--C-SURFACE-*`, and outline filled chips in their `on-*` token. Don't use `--C-PRIMARY` / `--C-ACCENT` as a border/line/text colour on a surface — a theme may set them ≈ the surface.
 
-## File layout
+## Testing
 
-```
-src/
-  index.ts                      <- main barrel
-  components/
-    animation/   form/   guards/ (RequireAuth)
-    layout/      router/ (router-adapter)   ui/
-  hooks/
-    use-active-section.ts, use-click-outside.ts, use-debounce.ts,
-    use-document-title.ts, use-floating.ts, use-focus-trap.ts,
-    use-reduced-motion.ts, use-roving-focus.ts, use-theme.ts, index.ts
-  util/
-    style.ts (cn, twMerge, tailwindMergeExtension)
-    merge-refs.ts, format.ts, index.ts
-```
-
-## Testing patterns
-
-Tests live next to the components (`Foo.test.tsx`). Vitest + jsdom + @testing-library/react. When mocking the package in app-side tests, mock the WHOLE module path (`@batthewz/response-ui-react-components`) once with all needed exports — vitest only honors the last `vi.mock` call per module path.
+**Testing your app's code that consumes this package.** When you mock `@batthewz/response-ui-react-components`, mock the WHOLE module path **once** with every export your subject-under-test uses — vitest honors only the last `vi.mock` call per module path, so a second, partial mock silently wins and drops the rest:
 
 ```ts
 vi.mock("@batthewz/response-ui-react-components", () => {
@@ -358,9 +360,3 @@ vi.mock("@batthewz/response-ui-react-components", () => {
   return { Button, Text /* …all exports the SUT uses */ };
 });
 ```
-
-## Build
-
-`vite build` (library mode, ESM-only, `preserveModules: true`, `vite-plugin-dts` for types). Externalised: react, react-dom, react/jsx-runtime, @floating-ui/*, lucide-react, clsx, tailwind-merge.
-
-`bun pm pack` produces a publishable `.tgz`.
