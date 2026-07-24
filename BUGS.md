@@ -521,6 +521,44 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 346 | unaudited · candidate | Timeline | [Timeline.tsx:46](src/components/ui/Timeline.tsx#L46) | low | The root keys each context provider by array index, so prepending or reordering events remounts every entry from that point on, losing child state and replaying the entrance |
 | 347 | unaudited · spot-checked | Timeline | [Timeline.test.tsx:9](src/components/ui/Timeline.test.tsx#L9) | low | All eight tests pass `animate={false}`, so the default configuration — where #340 lives — has zero coverage; rendering it under `test-setup.ts` throws `window.matchMedia is not a function` from `usePrefersReducedMotion`, which guards nothing (same gap as #185) |
 | 348 | unaudited · spot-checked | util/date | [util/index.ts:1](src/util/index.ts#L1) | low | `toISODate` — whose own docblock names it the helper for `<input type="hidden">` / native submission, and which both pickers use — is not re-exported from `src/util/index.ts`, so package consumers cannot reach it and must reimplement it; `getMonthNames` is missing the same way |
+| 349 | unaudited · corroborated | Table | [Table.tsx:58](src/components/ui/Table.tsx#L58) | med | Every caller prop lands on the wrapper `<div>`; the inner `<table>` receives nothing, so it can never be given an accessible name via props |
+| 350 | unaudited · corroborated | Table | [Table.tsx:176](src/components/ui/Table.tsx#L176) | med | `Table.HeaderCell` spreads `{...props}` after `onClick={onSort}`, so a caller `onClick` silently replaces the sort click while Enter/Space still sort — mouse and keyboard diverge |
+| 351 | unaudited · corroborated | Table | [Table.css:79](src/components/ui/Table.css#L79) | med | `selected` is an 8% accent wash and nothing else — 1.03–1.13:1 against an unselected row across the four themes, no `aria-selected`, no data attribute (selection-by-colour, as #315) |
+| 352 | unaudited · corroborated | Table | [Table.css:115](src/components/ui/Table.css#L115) | med | `stickyHeader` is inert by default: `.table-wrapper` is the header's scrollport (`overflow-x:auto` forces `overflow-y:auto`) but is content-height, so `<thead>` never pins |
+| 353 | unaudited · corroborated | Table | [Table.tsx:147](src/components/ui/Table.tsx#L147) | med | A sortable `<th>` gets `tabIndex=0` + Enter/Space but keeps `columnheader` with no `role="button"` and no inner `<button>`, so nothing announces it as activatable |
+| 354 | unaudited · spot-checked | Table | [Table.css:57](src/components/ui/Table.css#L57) | low | Sort-arrow contrast is under WCAG 1.4.11's 3:1 — idle `--C-TEXT-MUTED` on `--C-SURFACE-1` is 2.43/2.37/2.06/2.43:1 (default/events/tech/grimdark), and active `--C-ACCENT` is 2.63:1 in `events`, 2.77:1 in `grimdark` |
+| 355 | unaudited · spot-checked | Table | [Table.tsx:167](src/components/ui/Table.tsx#L167) | low | `sortDirection` without `onSort` emits `aria-sort="ascending"` but renders no arrow, no `tabIndex` and no sortable styling — announced to AT, invisible to sighted users |
+| 356 | unaudited · spot-checked | Table | [Table.css:27](src/components/ui/Table.css#L27) | low | `.table-header-cell` hard-codes `font-weight: 600` instead of `--Semibold-Weight` (500/600 responsive, 700 in `grimdark`), so a theme's weight override never reaches the header |
+| 357 | unaudited · corroborated | DataTable | [DataTable.tsx:44](src/components/ui/DataTable.tsx#L44) | **high** | Controlled `sort` is not round-trippable: `sort?: SortState` rejects the `null` `onSortChange` emits, so `sort={sort ?? undefined}` silently flips the table to uncontrolled and it reorders rows from a stale `internalSort` |
+| 358 | unaudited · corroborated | DataTable | [DataTable.tsx:318](src/components/ui/DataTable.tsx#L318) | med | The empty and loading early returns render before `{footer}` and `renderPaginationBlock()`, so a server-paged table whose current page comes back empty loses its pagination entirely |
+| 359 | unaudited · corroborated | DataTable | [DataTable.tsx:229](src/components/ui/DataTable.tsx#L229) | med | `selectable` renders checkboxes that are permanently inert unless both `selectedKeys` and `onSelectionChange` are supplied, though the type marks both optional |
+| 360 | unaudited · corroborated | DataTable | [DataTable.tsx:390](src/components/ui/DataTable.tsx#L390) | med | The `index` given to `rowKey`, `column.render` and `renderExpanded` is the index within the current page slice, not within `data`, so an index-based `rowKey` collides across pages |
+| 361 | unaudited · corroborated | DataTable | [DataTable.tsx:147](src/components/ui/DataTable.tsx#L147) | med | `stickyHeader` can never take effect: the header resolves against `Table`'s wrapper (#352) and `DataTableProps` exposes no `className`, `style` or `ref` with which to give it a height |
+| 362 | unaudited · corroborated | DataTable | [DataTable.tsx:418](src/components/ui/DataTable.tsx#L418) | med | Row checkbox accessible names interpolate the raw row key into a hard-coded English string — `aria-label="Select row 8f3a-91c2-4de1"` (hard-coded-English pattern, as #222/#243/#259) |
+| 363 | unaudited · spot-checked | DataTable | [DataTable.tsx:324](src/components/ui/DataTable.tsx#L324) | low | The empty branch omits the expander header cell but still spans the body cell across it — measured 2 `<th>` against `colspan="3"`; the loading branch gets this right |
+| 364 | unaudited · spot-checked | DataTable | [DataTable.tsx:286](src/components/ui/DataTable.tsx#L286) | low | The loading and empty branches rebuild the header row and drop `col.align`, `sortDirection` and `onSort` — measured `tabindex=0`/`aria-sort="ascending"`/1 icon loaded vs `null`/`null`/0 under `loading` |
+| 365 | unaudited · spot-checked | DataTable | [DataTable.tsx:428](src/components/ui/DataTable.tsx#L428) | low | `striped` and `renderExpanded` conflict: an open detail row is a real `<tr>` in the same `<tbody>`, so it flips the `:nth-child(even)` parity of every row below it and picks up a stripe itself |
+| 366 | unaudited · spot-checked | DataTable | [DataTable.tsx:306](src/components/ui/DataTable.tsx#L306) | low | The loading state renders one `Skeleton` per cell, each a `role="status"` region named "Loading" — measured 10 simultaneous polite live regions for `loadingRowCount={5}` × 2 columns (instance of #63, multiplied by rows × columns) |
+| 367 | unaudited · corroborated | DataTable | [index.ts:14](src/components/ui/index.ts#L14) | low | `SortState` types four public props on both `DataTable` and `VirtualizedDataTable` but is not re-exported from the `ui` barrel although `ColumnDef` is, so consumers must deep-import `.../components/ui/DataTable` |
+| 368 | unaudited · corroborated | VirtualizedDataTable | [VirtualizedDataTable.tsx:287](src/components/ui/VirtualizedDataTable.tsx#L287) | med | `striped` bands the render window, not the dataset: the top spacer `<tr>` shifts `nth-child` parity, so the zebra pattern inverts on every row scrolled |
+| 369 | unaudited · corroborated | VirtualizedDataTable | [VirtualizedDataTable.tsx:157](src/components/ui/VirtualizedDataTable.tsx#L157) | med | The select-all key list maps over the entire dataset unconditionally, including when `selectable` is `false` — the one thing a virtualizer exists to avoid (measured 100,068 `rowKey` calls for 100,000 rows) |
+| 370 | unaudited · corroborated | VirtualizedDataTable | [VirtualizedDataTable.tsx:126](src/components/ui/VirtualizedDataTable.tsx#L126) | med | `sort?: SortState` cannot express the cycle's third state, so mirroring the `null` from `onSortChange` silently switches the table from controlled to uncontrolled — same defect as #357, one component over |
+| 371 | unaudited · corroborated | VirtualizedDataTable | [VirtualizedDataTable.tsx:164](src/components/ui/VirtualizedDataTable.tsx#L164) | med | `selectable` without `selectedKeys` + `onSelectionChange` renders an enabled checkbox column in which nothing works (same as #359) |
+| 372 | unaudited · corroborated | VirtualizedDataTable | [VirtualizedDataTable.tsx:275](src/components/ui/VirtualizedDataTable.tsx#L275) | med | A windowed table exposes no `aria-rowcount`/`aria-rowindex` and no `role="grid"`, so assistive tech sees only the mounted slice as the whole table — and the caller cannot patch it |
+| 373 | unaudited · corroborated | VirtualizedDataTable | [VirtualizedDataTable.tsx:301](src/components/ui/VirtualizedDataTable.tsx#L301) | med | Row checkboxes are named with the raw `rowKey` value and there is no prop to override it — measured `aria-label="Select row inv_0"` (same as #362) |
+| 374 | unaudited · spot-checked | VirtualizedDataTable | [VirtualizedDataTable.tsx:178](src/components/ui/VirtualizedDataTable.tsx#L178) | low | `onEndReached` fires before any scroll whenever the first window already reaches the threshold, including from the `loading` branch (measured: one call on a mount with `loading` and 10 rows) |
+| 375 | unaudited · spot-checked | VirtualizedDataTable | [VirtualizedDataTable.tsx:147](src/components/ui/VirtualizedDataTable.tsx#L147) | low | A non-numeric `height` seeds the viewport estimate as `0`, so the SSR/first paint renders only `overscan * 2` rows (measured server-side: 16 for `height="60vh"` vs 26 for `height={400}`) until the client measures |
+| 376 | unaudited · candidate | VirtualizedDataTable | [VirtualizedDataTable.tsx:295](src/components/ui/VirtualizedDataTable.tsx#L295) | low | `rowHeight` is written as a `<tr>` `height` — a CSS minimum — with no truncation, `overflow: hidden` or dev warning, so content taller than the value desyncs the rows from the spacer arithmetic. Read off the cascade, not rendered |
+| 377 | unaudited · candidate | VirtualizedDataTable | [VirtualizedDataTable.tsx:209](src/components/ui/VirtualizedDataTable.tsx#L209) | low | `ColumnDef.width` reaches only the `<th>` and the table has no `table-layout: fixed`, so column widths are negotiated from the mounted window and can re-measure mid-scroll. Read off the cascade, not rendered |
+| 378 | unaudited · corroborated | AvatarUpload | [AvatarUpload.tsx:163](src/components/ui/AvatarUpload.tsx#L163) | **high** | Without `onUpload`, the optimistic object URL is revoked in the same tick it is set, so the chosen file never displays and — via Avatar's latching error flag (#55) — the avatar falls back to initials for the instance's life |
+| 379 | unaudited · corroborated | AvatarUpload | [AvatarUpload.tsx:93](src/components/ui/AvatarUpload.tsx#L93) | **high** | `accept` is validated with an exact-string `Array.includes`, so the conventional `["image/*"]` wildcard reaches the OS dialog but then rejects every file the dialog allowed |
+| 380 | unaudited · corroborated | AvatarUpload | [AvatarUpload.tsx:194](src/components/ui/AvatarUpload.tsx#L194) | med | `{...props}` is spread after the component's own `onClick`/`onKeyDown`, so a caller-supplied handler silently replaces the file-picker trigger and the dialog never opens |
+| 381 | unaudited · corroborated | AvatarUpload | [AvatarUpload.tsx:186](src/components/ui/AvatarUpload.tsx#L186) | med | No busy state is exposed while `onUpload` is pending: the spinner is inside an `aria-hidden` span and the root gains neither `aria-busy` nor `aria-disabled`, while clicks in that window are silently dropped |
+| 382 | unaudited · corroborated | AvatarUpload | [AvatarUpload.tsx:230](src/components/ui/AvatarUpload.tsx#L230) | med | The validation/upload error is a `role="alert"` rendered inside the root `role="button"`, where ARIA's presentational-children rule makes it an unreliable live region — and `aria-label` wins the name computation |
+| 383 | unaudited · corroborated | AvatarUpload | [AvatarUpload.tsx:106](src/components/ui/AvatarUpload.tsx#L106) | med | The `TResult` type parameter on `AvatarUploadProps` is erased by `forwardRef<HTMLDivElement, AvatarUploadProps>`, so `onUploadComplete` can never see fields beyond `{ url }` |
+| 384 | unaudited · spot-checked | AvatarUpload | [AvatarUpload.tsx:203](src/components/ui/AvatarUpload.tsx#L203) | low | The hover scrim and its glyph hard-code `bg-black/50`, `text-white` and `border-white` — none of which resolve to any contract variable — instead of `--OVERLAY-SCRIM-COLOR`, which the shipped themes set to 0.45/0.7/0.8 and which `Drawer`, `AppShell` and `CommandPalette` all read |
+| 385 | unaudited · spot-checked | AvatarUpload | [index.ts:5](src/components/ui/index.ts#L5) | low | The barrel re-exports only the `AvatarUpload` value; the exported types `AvatarUploadProps` and `AvatarUploadResult` are unreachable from the package, unlike `DataTable`/`Toast`/`Wizard` which export theirs |
+| 386 | unaudited · spot-checked | AvatarUpload | [AvatarUpload.tsx:228](src/components/ui/AvatarUpload.tsx#L228) | low | The error tooltip is `whitespace-nowrap`, absolutely positioned `-bottom-8` and centred, and clears only on the next file selection — a long `accept` list overflows the container in both directions with no dismiss or timeout |
 
 
 **Clean (no findings):** Stack, FormActions, Tabs, Divider, Grid, Center, Container, Row, Spacer,
@@ -565,6 +603,25 @@ Label. (Not proof of correctness — just nothing surfaced.)
 > on both pickers; only the displayed text is uneditable (#338, and the same correction in
 > `date-picker.md`). And `DateRangePicker`'s popover does **not** stay open when focus tabs past
 > it: measured, tabbing out closes it, exactly as `date-picker.md` already said.
+>
+> **Batch L (2026-07-25)** added none to the list and removed none. Table, DataTable,
+> VirtualizedDataTable and AvatarUpload all carry findings below (#349–#386), three of them high.
+> The batch's structural finding is that **`Table`'s root spreads every caller prop onto its
+> wrapper `<div>` and gives the `<table>` nothing** (#349) — which is not just a naming problem
+> for `Table`: it is why `VirtualizedDataTable` cannot be given an `aria-rowcount` from the call
+> site (#372), and, paired with the wrapper being the sticky header's own scrollport, why
+> `stickyHeader` is inert on `Table` (#352) and unreachable on `DataTable` (#361). Both sticky
+> findings were reported as *reasoned*; they were confirmed in real Chromium — with the wrapper at
+> content height a 200px page scroll moves `<thead>` by exactly −200px (it does not pin), and a
+> `max-height` on the wrapper makes it pin. **`sort?: SortState` is one defect logged twice**
+> (#357 high, #370): the type cannot hold the `null` that `onSortChange` emits, so the idiomatic
+> `sort={sort ?? undefined}` is *already uncontrolled on mount*, every click taken in that state
+> seeds the internal sort, and the click meant to **clear** the sort instead hands ordering back
+> to the component. The batch also **refuted one of its own pages**: `virtualized-data-table.md`
+> said the reorder needed "the next header click" and then "snaps back when the new `sort` prop
+> arrives" — measured, neither is true (no further click is required, and the prop that arrives is
+> `undefined`, so nothing puts it back). The page now carries the measured account, which matches
+> `data-table.md`'s.
 
 ## Details — high & medium
 
@@ -2317,3 +2374,260 @@ detaches from its own entry and the entries run together. The nearest sibling co
 way round. Nothing in the public API changes either one, and a Tailwind override is blocked by the
 layer order (`Timeline.css` is unlayered; utilities are in `@layer utilities`).
 **Fix:** swap them — `--R-SIZE-3` or `--R-SIZE-2` for the item gap, `--R-SIZE-6` under the date.
+
+### 349 · Table — every prop lands on the wrapper, so the `<table>` can never be named (med)
+
+`TableRoot` renders `<div ref={ref} className={cn("table-wrapper", className)} {...props}>` around a
+`<table>` that receives only its own two classes. Measured: `<Table aria-label="Invoices" id="inv"
+data-x="1">` renders `<div class="table-wrapper" aria-label="Invoices" id="inv" data-x="1">`, the
+`<table>`'s attribute list is exactly `["class"]`, and `getByRole("table", {name: "Invoices"})`
+returns `null` — every table in the library is unnamed in a screen reader's table list unless the
+caller happens to know to pass a `<caption>` child (measured: a `<caption>` does name it). Not a
+`Table`-only problem: it is the reason `VirtualizedDataTable` cannot be given `aria-rowcount` from
+the call site (#372).
+**Fix:** forward `aria-label`/`aria-labelledby`/`id` to the `<table>`, or accept a dedicated
+`label`/`tableProps` prop.
+
+### 350 · Table — a caller `onClick` on `Table.HeaderCell` replaces the sort click (med)
+
+`TableHeaderCell` sets `onClick={onSort}` and then spreads `{...props}` *after* it, so the last
+writer wins. Measured: `<Table.HeaderCell onSort={fn} onClick={g}>` — one pointer click gives `g` 1
+call and `fn` **0**; `keyDown` Enter then Space still gives `fn` 2 calls, because the key handler is
+a separate prop the caller did not overwrite. Mouse and keyboard therefore do different things on
+the same header. `onKeyDown`, `tabIndex` and `aria-sort` are shadowed by the same mechanism.
+**Fix:** compose the handlers (call the caller's, then the internal one) instead of spreading rest
+after them.
+
+### 351 · Table — `selected` is conveyed by an 8% wash and nothing else (med)
+
+`Table.Row selected` emits only `class="table-row table-row--selected"` — measured, the row's full
+attribute list is `["class"]` plus whatever the caller passed, `aria-selected` is `null`, and the
+accessibility tree is byte-identical to an unselected row. The tint is
+`color-mix(in oklch, var(--C-ACCENT) 8%, transparent)` over the table's `--C-SURFACE-0`; composited
+the way a browser composites it (gamma-encoded sRGB) it measures **1.12:1** default, **1.08:1**
+`events`, **1.13:1** `tech`, **1.03:1** `grimdark` against an unselected row — far below the 3:1
+WCAG 1.4.11 asks of a non-text indicator. Selection-by-colour-alone, the same shape as `CalendarBase`
+(#315).
+**Fix:** emit `data-selected` (and `aria-selected` under a `grid` role) and raise the mix above 3:1.
+
+### 352 · Table — `stickyHeader` does nothing until the wrapper is given a height (med)
+
+`.table--sticky-header .table-head` sets `position: sticky; top: 0`, which resolves against the
+nearest scroll container. `.table-wrapper` sets `overflow-x: auto`, which per the overflow spec
+forces `overflow-y` to compute to `auto` — so the wrapper, not the viewport, is the scrollport — and
+the wrapper has no height, so it never scrolls vertically. Measured in Chromium: computed
+`overflow-y` on `.table-wrapper` is `auto`; with no height `scrollHeight === clientHeight` (507/507,
+not scrollable) and a 200px **page** scroll moves the `<thead>`'s viewport `y` by exactly **−200px**
+— it does not pin. With `max-height: 9rem` the same wrapper becomes scrollable (144/507) and
+`scrollTop = 120` leaves the `<thead>` at the wrapper's top edge. So the prop appears to do nothing
+unless the caller already knows to add `max-h-*`.
+**Fix:** set a `max-height`/`overflow-y` on `.table-wrapper` when `stickyHeader` is on rather than
+relying on the caller.
+
+### 353 · Table — a sortable header is operable but never announced as activatable (med)
+
+A `<th>` with `onSort` gets `tabIndex={0}`, an Enter/Space `keydown` handler and an `aria-sort`, but
+keeps its implicit `columnheader` role: measured, the element's `role` attribute is `null`, there is
+no `role="button"` and no `<button>` inside it, and the only affordance is the arrow glyph — which
+lucide renders `aria-hidden="true"` (measured), so it is not in the accessibility tree at all. A
+keyboard user hears "column header, Customer, ascending" and is told nothing about pressing it.
+**Fix:** wrap the header content in a real `<button>`, per the ARIA sortable-column pattern.
+
+### 357 · DataTable — a controlled `sort` cannot be cleared, and clearing it silently un-controls the table (high)
+
+`sort?: SortState` cannot hold the `null` that `onSortChange` emits, and `isControlledSort` is
+`sortProp !== undefined` — so the idiomatic `useState<SortState | null>(null)` passed as
+`sort={sort ?? undefined}` starts **uncontrolled**, and every click taken while uncontrolled runs
+`setInternalSort`. Measured end to end with `data = [Charlie, Alice, Bob]`, one sortable column,
+`onSortChange={setSort}`: click 1 is uncontrolled, so it seeds `internalSort = {customer, asc}` and
+hands the parent `{asc}`; clicks 1 and 2 then render in source order (controlled, `aria-sort`
+ascending then descending); click 3 — the one that is supposed to **clear** the sort — emits `null`,
+the prop becomes `undefined`, the table reads that as uncontrolled, finds the stale
+`internalSort = {asc}` from click 1 and reorders the rows to `Alice, Bob, Charlie` with
+`aria-sort="ascending"`. No further click is needed, and nothing puts it back: the prop that arrived
+is `undefined`. If the server owns the ordering, the display now silently disagrees with it.
+**Fix:** type `sort?: SortState | null` and derive controlled-ness from property presence
+(`"sort" in props`) rather than from `undefined`.
+
+### 358 · DataTable — the loading and empty branches drop `footer` and the pager (med)
+
+Both early returns render a bare `<Table>` and return before `{footer}` and
+`renderPaginationBlock()`. Measured: `<DataTable data={[]} page={3} totalPages={5}
+onPageChange={fn} footer={<LoadMore/>} />` renders **0** `nav[aria-label="Pagination"]` and **0**
+footer nodes, while the same props with non-empty `data` render 1 of each. A user on a server-paged
+screen whose page 3 comes back empty has no control left with which to get back to page 2 —
+the state that most needs the pager is the one that removes it.
+**Fix:** render `{footer}` and `renderPaginationBlock()` in all three branches.
+
+### 359 · DataTable — `selectable` alone renders permanently dead checkboxes (med)
+
+`selectedKeys` and `onSelectionChange` are both optional in `DataTableProps`, but `handleSelectAll`
+and `handleSelectRow` open with `if (!onSelectionChange || !selectedKeys) return`, and
+`checked={selectedKeys?.has(key) ?? false}`. Measured: `<DataTable data={3 rows} columns rowKey
+selectable />` renders 4 checkboxes, all `checked === false` and **none** `disabled`, and clicking
+one leaves every box unchecked and calls nothing. The control looks live and is inert. Expansion,
+one prop group over, already solves this correctly with `useControllableState`.
+**Fix:** pair the three props in a discriminated union, or manage selection internally when
+uncontrolled.
+
+### 360 · DataTable — `index` is page-relative, so index-based keys collide across pages (med)
+
+`pageData.map((row, i) => …)` passes the slice index to `rowKey`, `column.render` and
+`renderExpanded`. Measured with `pageSize={2}` and a `render: (_r, i) => String(i)` column: page 1
+prints `0, 1` and page 2 prints `0, 1` again. An index-based `rowKey` therefore returns the same key
+for row 0 of every page, so selecting row 0 on page 1 shows row 0 of page 2 as selected, and React
+sees the same keys across a page change.
+**Fix:** pass `start + i` in the paged path.
+
+### 361 · DataTable — `stickyHeader` is unreachable, not merely inert (med)
+
+`DataTable` forwards `stickyHeader` to `Table`, whose sticky header resolves against the
+`.table-wrapper` scrollport (#352) — and `DataTableProps` is a plain object type with no
+`className`, `style` or `ref`, so there is no way from the call site to give that wrapper a height.
+The prop is therefore not just default-off-by-accident (as on `Table`, where `max-h-*` fixes it) but
+has no working configuration at all: `<DataTable stickyHeader />` inside any scrolling ancestor
+never pins its header.
+**Fix:** accept `className`/`style` (or a `maxHeight` prop) and forward it to `Table`.
+
+### 362 · DataTable — row checkboxes are named by interpolating the raw row key (med)
+
+`aria-label={`Select row ${key}`}` puts whatever `rowKey` returned straight into the accessible
+name. Measured with `rowKey={(r) => r.uid}` and a uid of `"8f3a-91c2-4de1"`: the checkbox's name is
+`"Select row 8f3a-91c2-4de1"`, which a screen reader spells out character by character. The English
+string is also unreachable for translation — the same hard-coded-`aria-label` pattern as `SearchInput`
+(#222), `OTPInput` (#243) and `Repeater` (#259).
+**Fix:** add an optional `rowLabel?: (row: T, index: number) => string` defaulting to the current
+behaviour.
+
+### 368 · VirtualizedDataTable — `striped` bands the render window, not the dataset (med)
+
+The zebra is `.table-row--striped:nth-child(even)`, counted among the `<tbody>`'s children — and the
+top spacer `<tr>` is one of those children whenever the window has scrolled off the top. Measured in
+Chromium against the exact markup the component emits (`rowHeight` 40, `overscan` 0): with
+`startIndex = 0` and no top spacer, the striped dataset rows are **1, 3**; with `startIndex = 6` and
+a top spacer they are **6, 8, 10**; with `startIndex = 7`, **7, 9, 11**. Since the window start moves
+one row at a time, the entire zebra pattern inverts on every single row of scroll, and the first row
+of the window is always the striped one.
+**Fix:** stripe from the absolute row index (a per-row class computed from `startIndex + i`) rather
+than `:nth-child(even)`.
+
+### 369 · VirtualizedDataTable — the select-all key list walks the whole dataset on every render (med)
+
+`const allKeys = useMemo(() => sortedData.map((row, i) => rowKey(row, i)), [sortedData, rowKey])`
+is gated on nothing — not on `selectable`, not on `selectedKeys` being present. Measured: rendering
+**100,000** rows with `selectable={false}` invokes `rowKey` **100,068** times, which is precisely the
+work a virtualizer exists to avoid. Worse, the memo key includes `rowKey`, so an inline
+`rowKey={(r) => r.id}` — the shape every example uses — is a new function on every parent render and
+repeats the full pass each time (measured 50,068 → 100,084 on a 50,000-row table after one re-render).
+**Fix:** gate the `allKeys` memo (and `allSelected`/`someSelected`) on
+`selectable && selectedKeys != null`.
+
+### 370 · VirtualizedDataTable — controlled `sort` flips to uncontrolled on the clearing click (med)
+
+Identical mechanism to #357: `sort?: SortState` cannot express the `null` the cycle's third step
+emits, and `isControlledSort = sortProp !== undefined`. Measured with
+`useState<SortState | null>(null)` + `sort={sort ?? undefined}` + `onSortChange={setSort}`: clicks 1
+and 2 leave source order, click 3 reorders to `Alice, Bob, Charlie` with `aria-sort="ascending"` off
+an `internalSort` seeded by click 1. Measured with an **asynchronous** parent commit (a `setTimeout`
+standing in for a server round trip), the same reorder appears the moment the `undefined` prop lands
+— no further click. Measured with a **non-null** seed (`sort` never null, as the page's server
+example does it), the table stays controlled for the whole cycle and the rows never move, which is
+the fix in miniature.
+**Fix:** type `sort?: SortState | null` and decide controlled-ness from a distinct signal (property
+presence, or `onSortChange` being supplied).
+
+### 371 · VirtualizedDataTable — `selectable` alone renders an enabled, inert checkbox column (med)
+
+Same shape as #359. Measured with `<VirtualizedDataTable data={rows} columns rowKey rowHeight={40}
+selectable />`: 4 checkboxes render, all unchecked and **not** `disabled`; clicking the select-all
+box leaves `checked` false and calls nothing, because `handleSelectAll` early-returns on the missing
+props. On this component the cost is higher than on `DataTable`, because the affordance implies a
+select-all over the whole dataset.
+**Fix:** make the three props a discriminated union, or render the column disabled and warn in dev.
+
+### 372 · VirtualizedDataTable — a windowed table reports the window's size as the table's (med)
+
+Measured on a 1,000-row dataset: `table.getAttribute("aria-rowcount")` is `null`, the table's `role`
+is `null` (so it is a plain `table`, not a `grid`), no row carries `aria-rowindex`, and the
+`<tbody>` holds **17** `<tr>`. A screen reader therefore announces a 17-row table whose contents
+silently mutate as the user scrolls, with no way to report "row 4,201 of 50,000". It is not fixable
+from the call site either: `VirtualizedDataTableProps` accepts no DOM props, and `Table`'s rest
+spread lands on the wrapper `<div>`, not the `<table>` (#349).
+**Fix:** set `role="grid"` + `aria-rowcount={data.length}` on the `<table>` and `aria-rowindex` per
+row — which requires `Table` to forward attributes to the `<table>` element.
+
+### 373 · VirtualizedDataTable — row checkboxes are named with the raw key (med)
+
+Same defect as #362, one component over, and here without even a page-slice to keep the keys short:
+measured, `rowKey={(inv) => inv.id}` returning `"inv_0"` produces `aria-label="Select row inv_0"`.
+Database identifiers are the normal case for a 50,000-row table, and there is no prop to supply a
+human-readable name.
+**Fix:** add `rowLabel?: (row: T, index: number) => string`, defaulting to the current string.
+
+### 378 · AvatarUpload — with no `onUpload`, one file pick blanks the avatar permanently (high)
+
+In the no-handler branch the component does `setPreviewUrl(objectUrl)` and then, synchronously,
+`URL.revokeObjectURL(objectUrl)` — before React has committed the new state. Measured in three
+parts, which together close the chain: (a) at the moment `revokeObjectURL` runs, the DOM `<img>`
+still shows the **old** `src`, so React has not committed the preview yet, and after the commit the
+`<img>`'s `src` is the already-revoked `blob:` URL; (b) in real Chromium, assigning a revoked blob
+URL to an `Image` fires **`error`** (control: a live blob URL of the same PNG fires `load`); (c)
+`Avatar` latches that error into state and never clears it — measured, re-rendering with a fresh
+`src` still renders initials (#55). Net effect: choosing one file in "presentational" mode blanks the
+photo for the life of the instance, and later `src` props are ignored too. `AGENTS.md` currently
+describes this mode as "just shows a local preview".
+**Fix:** revoke on unmount or on the next selection (via a ref or an effect), not synchronously in
+the no-handler branch.
+
+### 379 · AvatarUpload — `accept={["image/*"]}` rejects every file the dialog offered (high)
+
+`validateFile` does `!accept.includes(file.type)` — an exact string match — while the same array is
+joined onto the input's `accept` attribute, where the wildcard is valid and does work. Measured:
+`accept={["image/*"]}` renders `accept="image/*"` on the input, so the OS dialog offers PNGs, and
+then choosing one produces the tooltip *File type "image/png" is not allowed. Accepted: image/\*.*
+and one `onUploadError` call. Upload is impossible, and `["image/*"]` is the conventional value —
+this is the first thing a caller will try.
+**Fix:** match wildcard patterns (split on `/` and compare the type half when the subtype is `*`).
+
+### 380 · AvatarUpload — a caller `onClick`/`onKeyDown` replaces the file-picker trigger (med)
+
+`{...props}` is spread after `onClick={handleClick}` and `onKeyDown={handleKeyDown}` on the root, so
+the caller's handler wins outright. Measured: `<AvatarUpload onClick={track} />` — one click fires
+`track` once and `inputRef.current.click()` **zero** times, so the file dialog never opens; the same
+with `onKeyDown` and Enter. The component still looks like a working picker (it keeps `role="button"`,
+`tabIndex={0}`, `cursor-pointer` and the hover scrim), and the natural reason to pass `onClick` is
+analytics. Same rest-spread-after-handlers shape as `Table.HeaderCell` (#350).
+**Fix:** compose — run the caller's handler and then the internal one — or spread props before the
+handlers.
+
+### 381 · AvatarUpload — nothing exposes the in-flight upload (med)
+
+Measured while `onUpload` is pending: the root's `aria-busy` is `null` and `aria-disabled` is `null`,
+the camera `<svg>` has been replaced by an `aria-hidden` spinner span (0 `<svg>` in the subtree),
+`cursor-pointer` is still on the class list, and a click in that window results in **0**
+`input.click()` calls — silently dropped. An assistive-technology user gets no signal that an upload
+started, that it finished, or that their activation was ignored; a sighted user gets only the
+spinner inside the `aria-hidden` overlay.
+**Fix:** set `aria-busy={uploading}` and `aria-disabled={uploading}` on the root.
+
+### 382 · AvatarUpload — the error is a `role="alert"` inside a `role="button"` (med)
+
+Measured with `maxSize={10}` and a 16-byte file: the alert renders *File is too large (16B). Maximum
+is 10B.*, its `closest('[role="button"]')` **is** the component root, and the root's accessible name
+stays `"Change avatar"` because an `aria-label` outranks descendant content. ARIA's
+presentational-children rule makes descendants of a `button` non-semantic, so the live region is not
+reliably announced, and the message reaches neither the name nor a dependable announcement. The text
+is visible, so this is an AT-only gap — but it is the component's only failure reporting.
+**Fix:** render the error outside the button subtree, or expose it via `aria-describedby` on the root.
+
+### 383 · AvatarUpload — the `TResult` type parameter is erased (med)
+
+`AvatarUploadProps<TResult extends AvatarUploadResult = AvatarUploadResult>` is generic, but the
+component is `forwardRef<HTMLDivElement, AvatarUploadProps>` — no type argument — which pins it to
+the default. `onUpload={async () => ({ url, assetId: "a1" })}` compiles via structural widening, but
+`onUploadComplete={(data) => data.assetId}` is `TS2339: Property 'assetId' does not exist on type
+'AvatarUploadResult'`. The caller cannot restate the type either: neither `AvatarUploadProps` nor
+`AvatarUploadResult` is re-exported from the `ui` barrel (#385). The parameter is therefore
+unusable in every direction.
+**Fix:** type the component as a generic function component instead of `forwardRef`, or drop the
+parameter.
