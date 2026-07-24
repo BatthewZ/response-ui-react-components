@@ -182,6 +182,27 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 109 | unaudited · spot-checked | Toast | [Toast.tsx:56](src/components/ui/Toast.tsx#L56) | low | Dismissing drops focus to `<body>`; no focus restoration |
 | 110 | unaudited | ToastContext | [ToastContext.tsx:97](src/components/ui/ToastContext.tsx#L97) | low | `setTimeout` side effect inside the `setToasts` updater — impure, double-fires under StrictMode |
 | 111 | unaudited · spot-checked | ErrorBoundary | [ErrorBoundary.tsx:29](src/components/ui/ErrorBoundary.tsx#L29) | low | The fallback's hand-rolled `<button>` sets no `type`, so "Try again" also submits an enclosing form |
+| 112 | unaudited · corroborated | Tooltip | [Tooltip.tsx:82](src/components/ui/Tooltip.tsx#L82) | **high** | `getReferenceProps()` is called with no args, so a child's own `aria-describedby` is **destroyed** — its hint is never announced |
+| 113 | unaudited · corroborated | ContextMenu | [ContextMenu.tsx:74](src/components/ui/ContextMenu.tsx#L74) | **high** | Trigger `<div>` sets no `tabIndex`; Menu key / Shift+F10 fire `contextmenu` at `<body>` and never reach it — zero keyboard access |
+| 114 | unaudited · corroborated | ContextMenu | [menu-internals.tsx:179](src/components/ui/menu-internals.tsx#L179) | **high** | `initialFocus={-1}` leaves `activeElement` on `<body>` after a right-click open, so arrows and typeahead do nothing |
+| 115 | unaudited · corroborated | **Popover · HoverCard · DropdownMenu** | [Popover.tsx:154](src/components/ui/Popover.tsx#L154) | med | `asChild` clones trigger props **over** the child, dropping the child's handlers *and its `ref`*. Tooltip is the only one that merges the ref |
+| 116 | unaudited · corroborated | DropdownMenu | [DropdownMenu.css:34](src/components/ui/DropdownMenu.css#L34) | med | `outline:none` leaves the hover wash as the only focus cue — measured 1.02–1.07:1 in all four themes (SC 1.4.11 wants 3:1) |
+| 117 | unaudited · corroborated | Popover | [Popover.tsx:191](src/components/ui/Popover.tsx#L191) | med | `<FloatingFocusManager>` rendered with no props, so `modal` defaults **true** — a *non-modal* popover `aria-hidden`s the whole page and traps Tab |
+| 118 | unaudited · corroborated | menu-internals | [menu-internals.tsx:234](src/components/ui/menu-internals.tsx#L234) | med | A `disabled` Item still runs the caller's `onClick` — only `onSelect` is guarded, and no native `disabled` is set |
+| 119 | unaudited · corroborated | Popover · DropdownMenu | [Popover.tsx:164](src/components/ui/Popover.tsx#L164) | med | Trigger `<button>` has no `type`, so opening a menu inside a `<form>` also submits it (#74 again) |
+| 120 | unaudited · corroborated | Tooltip | [Tooltip.css:12](src/components/ui/Tooltip.css#L12) | med | `pointer-events:none` and no `safePolygon()` — the bubble cannot be hovered, failing WCAG 1.4.13 "Hoverable" |
+| 121 | unaudited · spot-checked | Tooltip | [Tooltip.tsx:86](src/components/ui/Tooltip.tsx#L86) | med | Portals to `<body>`, so a tooltip inside `Dialog`/`Drawer` paints under the modal's top layer; no portal-target prop |
+| 122 | unaudited · corroborated | HoverCard | [HoverCard.tsx:96](src/components/ui/HoverCard.tsx#L96) | med | `role="dialog"` card gets no accessible name and the trigger no `aria-describedby` — announced as an unnamed dialog, contents never read |
+| 123 | unaudited · spot-checked | ContextMenu | [ContextMenu.tsx:86](src/components/ui/ContextMenu.tsx#L86) | med | `setPositionReference` is never cleared, so every later open reuses the last cursor point |
+| 124 | unaudited · spot-checked | ContextMenu | [ContextMenu.tsx:80](src/components/ui/ContextMenu.tsx#L80) | med | `contextmenu` is not `stopPropagation`'d — nested triggers open **both** menus, each `aria-hidden`ing the other |
+| 125 | unaudited · spot-checked | menu-internals | [menu-internals.tsx:123](src/components/ui/menu-internals.tsx#L123) | med | `useListNavigation` on the reference `preventDefault`s ArrowUp/Down inside the trigger — a `<textarea>` there has its caret frozen |
+| 126 | unaudited · spot-checked | menu-internals | [menu-internals.tsx:199](src/components/ui/menu-internals.tsx#L199) | med | `Item.index` is caller-assigned and unvalidated; duplicate indices make the earlier item permanently keyboard-unreachable, silently |
+| 127 | unaudited · corroborated | Tooltip · HoverCard · Popover · menu-internals | [Tooltip.tsx:41](src/components/ui/Tooltip.tsx#L41) | low | `useId()` is dead in all four — `getFloatingProps()` spreads `id` last and overwrites it. Harmless today, but it implies wiring the component does not own |
+| 128 | unaudited · corroborated | Popover · HoverCard · menu-internals | [Popover.tsx:183](src/components/ui/Popover.tsx#L183) | low | The 150 ms fade is an inline literal in the `.tsx` — no `--MOTION-*` token and no reduced-motion guard |
+| 129 | unaudited · corroborated | Popover · HoverCard · DropdownMenu | [Popover.css:18](src/components/ui/Popover.css#L18) | low | `outline:none` on a programmatically focused panel/item removes the ring with no replacement |
+| 130 | unaudited | DropdownMenu | [DropdownMenu.css:45](src/components/ui/DropdownMenu.css#L45) | low | Disabled items and labels paint `--C-TEXT-MUTED` on `--C-SURFACE-0` = 2.10–2.59:1, under AA (instance of #51) |
+| 131 | unaudited · spot-checked | DropdownMenu | [menu-internals.tsx:179](src/components/ui/menu-internals.tsx#L179) | low | Tab never closes the menu; a mouse-opened menu has no tabbable item, so Tab jumps past it leaving it open with focus outside |
+| 132 | unaudited | HoverCard | [HoverCard.tsx:154](src/components/ui/HoverCard.tsx#L154) | low | The default (non-`asChild`) trigger is a non-focusable `<span>` carrying `aria-expanded` — invalid on a role-less span, and `useFocus` is dead on that path |
 
 > **Bookkeeping, 2026-07:** this list previously named **Button**, **Textarea** and
 > **FieldError**. All three were wrong. Button carries #74 and #81; Textarea carries #81 and
@@ -629,3 +650,49 @@ before any message lands in it, and add an `sr-only` severity word per variant.
 `null` (verified: `btn.form === null`, no submit event). Only a hand-rendered `<Toast>` placed
 inside a `<form>` submits. #41 stands for IconButton, Pagination and Carousel; the Toast half is
 narrower than logged.
+
+### 115 · The `asChild` escape hatch silently unwires the child (med · library-wide)
+
+Four of the five overlay components ship an `asChild` prop, and **four independent agents found
+the same defect without seeing each other's work.** Every one of them clones the trigger's props
+*over* the child rather than composing them, so the child's own handlers never run — and in three
+of the four, the child's `ref` is dropped too.
+
+Measured lost sets (the child's handler is silently replaced, no warning, types unaffected):
+
+| Component | Child props lost | Child `ref` |
+| --- | --- | --- |
+| `Popover` | `onClick` `onKeyDown` `onPointerDown` `onMouseDown` | **dropped** |
+| `DropdownMenu` | `onClick` `onFocus` `onKeyDown` `onPointerDown` `onPointerEnter` `onMouseDown` | **dropped** |
+| `HoverCard` | `onFocus` `onBlur` `onKeyDown` `onPointerDown` `onPointerEnter` `onMouseMove` `onMouseLeave` | **dropped** |
+| `Tooltip` | same seven as HoverCard | merged correctly |
+
+**There is no single lost set** — it is whatever that component's Floating UI hooks emit, which is
+why the first drafts of the pages disagreed with each other. `className` is merged everywhere.
+
+**Failure scenario:** `<DropdownMenu.Trigger asChild><Button onClick={track}>Actions</Button></DropdownMenu.Trigger>`
+— the menu opens and `track` never fires. Analytics silently stop; nothing errors, nothing type-checks
+wrong. **Fix:** pass the child's props into `getReferenceProps(children.props)` and merge
+`children.props.ref` into the existing `mergeRefs` call. `Tooltip.tsx:66-74` already does the ref
+half correctly and is the model.
+
+### 112-114 · Three highs in the overlay set
+
+- **#112 `Tooltip`** calls `getReferenceProps()` with no arguments, so a child's own
+  `aria-describedby` is destroyed rather than merged. Measured on
+  `<Tooltip content="…"><Input aria-describedby="password-rules"/></Tooltip>`: the attribute is
+  `null` while closed and points at the tooltip while open. **The input's hint is never announced
+  in either state.** A tooltip silently removing another element's accessibility wiring is worse
+  than no tooltip. **Fix:** `getReferenceProps(children.props)`.
+- **#113 `ContextMenu`** — the Trigger `<div>` sets no `tabIndex`, so it can never receive focus.
+  The platform fires `contextmenu` for the **Menu key** and **Shift+F10**, but at whatever element
+  has focus — `<body>` — and it does not bubble *down* to the trigger. Measured: dispatching
+  `contextmenu` at `<body>` does not open the menu. **Keyboard access is zero, not degraded.**
+  **Fix:** default `tabIndex={0}` plus a focus style — measured to also restore arrows and focus
+  return.
+- **#114 `menu-internals`** — `initialFocus={-1}` means a pointer-opened menu never moves focus in.
+  Measured after a right-click open: `document.activeElement` is `BODY`; ArrowDown and typeahead
+  both do nothing. **Note this is specific to the ContextMenu path** — `DropdownMenu`'s keyboard
+  model was measured working end to end (arrows, Home/End, typeahead, Escape-returns-focus,
+  Enter-activates), so its `role="menu"` is honestly earned. Same line, two outcomes, because the
+  two components differ in where focus sits when the menu opens.
