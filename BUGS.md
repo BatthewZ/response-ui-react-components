@@ -21,13 +21,17 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   **`Swimlane` (#171) is the first confirmed downstream victim** — it spreads its own rest
   props onto `ScrollReveal`, so a defect two components away silently deletes `id`, `role`,
   `style`, `aria-label` and `data-*` from a public API. **`MasonryGrid.Item` (#178) is the
-  second**, measured the same way, which makes this a pattern rather than an anecdote: two of
-  the two components audited so far that render `ScrollReveal` with a rest spread have it.
-  Note both are *conditional* — the props land under `animate={false}` and vanish under the
-  default — so a test written the easy way (as all nine of `MasonryGrid.test.tsx` were) covers
-  only the working path. Every component that *renders* `ScrollReveal` or `Stagger` while
-  typing itself as its host element has this bug; grep for `<ScrollReveal` and `<Stagger` with
-  a `{...rest}` nearby. Still to check: `Spotlight.Content` (passes no rest through, so clean)
+  second**, measured the same way, and **`Timeline.Item` (#340, high) is the third** — which makes
+  it three of the three components audited so far that render `ScrollReveal` with a rest spread.
+  Note all three are *conditional* — the props land under `animate={false}` and vanish under the
+  default — so a test written the easy way covers only the working path, and all three test files
+  were written that way (all nine of `MasonryGrid.test.tsx`, #185; all eight of
+  `Timeline.test.tsx`, #347). That easy path is not merely convenient: rendering the default under
+  the repo's `test-setup.ts` *throws*, because `usePrefersReducedMotion` calls `window.matchMedia`
+  unguarded while its sibling `useMediaQuery` guards it — so the configuration that carries the bug
+  is the one that is hardest to test. Every component that *renders* `ScrollReveal` or `Stagger`
+  while typing itself as its host element has this bug; grep for `<ScrollReveal` and `<Stagger`
+  with a `{...rest}` nearby. Still to check: `Spotlight.Content` (passes no rest through, so clean)
   and anything added since.
 - **Status by colour alone (WCAG 1.4.1).** `Alert`, `Meter`, **`Badge` (#44)**,
   **`Avatar`'s presence dot (#57)** and **`ProgressBar` (#205)** encode state purely in tint —
@@ -35,7 +39,10 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   library's default failure, not an exception. `ProgressBar` is the worst of them — two bars at
   the same `value` with `color="success"` and `color="error"` produce byte-identical
   accessibility-tree output, where `Meter` at least emits `data-status`. Check StatCard.Trend and
-  any remaining status surface.
+  any remaining status surface. **`CalendarBase` (#315) makes six**, and is the first where the
+  state carried by colour alone is a *selection* rather than a status: a day inside a committed
+  range renders `aria-selected="false"` with only a `data-in-range` attribute, so the extent of a
+  booking is conveyed entirely by a `--C-SURFACE-2` wash measured at 1.08–1.16:1 (#210).
 - **Types that advertise props the runtime drops.** Beyond the `...rest` cases above,
   `Avatar` (#56) intersects `ComponentPropsWithRef<"span">` without `Omit<…, "children">`, so
   `<Avatar name="…">child</Avatar>` compiles clean and renders only the initials. `Skeleton` and
@@ -56,6 +63,13 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   accessible-name computation, so wiring a visible `Label` the way `label.md` documented changes
   nothing (measured: computed name `"Search"`, not `"Search orders"`; `label.md` is fixed). Grep
   every hard-coded `aria-label` for that second failure mode, not just for the language.
+  **Batch K adds the date-picker family and a third failure mode: mixed-language output in one
+  component.** `DatePicker` (#327) and `DateRangePicker` (#336) both accept a `locale` prop, use it
+  correctly for every date string, and then surround those strings with English literals the caller
+  cannot reach — measured under `locale="fr-FR"`, French month names inside a dialog labelled
+  "Choose date" between buttons labelled "Open calendar" and "Previous month". `DateRangePicker` is
+  also the `SearchInput` trap again: its `"Start date"`/`"End date"` labels outrank any `<label
+  for>`, and it forwards no `id` for one to point at in the first place.
 - **A rest-spread placed *after* a component's own handler lets a caller silently replace it.**
   The mirror image of the bullet above: there the type promises props the runtime drops; here the
   type *hides* a prop the runtime still honours — destructively. `TagInput` (#245) writes
@@ -63,10 +77,14 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   type, so `<TagInput {...form.field<string[]>("tags")} />` — the binding **`AGENTS.md:249` and
   `README.md:203` both advertise** — typechecks clean (verified with `tsc`) and then throws
   `TypeError: tags.map is not a function` on the first keystroke. `AnimatePresence` (#13) is the
-  same shape with `onAnimationEnd`, which makes two. The `Omit` is what makes it invisible: it
-  removes the type-level warning without removing the runtime behaviour. Every component that
-  spreads rest after its own handlers should destructure those handler names out first; grep for
-  `{...props}` following an `on[A-Z]` prop on the same element.
+  same shape with `onAnimationEnd`, which makes two. `CalendarBase` (#316) is the third, and the
+  first where the prop is *not* `Omit`ted — `onPointerLeave` is an ordinary `div` prop, so
+  `<RangeCalendar onPointerLeave={…}/>` is a perfectly reasonable thing to write, and it silently
+  replaces the handler that clears the range hover preview (measured: four cells stay lit forever
+  versus zero without the prop). The `Omit` is what makes the first two invisible; the third shows
+  the pattern does not need one. Every component that spreads rest after its own handlers should
+  destructure those handler names out first; grep for `{...props}` following an `on[A-Z]` prop on
+  the same element.
 - **Contrast is measured nowhere.** #51 is the first *measured* contrast audit in this file and
   `--C-TEXT-MUTED` fails AA on every surface of every theme. The token tables across the spokes
   say which variable paints what; nothing checks the pair is legible. A ratio guard over the
@@ -103,6 +121,12 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   no option ever takes DOM focus and there is no focus ring to fall back on. An invisible ramp
   step stops being cosmetic the moment it is the only thing telling a keyboard user where they
   are. Check every floating list that marks its active row with an adjacent surface step.
+  **Batch K puts the first number on the contract's own intended ink/fill pair.**
+  `--C-TEXT-ON-ACCENT` on `--C-ACCENT` — the pairing the contract exists to guarantee — measures
+  5.17:1 default, **2.80:1 `events`**, **3.81:1 `grimdark`**, 14.84:1 `tech` (#319), so the
+  selected day in a calendar fails AA for body text in half the shipped themes. That makes it four
+  token families measured and four failures; the guard, when someone writes it, has to cover the
+  named ink/fill pairs first, not just incidental composites.
 - **Continuous motion with no `prefers-reduced-motion` guard.** ~25 component CSS files ship
   a reduced-motion block and `src/hooks/use-reduced-motion.ts` exists, but utility-driven
   motion bypasses all of it: `Spinner`'s `animate-spin` (#38) is unguarded, as is
@@ -458,6 +482,45 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 307 | unaudited · corroborated | Wizard | [Wizard.tsx:151](src/components/ui/Wizard.tsx#L151) | low | In the completed state every marker satisfies `index < activeStep`, including the last, so clicking it un-completes the flow and re-enables Finish (measured) |
 | 308 | unaudited · spot-checked | Wizard | [Wizard.tsx:66](src/components/ui/Wizard.tsx#L66) | low | `goTo` calls the setter even when the clamped index equals the current one, and `useControllableState` notifies unconditionally, so `goTo(0)` at index 0 emits `onStepChange(0)` (same shape as #237) |
 | 309 | unaudited · spot-checked | Wizard | [Wizard.tsx:153](src/components/ui/Wizard.tsx#L153) | low | The `onStepClick` `useMemo` depends on `wizard`, a fresh object literal every render, so it never memoizes |
+| 310 | unaudited · corroborated | CalendarBase | [CalendarBase.tsx:162](src/components/ui/CalendarBase.tsx#L162) | med | The view re-anchors only when the roving `focusDate` leaves the visible window, so a controlled `value` moved to another month leaves the grid where it was and renders no selected day at all |
+| 311 | unaudited · corroborated | CalendarBase | [CalendarBase.tsx:136](src/components/ui/CalendarBase.tsx#L136) | med | `defaultMonth` is silently overridden by any seeded selection — `CalendarBase` seeds `focusAnchor ?? defaultMonth`, the opposite precedence to `Calendar.tsx:47`'s `defaultMonth ?? value` |
+| 312 | unaudited · corroborated | CalendarBase | [CalendarBase.tsx:253](src/components/ui/CalendarBase.tsx#L253) | med | The `showToday` button emits `new Date()` with the wall-clock time while every day cell emits local midnight, so two picks of the same day are not `getTime()`-equal |
+| 313 | unaudited · corroborated | CalendarBase | [CalendarBase.tsx:303](src/components/ui/CalendarBase.tsx#L303) | med | The month and year quick-nav views render `role="grid"` holding twelve bare buttons — measured 0 `row`, 0 `gridcell`, twelve tab stops, and no arrow-key handling |
+| 314 | unaudited · corroborated | CalendarBase | [CalendarBase.tsx:413](src/components/ui/CalendarBase.tsx#L413) | med | `aria-selected` is written on the day `<button>`, a role ARIA does not support it on, while the `role="gridcell"` wrapper carries no selection state (measured `null`) |
+| 315 | unaudited · corroborated | CalendarBase | [CalendarBase.tsx:402](src/components/ui/CalendarBase.tsx#L402) | med | In-range and preview days expose no ARIA state at all — only `data-in-range`/`data-preview` — so a range's extent is conveyed by a `--C-SURFACE-2` wash measured at 1.08–1.16:1 (WCAG 1.4.1, and below the 3:1 non-text floor of #210) |
+| 316 | unaudited · corroborated | CalendarBase | [CalendarBase.tsx:449](src/components/ui/CalendarBase.tsx#L449) | med | Rest props are spread *after* the component's own `onPointerLeave`, so a caller's handler silently replaces the one that clears the range hover preview (instance of the "rest-spread after own handler" pattern) |
+| 317 | unaudited · corroborated | CalendarBase | [CalendarBase.tsx:291](src/components/ui/CalendarBase.tsx#L291) | med | In multi-month day view the header caption becomes an inert `aria-hidden` spacer, removing both the month/year quick-nav and the component's only `aria-live` region (measured: 0 `[aria-live]` at `numberOfMonths={2}`, 1 at `{1}`) |
+| 318 | unaudited · spot-checked | CalendarBase | [CalendarBase.tsx:241](src/components/ui/CalendarBase.tsx#L241) | low | Clicking a leading/trailing padding day pages the calendar to that month and unmounts the button, leaving `document.activeElement` as `<body>` (measured); `handleSelect` never sets `pendingFocusRef` the way `moveFocusTo` does |
+| 319 | unaudited · spot-checked | Calendar | [Calendar.css:211](src/components/ui/Calendar.css#L211) | med | The selected day inks the contract's own intended pair `--C-TEXT-ON-ACCENT` on `--C-ACCENT` and still fails AA: measured **2.80:1** in `events` and **3.81:1** in `grimdark` (5.17 default, 14.84 `tech`) |
+| 320 | unaudited · spot-checked | Calendar | [Calendar.css:205](src/components/ui/Calendar.css#L205) | low | Today's only visual marker is a 1px `--C-BORDER-STRONG` inset ring, measured 1.41–1.79:1 against `--C-SURFACE-0` across all four themes — effectively invisible (`aria-current="date"` covers AT only) |
+| 321 | unaudited · corroborated | RangeCalendar | [RangeCalendar.tsx:82](src/components/ui/RangeCalendar.tsx#L82) | med | `min`/`max`/`isDateDisabled` gate range *endpoints* only, so a committed range freely spans blocked days — measured, a Fri→Mon pick renders the Saturday with both `aria-disabled="true"` and `data-in-range` |
+| 322 | unaudited · spot-checked | RangeCalendar | [RangeCalendar.tsx:99](src/components/ui/RangeCalendar.tsx#L99) | low | `showToday` renders a Today button that only navigates: `onTodayClick` is never passed and is absent from the prop type, so the selecting behaviour `Calendar` gets cannot be restored by the caller (measured: 0 `onValueChange` calls) |
+| 323 | unaudited · corroborated | DatePicker | [DatePicker.tsx:94](src/components/form/DatePicker.tsx#L94) | med | Changing `locale` at runtime never reseeds the draft string, so the next blur re-parses the stale text under the new field order and silently commits a different date |
+| 324 | unaudited · corroborated | DatePicker | [DatePicker.tsx:148](src/components/form/DatePicker.tsx#L148) | med | Every blur commits unconditionally, so `onValueChange` fires with a brand-new `Date` even when nothing was edited, and with `null` on an untouched empty field |
+| 325 | unaudited · corroborated | DatePicker | [DatePicker.tsx:94](src/components/form/DatePicker.tsx#L94) | med | The controlled-value reseed is a reference comparison on `Date`, so a parent building `value={new Date(…)}` inline wipes in-progress typing on any unrelated re-render |
+| 326 | unaudited · corroborated | DatePicker | [DatePicker.tsx:220](src/components/form/DatePicker.tsx#L220) | med | Opening the calendar sends focus to the "Previous month" button instead of the selected day, so arrow keys are dead until three `Tab`s reach the grid |
+| 327 | unaudited · corroborated | DatePicker | [DatePicker.tsx:202](src/components/form/DatePicker.tsx#L202) | med | "Open calendar", "Clear date", "Choose date" (plus `CalendarBase`'s "Previous month"/"Next month") are hard-coded English with no prop to override, so a `locale="fr-FR"` picker announces English (pattern: hard-coded English in unreachable strings) |
+| 328 | unaudited · spot-checked | DatePicker | [DatePicker.tsx:198](src/components/form/DatePicker.tsx#L198) | med | `getReferenceProps()` is spread onto the visible text input, which therefore advertises `aria-haspopup="dialog"`, `aria-expanded` and `aria-controls` for a popup nothing on it can open — no `useClick`/`useFocus` is registered (same defect as #333) |
+| 329 | unaudited · spot-checked | DatePicker | [DatePicker.tsx:115](src/components/form/DatePicker.tsx#L115) | low | Commit re-parses the formatted display string, so a value carrying a time of day is silently truncated to midnight on the first blur (measured with `new Date(2026,5,10,14,30)`) |
+| 330 | unaudited · spot-checked | DatePicker | [DatePicker.tsx:132](src/components/form/DatePicker.tsx#L132) | low | Unparseable text, and dates rejected by `isDateDisabled`, revert to the previous value with no message and no `aria-invalid` (measured `null`) — the failure is completely silent |
+| 331 | unaudited · spot-checked | DatePicker | [DatePicker.tsx:184](src/components/form/DatePicker.tsx#L184) | low | A `form="id"` attribute lands on the visible unnamed input and never on the hidden ISO input (measured), so a picker rendered outside its form submits nothing |
+| 332 | unaudited · spot-checked | DatePicker | [DatePicker.tsx:228](src/components/form/DatePicker.tsx#L228) | low | `Calendar`'s `weekStartsOn`, `numberOfMonths` and `showToday` are neither accepted nor forwarded, so `locale="fr-FR"` gets French names in a Sunday-first grid with no Today button |
+| 333 | unaudited · corroborated | DateRangePicker | [DateRangePicker.tsx:181](src/components/form/DateRangePicker.tsx#L181) | med | `getReferenceProps()` is spread onto the start text input, so that input claims a dialog it cannot open (measured `aria-haspopup`/`aria-expanded`/`aria-controls`) while the trigger button that does open it has no `aria-controls` and the end input has none of it |
+| 334 | unaudited · corroborated | DateRangePicker | [DateRangePicker.tsx:126](src/components/form/DateRangePicker.tsx#L126) | med | A typed date that `isDateDisabled` rejects resolves to `null`, silently clearing the endpoint and discarding the previously committed date — while merely unparseable text is preserved |
+| 335 | unaudited · corroborated | DateRangePicker | [DateRangePicker.tsx:102](src/components/form/DateRangePicker.tsx#L102) | med | The draft re-seed compares the range by object identity, so a controlled `value={{ start, end }}` literal destroys in-progress typing on any parent re-render (measured: draft `"06/1"` → `""`) |
+| 336 | unaudited · corroborated | DateRangePicker | [DateRangePicker.tsx:179](src/components/form/DateRangePicker.tsx#L179) | med | Both inputs carry hard-coded English `aria-label`s ("Start date"/"End date") and forward no `id`, so the names are unlocalizable, unoverridable and un-bindable to a `Label` (same shape as #222) |
+| 337 | unaudited · spot-checked | DateRangePicker | [DateRangePicker.tsx:168](src/components/form/DateRangePicker.tsx#L168) | low | `disabled` never reaches the hidden `name` inputs (measured: neither carries the attribute), so a disabled picker still submits its dates, unlike a native disabled control |
+| 338 | unaudited · spot-checked | DateRangePicker | [DateRangePicker.tsx:134](src/components/form/DateRangePicker.tsx#L134) | low | A `formatOptions` the parser cannot read back (e.g. `{ month: "2-digit", day: "2-digit" }` → `06/10`) leaves the committed year permanently off screen: a complete typed date still commits, but any edit of the *displayed* text is discarded with no signal |
+| 339 | unaudited · spot-checked | DateRangePicker | [DateRangePicker.tsx:162](src/components/form/DateRangePicker.tsx#L162) | low | `commit` runs on every blur, so focusing and leaving a field with no edit rewrites the value: a reversed `defaultValue` is reordered and `onValueChange` fires for a change the user never made |
+| 340 | unaudited · corroborated | Timeline | [Timeline.tsx:99](src/components/ui/Timeline.tsx#L99) | **high** | `Timeline.Item` types itself as a `<div>` but spreads its rest props onto `ScrollReveal`, which never spreads them onto the element it renders, so they all vanish on the default animating path |
+| 341 | unaudited · spot-checked | Timeline | [Timeline.css:85](src/components/ui/Timeline.css#L85) | med | The responsive `r`-scale is read backwards: `--R-SIZE-6` (0.25rem at every width) separates two events while `--R-SIZE-1` (2.25rem → 6rem) separates a date from its title — `ActivityFeed` uses the same two tokens in the opposite roles |
+| 342 | unaudited · spot-checked | Timeline | [Timeline.tsx:72](src/components/ui/Timeline.tsx#L72) | low | The card's side is CSS `:nth-child` but its entrance direction is the React index, so a fragment child desynchronises them: measured `Item, <>Item Item</>, Item` emits `fade-right · fade-left · fade-left · fade-right` against a `left · right · left · right` layout |
+| 343 | unaudited · candidate | Timeline | [Timeline.tsx:80](src/components/ui/Timeline.tsx#L80) | low | Every item title is a hard-coded `<h3>` and `title` is typed `string`, so neither the level nor the element can be changed (`Swimlane` at least types its `<h2>` title as `ReactNode`) |
+| 344 | unaudited · candidate | Timeline | [Timeline.css:46](src/components/ui/Timeline.css#L46) | low | Below 40rem the node's left offset is a `calc()` over `--_timeline-dot-size`, so a custom `icon` of any other size sits off-centre on the rail by half the difference; at 40rem+ the `50%`/`translateX(-50%)` rule is size-agnostic. Read off the cascade, not rendered |
+| 345 | unaudited · candidate | Timeline | [Timeline.css:17](src/components/ui/Timeline.css#L17) | low | `.timeline::before` is pinned `top: 0; bottom: 0` on the root while `.timeline-node` sits at `top: 0` of its item, so the rail hangs below the final dot by the full height of the last card. Read off the cascade, not rendered |
+| 346 | unaudited · candidate | Timeline | [Timeline.tsx:46](src/components/ui/Timeline.tsx#L46) | low | The root keys each context provider by array index, so prepending or reordering events remounts every entry from that point on, losing child state and replaying the entrance |
+| 347 | unaudited · spot-checked | Timeline | [Timeline.test.tsx:9](src/components/ui/Timeline.test.tsx#L9) | low | All eight tests pass `animate={false}`, so the default configuration — where #340 lives — has zero coverage; rendering it under `test-setup.ts` throws `window.matchMedia is not a function` from `usePrefersReducedMotion`, which guards nothing (same gap as #185) |
+| 348 | unaudited · spot-checked | util/date | [util/index.ts:1](src/util/index.ts#L1) | low | `toISODate` — whose own docblock names it the helper for `<input type="hidden">` / native submission, and which both pickers use — is not re-exported from `src/util/index.ts`, so package consumers cannot reach it and must reimplement it; `getMonthNames` is missing the same way |
 
 
 **Clean (no findings):** Stack, FormActions, Tabs, Divider, Grid, Center, Container, Row, Spacer,
@@ -487,6 +550,21 @@ Label. (Not proof of correctness — just nothing surfaced.)
 > exist*). Only `id` and `aria-labelledby` compile and land on the wrapper. #263 is scoped to those
 > two; the page was corrected. This is the mirror of #245/#246 and worth keeping straight: a `div`
 > rest-spread hides *fewer* props than an `input` one, because the `div` prop set is smaller.
+>
+> **Batch K (2026-07-25)** added none and removed none. Calendar, RangeCalendar, DatePicker,
+> DateRangePicker and Timeline all carry findings below (#310–#348). Nine of them (#310–#318) sit
+> in **`CalendarBase`**, the internal shared grid, not in either calendar — two authors reported
+> them independently against their own component and they are merged here once. `Timeline` (#340)
+> is the **third confirmed victim** of the `ScrollReveal` rest-prop drop, after `Swimlane` (#171)
+> and `MasonryGrid.Item` (#178): three of the three components audited that render `ScrollReveal`
+> with a rest spread have it, and all three hide it behind the same `animate={false}` test path
+> (#185, #347). `DatePicker` (#328) and `DateRangePicker` (#333) are one defect twice: floating
+> reference props spread onto a text input that has no interaction registered to open the dialog.
+> The batch also **narrowed two claims its own pages made**: a `formatOptions` the parser cannot
+> read back does *not* make the fields read-only — a complete typed date still commits, measured
+> on both pickers; only the displayed text is uneditable (#338, and the same correction in
+> `date-picker.md`). And `DateRangePicker`'s popover does **not** stay open when focus tabs past
+> it: measured, tabbing out closes it, exactly as `date-picker.md` already said.
 
 ## Details — high & medium
 
@@ -1972,3 +2050,270 @@ no announcement and has to navigate backwards to discover what changed. In the c
 element carries `aria-current` either (every marker reads done), so "where am I" has no answer.
 **Fix:** give the panel an `id` plus `role="group"`/`aria-labelledby` pointing at the active step's
 title, or move focus to it on change.
+
+### 310 · CalendarBase — a controlled `value` never moves the calendar (med)
+
+The only re-anchor is `if (!isMonthVisible(focusDate)) setFocusDate(computeInitialFocus())`. It
+watches the *roving focus day*, not the selection, so when a controlled `value` (or range) moves to
+another month the old focus day is still visible, the guard never fires, and `displayedMonth` stays
+put. Measured on `Calendar`: rerender `value={Jun 10 2026}` → `value={Sep 3 2026}` and the grid is
+still labelled "June 2026", **zero** buttons carry `aria-selected="true"`, and the tab stop is still
+on June 10. Measured on `RangeCalendar`: a preset button setting 1–7 Oct 2026 leaves both grids on
+June/July with `[data-range-start]` count **0**. Every preset button, "next available slot" link and
+URL-param sync therefore writes a selection the user cannot see, with nothing reporting it.
+**Fix:** re-anchor `displayedMonth`/`focusDate` when `focusAnchor` changes to a month outside the
+visible window — `revealMonth` already does exactly this for keyboard focus.
+
+### 311 · CalendarBase — the two layers encode opposite `defaultMonth` precedence (med)
+
+`Calendar.tsx:47` computes `defaultMonth ?? value ?? defaultValue` (prefer `defaultMonth`) and hands
+the result down, but `CalendarBase.tsx:136` then seeds `startOfMonth(focusAnchor ?? defaultMonth ??
+today)` — and `focusAnchor` *is* the selection. The selection therefore wins, inverting the layer
+above it. Measured: `<Calendar defaultMonth={new Date(2026,5,1)} defaultValue={new Date(2026,0,20)}/>`
+opens on **January 2026**, not June; `<RangeCalendar defaultMonth={March 2026}/>` with a
+`defaultValue` starting 5 Jan opens on January. `defaultMonth` silently does nothing in the one case
+callers reach for it — seeding a booking window that is not where the current value is.
+**Fix:** seed `defaultMonth ?? focusAnchor ?? today`, matching the caller-facing precedence.
+
+### 312 · CalendarBase — `showToday` emits a wall-clock `Date`, day cells emit midnight (med)
+
+`today` is `new Date()` captured at the top of the render, and `handleToday` passes it straight to
+`onTodayClick`. Every day cell instead emits a value built by `buildMonthGrid`, which is local
+midnight. Measured on one render: a day click gave `00:00:00.000`, the Today button gave
+`02:18:01.670`. Two selections of the same calendar day are therefore not `getTime()`-equal, so
+de-duplication, `Set`/`Map` keys, cache invalidation and "did this change?" comparisons all break for
+exactly one input path — and the value round-trips through `toISODate` identically, so the bug is
+invisible until something compares timestamps.
+**Fix:** `onTodayClick?.(startOfDay(today))` — `startOfDay` is already imported in `util/date`.
+
+### 313 · CalendarBase — the month/year quick-nav is a malformed grid with no keyboard model (med)
+
+`renderMonthsView`/`renderYearsView` emit `<div role="grid">` containing twelve `<button>`s and
+nothing else. Measured after opening the month picker: **0** descendants with `role="row"`, **0** with
+`role="gridcell"`, all twelve buttons tab-focusable (no `tabIndex`, so the default `0`), and
+`ArrowRight`/`ArrowDown` move nothing — `handleDayKeyDown` is bound to the *day* grid only. A
+`role="grid"` whose children are not rows is invalid ARIA, so a screen-reader user gets a broken
+structure; a keyboard user gets twelve extra tab stops where the pattern promises one.
+**Fix:** wrap the cells in `role="row"`/`role="gridcell"` and reuse the day grid's roving-tabindex
+keydown handler — or drop the grid role entirely and expose it as `role="group"`.
+
+### 314 · CalendarBase — `aria-selected` is on a role that does not support it (med)
+
+The day button renders `<div role="gridcell"><button aria-selected={selected}>`. ARIA supports
+`aria-selected` on `gridcell`, `option`, `row`, `tab`, `columnheader`, `rowheader` and `treeitem` —
+not on `button`. Measured with a date selected: the button has `aria-selected="true"` and its
+gridcell parent's `aria-selected` is **`null`**. A conforming AT may drop the attribute entirely, in
+which case nothing anywhere in the calendar reports which day is chosen and the accent fill is the
+only cue left — and that fill is itself #319. This is the APG datepicker pattern's one hard
+requirement and it is inverted here.
+**Fix:** move `aria-selected` onto the `role="gridcell"` wrapper (or switch the button to
+`aria-pressed`).
+
+### 315 · CalendarBase — a range's extent is conveyed by colour alone (med)
+
+`selected` is computed as `status.selected || status.rangeStart || status.rangeEnd` — `inRange` and
+`preview` are deliberately excluded, and neither gets any other ARIA. Measured with 10–14 June
+committed: the 12th renders `aria-selected="false"` plus a bare `data-in-range` attribute, which is
+indistinguishable in the accessibility tree from an unpicked day. The only differentiator is a
+`--C-SURFACE-2` wash on `--C-SURFACE-0`, measured in this repo at **1.10 / 1.08 / 1.08 / 1.16:1**
+across the four shipped themes (#210) — an order of magnitude under the 3:1 non-text floor. So the
+span of a range is perceivable neither to AT nor, reliably, to a sighted user with reduced contrast
+sensitivity. WCAG 1.4.1 and 1.4.11. The hover preview has no ARIA at all.
+**Fix:** set `aria-selected` (or a documented `aria-description`) on in-range gridcells, and give the
+band a token that clears 3:1 against `--C-SURFACE-0`.
+
+### 316 · CalendarBase — a caller's `onPointerLeave` silently replaces the preview reset (med)
+
+The root renders `onPointerLeave={onDayHover ? () => onDayHover(null) : undefined}` and *then*
+`{...props}`, so any `onPointerLeave` a caller passes overwrites the internal one rather than
+composing with it — and it typechecks, because `onPointerLeave` is an un-`Omit`ted `div` prop.
+Measured on `<RangeCalendar onPointerLeave={() => {}}/>`: pick a start, hover the 14th, then move the
+pointer off the calendar — **4** cells keep `data-preview` and stay lit indefinitely; the identical
+control without the prop clears to **0**. The stale band then reads as a committed range that does
+not exist. Instance of the "rest-spread after a component's own handler" pattern at the top of this
+file.
+**Fix:** destructure `onPointerLeave` out and call both handlers.
+
+### 317 · CalendarBase — multi-month view has no live region and no quick-nav (med)
+
+`captionInteractive` is `view !== "days" || monthCount === 1`, so at two or more grids the centre
+caption renders as `<div className="calendar-label" aria-hidden="true"/>` — an empty spacer. That
+node is also the *only* place `aria-live="polite"` appears in the component, and the only route into
+the month/year pickers. Measured: `<RangeCalendar/>` (the default `numberOfMonths={2}`) has **0**
+elements with `aria-live` and **0** `.calendar-label-button`; at `numberOfMonths={1}` both are **1**.
+Pressing ‹ or › then changes both grid labels while focus stays on a button whose own label never
+changes, so a screen-reader user gets no feedback that the view moved, and has no way to jump a year
+without pressing › twelve times.
+**Fix:** keep an `aria-live` status node (e.g. the visible window "June – July 2026") in the
+multi-month header instead of an inert spacer, and expose the quick-nav from it.
+
+### 319 · Calendar — the selected day fails AA on the fill it is designed for (med)
+
+`.calendar-day[aria-selected="true"]` sets `background-color: var(--C-ACCENT)` and
+`color: var(--C-TEXT-ON-ACCENT, var(--C-TEXT-INVERSE))` — the contract's own intended foreground /
+background pair. Computed from the shipped theme files: **5.17:1** default, **2.80:1** `events`,
+**3.81:1** `grimdark`, **14.84:1** `tech`. Two of the four shipped themes put the selected date's
+digit below the 4.5:1 AA floor for body-size text, and `events` is below the 3:1 large-text floor
+too. Because the selection is *also* the state that #314 may stop announcing, a user in `events` can
+end up with no reliable indication of the chosen day at all. This is a token-level gap, not a
+component one — every component that inks `--C-TEXT-ON-ACCENT` on `--C-ACCENT` inherits it.
+**Fix:** correct the `--C-TEXT-ON-ACCENT` values in `events` and `grimdark` (or darken
+`--C-ACCENT`), and add the pair to the contrast guard.
+
+### 321 · RangeCalendar — blocked days sit inside a committed range (med)
+
+`isDayDisabled` gates `handleSelect`, so an endpoint cannot land on a blocked day — but
+`getDayStatus` computes `inRange` purely geometrically (`isAfter(day, start) && isBefore(day, end)`)
+and nothing inspects the span at commit time. Measured with
+`isDateDisabled={d => d.getDay()===0 || d.getDay()===6}`: clicking Fri 12 June then Mon 15 June
+commits, and Sat 13 June renders **both** `aria-disabled="true"` and `data-in-range`. A booking or
+availability UI therefore accepts, and visibly styles, a span containing days it has just declared
+unavailable — and `onValueChange` reports the range as valid.
+**Fix:** reject (or flag) a completing click whose span contains a disabled day, or expose the
+validated span on the change payload so the caller can.
+
+### 323 · DatePicker — a runtime `locale` change silently rewrites the date (med)
+
+The draft is reseeded only when `selected !== lastFormattedRef.current`; `locale` and `formatOptions`
+are read inside `display()` but are not part of that condition. Measured: render
+`defaultValue={May 6 2026} locale="en-US"` → the field shows `5/6/2026`; switch the prop to `en-GB`
+(the text does not change); focus and blur → `parseDateInput` reads the same string day-first and
+`onValueChange` fires with **Fri Jun 05 2026**. A language switcher therefore mutates every date
+field on the page the next time the user touches one, with no warning and no way to tell from the
+screen that it happened.
+**Fix:** include `locale`/`formatOptions` in the reseed condition, reformatting the draft when
+either changes.
+
+### 324 · DatePicker — every blur commits, even with no edit (med)
+
+`handleBlur` calls `commit()` unconditionally, and `commit` calls `setSelected` on any parseable
+draft, and `useControllableState` notifies on every setter call. Measured with
+`defaultValue={Jun 10 2026}`: click the field, click away, repeat → `onValueChange` fires **twice**
+with two distinct `Date` objects for a value that never changed. An untouched *empty* picker fires
+`onValueChange(null)` on its first blur. Consequences: a controlled parent re-renders on every blur,
+dirty-tracking ("has this form changed?") reports a change that did not happen, autosave fires, and
+audit logs record an edit.
+**Fix:** only call `setSelected` when the parsed result differs from the current committed day.
+
+### 325 · DatePicker — the controlled re-seed compares `Date`s by identity (med)
+
+`if (selected !== lastFormattedRef.current)` is a reference comparison, so a parent that builds
+`value={new Date(row.dueDate)}` inline produces a *different object every render* and reseeds the
+draft each time. Measured: parent renders `<DatePicker value={new Date(2026,0,15)}/>`; the user types
+`12/25/20`; an unrelated parent state change re-renders → the input snaps back to `1/15/2026`
+mid-keystroke. `value={stateVariable}` is unaffected, which is why this survives casual testing —
+but the inline form is the most natural-looking controlled usage and it destroys typing.
+**Fix:** compare by calendar day (`getTime()`/`isSameDay`) rather than object identity.
+
+### 326 · DatePicker — opening the calendar focuses the wrong control (med)
+
+`FloatingFocusManager` is given no `initialFocus`, so it focuses the first tabbable node in the
+popover — the "Previous month" `IconButton`. Measured: open by click or keyboard, press `ArrowRight`,
+and focus is still on "Previous month" with no day moved; the dialog's tab stops are
+`Previous month → the month caption → Next month → the roving day`, so **three** `Tab`s are needed
+before the arrow keys do anything. The whole point of the roving tab index in the grid is that a
+keyboard user lands on the selected day and arrows from there.
+**Fix:** pass `initialFocus` pointing at the roving day button (`[data-day]` with `tabIndex={0}`).
+
+### 327 · DatePicker — control labels are hard-coded English (med)
+
+"Open calendar", "Clear date" and the dialog's "Choose date" are literals on elements the caller
+cannot reach (rest props go to the visible input, not to the buttons or the popover), and
+`CalendarBase` adds "Previous month"/"Next month" the same way. Measured with `locale="fr-FR"`: the
+month names, weekday headers and per-day accessible names are all correctly French, and the controls
+around them still announce English. There is no `labels`/`messages` prop, and `aria-label` on the
+component lands on the text input. Instance of the "hard-coded English in unreachable strings"
+pattern (#39, #64, #218, #222, #243, #259).
+**Fix:** accept a `labels` prop (or derive from `locale`) for the three DatePicker strings and
+forward the pair down to `Calendar`.
+
+### 328 · DatePicker — the text input advertises a dialog it cannot open (med)
+
+`getReferenceProps()` is spread onto the `Input`, but `useInteractions` is built from
+`[dismiss, role]` only — there is no `useClick`, `useFocus` or keydown that opens the popover from
+the reference. Measured: the input renders `aria-haspopup="dialog"` and `aria-expanded="false"`
+closed, and gains `aria-controls="_r_8_"` when open; clicking it or pressing `Enter` on it never
+opens anything (`Enter` commits the typed date instead). The trigger `IconButton` meanwhile carries
+hand-written `aria-haspopup`/`aria-expanded` but **no** `aria-controls`. So the popup is announced
+twice, on the wrong control, and the control that actually owns it is not linked to it. Same defect
+as #333 in `DateRangePicker` — they share `date-picker-internals` and the same shape of wiring.
+**Fix:** spread `getReferenceProps()` on the `IconButton` and drop its duplicate hand-written ARIA,
+keeping `onBlur`/`onKeyDown` on the input.
+
+### 333 · DateRangePicker — the start input claims the popup, the trigger owns it (med)
+
+`referenceProps` (from `getReferenceProps()`) is spread onto the **start** `Input` only. Measured
+with the popover open: the start input renders `aria-haspopup="dialog" aria-expanded="true"
+aria-controls="_r_4_"`, the end input renders none of the three, and the "Open calendar"
+`IconButton` — the only control that toggles the dialog — has hand-written `aria-haspopup` and
+`aria-expanded` but no `aria-controls`. A screen-reader user is told the start textbox opens a
+dialog (nothing on it does), told nothing about the end textbox, and given no association from the
+real trigger to the thing it controls. The two fields also announce asymmetrically despite being a
+matched pair.
+**Fix:** spread `getReferenceProps()` on the `IconButton` and drop its duplicate ARIA; keep
+`onBlur`/`onKeyDown` on the two inputs.
+
+### 334 · DateRangePicker — a blacked-out typed date destroys a committed endpoint (med)
+
+`resolve()` returns `null` for a draft that parses but that `isDateDisabled` rejects, and `commit`
+treats "parsed" as valid, so `start`/`end` is set to that `null`. Unparseable text takes the other
+branch and is preserved. Measured with
+`defaultValue={{start: 1 Jun 2026, end: 30 Jun 2026}}` and weekends blocked: typing `06/13/2026` (a
+Saturday) into the start field and blurring leaves the field **empty** and fires
+`onValueChange({start: null, end: 30 Jun})` — no message, no `aria-invalid`. Typing `garbage` instead
+reverts harmlessly. The more plausible user mistake is the destructive one, and it silently deletes
+data the user did not touch.
+**Fix:** in `commit`, treat a parseable-but-disabled draft like an invalid one — fall back to
+`range.start`/`range.end` rather than to `resolve()`'s `null`.
+
+### 335 · DateRangePicker — the draft re-seed compares the range by identity (med)
+
+`if (range !== lastRangeRef.current)` compares object references, so a controlled
+`value={{ start, end }}` written as a fresh literal is a new object on every parent render and
+reseeds both drafts. Measured: parent renders
+`<DateRangePicker value={{start: new Date(2026,5,10), end: null}}/>`; the user types `06/1` into the
+end field; any unrelated parent re-render makes the check true and the draft goes `"06/1"` → `""`.
+`value={stateVariable}` is stable and unaffected, but `value={{ start, end }}` inline is the shape
+most callers reach for first. Same defect as #325 one component over.
+**Fix:** compare endpoint timestamps (`start?.getTime()` / `end?.getTime()`) instead of identity.
+
+### 336 · DateRangePicker — both fields are named in hard-coded English and take no `id` (med)
+
+`aria-label="Start date"` and `aria-label="End date"` are literals on the two `Input`s; rest props
+land on the wrapper `div`, so no caller can rename them, and no `id` is forwarded to either input.
+Measured with `locale="fr-FR"`: French month names in the calendar, two inputs still announced
+"Start date"/"End date". Because the fields have no `id`, `<Label htmlFor>` has nothing to bind to —
+and even if it did, an `aria-label` outranks a native label in the accessible-name computation, the
+same trap measured on `SearchInput` (#222). The documented workaround (name the *pair* with
+`role="group"` + `aria-labelledby`) works, but leaves the two English field names underneath it.
+**Fix:** accept `startLabel`/`endLabel` props defaulting to the current strings, and forward an `id`
+to each input.
+
+### 340 · Timeline — every prop on `Timeline.Item` is dropped unless animation is off (high)
+
+`TimelineItemProps` is `Omit<ComponentPropsWithRef<"div">, "title">`, so the type accepts the whole
+`div` surface — but on the default path the component renders `<ScrollReveal {...props}>`, and
+`ScrollReveal` (#9) spreads nothing onto the element it renders. Measured:
+`<Timeline><Timeline.Item id="evt-1" role="listitem" aria-label="Order placed" data-status="done"
+style={{opacity:.5}} tabIndex={0} onClick={h} className="mine"/></Timeline>` renders **exactly**
+`<div class="scroll-reveal-hidden timeline-item mine">` and a click fires `h` **zero** times; with
+`animate={false}` every attribute lands and the click fires once. So list semantics, test hooks,
+analytics selectors and click handlers all compile, work in whatever test was written with
+`animate={false}`, and then silently do nothing in production. Third confirmed instance of the
+`ScrollReveal` pattern after `Swimlane` (#171) and `MasonryGrid.Item` (#178).
+**Fix:** spread `...rest` in `ScrollReveal` (the shared root cause), or have `Timeline.Item` render
+its own `div` and pass only `className`/`children` to `ScrollReveal`.
+
+### 341 · Timeline — the vertical rhythm reads the `r`-scale backwards (med)
+
+On the responsive scale a *lower* number is a *larger* value. `.timeline-item` takes
+`padding-bottom: var(--R-SIZE-6)` — `0.25rem` at every width, the smallest step — while
+`.timeline-date` takes `margin-bottom: var(--R-SIZE-1)` — `2.25rem` rising to `6rem` at the 40rem
+breakpoint, the largest. A three-event timeline on a desktop viewport therefore renders **96px**
+between "12 March" and "Order placed" and **4px** between one event and the next, so the date
+detaches from its own entry and the entries run together. The nearest sibling component,
+`ActivityFeed`, spends the same two tokens in the opposite roles (`--R-SIZE-3` for its row gap,
+`--R-SIZE-6` for its tightest inner gap), which is what the values look like when they are the right
+way round. Nothing in the public API changes either one, and a Tailwind override is blocked by the
+layer order (`Timeline.css` is unlayered; utilities are in `@layer utilities`).
+**Fix:** swap them — `--R-SIZE-3` or `--R-SIZE-2` for the item gap, `--R-SIZE-6` under the date.
