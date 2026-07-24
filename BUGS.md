@@ -20,9 +20,14 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   runtime while the types claim they work. Check every `as`-polymorphic component.
 - **Status by colour alone (WCAG 1.4.1).** `Alert` and `Meter` encode severity purely in
   tint — no icon/label/ARIA. Check Badge, StatCard.Trend, any status surface.
-- **Theme/contrast token gaps.** `Card` (no paired text colour; wrong surface layer),
-  `Checkbox` (focus-ring offset hard-codes white). Check anything painting a surface or a
-  ring.
+- **Theme/contrast token gaps.** `Card` (no paired text colour; wrong surface layer), and a
+  systemic focus-ring bug: **`ring-offset-color` is set nowhere in the library**, so every
+  `ring-offset-2` paints Tailwind's default white. Confirmed by grep — 5 affected components
+  (see #35), 3 benign (`ring-offset-0`). Fix once, library-wide, not per component.
+- **Raw Tailwind defaults where a token exists.** `ErrorBoundary`'s fallback uses
+  `text-2xl` / `mb-2` / `px-4 py-2` rather than the `text-h*` and `r*` scales, so it neither
+  re-tints nor re-scales with a theme — directly against the ETHOS "there is a token for it"
+  rule. Worth a sweep for `text-(xs|sm|base|lg|[0-9]xl)` and bare numeric spacing utilities.
 
 ## Findings
 
@@ -61,6 +66,10 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 31 | unaudited | Parallax | [Parallax.tsx:53](src/components/animation/Parallax.tsx#L53) | low | Residual `translateY` not cleared on reduced-motion toggle / effect teardown |
 | 32 | unaudited | Parallax | [Parallax.tsx:60](src/components/animation/Parallax.tsx#L60) | low | No resize/orientationchange recompute → viewport-center offset goes stale |
 | 33 | unaudited | Parallax | [Parallax.tsx:75](src/components/animation/Parallax.tsx#L75) | low | `will-change: transform` for the element's whole life parks a permanent compositor layer |
+| 34 | unaudited · spot-checked | ErrorBoundary | [ErrorBoundary.tsx:27](src/components/ui/ErrorBoundary.tsx#L27) | med | Fallback uses raw Tailwind defaults (`text-2xl`, `mb-2`, `mb-6`, `px-4 py-2`) instead of design tokens |
+| 35 | unaudited · spot-checked | **library-wide** | 5 files, see detail | med | `ring-offset-2` with `ring-offset-color` set **nowhere** → white focus halo on dark themes. Affects Button, IconButton, Checkbox, AvatarUpload, ErrorBoundary (supersedes #25) |
+| 36 | unaudited · spot-checked | ErrorBoundary | [ErrorBoundary.tsx:29](src/components/ui/ErrorBoundary.tsx#L29) | low | Hand-rolled `<button>` re-implements Button's styling instead of composing `Button` |
+| 37 | unaudited · spot-checked | ErrorBoundary | [ErrorBoundary.tsx:25](src/components/ui/ErrorBoundary.tsx#L25) | low | No `fallback` prop; the fixed `min-h-screen` fallback makes it unusable for scoped/inline boundaries |
 
 **Clean (no findings):** Button, Tabs, Divider, Grid, Center, Container, Row, Spacer,
 Textarea, Label, FieldError, ProgressRing. (Not proof of correctness — just nothing surfaced.)
@@ -156,6 +165,45 @@ reference some screen readers announce as "described by (nothing)". **Fix:** onl
 `focus:ring-offset-2` with no `ring-offset-color` uses Tailwind's default `#fff`, so on a
 dark theme the focus ring sits on a white halo instead of the surface. Not theme-paired.
 **Fix:** set `ring-offset-color` to a surface token (e.g. `ring-offset-surface-1`).
+
+### 34 · ErrorBoundary — raw Tailwind defaults in the fallback (med)
+
+The error fallback is styled with `text-2xl font-bold mb-2`, `mb-6`, and `px-4 py-2` —
+Tailwind's built-in type and spacing scales, not the design system's. ETHOS is explicit that
+a raw default like `text-sm`/`p-4` is exactly what tokens exist to replace. Consequence: the
+one screen a user sees when the app has already failed is the one screen that ignores the
+theme — it won't re-scale with `--BodyText-*`/`--H*` or re-space with `--R-SIZE-*`.
+**Fix:** `text-h4` (or similar) and the `r*` spacing steps.
+*Found incidentally while building the dev examples gallery, not by a docs pass —
+ErrorBoundary has no spoke yet, so treat this as a head start on its page.*
+
+### 35 · Library-wide — focus-ring offset paints white on dark themes (med)
+
+`ring-offset-*` reserves a gap between the element and its focus ring, filled with
+`--tw-ring-offset-color`. **That variable is never set anywhere in this library** (grep for
+`ring-offset-color`: zero hits), so it falls back to Tailwind's default `#fff`. On any dark
+theme the focused element gets a white halo — a raw colour leaking into a system whose whole
+premise is that every colour comes from a token.
+
+Affected (`ring-offset-2`, visible gap):
+
+| File | Line |
+| --- | --- |
+| `src/components/ui/Button.tsx` | 9 |
+| `src/components/ui/IconButton.tsx` | 10 |
+| `src/components/form/Checkbox.tsx` | 17 |
+| `src/components/ui/AvatarUpload.tsx` | 220 |
+| `src/components/ui/ErrorBoundary.tsx` | 31 |
+
+Benign (`ring-offset-0` — no gap to paint): `Input.tsx:25`, `Select.tsx:25`, `Textarea.tsx:25`.
+
+**Fix:** set `ring-offset-color` to the surrounding surface token once (base classes or a
+shared focus utility) rather than patching five call sites. **Supersedes #25**, which logged
+only the Checkbox instance.
+
+**Docs note:** `button.md` and `icon-button.md` document the focus ring as fully themed and
+do not mention this. Once the code is fixed the docs stay true; if it's deliberately left,
+both pages need a gotcha. Verify the fix before amending the docs.
 
 ### 27 · Input — hook without `"use client"` (med · caveat)
 

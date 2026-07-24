@@ -23,5 +23,6 @@
 @import "../src/styles.css";
 
 /* Make the gallery's own files scannable by Tailwind v4. */
-@source "./App.tsx";
-@source "./main.tsx";
+/* Glob rather than a file list: the generated examples gallery adds dev views without
+   anyone remembering to register them here. */
+@source "./*.tsx";

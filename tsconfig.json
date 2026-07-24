@@ -12,7 +12,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["@types/react", "@types/react-dom"]
+    "types": ["@types/react", "@types/react-dom", "vite/client"]
   },
   "include": ["src/**/*", "dev/**/*.tsx", "test-setup.ts"],
   "exclude": ["node_modules", "dist"]

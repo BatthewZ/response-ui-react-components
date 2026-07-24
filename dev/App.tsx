@@ -84,59 +84,20 @@ import {
   useForm,
   type StandardSchemaV1,
 } from "../src";
-// Doc examples, rendered here so the demo and docs/components/*.md can never disagree.
+// A few doc examples rendered inline in the curated view, so the showcase and the docs
+// agree on the components it highlights. The "Examples" tab covers ALL of them.
 import * as ButtonExamples from "../src/components/ui/Button.examples";
 import * as TabsExamples from "../src/components/ui/Tabs.examples";
+import { ExamplesGallery } from "./ExamplesGallery";
+import { Group, Tile } from "./gallery-ui";
 
 /* ------------------------------------------------------------------ */
 /*  Layout helpers (local to the gallery — not part of the library)    */
 /* ------------------------------------------------------------------ */
 
-/**
- * A component GROUP section. Each top-level <section> maps to a source group
- * (ui / form / layout / data-display) and has a stable `id` so screenshots can
- * target it directly (e.g. playwright-cli ... #group-form). To add a new
- * component to the gallery, drop a <Tile> (or a new <Group>) in the right
- * place — structure stays one-section-per-group.
- */
-function Group({
-  id,
-  title,
-  children,
-}: {
-  id: string;
-  title: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <section id={id} className="flex flex-col gap-r4">
-      <h2 className="text-h3 text-fg-primary border-b border-border-default pb-r5">{title}</h2>
-      <div className="flex flex-wrap items-start gap-r4">{children}</div>
-    </section>
-  );
-}
-
-function Tile({
-  label,
-  id,
-  children,
-}: {
-  label: string;
-  id?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      id={id}
-      className="flex flex-col gap-r5 rounded-md border border-border-default bg-surface-1 p-r4"
-    >
-      <span className="text-body-3 font-semibold text-fg-muted uppercase tracking-wide">
-        {label}
-      </span>
-      <div className="flex flex-wrap items-center gap-r4">{children}</div>
-    </div>
-  );
-}
+/* Group and Tile live in ./gallery-ui so the generated examples gallery shares them.
+   To add a component to THIS curated view, drop a <Tile> (or a new <Group>) in the
+   right place — structure stays one-section-per-group. */
 
 /* ------------------------------------------------------------------ */
 /*  Sample data (DataTable)                                            */
@@ -744,7 +705,7 @@ function VolumeSliderDemo() {
 
 export function App() {
   const [viewport, setViewport] = useState<ViewportKey>("full");
-  const [tab, setTab] = useState<"gallery" | "forms">("gallery");
+  const [tab, setTab] = useState<"gallery" | "forms" | "examples">("gallery");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [checked, setChecked] = useState(true);
@@ -850,6 +811,13 @@ export function App() {
             >
               Forms
             </Button>
+            <Button
+              size="sm"
+              variant={tab === "examples" ? "primary" : "ghost"}
+              onClick={() => setTab("examples")}
+            >
+              Examples
+            </Button>
           </div>
           <ThemeSwitcher />
           <div className="flex items-center gap-r6 rounded-md border border-border-default p-r6">
@@ -867,7 +835,9 @@ export function App() {
         </div>
       </header>
 
-      {tab === "forms" ? (
+      {tab === "examples" ? (
+        <ExamplesGallery />
+      ) : tab === "forms" ? (
         <div className="flex flex-col gap-r2 pb-r2">
           <FormsDemo />
           <WizardFormDemo />
