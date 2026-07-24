@@ -84,6 +84,9 @@ import {
   useForm,
   type StandardSchemaV1,
 } from "../src";
+// Doc examples, rendered here so the demo and docs/components/*.md can never disagree.
+import * as ButtonExamples from "../src/components/ui/Button.examples";
+import * as TabsExamples from "../src/components/ui/Tabs.examples";
 
 /* ------------------------------------------------------------------ */
 /*  Layout helpers (local to the gallery — not part of the library)    */
@@ -881,22 +884,38 @@ export function App() {
         {/* ============================================================ */}
         <Group id="group-ui" title="UI">
           <Tile label="Button — variants">
-            <Button variant="primary">Primary</Button>
-            <Button variant="secondary">Secondary</Button>
-            <Button variant="ghost">Ghost</Button>
-            <Button variant="danger">Danger</Button>
-            <Button variant="link">Link</Button>
+            <ButtonExamples.Variants />
+          </Tile>
+          <Tile label="Button — ghost-inverse">
+            <ButtonExamples.GhostOnFillBackground />
           </Tile>
           <Tile label="Button — sizes">
-            <Button size="sm">Small</Button>
-            <Button size="md">Medium</Button>
-            <Button size="lg">Large</Button>
+            <ButtonExamples.Sizes />
+          </Tile>
+          <Tile label="Button — as link">
+            <ButtonExamples.AsLink />
+          </Tile>
+          <Tile label="Button — loading">
+            <ButtonExamples.Loading />
           </Tile>
           <Tile label="Button — disabled">
             <Button disabled>Primary</Button>
             <Button variant="secondary" disabled>
               Secondary
             </Button>
+          </Tile>
+
+          <Tile label="Tabs — underline">
+            <TabsExamples.Minimal />
+          </Tile>
+          <Tile label="Tabs — controlled">
+            <TabsExamples.Controlled />
+          </Tile>
+          <Tile label="Tabs — enclosed">
+            <TabsExamples.Enclosed />
+          </Tile>
+          <Tile label="Tabs — disabled tab">
+            <TabsExamples.DisabledTab />
           </Tile>
 
           <Tile label="Card">

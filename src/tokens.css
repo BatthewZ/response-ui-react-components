@@ -20,6 +20,12 @@
   --MEDIA-CARD-HOVER-LIFT: -0.25rem;
   --MEDIA-CAROUSEL-PEEK: 3rem;
   --MEDIA-CAROUSEL-GAP: var(--R-SIZE-5);
+  /* Button — gap between an icon/spinner and the label. Static, not on the
+     responsive r-scale: button padding doesn't reflow at the breakpoint, so a
+     gap that did would drift out of proportion with it. */
+  --BUTTON-GAP-SM: 0.375rem;
+  --BUTTON-GAP-MD: 0.5rem;
+  --BUTTON-GAP-LG: 0.625rem;
 }
 @theme inline {
   /* Only trend + chart are consumed as Tailwind utilities (text-trend-up, bg-chart-3, …) */

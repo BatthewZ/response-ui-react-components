@@ -144,7 +144,6 @@ export function Repeater<T extends Record<string, unknown>>({
           type="button"
           variant="secondary"
           size="sm"
-          className="gap-r6"
           disabled={disabled || !canAdd}
           onClick={() => array.append(defaultItem())}
         >

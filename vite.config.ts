@@ -36,7 +36,7 @@ function copyCssAssets(): Plugin {
 const entries = Object.fromEntries(
   glob
     .sync("src/**/*.{ts,tsx}", {
-      ignore: ["src/**/*.test.{ts,tsx}", "src/**/*.d.ts"],
+      ignore: ["src/**/*.test.{ts,tsx}", "src/**/*.examples.{ts,tsx}", "src/**/*.d.ts"],
     })
     .map((file) => [
       // entry name = path relative to src, without extension
@@ -50,7 +50,7 @@ export default defineConfig({
     react(),
     dts({
       include: ["src/**/*"],
-      exclude: ["src/**/*.test.*"],
+      exclude: ["src/**/*.test.*", "src/**/*.examples.*"],
       rollupTypes: false,
       entryRoot: "src",
       outDir: "dist",

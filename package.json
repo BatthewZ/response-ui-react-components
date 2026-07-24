@@ -45,9 +45,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "docs:examples": "node scripts/gen-docs.mjs",
     "verify:directives": "node scripts/verify-directives.mjs",
     "verify:docs": "node scripts/verify-docs.mjs",
-    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && bun run typecheck && bun run test"
+    "verify:examples": "node scripts/gen-docs.mjs --check",
+    "verify:component-docs": "node scripts/verify-component-docs.mjs",
+    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && node scripts/gen-docs.mjs --check && node scripts/verify-component-docs.mjs && bun run typecheck && bun run test"
   },
   "peerDependencies": {
     "react": "^19.0.0",

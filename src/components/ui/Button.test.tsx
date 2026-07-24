@@ -54,4 +54,28 @@ describe("Button", () => {
     const button = screen.getByRole("button", { name: "Large" });
     expect(button.className).toContain("text-body-1");
   });
+
+  it.each([
+    ["sm", "gap-[var(--BUTTON-GAP-SM)]"],
+    ["md", "gap-[var(--BUTTON-GAP-MD)]"],
+    ["lg", "gap-[var(--BUTTON-GAP-LG)]"],
+  ] as const)("size %s carries its own icon/label gap", (size, expected) => {
+    render(<Button size={size}>Label</Button>);
+    expect(screen.getByRole("button", { name: "Label" }).className).toContain(expected);
+  });
+
+  it("lets a caller override the gap", () => {
+    render(<Button className="gap-r5">Label</Button>);
+    const className = screen.getByRole("button", { name: "Label" }).className;
+    expect(className).toContain("gap-r5");
+    expect(className).not.toContain("--BUTTON-GAP-MD");
+  });
+
+  it.each([
+    ["ghost", "hover:bg-fg-secondary/10"],
+    ["ghost-inverse", "hover:bg-fg-on-primary/15"],
+  ] as const)("%s derives its hover wash from its own ink token", (variant, expected) => {
+    render(<Button variant={variant}>Label</Button>);
+    expect(screen.getByRole("button", { name: "Label" }).className).toContain(expected);
+  });
 });
