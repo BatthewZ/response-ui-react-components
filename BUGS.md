@@ -160,6 +160,28 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 87 | unaudited | Slider | [Slider.css:43](src/components/form/Slider.css#L43) | low | Thumb border and focus-ring gap are hard-wired to `--C-SURFACE-0`, reading as a wrong-coloured halo on any other layer |
 | 88 | unaudited · spot-checked | RangeSlider | [RangeSlider.css:111](src/components/form/RangeSlider.css#L111) | low | Dead `::-moz-range-track` rule and a false comment ("Firefox paints a default track") — A/B render shows identical pixels |
 | 89 | unaudited | Select | [Select.tsx:23](src/components/form/Select.tsx#L23) | low | `placeholder:text-fg-muted` is dead — `::placeholder` does not match a `<select>` |
+| 90 | unaudited · corroborated | **useTheme** | [use-theme.ts:79](src/hooks/use-theme.ts#L79) | **high** | `setTheme` writes `localStorage["theme"]` but **nothing ever reads it back** — the theme choice is discarded on reload, while README/AGENTS advertise "persistence" |
+| 91 | unaudited · corroborated | ThemeSwitcher | [ThemeSwitcher.tsx:26](src/components/ui/ThemeSwitcher.tsx#L26) | med | `role="radiogroup"`/`role="radio"` with no roving focus — no `tabIndex`, no `onKeyDown`, though `useRovingFocus` exists and `Rating` uses it |
+| 92 | unaudited · corroborated | ThemeSwitcher | [ThemeSwitcher.tsx:20](src/components/ui/ThemeSwitcher.tsx#L20) | med | Calls `useTheme()` with no options, so themes registered via `useTheme({themes})` are invisible and mis-reported |
+| 93 | unaudited · spot-checked | ThemeSwitcher | [ThemeSwitcher.tsx:9](src/components/ui/ThemeSwitcher.tsx#L9) | med | `LABELS` is module-private English and `children` is omitted — option text is unreachable in any locale |
+| 94 | unaudited | ThemeSwitcher | [ThemeSwitcher.css:14](src/components/ui/ThemeSwitcher.css#L14) | low | Option type is literal `0.8125rem`/`500`, not `--BodyText-2`/`--Semibold-Weight` — labels ignore theme typography |
+| 95 | unaudited · corroborated | ThemeSwitcher · Collapsible | [ThemeSwitcher.css:23](src/components/ui/ThemeSwitcher.css#L23) | low | No `:focus-visible` rule; focus falls back to the UA ring and never reads `--C-BORDER-FOCUS`. `Collapsible.tsx:86`'s trigger is the only other such case |
+| 96 | unaudited · corroborated | Dialog · Drawer | [Dialog.tsx:30](src/components/ui/Dialog.tsx#L30) | med | Neither listens for `close`, so `<form method="dialog">` / `ref.close()` closes the element while `open` stays `true` and it cannot reopen |
+| 97 | unaudited · corroborated | Dialog | [Dialog.tsx:48](src/components/ui/Dialog.tsx#L48) | med | Scrim is a literal `backdrop:bg-black/50`, ignoring `--OVERLAY-SCRIM-COLOR` — Drawer tokenises it correctly |
+| 98 | unaudited · corroborated | Drawer · FileUpload | [Drawer.css:9](src/components/ui/Drawer.css#L9) | med | `color: var(--C-TEXT-DEFAULT)` reads a token **nothing defines** → invalid at computed-value time → `color` falls back to `inherit`. Same line at `FileUpload.css:344` |
+| 99 | unaudited | Dialog | [Dialog.tsx:47](src/components/ui/Dialog.tsx#L47) | low | `animate-fade-in` has no `motion-reduce:` sibling; the CSS package guards the `.fade-in` *class*, not the utility |
+| 100 | unaudited | Drawer | [Drawer.tsx:16](src/components/ui/Drawer.tsx#L16) | low | `onClose` shadows the native `<dialog>` `onClose` and is destructured out, making the DOM handler reachable only via `ref` |
+| 101 | unaudited · spot-checked | ToastContext | [ToastContext.tsx:80](src/components/ui/ToastContext.tsx#L80) | med | `dismissAll()`'s 300 ms sweep calls `setToasts([])` unconditionally, deleting toasts queued after it |
+| 102 | unaudited · spot-checked | ToastContext | [ToastContext.tsx:85](src/components/ui/ToastContext.tsx#L85) | med | `crypto.randomUUID()` is unguarded and secure-context-only — every `toast()` throws on plain http |
+| 103 | unaudited · corroborated | Toast | [Toast.tsx:41](src/components/ui/Toast.tsx#L41) | med | Live region is inserted with its message already inside it, and the always-mounted container has no `aria-live` — same class as #39/#64 |
+| 104 | unaudited · corroborated | Toast | [Toast.tsx:12](src/components/ui/Toast.tsx#L12) | med | Variant severity is colour-only — no icon, label or `sr-only` word (fifth instance of the pattern) |
+| 105 | unaudited · spot-checked | ToastContext | [ToastContext.tsx:57](src/components/ui/ToastContext.tsx#L57) | low | Removal timer stored under `` `${id}-remove` `` but deleted under `id` — the Map grows one dead entry per dismissed toast |
+| 106 | unaudited | ToastContext | [ToastContext.tsx:80](src/components/ui/ToastContext.tsx#L80) | low | The dismissAll sweep and the overflow eviction are untracked `setTimeout`s, missed by the unmount cleanup |
+| 107 | unaudited · spot-checked | ToastContext | [ToastContext.tsx:35](src/components/ui/ToastContext.tsx#L35) | low | 300 ms removal is hard-coded against themeable `--MOTION-DURATION-EXIT`; shipped `grimdark` sets 350 ms, so its toast exits are already truncated |
+| 108 | unaudited | Toast | [Toast.tsx:46](src/components/ui/Toast.tsx#L46) | low | `animate-slide-in-right`/`-out-right` ignore `prefers-reduced-motion` (the package block covers only `.fade-*`) |
+| 109 | unaudited · spot-checked | Toast | [Toast.tsx:56](src/components/ui/Toast.tsx#L56) | low | Dismissing drops focus to `<body>`; no focus restoration |
+| 110 | unaudited | ToastContext | [ToastContext.tsx:97](src/components/ui/ToastContext.tsx#L97) | low | `setTimeout` side effect inside the `setToasts` updater — impure, double-fires under StrictMode |
+| 111 | unaudited · spot-checked | ErrorBoundary | [ErrorBoundary.tsx:29](src/components/ui/ErrorBoundary.tsx#L29) | low | The fallback's hand-rolled `<button>` sets no `type`, so "Try again" also submits an enclosing form |
 
 > **Bookkeeping, 2026-07:** this list previously named **Button**, **Textarea** and
 > **FieldError**. All three were wrong. Button carries #74 and #81; Textarea carries #81 and
@@ -551,3 +573,59 @@ with its default `::-moz-range-track`. **That is false** — pixel-sampled ident
 Firefox 146 and 123. Both engines expose the input's own `background` as the track once
 `appearance: none` is set. The claim came from `RangeSlider.css:111`'s stale comment (#88), and the
 "fix" it implied would have painted a bar *over* the fill.
+
+### 90 · useTheme — persistence is write-only (high)
+
+`setTheme` writes `localStorage["theme"]`. **Nothing in either package ever reads it back.** A
+verifier swept `src/`, `dev/`, `dist/`, `scripts/` and the installed `@batthewz/response-ui-css`:
+the only `getItem("theme")` occurrences are a test assertion and a string inside a doc example.
+`dev/index.html` ships no bootstrap script; there is no cookie and no build-time restore.
+
+**Failure scenario:** a user picks Grimdark and reloads. `data-theme` is absent, the
+`useSyncExternalStore` snapshot falls back to `default`, and the choice is gone. This is not a
+flash-of-wrong-theme — it is silent data loss, and the write makes it look supported.
+
+**This one also made the package's own docs false**, which is why it is filed high rather than
+medium. `README.md:84` claimed `useTheme` "adds reactive state, `localStorage` persistence, and
+SSR-safe hydration"; `AGENTS.md:281` repeated it. Neither is true: the hook holds no React state
+(it is `useSyncExternalStore` over the DOM attribute) and nothing restores the key. Both files are
+corrected in this pass to describe the one-way write.
+
+**Fix:** the only correct fix is a blocking inline `<script>` in the document head that sets
+`data-theme` from storage before first paint — reading it in an effect would restore the choice but
+guarantee a flash. Ship that snippet as documented, copy-pasteable code, or the write should be
+removed as misleading.
+
+### 96 · Dialog · Drawer — every native close path desyncs the controlled `open` (med)
+
+Both components listen for `cancel` (Escape) and route it through `onClose`, so **Escape is
+handled correctly** — the classic bug in this shape is genuinely absent. But neither listens for
+`close`, and `<form method="dialog">`, `formmethod="dialog"` and `ref.current.close()` all fire
+`close` **without** `cancel`.
+
+**Failure scenario:** a dialog with a `<form method="dialog">` footer — the platform-native way to
+close one. The user submits it. The element closes, `onClose` never runs, the parent's `open` stays
+`true`, and because the sync effect only reacts to a *change* in `open`, setting it `true` again is
+a no-op: the dialog can never be reopened until the caller toggles it false and back.
+**Fix:** add a `close` listener that calls `onClose()` when `open` is still true.
+
+### 103-104 · Toast — the notification system is the least announceable surface in the library (med)
+
+Two independent failures stack:
+
+- **#103** The always-mounted portal container carries no `aria-live`; the live region arrives
+  *with* its text already inside it (`role="alert" aria-live="assertive"`, `textContent` already
+  set in the same update). Region-and-content-in-one-update is the case screen readers announce
+  least reliably — the same defect already logged for Spinner (#39) and Skeleton (#64), but here it
+  defeats the entire purpose of the component.
+- **#104** Variant severity is colour-only, so a success and an error toast are identical to a
+  screen reader and in greyscale.
+
+**Fix:** put `aria-live` on the persistent container (`ToastContext.tsx:137`) so the region exists
+before any message lands in it, and add an `sr-only` severity word per variant.
+
+**Note on #41:** that row said Toast's `type`-less dismiss button submits an enclosing form. Through
+`ToastProvider` it does **not** — the button is portalled to `document.body`, so its form owner is
+`null` (verified: `btn.form === null`, no submit event). Only a hand-rendered `<Toast>` placed
+inside a `<form>` submits. #41 stands for IconButton, Pagination and Carousel; the Toast half is
+narrower than logged.

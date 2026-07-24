@@ -81,7 +81,9 @@ Every component renders with `var(--…)` tokens defined by `response-ui-css` �
 <html data-theme="grimdark">
 ```
 
-Reach for `useTheme` only when you want a theme _switcher_: it adds reactive state, `localStorage` persistence, and SSR-safe hydration on top of that same attribute.
+Reach for `useTheme` only when you want a theme _switcher_: it reads that same attribute reactively (`useSyncExternalStore` over a `MutationObserver` — it keeps no React state of its own) and gives you a typed `setTheme` and the theme list.
+
+**Persistence is not included.** `setTheme` _writes_ `localStorage["theme"]` (and clears it for the default theme), but nothing in this package ever reads that key back — so the user's choice is silently discarded on reload. Restoring it before the first paint needs a blocking inline `<script>` in your document `<head>`, which this package does not ship; see [ThemeSwitcher](docs/components/theme-switcher.md#persistence-is-your-job) for the snippet.
 
 ```tsx
 import { useTheme } from "@batthewz/response-ui-react-components";

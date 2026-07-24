@@ -276,9 +276,9 @@ const { theme, setTheme } = useTheme({
 });
 ```
 
-`themes[0]` is the fallback / "default" (no `data-theme` attribute when set; cleared from localStorage). All others write `data-theme="<name>"` and persist to `localStorage["theme"]`.
+`themes[0]` is the fallback / "default" (no `data-theme` attribute when set; `localStorage["theme"]` removed). All others write `data-theme="<name>"` and write `localStorage["theme"]`. That write is **one-way**: nothing in this package reads the key back, so the choice is discarded on reload unless the consumer restores it from a blocking inline `<script>` in `<head>` (not shipped here).
 
-The hook is **optional** — a theme is applied by the `data-theme` attribute alone. `<html data-theme="grimdark">` (declarative, in a root layout / `index.html`) or `document.documentElement.setAttribute("data-theme", "grimdark")` both work with zero JS from this package. Use `useTheme` only when you need a reactive switcher (state + persistence + SSR-safe hydration). Scope: built-in themes use a `:root[data-theme="…"]` selector (matches `<html>` only); a theme authored with a **bare** `[data-theme="…"]` selector can be set on any element to re-skin just that subtree (tokens cascade to descendants).
+The hook is **optional** — a theme is applied by the `data-theme` attribute alone. `<html data-theme="grimdark">` (declarative, in a root layout / `index.html`) or `document.documentElement.setAttribute("data-theme", "grimdark")` both work with zero JS from this package. Use `useTheme` only when you need a reactive switcher — it holds no React state, just `useSyncExternalStore` over `<html data-theme>` (server snapshot: `themes[0]`, so SSR always ships the default), plus the one-way `localStorage` write above. Scope: built-in themes use a `:root[data-theme="…"]` selector (matches `<html>` only); a theme authored with a **bare** `[data-theme="…"]` selector can be set on any element to re-skin just that subtree (tokens cascade to descendants).
 
 ### `useViewTransition` — adapter for any router's navigate
 
