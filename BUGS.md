@@ -84,7 +84,11 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   versus zero without the prop). The `Omit` is what makes the first two invisible; the third shows
   the pattern does not need one. Every component that spreads rest after its own handlers should
   destructure those handler names out first; grep for `{...props}` following an `on[A-Z]` prop on
-  the same element.
+  the same element. **Batch L adds `AvatarUpload` (#380).** **Batch M adds two more:**
+  `AppShell.Toggle` (#390) whose `onClick` is `Omit`ted-and-replaced like TagInput's, and
+  `FileUpload` (#407, high) — the widest case yet, where the single root `{...props}` sits after
+  *four* handlers (`onClick`/`onKeyDown`/`onDragOver`/`onDragLeave`), so a caller `onClick` deletes
+  the file picker outright (measured: 0 `input.click()`), only `onDrop` protected by the `Omit`.
 - **Contrast is measured nowhere.** #51 is the first *measured* contrast audit in this file and
   `--C-TEXT-MUTED` fails AA on every surface of every theme. The token tables across the spokes
   say which variable paints what; nothing checks the pair is legible. A ratio guard over the
@@ -127,6 +131,16 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   selected day in a calendar fails AA for body text in half the shipped themes. That makes it four
   token families measured and four failures; the guard, when someone writes it, has to cover the
   named ink/fill pairs first, not just incidental composites.
+  **Batch M measures a fifth family: the contract's own status pairs.** `--C-STATUS-SUCCESS` on
+  `--C-STATUS-SUCCESS-BG` = 3.15 / 3.15 / 13.39 / 6.70 and `--C-STATUS-ERROR` on `--C-STATUS-ERROR-BG`
+  = 4.41 / 4.41 / 5.35 / 4.59 (default / events / tech / grimdark) at `--BodyText-3` size (#415,
+  `FileUpload`), so both miss AA in `default` and `events` on the pairing `docs/theme-contract.md`
+  names under "Status" but attaches no ratio to. Five families measured, five failures. Batch M also
+  extends the surface-ramp/keyboard-nav case (#275/#264): `CommandPalette`'s active-option highlight
+  is `--C-SURFACE-2` on `--C-SURFACE-0` at 1.08–1.16:1 with no focus ring under virtual focus (#398,
+  high) — one step up the ramp from Combobox — and `AppShell`'s active link ink is *below* its
+  resting-link ink in `events`/`grimdark` (#393), the first time marking an item current makes it the
+  least legible thing in the group.
 - **Continuous motion with no `prefers-reduced-motion` guard.** ~25 component CSS files ship
   a reduced-motion block and `src/hooks/use-reduced-motion.ts` exists, but utility-driven
   motion bypasses all of it: `Spinner`'s `animate-spin` (#38) is unguarded, as is
@@ -559,6 +573,40 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 384 | unaudited · spot-checked | AvatarUpload | [AvatarUpload.tsx:203](src/components/ui/AvatarUpload.tsx#L203) | low | The hover scrim and its glyph hard-code `bg-black/50`, `text-white` and `border-white` — none of which resolve to any contract variable — instead of `--OVERLAY-SCRIM-COLOR`, which the shipped themes set to 0.45/0.7/0.8 and which `Drawer`, `AppShell` and `CommandPalette` all read |
 | 385 | unaudited · spot-checked | AvatarUpload | [index.ts:5](src/components/ui/index.ts#L5) | low | The barrel re-exports only the `AvatarUpload` value; the exported types `AvatarUploadProps` and `AvatarUploadResult` are unreachable from the package, unlike `DataTable`/`Toast`/`Wizard` which export theirs |
 | 386 | unaudited · spot-checked | AvatarUpload | [AvatarUpload.tsx:228](src/components/ui/AvatarUpload.tsx#L228) | low | The error tooltip is `whitespace-nowrap`, absolutely positioned `-bottom-8` and centred, and clears only on the next file selection — a long `accept` list overflows the container in both directions with no dismiss or timeout |
+| 387 | unaudited · corroborated | AppShell | [AppShell.tsx:199](src/components/ui/AppShell.tsx#L199) | **high** | On a mobile viewport `AppShell.Toggle` opens the drawer but cannot close it — `useClickOutside` closes on `mousedown` and the toggle's later `click` reopens it |
+| 388 | unaudited · corroborated | AppShell | [AppShell.tsx:293](src/components/ui/AppShell.tsx#L293) | **high** | A collapsed desktop sidebar link has an empty accessible name — the label `<span>` is `display:none` and the icon is `aria-hidden`, so a collapsed rail is a list of unnamed links |
+| 389 | unaudited · corroborated | AppShell | [AppShell.tsx:309](src/components/ui/AppShell.tsx#L309) | med | `AppShell.Main` renders a plain `<div>` with no `<main>` and no `role`, so a shell built from the parts exposes `banner` and `navigation` but zero main landmark and no skip-link target |
+| 390 | unaudited · corroborated | AppShell | [AppShell.tsx:181](src/components/ui/AppShell.tsx#L181) | med | `AppShell.Toggle` spreads rest props after its own `onClick`, so a caller-supplied `onClick` silently replaces the toggle's behaviour (rest-spread-after-handler pattern) |
+| 391 | unaudited · corroborated | AppShell | [AppShell.tsx:107](src/components/ui/AppShell.tsx#L107) | med | The route-change auto-close is a render-phase `setOpen(false)` that also calls the caller's `onOpenChange`, so React logs "Cannot update a component while rendering a different component" when a controlled drawer is open at navigation |
+| 392 | unaudited · spot-checked | AppShell | [AppShell.tsx:221](src/components/ui/AppShell.tsx#L221) | med | The mobile drawer sets `aria-modal="true"` on a `role="navigation"` element (where the attribute is undefined) and marks nothing else `inert`, so AT can browse behind the scrim while the DOM focus trap disagrees |
+| 393 | unaudited · corroborated | AppShell | [AppShell.css:151](src/components/ui/AppShell.css#L151) | med | The active link's `--C-ACCENT` ink over its own 10% wash measures 2.46:1 (`events`) / 2.83:1 (`grimdark`) — *lower* than a resting link (7.40 / 5.95) — so marking a link current makes it the least legible item (status-by-colour, #51 family) |
+| 394 | unaudited · corroborated | AppShell | [AppShell.tsx:171](src/components/ui/AppShell.tsx#L171) | low | The Toggle's `aria-controls` names an id absent from the document whenever the mobile drawer is closed (`AppShell.Sidebar` returns `null`) or no Sidebar is rendered |
+| 395 | unaudited · spot-checked | AppShell | [AppShell.tsx:259](src/components/ui/AppShell.tsx#L259) | low | `AppShell.SidebarSection` renders its `title` as a `<div>`, not a heading, so sidebar groups are unreachable by heading navigation; the collapsed rail then hides those titles outright |
+| 396 | unaudited · corroborated | AppShell | [AppShell.css:115](src/components/ui/AppShell.css#L115) | low | Sidebar section titles paint `--C-TEXT-MUTED`, measured 2.10–2.59:1 on `--C-SURFACE-0` across the four themes — under AA everywhere (instance of #51) |
+| 397 | unaudited · candidate | AppShell | [AppShell.css:24](src/components/ui/AppShell.css#L24) | low | The `3.5rem` navbar height is a literal repeated in three rules (navbar height, sidebar sticky `top`, sidebar `calc(100vh - 3.5rem)`) and the `639px` breakpoint is duplicated between the `matchMedia` and the stylesheet, so restyling either desyncs the layout |
+| 398 | unaudited · corroborated | CommandPalette | [CommandPalette.css:123](src/components/ui/CommandPalette.css#L123) | **high** | The highlighted option is marked only by a `--C-SURFACE-2` wash over `--C-SURFACE-0` — 1.08–1.16:1 across the four themes, under WCAG 1.4.11's 3:1 — and there is no focus ring because focus is virtual, so keyboard users arrow blind (surface-ramp/keyboard-nav family, #275/#264) |
+| 399 | unaudited · corroborated | CommandPalette | [CommandPalette.tsx:112](src/components/ui/CommandPalette.tsx#L112) | med | Arrow/Home/End traverse the flat `filtered` array while the DOM renders grouped, so non-contiguous members of one `group` make the highlight move out of visual order (measured rendered `[New document, Save, Copy]` vs arrow `[New document, Copy, Save]`) |
+| 400 | unaudited · corroborated | CommandPalette | [CommandPalette.tsx:176](src/components/ui/CommandPalette.tsx#L176) | med | The effect that snaps `activeIndex` to the first selectable row depends on `filtered` → the `items`/`filter` props, so an inline array literal or inline arrow resets the highlight to row 1 on every parent re-render |
+| 401 | unaudited · corroborated | CommandPalette | [CommandPalette.tsx:260](src/components/ui/CommandPalette.tsx#L260) | med | The search input can never be given an accessible name: it has no `aria-label`/`aria-labelledby`/`<label>`, and rest props (including a caller's `aria-label`) are spread on the `<dialog>` instead |
+| 402 | unaudited · spot-checked | CommandPalette | [CommandPalette.tsx:278](src/components/ui/CommandPalette.tsx#L278) | med | No live region: filtering swaps the option list and the `emptyMessage` node silently (measured 0 `aria-live` nodes), so a screen-reader user gets no feedback on how many commands remain |
+| 403 | unaudited · corroborated | CommandPalette | [CommandPalette.tsx:300](src/components/ui/CommandPalette.tsx#L300) | med | Options sit in an unroled `<ul>` inside `<li role="group">`, so the listbox does not directly own its options; an ungrouped item also gets a nameless `role="group"` wrapper |
+| 404 | unaudited · corroborated | CommandPalette | [CommandPalette.css:163](src/components/ui/CommandPalette.css#L163) | med | Group headers and the empty message ink with `--C-TEXT-MUTED` on `--C-SURFACE-0` — 2.10–2.59:1 across the four themes, below the 4.5:1 body-text floor — and the empty message is the only content on screen in its state (instance of #51) |
+| 405 | unaudited · spot-checked | CommandPalette | [CommandPalette.tsx:255](src/components/ui/CommandPalette.tsx#L255) | low | The panel omits the `no-body-scroll` class its sibling `Dialog` applies and `.command-palette-list` sets no `overscroll-behavior`, so the page scrolls behind the scrim |
+| 406 | unaudited · spot-checked | CommandPalette | [CommandPalette.tsx:282](src/components/ui/CommandPalette.tsx#L282) | low | The listbox's `aria-label="Commands"` is hard-coded English with no prop reaching it (hard-coded-English pattern; unlike the dialog's label, which the rest spread lets callers override) |
+| 407 | unaudited · corroborated | FileUpload | [FileUpload.tsx:476](src/components/ui/FileUpload.tsx#L476) | **high** | `{...props}` is spread after the component's own `onClick`/`onKeyDown`/`onDragOver`/`onDragLeave`, so a caller silently replaces the only interactions the component has — measured `<FileUpload onClick={track} />` fires `track` and never opens the picker (rest-spread-after-handler pattern) |
+| 408 | unaudited · corroborated | FileUpload | [FileUpload.tsx:370](src/components/ui/FileUpload.tsx#L370) | med | `accept` is matched with exact-string `Array.includes(file.type)`, so the wildcard/extension forms it forwards to the input's `accept` attribute reject every file that comes back — `["image/*"]` → 0 `onFilesSelected` calls (same as AvatarUpload #379) |
+| 409 | unaudited · corroborated | FileUpload | [FileUpload.tsx:389](src/components/ui/FileUpload.tsx#L389) | med | Files rejected by `accept`/`maxSize` produce no callback, no message and no state — the rejection is completely silent, despite the `error` prop's docblock claiming it "overrides internal state" that does not exist |
+| 410 | unaudited · corroborated | FileUpload | [FileUpload.tsx:560](src/components/ui/FileUpload.tsx#L560) | med | `uploading` combined with a non-empty `files` renders an inert preview (`pointer-events: none`) with no uploading indication and `aria-busy` null — Replace/Clear all/Remove are all dead and nothing says why |
+| 411 | unaudited · corroborated | FileUpload | [FileUpload.tsx:517](src/components/ui/FileUpload.tsx#L517) | med | A per-file remove button falls back to `onClear` when `onRemoveFile` is not supplied, so removing one file deletes all of them (measured: X on the second of three fires `onClear` once, dropping all three) |
+| 412 | unaudited · corroborated | FileUpload | [FileUpload.tsx:457](src/components/ui/FileUpload.tsx#L457) | med | In the preview state three real `<button>`s are nested inside the root `role="button"` `tabIndex={0}` element, whose descendants ARIA makes presentational; Enter on the root reopens the file dialog rather than acting on the preview |
+| 413 | unaudited · corroborated | FileUpload | [FileUpload.tsx:549](src/components/ui/FileUpload.tsx#L549) | med | The `error` and `success` messages render as a plain `<p>` with no live-region role and no `aria-describedby` from the dropzone, so they are never announced |
+| 414 | unaudited · corroborated | FileUpload | [FileUpload.css:16](src/components/ui/FileUpload.css#L16) | med | The dropzone's `--C-TEXT-MUTED` prompt (2.06–2.43:1) and its `--C-BORDER-DEFAULT` 2px dashed border (1.18–1.26:1) on the `--C-SURFACE-1` fill the component paints are both far below their WCAG floors (contrast/#51 family; border is the whole "drop here" affordance) |
+| 415 | unaudited · corroborated | FileUpload | [FileUpload.css:117](src/components/ui/FileUpload.css#L117) | med | The contract's own paired status foreground/background tokens fail AA at this component's `--BodyText-3` type size — success 3.15:1 (`default`/`events`), error 4.41:1 (same two); library-wide, the contract pairs these tokens but promises no ratio |
+| 416 | unaudited · corroborated | FileUpload | [FileUpload.tsx:330](src/components/ui/FileUpload.tsx#L330) | low | Object URLs are created as a side effect inside `useMemo` during render, so StrictMode's double-render leaks one URL per media file per mount permanently (measured), and an inline `files={[file]}` mints/revokes a fresh URL on every parent re-render |
+| 417 | unaudited · spot-checked | FileUpload | [FileUpload.tsx:51](src/components/ui/FileUpload.tsx#L51) | low | `children` is typed (props intersect `ComponentPropsWithRef<"div">` without omitting it) but always dropped, because the rest spread precedes the component's own JSX children (types-advertise-props-runtime-drops pattern) |
+| 418 | unaudited · spot-checked | FileUpload | [FileUpload.tsx:466](src/components/ui/FileUpload.tsx#L466) | low | `success` is silently ignored whenever `files` is non-empty — both the `--success` class and the success paragraph are gated on the empty state — while `error` renders in both |
+| 419 | unaudited · spot-checked | FileUpload | [FileUpload.css:136](src/components/ui/FileUpload.css#L136) | low | The `.file-upload__input` rule block (and its `--disabled` variant) is dead CSS: the hidden input renders with `className="sr-only"`, never that class |
+| 420 | unaudited · spot-checked | FileUpload | [FileUpload.tsx:532](src/components/ui/FileUpload.tsx#L532) | low | All built-in copy is hard-coded English with no prop to reach it — "Drag & drop or", "browse", "Uploading...", "Replace", "Clear all", `Remove ${file.name}` and `aria-label="Upload file"` (only the last is overridable, via rest props) (hard-coded-English pattern) |
 
 
 **Clean (no findings):** Stack, FormActions, Tabs, Divider, Grid, Center, Container, Row, Spacer,
@@ -622,6 +670,27 @@ Label. (Not proof of correctness — just nothing surfaced.)
 > arrives" — measured, neither is true (no further click is required, and the prop that arrives is
 > `undefined`, so nothing puts it back). The page now carries the measured account, which matches
 > `data-table.md`'s.
+>
+> **Batch M (2026-07-25)** added none to the list and removed none. AppShell, CommandPalette and
+> FileUpload all carry findings below (#387–#420), four of them high. The batch is unusual in one
+> respect: the adversarial re-read **refuted nothing** — every one of the five staked claims per
+> component reproduced under a real render, and so did the neighbour claims (Drawer/AppShell/
+> CommandPalette all read `--OVERLAY-SCRIM-COLOR`; AppShell is the only direct `./Portal` importer;
+> scrim/panel z-indices are 49/50). The recurring shapes are all here again: the
+> **rest-spread-after-own-handler** pattern kills `AppShell.Toggle`'s open (#390) and *all four* of
+> `FileUpload`'s interactions including the file picker (#407, high) — the same shape as #245 / #380;
+> the **accept-as-exact-string** defect that broke AvatarUpload (#379) is byte-for-byte the same in
+> `FileUpload` (#408), so `["image/*"]` rejects every file the dialog offered in both; and the
+> **status/selection-by-colour + surface-ramp** family claims two more keyboard indicators — the
+> CommandPalette highlight is a 1.08–1.16:1 wash with no focus ring under virtual focus (#398, high,
+> exactly Combobox #275 / MultiSelect #264 one step up the ramp), and AppShell's *active* link is
+> **less** legible than a resting one in `events`/`grimdark` (#393). The contrast audit also puts a
+> number on a **fifth token family**: the contract's own paired status foreground/background tokens
+> (`--C-STATUS-SUCCESS`/`-BG`, `--C-STATUS-ERROR`/`-BG`) fail AA at body-text size in `default` and
+> `events` (#415) — five token families measured, five failures. The batch's sharpest structural
+> finding is `AppShell.Main` shipping as a bare `<div>` with no `<main>` and no `role` (#389), so a
+> shell assembled from the documented parts has a `banner` and a `navigation` landmark but no main
+> landmark and no skip-link target at all.
 
 ## Details — high & medium
 
@@ -2631,3 +2700,219 @@ the default. `onUpload={async () => ({ url, assetId: "a1" })}` compiles via stru
 unusable in every direction.
 **Fix:** type the component as a generic function component instead of `forwardRef`, or drop the
 parameter.
+
+### 387 · AppShell — the mobile toggle opens the drawer but cannot close it (high)
+
+Phone width (`matchMedia("(max-width: 639px)")` matching), drawer open, tap the toggle:
+`useClickOutside(sidebarRef, () => setOpen(false), isMobile && open)` fires on `mousedown` because
+the toggle is outside the `<aside>`, React flushes the discrete update, then the later `click` runs
+`handleClick` with `open` now `false` and sets it back to `true`. Measured with real event dispatch
+across a task boundary (mousedown → macrotask → click, as a real browser interleaves them): the drawer
+is still mounted after the tap and `onOpenChange` was called `false` then `true`. `Escape` and a scrim
+tap both close correctly; only the toggle is broken. (A fully synchronous `mousedown`+`click` in the
+same microtask masks it — the realistic gap is what exposes it.)
+**Fix:** have the dismiss handler ignore events whose target is inside the toggle (shared ref /
+`composedPath` check), the way Popover-style dismissal does.
+
+### 388 · AppShell — a collapsed sidebar link has an empty accessible name (high)
+
+Render `<AppShell collapsed>` with `<AppShell.SidebarLink to="/dashboard" icon={Home}>Dashboard</…>`.
+The collapsed rule `.app-shell-sidebar[data-collapsed] .app-shell-sidebar-link-label { display: none }`
+removes the only text and the Lucide icon renders `aria-hidden="true"`. Measured with
+`computeAccessibleName` (dom-accessibility-api, the engine Testing Library uses): the name is
+`"Dashboard"` expanded and `""` collapsed. The `Tooltip` wrapper contributes only `aria-describedby`
+(a *description*), and only while open — so a collapsed rail is a list of unnamed links.
+**Fix:** swap `display:none` for an `sr-only` style on the label in the collapsed rule, or set
+`aria-label` from `children` when collapsed.
+
+### 389 · AppShell — a shell built from the parts has no main landmark (med)
+
+Render `AppShell.Navbar` + `AppShell.Sidebar` + `AppShell.Main` and query the document: 1 `banner`,
+1 `navigation`, but **0 `<main>`** and **0 `[role=main]`** (measured; `.app-shell-main` is a `<div>`).
+Landmark navigation cannot reach the content and a skip link has no target. Rest props reach the
+element, so a caller can patch it with `role="main"` — but nothing ships one by default.
+**Fix:** render `<main>` in `AppShellMain`.
+
+### 390 · AppShell — `AppShell.Toggle`'s `onClick` is silently replaceable (med)
+
+`<AppShell.Toggle onClick={track} />` typechecks — only `type` is `Omit`ted from the prop type — and
+measured: the caller's callback runs, `input`/drawer never opens, because `{...props}` overwrites
+`onClick={handleClick}`. Instance of the library's rest-spread-after-own-handler pattern (see #245,
+#380, #407).
+**Fix:** destructure `onClick` out of rest and invoke both the caller's and the internal handler.
+
+### 391 · AppShell — the route-change auto-close notifies `onOpenChange` during render (med)
+
+Controlled `<AppShell open onOpenChange={setOpen}>` at mobile width with the drawer open; change the
+adapter pathname. The render-phase `if (isMobile && open) setOpen(false)` calls `setOpen`, which calls
+`onOpenChange`, and React logs *"Cannot update a component (`…`) while rendering a different component
+(`AppShellRoot`)"* (captured from `console.error`). Uncontrolled shells do not surface it because there
+is no external setter in the path.
+**Fix:** keep the render-time adjustment to internal state only, and notify `onOpenChange` from an
+effect.
+
+### 392 · AppShell — `aria-modal` on a `role="navigation"` drawer does nothing (med)
+
+The mobile drawer's `<aside>` carries `aria-modal="true"` on `role="navigation"`, where the attribute
+is undefined (ARIA defines it only for `dialog`/`alertdialog`), and nothing marks the rest of the page
+`inert` or `aria-hidden`. So a screen-reader user can still browse the content behind the scrim while
+`useFocusTrap` yanks DOM Tab focus back into the aside — the two models disagree. The DOM facts are
+measured (`aria-modal="true"`, `role="navigation"`, no `inert`/`aria-hidden` on siblings); the AT
+outcome is reasoned from the spec.
+**Fix:** drop `aria-modal`, or give the drawer `role="dialog"` with an accessible name and mark the
+page `inert` while it is open.
+
+### 393 · AppShell — the active link is the least legible item in the nav (med)
+
+In `events` or `grimdark`, the link for the current page: active ink `--C-ACCENT` over its own 10%
+`color-mix` wash measures **2.46:1** / **2.83:1** against the composited background (AA asks 4.5:1),
+while a resting link (`--C-TEXT-SECONDARY` on `--C-SURFACE-0`) measures **7.40:1** / **5.95:1** — so
+marking a link current makes it *harder* to read. The wash itself is 1.05–1.18:1 against the sidebar
+fill, so it adds no perceptible block. `aria-current="page"` is emitted, so AT is unaffected; the
+defect is sighted-only. (Contrast pipeline validated against breadcrumbs' `--C-TEXT-MUTED` range and
+#242's focus ratios.)
+**Fix:** add a non-colour cue (weight, rail marker) or tint the active state from a pair measured
+against `--C-SURFACE-0`.
+
+### 398 · CommandPalette — the highlighted option has no visible indicator (high)
+
+The only style on the active row is `background: var(--C-SURFACE-2)` over the panel's `--C-SURFACE-0` —
+no border, no ink change, no weight change. Measured 1.10 / 1.08 / 1.08 / 1.16:1 in
+default / events / tech / grimdark, against WCAG 1.4.11's 3:1 floor. Because focus is virtual (DOM
+focus never leaves the search input) there is no focus ring either, so a keyboard user pressing
+ArrowDown sees nothing change on screen and fires `Enter` on a command they could not see was selected.
+Same class as Combobox #275 / MultiSelect #264, one surface step up the ramp.
+**Fix:** give `.command-palette-option[data-active]` a border/outline or an ink+weight change, not
+tint alone.
+
+### 399 · CommandPalette — arrow keys move out of visual order (med)
+
+Arrow/Home/End traverse the flat `filtered` array while the DOM renders grouped (groups in first-seen
+order). With `items = [New document(File), Copy(Edit), Save(File)]` the palette renders
+`[New document, Save, Copy]` but ArrowDown visits `[New document, Copy, Save]` — measured — so the
+highlight jumps between non-adjacent rows whenever a group's members are not contiguous in `items`.
+**Fix:** derive `activeIndex` from the grouped render order rather than from `filtered`.
+
+### 400 · CommandPalette — the highlight resets on an unstable `items`/`filter` identity (med)
+
+The effect that snaps `activeIndex` to the first selectable row is keyed on `findSelectable` →
+`filtered` → the `items`/`filter` props. Measured: `<CommandPalette items={[…inline literal]} />`, user
+arrows to row 3 ("Save all"), an unrelated parent state change re-renders, highlight snaps back to
+row 1 ("New document"). A module-scope array (or `useCallback` filter) survives — measured.
+**Fix:** key that effect on `query` alone, or clamp `activeIndex` instead of resetting it.
+
+### 401 · CommandPalette — the search input can never be given an accessible name (med)
+
+The input has no `aria-label`/`aria-labelledby`/`<label>`, and rest props (including a caller's
+`aria-label`) are spread on the `<dialog>` instead. Measured: `<CommandPalette aria-label="Search
+commands" />` renames the *dialog* (`dialog[aria-label="Search commands"]`) and leaves the combobox
+with only the browser's `placeholder` fallback for a name — and nothing at all under `placeholder=""`.
+**Fix:** add an `inputProps`/`aria-label` pass-through, or a visually hidden `<label>`.
+
+### 402 · CommandPalette — no live region announces the result count (med)
+
+Filtering swaps the option list silently and the `emptyMessage` node is not announced either.
+Measured: the rendered DOM contains 0 `aria-live` nodes, so a screen-reader user typing four
+characters that narrow 50 commands to 0 hears nothing and keeps typing into a dead list.
+**Fix:** render a visually hidden `aria-live="polite"` result count.
+
+### 403 · CommandPalette — the ARIA nesting is not the listbox shape (med)
+
+Options sit in an unroled `<ul>` (implicit `role="list"`) inside `<li role="group">`, so the listbox
+does not directly own its options; measured DOM is
+`ul[role=listbox] > li[role=group] > ul > li[role=option]`. An item with no `group` still gets a
+`<li role="group">` wrapper with no `aria-labelledby`. The structure is measured; screen-reader
+position-reporting outcome is reasoned (the page hedges it rather than naming a result).
+**Fix:** `role="presentation"` on the inner `<ul>`, and omit the group wrapper when `group == null`.
+
+### 404 · CommandPalette — group headers and the empty message are illegible (med)
+
+`--C-TEXT-MUTED` on `--C-SURFACE-0`: 2.54 / 2.45 / 2.10 / 2.59:1 across default / events / tech /
+grimdark, below the 4.5:1 body-text floor, and the empty message is the only content on screen in its
+state (`"No results"` at 2.10:1 in `tech`). The placeholder can live at that ratio; the headers and
+empty message cannot. Instance of #51.
+**Fix:** use `--C-TEXT-SECONDARY` (7.56 / 7.40 / 5.76 / 5.95:1) for the header and empty message.
+
+### 407 · FileUpload — a caller handler silently replaces the component's interactions (high)
+
+`{...props}` is spread after the component's own `onClick`/`onKeyDown`/`onDragOver`/`onDragLeave`.
+Measured `<FileUpload onClick={track} />`: `track` fires once, the hidden input's `click()` fires
+**zero** times, so the file dialog never opens and no file can be picked by pointer. Same shape for
+`onKeyDown` (keyboard browse) — measured — and for the drag handlers; only `onDrop` is protected by
+the `Omit`. Instance of the rest-spread-after-handler pattern (#245, #380, #390).
+**Fix:** destructure those four handler names out of rest and compose them with the internal ones.
+
+### 408 · FileUpload — `accept` wildcards and extensions reject every file (med)
+
+`accept` is matched with `Array.includes(file.type)`, while the same array is joined onto the input's
+`accept` attribute where wildcards/extensions are valid. Measured: `<FileUpload accept={["image/*"]}
+onFilesSelected={fn} />` renders `accept="image/*"`, the picker offers a PNG,
+`accept.includes("image/png")` is `false`, `onFilesSelected` calls = 0. `[".pdf"]` behaves
+identically; exact MIME (`["image/png"]`) works. Same defect as AvatarUpload #379.
+**Fix:** match wildcards and extensions the way the native `accept` grammar does, or document and
+validate the same grammar.
+
+### 409 · FileUpload — a rejected file is completely silent (med)
+
+Files rejected by `accept`/`maxSize` produce no callback, no message and no state, despite the `error`
+prop's docblock claiming it "overrides internal state" that does not exist. Measured
+`<FileUpload maxSize={1024} onFilesSelected={fn} />` + a 5000-byte file: 0 `onFilesSelected` calls, no
+`.file-upload__error` node, hint still reads "Max file size: 1.0 KB". The user sees nothing happen.
+**Fix:** add an `onFilesRejected(files, reason)` callback, or set an internal error the `error` prop
+can override as documented.
+
+### 410 · FileUpload — `uploading` plus `files` is an inert preview with no indication (med)
+
+Measured `<FileUpload uploading files={[file]} />`: textContent "report.pdf2.0 KBReplace", root class
+includes `file-upload--uploading` (`pointer-events: none`), `aria-busy` is `null`. The `Uploading...`
+text only renders in the empty branch, so the preview looks fully interactive while Replace / Clear all
+/ Remove are all dead and nothing says why.
+**Fix:** render the uploading affordance in the preview branch too, and set `aria-busy` on the root.
+
+### 411 · FileUpload — a per-file remove deletes every file (med)
+
+A per-item remove button is `onRemoveFile ? () => onRemoveFile(i) : onClear`, so it falls back to
+`onClear` when `onRemoveFile` is not supplied. Measured with 3 files, `onClear` wired,
+`onRemoveFile` omitted: clicking the button named "Remove b.pdf" fires `onClear` once, dropping all
+three. With neither prop, no remove button renders.
+**Fix:** render the per-item remove button only when `onRemoveFile` is present, rather than aliasing
+it to `onClear`.
+
+### 412 · FileUpload — the preview nests real buttons inside `role="button"` (med)
+
+Measured `<FileUpload files={[file]} onClear={fn} />`: root `role="button"`, `tabindex="0"`,
+`aria-label="Upload file"`, with 3 nested `<button>`s (Remove / Replace / Clear all). ARIA's
+presentational-children rule means screen readers are not required to expose them, and Enter on the
+root reopens the file dialog instead of acting on the preview. (Pointer clicks inside the preview are
+safe — it stops click/keydown propagation.)
+**Fix:** drop `role="button"`/`tabIndex` on the root once `hasFiles`, and expose a real browse button.
+
+### 413 · FileUpload — the error/success messages are never announced (med)
+
+The `error` and `success` messages render as a plain `<p>` with no live-region role and no
+`aria-describedby` from the dropzone. Measured `<FileUpload error="File too large" />`:
+`<p class="file-upload__error">File too large</p>` with `role`/`aria-live` `null`, root
+`aria-describedby` `null`. A keyboard user focused on the zone hears "Upload file, button" and nothing
+else.
+**Fix:** give the message an id, wire `aria-describedby`, and add `role="status"`/`role="alert"`.
+
+### 414 · FileUpload — the dropzone prompt and dashed border are below their WCAG floors (med)
+
+Computed from the shipped OKLCH values, each pair against the `--C-SURFACE-1` fill the component itself
+paints: `--C-TEXT-MUTED` = 2.43 / 2.37 / 2.06 / 2.43 (default / events / tech / grimdark) for the only
+instruction text at `--BodyText-2`/`--BodyText-3` (AA 4.5, large-text floor 3.0);
+`--C-BORDER-DEFAULT` = 1.18 / 1.18 / 1.18 / 1.26 for the 2px dashed border that is the entire "you can
+drop here" affordance (WCAG 1.4.11 asks 3.0). Drag-over feedback is the same story: fill change
+1.04–1.09:1, border `--C-BORDER-FOCUS` 2.52 (`events`) / 2.55 (`grimdark`). Contrast/#51 family.
+**Fix:** use `--C-TEXT-SECONDARY` for the prompt and `--C-BORDER-STRONG` for the dashed border, or
+retune the tokens.
+
+### 415 · FileUpload — the contract's own status token pairs fail AA at this type size (med)
+
+`--C-STATUS-SUCCESS` on `--C-STATUS-SUCCESS-BG` = 3.15 / 3.15 / 13.39 / 6.70 and `--C-STATUS-ERROR` on
+`--C-STATUS-ERROR-BG` = 4.41 / 4.41 / 5.35 / 4.59 (default / events / tech / grimdark), rendered at
+`--BodyText-3` (12–13px), where AA asks 4.5:1 — so success misses it in `default`/`events` and error
+misses it narrowly in the same two. This is library-wide, not FileUpload-specific: the contract pairs
+these tokens explicitly (docs/theme-contract.md "Status") but promises no ratio. This is the fifth
+token family measured, and the first pairing named for status.
+**Fix:** retune the `-BG` tints, or state a ratio in the contract and add a guard.
