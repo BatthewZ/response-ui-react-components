@@ -49,6 +49,9 @@
 @import "./components/data-display/ProgressRing.css";
 @import "./components/data-display/Sparkline.css";
 
+/* layout */
+@import "./components/layout/Grid.css";
+
 /* form */
 @import "./components/form/ColorPicker.css";
 @import "./components/form/Combobox.css";

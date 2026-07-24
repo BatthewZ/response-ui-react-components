@@ -121,7 +121,7 @@ The full reskinning surface lives in the foundation package. These are the canon
 - **Form** (22): Checkbox, ColorPicker, Combobox, DatePicker, DateRangePicker, Field, FieldError, FormActions, Input, Label, MultiSelect, NumberInput, OTPInput, Radio, RangeSlider, Repeater, SearchInput, Select, Slider, Switch, TagInput, Textarea
 - **Form orchestration** (headless): `useForm`, `FormProvider`, `useFormContext`, `useFieldState`, `useFormState`, `useFieldArray` — Standard Schema validation, a unified `field()` accessor, `useSyncExternalStore`-backed reactivity
 - **Data display** (5): Sparkline, ProgressRing, Meter, DescriptionList, ActivityFeed
-- **Layout** (6): Center, Container, Divider, Row, Spacer, Stack
+- **Layout** (7): Center, Container, Divider, Grid, Row, Spacer, Stack
 - **Animation** (5): AnimatePresence, Parallax, ScrollReveal, Stagger, ViewTransition (+`useViewTransition`)
 - **Guards** (1): RequireAuth (headless)
 - **Router** (1): RouterAdapterProvider, useLink, usePathname

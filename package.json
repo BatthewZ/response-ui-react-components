@@ -1,6 +1,6 @@
 {
   "name": "@batthewz/response-ui-react-components",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "type": "module",
   "description": "React component library for the response-ui design system. Pairs with @batthewz/response-ui-css.",
   "sideEffects": false,

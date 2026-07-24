@@ -53,15 +53,40 @@ function walk(dir, test, out = []) {
   return out;
 }
 
-/** Component name -> its .tsx and sibling .css text. */
+/**
+ * Same-directory (`./`) modules a file imports, resolved to real paths. Grid factors its
+ * gap utilities into `./shared`, menus into `./menu-internals`, calendars into
+ * `./CalendarBase` — so a token/utility a component genuinely uses can live one hop away.
+ * We follow only `./` (not `../`): sibling helpers are part of the component; util/lucide
+ * are not, and pulling them in would only loosen the check.
+ */
+function siblingImports(file, text) {
+  const dir = dirname(file);
+  let tsx = "";
+  let css = "";
+  for (const m of text.matchAll(/["'](\.\/[^"']+)["']/g)) {
+    for (const ext of ["", ".ts", ".tsx", ".css"]) {
+      const p = join(dir, m[1] + ext);
+      if (existsSync(p) && statSync(p).isFile()) {
+        const t = readFileSync(p, "utf8");
+        if (p.endsWith(".css")) css += "\n" + t;
+        else tsx += "\n" + t;
+        break;
+      }
+    }
+  }
+  return { tsx, css };
+}
+
+/** Component name -> its source text (own + same-dir siblings), for the utility/token search. */
 const components = new Map();
 for (const file of walk(SRC, (f) => f.endsWith(".tsx") && !/\.(test|examples)\./.test(f))) {
   const name = basename(file, ".tsx");
-  const css = file.replace(/\.tsx$/, ".css");
-  components.set(name, {
-    tsx: readFileSync(file, "utf8"),
-    css: existsSync(css) ? readFileSync(css, "utf8") : "",
-  });
+  const own = readFileSync(file, "utf8");
+  const cssPath = file.replace(/\.tsx$/, ".css");
+  const ownCss = existsSync(cssPath) ? readFileSync(cssPath, "utf8") : "";
+  const extra = siblingImports(file, own);
+  components.set(name, { tsx: own + extra.tsx, css: ownCss + extra.css });
 }
 
 /** Public value exports, for the title check. */
@@ -149,13 +174,17 @@ function resolveUtility(util) {
 /*  Checks                                                             */
 /* ------------------------------------------------------------------ */
 
+// GitHub's heading slugger: lowercase, drop anything not word/space/hyphen, then map
+// each space to one hyphen WITHOUT collapsing runs. So `Dashboard — trend & chart`
+// (em-dash and `&` stripped, their surrounding spaces preserved) → `dashboard--trend--chart`.
+// Collapsing with `\s+` would diverge from GitHub on every punctuated heading.
 const slug = (heading) =>
   heading
     .toLowerCase()
     .replace(/`/g, "")
     .replace(/[^\w\s-]/g, "")
     .trim()
-    .replace(/\s+/g, "-");
+    .replace(/\s/g, "-");
 
 const headingsOf = (md) =>
   new Set(

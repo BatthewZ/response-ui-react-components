@@ -71,10 +71,10 @@ Dashboard primitives, its own group alongside ui/form/layout so the category is
 discoverable. Existing dashboard-ish components (StatCard, Timeline, Table, DataTable)
 are NOT moved here — they stay in components/ui.
 
-### components/layout (6)
+### components/layout (7)
 
 ```
-Center, Container, Divider, Row, Spacer, Stack
+Center, Container, Divider, Grid, Row, Spacer, Stack
 ```
 
 ### components/animation (5)
@@ -340,6 +340,7 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
 - Always wrap classNames with `cn(...)` from this package.
 - For polymorphic spacing in props, expose `r1..r6` as values: `<Stack gap="r3">`.
 - Components are forwardRef. When composing, type props as `ComponentPropsWithRef<"div">` (or appropriate element).
+- **Uniform card grids → `Grid`, not `Row wrap` or `MasonryGrid`.** `Grid columns={{ base: 1, md: 3 }}` gives equal-width columns and equal-height rows (cells share the row height, so footer buttons line up). `Row wrap` sizes children to content (uneven widths); `MasonryGrid` is CSS multi-column (uneven heights *by design* — reach for it only when you want Pinterest-style masonry). `Grid` cells are `minmax(0, 1fr)`, so long words wrap instead of overflowing.
 
 ## Don'ts for AI-generated code
 

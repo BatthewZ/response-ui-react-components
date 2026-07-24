@@ -10,5 +10,21 @@ module that `bun run typecheck` compiles, so nothing here can drift from the sou
 
 | Component | Description |
 | --------- | ----------- |
+| [Alert](alert.md) | A tinted, bordered banner for a single status message — `info`, `success`, `warning`, or `error`. It renders one `role="alert"` live region and re-tints from your theme's status tokens, so a custom theme restyles every alert for free. |
 | [Button](button.md) | The clickable action primitive. Six variants, three sizes, and it re-tints with your theme without you touching it. |
+| [Card](card.md) | The container primitive. It drops content onto a themed surface with rounded corners, a shadow, and responsive padding — two props to dial elevation and inset, and it re-tints with your theme untouched. |
+| [StatCard](stat-card.md) | A dashboard metric tile: a big number with a label, an optional trend badge, an icon chip, and an inline sparkline. Every part is theme-tinted and the value can count up when it scrolls into view. |
 | [Tabs](tabs.md) | Animated tab bar with roving focus and an indicator that slides between tabs. Three looks — `underline`, `pill`, `enclosed`. |
+
+## Data display
+
+| Component | Description |
+| --------- | ----------- |
+| [DescriptionList](description-list.md) | Key/value pairs rendered as a real `<dl>`/`<dt>`/`<dd>` — aligned in a two-column grid or stacked in a single column, and re-tinted by your theme without a line of CSS from you. |
+
+## Layout
+
+| Component | Description |
+| --------- | ----------- |
+| [Divider](divider.md) | A one-pixel rule that separates content and re-tints with your theme. Horizontal by default — a real `<hr>` — or pass `orientation="vertical"` for an in-row separator. |
+| [Grid](grid.md) | An equal-column responsive grid: every cell in a row shares the row's height, and columns are `minmax(0, 1fr)` so content wraps instead of overflowing. Reach for it when you want tidy, aligned tiles — dashboards, card decks, feature rows. |
