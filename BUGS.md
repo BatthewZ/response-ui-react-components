@@ -41,10 +41,23 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   `IconButton`'s `active:scale-95` (#43). The gap is specifically **Tailwind animation/
   transform utilities**, not the hand-written CSS. Sweep for `animate-`, `scale-`,
   `transition` utilities with no `motion-reduce:` sibling.
-- **`<button>` with no explicit `type`.** A bare `<button>` is `type="submit"`. `IconButton`
-  sets no default (#41) and `Toast`, `Pagination` and `Carousel` all call it without one, so
-  each submits an enclosing form. `CopyButton`, `Repeater`, `DatePicker` and Pagination's own
-  page-number button get it right — the library is split against itself. Sweep every `<button>`.
+- **`<button>` with no explicit `type`.** A bare `<button>` is `type="submit"`. **`Button`
+  itself (#74)** and `IconButton` (#41) both set no default, and `Toast`, `Pagination` and
+  `Carousel` call IconButton without one — so each submits an enclosing form, and a `Cancel`
+  rendered before the real submit button becomes the form's **default submitter**, so Enter in
+  any text field fires Cancel. `CopyButton`, `Repeater`, `DatePicker` and Pagination's own
+  page-number button get it right — the library is split against itself. The previous revision
+  of this bullet said "sweep every `<button>`" and *still missed `Button`*; treat a sweep as
+  incomplete until it names every component, not every pattern.
+- **Field-error context reaches only 11 of 17 form controls.** `Radio` (#75) and `Checkbox`
+  (#76) never call `useFieldError`, so they sit inside an invalid `Field` with no
+  `aria-invalid` and no `aria-describedby`. Four more (`DatePicker`, `DateRangePicker`,
+  `NumberInput`, `SearchInput`) are wired only transitively, through the `Input` they render.
+  `field.md` and `radio.md` both claimed the wiring was automatic "for the rest"; both are fixed.
+- **Focus indicators removed and not replaced.** `Radio` (#73) is the severe case — a measured
+  **0-pixel** change on keyboard focus — but `Switch` and `Slider` (#84) also lose their *error*
+  outline on focus because `:focus-visible` and `[aria-invalid]` are written at equal specificity
+  with focus second. Any component that writes `outline-none` or a `:focus-visible` reset.
 - **Theme/contrast token gaps.** `Card` (no paired text colour; wrong surface layer), and a
   systemic focus-ring bug: **`ring-offset-color` is set nowhere in the library**, so every
   `ring-offset-2` paints Tailwind's default white. Confirmed by grep — 5 affected components
@@ -130,9 +143,31 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 70 | unaudited · spot-checked | CopyButton | [CopyButton.tsx:20](src/components/ui/CopyButton.tsx#L20) | low | Unmount during the in-flight write sets state post-unmount and leaks one timer for `timeout` ms |
 | 71 | unaudited · spot-checked | CopyButton | [CopyButton.tsx:57](src/components/ui/CopyButton.tsx#L57) | low | `{...props}` spreads after `aria-label`/`type`, so a caller can freeze the name or submit an enclosing form |
 | 72 | unaudited · spot-checked | CopyButton | [CopyButton.tsx:14](src/components/ui/CopyButton.tsx#L14) | low | `copiedLabel=""` compiles and blanks the accessible name for the whole confirmation window |
+| 73 | unaudited · corroborated | Radio | [Radio.tsx:16](src/components/form/Radio.tsx#L16) | **high** | `focus:outline-none` with no replacement — keyboard focus is a **0-pixel** change in Chromium and Firefox (WCAG 2.4.7) |
+| 74 | unaudited · corroborated | **Button** | [Button.tsx:33](src/components/ui/Button.tsx#L33) | med | No default `type="button"` — same defect as #41 with the widest blast radius; a Cancel button becomes the form's default submitter |
+| 75 | unaudited · corroborated | Radio | [Radio.tsx:12](src/components/form/Radio.tsx#L12) | med | Never consumes `useFieldError`, so a Radio in an invalid `Field` gets no `aria-invalid`/`aria-describedby` |
+| 76 | unaudited · corroborated | Checkbox | [Checkbox.tsx:12](src/components/form/Checkbox.tsx#L12) | med | Same as #75 — Radio and Checkbox are the form module's only two unwired controls |
+| 77 | unaudited · corroborated | Select | [Select.tsx:28](src/components/form/Select.tsx#L28) | med | Chevron data-URI uses `fill="currentColor"`, which cannot resolve in an SVG-as-image — arrow paints black on every theme (≈1.10:1 on grimdark) |
+| 78 | unaudited · corroborated | Switch | [Switch.css:58](src/components/form/Switch.css#L58) | med | Thumb-vs-track contrast is 1.08–1.16:1 unchecked in **all four** themes (WCAG 1.4.11 needs 3:1) |
+| 79 | unaudited · corroborated | Switch | [Switch.tsx:64](src/components/form/Switch.tsx#L64) | med | Hidden input never receives `disabled`, so a disabled Switch still submits its value |
+| 80 | unaudited · corroborated | Slider | [Slider.css:56](src/components/form/Slider.css#L56) | med | `::-moz-range-thumb` lacks `box-sizing: border-box`, so the handle is 24px in Firefox vs 20px in Chromium (same in RangeSlider) |
+| 81 | unaudited · spot-checked | Input · Select · Textarea | [Input.tsx:25](src/components/form/Input.tsx#L25) | low | `focus:border-border-focus` survives the invalid swap — focused invalid control shows a focus-blue border inside an error-red ring |
+| 82 | unaudited · spot-checked | Switch | [Switch.tsx:64](src/components/form/Switch.tsx#L64) | low | Unchecked submits `name=""` instead of omitting the field, so `FormData.has(name)` is always true |
+| 83 | unaudited | Switch | [Switch.tsx:64](src/components/form/Switch.tsx#L64) | low | `form` is not forwarded to the hidden input; a Switch outside its `<form>` submits nothing |
+| 84 | unaudited · corroborated | Switch · Slider | [Switch.css:40](src/components/form/Switch.css#L40) | low | `:focus-visible` and `[aria-invalid="true"]` are the same specificity and focus is written second — keyboard focus erases the error outline |
+| 85 | unaudited | Switch | [Switch.tsx:60](src/components/form/Switch.tsx#L60) | low | `{...props}` spreads after `role`/`aria-checked`/`data-state`, so a caller can desync the announced state from the thumb |
+| 86 | unaudited · spot-checked | Slider | [Slider.tsx:43](src/components/form/Slider.tsx#L43) | low | `--slider-fill` uses the raw prop while the browser step-rounds the rendered value — fill edge and thumb visibly disagree |
+| 87 | unaudited | Slider | [Slider.css:43](src/components/form/Slider.css#L43) | low | Thumb border and focus-ring gap are hard-wired to `--C-SURFACE-0`, reading as a wrong-coloured halo on any other layer |
+| 88 | unaudited · spot-checked | RangeSlider | [RangeSlider.css:111](src/components/form/RangeSlider.css#L111) | low | Dead `::-moz-range-track` rule and a false comment ("Firefox paints a default track") — A/B render shows identical pixels |
+| 89 | unaudited | Select | [Select.tsx:23](src/components/form/Select.tsx#L23) | low | `placeholder:text-fg-muted` is dead — `::placeholder` does not match a `<select>` |
 
-**Clean (no findings):** Stack, Button, Tabs, Divider, Grid, Center, Container, Row, Spacer,
-Textarea, Label, FieldError, ProgressRing. (Not proof of correctness — just nothing surfaced.)
+> **Bookkeeping, 2026-07:** this list previously named **Button**, **Textarea** and
+> **FieldError**. All three were wrong. Button carries #74 and #81; Textarea carries #81 and
+> #27's exact shape; FieldError carries #27's shape. "Nothing surfaced" ages badly — a name
+> here means *not yet examined closely*, not *examined and found sound*.
+
+**Clean (no findings):** Stack, FormActions, Tabs, Divider, Grid, Center, Container, Row, Spacer,
+Label, ProgressRing. (Not proof of correctness — just nothing surfaced.)
 
 ## Details — high & medium
 
@@ -432,3 +467,87 @@ real `h2` beside it. Reverse: `<Text variant="body-1" as="h3">` gets Playfair + 
   `button` among the roles with *Children Presentational: True*, so descendant semantics are not
   reliably exposed. **Fix:** render the region as a **sibling** of the button — which cannot be
   done from the call site, so only a code change can fix it.
+
+### 73 · Radio — keyboard focus is invisible (high)
+
+`Radio.tsx:16`'s full class list is `size-4 accent-accent focus:outline-none`. Tailwind 4.3.0
+compiles `focus:outline-none` to `outline-style: none`, and nothing replaces it: Radio has no
+`.css`, `@batthewz/response-ui-css` ships no `:focus-visible` base rule (its only "focus" hit is
+`--color-border-focus`), and Preflight's `:-moz-focusring { outline: auto }` sits in `@layer base`,
+which loses to `@layer utilities`.
+
+**Measured, not reasoned.** With `:focus-visible` forced true, the rendered pixel diff is
+**0 of 3600 px in Chromium *and* Firefox**. The same radio with the class removed changes 182 px
+(Chromium) / 306 px (Firefox).
+
+**Failure scenario:** a keyboard user tabs into any radio group on any theme. Nothing on screen
+changes. They cannot see which option has focus, and therefore cannot predict what the arrow keys
+will do — while arrow keys in a radio group also *change the selection*. WCAG 2.4.7 (AA) failure,
+and it also fails in forced-colours mode: `outline-none` emits no forced-colors fallback, unlike
+`outline-hidden`, which carries `@media (forced-colors: active){outline:2px solid transparent}`.
+**Fix:** drop `focus:outline-none` and add `focus-visible:ring-2 focus-visible:ring-border-focus`
+— verified to render (144/188 px change) and matching the `:focus-visible` pattern already used by
+Slider, Switch, ColorPicker, Rating and eight more.
+
+### 74 · Button — no default `type`, and it is the default submitter (med)
+
+Identical in kind to #41 (IconButton), but this is the component every form footer is built from.
+`Button.tsx:33` destructures `{ variant, size, as: Tag, className, ...props }` — no `type`.
+Verified: `<Button>Cancel</Button>` renders with `getAttribute("type") === null` and
+`el.type === "submit"`; clicking it inside a `<form>` fires `onSubmit`.
+
+**Failure scenario:** the canonical footer —
+`<form onSubmit={save}><FormActions><Button variant="secondary" onClick={close}>Cancel</Button><Button type="submit">Save changes</Button></FormActions></form>`.
+Clicking Cancel runs `close` **and** submits. Worse, Cancel is the first submit button in tree
+order, so it is the form's default button: pressing Enter in any text field fires **Cancel**
+instead of Save. Confirmed via `event.submitter.textContent === "Cancel"`; adding
+`type="button"` to Cancel moves the submitter to "Save changes" and clicking Cancel yields zero
+submits. **Fix:** `type={Tag === "button" ? "button" : undefined}` before `{...props}`, so callers
+can still pass `type="submit"` and `as="a"` is unaffected. `button.md` now carries the gotcha.
+
+### 77 · Select — the dropdown arrow is black on every theme (med)
+
+`Select.tsx:28` sets the chevron as a `background-image` data-URI whose SVG uses
+`fill="currentColor"`. An SVG referenced as an image is its own document, so `currentColor`
+resolves against *that* document's initial `color` — black — not the select's.
+**Observed in Chromium and Firefox:** with the referencing element set to `rgb(255,0,0)`, the
+chevron renders `rgb(0,0,0)` (1835 pure-black px, zero red). Under `data-theme="grimdark"`
+(`color-scheme: dark`) it is black on a `rgb(15,15,15)` surface — **≈1.10:1**, against a theme
+whose `--C-TEXT-PRIMARY` is `oklch(0.8285 0.0414 83.1)`. Chrome does not propagate `color-scheme`
+into an SVG-as-image document.
+**Failure scenario:** on the two dark themes the only affordance marking the control as a dropdown
+is invisible. **Fix:** inject the token colour into the data-URI per theme, or use
+`mask-image` + `background-color: var(--C-TEXT-PRIMARY)` so it inherits.
+
+### 78-79 · Switch — the position cue is invisible, and a disabled switch still submits (med)
+
+- **#78** Thumb (`--C-SURFACE-0`) against the off-track (`--C-SURFACE-2`): default **1.100**,
+  tech 1.083, grimdark 1.163, events 1.077. Checked, thumb-on-`--C-ACCENT` clears 3:1 only in
+  default (5.170) and tech (14.835) — events (2.719) and grimdark (2.963) fail in **both** states.
+  `all: unset` leaves no border, so the whole off-track is 1.04–1.16:1 against the page.
+  Computed independently by two agents whose pipelines both reproduce #51's numbers exactly.
+  **Why this is 1.4.11 and not 1.4.1:** unlike Alert/Meter/Badge/Avatar, Switch *does* ship a
+  non-colour channel — the thumb moves. The defect is that the channel is imperceptible, which is
+  1.4.11's subject. Filing both would double-count one root cause.
+  **Fix:** give `.switch-thumb` a `--C-BORDER-STRONG` border and the track a
+  `1px solid var(--C-BORDER-DEFAULT)`.
+- **#79** `<form><Switch name="notify" defaultChecked disabled /></form>` →
+  `new FormData(form).get("notify") === "on"`. The hidden input never receives `disabled`, and
+  native disabled controls are excluded from submission. **Fix:** `disabled={disabled}` on the
+  hidden input.
+
+### 80 · Slider · RangeSlider — the handle is a fifth larger in Firefox (med)
+
+`::-webkit-slider-thumb` defaults to `box-sizing: border-box`; `::-moz-range-thumb` defaults to
+`content-box`. Both files declare a `1.25rem` box plus `border: 2px`, so the border lands *outside*
+the box in Firefox only. Measured from the same stylesheet: **Chrome 144 → 20 × 20 px;
+Firefox 146 → 24 × 24 px.** Preflight's `*, ::before, ::after { box-sizing: border-box }` does not
+reach the pseudo-element (verified with Preflight present). The focus `box-shadow` is anchored to
+the larger box, so focus geometry differs too. **Fix:** add `box-sizing: border-box` to both thumb
+rules in `Slider.css` and `RangeSlider.css`.
+
+*Bonus from the same investigation:* `slider.md` originally claimed Firefox covers the accent fill
+with its default `::-moz-range-track`. **That is false** — pixel-sampled identical to Chromium in
+Firefox 146 and 123. Both engines expose the input's own `background` as the track once
+`appearance: none` is set. The claim came from `RangeSlider.css:111`'s stale comment (#88), and the
+"fix" it implied would have painted a bar *over* the fill.

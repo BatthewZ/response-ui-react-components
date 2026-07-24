@@ -98,8 +98,10 @@ of the app. It has no `.css` file of its own; all of these are Tailwind utilitie
 | Transition          | `duration-fast`                                     | `--DURATION-FAST`               |
 
 The default border is `--C-BORDER-STRONG`, not `--C-BORDER-DEFAULT` — inputs sit a step
-higher-contrast than card edges. The error state swaps only the border and ring colour to
-`--C-STATUS-ERROR`; it does not tint the fill.
+higher-contrast than card edges. The error state swaps the resting border and the focus ring
+to `--C-STATUS-ERROR`; it does not tint the fill, and `focus:border-border-focus` survives
+the swap, so a *focused* invalid input shows a focus-coloured border inside an error-coloured
+ring.
 
 ## Gotchas
 

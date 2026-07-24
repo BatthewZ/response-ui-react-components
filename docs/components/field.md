@@ -2,8 +2,10 @@
 
 The wrapper that turns a label, a control, and an error message into one accessible
 group. It stacks them in a column, resolves the field's error — from an explicit prop or,
-inside a `FormProvider`, from the form store by `name` — and hands the control inside the
-`aria-invalid` / `aria-describedby` wiring so you don't repeat it on every input.
+inside a `FormProvider`, from the form store by `name` — and publishes the `aria-invalid` /
+`aria-describedby` wiring on context for the control inside to pick up, so you don't repeat
+it on every input. Every control in the form module picks it up bar two — `Radio` and
+`Checkbox`, which read no context at all.
 
 <!-- example:Minimal -->
 ```tsx
@@ -127,10 +129,16 @@ change it you have to override it at both breakpoints (see
 The error is rendered by `FieldError` as a `<p role="alert">`, so assistive tech announces
 it when it appears.
 
-Controls read the field context to pick up their state: the package's own controls — Input,
-Textarea, Select, Combobox, and the rest — take `aria-invalid` and `aria-describedby` from
-the field automatically. A plain, un-wrapped `<input>` gets none of it; Field wires nothing
-onto arbitrary children, so the control itself has to consume the context.
+Controls read the field context to pick up their state: eleven of the package's own controls
+— Input, Textarea, Select, Combobox and Switch among them — take `aria-invalid` and
+`aria-describedby` from the field automatically, and DatePicker, DateRangePicker, NumberInput
+and SearchInput inherit both through the Input they render. Two controls do not.
+[Radio](radio.md) and [Checkbox](checkbox.md) read no context and take no `error` prop, so
+inside an errored Field they are neither marked invalid nor linked to the message. The
+Checkbox in [Custom layout](#custom-layout) above is there for the layout; give that Field an
+error and its ARIA would still have to be set by hand. A plain, un-wrapped `<input>` gets
+none of it either — Field wires nothing onto arbitrary children, so the control itself has to
+consume the context.
 
 Field is not a `fieldset` or `role="group"` and adds no label of its own. For a set of
 controls that needs one accessible name — a radio group, an address block — wrap them in
