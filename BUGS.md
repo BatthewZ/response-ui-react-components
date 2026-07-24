@@ -18,6 +18,11 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   the rendered element's full prop set (via `ComponentPropsWithRef<T>`) but never spread
   `...rest` onto the element — so `id`, `data-*`, `aria-*`, handlers are dropped at
   runtime while the types claim they work. Check every `as`-polymorphic component.
+  **`Swimlane` (#171) is the first confirmed downstream victim** — it spreads its own rest
+  props onto `ScrollReveal`, so a defect two components away silently deletes `id`, `role`,
+  `style`, `aria-label` and `data-*` from a public API. Every component that *renders*
+  `ScrollReveal` or `Stagger` while typing itself as its host element has this bug; grep for
+  `<ScrollReveal` and `<Stagger` with a `{...rest}` nearby.
 - **Status by colour alone (WCAG 1.4.1).** `Alert`, `Meter`, **`Badge` (#44)** and
   **`Avatar`'s presence dot (#57)** encode state purely in tint — no icon/label/ARIA. **Four for
   four** on the status surfaces audited so far; treat this as the library's default failure, not
@@ -34,7 +39,12 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 - **Contrast is measured nowhere.** #51 is the first *measured* contrast audit in this file and
   `--C-TEXT-MUTED` fails AA on every surface of every theme. The token tables across the spokes
   say which variable paints what; nothing checks the pair is legible. A ratio guard over the
-  theme files would catch this class of defect permanently.
+  theme files would catch this class of defect permanently. **It is not only `--C-TEXT-MUTED`:**
+  batch G measured `--C-ACCENT` failing AA on every surface in `events` and `grimdark` (#173,
+  and grimdark's `:hover` colour is *lower* than its rest colour), and `--C-TEXT-ON-PRIMARY`
+  falling to 2.89:1 once a themed scrim is composited over a bright photo (#163). The contract
+  guarantees ink tokens against *fill* tokens only; every composited surface — scrims,
+  gradients, imagery — is outside it and unmeasured.
 - **Continuous motion with no `prefers-reduced-motion` guard.** ~25 component CSS files ship
   a reduced-motion block and `src/hooks/use-reduced-motion.ts` exists, but utility-driven
   motion bypasses all of it: `Spinner`'s `animate-spin` (#38) is unguarded, as is
@@ -218,6 +228,36 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 145 | unaudited · corroborated | Breadcrumbs | [Breadcrumbs.tsx:98](src/components/ui/Breadcrumbs.tsx#L98) | low | `<ol>` + `list-style:none` with no `role="list"` (as #28) — and rest props land on the `<nav>`, so the caller cannot restore it |
 | 146 | unaudited | Breadcrumbs | [Breadcrumbs.tsx:82](src/components/ui/Breadcrumbs.tsx#L82) | low | The root interleaves its own separator around a caller-rendered `Breadcrumbs.Separator`, so the exported sub-part has no correct direct use |
 | 147 | unaudited | Stepper | [Stepper.css:128](src/components/ui/Stepper.css#L128) | low | Active and upcoming steps differ by tint alone — same ring, numeral and weight; `aria-current="step"` covers AT only |
+| 148 | unaudited · spot-checked | CodeBlock | [CodeBlock.tsx:40](src/components/ui/CodeBlock.tsx#L40) | med | The horizontally scrolling `<pre>` gets no `tabIndex`, and a `tabIndex` from the call site lands on the `overflow:hidden` root instead — no call-site fix (WCAG 2.1.1) |
+| 149 | unaudited · corroborated | CodeBlock | [CodeBlock.tsx:19](src/components/ui/CodeBlock.tsx#L19) | low | `filename ?? "Code block"` uses `??`, so `filename=""` renders `aria-label=""` on a `role="region"` — a landmark with no accessible name |
+| 150 | unaudited · corroborated | CodeBlock | [CodeBlock.tsx:23](src/components/ui/CodeBlock.tsx#L23) | low | Trailing-newline strip and line split are LF-only, so CRLF input renders every line with a stray `\r` in its text node |
+| 151 | unaudited · corroborated | CodeBlock | [CodeBlock.tsx:23](src/components/ui/CodeBlock.tsx#L23) | low | The trailing-newline strip runs only in `showLineNumbers` mode, so the default path still renders the phantom empty final line the code comment exists to prevent |
+| 152 | unaudited · corroborated | CodeBlock | [CodeBlock.tsx:37](src/components/ui/CodeBlock.tsx#L37) | low | CopyButton is handed only `value` and a class, so `copiedLabel`, `timeout` and a per-block `aria-label` are unreachable — every block's button is named "Copy" |
+| 153 | unaudited · corroborated | CodeBlock | [CodeBlock.tsx:28](src/components/ui/CodeBlock.tsx#L28) | low | `role="region"` is unconditional, so every sample however short becomes a landmark, and unnamed ones all announce as "Code block" |
+| 154 | unaudited · spot-checked | CodeBlock | [CodeBlock.css:89](src/components/ui/CodeBlock.css#L89) | low | The line-number gutter is a fixed `2.5ch` box with a right-aligned counter, so from line 100 the number overflows leftwards into the code's padding |
+| 155 | unaudited · corroborated | CodeBlock | [CodeBlock.css:92](src/components/ui/CodeBlock.css#L92) | low | Line numbers ink `--C-TEXT-MUTED` on `--C-SURFACE-0` = 2.10–2.59:1, under the 3:1 large-text floor in all four themes (instance of #51) |
+| 156 | unaudited · corroborated | EmptyState | [EmptyState.css:32](src/components/ui/EmptyState.css#L32) | med | The icon slot scales via `font-size` only and sets no `width`/`height`, so every default `lucide-react` icon renders identically at `sm`, `md` and `lg` |
+| 157 | unaudited · corroborated | EmptyState | [EmptyState.css:83](src/components/ui/EmptyState.css#L83) | med | The description — the panel's only explanatory copy — inks `--C-TEXT-MUTED`, 2.10–2.59:1 on `--C-SURFACE-0`, failing AA in all four themes (instance of #51) |
+| 158 | unaudited · corroborated | EmptyState | [EmptyState.css:47](src/components/ui/EmptyState.css#L47) | low | `[data-size="md"]` and `[data-size="lg"]` both set the icon `font-size: var(--H4)`, so `lg` never enlarges the icon while padding, gap and title all step up |
+| 159 | unaudited · corroborated | EmptyState | [EmptyState.tsx:68](src/components/ui/EmptyState.tsx#L68) | low | `EmptyStateTitle` always renders a `<p>` with no `as` prop and no heading role, so an empty state replacing a page's main content contributes nothing to the outline |
+| 160 | unaudited · spot-checked | Hero | [Hero.tsx:49](src/components/ui/Hero.tsx#L49) | med | The scrim is appended after `children` with no `pointer-events: none`, so only `Hero.Content` (z-10) escapes it — anything else placed directly in `<Hero>` renders dimmed and swallows all pointer input |
+| 161 | unaudited · corroborated | Hero | [Hero.tsx:115](src/components/ui/Hero.tsx#L115) | med | `Hero.Content animate` composes `ScrollReveal > Stagger`, but the entrance class lands on the ScrollReveal ancestor and `.stagger-item` has no `animation-name` — the stagger can never fire, and the wrappers only add DOM depth |
+| 162 | unaudited · corroborated | Hero | [Hero.tsx:39](src/components/ui/Hero.tsx#L39) | med | `overlay` defaults to `true` regardless of whether a `Hero.Background` exists, so a bare Hero paints a 50%-black rectangle onto the page and drops body ink from 17.74:1 to 4.46:1 |
+| 163 | unaudited · corroborated | Hero | [Hero.tsx:15](src/components/ui/Hero.tsx#L15) | med | Nothing bounds the scrim against a bright image: over a white frame `--C-TEXT-ON-PRIMARY` measures 2.89:1 in `events` and 3.98:1 in the default theme |
+| 164 | unaudited · spot-checked | Hero | [Hero.css:49](src/components/ui/Hero.css#L49) | low | `.hero__overlay` reads `var(--OVERLAY-SCRIM-COLOR)` with no fallback, unlike `Drawer.css`/`CommandPalette.css` — without the token layer the scrim is transparent, not 50% black |
+| 165 | unaudited · spot-checked | Hero | [Hero.tsx:69](src/components/ui/Hero.tsx#L69) | low | `alt` is silently dropped when `src` is absent (no `<img>` renders at all), and `parallax` without `src` still mounts the client Parallax wrapper over an empty layer |
+| 166 | unaudited · spot-checked | Hero | [Hero.css:17](src/components/ui/Hero.css#L17) | low | `hero--full` is `min-height: 100vh`, not `100dvh`, so on mobile browsers with a retracting URL bar the hero exceeds the visible viewport on first paint |
+| 167 | unaudited · spot-checked | MediaCard | [MediaCard.tsx:126](src/components/ui/MediaCard.tsx#L126) | med | `MediaCard.Action` renders `absolute inset-0 z-10` with pointer events left on, so the transparent layer covers the whole card and swallows clicks on everything beneath it |
+| 168 | unaudited · spot-checked | MediaCard | [MediaCard.css:47](src/components/ui/MediaCard.css#L47) | med | `.media-card__content` re-declares six `--C-TEXT-*` variables to white but sets no `color`, so unstyled children keep the ambient page ink over a dark scrim |
+| 169 | unaudited · spot-checked | MediaCard | [MediaCard.tsx:93](src/components/ui/MediaCard.tsx#L93) | low | `MediaCard.Content` has no `z-index` while `Badge` and `Action` both set `z-10`, so a card that renders `Overlay` after `Content` gets its caption painted over by the scrim |
+| 170 | unaudited · spot-checked | MediaCard | [MediaCard.css:11](src/components/ui/MediaCard.css#L11) | low | The hover scale/lift/elevation has no `:focus-within` counterpart, so tabbing into a control inside the card produces no card-level affordance |
+| 171 | unaudited · corroborated | Swimlane | [Swimlane.tsx:36](src/components/ui/Swimlane.tsx#L36) | **high** | `{...rest}` is spread onto `ScrollReveal`, which never forwards it — every prop the type advertises past the named eight is dropped at runtime (downstream instance of #9) |
+| 172 | unaudited · corroborated | Swimlane | [Swimlane.css:47](src/components/ui/Swimlane.css#L47) | med | Nothing in the component scrolls: no `overflow`, `scroll-snap-type`, `scroll-behavior` or `tabindex` anywhere in `Swimlane.css`, despite the name and a test called "renders a scrollable container" |
+| 173 | unaudited · corroborated | Swimlane | [Swimlane.css:33](src/components/ui/Swimlane.css#L33) | med | The "View all" link inks `--C-ACCENT` at `--BodyText-2` with `text-decoration: none`, failing AA on every surface in `events` (2.72–2.52:1) and `grimdark` (2.96–2.55:1), where `:hover` lowers it further |
+| 174 | unaudited · corroborated | Swimlane | [Swimlane.tsx:45](src/components/ui/Swimlane.tsx#L45) | med | "View all" is a hard-coded English literal with no prop to relabel it, and the anchor receives only `href` and a class — no `aria-label`, `target`, `rel` or router hook |
+| 175 | unaudited · corroborated | Swimlane | [Swimlane.tsx:30](src/components/ui/Swimlane.tsx#L30) | med | Server-rendered markup carries `scroll-reveal-hidden` (`opacity: 0`) with **no opt-out prop**, so a Swimlane whose JS never runs is entirely invisible, heading included (unavoidable instance of #16) |
+| 176 | unaudited · spot-checked | Swimlane | [Swimlane.tsx:40](src/components/ui/Swimlane.tsx#L40) | low | Heading level is hard-coded to `<h2>` with no `as`/`level` prop, so a lane nested under an existing h2 skips an outline level |
+| 177 | unaudited · corroborated | Swimlane | [Swimlane.css:26](src/components/ui/Swimlane.css#L26) | low | Subtitle ink `--C-TEXT-MUTED` measures at most 2.59:1 against any surface token in any shipped theme (1.94:1 in `tech`) at `--BodyText-2` (instance of #51) |
 
 > **Bookkeeping, 2026-07:** this list previously named **Button**, **Textarea** and
 > **FieldError**. All three were wrong. Button carries #74 and #81; Textarea carries #81 and
@@ -226,6 +266,9 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 
 **Clean (no findings):** Stack, FormActions, Tabs, Divider, Grid, Center, Container, Row, Spacer,
 Label, ProgressRing. (Not proof of correctness — just nothing surfaced.)
+
+> **Batch G (2026-07-25)** added no names to that list and removed none: CodeBlock, EmptyState,
+> Hero, MediaCard and Swimlane each carry findings below (#148–#177).
 
 ## Details — high & medium
 
@@ -752,3 +795,147 @@ lands the label on the list item and never on the button. **There is no call-sit
 Rated high rather than medium because `Wizard.tsx:128` defaults `allowBackNavigation = true`, so a
 bare `<Wizard steps={…}/>` — the library's own flagship consumer — ships unnamed back-navigation
 buttons. **Fix:** build the button's name from the step `title` plus a status word.
+
+### 171 · Swimlane — every advertised prop past the named eight is dropped (high)
+
+`SwimlaneProps` is `{title, subtitle, viewAllHref, animation, once} & Omit<ComponentPropsWithRef<"section">, "title">`,
+so the type promises the full `<section>` surface. `{...rest}` is then spread onto `ScrollReveal`,
+which destructures only its own props and forwards none (#9).
+
+**Failure scenario.** `renderToStaticMarkup` of
+`<Swimlane title="Continue watching" id="cw" role="region" aria-label="Continue watching" data-analytics="lane" style={{background:"red"}} tabIndex={0}>`
+emits exactly `<section class="scroll-reveal-hidden swimlane">` — no `id`, `role`, `aria-label`,
+`data-*`, `style` or `tabIndex`. `className` and `ref` are the only two that survive, because
+Swimlane passes them explicitly. Analytics attributes vanish silently, and the accessible name a
+consumer sets is discarded, which is what makes #172's unnamed scroll region unfixable from the
+call site too.
+
+Rated high rather than medium because it is a *public API that compiles and does nothing*: there is
+no runtime warning, no type error, and the failure is invisible until someone inspects the DOM.
+**Fix:** spread `...rest` onto the element inside ScrollReveal, or have Swimlane render its own
+`<section>` and nest ScrollReveal inside it.
+
+### 148 · CodeBlock — the code scroller cannot be reached by keyboard (med)
+
+`.code-block-pre` is the `overflow-x: auto` element and carries no `tabIndex`; `.code-block` (the
+root, which does take rest props) is `overflow: hidden`.
+
+**Failure scenario.** A 200-char line inside a 400px column: a mouse or trackpad pans the `<pre>`,
+a keyboard cannot focus it, and the end of the line is unreachable (WCAG 2.1.1). Passing
+`tabIndex={0}` to CodeBlock lands it on the `overflow: hidden` root, so arrow keys there scroll the
+page instead — **there is no call-site fix.** Two of the three engines now focus a childless scroll
+container automatically, which mitigates but does not remove it; that mitigation is browser
+knowledge, not measured here. **Fix:** put `tabIndex={0}` on the `<pre>` — it already sits inside a
+labelled region.
+
+### 156-157 · EmptyState — the icon never resizes, and the description is illegible (med)
+
+**#156.** `.empty-state__icon` sets `font-size` per size and no `width`/`height`, and nothing in
+this package or in `@batthewz/response-ui-css` sizes a descendant `svg` of it.
+`renderToStaticMarkup(<EmptyState size="lg"><EmptyStateIcon><Inbox /></EmptyStateIcon></EmptyState>)`
+emits `<svg width="24" height="24">`, and the markup is **byte-identical** at `size="sm"` apart
+from the `data-size` attribute — so `size` visibly moves the padding, gap and title while the icon
+sits still. Every default `lucide-react` icon carries those attributes. **Fix:** add
+`.empty-state__icon > svg { width: 1em; height: 1em; }`, exactly as `ActivityFeed.css:90` and
+`Stepper.css:103` already do.
+
+**#157.** `.empty-state__description` — the only place a blank state explains itself — inks
+`--C-TEXT-MUTED`: 2.54:1 default, 2.45:1 `events`, 2.10:1 `tech`, 2.59:1 `grimdark` against
+`--C-SURFACE-0`, where AA body text needs 4.5:1. The same token inks the icon (line 36). This is a
+component-level instance of #51, but logged medium rather than low because unlike a disabled menu
+item (#130) the text is load-bearing instruction. **Fix:** ink the description
+`--C-TEXT-SECONDARY` (which never drops below 4.45:1), or darken `--C-TEXT-MUTED` upstream.
+
+### 160-163 · Hero — the scrim is unconditional, unbounded and untraversable (med ×4)
+
+**#160 — the scrim eats clicks.** `.hero__overlay` is `position: absolute; inset: 0` with no
+`pointer-events: none`, appended *after* `children`. `.hero__content` escapes it with
+`position: relative; z-index: 10`; nothing else does. `<Hero><Button onClick={buy}>Buy tickets</Button></Hero>`
+renders the button dimmed and every click hits the overlay; Tab+Enter still fires it, so it reads
+as a mouse-only bug and passes any keyboard-driven test. **Fix:** add `pointer-events: none` to
+`.hero__overlay`.
+
+**#161 — `animate` advertises a stagger it cannot deliver.** `Hero.Content` composes
+`ScrollReveal > Stagger`, but the entrance class (`fade-up`/`fade-in`/`scale-in`) lands on the
+ScrollReveal element while `.stagger-item` carries `animation-delay` + `animation-fill-mode: both`
+and **no `animation-name`** — a delay applied to nothing. `<Hero.Content animate className="flex gap-r4">`
+with three children enters as one block with no cascade, *and* the flex row now lays out a single
+ScrollReveal `<div>` instead of the three children, so the gap class silently stops working.
+(Related: this run confirmed `stagger.css` does read `--stagger-delay`, so #17's feared *name
+mismatch* does not exist — the prop is inert for a different reason, the `.stagger-item` rule
+re-declaring the property on the item and shadowing the inherited value.) **Fix:** put the entrance
+class on `.stagger-item`, or drop the Stagger wrapper from `Hero.Content`.
+
+**#162 — the scrim is on when there is nothing to darken.** `overlay` defaults to `true`
+irrespective of whether a `Hero.Background` exists. `<Hero><Hero.Content><Text>…</Text></Hero.Content></Hero>`
+on the default theme over `--C-CANVAS` takes `--C-TEXT-PRIMARY` from a computed **17.74:1 to
+4.46:1** — under the 4.5:1 AA floor — for a 50%-black rectangle that darkens nothing but the page.
+**Fix:** default `overlay` to `false`, or gate the scrim on a background layer being present.
+
+**#163 — nothing bounds the scrim against a bright image.** `--C-TEXT-ON-PRIMARY` is the only one
+of the six contract text tokens that is light in all four themes, so it is what `Text color="on-primary"`
+and `Button variant="ghost-inverse"` use over a hero. Composited over the shipped scrim on a pure
+white image region it measures **2.89:1 in `events`** (0.45 alpha) and **3.98:1 default** — the
+former below even the 3:1 large-text floor. The contract promises that token against `--C-PRIMARY`
+*fill* only, and a scrimmed photograph is not that fill. **Fix:** darken `--OVERLAY-SCRIM-COLOR` in
+`events` (0.45 → ~0.6), or add a contrast guard over the theme files.
+
+All four contrast figures were computed with an OKLCH→sRGB converter validated to exact hex against
+`#ff0000`/`#00ff00`/`#0000ff`, sRGB-space alpha compositing and WCAG relative luminance. #160 and
+#161 are read from the source, the stylesheets and DOM paint order, not from a browser render.
+
+### 167-168 · MediaCard — the action layer covers the card, and the white ink never applies (med)
+
+**#167.** `MediaCard.Action` renders `absolute inset-0 z-10 flex items-center justify-center` with
+pointer events left on — unlike `.media-card__overlay`, which is correctly `pointer-events: none`.
+A card with `<MediaCard.Content><a href="/x">Read more</a></MediaCard.Content>` plus any
+`<MediaCard.Action>` renders the link focusable by keyboard and unclickable by mouse, because the
+Action div is the hit target across the full card box. That is a keyboard/pointer mismatch, not
+just a dead link. **Fix:** add `pointer-events-none` to the Action wrapper and `pointer-events-auto`
+to its children, matching `.media-card__overlay`.
+
+**#168.** `.media-card__content` re-declares `--C-TEXT-PRIMARY`, `-SECONDARY`, `-MUTED`,
+`-INVERSE`, `-ON-PRIMARY` and `-ON-ACCENT` to white, but sets no `color` property — so the
+redefinition only reaches children that *read* one of those variables (`Text`, `text-fg-*`).
+`<MediaCard.Content><h3>Card Title</h3></MediaCard.Content>` — exactly what `MediaCard.test.tsx:32`
+renders — inherits the ambient page ink and lands dark-on-dark over a 70%-black gradient. The CSS
+comment above the rule says "force light text in all themes", which is what it fails to do.
+**Fix:** add `color: var(--C-TEXT-PRIMARY)` to `.media-card__content`. Both are reasoned from the
+source plus the compiled stylesheet; jsdom does not hit-test, so neither is browser-measured.
+
+### 172-175 · Swimlane — a lane that does not lane (med ×4)
+
+**#172 — nothing scrolls.** `.swimlane__body` is `width: 100%` and nothing else; `Swimlane.css`
+contains no `overflow`, `scroll-snap-type`, `scroll-behavior` or `tabindex` at all.
+`<Swimlane title="Continue watching"><div/><div/><div/></Swimlane>` stacks its children vertically.
+A consumer who adds `overflow-x` themselves then gets a scroll region that is neither
+keyboard-focusable nor named — and cannot be named, because of #171. `Swimlane.test.tsx:23` is
+called "renders a scrollable container with the swimlane class" but only asserts the class exists,
+so the suite reads as covering this. **Fix:** give `.swimlane__body` `overflow-x: auto` +
+`scroll-snap-type: x proximity` + a `tabIndex`/label, or drop the swimlane framing and document it
+as a header-only section.
+
+**#173 — "View all" fails AA in two themes.** The link inks `--C-ACCENT` at `--BodyText-2`
+(13–14px, so the 4.5:1 normal-text threshold applies) with `text-decoration: none`. Against
+surface-0/1/2: `grimdark` 2.96/2.77/2.55:1, `events` 2.72/2.63/2.52:1. `:hover` swaps in
+`--C-ACCENT-HOVER`, which in `grimdark` *lowers* it to 2.31/2.16/1.98:1 — the interaction state is
+worse than the rest state. Default (5.17–4.70:1) and `tech` (14.84–13.70:1) pass. Because the
+underline appears on `:hover` but not `:focus-visible`, at rest the link is also distinguished from
+body text by colour alone. **Fix:** raise accent lightness in those two themes, or ink the link
+`--C-TEXT-PRIMARY` with a persistent underline.
+
+**#174 — "View all" cannot be relabelled.** The string is a hard-coded English literal with no
+prop, and the anchor receives only `href` and a class. Three lanes on a page produce three links
+whose entire accessible name is "View all"; the section's own `aria-label` is dropped by #171, so
+nothing disambiguates them, and each forces a full page reload in an SPA. **Fix:** add
+`viewAllLabel?: ReactNode`, let the anchor accept anchor props, or compose the title into the
+link's accessible name.
+
+**#175 — the lane is invisible without JS.** `renderToStaticMarkup` returns
+`class="scroll-reveal-hidden swimlane"` (`opacity: 0`), and a jsdom render with no
+`IntersectionObserver` keeps that class forever. Under `prefers-reduced-motion: reduce` the class
+resolves to `opacity: 1`, so only non-reduced-motion users are affected. This is #16's mechanism,
+logged separately because Swimlane exposes **no way to opt out** — a ScrollReveal consumer can
+simply not use ScrollReveal, a Swimlane consumer cannot, and the hidden content includes the
+heading. **Fix:** expose an un-revealed render mode, or reveal on mount when `IntersectionObserver`
+is unavailable.

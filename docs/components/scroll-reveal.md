@@ -161,5 +161,3 @@ always be present.
 
 `Stagger` · `Parallax` · `AnimatePresence` · `ViewTransition` ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)
-</content>
-</invoke>

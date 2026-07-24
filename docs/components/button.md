@@ -28,7 +28,7 @@ works when `as` is a `<button>`, and `ref` is `HTMLElement`. See [Gotchas](#gotc
 | `primary`       | The one action you want taken. One per view.               |
 | `secondary`     | Supporting actions sitting beside a primary.               |
 | `ghost`         | Low-emphasis or repeated actions — toolbars, list rows.    |
-| `ghost-inverse` | A ghost over a **fill** — `bg-primary`, an overlay, a `Hero` image. |
+| `ghost-inverse` | A ghost over a **fill** — `bg-primary`, or an opaque overlay.       |
 | `danger`        | Destructive and hard to undo.                              |
 | `link`          | Navigation that must read as inline text.                  |
 
@@ -55,6 +55,11 @@ works when `as` is a `<button>`, and `ref` is `HTMLElement`. See [Gotchas](#gotc
 against a surface. On a `surface-*` background it is not guaranteed to be legible, and
 in the default and `events` themes it is not: those surfaces are light and the ink is
 white. Put it on a fill.
+
+A scrimmed photograph is not a fill either, so the guarantee does not carry over a hero
+image: composited over the shipped scrim on a bright frame, `fg-on-primary` measures
+3.98:1 in the default theme and 2.89:1 in `events` — below the 3:1 large-text floor in the
+latter. See [Hero](hero.md#contrast-over-an-image) if you need the numbers per theme.
 
 ## Size
 
