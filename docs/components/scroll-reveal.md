@@ -137,7 +137,9 @@ governs when the reveal fires.
 - **`delay` offsets, it doesn't orchestrate.** Staggering a group means hand-assigning an
   increasing `delay` per sibling. For an index-driven cascade, use `Stagger`.
 - **Client-only.** ScrollReveal is a `"use client"` component (it uses effects and an
-  observer), so it can't be rendered directly in a server component without a client boundary.
+  observer). The directive *is* the client boundary, so a server component can render it
+  directly — but the module always ships to the browser, and the props you hand it across
+  that edge have to be serializable.
 
 ## Accessibility
 

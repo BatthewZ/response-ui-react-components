@@ -20,13 +20,22 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   runtime while the types claim they work. Check every `as`-polymorphic component.
   **`Swimlane` (#171) is the first confirmed downstream victim** — it spreads its own rest
   props onto `ScrollReveal`, so a defect two components away silently deletes `id`, `role`,
-  `style`, `aria-label` and `data-*` from a public API. Every component that *renders*
-  `ScrollReveal` or `Stagger` while typing itself as its host element has this bug; grep for
-  `<ScrollReveal` and `<Stagger` with a `{...rest}` nearby.
-- **Status by colour alone (WCAG 1.4.1).** `Alert`, `Meter`, **`Badge` (#44)** and
-  **`Avatar`'s presence dot (#57)** encode state purely in tint — no icon/label/ARIA. **Four for
-  four** on the status surfaces audited so far; treat this as the library's default failure, not
-  an exception. Check StatCard.Trend and any remaining status surface.
+  `style`, `aria-label` and `data-*` from a public API. **`MasonryGrid.Item` (#178) is the
+  second**, measured the same way, which makes this a pattern rather than an anecdote: two of
+  the two components audited so far that render `ScrollReveal` with a rest spread have it.
+  Note both are *conditional* — the props land under `animate={false}` and vanish under the
+  default — so a test written the easy way (as all nine of `MasonryGrid.test.tsx` were) covers
+  only the working path. Every component that *renders* `ScrollReveal` or `Stagger` while
+  typing itself as its host element has this bug; grep for `<ScrollReveal` and `<Stagger` with
+  a `{...rest}` nearby. Still to check: `Spotlight.Content` (passes no rest through, so clean)
+  and anything added since.
+- **Status by colour alone (WCAG 1.4.1).** `Alert`, `Meter`, **`Badge` (#44)**,
+  **`Avatar`'s presence dot (#57)** and **`ProgressBar` (#205)** encode state purely in tint —
+  no icon/label/ARIA. **Five for five** on the status surfaces audited so far; treat this as the
+  library's default failure, not an exception. `ProgressBar` is the worst of them — two bars at
+  the same `value` with `color="success"` and `color="error"` produce byte-identical
+  accessibility-tree output, where `Meter` at least emits `data-status`. Check StatCard.Trend and
+  any remaining status surface.
 - **Types that advertise props the runtime drops.** Beyond the `...rest` cases above,
   `Avatar` (#56) intersects `ComponentPropsWithRef<"span">` without `Omit<…, "children">`, so
   `<Avatar name="…">child</Avatar>` compiles clean and renders only the initials. `Skeleton` and
@@ -35,7 +44,10 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 - **Hard-coded English in `sr-only` text.** `Spinner` (#39) and `Skeleton` (#64) both render a
   literal `"Loading"` in a visually hidden node while omitting `children` from the prop type, so
   the string is unreachable — and `aria-label` renames the region without changing its contents,
-  leaving name and content in different languages. Any component with an `sr-only` literal.
+  leaving name and content in different languages. `Rating` (#218) renders `"N stars"` the same
+  way (and announces `"1 stars"` for the first one), and `Carousel` (#192) hard-codes
+  `"Previous"`/`"Next"` on internal `IconButton`s. Any component with an `sr-only` literal or an
+  `aria-label` literal on a part the caller cannot reach.
 - **Contrast is measured nowhere.** #51 is the first *measured* contrast audit in this file and
   `--C-TEXT-MUTED` fails AA on every surface of every theme. The token tables across the spokes
   say which variable paints what; nothing checks the pair is legible. A ratio guard over the
@@ -44,7 +56,13 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   and grimdark's `:hover` colour is *lower* than its rest colour), and `--C-TEXT-ON-PRIMARY`
   falling to 2.89:1 once a themed scrim is composited over a bright photo (#163). The contract
   guarantees ink tokens against *fill* tokens only; every composited surface — scrims,
-  gradients, imagery — is outside it and unmeasured.
+  gradients, imagery — is outside it and unmeasured. **Batch H widened this from ink to
+  surfaces:** `--C-SURFACE-1` on `--C-SURFACE-0` measures 1.02–1.07:1 across all four themes
+  (#206) and `--C-SURFACE-2` on it 1.08–1.16:1 (#210), so *any* component that distinguishes two
+  adjacent surface steps by colour alone — tracks, wells, insets, hairlines — is invisible by
+  construction, and neither the contract nor any guard says the ramp has to be perceptible.
+  `--C-STATUS-WARNING` is also now measured failing the 3:1 graphical floor on light surfaces
+  (#215), so three of the token families have failed the first time anyone put a number on them.
 - **Continuous motion with no `prefers-reduced-motion` guard.** ~25 component CSS files ship
   a reduced-motion block and `src/hooks/use-reduced-motion.ts` exists, but utility-driven
   motion bypasses all of it: `Spinner`'s `animate-spin` (#38) is unguarded, as is
@@ -263,12 +281,62 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 > **FieldError**. All three were wrong. Button carries #74 and #81; Textarea carries #81 and
 > #27's exact shape; FieldError carries #27's shape. "Nothing surfaced" ages badly — a name
 > here means *not yet examined closely*, not *examined and found sound*.
+| 178 | unaudited · corroborated | MasonryGrid | [MasonryGrid.tsx:128](src/components/ui/MasonryGrid.tsx#L128) | **high** | `MasonryGrid.Item` spreads `{...props}` onto `ScrollReveal`, which never forwards them — with `animate` at its default every `div` prop but `className`/`ref`/`children` is dropped (downstream instance of #9, second after #171) |
+| 179 | unaudited · corroborated | MasonryGrid | [MasonryGrid.tsx:91](src/components/ui/MasonryGrid.tsx#L91) | med | The root wraps each child in `<MasonryContext.Provider key={index}>`, so React reconciles by position and the caller's `key` is defeated — inserting or reordering remounts every item from that point on |
+| 180 | unaudited · corroborated | MasonryGrid | [MasonryGrid.tsx:62](src/components/ui/MasonryGrid.tsx#L62) | med | `columns` is typed `number` but `MasonryGrid.css` defines rules only for 2, 3 and 4 per breakpoint, so any count above 4 silently renders one column |
+| 181 | unaudited · corroborated | MasonryGrid | [MasonryGrid.tsx:51](src/components/ui/MasonryGrid.tsx#L51) | med | `buildResponsiveClasses` skips any count equal to `1`, so a breakpoint key can widen the grid but can never narrow it back to a single column |
+| 182 | unaudited · spot-checked | MasonryGrid | [MasonryGrid.tsx:69](src/components/ui/MasonryGrid.tsx#L69) | low | `animate` defaults to `true`, so SSR ships every item at `opacity: 0` (instance of #16) — logged low, not med like #175, because `animate={false}` is a real opt-out |
+| 183 | unaudited · spot-checked | MasonryGrid | [MasonryGrid.tsx:87](src/components/ui/MasonryGrid.tsx#L87) | low | `style={{ ...vars, ...style }}` places the caller's `style` after the `gap`-derived variable, so a `style` carrying `--masonry-gap` silently overrides the `gap` prop (measured: `gap="2rem"` renders at `0.25rem`) |
+| 184 | unaudited · spot-checked | MasonryGrid | [MasonryGrid.css:8](src/components/ui/MasonryGrid.css#L8) | low | `.masonry-grid__item` sets `margin-bottom` with no `:last-child` reset, and the rule is unlayered, so a Tailwind `mb-0` on the item cannot clear the trailing gap (only `mb-0!` can) |
+| 185 | unaudited · spot-checked | MasonryGrid | [MasonryGrid.test.tsx:9](src/components/ui/MasonryGrid.test.tsx#L9) | low | All nine tests pass `animate={false}`, so the default path — where #178 and #182 live — has zero coverage; it also throws under the current setup, because `test-setup.ts` stubs no `window.matchMedia` (measured: `window.matchMedia is not a function`) |
+| 186 | unaudited · corroborated | Carousel | [Carousel.tsx:112](src/components/ui/Carousel.tsx#L112) | **high** | The root's ArrowLeft/ArrowRight handler has no `e.target` guard, so arrow keys pressed in a text field inside a slide are `preventDefault()`ed and scroll the rail instead of moving the caret |
+| 187 | unaudited · corroborated | Carousel | [Carousel.tsx:212](src/components/ui/Carousel.tsx#L212) | med | `e.preventDefault()` on every left mousedown over the track suppresses native focus and caret placement, so a form control inside a slide cannot be focused by mouse |
+| 188 | unaudited · corroborated | Carousel | [Carousel.tsx:152](src/components/ui/Carousel.tsx#L152) | med | End-of-rail arrows are hidden with `opacity: 0; pointer-events: none` only — they stay `disabled=false`, `tabIndex=0`, un-`aria-hidden` and focusable, so a keyboard user tabs onto an invisible no-op button |
+| 189 | unaudited · corroborated | Carousel | [Carousel.tsx:133](src/components/ui/Carousel.tsx#L133) | med | `aria-roledescription="carousel"` and the accessible name sit on a role-less `<div>` (implicit role `generic`), where ARIA prohibits both — a conforming screen reader announces neither |
+| 190 | unaudited · spot-checked | Carousel | [Carousel.tsx:99](src/components/ui/Carousel.tsx#L99) | med | `scrollPrev`/`scrollNext`/the drag fling all pass `behavior: "smooth"` explicitly, which per CSSOM View overrides the `scroll-behavior: auto` the reduced-motion block sets — so the media query cannot stop the motion a user actually triggers |
+| 191 | unaudited · candidate | Carousel | [Carousel.tsx:61](src/components/ui/Carousel.tsx#L61) | low | RTL unsupported: `canScrollPrev` is `scrollLeft > 0` and the arrows are placed with physical `left: 0`/`right: 0`, so under `dir="rtl"` Previous never enables, Next never hides, and both sit on the wrong side |
+| 192 | unaudited · spot-checked | Carousel | [Carousel.tsx:150](src/components/ui/Carousel.tsx#L150) | low | Arrow labels `"Previous"`/`"Next"` are hard-coded English on internal `IconButton`s with no prop to override them (instance of the hard-coded-`sr-only`-English pattern; the root and track labels are at least reachable via rest props) |
+| 193 | unaudited · corroborated | Spotlight | [Spotlight.tsx:87](src/components/ui/Spotlight.tsx#L87) | med | `Spotlight.Image` passes only `src`/`alt`/`role` to the `<img>` and spreads everything else onto the wrapper `<div>`, so `loading`, `width`/`height`, `srcSet`, `sizes` and `decoding` are unreachable |
+| 194 | unaudited · spot-checked | Spotlight | [Spotlight.tsx:32](src/components/ui/Spotlight.tsx#L32) | low | `animate` defaults to `true`, so every `Spotlight.Content` is server-rendered inside `scroll-reveal-hidden` while the images are not — a page whose JS never runs shows the pictures and none of the copy (instance of #16; `animate={false}` is a real opt-out, so low rather than med) |
+| 195 | unaudited · corroborated | Spotlight | [Spotlight.css:58](src/components/ui/Spotlight.css#L58) | med | Every `order` rule pushes the image last and the copy first, so a row authored content-then-image is already in that order — both the automatic alternation and `reversed` silently do nothing |
+| 196 | unaudited · spot-checked | Spotlight | [Spotlight.tsx:91](src/components/ui/Spotlight.tsx#L91) | med | The parallax layer is `size-full` inside an `overflow: hidden` wrapper with no overscan, and `Parallax`'s `clamp` is not forwarded, so the drift exposes a blank band the width of the translation |
+| 197 | unaudited · candidate | Spotlight | [Spotlight.tsx:118](src/components/ui/Spotlight.tsx#L118) | low | The reveal direction is derived from the child index alone, so `reversed` flips the columns without flipping the animation and the copy slides in from the wrong side |
+| 198 | unaudited · spot-checked | Spotlight | [Spotlight.tsx:135](src/components/ui/Spotlight.tsx#L135) | low | `Spotlight.Content`'s `ref` lands on the `ScrollReveal` wrapper when the root's `animate` is true and on the `.spotlight-content` div when it is false — the ref target is decided by a prop two components up |
+| 199 | unaudited · spot-checked | Spotlight | [Spotlight.tsx:40](src/components/ui/Spotlight.tsx#L40) | low | `SpotlightItemContext.Provider` is keyed by array index, so reordering rows remounts the content subtree and replays the reveal (same shape as #179) |
+| 200 | unaudited · corroborated | Spotlight | [Spotlight.css:62](src/components/ui/Spotlight.css#L62) | low | `.spotlight-item:nth-child(even) .spotlight-content { order: 1 }` is dead CSS whenever `animate` is on, because the `ScrollReveal` wrapper — not `.spotlight-content` — is the grid item (measured by SSR render) |
+| 201 | unaudited · spot-checked | ProgressBar | [ProgressBar.css:56](src/components/ui/ProgressBar.css#L56) | med | `variant="gradient"` silently discards `color`: the gradient rule uses the `background` shorthand and is declared after the four colour rules at equal specificity, so it always wins |
+| 202 | unaudited · corroborated | ProgressBar | [ProgressBar.tsx:64](src/components/ui/ProgressBar.tsx#L64) | med | `aria-valuenow` is the raw, unclamped `value` while the fill width is clamped, so the announcement can fall outside the announced range (same defect as #22; `ProgressRing.tsx:35` clamps, so the two siblings disagree) |
+| 203 | unaudited · spot-checked | ProgressBar | [ProgressBar.tsx:91](src/components/ui/ProgressBar.tsx#L91) | med | `ProgressBar.Label` emits no `id` and the root sets no `aria-labelledby`, so a bar sitting next to a `Label` still has no accessible name — the sub-part implies a wiring it never performs |
+| 204 | unaudited · corroborated | ProgressBar | [ProgressBar.tsx:57](src/components/ui/ProgressBar.tsx#L57) | med | `value={NaN}` renders a **full** bar: the clamp propagates `NaN`, the CSSOM rejects `width: NaN%`, and the fill falls back to `width: auto` — the whole track |
+| 205 | unaudited · spot-checked | ProgressBar | [ProgressBar.tsx:73](src/components/ui/ProgressBar.tsx#L73) | med | Status conveyed by colour alone (WCAG 1.4.1) — `color="success\|warning\|error"` changes only the fill hue, with no data attribute, `aria-valuetext` or text alternative (instance of the recurring pattern; worse than `Meter` #21, which at least exposes `data-status`) |
+| 206 | unaudited · corroborated | ProgressBar | [ProgressBar.css:10](src/components/ui/ProgressBar.css#L10) | med | The track is `--C-SURFACE-1`, measured at **1.05 / 1.03 / 1.02 / 1.07:1** against `--C-SURFACE-0` in default / `events` / `tech` / `grimdark` — the unfilled remainder is effectively invisible in every shipped theme (instance of the unmeasured-contrast pattern) |
+| 207 | unaudited · spot-checked | ProgressBar | [ProgressBar.css:40](src/components/ui/ProgressBar.css#L40) | med | The default `accent` fill measures **2.63:1** on its own track in `events` and **2.77:1** in `grimdark`, under the 3:1 floor WCAG 1.4.11 sets for a meaningful graphical object — so in two of four themes neither half of the bar is distinguishable |
+| 208 | unaudited · spot-checked | ProgressBar | [ProgressBar.css:60](src/components/ui/ProgressBar.css#L60) | low | The `striped` variant is static and unthemeable: no `@keyframes` for it exists anywhere in `src/` or `@batthewz/response-ui-css`, `background-size: 200% 100%` animates nothing, and the stripe colour is a hard-coded `oklch(1 0 0 / 0.15)` |
+| 209 | unaudited · candidate | ProgressBar | [ProgressBar.tsx:66](src/components/ui/ProgressBar.tsx#L66) | low | `max <= 0` exposes an invalid ARIA range: the fill fraction is guarded to `0` but `aria-valuemax` is the raw `max`, so `aria-valuemin={0}` is greater than or equal to it |
+| 210 | unaudited · spot-checked | ProgressRing | [ProgressRing.css:15](src/components/data-display/ProgressRing.css#L15) | med | The track strokes `--C-SURFACE-2`, measured at **1.10 / 1.08 / 1.08 / 1.16:1** against `--C-SURFACE-0` across the four shipped themes — the same invisible-track defect as #206, marginally better and still an order of magnitude under the 3:1 floor |
+| 211 | unaudited · corroborated | Rating | [Rating.tsx:152](src/components/ui/Rating.tsx#L152) | **high** | With `allowHalf` every radio's `sr-only` name is `position − 0.5`, so no star is ever named `max` and the radio reporting `aria-checked="true"` is misnamed by half a star |
+| 212 | unaudited · corroborated | Rating | [Rating.tsx:111](src/components/ui/Rating.tsx#L111) | med | `valueFromClick` reads `e.clientX`, which is `0` for a keyboard-activated click, so under `allowHalf` `Enter`/`Space` can only ever commit `position − 0.5` — no star can be *activated* to its whole value |
+| 213 | unaudited · corroborated | Rating | [Rating.tsx:141](src/components/ui/Rating.tsx#L141) | med | Arrow keys drive roving focus and the value as two unsynchronised state machines: focus loops while the value clamps, and under `allowHalf` focus moves a whole star per `0.5` of value |
+| 214 | unaudited · corroborated | Rating | [Rating.tsx:145](src/components/ui/Rating.tsx#L145) | med | Clicking a star never updates the roving index, so the next arrow key teleports focus to star 2 whichever star was clicked, and Tab always enters the group on star 1 regardless of the value |
+| 215 | unaudited · corroborated | Rating | [Rating.css:9](src/components/ui/Rating.css#L9) | med | Star colour `--C-STATUS-WARNING` misses the WCAG 1.4.11 3:1 floor on the library's own light-theme surfaces (3.19–2.57:1 default, 3.09–2.61:1 `events`), and the 0.45-opacity empty star composites to 1.52–1.65:1 on every light surface and 2.67–2.86:1 in `grimdark` |
+| 216 | unaudited · corroborated | Rating | [Rating.tsx:80](src/components/ui/Rating.tsx#L80) | med | The `readOnly` branch overwrites the caller's **required** `aria-label` with a generated `"{value} out of {max} stars"`, so the mandatory prop is silently discarded and the subject of the rating is lost |
+| 217 | unaudited · spot-checked | Rating | [Rating.tsx:100](src/components/ui/Rating.tsx#L100) | low | `Home`/`End` move roving focus but fire no `onValueChange`, unlike every other key the group handles |
+| 218 | unaudited · spot-checked | Rating | [Rating.tsx:152](src/components/ui/Rating.tsx#L152) | low | Hard-coded English `"stars"` in both the `sr-only` name and the `readOnly` label, unreachable from props; star 1 also announces `"1 stars"` (instance of the pattern named for #39/#64) |
+| 219 | unaudited · spot-checked | Rating | [Rating.tsx:79](src/components/ui/Rating.tsx#L79) | low | Nothing range-checks or rounds an incoming `value`: `value={9} max={5}` announces `"9 out of 5 stars"`, and `value={4.3}` draws 4 stars while announcing 4.3 |
+| 220 | unaudited · spot-checked | Rating | [Rating.tsx:76](src/components/ui/Rating.tsx#L76) | low | `readOnly` returns before `disabled` is read, so `disabled` silently no-ops in that mode — no `aria-disabled`, no dimming |
+
 
 **Clean (no findings):** Stack, FormActions, Tabs, Divider, Grid, Center, Container, Row, Spacer,
-Label, ProgressRing. (Not proof of correctness — just nothing surfaced.)
+Label. (Not proof of correctness — just nothing surfaced.)
 
 > **Batch G (2026-07-25)** added no names to that list and removed none: CodeBlock, EmptyState,
 > Hero, MediaCard and Swimlane each carry findings below (#148–#177).
+>
+> **Batch H (2026-07-25)** added none and **removed `ProgressRing`**. Documenting `ProgressBar`
+> meant measuring its track, and the same measurement applied to `ProgressRing`'s track — which
+> is the same defect one step less bad (#210). ProgressRing had sat on this list since batch A
+> purely because nobody had measured it. MasonryGrid, Carousel, Spotlight, ProgressBar and
+> Rating all carry findings below (#178–#220).
 
 ## Details — high & medium
 
@@ -939,3 +1007,287 @@ logged separately because Swimlane exposes **no way to opt out** — a ScrollRev
 simply not use ScrollReveal, a Swimlane consumer cannot, and the hidden content includes the
 heading. **Fix:** expose an un-revealed render mode, or reveal on mount when `IntersectionObserver`
 is unavailable.
+
+### 178 · MasonryGrid — an item's props are dropped whenever the grid animates (high)
+
+`MasonryGrid.Item` types itself as `ComponentPropsWithRef<"div">` and, on the default
+`animate` path, spreads `{...props}` onto `ScrollReveal` — which destructures only its own eight
+named props and renders `<Tag>` with none of the rest (#9). Measured with
+`renderToStaticMarkup`:
+
+```
+<MasonryGrid><MasonryGrid.Item id="x" role="listitem" aria-label="Note"
+  data-k="1" style={{color:"red"}} tabIndex={0}>body</MasonryGrid.Item></MasonryGrid>
+→ <div class="masonry-grid"><div class="scroll-reveal-hidden masonry-grid__item">body</div></div>
+```
+
+The identical JSX under `animate={false}` emits `id`, `role`, `aria-label`, `data-k`, `style`
+**and** `tabindex`. So an animating grid cannot be given item-level semantics from the call site
+at all, and there is no type error and no runtime warning. This is the **second** confirmed
+downstream victim of #9 after `Swimlane` #171 — the pattern is now established, not anecdotal.
+**Fix:** have `Item` render its own `<div {...props}>` and nest `ScrollReveal` inside it, or fix
+#9 at the source and spread `...rest` inside `ScrollReveal`.
+
+### 179 · MasonryGrid — the caller's `key` is defeated by the provider (med)
+
+The root maps children through `<MasonryContext.Provider key={index}>`, so React reconciles by
+array position no matter what `key` the caller wrote. Prepend one item to a keyed six-item grid
+and every item from that position onward unmounts and remounts: uncontrolled input values, video
+playback position, scroll offset and component state are all lost, and every remounted item
+replays its entrance animation. An identically-keyed plain list preserves its DOM nodes.
+**Fix:** key the provider by the child's own key (`isValidElement(child) ? child.key ?? index :
+index`), or drop the per-child provider and pass the index another way.
+
+### 180 · MasonryGrid — `columns` above 4 silently collapses to one column (med)
+
+`columns` is typed `number`, but `MasonryGrid.css` ships `--masonry-columns` rules only for 2, 3
+and 4 at each of the five breakpoints. `<MasonryGrid columns={5}>` emits
+`class="masonry-grid masonry-grid--base-5"` (measured), which matches no rule, so
+`columns: var(--masonry-columns, 1)` falls back to **1**. A caller gets a single stacked column
+with no error at compile time or runtime. Sibling `Grid.css` already ships 1–6 for the
+same-shaped prop, so the two components accept the same object and disagree about what it means.
+**Fix:** narrow the type to `1 | 2 | 3 | 4`, or generate the missing rules.
+
+### 181 · MasonryGrid — a breakpoint can widen the grid but never narrow it to one column (med)
+
+`buildResponsiveClasses` does `if (count == null || count === 1) continue`, so a count of `1` at
+any breakpoint emits no class at all. `<MasonryGrid columns={{ base: 3, md: 1 }}>` emits only
+`masonry-grid--base-3` (measured), and because that base rule sits outside any media query the
+grid stays at three columns at every width instead of collapsing to one at 48rem. The skip is
+correct for `base` (one column is the CSS fallback) and wrong for every other key. **Fix:** emit
+`masonry-grid--<bp>-1` and add matching `--masonry-columns: 1` rules for sm/md/lg/xl.
+
+### 186 · Carousel — arrow keys are stolen from every control inside a slide (high)
+
+`handleKeyDown` sits on the root and checks only `e.key`, never `e.target`. Because keydown
+bubbles, an arrow press anywhere inside the carousel reaches it. Measured: focus an `<input>`
+inside a `Carousel.Item`, press ArrowLeft — one `scrollBy` call on the track and
+`defaultPrevented: true`, so the caret never moves. The same applies to `Slider`, `Textarea`,
+`Select` and any `role="listbox"` inside a slide. Combined with #187 (the field cannot be
+focused by mouse either), a text input inside a Carousel slide is effectively unusable.
+**Fix:** bail out of `handleKeyDown` when `e.target !== e.currentTarget`, or when the target is
+a text-entry/interactive element.
+
+### 187 · Carousel — mousedown `preventDefault` kills focus and caret placement (med)
+
+`CarouselTrack.handleMouseDown` calls `e.preventDefault()` on every left-button press over the
+track to stop native image dragging. That default is also what focuses a control and places the
+caret. Measured: dispatching a left mousedown on an `<input>` inside a slide leaves
+`defaultPrevented: true`, so the browser's focus/caret default never runs. Buttons and links are
+unaffected — they act on `click`. **Fix:** skip the `preventDefault` when `e.target` is a form
+control or `contenteditable`, keeping it for images.
+
+### 188 · Carousel — end-of-rail arrows stay focusable and enabled (med)
+
+`data-hidden` applies `opacity: 0; pointer-events: none` and nothing else. Measured on a
+carousel at `scrollLeft` 0: the Previous button reports `data-hidden="true"`, `disabled=false`,
+`aria-hidden=null`, `tabIndex=0`, and `.focus()` lands on it. So a keyboard user tabs onto an
+invisible "Previous" button whose activation is a no-op, and a screen reader announces it as an
+available control. **Fix:** add `disabled={!canScrollPrev}` / `disabled={!canScrollNext}`
+alongside `data-hidden`.
+
+### 189 · Carousel — the root's ARIA is voided by its own missing role (med)
+
+Measured markup: `<div class="carousel" aria-roledescription="carousel" aria-labelledby="…"
+tabindex="0">` — no `role`. The implicit role of a `<div>` is `generic`, on which ARIA prohibits
+both name-from-author and `aria-roledescription`. A conforming screen reader is entitled to
+announce neither the title nor "carousel", so the entire labelling story of the component is
+inert. `role` does pass through the rest spread, so `<Carousel role="group">` fixes it at the
+call site. **Fix:** set `role="group"` (or `"region"`) on the root before the rest spread.
+
+### 190 · Carousel — `prefers-reduced-motion` cannot stop the motion the user triggers (med)
+
+`Carousel.css:90-93` sets `scroll-behavior: auto` on the track under
+`@media (prefers-reduced-motion: reduce)`. But `scrollPrev` (line 99), `scrollNext` (107) and the
+drag fling (271) all pass `behavior: "smooth"` explicitly in the scroll options, and CSSOM View
+only consults the element's computed `scroll-behavior` when the passed behavior is `"auto"`. So
+with reduced motion on, clicking Next still animates. What the media query does reach is the
+arrows' opacity transition and scrolls the component never requested, such as the browser easing
+a newly focused slide into view — i.e. everything except the motion the user actually asked for.
+**Fix:** read `usePrefersReducedMotion()` and pass `behavior: "auto"` when it is true at all
+three call sites. The bypass is derived from the spec plus the three literal call sites, not from
+a browser render.
+
+### 193 · Spotlight — nothing reaches the `<img>` (med)
+
+`SpotlightImage` builds `<img src alt role>` from three props and spreads everything else onto
+the wrapper `<div>`. Measured:
+
+```
+<Spotlight.Image src="/a.jpg" alt="A" loading="lazy" id="wrap" width={640} height={360} />
+→ <div class="spotlight-image" loading="lazy" id="wrap" width="640" height="360">
+     <img src="/a.jpg" alt="A"/></div>
+```
+
+`loading`, `width` and `height` on a `<div>` are inert, so every Spotlight image loads eagerly and
+reserves no space — layout shift on any page with more than a couple of rows, and no route to
+`srcSet`/`sizes` for responsive art. `MediaCard.Image` spreads img props and defaults to
+`loading="lazy"`, so the library disagrees with itself. **Fix:** split the props into wrapper +
+`imgProps`, or type it like `MediaCard.Image`.
+
+### 195 · Spotlight — alternation and `reversed` both no-op on a content-first row (med)
+
+Every `order` rule in `Spotlight.css` pushes `.spotlight-image` last and pulls the copy first.
+For a row authored `<Spotlight.Content>` then `<Spotlight.Image>`, source order already satisfies
+that: odd rows have no order rules at all, and even rows apply `order: 2` to an image that is
+already last. So every row renders copy-left / image-right and `reversed` changes nothing — the
+component looks broken rather than mis-configured, with no warning that child order is
+load-bearing. **Fix:** order both children explicitly per parity (`order: 1`/`order: 2` on both,
+unconditionally) instead of relying on source order.
+
+### 196 · Spotlight — the parallax layer has no overscan (med)
+
+`Spotlight.Image` renders `<Parallax className="size-full">` inside a wrapper that is
+`overflow: hidden`, so the drifting layer is exactly the size of its clipping box: a translate of
+*n* pixels leaves an *n*-pixel empty band at one edge. `Parallax`'s offset is
+`(elementCentre − viewportCentre) × rate` and is clamped only when `clamp` is passed — which
+`Spotlight.Image` does not forward. On a 1080px viewport a row sitting ~540px off centre at the
+default rate `0.3` shifts 162px, half a 320px box. `Hero.css` solves the identical problem with
+`.hero__background--parallax { inset: -50% 0 }`; `Spotlight.css` has no equivalent. **Fix:** add
+an over-sized parallax modifier and forward `clamp`.
+
+### 201 · ProgressBar — `variant="gradient"` silently discards `color` (med)
+
+`.progress-bar__fill--gradient` (line 56) sets the `background` **shorthand**, which resets
+`background-color`, and is declared after `.progress-bar__fill--accent|success|warning|error`
+(lines 39–53) at equal specificity. Class order in the DOM is irrelevant; source order decides.
+So `<ProgressBar value={90} variant="gradient" color="error" />` paints the
+`--C-ACCENT → --C-ACCENT-HOVER` ramp, not red — a bar that is meant to read as a failure reads as
+normal progress. Both classes are present on the element (measured). **Fix:** make the gradient
+rule set `background-image` only, or derive the ramp from the selected colour. If gradient is
+meant to be accent-only, the fix is a type change so `color` cannot be passed with it.
+
+### 202 · ProgressBar — `aria-valuenow` is not clamped (med)
+
+The fill percentage is clamped into `[0, 100]` but `aria-valuenow` is the raw `value`. Measured:
+`<ProgressBar value={150} max={100} />` renders `aria-valuenow="150"` next to
+`aria-valuemax="100"` with a 100%-wide fill; `value={-10}` announces `-10` below
+`aria-valuemin={0}`. The bar looks right and announces something impossible. `ProgressRing.tsx:35`
+clamps the same input, so the two siblings behave differently. Same defect as `Meter` #22.
+**Fix:** `Math.min(max, Math.max(0, value))` before it reaches ARIA.
+
+### 203 · ProgressBar — `ProgressBar.Label` does not label anything (med)
+
+`ProgressBar.Label` is a bare styled `<span>`: it emits no `id`, holds no context, and the root
+sets no `aria-labelledby`. `<ProgressBar.Label>Uploading</ProgressBar.Label><ProgressBar
+value={64} />` renders a `role="progressbar"` with **no accessible name** — a screen reader
+announces "64" and nothing else. The sub-part's existence implies a wiring it never performs,
+which is worse than having no sub-part at all. **Fix:** generate a shared id through a compound
+context and `useId`, or require `aria-label` in the root's type the way `Meter` does.
+
+### 204 · ProgressBar — `value={NaN}` renders a full bar (med)
+
+`Math.min(100, Math.max(0, (NaN / 100) * 100))` is `NaN`, so the inline style is `width: NaN%`;
+the CSSOM rejects it outright. Measured in jsdom: the fill renders as
+`<div class="progress-bar__fill progress-bar__fill--accent"></div>` with `style.width === ""` and
+no `style` attribute at all, leaving `width: auto` — which on a block child of a `width: 100%`
+track is the entire track. So a `loaded / total` computation with `total === 0` shows a bar that
+reads as **100% complete** at the exact moment nothing has happened, and `aria-valuenow="NaN"`
+alongside it. **Fix:** `Number.isFinite(value) ? … : 0` in the percentage guard.
+
+### 205 · ProgressBar — status by colour alone (med)
+
+`color="success|warning|error"` swaps one `background-color` and emits nothing else: no
+`data-status`, no `aria-valuetext`, no text alternative. Two bars at `value={96}` with
+`color="success"` and `color="error"` produce byte-identical accessibility-tree output, so a
+screen-reader or colourblind user cannot tell "backup complete" from "over quota". This is the
+fourth-and-fifth-time instance of the recurring pattern at the top of this file, and it is worse
+than `Meter` #21, which at least exposes `data-status`. **Fix:** emit a `data-color`/`data-status`
+attribute and a default `aria-valuetext`, or document the colour as decorative only.
+
+### 206-207 · ProgressBar — neither half of the bar is reliably visible (med ×2)
+
+**#206.** The track is `--C-SURFACE-1`. Against `--C-SURFACE-0` (the `Card` surface, and equal to
+`--C-CANVAS` in the two light themes) it measures **1.05:1** default, **1.03:1** `events`,
+**1.02:1** `tech`, **1.07:1** `grimdark`; against `--C-CANVAS` directly, 1.05 / 1.03 / 1.08 /
+1.17:1. So the unfilled remainder is invisible in every shipped theme and a bar at `value={10}`
+is a short stub floating on nothing — the total the bar is measured *against* cannot be seen,
+which is most of what a progress bar communicates.
+
+**#207.** The other half fails in the other two themes. The default `accent` fill against that
+same `--C-SURFACE-1` track measures **4.95:1** default and **14.56:1** `tech`, but **2.63:1** in
+`events` and **2.77:1** in `grimdark` — under the 3:1 floor WCAG 1.4.11 sets for a graphical
+object that carries meaning. Taken together, there is no shipped theme in which both the fill
+edge and the track are comfortably legible.
+
+**Fix:** move the track to a dedicated token (or `--C-SURFACE-2`, per #210, though that is only
+marginally better), raise accent lightness in `events`/`grimdark`, and add a ratio guard over the
+theme files — the same guard #51, #163 and #173 all want.
+
+Ratios computed with an OKLCH→sRGB converter validated to exact hex against `#ff0000`/`#00ff00`/
+`#0000ff`, using WCAG relative luminance; not sampled from a rendered page.
+
+### 210 · ProgressRing — the same invisible track, one step less bad (med)
+
+`.progress-ring__track` strokes `--C-SURFACE-2`, measured against `--C-SURFACE-0` at **1.10:1**
+default, **1.08:1** `events`, **1.08:1** `tech`, **1.16:1** `grimdark`. It is the better of the
+two choices — `ProgressBar` uses `--C-SURFACE-1` at 1.02–1.07:1 (#206) — and it is still nowhere
+near the 3:1 floor, so the ring reads as a floating arc with no visible circumference. This is
+why `ProgressRing` came off the "Clean (no findings)" list: it had never been measured, not that
+it had passed. **Fix:** as #206 — a dedicated track token with a contrast guard, and one answer
+shared by both siblings.
+
+### 211 · Rating — under `allowHalf` every star is misnamed by half a star (high)
+
+The `sr-only` name is `{allowHalf ? position - 0.5 : position} stars`. Measured with
+`<Rating allowHalf value={3} />`: the five radios are named "0.5 stars", "1.5 stars", "2.5 stars",
+"3.5 stars", "4.5 stars", and the one reporting `aria-checked="true"` is **"2.5 stars"**. So a
+screen-reader user cannot distinguish a 2.5 rating from a 3, can never hear "5 stars" at all, and
+the checked control's name contradicts the value the component holds. **Fix:** name the button
+`position` and expose the half through `aria-valuetext`, or model the control as a slider.
+
+### 212 · Rating — keyboard activation always commits the half value (med)
+
+`valueFromClick` compares `e.clientX` against the star's bounding box. A keyboard-activated click
+reports `clientX: 0`, so `0 − rect.left` is negative for every star and the left-half branch
+always wins. Measured with a realistic rect (`left: 100, width: 24`): `Enter` on star 5 fires
+`onValueChange(4.5)`. `Rating.test.tsx` passes only because jsdom's `getBoundingClientRect`
+returns an all-zero rect, which makes `0 − 0 < 12` false and hides the bug. The arrow keys are
+*not* affected — measured, ten `ArrowRight`s from `0` commit `0.5, 1, 1.5 … 5`, so the value
+`max` is reachable from the keyboard; it is *activation* that cannot commit a whole star.
+**Fix:** treat `e.detail === 0` as a whole-star commit.
+
+### 213 · Rating — focus and value are two unsynchronised state machines (med)
+
+`useRovingFocus` owns the tab stop and `handleStarKeyDown` owns the value; both run from the same
+`onKeyDown` and neither observes the other. Focus **loops** (last → first) while the value
+**clamps** at `max`, and under `allowHalf` focus moves a whole star per `0.5` of value. Measured:
+`allowHalf`, focus star 1, five `ArrowRight`s → value `2.5` with the focus ring wrapped back to
+star 1. Without `allowHalf`, five presses → value `5` with focus also back on star 1. The visible
+ring and the committed value point at different stars for most of the interaction. **Fix:** seed
+and update the roving index from the value rather than letting `useRovingFocus` own it, and
+disable its loop.
+
+### 214 · Rating — clicking a star does not move the roving index (med)
+
+`onClick` calls `commit` and nothing else; `setFocusedIndex` is only ever called from the roving
+hook's own key handler. Measured: click star 4 (focus lands there natively), press `ArrowRight` →
+focus jumps to **star 2** while the value goes to 5. The same cause makes the tab stop wrong on
+entry — with `value={4}` the measured `tabIndex`es are `0,-1,-1,-1,-1`, so Tab always enters the
+group on star 1 rather than on the selected star, which is the opposite of what a radio group is
+supposed to do. **Fix:** call `setFocusedIndex` on click and focus, and seed it from the current
+value.
+
+### 215 · Rating — the stars miss the 3:1 graphical-object floor (med)
+
+The filled star is `--C-STATUS-WARNING`; the empty star is the same colour at `opacity: 0.45`.
+Measured against the library's own surface tokens (canvas / surface-0 / -1 / -2 / -3):
+
+- filled — default **3.19 / 3.19 / 3.05 / 2.90 / 2.57:1**, `events` **3.09 / 3.09 / 3.00 / 2.87 / 2.61:1**
+- empty — default **1.65 → 1.53:1**, `events` **1.63 → 1.52:1**, `grimdark` **2.86 → 2.67:1**
+- `tech` is the only theme that clears 3:1 on both layers (filled 13.9–11.0:1, empty 3.25–3.34:1)
+
+So in the two light themes the filled star is at or under the floor on every surface below
+`surface-0`, and the empty star — which is what encodes "not selected", i.e. the score itself —
+is far under it everywhere but `tech`. **Fix:** darken the light-theme warning token, and raise
+the empty-star opacity or stroke it with `--C-BORDER-STRONG`. Ratios computed with the same
+validated OKLCH→sRGB converter as #206-207, with sRGB-space alpha compositing for the 0.45 layer.
+
+### 216 · Rating — `readOnly` throws away the required `aria-label` (med)
+
+`aria-label` is the one **required** prop on `RatingProps`, and the `readOnly` branch overwrites
+it with a generated `` `${value} out of ${max} stars` ``. Measured:
+`<Rating readOnly value={4} aria-label="Average customer rating" />` announces "4 out of 5 stars"
+— the subject of the rating is gone, so a page of product cards yields a row of identically named
+graphics. A caller has no way to know their required prop was discarded. **Fix:** compose the two
+(`` `${ariaLabel}: ${value} out of ${max} stars` ``).
