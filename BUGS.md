@@ -47,7 +47,26 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   leaving name and content in different languages. `Rating` (#218) renders `"N stars"` the same
   way (and announces `"1 stars"` for the first one), and `Carousel` (#192) hard-codes
   `"Previous"`/`"Next"` on internal `IconButton`s. Any component with an `sr-only` literal or an
-  `aria-label` literal on a part the caller cannot reach.
+  `aria-label` literal on a part the caller cannot reach. **Batch I found three more and one new
+  consequence:** `OTPInput` (#243) names every box `"Digit N"` — wrong outright in
+  `mode="alphanumeric"` — and `Repeater` (#259) gives every row the same `"Remove item"` /
+  `"Move up"` / `"Move down"`, so N rows yield N indistinguishable buttons. `SearchInput` (#222)
+  is the sharpest case, because its literal is not merely unreachable but *actively destructive*:
+  a hard-coded `aria-label="Search"` **outranks** an associated `<label for>` in the
+  accessible-name computation, so wiring a visible `Label` the way `label.md` documented changes
+  nothing (measured: computed name `"Search"`, not `"Search orders"`; `label.md` is fixed). Grep
+  every hard-coded `aria-label` for that second failure mode, not just for the language.
+- **A rest-spread placed *after* a component's own handler lets a caller silently replace it.**
+  The mirror image of the bullet above: there the type promises props the runtime drops; here the
+  type *hides* a prop the runtime still honours — destructively. `TagInput` (#245) writes
+  `onChange={handleChange} … {...props}` in that order, and `onChange` is `Omit`ted from its prop
+  type, so `<TagInput {...form.field<string[]>("tags")} />` — the binding **`AGENTS.md:249` and
+  `README.md:203` both advertise** — typechecks clean (verified with `tsc`) and then throws
+  `TypeError: tags.map is not a function` on the first keystroke. `AnimatePresence` (#13) is the
+  same shape with `onAnimationEnd`, which makes two. The `Omit` is what makes it invisible: it
+  removes the type-level warning without removing the runtime behaviour. Every component that
+  spreads rest after its own handlers should destructure those handler names out first; grep for
+  `{...props}` following an `on[A-Z]` prop on the same element.
 - **Contrast is measured nowhere.** #51 is the first *measured* contrast audit in this file and
   `--C-TEXT-MUTED` fails AA on every surface of every theme. The token tables across the spokes
   say which variable paints what; nothing checks the pair is legible. A ratio guard over the
@@ -63,6 +82,16 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   construction, and neither the contract nor any guard says the ramp has to be perceptible.
   `--C-STATUS-WARNING` is also now measured failing the 3:1 graphical floor on light surfaces
   (#215), so three of the token families have failed the first time anyone put a number on them.
+  **Batch I moves this into the shared form recipe.** The border every text
+  control draws itself with — `--C-BORDER-STRONG` on `--C-SURFACE-0` — is **1.41–1.79:1** across
+  all four themes (#241), and since that fill equals the base page surface the border is often
+  the *only* thing drawing the control; `OTPInput`'s six empty unlabelled boxes are the worst
+  case. The focus indicator that replaces the UA outline is under 3:1 in half the themes (#242,
+  `events` 2.72:1 / `grimdark` 2.96:1) with `focus:outline-none` removing the fallback. Both are
+  one class string shared by Input, Textarea, Select, NumberInput, SearchInput and OTPInput, so
+  they are **one fix, not six** — and unlike the earlier rows these are not exotic composites but
+  the default appearance of every form on every page. Every token pair anyone has put a number on
+  so far has failed its floor.
 - **Continuous motion with no `prefers-reduced-motion` guard.** ~25 component CSS files ship
   a reduced-motion block and `src/hooks/use-reduced-motion.ts` exists, but utility-driven
   motion bypasses all of it: `Spinner`'s `animate-spin` (#38) is unguarded, as is
@@ -324,6 +353,48 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 218 | unaudited · spot-checked | Rating | [Rating.tsx:152](src/components/ui/Rating.tsx#L152) | low | Hard-coded English `"stars"` in both the `sr-only` name and the `readOnly` label, unreachable from props; star 1 also announces `"1 stars"` (instance of the pattern named for #39/#64) |
 | 219 | unaudited · spot-checked | Rating | [Rating.tsx:79](src/components/ui/Rating.tsx#L79) | low | Nothing range-checks or rounds an incoming `value`: `value={9} max={5}` announces `"9 out of 5 stars"`, and `value={4.3}` draws 4 stars while announcing 4.3 |
 | 220 | unaudited · spot-checked | Rating | [Rating.tsx:76](src/components/ui/Rating.tsx#L76) | low | `readOnly` returns before `disabled` is read, so `disabled` silently no-ops in that mode — no `aria-disabled`, no dimming |
+| 221 | unaudited · corroborated | SearchInput | [SearchInput.tsx:66](src/components/form/SearchInput.tsx#L66) | med | `disabled`/`readOnly` reach the `<input>` only — the clear button stays enabled and still wipes the value |
+| 222 | unaudited · corroborated | SearchInput | [SearchInput.tsx:55](src/components/form/SearchInput.tsx#L55) | med | Hard-coded `aria-label="Search"` outranks an associated `<label for>`, so a visible Label is silently ignored (pattern of #39/#64) |
+| 223 | unaudited · corroborated | SearchInput | [SearchInput.tsx:66](src/components/form/SearchInput.tsx#L66) | med | The clear button unmounts on activation, dropping focus to `<body>` (WCAG 2.4.3) |
+| 224 | unaudited · corroborated | SearchInput | [SearchInput.tsx:37](src/components/form/SearchInput.tsx#L37) | med | The Escape handler calls neither `preventDefault()` nor `stopPropagation()`, so one press clears the field *and* closes the surrounding overlay |
+| 225 | unaudited · corroborated | SearchInput | [SearchInput.css:56](src/components/form/SearchInput.css#L56) | med | Clear-button glyph at rest is `--C-TEXT-MUTED` on `--C-SURFACE-0` — 2.10–2.59:1 in all four themes, under the WCAG 1.4.11 3:1 floor (pattern of #51) |
+| 226 | unaudited · spot-checked | SearchInput | [SearchInput.tsx:38](src/components/form/SearchInput.tsx#L38) | low | Escape clears unconditionally — an already-empty field still fires `onChange("")` and `onClear()` |
+| 227 | unaudited · spot-checked | SearchInput | [SearchInput.css:21](src/components/form/SearchInput.css#L21) | low | `size="sm"` overrides only `font-size`; `py-r5` and the `text-body-2` line-height are untouched, so `sm` and `md` are the same height |
+| 228 | unaudited · spot-checked | SearchInput | [SearchInput.tsx:45](src/components/form/SearchInput.tsx#L45) | low | `className` is retargeted to the wrapper `<div>` while `style`/`id`/`data-*` land on the `<input>`, though the prop type advertises `<input>` props for both |
+| 229 | unaudited · spot-checked | SearchInput | [SearchInput.tsx:14](src/components/form/SearchInput.tsx#L14) | low | `defaultValue` survives the `Omit`, so it typechecks alongside the required `value` and then trips React's controlled/uncontrolled warning |
+| 230 | unaudited · spot-checked | SearchInput | [SearchInput.tsx:54](src/components/form/SearchInput.tsx#L54) | low | Explicit `role="searchbox"` duplicates the implicit role of `<input type="search">` |
+| 231 | unaudited · corroborated | NumberInput | [NumberInput.tsx:108](src/components/form/NumberInput.tsx#L108) | med | Stepper buttons and Arrow keys discard uncommitted typed text, stepping from the last committed value instead |
+| 232 | unaudited · corroborated | NumberInput | [NumberInput.tsx:83](src/components/form/NumberInput.tsx#L83) | med | A controlled `value` is not enforced: the box displays a value the parent refused, permanently, while `aria-valuenow` reports the prop |
+| 233 | unaudited · corroborated | NumberInput | [NumberInput.tsx:115](src/components/form/NumberInput.tsx#L115) | med | `readOnly` blocks typing but not the steppers or Arrow keys, and no `aria-readonly` is set |
+| 234 | unaudited · spot-checked | NumberInput | [NumberInput.tsx:149](src/components/form/NumberInput.tsx#L149) | low | Reserved right padding (`pr-r2` = 20px / 32px) is narrower than the stepper column (14px chevron + 2× `px-r5` = 30px / 38px), so long values render under the chevrons |
+| 235 | unaudited · corroborated | NumberInput | [NumberInput.tsx:43](src/components/form/NumberInput.tsx#L43) | low | `parseDraft` uses `Number()`, so `0x1f` commits as `31` and `Infinity` commits as `Infinity` into the value and `aria-valuenow` |
+| 236 | unaudited · corroborated | NumberInput | [NumberInput.tsx:109](src/components/form/NumberInput.tsx#L109) | low | Stepping up from an empty field bases on `min` and *then* adds `step`, so the first press lands on `min + step`, never on `min` |
+| 237 | unaudited · corroborated | NumberInput | [NumberInput.tsx:113](src/components/form/NumberInput.tsx#L113) | low | `stepBy` emits unconditionally, so at a clamped bound every further press re-fires `onValueChange` with an unchanged value |
+| 238 | unaudited · corroborated | OTPInput | [OTPInput.tsx:91](src/components/form/OTPInput.tsx#L91) | **high** | `onComplete` latches on a boolean ref and never re-fires when an already-complete code is edited, so it reports a stale value forever |
+| 239 | unaudited · corroborated | OTPInput | [OTPInput.tsx:111](src/components/form/OTPInput.tsx#L111) | med | A multi-character value arriving in one box keeps only the LAST character, defeating the `one-time-code` autofill the component advertises |
+| 240 | unaudited · corroborated | OTPInput | [OTPInput.tsx:110](src/components/form/OTPInput.tsx#L110) | med | Delete and cut are silently ignored — only Backspace can clear a box |
+| 241 | unaudited · spot-checked | **library-wide** | [Input.tsx:22](src/components/form/Input.tsx#L22) | med | Form-control boundary `--C-BORDER-STRONG` on the `--C-SURFACE-0` fill measures **1.41–1.79:1** in all four themes, under the WCAG 1.4.11 3:1 floor. Affects Input, Textarea, Select, NumberInput, SearchInput, TagInput, OTPInput (pattern of #51) |
+| 242 | unaudited · spot-checked | **library-wide** | [Input.tsx:25](src/components/form/Input.tsx#L25) | med | The replacement focus ring `--C-BORDER-FOCUS` on `--C-SURFACE-0` is **2.72:1** (`events`) and **2.96:1** (`grimdark`) while `focus:outline-none` removes the UA fallback. Same recipe in Input, Textarea, Select, NumberInput, SearchInput, OTPInput |
+| 243 | unaudited · corroborated | OTPInput | [OTPInput.tsx:179](src/components/form/OTPInput.tsx#L179) | low | Each box is hard-coded ``aria-label={`Digit ${i+1}`}`` — unreachable, unlocalizable, and factually wrong in `mode="alphanumeric"` (pattern of #39/#64) |
+| 244 | unaudited · corroborated | OTPInput | [OTPInput.tsx:78](src/components/form/OTPInput.tsx#L78) | low | Empty slots serialise into the public string as spaces, so `value.length === length` can be true with boxes still empty — a false completeness test for callers |
+| 245 | unaudited · corroborated | TagInput | [TagInput.tsx:204](src/components/form/TagInput.tsx#L204) | **high** | The rest-spread is applied after the input's own `onChange`, so spreading `form.field()` — the binding AGENTS.md and README.md both advertise — replaces the internal handler and crashes the component |
+| 246 | unaudited · corroborated | TagInput | [TagInput.tsx:192](src/components/form/TagInput.tsx#L192) | med | `name` passes through to the inner input whose value is the in-progress draft, so a native form submits the draft rather than the tags |
+| 247 | unaudited · corroborated | TagInput | [TagInput.tsx:93](src/components/form/TagInput.tsx#L93) | med | `commitDraft` clears the draft on every rejection path that produces no message, so the `maxTags` cap, a duplicate and `validateTag → false` all destroy the user's typing silently |
+| 248 | unaudited · corroborated | TagInput | [TagInput.tsx:104](src/components/form/TagInput.tsx#L104) | med | `handleChange` commits only the segment before the first delimiter and then blanks the draft, discarding everything after it |
+| 249 | unaudited · corroborated | TagInput | [TagInput.tsx:137](src/components/form/TagInput.tsx#L137) | med | The paste path discards any pending draft and reads only the accept/reject answer from `evaluate`, so `validateTag` string messages are swallowed |
+| 250 | unaudited · spot-checked | TagInput | [TagInput.tsx:102](src/components/form/TagInput.tsx#L102) | med | A `delimiter` carrying `g` or `y` misfires: `delimiter.test()` mutates the caller's own `RegExp`, so `/;/g` commits every *other* entry and `/;/y` commits none |
+| 251 | unaudited · corroborated | TagInput | [TagInput.tsx:183](src/components/form/TagInput.tsx#L183) | med | The chip remove button's X glyph inks `--C-TEXT-MUTED` on `--C-SURFACE-2` — 1.94–2.31:1, under the WCAG 1.4.11 3:1 floor in all four themes (pattern of #51) |
+| 252 | unaudited · corroborated | TagInput | [TagInput.tsx:172](src/components/form/TagInput.tsx#L172) | med | Adding or removing a tag is never announced and the chips carry no list semantics, so screen-reader users get no confirmation for Enter, Backspace, paste or the remove button |
+| 253 | unaudited · corroborated | TagInput | [TagInput.tsx:207](src/components/form/TagInput.tsx#L207) | low | The validation message `<p>` has no `id` and is never referenced by `aria-describedby`, which only ever points at a surrounding Field's error element |
+| 254 | unaudited · corroborated | TagInput | [TagInput.tsx:174](src/components/form/TagInput.tsx#L174) | low | Chips are keyed by the tag string and a controlled `value` is not de-duplicated, so `value={["react","react"]}` logs React's duplicate-key error |
+| 255 | unaudited · corroborated | TagInput | [TagInput.tsx:160](src/components/form/TagInput.tsx#L160) | low | The bordered wrapper carries the `focus-within` ring but no click handler, so clicking its padding does not focus the text input |
+| 256 | unaudited · corroborated | form-store | [form-store.ts:362](src/components/form/form-store.ts#L362) | **high** | Array mutations rewrite values but never re-key the error/touched maps, so a validation message — and `aria-invalid` — stays attached to the old index after a remove or a reorder |
+| 257 | unaudited · corroborated | Repeater | [Repeater.tsx:134](src/components/form/Repeater.tsx#L134) | med | Clicking a row's Remove button unmounts the button, dropping keyboard focus to `document.body` with no announcement |
+| 258 | unaudited · corroborated | Repeater | [Repeater.tsx:75](src/components/form/Repeater.tsx#L75) | med | The `disabled` prop reaches only Repeater's own Add/Remove/Move buttons; row fields stay editable and `RepeaterItem` exposes no `disabled` for custom row controls |
+| 259 | unaudited · corroborated | Repeater | [Repeater.tsx:114](src/components/form/Repeater.tsx#L114) | med | Per-row control `aria-label`s are hard-coded English literals with no prop to change them, so every row's buttons share one accessible name (pattern of #39/#64) |
+| 260 | unaudited · corroborated | Repeater | [Repeater.tsx:33](src/components/form/Repeater.tsx#L33) | low | `name: string` and `defaultItem: () => unknown` are untyped against the form's values, so a mistyped path compiles and silently writes a second array into the submitted values |
+| 261 | unaudited · spot-checked | Repeater | [Repeater.tsx:56](src/components/form/Repeater.tsx#L56) | low | The source JSDoc `@example` wires `Field`/`FieldError` with no surrounding `FormProvider`, so the `FieldError` it advertises can never render |
+| 262 | unaudited · corroborated | Repeater | [Repeater.tsx:84](src/components/form/Repeater.tsx#L84) | low | Rows are plain `<div>`s with no list/group semantics and no live region, so adding or removing a row is never announced |
 
 
 **Clean (no findings):** Stack, FormActions, Tabs, Divider, Grid, Center, Container, Row, Spacer,
@@ -337,6 +408,13 @@ Label. (Not proof of correctness — just nothing surfaced.)
 > is the same defect one step less bad (#210). ProgressRing had sat on this list since batch A
 > purely because nobody had measured it. MasonryGrid, Carousel, Spotlight, ProgressBar and
 > Rating all carry findings below (#178–#220).
+>
+> **Batch I (2026-07-25)** added none and removed none. SearchInput, NumberInput, OTPInput,
+> TagInput and Repeater all carry findings below (#221–#262), and documenting them also put the
+> first measured numbers on two *shared* form-control token pairs (#241, #242) and on
+> `form-store`'s array mutations (#256). `Label` stays on the list: batch I refuted a claim in
+> `label.md` (association is necessary but not sufficient for an accessible name), but that is a
+> defect in two *other* components' markup, not in `Label`, which is a faithful passthrough.
 
 ## Details — high & medium
 
@@ -1291,3 +1369,277 @@ it with a generated `` `${value} out of ${max} stars` ``. Measured:
 — the subject of the rating is gone, so a page of product cards yields a row of identically named
 graphics. A caller has no way to know their required prop was discarded. **Fix:** compose the two
 (`` `${ariaLabel}: ${value} out of ${max} stars` ``).
+
+### 221 · SearchInput — `disabled` protects the typing, not the value (med)
+
+`disabled` and `readOnly` stay in `...props` and are spread onto the `<Input>` only. The clear
+`<button>` is rendered on `{value && …}` alone and is never disabled. Measured:
+`<SearchInput value="oklch" onChange={fn} disabled />` renders `input.disabled === true` and
+`button.disabled === false`; clicking the X fires `onChange("")` **and** `onClear()`. `readOnly`
+behaves identically, and Escape clears a `readOnly` field too. The one destructive action on the
+control is the one `disabled` does not cover, with no type-level hint that it won't.
+**Fix:** destructure `disabled`/`readOnly` out of `...props` and gate both the button render and
+`handleClear` on `!disabled && !readOnly`.
+
+### 222 · SearchInput — a hard-coded `aria-label` silently defeats your `Label` (med)
+
+`aria-label="Search"` is set unconditionally at line 55. `aria-label` outranks an associated
+`<label for>` in the accessible-name computation, so the documented wiring does nothing. Measured
+with `dom-accessibility-api`: `<Label htmlFor="q">Search orders</Label>` beside
+`<SearchInput id="q" …/>` computes a name of `"Search"`. Every instance on a page therefore
+shares one untranslated English name, and a page with two search fields has two identically named
+searchboxes. `aria-labelledby` does win (measured `"Search orders"`), so there is a workaround —
+but only for callers who know to reach for it. **Fix:** default `aria-label` only when neither
+`aria-label` nor `aria-labelledby` was supplied, and prefer no default at all when an `id` is
+given. An instance of the hard-coded-English pattern with a second, worse consequence.
+
+### 223 · SearchInput — the clear button vanishes under the focus it holds (med)
+
+The button only renders while `value` is truthy, so activating it unmounts it. Measured: Tab to
+the clear button and press Enter — `value` becomes `""`, the `{value && …}` branch removes the
+button, and `document.activeElement` is `document.body`. The next Tab restarts at the top of the
+document rather than continuing after the field (WCAG 2.4.3). **Fix:** refocus the input inside
+`handleClear` through the forwarded ref, or render the button always and hide it with
+`visibility`.
+
+### 224 · SearchInput — one Escape clears the field *and* closes the dialog (med)
+
+`handleKeyDown` calls `handleClear()` on Escape and then neither `preventDefault()` nor
+`stopPropagation()`. Measured: an ancestor `onKeyDown` receives the event with
+`defaultPrevented === false`. Inside `Dialog` — a native `<dialog>` opened with `showModal()` and
+closed by the browser's Escape close request — typing a query and pressing Escape both empties the
+box and dismisses the dialog, so the user loses the search *and* the surface it was on. **Fix:**
+call `e.preventDefault()` when the field actually had content, so the first Escape only clears.
+
+### 225 · SearchInput — the clear affordance is below the graphical-contrast floor (med)
+
+`.search-input__clear` inks `--C-TEXT-MUTED` on the field's `--C-SURFACE-0` fill. Computed from
+the shipped OKLCH values: **2.54:1** default, **2.45:1** `events`, **2.59:1** `grimdark`,
+**2.10:1** `tech` — all under the WCAG 1.4.11 3:1 minimum, and the glyph is the control's only
+visual affordance. The ink reaches `--C-TEXT-PRIMARY` on `:hover` only, not on `:focus-visible`,
+and the hover wash (`--C-SURFACE-2` on `--C-SURFACE-0`) is **1.10:1**, so the wash contributes
+nothing. **Fix:** ink it `--C-TEXT-SECONDARY` at rest (measured 7.56 / 7.40 / 5.76 / 5.95:1 on the
+same fill), or give the button a border.
+
+### 231 · NumberInput — the steppers throw away what you just typed (med)
+
+`stepBy` seeds from `currentValue ?? min ?? 0` — the last *committed* value — and never consults
+the draft, while both buttons `preventDefault` on `pointerdown` so the input never blurs and never
+commits first. Measured: a field committed at `1`, type `99` (draft only), click the up chevron →
+emits `2` and displays `"2"`; the typed `99` is gone. ArrowUp/ArrowDown do the same.
+**Fix:** seed `stepBy` from `parseDraft(draft) ?? currentValue ?? min ?? 0`.
+
+### 232 · NumberInput — a controlled `value` is not actually controlled (med)
+
+`commit`/`stepBy` write the draft locally and reconciliation runs only when the `value` prop
+*changes* (`prevValueRef.current !== currentValue`). A parent that declines to adopt the emitted
+value never triggers it. Measured: `<NumberInput value={5} onValueChange={noop} />`, one press of
+the up chevron → the field displays `"6"` **permanently** while the prop and `aria-valuenow` stay
+`5`. Visible text and accessible value disagree forever, which is worse than either being wrong.
+**Fix:** when controlled, derive the draft from the incoming value rather than `setDraft`-ing
+unconditionally, or compare `parseDraft(draft)` to `value` on every render.
+
+### 233 · NumberInput — `readOnly` stops the keyboard but not the buttons (med)
+
+`readOnly` reaches the `<input>` through `...props` and blocks typing, but neither `stepBy` nor
+the ArrowUp/ArrowDown branches consult it. Measured:
+`<NumberInput readOnly defaultValue={3} onValueChange={fn} />` — clicking the up chevron emits
+`4`, and ArrowUp then emits `5`. No `aria-readonly` is set either, so assistive tech is not told
+the field is meant to be immutable. **Fix:** return early from `stepBy` and the arrow branches
+when `readOnly`, and pass `aria-readonly`.
+
+### 238 · OTPInput — `onComplete` latches and then reports a stale code (high)
+
+`completedRef` is a boolean. Once a complete code fires `onComplete`, the ref stays `true` and
+every later commit that is *still complete* takes the `if (!completedRef.current)` false branch.
+Measured on a 3-box control: type `123` → `onComplete("123")`. Correct the first digit to `9` →
+`onValueChange("923")` fires, but `onComplete` has still only ever been called with `"123"`.
+Re-pasting `5678` over a complete `1234` behaves identically. A verification screen whose submit
+path is `onComplete` — the pattern the prop's name and signature invite — therefore deadlocks on a
+code the user can see is correct; the only escape is to clear a box (unlatching the ref) and
+retype. **Fix:** store the last-fired serialised value in the ref instead of a boolean, and fire
+whenever a complete value differs from it.
+
+### 239 · OTPInput — a multi-character value in one box loses all but the last character (med)
+
+`handleChange` takes `filtered[filtered.length - 1]` unconditionally. Measured:
+`fireEvent.change(box0, { value: "123456" })` on a six-box control yields
+`["6","","","","",""]` and emits `"6"` — five of six digits dropped. `onPaste` spreads correctly,
+but platform SMS autofill for the `autoComplete="one-time-code"` hint the component sets on box 0
+delivers an *input* event, not a paste. **Caveat:** the autofill consequence is inferred, not
+observed — `maxLength={1}` may truncate first on a real device (yielding `"1"` instead of `"6"`),
+which is broken either way but by a different mechanism. Needs a device test.
+**Fix:** when `filtered.length > 1`, spread across slots from `index` exactly as `handlePaste`
+does.
+
+### 240 · OTPInput — Delete and cut are silently ignored (med)
+
+`handleChange` returns early when the filtered string is empty, and `handleKeyDown` implements
+only Backspace / ArrowLeft / ArrowRight. Measured: with box 1 holding `"2"`, pressing
+<kbd>Delete</kbd> or <kbd>Ctrl</kbd>+<kbd>X</kbd> leaves the box showing `"2"` and calls
+`onValueChange` **zero** times — the controlled input simply re-renders the old character with no
+feedback at all. Backspace is the only way to clear a box, which is not what any user assumes.
+**Fix:** treat an empty filtered string as a clear of that slot rather than an early return.
+
+### 241-242 · library-wide — the form controls' own boundary and focus ring miss 3:1 (med ×2)
+
+One class string, shared verbatim by `Input`, `Textarea`, `Select`, `NumberInput`, `SearchInput`
+and `OTPInput` (and re-created by `TagInput` on its wrapper), carries both defects. Computed from
+the shipped OKLCH values:
+
+- **#241 — boundary.** `--C-BORDER-STRONG` on the `--C-SURFACE-0` fill: **1.47:1** default,
+  **1.44:1** `events`, **1.41:1** `tech`, **1.79:1** `grimdark`. `--C-SURFACE-0` is also the base
+  page surface, so on a default page that border is the *only* thing drawing the control.
+  `OTPInput` is the worst case — six empty, unlabelled boxes whose entire visual existence is a
+  1.4:1 hairline.
+- **#242 — focus ring.** `focus:outline-none` removes the UA outline; the replacement
+  `--C-BORDER-FOCUS` ring measures **3.68:1** default and **14.84:1** `tech` (both fine) but
+  **2.72:1** `events` and **2.96:1** `grimdark` — under the 3:1 WCAG 1.4.11 / 2.4.11 floor with no
+  native fallback left. Across six identical OTP boxes, a keyboard user in those themes has to
+  hunt for the focused one.
+
+Both are token-level, so they are **one fix, not six**: raise `--C-BORDER-STRONG` and
+`--C-BORDER-FOCUS` per theme measured against `--C-SURFACE-0` (not against `--C-CANVAS`), or give
+form controls a dedicated boundary token. Keeping a transparent `outline` would also preserve a
+UA indicator under forced-colors. Ratios computed with the same OKLCH→sRGB converter as
+#206-207/#215.
+
+### 245 · TagInput — the binding the docs advertise crashes the component (high)
+
+`{...props}` at line 204 is spread **after** the element's own `onChange={handleChange}`, so a
+caller-supplied `onChange` replaces the internal handler entirely. `onChange` is `Omit`ted from
+`TagInputProps`, which removes the compile-time warning without removing the runtime behaviour, and
+JSX spread of a typed object skips excess-property checking. Measured end to end:
+`<TagInput {...form.field<string[]>("tags")} />` — the exact binding **`AGENTS.md:249` and
+`README.md:203` both advertise for TagInput** — typechecks with zero errors under the project's own
+`tsconfig`, renders fine, and then the first keystroke sends a raw DOM `ChangeEvent` to the form
+store, which writes the string `"t"` into the array-typed field; the next render throws
+`TypeError: tags.map is not a function`. Nothing about the failure points at the spread.
+**Fix:** destructure `onChange` out of the props — it is already `Omit`ted from the type — so
+`{...props}` cannot override `onChange={handleChange}`. Then either make the advertised binding
+work or stop advertising it.
+
+### 246 · TagInput — `name` submits the draft, not the tags (med)
+
+`name` passes through `...props` to the inner `<input>`, whose value is the in-progress draft
+text. Measured: `<form><TagInput name="tags" defaultValue={["react","typescript"]} /></form>` then
+`new FormData(form)` yields `[["tags", ""]]` — the two tags are not in the submission at all, and
+a half-typed draft would be submitted in their place. There is no hidden input per tag.
+**Fix:** render a hidden `<input type="hidden" name={name}>` per tag and keep `name` off the
+visible draft field.
+
+### 247 · TagInput — every silent rejection destroys the user's typing (med)
+
+`commitDraft` clears the draft whenever `evaluate` produced no *message*, which covers three
+rejection paths that produce none: the `maxTags` cap, a duplicate, and `validateTag` returning
+`false`. Measured: `<TagInput maxTags={1} defaultValue={["react"]} />`, type `typescript` and press
+Enter → the input is emptied, no chip is added, no message appears, nothing on screen changes.
+`validateTag={() => false}` behaves identically. The user cannot tell rejection from a dropped
+keystroke. **Fix:** clear the draft only when a tag was actually appended.
+
+### 248 · TagInput — a delimiter typed mid-string discards the tail (med)
+
+`handleChange` commits `raw.split(delimiter)[0]` and then `setDraft("")`, so everything after the
+first delimiter is thrown away rather than returned to the draft. Measured: draft `"abc"`, caret
+placed after `"a"`, user types `","` → `raw` is `"a,bc"`; tags become `["a"]` and the input is
+emptied — `"bc"` is gone. **Fix:** commit every segment and put the trailing remainder back into
+the draft instead of blanking it.
+
+### 249 · TagInput — paste wipes the draft and swallows validation messages (med)
+
+`handlePaste` reads only `{ tag }` from `evaluate`, never `{ message }`, and ends with
+`setDraft("")` regardless of outcome. Measured with
+`validateTag={(t) => t.length > 3 || "Tags must be at least 4 characters"}`: type `"reac"`, then
+paste `"js, ts"` → zero tags added, draft wiped to `""`, and the live region still empty. The user
+loses their typing and is told nothing about why the paste added nothing.
+**Fix:** merge the draft into the first pasted segment, and surface the first message the loop
+produces.
+
+### 250 · TagInput — a `g`- or `y`-flagged `delimiter` mutates the caller's RegExp (med)
+
+Both `handleChange` and `handlePaste` call `delimiter.test(...)` on the `RegExp` object the caller
+passed. `RegExp.prototype.test` advances `lastIndex` on a global regex and only matches at
+`lastIndex` on a sticky one, so the component silently carries state between keystrokes on an
+object it does not own. Measured, typing `ab;` `cd;` `ef;` into a fresh field:
+
+| `delimiter` | tags committed | draft after each keystroke | `lastIndex` left behind |
+| --- | --- | --- | --- |
+| `/;/` | `["ab","cd","ef"]` | `""`, `""`, `""` | `0` |
+| `/;/g` | `["ab","ef"]` | `""`, `"cd;"`, `""` | `3` |
+| `/;/y` | `[]` | `"ab;"`, `"cd;"`, `"ef;"` | `0` |
+
+Under `/;/g` the second `;` is tested from index 3, matches nothing, resets `lastIndex` to 0, and
+leaves the raw text `"cd;"` — delimiter included — in the field, where the next successful commit
+destroys it. `/[,\n]/g` reproduces identically. The paste path alternates the same way, falling
+through to an ordinary un-split paste on every other attempt. The prop type is a bare `RegExp`
+with nothing to warn a caller off `/[,;]/g`, which is a natural thing to write.
+**Fix:** normalise internally — `new RegExp(delimiter.source, delimiter.flags.replace(/[gy]/g, ""))`
+— or test with `delimiter.source` rather than the caller's object. Documented as a gotcha in
+`tag-input.md`. (Recorded here because an earlier pass reported this hazard as *not reproducing*;
+it does, but only from the second delimiter onward, which is why a single-keystroke probe misses
+it.)
+
+### 251 · TagInput — the chip's remove glyph misses the 3:1 graphical floor (med)
+
+The X inks `--C-TEXT-MUTED` on the chip's `--C-SURFACE-2` fill. Computed from the shipped OKLCH
+values: **2.31:1** default, **2.27:1** `events`, **1.94:1** `tech`, **2.23:1** `grimdark` — under
+the WCAG 1.4.11 3:1 floor in every shipped theme. Only `hover:text-fg-primary` clears it, which
+does nothing for keyboard or touch users. The chip *label* on the same fill is fine
+(`--C-TEXT-SECONDARY`, measured 6.87 / 6.87 / 5.32 / 5.11:1), so the fix is local and cheap.
+**Fix:** ink the glyph `text-fg-secondary`.
+
+### 252 · TagInput — the tag set changes in silence (med)
+
+The only `aria-live` region on the component is bound to the validation `message`, and the chips
+render as `<span>`s inside a `<div>`. Measured with three tags: `queryAllByRole("listitem")` and
+`queryAllByRole("list")` are both **0**, and the single live region's text content is `""`.
+So committing with Enter, deleting with Backspace, pasting, and clicking a remove button all
+mutate the list with no announcement and no structure to navigate. Backspace is the sharpest edge
+— with an empty draft every press deletes a chip outright, with no confirmation step and no
+feedback. **Fix:** mirror tag-count changes into the polite region, and render the chips as a
+labelled `<ul>`/`<li>`.
+
+### 256 · form-store — array mutations strand validation errors at the old index (high)
+
+`commitArray` rewrites `values` and re-keys `arrayIds`, but `schemaErrors`, `manualErrors` and
+`touched` are keyed by dotted path (`links.0.url`) and are never re-indexed. Measured on a two-row
+form whose row 0 is invalid: submit → one `"URL is required"` message rendered. Remove row 0 → the
+surviving row is the *valid* one (`"https://example.com"`), yet the message is still rendered
+under it **and** that row's `<input>` now carries `aria-invalid="true"`. Reorder is symmetric:
+after Move down on row 0 the values are `["https://example.com", ""]` while `aria-invalid` reads
+`["true", null]` — the error stayed at index 0 and is now attached to the valid row while the
+genuinely invalid one looks clean. It self-corrects only when validation next runs (a keystroke
+under the default `reValidateMode: "onChange"`, or the next submit), so the wrong state is
+visible for exactly as long as the user does nothing. Surfaced through `Repeater`, but the defect
+is in the store and affects every consumer of `useFieldArray`.
+**Fix:** re-index `schemaErrors` / `manualErrors` / `touched` inside `commitArray` alongside
+`arrayIds`.
+
+### 257 · Repeater — removing a row drops focus to the body (med)
+
+The Remove button lives inside the row it unmounts. Measured: render two rows, Tab to row 1's
+`"Remove item"` and press Enter → `document.activeElement === document.body`, so the next Tab
+restarts from the top of the page. Nothing is announced either (see #262).
+**Fix:** after a remove, focus the next row's remove button — or the Add button when the list
+empties.
+
+### 258 · Repeater — `disabled` disables the chrome, not the form (med)
+
+`disabled` is threaded onto Repeater's own Add / Remove / Move buttons and nowhere else, and
+`RepeaterItem` exposes no `disabled` for a render prop to forward. Measured: `<Repeater disabled>`
+with an `Input` bound through `form.field()` — Add and Remove report `disabled === true`, the
+row's `<input>` reports `disabled === false` and still accepts typing. A caller reading the prop
+name reasonably expects the whole group to go inert; freezing the fields actually requires
+`useForm`'s own `disabled` option, which is documented nowhere near this prop.
+**Fix:** thread `disabled` onto `RepeaterItem` so the render prop can forward it, and say in the
+prop's docblock that field disabling lives on `useForm`.
+
+### 259 · Repeater — every row's buttons share one accessible name (med)
+
+`"Move up"`, `"Move down"` and `"Remove item"` are hard-coded English literals with no prop to
+change them; `addLabel` is the only configurable string on the component. Measured: five rows
+produce five buttons all named `"Remove item"`, giving a screen-reader user nothing to tell them
+apart, and no route to localisation. The page's own guidance — put `index + 1` in the row's
+visible `Label` — is a workaround, not a fix.
+**Fix:** accept per-row label props (or a `labels` object) and interpolate the row index. An
+instance of the hard-coded-English pattern named for #39/#64.

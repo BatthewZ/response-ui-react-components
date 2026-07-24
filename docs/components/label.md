@@ -106,6 +106,18 @@ because it passes every attribute and child straight through; it adds no associa
 its own, so an un-associated label is decorative text as far as assistive tech is
 concerned.
 
+Association is necessary but **not** sufficient, and two of this package's own controls
+prove it. `aria-label` and `aria-labelledby` both outrank `<label for>` in the
+name computation, so a control that sets one of its own wins:
+[SearchInput](search-input.md) hard-codes `aria-label="Search"`, and
+`<Label htmlFor="q">Search orders</Label>` beside `<SearchInput id="q" …/>` computes an
+accessible name of `"Search"` (measured). And `htmlFor` only reaches a *labelable*
+element — `<button>`, `<input>`, `<select>`, `<textarea>`, `<meter>`, `<output>`,
+`<progress>`. [OTPInput](otpinput.md)'s root is a
+`<div role="group">`, so `htmlFor`/`id` associates nothing at all there; point
+`aria-labelledby` at the label's `id` instead. Check the control's own page before
+assuming a `htmlFor` pair is enough.
+
 Keep any required marker `aria-hidden` and signal "required" through the control's
 `required`/`aria-required`, so the field's name is announced as "Full name" rather than
 "Full name star".
