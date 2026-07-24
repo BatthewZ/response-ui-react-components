@@ -105,8 +105,12 @@ whatever text-colour utility you put on it (see [Tinting](#tinting)), rather tha
 To tint from your theme rather than per call site, point a text utility at a theme
 variable — e.g. `text-chart-1` resolves to `--C-CHART-1`, `text-trend-up` to
 `--C-TREND-UP` (both optional dashboard tokens; see the
-[chart palette](../theme-contract.md#dashboard--trend--chart)). Or set
-`--sparkline-color` directly in a wrapping rule if you need to override just the chart.
+[chart palette](../theme-contract.md#dashboard--trend--chart)). To override just one chart, set
+`--sparkline-color` **on the element itself** — inline, or in a rule that also matches
+`.sparkline` (`.my-chart.sparkline { --sparkline-color: … }`). A wrapping rule cannot work:
+`Sparkline.css` declares the property inside the `.sparkline` rule, and a declaration on the
+element always beats an inherited one. Easiest of all is a `text-*` utility, since the property
+falls back to `currentColor`.
 
 ## Gotchas
 

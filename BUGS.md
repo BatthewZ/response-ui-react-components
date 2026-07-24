@@ -203,6 +203,21 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 130 | unaudited | DropdownMenu | [DropdownMenu.css:45](src/components/ui/DropdownMenu.css#L45) | low | Disabled items and labels paint `--C-TEXT-MUTED` on `--C-SURFACE-0` = 2.10–2.59:1, under AA (instance of #51) |
 | 131 | unaudited · spot-checked | DropdownMenu | [menu-internals.tsx:179](src/components/ui/menu-internals.tsx#L179) | low | Tab never closes the menu; a mouse-opened menu has no tabbable item, so Tab jumps past it leaving it open with focus outside |
 | 132 | unaudited | HoverCard | [HoverCard.tsx:154](src/components/ui/HoverCard.tsx#L154) | low | The default (non-`asChild`) trigger is a non-focusable `<span>` carrying `aria-expanded` — invalid on a role-less span, and `useFocus` is dead on that path |
+| 133 | unaudited · corroborated | Pagination | [Pagination.css:43](src/components/ui/Pagination.css#L43) | **high** | Current page inks `--C-TEXT-ON-PRIMARY` on a `--C-ACCENT` fill; in `tech` those tokens are byte-identical → **1.00:1, invisible** |
+| 134 | unaudited · corroborated | Stepper | [Stepper.tsx:114](src/components/ui/Stepper.tsx#L114) | **high** | A clickable **completed** step's button has an empty accessible name, and rest props land on the `<li>` so no `aria-label` can reach it |
+| 135 | unaudited · corroborated | Accordion | [Accordion.tsx:209](src/components/ui/Accordion.tsx#L209) | med | `Trigger` spreads `...props` **after** its own handlers, so a consumer `onClick` replaces the toggle and the section never opens |
+| 136 | unaudited · corroborated | Accordion · Collapsible | [Accordion.tsx:253](src/components/ui/Accordion.tsx#L253) | med | Collapsed panels are CSS-clipped only — no `hidden`/`inert` — so links inside a closed section stay Tab-reachable and in the a11y tree |
+| 137 | unaudited · corroborated | Accordion | [Accordion.tsx:135](src/components/ui/Accordion.tsx#L135) | med | Trigger is not inside a heading and there is no `headingLevel` prop, so heading navigation skips every section |
+| 138 | unaudited · corroborated | Breadcrumbs | [Breadcrumbs.tsx:57](src/components/ui/Breadcrumbs.tsx#L57) | med | Collapse slices head and tail independently with no overlap check — a crumb renders twice, with a duplicate React key |
+| 139 | unaudited · spot-checked | Breadcrumbs | [Breadcrumbs.tsx:66](src/components/ui/Breadcrumbs.tsx#L66) | med | Ellipsis expansion is one-way and never resets, so one instance across route changes stays expanded forever |
+| 140 | unaudited · spot-checked | Stepper | [Stepper.tsx:113](src/components/ui/Stepper.tsx#L113) | med | `onStepClick` is all-or-nothing: every step becomes a focusable button, including ones the consumer's handler ignores |
+| 141 | unaudited · spot-checked | Pagination | [Pagination.css:45](src/components/ui/Pagination.css#L45) | low | Current page uses `pointer-events:none` rather than `disabled`, so it stays tab-focusable and Enter re-fires `onPageChange` |
+| 142 | unaudited | Accordion | [Accordion.tsx:84](src/components/ui/Accordion.tsx#L84) | low | `mode` is enforced only in `toggle`, so `mode="single"` with a two-item `defaultValue` renders both open |
+| 143 | unaudited | Accordion | [Accordion.tsx:130](src/components/ui/Accordion.tsx#L130) | low | `value` is interpolated raw into ids; a value containing a space silently breaks `aria-controls`/`aria-labelledby` |
+| 144 | unaudited | Collapsible | [Collapsible.tsx:120](src/components/ui/Collapsible.tsx#L120) | low | `Content` sets `role="region"` with no `aria-labelledby` and the trigger has no id — an unnamed landmark. `Accordion.Content` wires both |
+| 145 | unaudited · corroborated | Breadcrumbs | [Breadcrumbs.tsx:98](src/components/ui/Breadcrumbs.tsx#L98) | low | `<ol>` + `list-style:none` with no `role="list"` (as #28) — and rest props land on the `<nav>`, so the caller cannot restore it |
+| 146 | unaudited | Breadcrumbs | [Breadcrumbs.tsx:82](src/components/ui/Breadcrumbs.tsx#L82) | low | The root interleaves its own separator around a caller-rendered `Breadcrumbs.Separator`, so the exported sub-part has no correct direct use |
+| 147 | unaudited | Stepper | [Stepper.css:128](src/components/ui/Stepper.css#L128) | low | Active and upcoming steps differ by tint alone — same ring, numeral and weight; `aria-current="step"` covers AT only |
 
 > **Bookkeeping, 2026-07:** this list previously named **Button**, **Textarea** and
 > **FieldError**. All three were wrong. Button carries #74 and #81; Textarea carries #81 and
@@ -696,3 +711,44 @@ half correctly and is the model.
   model was measured working end to end (arrows, Home/End, typeahead, Escape-returns-focus,
   Enter-activates), so its `role="menu"` is honestly earned. Same line, two outcomes, because the
   two components differ in where focus sits when the menu opens.
+
+### 133 · Pagination — the current page number is invisible in the `tech` theme (high)
+
+`Pagination.css:41-43` is `.pagination__page--current { background-color: var(--C-ACCENT);
+color: var(--C-TEXT-ON-PRIMARY); }`. The contract is explicit that these do not pair:
+`theme-contract.md:53-54` defines `--C-TEXT-ON-PRIMARY` as "Text drawn on `--C-PRIMARY` fill" and
+`--C-TEXT-ON-ACCENT` as "Text drawn on `--C-ACCENT` fill".
+
+In `themes/tech.css` lines 23 and 37 are **byte-identical** — both `oklch(0.8763 0.2278 152.55)`
+(`#00ff88`). So the current page's digit is painted in exactly its own background colour.
+
+| Theme | as shipped | with `--C-TEXT-ON-ACCENT` |
+| --- | --- | --- |
+| default | 5.17:1 | — |
+| tech | **1.00:1** | 14.84:1 |
+| events | 2.80:1 | — |
+| grimdark | 3.81:1 | — |
+
+**Failure scenario:** on `tech`, a user cannot see which page they are on — the one piece of state
+the component exists to convey. `events` at 2.80:1 also fails AA-large. **Fix is one variable in
+one rule**: `Tabs.css:160` and `Calendar.css:211` already do it correctly as
+`var(--C-TEXT-ON-ACCENT, var(--C-TEXT-INVERSE))`.
+
+This is the first confirmed instance of the contract's fill/ink pairs being crossed, as opposed to
+a token simply being too low-contrast (#51). Worth grepping every `--C-TEXT-ON-*` use against the
+fill it sits on.
+
+### 134 · Stepper — completed steps announce as an unnamed button (high)
+
+With `onStepClick` supplied, every marker becomes a `<button>`. A **completed** step's only child
+is the `<Check/>` glyph, which `lucide-react` correctly marks `aria-hidden`, so the button has no
+text at all. Measured with `computeAccessibleName` on a three-step stepper at `activeStep={2}`:
+`["", "", "3"]` — the two completed markers have empty names, and even the reachable one announces
+only its number, never its title.
+
+`Stepper.Step` spreads `{...props}` onto the `<li>`, so `<Stepper.Step aria-label="Shipping">`
+lands the label on the list item and never on the button. **There is no call-site fix.**
+
+Rated high rather than medium because `Wizard.tsx:128` defaults `allowBackNavigation = true`, so a
+bare `<Wizard steps={…}/>` — the library's own flagship consumer — ships unnamed back-navigation
+buttons. **Fix:** build the button's name from the step `title` plus a status word.

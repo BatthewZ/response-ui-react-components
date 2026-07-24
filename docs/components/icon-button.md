@@ -185,9 +185,10 @@ that the string is non-empty; see [Gotchas](#gotchas) for both holes.
 - **Hide your icon.** IconButton renders `children` untouched and adds no `aria-hidden`. Icon
   sets that expose a `<title>` or `role="img"` will be announced on top of your label, so mark
   the glyph `aria-hidden="true"` — as `CopyButton`, `Carousel`, and `Repeater` do inside this
-  package. (`Toast` and `Pagination` don't, and get away with it only because neither icon
-  exposes a name of its own — Pagination's bare `lucide-react` `<svg>` and Toast's hand-rolled
-  one.)
+  package. (`Toast` and `Pagination` don't need to: `lucide-react` sets `aria-hidden="true"`
+  itself on any icon rendered with no children and no a11y prop, and Toast's hand-rolled `<svg>`
+  exposes no name either. Give a lucide icon an `aria-label` or a `<title>` child and it stops
+  hiding itself — that is exactly when you need to mark it up yourself.)
 - **Target size.** 32px below the 40rem breakpoint clears WCAG 2.5.8 (24×24, AA) but not 2.5.5
   (44×44, AAA). For touch-first surfaces, raise the padding rather than the icon size, so the
   glyph stays optically consistent with the rest of the toolbar.
