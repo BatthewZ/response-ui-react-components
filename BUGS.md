@@ -18,8 +18,19 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   the rendered element's full prop set (via `ComponentPropsWithRef<T>`) but never spread
   `...rest` onto the element — so `id`, `data-*`, `aria-*`, handlers are dropped at
   runtime while the types claim they work. Check every `as`-polymorphic component.
-- **Status by colour alone (WCAG 1.4.1).** `Alert` and `Meter` encode severity purely in
-  tint — no icon/label/ARIA. Check Badge, StatCard.Trend, any status surface.
+- **Status by colour alone (WCAG 1.4.1).** `Alert`, `Meter` and now **`Badge` (confirmed,
+  #44)** encode severity purely in tint — no icon/label/ARIA. Three for three on the status
+  surfaces audited so far. Check StatCard.Trend and any remaining status surface.
+- **Continuous motion with no `prefers-reduced-motion` guard.** ~25 component CSS files ship
+  a reduced-motion block and `src/hooks/use-reduced-motion.ts` exists, but utility-driven
+  motion bypasses all of it: `Spinner`'s `animate-spin` (#38) is unguarded, as is
+  `IconButton`'s `active:scale-95` (#43). The gap is specifically **Tailwind animation/
+  transform utilities**, not the hand-written CSS. Sweep for `animate-`, `scale-`,
+  `transition` utilities with no `motion-reduce:` sibling.
+- **`<button>` with no explicit `type`.** A bare `<button>` is `type="submit"`. `IconButton`
+  sets no default (#41) and `Toast`, `Pagination` and `Carousel` all call it without one, so
+  each submits an enclosing form. `CopyButton`, `Repeater`, `DatePicker` and Pagination's own
+  page-number button get it right — the library is split against itself. Sweep every `<button>`.
 - **Theme/contrast token gaps.** `Card` (no paired text colour; wrong surface layer), and a
   systemic focus-ring bug: **`ring-offset-color` is set nowhere in the library**, so every
   `ring-offset-2` paints Tailwind's default white. Confirmed by grep — 5 affected components
@@ -70,6 +81,19 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 35 | unaudited · spot-checked | **library-wide** | 5 files, see detail | med | `ring-offset-2` with `ring-offset-color` set **nowhere** → white focus halo on dark themes. Affects Button, IconButton, Checkbox, AvatarUpload, ErrorBoundary (supersedes #25) |
 | 36 | unaudited · spot-checked | ErrorBoundary | [ErrorBoundary.tsx:29](src/components/ui/ErrorBoundary.tsx#L29) | low | Hand-rolled `<button>` re-implements Button's styling instead of composing `Button` |
 | 37 | unaudited · spot-checked | ErrorBoundary | [ErrorBoundary.tsx:25](src/components/ui/ErrorBoundary.tsx#L25) | low | No `fallback` prop; the fixed `min-h-screen` fallback makes it unusable for scoped/inline boundaries |
+| 38 | unaudited · corroborated | Spinner | [Spinner.tsx:7](src/components/ui/Spinner.tsx#L7) | med | `animate-spin` has no `prefers-reduced-motion` guard — the library's only unguarded continuous animation |
+| 39 | unaudited · corroborated | Spinner | [Spinner.tsx:30](src/components/ui/Spinner.tsx#L30) | med | Visually hidden "Loading" is hard-coded English and unreachable — `children` is omitted from the prop type |
+| 40 | unaudited | Spinner | [Spinner.tsx:26](src/components/ui/Spinner.tsx#L26) | low | Every instance is its own already-full `role="status"` live region; N spinners = N live regions |
+| 41 | unaudited · corroborated | IconButton | [IconButton.tsx:16](src/components/ui/IconButton.tsx#L16) | med | No default `type="button"` → renders as `submit`; Toast/Pagination/Carousel call sites submit their enclosing form |
+| 42 | unaudited · spot-checked | IconButton | [IconButton.tsx:6](src/components/ui/IconButton.tsx#L6) | low | Required `aria-label: string` accepts `""`, and `aria-labelledby` cannot substitute for it |
+| 43 | unaudited | IconButton | [IconButton.tsx:10](src/components/ui/IconButton.tsx#L10) | low | `active:scale-95` has no reduced-motion guard (WCAG 2.3.3) |
+| 44 | unaudited · corroborated | Badge | [Badge.tsx:9](src/components/ui/Badge.tsx#L9) | med | Variant meaning carried by tint alone — no icon, label, role or `aria-*` (WCAG 1.4.1) |
+| 45 | unaudited | Badge | [Badge.tsx:7](src/components/ui/Badge.tsx#L7) | low | `text-body-3` line-height with no leading reset inflates every chip (~2.25rem on the default scale) |
+| 46 | unaudited · spot-checked | ToastContext | [ToastContext.tsx:136](src/components/ui/ToastContext.tsx#L136) | **high** | `createPortal(…, document.body)` with no `typeof document` guard → `ToastProvider` throws on any server render |
+| 47 | unaudited · corroborated | Portal | [Portal.tsx:10](src/components/ui/Portal.tsx#L10) | med | SSR guard stops the server throw but guarantees a hydration mismatch for any unconditional Portal |
+| 48 | unaudited | Kbd | [Kbd.tsx:6](src/components/ui/Kbd.tsx#L6) | low | Keycap never reads `--DEFAULT-MONO-FONT`; falls through to Tailwind Preflight's default mono stack |
+| 49 | unaudited | Kbd | [Kbd.tsx:6](src/components/ui/Kbd.tsx#L6) | low | Package's only `font-medium` (off-contract weight); no leading reset, so cap height is purely `--BodyText-3-line-height` |
+| 50 | unaudited · spot-checked | TagInput | [TagInput.tsx:175](src/components/form/TagInput.tsx#L175) | low | Duplicates Badge's full class string verbatim — a second source of truth for chip styling |
 
 **Clean (no findings):** Button, Tabs, Divider, Grid, Center, Container, Row, Spacer,
 Textarea, Label, FieldError, ProgressRing. (Not proof of correctness — just nothing surfaced.)
@@ -212,3 +236,73 @@ directive, so a React Server Component importing it directly would fail. **Cavea
 `verify-directives` passes on it — which means either the hook is context-only (tolerated) or
 the directives guard doesn't model context-only hooks. Audit both the component *and* the
 guard's coverage.
+
+### 46 · ToastContext — `ToastProvider` crashes any server render (high)
+
+`ToastProvider` calls `createPortal(…, document.body)` unconditionally in its render body with
+no `typeof document === "undefined"` guard — unlike `Portal.tsx:10`, which has one.
+`"use client"` does **not** prevent SSR; it marks a module as client-*capable*, and the server
+still renders it to produce initial HTML. **Failure scenario:** a Next.js App Router app wraps
+its tree in `<ToastProvider>` (the documented way to use toasts) → every page throws at render.
+Confirmed by SSR-rendering it directly: `ToastProvider SSR THREW: ReferenceError: document is
+not defined`. Note React's own server renderer *also* throws on any portal it reaches
+("Portals are not currently supported by the server renderer"), so both guards are needed.
+**Fix:** mirror `Portal.tsx` — return `null` when `document` is undefined; better, render the
+portal behind a mounted-in-effect flag so hydration is clean too (see #47).
+
+### 47 · Portal — the SSR guard trades a throw for a hydration mismatch (med)
+
+`typeof document === "undefined"` correctly stops the server-renderer throw, but `document`
+**is** defined during hydration, so the first client pass contains the portal while the server
+emitted nothing. React descends into the portal fiber during the hydration walk, fails to match,
+and **regenerates the whole hydration root**, discarding the server HTML.
+**Failure scenario:** SSR a page containing an unconditional `<Portal>` → dev logs "Hydration
+failed because the server rendered HTML didn't match the client"; production throws minified
+React error **#418**. Reproduced independently twice against react-dom 19.2.5, in both dev and
+production builds, from byte-identical SSR HTML, and in all five tree positions (between
+siblings, first/last/only child, root). Controls confirm the same tree without the portal, and
+one rendering `{null}` in its place, both hydrate clean with the server node reused.
+Portals gated behind state that starts closed (`AppShell`) hydrate cleanly.
+**Fix:** render behind a mounted flag set in an effect rather than a `typeof document` check —
+verified to hydrate clean. `portal.md` documents the current behaviour honestly in the meantime.
+
+### 38 · Spinner — continuous rotation ignores `prefers-reduced-motion` (med)
+
+`animate-spin` on `Spinner.tsx:7` is unconditional; there is no `Spinner.css`, and the
+`prefers-reduced-motion` blocks in `@batthewz/response-ui-css` are all class-scoped
+(`.fade-*`, `.scale-*`, `.morph-*`, `.stagger-item`, `.scroll-reveal-hidden`,
+`::view-transition-*`) — none touch `animate-spin`. **Failure scenario:** a user with OS
+"Reduce motion" enabled opens any loading state → a ring rotates at `spin 1s linear infinite`
+for as long as the wait lasts, including `RequireAuth`'s full-page gate. **Fix:**
+`motion-reduce:animate-none` compiles and wins the cascade (verified), but leaves a static
+broken ring — a `motion-reduce:animate-pulse` or an opacity pulse is the better fallback.
+
+### 39 · Spinner — the accessible text is hard-coded English and unreachable (med)
+
+The `sr-only` span renders the literal `"Loading"`, and `SpinnerProps` omits `children`.
+**Failure scenario:** a French app has no supported way to change it —
+`<Spinner>Chargement…</Spinner>` fails to compile (`Omit<…, "children">`), and
+`<Spinner aria-label="Chargement" />` sets only the accessible *name* while the live region's
+text content stays "Loading", so the user gets two competing strings. **Fix:** add
+`label?: string` defaulting to `"Loading"` and render it in the `sr-only` span.
+
+### 41 · IconButton — no default `type`, so it submits forms (med)
+
+`<button>` defaults to `type="submit"`; `IconButton` sets no default and passes `type` through
+only if the caller supplies it. **Failure scenario:** `Pagination` inside a filter `<form>` —
+entirely ordinary — and clicking "next page" submits the form and navigates instead of paging.
+Confirmed call sites with no `type`: `Toast.tsx:56`, `Carousel.tsx:149`, `Carousel.tsx:165`,
+`Pagination.tsx:116`, `:129`, `:178`, `:191`. The inconsistency is visible *inside* Pagination,
+whose plain `<button>` page-number control at `:153` **does** set `type="button"`.
+**Fix:** default `type = "button"` in the destructure, still overridable via props.
+
+### 44 · Badge — status carried by colour alone (med)
+
+`Badge`'s five variants differ only in `bg-status-*-bg` / `text-status-*`; no icon, no label,
+no `role`, no `aria-*`. **Failure scenario:** a CI summary renders
+`<Badge variant="success">12</Badge>` beside `<Badge variant="error">3</Badge>` — a screen
+reader announces only "12" and "3", and in greyscale (or to a red/green-deficient viewer) both
+paint as near-identical light chips, so the pass/fail distinction is lost entirely. **Fix:**
+emit an `sr-only` variant word (or an `aria-hidden` icon plus `sr-only` text) inside the span
+for every non-`default` variant. `badge.md` documents the workaround — put the meaning in the
+label — but the component should not require it.

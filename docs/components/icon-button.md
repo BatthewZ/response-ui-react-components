@@ -1,0 +1,209 @@
+# IconButton
+
+A transparent-backed `<button>` sized for a single glyph — toolbars, dismiss affordances,
+row actions. Unlike a bare `<button>`, it **cannot compile without an `aria-label`** — though
+an empty one still satisfies the type, so the guarantee is structural rather than semantic.
+
+<!-- example:Minimal -->
+```tsx
+<IconButton type="button" aria-label="Dismiss notification" onClick={dismiss}>
+  <X size={16} aria-hidden="true" />
+</IconButton>
+```
+<!-- /example -->
+
+| Prop         | Type                                | Default |
+| ------------ | ----------------------------------- | ------- |
+| `aria-label` | `string` — **required**             | —       |
+| `children`   | `ReactNode` (your icon)             | —       |
+| `className`  | `string`                            | —       |
+| `ref`        | `Ref<HTMLButtonElement>`            | —       |
+| …rest        | every `<button>` prop               | —       |
+
+## What it owns, and what it forwards
+
+IconButton destructures exactly one prop — `className` — and spreads everything else onto
+the element. So `type`, `disabled`, `onClick`, `form`, `name`, `value`, `data-*`, and any
+`aria-*` land on the real `<button>` untouched, and `ref` points at the `HTMLButtonElement`
+itself. The only thing it does with `className` is *merge* it: your utilities run through
+`tailwind-merge`, so a padding or colour utility replaces the built-in one rather than
+fighting it in the cascade.
+
+**It is not a [Button](button.md) wrapper.** IconButton imports nothing from Button; it
+renders its own `<button>` with its own class string. There is no `variant`, no `size`, and
+no `as` — `<IconButton variant="ghost">` and `<IconButton as="a">` are both type errors.
+When you need a variant, a label beside the icon, or an anchor, reach for
+[Button](button.md) with an icon child instead.
+
+## A row of actions
+
+The typical use: repeated, low-emphasis actions where a text label would crowd the row.
+Each button still carries its own name, because the icons cannot supply one.
+
+<!-- example:Toolbar -->
+```tsx
+<div className="flex items-center gap-r6">
+  <IconButton type="button" aria-label="Edit article">
+    <Pencil size={16} aria-hidden="true" />
+  </IconButton>
+  <IconButton type="button" aria-label="Share article">
+    <Share2 size={16} aria-hidden="true" />
+  </IconButton>
+  <IconButton type="button" aria-label="Delete article">
+    <Trash2 size={16} aria-hidden="true" />
+  </IconButton>
+  <IconButton type="button" aria-label="More actions">
+    <MoreHorizontal size={16} aria-hidden="true" />
+  </IconButton>
+</div>
+```
+<!-- /example -->
+
+## Inside a form
+
+IconButton sets **no default `type`**, so the HTML default applies and a button inside a
+`<form>` submits it. Be explicit on both the action you want and the ones you don't:
+
+<!-- example:InsideAForm -->
+```tsx
+<form onSubmit={runSearch}>
+  <Input name="q" aria-label="Search articles" placeholder="Search articles" />
+  <IconButton type="button" aria-label="Clear search" onClick={clearQuery}>
+    <X size={16} aria-hidden="true" />
+  </IconButton>
+  <IconButton type="submit" aria-label="Search">
+    <Search size={16} aria-hidden="true" />
+  </IconButton>
+</form>
+```
+<!-- /example -->
+
+## Disabled
+
+<!-- example:Disabled -->
+```tsx
+<IconButton type="button" aria-label="Move item up" disabled>
+  <ChevronUp size={16} aria-hidden="true" />
+</IconButton>
+```
+<!-- /example -->
+
+`disabled` is the plain native attribute — the component adds no logic around it. It blocks
+the click, drops the button to 50% opacity, and switches the cursor to `not-allowed`.
+
+## Size and colour
+
+There is no `size` prop; padding is the whole sizing story, and the padding utility you pass
+wins the merge:
+
+<!-- example:BiggerTarget -->
+```tsx
+<IconButton type="button" aria-label="Play episode" className="p-r3">
+  <Play size={24} aria-hidden="true" />
+</IconButton>
+```
+<!-- /example -->
+
+The glyph is drawn in `currentColor` by icon sets like `lucide-react`, and the button inks
+itself `text-fg-secondary`, so one `text-*` utility retints the icon and the button together:
+
+<!-- example:Retinted -->
+```tsx
+<IconButton type="button" aria-label="Remove from cart" className="text-status-error">
+  <Trash2 size={16} aria-hidden="true" />
+</IconButton>
+```
+<!-- /example -->
+
+## Theme tokens
+
+IconButton is styled entirely with Tailwind utilities — there is no `IconButton.css`. Every
+colour, radius, spacing, and timing value below resolves to a contract variable, so changing
+the theme retints and reflows it with no rebuild.
+
+| Where                           | Utility                           | Override             |
+| ------------------------------- | --------------------------------- | -------------------- |
+| Glyph ink (and `currentColor`)  | `text-fg-secondary`               | `--C-TEXT-SECONDARY` |
+| Hover background                | `hover:bg-surface-2`              | `--C-SURFACE-2`      |
+| Pressed background              | `active:bg-surface-3`             | `--C-SURFACE-3`      |
+| Focus ring colour               | `focus-visible:ring-border-focus` | `--C-BORDER-FOCUS`   |
+| Corner radius                   | `rounded-md`                      | `--RADIUS-MD`        |
+| Padding — the entire hit area   | `p-r5`                            | `--R-SIZE-5`         |
+| Transition                      | `duration-fast`                   | `--DURATION-FAST`    |
+
+**No background at rest.** Only hover and press paint; at rest the button is transparent and
+inks onto whichever surface it was dropped on. That is what lets it sit inside a
+[Card](card.md), a `Toast`, or a table row without a wrapper — but it also means the resting
+contrast is between `--C-TEXT-SECONDARY` and *your* background, not one the component controls.
+
+**The padding is responsive.** `--R-SIZE-5` steps `0.5rem → 0.75rem` at the 40rem breakpoint,
+so the same button is physically larger on desktop with no breakpoint utilities from you. It
+is also the only thing setting the button's size — see [Gotchas](#gotchas).
+
+**Six values are literals, not contract variables.** The press scale (`active:scale-95`), the
+disabled dimming (`disabled:opacity-50`), the focus ring's 2px width, its 2px *offset* width
+(`focus-visible:ring-offset-2`, a separate literal), and its transparent rest colour are all
+hard-coded — reasonable, since none of them are values a theme needs to own. The sixth is the
+ring's offset *colour*, and that one is a defect: see [Gotchas](#gotchas).
+
+## Gotchas
+
+- **No default `type`.** A `<button>` with no `type` is `submit`. Drop an IconButton into a
+  form for a non-submitting job — clear a field, remove a row, dismiss a banner — and clicking
+  it submits the form. Pass `type="button"` every time; the type system will not remind you.
+- **`aria-label=""` compiles.** The type requires the *prop*, not a meaningful *value*. An
+  empty string, or a variable typed `string` that happens to be empty at runtime, passes the
+  compiler and leaves the button with no accessible name. The guarantee is structural, not
+  semantic.
+- **`aria-labelledby` is not an alternative.** `<IconButton aria-labelledby="filters-heading">`
+  does not compile — `aria-label` is still demanded. And if you satisfy the type and pass both,
+  `aria-labelledby` wins the accessible-name computation, so the `aria-label` you were forced
+  to write is the one string nobody hears. Keep them in sync or don't use both.
+- **One size only.** The component sets no `min-width` or `min-height`, so the hit area is
+  purely your icon's box plus `p-r5`. A 16px icon yields a 32px target below the 40rem
+  breakpoint and 40px above it. Size the target deliberately for touch — see
+  [Accessibility](#accessibility).
+- **The focus ring sits on a white halo.** `focus-visible:ring-offset-2` is applied with no
+  `ring-offset-color`, so Tailwind's default `#fff` is used instead of a surface token. On a
+  dark theme the focused button gets a white gap between it and the ring. This is not an
+  IconButton quirk — [Button](button.md), [Checkbox](checkbox.md), `ErrorBoundary` and
+  `AvatarUpload` all carry the same unset offset colour.
+- **The press animation ignores `prefers-reduced-motion`.** `active:scale-95` shrinks the
+  button on pointer-down unconditionally; there is no `motion-reduce` guard.
+- **Server-renderable.** No `"use client"` directive and no hooks, so it drops straight into
+  an RSC tree — including inside a server-rendered form.
+
+## Accessibility
+
+**The accessible name is enforced by the type, and only by the type.** `IconButtonProps` is
+`{ "aria-label": string }` intersected with `ComponentPropsWithRef<"button">`. A property is
+optional in an intersection only when it is optional in *every* member, so the optional
+`aria-label` inherited from React's `AriaAttributes` is narrowed to required — omitting it,
+or passing `undefined`, is a compile error. Nothing checks it at runtime, and nothing checks
+that the string is non-empty; see [Gotchas](#gotchas) for both holes.
+
+- **Hide your icon.** IconButton renders `children` untouched and adds no `aria-hidden`. Icon
+  sets that expose a `<title>` or `role="img"` will be announced on top of your label, so mark
+  the glyph `aria-hidden="true"` — as `CopyButton`, `Carousel`, and `Repeater` do inside this
+  package. (`Toast` and `Pagination` don't, and get away with it only because neither icon
+  exposes a name of its own — Pagination's bare `lucide-react` `<svg>` and Toast's hand-rolled
+  one.)
+- **Target size.** 32px below the 40rem breakpoint clears WCAG 2.5.8 (24×24, AA) but not 2.5.5
+  (44×44, AAA). For touch-first surfaces, raise the padding rather than the icon size, so the
+  glyph stays optically consistent with the rest of the toolbar.
+- **Focus behaves like [Button](button.md#accessibility)** — `focus-visible` only, and a
+  Tailwind ring is a `box-shadow`, so focusing never reflows the layout no matter what the
+  ring does. `ring-transparent` at rest is a colour placeholder, not reserved space: on focus
+  the ring's spread grows from 2px to 4px and a further 2px offset shadow paints beneath it.
+  The unset offset colour is shared with Button, not an IconButton exception.
+- **`disabled` removes the control from the tab order,** as the native attribute always does.
+  A disabled icon-only button is therefore unreachable by Tab, though it stays in the
+  accessibility tree — a screen reader's browse cursor still finds it and reads the name along
+  with the disabled state. Fine for a transient state, worse when the reason matters. If the
+  user needs to discover *why* it is unavailable, keep it enabled with `aria-disabled` and a
+  no-op handler.
+
+## Related
+
+[Button](button.md) · `CopyButton` · `Toast` · `Pagination` ·
+[Extending components](../extending.md) · [Theme contract](../theme-contract.md)

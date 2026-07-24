@@ -11,8 +11,13 @@ module that `bun run typecheck` compiles, so nothing here can drift from the sou
 | Component | Description |
 | --------- | ----------- |
 | [Alert](alert.md) | A tinted, bordered banner for a single status message — `info`, `success`, `warning`, or `error`. It renders one `role="alert"` live region and re-tints from your theme's status tokens, so a custom theme restyles every alert for free. |
+| [Badge](badge.md) | A small inline chip for status and metadata — five theme-tinted variants on a plain `<span>`, so it drops into a heading, a table cell, or a list row without a wrapper and re-tints from your theme's status tokens for free. |
 | [Button](button.md) | The clickable action primitive. Six variants, three sizes, and it re-tints with your theme without you touching it. |
 | [Card](card.md) | The container primitive. It drops content onto a themed surface with rounded corners, a shadow, and responsive padding — two props to dial elevation and inset, and it re-tints with your theme untouched. |
+| [IconButton](icon-button.md) | A transparent-backed `<button>` sized for a single glyph — toolbars, dismiss affordances, row actions. Unlike a bare `<button>`, it **cannot compile without an `aria-label`** — though an empty one still satisfies the type, so the guarantee is structural rather than semantic. |
+| [Kbd](kbd.md) | A keycap — the real `<kbd>` element, pre-styled from theme tokens — for naming a key in prose or pinning a shortcut to the right edge of a menu row. |
+| [Portal](portal.md) | Renders its children somewhere else in the DOM — the end of `<body>` by default — so an overlay escapes an ancestor's `overflow: hidden`, `transform`, or `z-index` stacking context while staying exactly where it is in your React tree. |
+| [Spinner](spinner.md) | The indeterminate busy indicator: a rotating ring for a wait you can't put a number on. It ships with `role="status"` and a visually hidden "Loading" text node, takes its colour from the text around it, and comes in three fixed sizes. |
 | [StatCard](stat-card.md) | A dashboard metric tile: a big number with a label, an optional trend badge, an icon chip, and an inline sparkline. Every part is theme-tinted and the value can count up when it scrolls into view. |
 | [Tabs](tabs.md) | Animated tab bar with roving focus and an indicator that slides between tabs. Three looks — `underline`, `pill`, `enclosed`. |
 

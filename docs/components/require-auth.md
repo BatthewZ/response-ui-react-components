@@ -94,14 +94,16 @@ two other components it composes: a `Spinner` for the animation and a `Center` f
 full-height centering. Override the auth-screen look on *those* components (or by passing
 your own `loadingFallback`), not here.
 
-| Where                        | Comes from                                              |
-| ---------------------------- | ------------------------------------------------------- |
-| Default spinner colour & size| `Spinner` (rendered at `size="lg"`) — owns its tokens   |
-| Default spinner centering    | `Center` + a `min-h-screen` full-height region          |
-| Every other branch           | Whatever you pass as `children` / fallbacks — your tokens|
+| Where                         | Comes from                                                                          |
+| ----------------------------- | ----------------------------------------------------------------------------------- |
+| Default spinner colour & size | `Spinner` (at `size="lg"`) — fixed 2rem; colour is inherited `currentColor`, not a token |
+| Default spinner centering     | `Center` + a `min-h-screen` full-height region                                       |
+| Every other branch            | Whatever you pass as `children` / fallbacks — your tokens                            |
 
 Because the gate delegates all styling, there is no `--C-*` variable to override *on
-RequireAuth itself*; a theme swap re-tints it only through the components it renders.
+RequireAuth itself* — and the default loading branch has none of its own either, since the
+spinner's ring is plain `currentColor`. A theme swap re-tints that branch only through the
+inherited `color` it lands in.
 
 ## Gotchas
 
