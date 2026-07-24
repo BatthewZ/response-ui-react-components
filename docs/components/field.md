@@ -132,7 +132,9 @@ it when it appears.
 Controls read the field context to pick up their state: eleven of the package's own controls
 — Input, Textarea, Select, Combobox and Switch among them — take `aria-invalid` and
 `aria-describedby` from the field automatically, and DatePicker, DateRangePicker, NumberInput
-and SearchInput inherit both through the Input they render. Two controls do not.
+and SearchInput inherit both through the Input they render. `RangeSlider` is the one partial:
+it reads the same hook but forwards only `aria-invalid`, onto its wrapper, and discards the
+`aria-describedby` — so nothing there points at the message. Two controls do not.
 [Radio](radio.md) and [Checkbox](checkbox.md) read no context and take no `error` prop, so
 inside an errored Field they are neither marked invalid nor linked to the message. The
 Checkbox in [Custom layout](#custom-layout) above is there for the layout; give that Field an

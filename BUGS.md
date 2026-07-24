@@ -87,11 +87,22 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   all four themes (#241), and since that fill equals the base page surface the border is often
   the *only* thing drawing the control; `OTPInput`'s six empty unlabelled boxes are the worst
   case. The focus indicator that replaces the UA outline is under 3:1 in half the themes (#242,
-  `events` 2.72:1 / `grimdark` 2.96:1) with `focus:outline-none` removing the fallback. Both are
-  one class string shared by Input, Textarea, Select, NumberInput, SearchInput and OTPInput, so
-  they are **one fix, not six** — and unlike the earlier rows these are not exotic composites but
-  the default appearance of every form on every page. Every token pair anyone has put a number on
-  so far has failed its floor.
+  `events` 2.72:1 / `grimdark` 2.96:1) with `focus:outline-none` removing the fallback. Unlike the
+  earlier rows these are not exotic composites but the default appearance of every form on every
+  page. Every token pair anyone has put a number on so far has failed its floor.
+  **Batch J corrects the scope of that fix.** #241/#242 said the recipe was "one class string
+  shared by Input, Textarea, Select, NumberInput, SearchInput and OTPInput, so **one fix, not
+  six**." That is wrong: `Combobox.css` (#284), `ColorPicker.css` (#293) and `MultiSelect.css`
+  hand-write the *same* recipe with the *same* tokens in their own stylesheets, so retuning the
+  shared Tailwind string reaches none of them. The sweep has to cover per-component CSS as well —
+  grep for `--C-BORDER-STRONG` and `--C-BORDER-FOCUS` across `src/components/**/*.css`, not just
+  the shared class string.
+  **Batch J also widens the surface-ramp finding (#206) from decoration to keyboard navigation.**
+  `--C-SURFACE-1` on `--C-SURFACE-0` is the *entire* active-option indicator in both `Combobox`
+  (#275, high) and `MultiSelect` (#264), and both run `useListNavigation({ virtual: true })`, so
+  no option ever takes DOM focus and there is no focus ring to fall back on. An invisible ramp
+  step stops being cosmetic the moment it is the only thing telling a keyboard user where they
+  are. Check every floating list that marks its active row with an adjacent surface step.
 - **Continuous motion with no `prefers-reduced-motion` guard.** ~25 component CSS files ship
   a reduced-motion block and `src/hooks/use-reduced-motion.ts` exists, but utility-driven
   motion bypasses all of it: `Spinner`'s `animate-spin` (#38) is unguarded, as is
@@ -111,6 +122,11 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   `aria-invalid` and no `aria-describedby`. Four more (`DatePicker`, `DateRangePicker`,
   `NumberInput`, `SearchInput`) are wired only transitively, through the `Input` they render.
   `field.md` and `radio.md` both claimed the wiring was automatic "for the rest"; both are fixed.
+  **Batch J found a twelfth state: wired-but-partial.** `RangeSlider` (#296) *does* call the hook
+  and then reads only `aria-invalid` off it, putting that on its wrapper and throwing the
+  `aria-describedby` away — so it counts in the eleven while delivering half of what they deliver.
+  `field.md` is corrected. Reading the hook is not the same as forwarding it; check what each of
+  the eleven actually spreads, not just which ones call it.
 - **Focus indicators removed and not replaced.** `Radio` (#73) is the severe case — a measured
   **0-pixel** change on keyboard focus — but `Switch` and `Slider` (#84) also lose their *error*
   outline on focus because `:focus-visible` and `[aria-invalid]` are written at equal specificity
@@ -395,6 +411,53 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 260 | unaudited · corroborated | Repeater | [Repeater.tsx:33](src/components/form/Repeater.tsx#L33) | low | `name: string` and `defaultItem: () => unknown` are untyped against the form's values, so a mistyped path compiles and silently writes a second array into the submitted values |
 | 261 | unaudited · spot-checked | Repeater | [Repeater.tsx:56](src/components/form/Repeater.tsx#L56) | low | The source JSDoc `@example` wires `Field`/`FieldError` with no surrounding `FormProvider`, so the `FieldError` it advertises can never render |
 | 262 | unaudited · corroborated | Repeater | [Repeater.tsx:84](src/components/form/Repeater.tsx#L84) | low | Rows are plain `<div>`s with no list/group semantics and no live region, so adding or removing a row is never announced |
+| 263 | unaudited · corroborated | MultiSelect | [MultiSelect.tsx:194](src/components/form/MultiSelect.tsx#L194) | med | The rest-spread lands on the outer wrapper `<div>`, so `id` and `aria-labelledby` never reach the combobox input and `aria-label` is the only naming path |
+| 264 | unaudited · corroborated | MultiSelect | [MultiSelect.css:163](src/components/form/MultiSelect.css#L163) | med | The keyboard-highlighted option is marked only by a `--C-SURFACE-1` background — **1.05 / 1.03 / 1.02 / 1.07:1** against the listbox fill (instance of #206/#51) |
+| 265 | unaudited · corroborated | MultiSelect | [MultiSelect.tsx:209](src/components/form/MultiSelect.tsx#L209) | med | The listbox can never be closed from the control or its chevron, and nothing dismisses it on focus-out |
+| 266 | unaudited · corroborated | MultiSelect | [MultiSelect.tsx:171](src/components/form/MultiSelect.tsx#L171) | med | `Enter` with the list open but no option highlighted falls through and submits the surrounding form |
+| 267 | unaudited · corroborated | MultiSelect | [MultiSelect.tsx:225](src/components/form/MultiSelect.tsx#L225) | med | Clicking a chip's remove button drops focus to `<body>` — the button unmounts itself and nothing restores focus (pattern of #257) |
+| 268 | unaudited · corroborated | MultiSelect | [MultiSelect.css:74](src/components/form/MultiSelect.css#L74) | low | The chip's remove glyph inks `--C-TEXT-MUTED` on `--C-SURFACE-2` — 2.31 / 2.27 / 1.94 / 2.23:1, under the 3:1 graphical floor (same defect as #251, different component) |
+| 269 | unaudited · corroborated | MultiSelect | [MultiSelect.css:112](src/components/form/MultiSelect.css#L112) | low | Placeholder, the "No options" row and disabled option labels all ink `--C-TEXT-MUTED` on `--C-SURFACE-0` — 2.54 / 2.45 / 2.10 / 2.59:1, below AA (instance of #51) |
+| 270 | unaudited · corroborated | MultiSelect | [MultiSelect.tsx:240](src/components/form/MultiSelect.tsx#L240) | low | `aria-controls` always names the listbox id, but the listbox only exists while open, so a closed combobox points at nothing (measured `getElementById` → null) |
+| 271 | unaudited · corroborated | MultiSelect | [MultiSelect.tsx:241](src/components/form/MultiSelect.tsx#L241) | low | With `searchable={false}` the input is `readOnly` and filters nothing, yet still advertises `aria-autocomplete="list"` |
+| 272 | unaudited · corroborated | MultiSelect | [MultiSelect.tsx:217](src/components/form/MultiSelect.tsx#L217) | low | Chips are keyed by value and a controlled `value` is never de-duplicated, so `value={["react","react"]}` renders two chips and logs React's duplicate-key error (same as #254) |
+| 273 | unaudited · corroborated | MultiSelect | [MultiSelect.css:59](src/components/form/MultiSelect.css#L59) | low | Chip label and selected-option weights are a literal `font-weight: 600` rather than `--Semibold-Weight` (500 below 40rem, 600 above), so they are a step heavier than the rest of the system on mobile |
+| 274 | unaudited · spot-checked | MultiSelect | [MultiSelect.tsx:197](src/components/form/MultiSelect.tsx#L197) | low | Stale source comment: it claims the whole control is the anchor "so the menu spans its width", but `useFloating` adds only `offset`/`flip`/`shift` and `.multiselect-content` sets `min-width` alone — the panel is content-sized |
+| 275 | unaudited · corroborated | Combobox | [Combobox.css:82](src/components/form/Combobox.css#L82) | **high** | The active-option cue is `--C-SURFACE-1` on `--C-SURFACE-0` (**1.02–1.07:1**, all four themes) and virtual focus means no option ever takes a focus ring — keyboard navigation has no perceptible indicator at all |
+| 276 | unaudited · corroborated | Combobox | [Combobox.tsx:296](src/components/form/Combobox.tsx#L296) | med | The chevron toggle can never close the popup; every click while open emits a spurious `onOpenChange(false)` then `onOpenChange(true)` |
+| 277 | unaudited · corroborated | Combobox | [Combobox.tsx:328](src/components/form/Combobox.tsx#L328) | med | `loading` swaps children for a Spinner but the item count is taken before the swap, so `aria-activedescendant` points at an option id that is not in the document |
+| 278 | unaudited · corroborated | Combobox | [Combobox.tsx:408](src/components/form/Combobox.tsx#L408) | med | Selecting an option with the mouse leaves DOM focus on `<body>` instead of returning it to the input (pattern of #257) |
+| 279 | unaudited · corroborated | Combobox | [Combobox.tsx:146](src/components/form/Combobox.tsx#L146) | med | No focus-out dismissal: tabbing away leaves the portalled listbox mounted with `aria-expanded="true"` on an unfocused combobox |
+| 280 | unaudited · corroborated | Combobox | [Combobox.tsx:265](src/components/form/Combobox.tsx#L265) | low | `aria-controls` is set unconditionally but `Content` returns `null` while closed, so the IDREF dangles whenever the popup is shut |
+| 281 | unaudited · corroborated | Combobox | [Combobox.tsx:201](src/components/form/Combobox.tsx#L201) | low | The input label is `node.textContent` with no `label` escape hatch, so a multi-node option writes concatenated text into the field (measured `"Ada LovelaceAnalytical Engine"`) |
+| 282 | unaudited · corroborated | Combobox | [Combobox.tsx:406](src/components/form/Combobox.tsx#L406) | low | `Combobox.Item` spreads `getItemProps` (caller props last) after its generated `id`, so a consumer `id` silently replaces the option id `aria-activedescendant` points at |
+| 283 | unaudited · corroborated | Combobox | [Combobox.tsx:294](src/components/form/Combobox.tsx#L294) | low | The chevron carries a hard-coded English `"Open"`/`"Close"` `aria-label` callers cannot reach, and no `aria-expanded`/`aria-controls` of its own (pattern of #39/#64) |
+| 284 | unaudited · corroborated | Combobox | [Combobox.css:15](src/components/form/Combobox.css#L15) | low | `Combobox.css` re-implements the shared form-control border/focus recipe by hand (`--C-BORDER-STRONG` 1.41–1.79:1, `--C-BORDER-FOCUS` 2.72/2.96:1, `outline: none`), so the single fix for #241/#242 will not reach it |
+| 285 | unaudited · corroborated | ColorPicker | [ColorPicker.tsx:32](src/components/form/ColorPicker.tsx#L32) | **high** | `<ColorPicker {...form.field<string>("name")} />` — the binding the library advertises — typechecks clean and renders a permanently inert control, because the closed prop type honours `value`/`disabled` and drops everything else |
+| 286 | unaudited · corroborated | ColorPicker | [ColorPicker.tsx:65](src/components/form/ColorPicker.tsx#L65) | med | The trigger's hard-coded `aria-label` replaces the visible hex, so the current colour is never in the accessible name and is unreadable to AT |
+| 287 | unaudited · corroborated | ColorPicker | [ColorPicker.tsx:220](src/components/form/ColorPicker.tsx#L220) | med | The saturation/brightness square is `role="slider"` with no `aria-valuenow`, `aria-valuemin` or `aria-valuemax`, and models two axes as one slider |
+| 288 | unaudited · corroborated | ColorPicker | [ColorPicker.tsx:284](src/components/form/ColorPicker.tsx#L284) | med | A preset the hex parser rejects still renders as a clickable swatch and commits nothing (measured: zero `onValueChange` calls for `"rebeccapurple"`) |
+| 289 | unaudited · corroborated | ColorPicker | [ColorPicker.tsx:103](src/components/form/ColorPicker.tsx#L103) | med | A controlled picker whose parent ignores a change leaves the panel permanently out of sync with the trigger — the re-seed effect is keyed on a `hex` that never changed |
+| 290 | unaudited · corroborated | ColorPicker | [ColorPicker.tsx:158](src/components/form/ColorPicker.tsx#L158) | low | `disabled` set while the panel is open leaves the square's arrow keys and the preset buttons live (measured: both still commit) |
+| 291 | unaudited · spot-checked | ColorPicker | [ColorPicker.css:23](src/components/form/ColorPicker.css#L23) | low | `.colorpicker-trigger:focus-visible` (0,2,0) outranks `.colorpicker-trigger--error` (0,1,0), so keyboard focus erases the invalid border (pattern of #84) |
+| 292 | unaudited · corroborated | ColorPicker | [ColorPicker.tsx:210](src/components/form/ColorPicker.tsx#L210) | low | The floating panel is a `role="dialog"` with no accessible name (measured `aria-label`/`aria-labelledby` both null) and no prop to supply one |
+| 293 | unaudited · corroborated | ColorPicker | [ColorPicker.css:9](src/components/form/ColorPicker.css#L9) | low | The trigger and hex field re-implement the shared text-control border/focus recipe in hand-written CSS, so the single fix for #241/#242 will not reach ColorPicker either |
+| 294 | unaudited · corroborated | ColorPicker | [ColorPicker.css:45](src/components/form/ColorPicker.css#L45) | low | Stale comment: `.colorpicker-swatch` claims a checkerboard backdrop "for transparency", but no checkerboard is drawn and 8-digit hex is rejected by the parser |
+| 295 | unaudited · corroborated | RangeSlider | [RangeSlider.tsx:129](src/components/form/RangeSlider.tsx#L129) | med | `aria-invalid` is written on the wrapper `div`; neither `<input type="range">` carries it, so the focused control never reports itself invalid — status by colour alone (WCAG 1.4.1) |
+| 296 | unaudited · corroborated | RangeSlider | [RangeSlider.tsx:76](src/components/form/RangeSlider.tsx#L76) | med | The component reads only `aria-invalid` off `useFieldErrorProps` and discards the `aria-describedby`, so a `Field`'s error text is referenced by nothing anywhere in the tree |
+| 297 | unaudited · corroborated | RangeSlider | [RangeSlider.tsx:120](src/components/form/RangeSlider.tsx#L120) | med | When both thumbs hold the same value one is unreachable by pointer, and the static midpoint z-index heuristic only changes which one is buried |
+| 298 | unaudited · corroborated | RangeSlider | [RangeSlider.tsx:34](src/components/form/RangeSlider.tsx#L34) | med | The props type is `ComponentPropsWithRef<"div">` and rest lands on the wrapper, so no per-thumb ARIA is reachable — `aria-valuetext` cannot fix a non-percentage announcement |
+| 299 | unaudited · corroborated | RangeSlider | [RangeSlider.tsx:15](src/components/form/RangeSlider.tsx#L15) | low | `RangeSliderValue`'s exported docblock claims the pair is "always kept ordered (low <= high) by the component", but an incoming `value`/`defaultValue` is never ordered: `value={[80,20]}` renders as given and the fill disappears |
+| 300 | unaudited · corroborated | RangeSlider | [RangeSlider.tsx:59](src/components/form/RangeSlider.tsx#L59) | low | `minDistance` is enforced only on changes the component computes: `defaultValue={[50,50]}` with `minDistance={10}` renders both thumbs on 50 |
+| 301 | unaudited · candidate | RangeSlider | [RangeSlider.css:63](src/components/form/RangeSlider.css#L63) | low | The only `outline` reset is scoped to `[aria-invalid="true"]`, so the invalid state loses the UA focus outline the valid state keeps — inverted from `Slider.css`. Read off the cascade, not rendered; whether a visible UA outline exists at all is engine-dependent |
+| 302 | unaudited · corroborated | Wizard | [Wizard.tsx:167](src/components/ui/Wizard.tsx#L167) | **high** | Step content is rendered without a key, so React reconciles one step's content against the next and DOM/component state bleeds across steps |
+| 303 | unaudited · corroborated | Wizard | [Wizard.tsx:77](src/components/ui/Wizard.tsx#L77) | med | `next()` fires `onComplete` unconditionally after calling the setter, so a controlled parent cannot refuse completion and Finish can re-fire it indefinitely |
+| 304 | unaudited · corroborated | Wizard | [Wizard.tsx:156](src/components/ui/Wizard.tsx#L156) | med | No rest spread on the root: `aria-*`/`data-*` typecheck (TS exempts hyphenated JSX attributes) and are silently dropped, so the flow cannot be named or targeted |
+| 305 | unaudited · corroborated | Wizard | [Wizard.tsx:167](src/components/ui/Wizard.tsx#L167) | med | The step panel has no role, no `aria-live`, no `id` and no focus management, so advancing a step is silent for assistive tech |
+| 306 | unaudited · corroborated | Wizard | [Wizard.tsx:148](src/components/ui/Wizard.tsx#L148) | low | `allowBackNavigation` makes every step marker a focusable button via `Stepper`, but Wizard's handler ignores all forward ones, leaving dead tab stops (completed ones are also unnamed — #134) |
+| 307 | unaudited · corroborated | Wizard | [Wizard.tsx:151](src/components/ui/Wizard.tsx#L151) | low | In the completed state every marker satisfies `index < activeStep`, including the last, so clicking it un-completes the flow and re-enables Finish (measured) |
+| 308 | unaudited · spot-checked | Wizard | [Wizard.tsx:66](src/components/ui/Wizard.tsx#L66) | low | `goTo` calls the setter even when the clamped index equals the current one, and `useControllableState` notifies unconditionally, so `goTo(0)` at index 0 emits `onStepChange(0)` (same shape as #237) |
+| 309 | unaudited · spot-checked | Wizard | [Wizard.tsx:153](src/components/ui/Wizard.tsx#L153) | low | The `onStepClick` `useMemo` depends on `wizard`, a fresh object literal every render, so it never memoizes |
 
 
 **Clean (no findings):** Stack, FormActions, Tabs, Divider, Grid, Center, Container, Row, Spacer,
@@ -415,6 +478,15 @@ Label. (Not proof of correctness — just nothing surfaced.)
 > `form-store`'s array mutations (#256). `Label` stays on the list: batch I refuted a claim in
 > `label.md` (association is necessary but not sufficient for an accessible name), but that is a
 > defect in two *other* components' markup, not in `Label`, which is a faithful passthrough.
+>
+> **Batch J (2026-07-25)** added none and removed none. MultiSelect, Combobox, ColorPicker,
+> RangeSlider and Wizard all carry findings below (#263–#309), three of them high. The batch also
+> **narrowed one previously-logged claim**: `multi-select.md`'s first draft said `name` was typed
+> and then dropped on the wrapper. It is not — `name` is absent from `HTMLAttributes<HTMLDivElement>`,
+> so `<MultiSelect name="…">` is a compile error (verified with `tsc`: *Property 'name' does not
+> exist*). Only `id` and `aria-labelledby` compile and land on the wrapper. #263 is scoped to those
+> two; the page was corrected. This is the mirror of #245/#246 and worth keeping straight: a `div`
+> rest-spread hides *fewer* props than an `input` one, because the `div` prop set is smaller.
 
 ## Details — high & medium
 
@@ -1643,3 +1715,260 @@ apart, and no route to localisation. The page's own guidance — put `index + 1`
 visible `Label` — is a workaround, not a fix.
 **Fix:** accept per-row label props (or a `labels` object) and interpolate the row index. An
 instance of the hard-coded-English pattern named for #39/#64.
+
+### 263 · MultiSelect — the rest-spread names the wrapper, not the combobox (med)
+
+`{...props}` is applied to the outer `<div class="multiselect">`; the input receives only what
+the component itself passes through `getReferenceProps`, and `aria-label` is the sole naming prop
+in that list. Measured with `<MultiSelect id="skills" aria-labelledby="lbl" aria-label="Skills"/>`:
+the wrapper reads `id="skills" aria-labelledby="lbl"`, the input reads `id=null`
+`aria-labelledby=null`. So the `<Label htmlFor>` + `id` pattern that `select.md`, `input.md` and
+`tag-input.md` all document does not work here, and dropping `aria-label` leaves the combobox with
+no accessible name at all. (`name` is *not* part of this: it is absent from a `div`'s prop type, so
+it does not compile — see the batch-J note above.)
+**Fix:** destructure `id` / `aria-labelledby` out and forward them through `getReferenceProps`.
+
+### 264 · MultiSelect — the keyboard highlight is invisible (med)
+
+`.multiselect-item[data-active]` sets a `--C-SURFACE-1` background and nothing else — no border,
+no ink change, no outline — over the listbox's `--C-SURFACE-0`. Computed from the shipped OKLCH
+values: **1.05** default, **1.03** `events`, **1.02** `tech`, **1.07** `grimdark`. Measured
+interaction: open the list and press ArrowDown → `aria-activedescendant` correctly becomes
+`…-option-0` and `data-active` lands on the right row, and nothing visibly changes. Navigation is
+`virtual: true`, so no option ever takes DOM focus either; there is no second cue. WCAG 1.4.11
+asks 3:1 of a focus indicator. Same defect as #275 in the sibling `Combobox`.
+**Fix:** give `[data-active]` an accent fill or a ≥3:1 inset border, not an adjacent surface step.
+
+### 265 · MultiSelect — the list cannot be closed from the control, and blur does not dismiss it (med)
+
+The control's `onClick` is `if (!open) setOpen(true); inputRef.current?.focus();` — it never
+toggles — and the chevron is a `<span>` *inside* that control, which is also the floating
+reference, so `useDismiss`'s outside-press check never fires for it. Measured: click the control
+(open), click the chevron (still open), click the control again (still open). `useDismiss` alone
+handles no focus-out either — measured with a following `<button>`, Tab moves focus to it and the
+portalled listbox stays mounted over the page. Only Escape or an outside pointer press closes it,
+so the chevron looks like a toggle and is not one, and a form full of these can strand panels.
+**Fix:** toggle on control click, and add focus-out dismissal alongside `useDismiss`.
+
+### 266 · MultiSelect — `Enter` with nothing highlighted submits the form (med)
+
+`handleKeyDown` calls `event.preventDefault()` only inside the `Enter && open && activeIndex != null`
+branch. Opening by *click* leaves `activeIndex` null (measured: `aria-activedescendant` is null
+after a control click; only ArrowDown seeds it). Measured in a `<form onSubmit>`: click the
+control, press Enter → **one submit fired**, with the menu still open. A user pressing Enter to
+"confirm" their chips submits the form instead.
+**Fix:** `preventDefault()` whenever the list is open, not only when a toggle happens.
+
+### 267 · MultiSelect — removing a chip drops focus to the body (med)
+
+The chip's × unmounts itself on click and the handler does not restore focus. Measured: select two
+skills, focus the input, click the × on the first chip → `document.activeElement === document.body`,
+so the next Tab restarts from the top of the document. The *option* click path gets this right —
+it calls `inputRef.current?.focus()` — the remove handler simply omits the same call, which makes
+the fix a one-liner. Instance of the pattern named for #257.
+**Fix:** focus the input after `removeAt`.
+
+### 275 · Combobox — keyboard navigation has no perceptible indicator (high)
+
+`.combobox-item[data-active]` is a `--C-SURFACE-1` background on the popup's `--C-SURFACE-0`:
+**1.02–1.07:1** across all four shipped themes (computed from the shipped OKLCH values). Because
+`useListNavigation` runs with `virtual: true`, no option ever takes DOM focus, so there is no
+focus ring behind it — the background *is* the whole indicator. Measured: open the list, press
+ArrowDown three times, and nothing on screen changes while `aria-activedescendant` walks correctly
+down the rows; Enter then selects a row the user could not see was highlighted. Screen-reader users
+are fine and sighted keyboard users are not, which is why this rates above its `MultiSelect` twin
+(#264): `Combobox` is the library's primary long-list control.
+**Fix:** give `[data-active]` an accent fill or a ≥3:1 inset border rather than the adjacent
+surface step.
+
+### 276 · Combobox — the chevron toggle can never close the popup (med)
+
+The toggle `<button>` sits in `.combobox-input-wrap` beside the input, and the input alone is the
+floating reference — so a `pointerdown` on the button is "outside" and `useDismiss` closes the
+popup, which flushes synchronously (discrete event), and the button's `onClick` then reads
+`open === false` and re-opens it. Measured with an `onOpenChange` spy: type to open, click the
+chevron (`aria-label="Close"`) → the listbox is still present and the spy recorded
+`[[false], [true]]`. A controlled consumer therefore sees a spurious close/open pair on every click.
+**Fix:** register the toggle as part of the floating reference, or read `open` from a ref inside
+`onClick`, so dismiss and toggle stop fighting.
+
+### 277 · Combobox — `loading` counts options it does not render (med)
+
+`ComboboxContent` computes `countItems(children)` *before* the `loading ? <Spinner/> : children`
+swap and reports that number to `registerRenderedCount`, which resets `activeIndex` to `0`.
+Measured with `loading` set: the input carries `aria-activedescendant="<id>-option-0"` while
+`document.getElementById(...)` returns `null` and `screen.queryAllByRole("option").length === 0`.
+Every async combobox in the library is in this state for the whole duration of the request.
+**Fix:** `registerRenderedCount(loading ? 0 : itemCount)`.
+
+### 278 · Combobox — mouse selection leaves focus on `<body>` (med)
+
+`selectValue` sets state and closes the popup but never returns focus to the input, and the option
+is a non-focusable `<div>`, so the pointerdown blurs the input and nothing catches it. Measured:
+focus the input, click an option → `document.activeElement` is `BODY`, so the next Tab restarts
+from the top of the document. Keyboard selection is unaffected — measured `INPUT.combobox-input`
+after Enter. Instance of the pattern named for #257. (Measured in jsdom; the mechanism holds in
+browsers, but the exact resting element could differ.)
+**Fix:** refocus `refs.domReference` in `selectValue`, or `preventDefault` on the item's
+`onMouseDown`.
+
+### 279 · Combobox — nothing dismisses the popup when focus leaves (med)
+
+Only `useDismiss` is registered (outside press + Escape); there is no `useFocus`, no focus-out
+handling, and no `FloatingFocusManager`. Measured: type to open, press Tab → focus is on the next
+control, the portalled listbox is **still mounted**, and the now-unfocused combobox still reports
+`aria-expanded="true"`. Same defect as #265 in `MultiSelect`, so it is the floating-form pattern
+rather than one component.
+**Fix:** add focus-out handling alongside `useDismiss`.
+
+### 285 · ColorPicker — the library's own `form.field()` binding compiles into a dead control (high)
+
+`ColorPickerProps` is a closed object type with no rest spread. A JSX spread of a *call result* is
+not excess-property-checked, so `<ColorPicker {...form.field<string>("brandColor")} />` compiles
+silently — verified with `tsc --noEmit`, zero diagnostics — while writing the same props as literal
+attributes (`onChange`, `name`) is a hard error. At runtime `value` and `disabled` are honoured and
+`onChange`, `onBlur`, `name`, `ref` and `aria-invalid` are dropped, so the store never hears about
+an edit and the controlled `value` never moves: the picker renders, opens, and can never change.
+The failure is invisible in every direction — the compiler is quiet, the component renders, and
+nothing warns. `AGENTS.md` and `README.md` both advertise this binding idiom. Same class as #245
+(`TagInput`), opposite mechanism: there the spread *replaces* a handler, here it is *swallowed*.
+**Fix:** accept the `FieldBindings` surface (`name`/`onChange`/`onBlur`) the way the other
+controlled components do, or name `ColorPicker` in `AGENTS.md`'s watch/`setValue` exception list
+beside `Checkbox` and `Switch`.
+
+### 286 · ColorPicker — the selected colour is never announced (med)
+
+The trigger's `aria-label` (default `"Choose color"`) overrides its text content in the
+accessible-name computation, the `#rrggbb` readout is a plain `<span>` inside the button, and the
+swatch is `aria-hidden`. Measured with `<ColorPicker defaultValue="#3366cc" aria-label="Brand color"/>`:
+the computed name is exactly `"Brand color"`, and a query for a button named `/3366cc/` finds
+nothing. The one thing a sighted user reads off the control is the one thing a screen-reader user
+never hears, and the only workaround is for the caller to interpolate the hex into `aria-label`
+themselves.
+**Fix:** append the committed hex to the computed name, or expose the value node through
+`aria-describedby`, instead of letting the label override it.
+
+### 287 · ColorPicker — the saturation/brightness square is a slider with no value (med)
+
+Measured rendered attributes on `.colorpicker-sv`: `role="slider" tabindex="0" aria-label`
+`aria-valuetext` — and `aria-valuenow`, `aria-valuemin`, `aria-valuemax` are all **null**. ARIA
+requires `aria-valuenow` for `role="slider"`; without it screen readers commonly announce a
+valueless slider (often "0"). It also models two independent axes as a single slider, so left/right
+and up/down move different quantities under one name. `aria-valuetext` carries the real
+information, but only for AT that reads it.
+**Fix:** emit `valuenow`/`valuemin`/`valuemax` (saturation as the value), or split into two
+labelled sliders inside a named group.
+
+### 288 · ColorPicker — an unparseable preset is clickable and commits nothing (med)
+
+`presets.map` falls back to the raw string when `normalizeHex` returns null, so the swatch renders
+and the browser paints whatever CSS understands. Measured with `presets={["rebeccapurple", "#ff0000"]}`:
+the first renders `background-color: rebeccapurple`, is labelled `"rebeccapurple"`, and clicking it
+produces **zero** `onValueChange` calls, while the hex preset fires normally. There is no warning
+and no visual difference — a dead button that looks exactly like a live one.
+**Fix:** filter presets through `normalizeHex` at render and drop (or warn on) the failures instead
+of falling back to the raw string.
+
+### 289 · ColorPicker — a controlled picker desynchronises permanently (med)
+
+HSV is internal state and moves regardless of whether the parent accepts the commit; the effect
+that re-seeds it is keyed on `[hex]`, which by definition never changes when the parent ignores
+`onValueChange`. Measured with `<ColorPicker value="#3366cc"/>` and no write-back, two ArrowRights
+on the square: the trigger still reads `#3366cc` while the hex field reads `#2b61cc` and the thumb
+has moved. Nothing ever reconciles the two, for the life of the component.
+**Fix:** reconcile during render against the committed hex rather than only in an effect that
+fires on prop change.
+
+### 295 · RangeSlider — the invalid state never reaches the focused control (med)
+
+`aria-invalid` is written on the wrapper `<div>` as a CSS hook and nowhere else. Measured with
+`<RangeSlider error defaultValue={[20,80]} minLabel="Low" maxLabel="High"/>`: the root reads
+`aria-invalid="true"`, and both `<input type="range">` elements read `aria-invalid = null`. The
+control a user actually focuses therefore never reports itself invalid, and what remains of the
+error state is the fill and thumbs turning `--C-STATUS-ERROR` — status by colour alone (WCAG 1.4.1).
+**Fix:** put the invalid flag on both inputs, keeping the wrapper attribute as the CSS hook.
+
+### 296 · RangeSlider — the Field's error text is referenced by nothing (med)
+
+`useFieldErrorProps` returns `{ "aria-invalid", "aria-describedby" }` and the component destructures
+only the first. Measured inside `<Field error="Pick a narrower window."><RangeSlider/><FieldError/></Field>`:
+the error `<p id="_r_0_-error" role="alert">` renders, and a query for `[aria-describedby]` anywhere
+in the subtree returns **zero elements** — not on the wrapper, not on either input. So an invalid
+range slider is, to a screen reader, an ordinary one. This is what makes RangeSlider the
+"wired-but-partial" case in the field-error pattern above; `field.md` claimed all eleven hook
+consumers forward both attributes and has been corrected.
+**Fix:** forward the whole `fieldErrorProps` object onto both inputs.
+
+### 297 · RangeSlider — collided thumbs bury one of the two (med)
+
+`pointer-events` is confined to the thumbs, so where two thumbs overlap exactly the pointer always
+grabs whichever input is stacked higher, and the stacking is decided by a static heuristic:
+`lowOnTop = activeThumb === "lo" || (activeThumb === null && lo > (min + max) / 2)`. Measured on a
+0–100 scale: `value={[30,30]}` → both inputs `style.zIndex === ""`, so DOM order puts the *upper*
+input on top and the lower thumb cannot be dragged; `value={[70,70]}` → the low input gets
+`zIndex: "4"` and the *upper* thumb cannot be dragged. Both branches bury one thumb; the midpoint
+only chooses which. It frees itself once the reachable thumb is dragged away, and the keyboard
+reaches both throughout, but to a pointer user the control reads as stuck.
+**Fix:** choose the top thumb from the pointer's position (nearest value at `pointerdown`) rather
+than from `lo > (min + max) / 2`.
+
+### 298 · RangeSlider — no per-thumb ARIA is reachable from outside (med)
+
+The props type is `Omit<ComponentPropsWithRef<"div">, …>` and `{...props}` lands on the wrapper,
+while the two inputs get only `min`, `max`, `step`, `value`, `disabled` and their `aria-label`
+(measured attribute list: `class, min, max, step, aria-label, type, value`). So
+`<RangeSlider min={-30} max={10} aria-valuetext="minus 20 degrees" id="temp"/>` puts both attributes
+on the wrapper and `null` on both inputs. `aria-valuetext` is the one attribute that fixes a
+non-percentage announcement, and there is no route to it; `minLabel`/`maxLabel` are the entire
+per-thumb ARIA surface.
+**Fix:** expose per-thumb prop bags, or at minimum forward `aria-valuetext` and `aria-describedby`
+to each input.
+
+### 302 · Wizard — step content is unkeyed, so state bleeds between steps (high)
+
+The panel renders `<div className="wizard__content">{active?.content}</div>` at a fixed position
+with no `key`, so React reconciles the outgoing step's content against the incoming one. Any two
+steps whose `content` share a root element or component type keep the *same fiber*. Measured with
+two steps each holding an `<input>`: type `"ada@example.com"` into step one's field, press Next →
+step two's differently-labelled input renders carrying `"ada@example.com"`. The same happens
+through a `Field` + `Input` pair, and a `useState` counter sitting at 2 on step one reads 2 on step
+two. This is silent, data-dependent (two `<Text>` steps look fine; two forms do not), and it leaks
+one step's user input into another — the worst case being a wizard whose steps are structurally
+similar, which is most of them.
+**Fix:** key the panel on the active index — `<div className="wizard__content" key={wizard.activeStep}>`.
+
+### 303 · Wizard — `onComplete` cannot be refused and re-fires indefinitely (med)
+
+`next()` calls `setActiveStep(activeStep + 1)` and then `if (activeStep >= count - 1) onComplete?.()`
+in the same call, with no check that the change was accepted. Measured with
+`<Wizard step={s} onStepChange={n => setS(Math.min(n, steps.length - 1))} onComplete={submit}/>` on
+the last step: the clamp keeps `activeStep` at `count - 1`, so `isComplete` never becomes true,
+Finish is never disabled, and **three clicks produced three `submit` calls**. Refusing the change
+outright behaves the same way. The component's own docblock (`Wizard.tsx:117`) tells callers to
+"gate `onStepChange`/`onComplete` on your own checks", which is not possible today — and the
+defensive-looking `Math.min` clamp is exactly what triggers it.
+**Fix:** fire `onComplete` only when the resolved index actually advanced past `count - 1`.
+
+### 304 · Wizard — `aria-*` and `data-*` compile and then vanish (med)
+
+`Wizard` destructures its eleven props and spreads no rest onto the root. TypeScript exempts
+hyphenated JSX attribute names from excess-property checking, so `aria-*` and `data-*` typecheck
+while `id` and `ref` are correctly rejected (verified both ways with `tsc`). Measured:
+`<Wizard steps={steps} aria-label="Checkout" data-testid="checkout"/>` renders a root whose entire
+attribute list is `class="wizard"`. The flow therefore cannot be named for assistive tech, and
+cannot be targeted by a test hook or an analytics selector, with nothing anywhere reporting the
+loss. Same family as #9/#10 (types advertising props the runtime drops), reached by the opposite
+route: here the type never promised them, the compiler just declined to object.
+**Fix:** accept and spread `...rest` onto the root, or `Omit`-type the props so the compiler
+rejects them.
+
+### 305 · Wizard — a step change is silent and focus does not move (med)
+
+The panel is a bare `<div class="wizard__content">` — measured attribute list: `class`, and nothing
+else. No `role`, no `aria-live`, no `id`, not focusable, and no association with the header the way
+`Tabs` associates a panel with its tab. Measured after clicking Next: the content swaps and focus
+stays on the Next button, which sits *after* the panel in DOM order — so a screen-reader user gets
+no announcement and has to navigate backwards to discover what changed. In the completed state no
+element carries `aria-current` either (every marker reads done), so "where am I" has no answer.
+**Fix:** give the panel an `id` plus `role="group"`/`aria-labelledby` pointing at the active step's
+title, or move focus to it on change.

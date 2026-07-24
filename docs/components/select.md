@@ -62,9 +62,13 @@ ships two of those separately, and the line between them is sharp enough to draw
   inconsistent on mobile; `MultiSelect` gives removable chips, an inline filter, and a
   `maxItems` cap.
 - An option needs to be richer than a string — an icon, a second line, an avatar. An
-  `<option>` renders its text and nothing else.
+  `<option>` renders its text and nothing else. This one is `Combobox` only: its `Item` takes
+  arbitrary children, whereas a `MultiSelect` option is `{ value, label }` with a `string`
+  label and no children, so its rows are as plain as a native `<option>`.
 - You need to style the open list at all: highlight colour, spacing, a custom group header,
-  an async state.
+  an async state. Again `Combobox` — it owns no data, so the popup's contents are whatever
+  you render; `MultiSelect` renders its own rows from the `options` array and has no
+  loading state.
 
 The cost of the two custom controls is the usual one: both portal, both carry hand-written
 ARIA, and both are client components. Select is the sturdy default — stay on it until one of
