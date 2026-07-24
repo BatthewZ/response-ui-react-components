@@ -16,15 +16,50 @@ module that `bun run typecheck` compiles, so nothing here can drift from the sou
 | [StatCard](stat-card.md) | A dashboard metric tile: a big number with a label, an optional trend badge, an icon chip, and an inline sparkline. Every part is theme-tinted and the value can count up when it scrolls into view. |
 | [Tabs](tabs.md) | Animated tab bar with roving focus and an indicator that slides between tabs. Three looks — `underline`, `pill`, `enclosed`. |
 
+## Form
+
+| Component | Description |
+| --------- | ----------- |
+| [Checkbox](checkbox.md) | A checkbox whose tick follows your accent colour with nothing to wire up. It is a thin wrapper over the native `<input type="checkbox">` — every input prop passes straight through, so `checked`, `onChange`, `name`, and `aria-*` behave exactly as they do natively. |
+| [Field](field.md) | The wrapper that turns a label, a control, and an error message into one accessible group. It stacks them in a column, resolves the field's error — from an explicit prop or, inside a `FormProvider`, from the form store by `name` — and hands the control inside the `aria-invalid` / `aria-describedby` wiring so you don't repeat it on every input. |
+| [FieldError](field-error.md) | The inline validation message for a form field. Inside a `Field` it renders that field's error with its id already wired to the input's `aria-describedby`; on its own it just styles whatever message you pass. It renders nothing when there is no error, so you can leave it mounted unconditionally. |
+| [Input](input.md) | A text input styled to your theme. On its own it is a native `<input>` with sensible defaults; dropped inside a `Field` it inherits that field's error state — the red border, `aria-invalid`, and the description link — from context, with no extra props. |
+| [Label](label.md) | The text label for a form control. A native `<label>` pre-styled to the theme's form-label treatment — body-2, semibold, primary foreground — so every field label matches without you restating the classes. |
+| [Textarea](textarea.md) | A multi-line text field styled to your theme. On its own it is a native `<textarea>` with sensible defaults — a ~6.25rem minimum height and a vertical resize handle; dropped inside a `Field` it inherits that field's error state — the red border, `aria-invalid`, and the description link — from context, with no extra props. |
+
 ## Data display
 
 | Component | Description |
 | --------- | ----------- |
+| [ActivityFeed](activity-feed.md) | A vertical stream of "who did what, when" — a real `<ol>`/`<li>` list with a connector rail down the marker column, styled entirely from theme tokens so it re-tints with the rest of the app without a line of CSS from you. |
 | [DescriptionList](description-list.md) | Key/value pairs rendered as a real `<dl>`/`<dt>`/`<dd>` — aligned in a two-column grid or stacked in a single column, and re-tinted by your theme without a line of CSS from you. |
+| [Meter](meter.md) | A segmented capacity gauge for a measurement inside a known range — disk usage, memory pressure, a battery. It renders `role="meter"` (deliberately **not** `progressbar`), fills left-to-right in discrete segments, and re-tints the whole filled run to a single semantic colour once the value crosses a `warningAt` or `criticalAt` threshold you set. |
+| [ProgressRing](progress-ring.md) | A circular progress indicator: an SVG ring whose arc sweeps to `value / max`, with an optional centered slot for a label. Four semantic colors, any pixel size, and it re-tints and honors reduced-motion from your theme without a line of CSS from you. |
+| [Sparkline](sparkline.md) | A tiny inline trend chart — a `number[]` in, a self-scaling `<svg>` out. Three shapes (`line`, `area`, `bar`), no axes or labels, and it inks itself with `currentColor` so a single text-colour utility tints it to match the surrounding text. |
 
 ## Layout
 
 | Component | Description |
 | --------- | ----------- |
+| [Center](center.md) | A flex box that centres its children on both axes. Give it a region to fill — a height, or the space it already occupies — and whatever you put inside sits dead centre, with no `margin: auto` or one-off flex utilities at the call site. |
+| [Container](container.md) | Centers your page content and caps its width to a comfortable reading measure. Five width steps — from a sign-in card to a full-bleed dashboard — with a responsive gutter that widens on larger screens. |
 | [Divider](divider.md) | A one-pixel rule that separates content and re-tints with your theme. Horizontal by default — a real `<hr>` — or pass `orientation="vertical"` for an in-row separator. |
 | [Grid](grid.md) | An equal-column responsive grid: every cell in a row shares the row's height, and columns are `minmax(0, 1fr)` so content wraps instead of overflowing. Reach for it when you want tidy, aligned tiles — dashboards, card decks, feature rows. |
+| [Row](row.md) | Horizontal flexbox as one element. It lays its children out in a row with a themed gap, vertical centering, and no wrapping — set any of those with a prop instead of hand-writing a `className` full of flex utilities. |
+| [Spacer](spacer.md) | A blank flex child that grows to fill the free space in a row or column, pushing its siblings to the far ends. Reach for it instead of a `margin-left: auto` or a hand-tuned gap when you want two clusters shoved apart — one `<Spacer />` between them and the layout does the arithmetic. |
+
+## Animation
+
+| Component | Description |
+| --------- | ----------- |
+| [AnimatePresence](animate-presence.md) | Mounts and unmounts its children on a boolean, and — the part React can't do alone — keeps them in the DOM long enough to play an **exit** animation before they leave. Flip `show` to `true` and the children mount with an enter animation; flip it back to `false` and they animate out, then unmount when that animation ends. |
+| [Parallax](parallax.md) | A scroll-driven wrapper. It translates its children vertically as the page scrolls to create a depth effect, throttles the work with `requestAnimationFrame`, and stands perfectly still when the reader has asked for `prefers-reduced-motion`. |
+| [ScrollReveal](scroll-reveal.md) | Reveals its children with an entrance animation the first time they scroll into view — wrap a heading, a section, a row of cards, and it fades or slides in on approach. It watches the element with an `IntersectionObserver`, honours `prefers-reduced-motion`, and re-times itself from the theme's motion tokens. |
+| [Stagger](stagger.md) | Reveals a group of siblings one after another instead of all at once. Stagger wraps each child in a delay-stepped item and hands you the cascade — you supply the entrance animation, it supplies the timing — and it collapses to a single simultaneous reveal under `prefers-reduced-motion`. |
+| [ViewTransition](view-transition.md) | A transparent wrapper that tags its subtree with a CSS `view-transition-name`, so the browser can animate that element as it morphs between two DOM states — a route change, a list reorder, an expand. Pair it with `useViewTransition` to run the change inside `document.startViewTransition()`. |
+
+## Guards
+
+| Component | Description |
+| --------- | ----------- |
+| [RequireAuth](require-auth.md) | A headless auth gate. Hand it your session's `status` and it renders one of three branches — a loading placeholder, your protected `children`, or a redirect — while knowing nothing about your auth library or your router. You derive the status; it picks the branch. |
