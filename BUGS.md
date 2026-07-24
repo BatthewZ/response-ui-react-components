@@ -18,9 +18,23 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
   the rendered element's full prop set (via `ComponentPropsWithRef<T>`) but never spread
   `...rest` onto the element — so `id`, `data-*`, `aria-*`, handlers are dropped at
   runtime while the types claim they work. Check every `as`-polymorphic component.
-- **Status by colour alone (WCAG 1.4.1).** `Alert`, `Meter` and now **`Badge` (confirmed,
-  #44)** encode severity purely in tint — no icon/label/ARIA. Three for three on the status
-  surfaces audited so far. Check StatCard.Trend and any remaining status surface.
+- **Status by colour alone (WCAG 1.4.1).** `Alert`, `Meter`, **`Badge` (#44)** and
+  **`Avatar`'s presence dot (#57)** encode state purely in tint — no icon/label/ARIA. **Four for
+  four** on the status surfaces audited so far; treat this as the library's default failure, not
+  an exception. Check StatCard.Trend and any remaining status surface.
+- **Types that advertise props the runtime drops.** Beyond the `...rest` cases above,
+  `Avatar` (#56) intersects `ComponentPropsWithRef<"span">` without `Omit<…, "children">`, so
+  `<Avatar name="…">child</Avatar>` compiles clean and renders only the initials. `Skeleton` and
+  `Spinner` get the same case right, so the fix is a known one-liner. Sweep every component whose
+  props are an intersection rather than an `Omit`.
+- **Hard-coded English in `sr-only` text.** `Spinner` (#39) and `Skeleton` (#64) both render a
+  literal `"Loading"` in a visually hidden node while omitting `children` from the prop type, so
+  the string is unreachable — and `aria-label` renames the region without changing its contents,
+  leaving name and content in different languages. Any component with an `sr-only` literal.
+- **Contrast is measured nowhere.** #51 is the first *measured* contrast audit in this file and
+  `--C-TEXT-MUTED` fails AA on every surface of every theme. The token tables across the spokes
+  say which variable paints what; nothing checks the pair is legible. A ratio guard over the
+  theme files would catch this class of defect permanently.
 - **Continuous motion with no `prefers-reduced-motion` guard.** ~25 component CSS files ship
   a reduced-motion block and `src/hooks/use-reduced-motion.ts` exists, but utility-driven
   motion bypasses all of it: `Spinner`'s `animate-spin` (#38) is unguarded, as is
@@ -94,8 +108,30 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 48 | unaudited | Kbd | [Kbd.tsx:6](src/components/ui/Kbd.tsx#L6) | low | Keycap never reads `--DEFAULT-MONO-FONT`; falls through to Tailwind Preflight's default mono stack |
 | 49 | unaudited | Kbd | [Kbd.tsx:6](src/components/ui/Kbd.tsx#L6) | low | Package's only `font-medium` (off-contract weight); no leading reset, so cap height is purely `--BodyText-3-line-height` |
 | 50 | unaudited · spot-checked | TagInput | [TagInput.tsx:175](src/components/form/TagInput.tsx#L175) | low | Duplicates Badge's full class string verbatim — a second source of truth for chip styling |
+| 51 | unaudited · corroborated | **response-ui-css** | `tokens/colors.css:23` + all 3 themes | med | `--C-TEXT-MUTED` fails WCAG AA **and** AA-large on every surface of every shipped theme (max 2.59:1) |
+| 52 | unaudited · spot-checked | **response-ui-css** | grimdark theme | low | `--C-TEXT-SECONDARY` on `--C-SURFACE-3` is 4.45:1 — just under the 4.5:1 AA threshold |
+| 53 | unaudited · spot-checked | Text | [Text.tsx:9](src/components/ui/Text.tsx#L9) | med | `variant` sets size only; heading face/tracking/weight come from `h1`–`h6` element selectors, so `variant`+`as` desyncs look from size |
+| 54 | unaudited · spot-checked | Text | [Text.tsx:60](src/components/ui/Text.tsx#L60) | low | `weight` builds a dynamic class (`` `font-${weight}` ``) invisible to Tailwind's scanner; `font-bold` survives only via two unrelated literals |
+| 55 | unaudited · corroborated | Avatar | [Avatar.tsx:65](src/components/ui/Avatar.tsx#L65) | med | `imgError` latch never reset when `src` changes — a recovered URL never renders again |
+| 56 | unaudited · corroborated | Avatar | [Avatar.tsx:53](src/components/ui/Avatar.tsx#L53) | med | `children` typechecks (no `Omit`) but is silently dropped at runtime; Skeleton/Spinner get this right |
+| 57 | unaudited · corroborated | Avatar | [Avatar.tsx:100](src/components/ui/Avatar.tsx#L100) | med | Presence dot conveys status by colour alone — unlabelled `<span>`, no role/text/ARIA |
+| 58 | unaudited · spot-checked | Avatar | [Avatar.tsx:73](src/components/ui/Avatar.tsx#L73) | med | `role="img"` applied unconditionally, even when `alt` and `name` are both absent/blank |
+| 59 | unaudited · corroborated | AvatarGroup | [Avatar.tsx:129](src/components/ui/Avatar.tsx#L129) | med | `size` sizes only the overlap and the `+N` chip; it never reaches the children |
+| 60 | unaudited | Avatar | [Avatar.tsx:24](src/components/ui/Avatar.tsx#L24) | low | `xs` initials use raw `text-[0.625rem]` — off-contract and non-responsive |
+| 61 | unaudited | Avatar | [Avatar.tsx:103](src/components/ui/Avatar.tsx#L103) | low | `ring-surface-0` hard-codes the backdrop; wrong colour on any non-`surface-0` background |
+| 62 | unaudited · spot-checked | Avatar | [Avatar.tsx:49](src/components/ui/Avatar.tsx#L49) | low | `getInitials` indexes by UTF-16 code unit, so an astral first char yields a lone surrogate |
+| 63 | unaudited · corroborated | Skeleton | [Skeleton.tsx:27](src/components/ui/Skeleton.tsx#L27) | med | Every instance is its own `role="status"` region named "Loading" — a 4-skeleton card mounts 4 live regions |
+| 64 | unaudited · corroborated | Skeleton | [Skeleton.tsx:33](src/components/ui/Skeleton.tsx#L33) | med | Hidden "Loading" text is hard-coded English and unreachable (`children` omitted) — same defect as #39 |
+| 65 | unaudited · spot-checked | Skeleton | [Skeleton.css:8](src/components/ui/Skeleton.css#L8) | low | Only `.skeleton--text` has a height; the other three variants measure 0px without an explicit `height` |
+| 66 | unaudited · spot-checked | Skeleton | [Skeleton.tsx:21](src/components/ui/Skeleton.tsx#L21) | low | `width` defaults to an inline `100%`, so `w-*` utilities silently never apply |
+| 67 | unaudited | Skeleton | [Skeleton.css:5](src/components/ui/Skeleton.css#L5) | low | Pulse timing and the reduced-motion `opacity` are literals; no `--MOTION-*` token is read |
+| 68 | unaudited · corroborated | CopyButton | [CopyButton.tsx:43](src/components/ui/CopyButton.tsx#L43) | med | A failed or unavailable clipboard write is completely unobservable — no error state, no callback, nothing logged |
+| 69 | unaudited · corroborated | CopyButton | [CopyButton.tsx:60](src/components/ui/CopyButton.tsx#L60) | med | The polite live region sits **inside** the `<button>`, a role with Children Presentational: True |
+| 70 | unaudited · spot-checked | CopyButton | [CopyButton.tsx:20](src/components/ui/CopyButton.tsx#L20) | low | Unmount during the in-flight write sets state post-unmount and leaks one timer for `timeout` ms |
+| 71 | unaudited · spot-checked | CopyButton | [CopyButton.tsx:57](src/components/ui/CopyButton.tsx#L57) | low | `{...props}` spreads after `aria-label`/`type`, so a caller can freeze the name or submit an enclosing form |
+| 72 | unaudited · spot-checked | CopyButton | [CopyButton.tsx:14](src/components/ui/CopyButton.tsx#L14) | low | `copiedLabel=""` compiles and blanks the accessible name for the whole confirmation window |
 
-**Clean (no findings):** Button, Tabs, Divider, Grid, Center, Container, Row, Spacer,
+**Clean (no findings):** Stack, Button, Tabs, Divider, Grid, Center, Container, Row, Spacer,
 Textarea, Label, FieldError, ProgressRing. (Not proof of correctness — just nothing surfaced.)
 
 ## Details — high & medium
@@ -306,3 +342,93 @@ paint as near-identical light chips, so the pass/fail distinction is lost entire
 emit an `sr-only` variant word (or an `aria-hidden` icon plus `sr-only` text) inside the span
 for every non-`default` variant. `badge.md` documents the workaround — put the meaning in the
 label — but the component should not require it.
+
+### 51 · response-ui-css — `--C-TEXT-MUTED` fails WCAG AA everywhere (med · cross-package)
+
+**This one is not in this package.** It lives in
+`node_modules/@batthewz/response-ui-css/src/tokens/colors.css:23` and each theme file, so it is
+logged here only because a docs pass measured it — the fix belongs in the CSS package.
+
+Contrast of `--C-TEXT-MUTED` against `--C-SURFACE-0` → `--C-SURFACE-3`, computed from the OKLCH
+values by two independent agents that agreed:
+
+| Theme | surface-0 | surface-3 |
+| --- | --- | --- |
+| default | 2.54:1 | 2.05:1 |
+| tech | 2.10:1 | 1.75:1 |
+| grimdark | 2.59:1 | 1.94:1 |
+| events | 2.45:1 | 2.07:1 |
+
+AA body text needs 4.5:1; AA large text needs 3:1. **Every cell fails both.** For scale,
+`--C-TEXT-PRIMARY` never drops below 8.45:1 and `--C-TEXT-SECONDARY` never below 4.45:1.
+
+**Failure scenario:** anything inked `--C-TEXT-MUTED` is below the legibility floor for
+low-vision users on every theme the library ships — `Text color="muted"`, `Input`/`Textarea`
+placeholders, `Badge` and `ActivityFeed` timestamps, `StatCard`'s flat sparkline tint.
+**Fix direction:** raise `--C-TEXT-MUTED`'s lightness per theme until it clears 3:1 at minimum
+(it is a hint/placeholder ink, so AA-large is the defensible floor), or state in
+`theme-contract.md` that it is decorative-only and must never carry meaning. Right now the
+contract names it "Most-muted (placeholders, hints)" and makes no legibility claim either way —
+which is why no page could have caught this by reading the contract alone.
+
+### 53 · Text — `variant` and the element disagree about what a heading looks like (med)
+
+`variantClassMap` maps `variant` to `text-h*`, which emit **only** `font-size` and
+`line-height`. The heading *treatment* — `--HEADING-FONT`, `--HEADING-LETTER-SPACING`,
+`--HEADING-TEXT-TRANSFORM`, `font-weight: 700` — lives in `@layer base` on the `h1`–`h6`
+**element** selectors. So the look follows `as`, and the size follows `variant`.
+**Failure scenario:** `<Text variant="h2" as="p">Quarterly revenue</Text>` under
+`data-theme="events"` renders at `--H2` size but in Nunito at body weight — it does not match the
+real `h2` beside it. Reverse: `<Text variant="body-1" as="h3">` gets Playfair + 700 at body size.
+**Fix direction:** add the foundation's `.h1`–`.h6` classes to `variantClassMap` alongside
+`text-h*`, so the heading treatment travels with `variant` rather than with the element.
+
+### 55-59 · Avatar — five medium findings (med)
+
+- **#55 sticky `imgError`.** Reproduced: render `src="bad://one"` → `onError` → initials; then
+  set a good `src` → still initials, until unmount. **Scenario:** an expired signed avatar URL
+  404s once and the user's photo never returns for the life of the component.
+  **Fix:** reset the flag on `src` change (render-phase prop-change reset, or derive from `src`).
+- **#56 dropped `children`.** `<Avatar name="Ada Lovelace">child</Avatar>` compiles (verified,
+  zero tsc errors) and renders only `AL`. **Fix:** `Omit<…, "children">`, as Skeleton and Spinner
+  already do.
+- **#57 presence by colour alone.** `<Avatar name="Ada Lovelace" status="offline" />` announces
+  "Ada Lovelace, image" — presence is entirely absent to screen readers, and `offline` (grey) vs
+  `away` (amber) is a weak visual discrimination. **Fix:** a visually hidden status word in the
+  dot, or append it to the wrapper's label.
+- **#58 unnamed `role="img"`.** `<Avatar src="/team/ada.jpg" />` renders `<span role="img">` with
+  `aria-label` undefined and inner `alt=""` — AT announces an image it cannot describe. The label
+  is also untrimmed, so `name="   "` yields `aria-label="   "`. **Fix:** drop the `role` (or set
+  `aria-hidden`) when no name resolves; trim before use.
+- **#59 `AvatarGroup size` stops at the group.** `<AvatarGroup size="lg">` around default
+  children gives a 3rem `+N` chip beside 2.5rem circles, with overlap tuned for the larger size.
+  **Fix:** clone children with the group's `size`, or derive chip/overlap from the children.
+
+### 63-64 · Skeleton — the loading affordance is louder than the content (med)
+
+- **#63** `CommentPlaceholder` (1 circular + 3 text skeletons in a `Card`) mounts **four**
+  `role="status"` live regions, verified by render: `textContent` is
+  `"LoadingLoadingLoadingLoading"`. A screen-reader user hears "Loading" four times for one card,
+  learns nothing about *what* is loading, and gets no announcement when it resolves — the regions
+  just vanish. **Fix:** default the element to `aria-hidden` (it is decorative placeholder art)
+  and leave the live region to the caller, or expose a `label` so exactly one skeleton in a group
+  owns the announcement.
+- **#64** identical in shape to Spinner #39: `…rest` spreads last so `aria-label="Chargement"`
+  renames the region, but the `sr-only` child text node stays the English "Loading" — the region
+  is named in one language and reads its contents in another. **Fix:** a `label?: string` prop
+  used for both.
+
+### 68-69 · CopyButton — the copy can fail, and the confirmation may never be heard (med)
+
+- **#68** Same build served over plain `http:` (LAN IP, intranet, staging without TLS) →
+  `navigator.clipboard` is `undefined` → the guard returns → every click is a silent no-op with
+  the button still reading "Copy". Identical outcome when `writeText` *rejects* (no transient
+  user activation, cross-origin iframe without `clipboard-write`, some webviews) → a bare
+  `catch` swallows it. `onClick` cannot substitute: it fires *before* the attempt and on both
+  failing paths. **Fix:** an `onCopy(succeeded: boolean)` / `onError(err)` callback, or a
+  failure state. (Note: React's own `onCopy` DOM prop *does* compile here and never fires for a
+  programmatic `writeText` — a live trap for anyone reaching for it.)
+- **#69** The `sr-only` `aria-live` span is a descendant of `<button>`, and WAI-ARIA 1.2 lists
+  `button` among the roles with *Children Presentational: True*, so descendant semantics are not
+  reliably exposed. **Fix:** render the region as a **sibling** of the button — which cannot be
+  done from the call site, so only a code change can fix it.
