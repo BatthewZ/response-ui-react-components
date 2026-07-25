@@ -40,6 +40,14 @@
   background: var(--C-SURFACE-1);
 }
 
+/* The wash above is the same in both states and measures 1.02–1.07:1 against the
+   panel, so on its own it left roving keyboard focus with no perceptible cue. Inset
+   ring, as `.app-shell-sidebar-link` uses for the same full-width-row shape. */
+.dropdown-menu-item:focus-visible {
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: -2px;
+}
+
 .dropdown-menu-item[aria-disabled="true"] {
   color: var(--C-TEXT-MUTED);
   cursor: default;
