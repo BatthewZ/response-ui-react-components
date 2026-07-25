@@ -297,7 +297,7 @@ rebuild.
 | Brand text                     | `--C-TEXT-PRIMARY` · `--Bold-Weight`                             |
 | Toggle and link ink            | `--C-TEXT-SECONDARY` at rest · `--C-TEXT-PRIMARY` on hover       |
 | Toggle and link hover wash     | `--C-SURFACE-2`                                                  |
-| Active link                    | `--C-ACCENT` — as the ink, and as a 10% `color-mix` wash behind it |
+| Active link                    | `--C-TEXT-PRIMARY` ink · `--C-ACCENT` as a 10% `color-mix` wash *and* a 1px inset edge |
 | Section title                  | `--C-TEXT-MUTED` · `--Semibold-Weight`                           |
 | Sidebar link type · weight     | `--BodyText-1` · `--Semibold-Weight`                             |
 | Focus outline                  | `--C-BORDER-FOCUS`                                               |
@@ -324,11 +324,13 @@ follow.
 `grimdark`):
 
 - Resting link ink `--C-TEXT-SECONDARY` on `--C-SURFACE-0`: **5.76–7.56:1** — AA everywhere.
-- Active link ink `--C-ACCENT` on its own wash: **4.50** default · **2.46** `events` ·
-  **12.55** `tech` · **2.83** `grimdark`. In `events` and `grimdark` the link you are on is
-  *less* legible than the ones you are not — see [Accessibility](#accessibility).
-- The active wash against the sidebar fill: **1.05–1.18:1**, i.e. no perceptible block of
-  colour; the state is carried by the ink.
+- Active link ink `--C-TEXT-PRIMARY` on its own wash: **15.44** default · **15.37** `events` ·
+  **14.77** `tech` · **10.80** `grimdark` — the link you are on is now the most legible item
+  in the sidebar, not the least. It previously inked `--C-ACCENT`, which measured 2.46 in
+  `events` and 2.83 in `grimdark`, *below* a resting link.
+- The active wash against the sidebar fill is **1.05–1.18:1**, i.e. no perceptible block of
+  colour on its own — which is why the state is carried by the 1px inset `--C-ACCENT` edge
+  rather than by the wash or the ink colour.
 - Section titles in `--C-TEXT-MUTED`: **2.10–2.59:1** — under AA on every theme, the
   library-wide behaviour of that token.
 - `--C-BORDER-FOCUS` against `--C-SURFACE-0`: **3.68** default · **2.72** `events` ·
@@ -404,8 +406,9 @@ Four gaps you have to close yourself:
   outright in the collapsed rail, which leaves the divider rule with nothing explaining it.
 
 Two more things worth knowing: the active link is marked with `aria-current="page"`, so its
-state is *not* colour-only for assistive tech — but for sighted users the accent ink is the
-whole signal, and in `events` (2.46:1) and `grimdark` (2.83:1) that ink is below AA. And
+state is *not* colour-only for assistive tech — and for sighted users the accent now draws a
+1px inset edge rather than tinting the letters, so the state survives independently of how
+the ink and the wash happen to contrast in a given theme. And
 focus is `:focus-visible` only on the toggle and on links, drawn as a 2px outline —
 `outline-offset: 2px` on the toggle, `-2px` on links so a link's ring is drawn inside its
 own box rather than out into the sidebar's `overflow-x: hidden` edge.
