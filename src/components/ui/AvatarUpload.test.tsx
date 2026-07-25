@@ -1,9 +1,28 @@
 import { fireEvent,render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AvatarUpload } from "./AvatarUpload";
+
+/** jsdom implements neither `createObjectURL` nor `revokeObjectURL`. */
+function stubObjectUrls() {
+  let created = 0;
+  const createObjectURL = vi.fn(() => `blob:mock/${++created}`);
+  const revokeObjectURL = vi.fn();
+  vi.stubGlobal(
+    "URL",
+    class StubURL extends URL {
+      static createObjectURL = createObjectURL;
+      static revokeObjectURL = revokeObjectURL;
+    },
+  );
+  return { createObjectURL, revokeObjectURL };
+}
+
+function displayedImg() {
+  return document.querySelector("img");
+}
 
 describe("AvatarUpload", () => {
   it("renders avatar placeholder when no image", () => {
@@ -35,7 +54,7 @@ describe("AvatarUpload", () => {
     const clickSpy = vi.spyOn(inputEl, "click");
 
     await user.click(screen.getByRole("button", { name: "Change avatar" }));
-    expect(clickSpy).toHaveBeenCalled();
+    expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
   it("forwards className prop", () => {
@@ -104,5 +123,108 @@ describe("AvatarUpload", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Upload failed");
+  });
+
+  describe("object URL lifecycle", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("displays and keeps the optimistic preview when there is no onUpload", async () => {
+      const { createObjectURL, revokeObjectURL } = stubObjectUrls();
+      render(<AvatarUpload src="https://example.com/old.jpg" name="Jane Doe" />);
+
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      const file = new File(["x"], "x.png", { type: "image/png" });
+      await userEvent.setup().upload(inputEl, file);
+
+      const objectUrl = createObjectURL.mock.results[0]?.value as string;
+      expect(displayedImg()?.getAttribute("src")).toBe(objectUrl);
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+
+      await Promise.resolve();
+      expect(displayedImg()?.getAttribute("src")).toBe(objectUrl);
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+    });
+
+    it("revokes the preview URL on unmount", async () => {
+      const { createObjectURL, revokeObjectURL } = stubObjectUrls();
+      const { unmount } = render(<AvatarUpload name="Jane Doe" />);
+
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      await userEvent.setup().upload(inputEl, new File(["x"], "x.png", { type: "image/png" }));
+
+      const objectUrl = createObjectURL.mock.results[0]?.value as string;
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+
+      unmount();
+      expect(revokeObjectURL).toHaveBeenCalledWith(objectUrl);
+    });
+
+    it("revokes the previous preview URL when a second file is picked", async () => {
+      const { createObjectURL, revokeObjectURL } = stubObjectUrls();
+      render(<AvatarUpload name="Jane Doe" />);
+
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      const user = userEvent.setup();
+      await user.upload(inputEl, new File(["a"], "a.png", { type: "image/png" }));
+      await user.upload(inputEl, new File(["b"], "b.png", { type: "image/png" }));
+
+      const [first, second] = createObjectURL.mock.results.map((r) => r.value as string);
+      expect(revokeObjectURL.mock.calls).toEqual([[first]]);
+      expect(displayedImg()?.getAttribute("src")).toBe(second);
+    });
+
+    it("revokes the preview URL after a successful upload swaps in the result", async () => {
+      const { createObjectURL, revokeObjectURL } = stubObjectUrls();
+      const onUpload = vi.fn().mockResolvedValue({ url: "https://example.com/uploaded.jpg" });
+      render(<AvatarUpload name="Jane Doe" onUpload={onUpload} />);
+
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      await userEvent.setup().upload(inputEl, new File(["x"], "x.png", { type: "image/png" }));
+
+      const objectUrl = createObjectURL.mock.results[0]?.value as string;
+      expect(displayedImg()?.getAttribute("src")).toBe("https://example.com/uploaded.jpg");
+      expect(revokeObjectURL).toHaveBeenCalledWith(objectUrl);
+    });
+  });
+
+  describe("caller handlers compose with the picker trigger", () => {
+    it("runs a caller onClick and still opens the picker", () => {
+      const onClick = vi.fn();
+      render(<AvatarUpload onClick={onClick} />);
+
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      const clickSpy = vi.spyOn(inputEl, "click");
+
+      fireEvent.click(screen.getByRole("button", { name: "Change avatar" }));
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(["Enter", " "])("runs a caller onKeyDown and still opens the picker (%s)", (key) => {
+      const onKeyDown = vi.fn();
+      render(<AvatarUpload onKeyDown={onKeyDown} />);
+
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      const clickSpy = vi.spyOn(inputEl, "click");
+
+      fireEvent.keyDown(screen.getByRole("button", { name: "Change avatar" }), { key });
+
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("lets a caller preventDefault suppress the picker", () => {
+      render(<AvatarUpload onClick={(e) => e.preventDefault()} />);
+
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      const clickSpy = vi.spyOn(inputEl, "click");
+
+      fireEvent.click(screen.getByRole("button", { name: "Change avatar" }));
+
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
   });
 });

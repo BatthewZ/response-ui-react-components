@@ -1,5 +1,12 @@
 "use client";
-import { type ComponentPropsWithRef, forwardRef, useCallback, useRef, useState } from "react";
+import {
+  type ComponentPropsWithRef,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { cn } from "../../util/style";
 
@@ -15,6 +22,9 @@ export interface AvatarUploadResult {
   /** URL to display after upload completes (and persist on the user record). */
   url: string;
 }
+
+/** Displayed image that overrides `src`; `objectUrl` marks it as ours to revoke. */
+type Preview = { url: string; objectUrl: boolean };
 
 export type AvatarUploadProps<TResult extends AvatarUploadResult = AvatarUploadResult> = {
   /** Current avatar image URL. */
@@ -114,29 +124,45 @@ export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(functi
     accept,
     maxSize,
     className,
+    onClick,
+    onKeyDown,
     ...props
   },
   ref,
 ) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const displaySrc = previewUrl ?? src;
+  const displaySrc = preview?.url ?? src;
+  const objectUrl = preview?.objectUrl ? preview.url : null;
 
-  const handleClick = useCallback(() => {
-    if (!uploading) inputRef.current?.click();
-  }, [uploading]);
+  // Revoke only once the DOM has stopped pointing at it: cleanup runs after commit.
+  useEffect(() => {
+    if (!objectUrl) return undefined;
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [objectUrl]);
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      onClick?.(e);
+      if (e.defaultPrevented || uploading) return;
+      inputRef.current?.click();
+    },
+    [onClick, uploading],
+  );
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if ((e.key === "Enter" || e.key === " ") && !uploading) {
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      onKeyDown?.(e);
+      if (e.defaultPrevented || uploading) return;
+      if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         inputRef.current?.click();
       }
     },
-    [uploading],
+    [onKeyDown, uploading],
   );
 
   const handleFileChange = useCallback(
@@ -154,29 +180,23 @@ export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(functi
         return;
       }
 
-      // Show optimistic preview.
-      const objectUrl = URL.createObjectURL(file);
-      setPreviewUrl(objectUrl);
+      // Show optimistic preview. Revocation is owned by the effect above.
+      setPreview({ url: URL.createObjectURL(file), objectUrl: true });
 
-      if (!onUpload) {
-        // Presentational mode: keep the local preview; nothing to upload.
-        URL.revokeObjectURL(objectUrl);
-        return;
-      }
+      if (!onUpload) return;
 
       setUploading(true);
       try {
         const result = await onUpload(file);
-        setPreviewUrl(result.url);
+        setPreview({ url: result.url, objectUrl: false });
         onUploadComplete?.(result);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Upload failed.";
         setError(message);
-        setPreviewUrl(null);
+        setPreview(null);
         onUploadError?.(err instanceof Error ? err : new Error(message));
       } finally {
         setUploading(false);
-        URL.revokeObjectURL(objectUrl);
       }
     },
     [accept, maxSize, onUpload, onUploadComplete, onUploadError],
@@ -237,6 +257,8 @@ export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(functi
         ref={inputRef}
         type="file"
         accept={accept?.join(",")}
+        // Our own `input.click()` bubbles to the root; stop it re-entering the handlers.
+        onClick={(e) => e.stopPropagation()}
         onChange={(e) => void handleFileChange(e)}
         className="sr-only"
         tabIndex={-1}

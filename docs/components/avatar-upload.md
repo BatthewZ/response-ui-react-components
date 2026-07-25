@@ -35,9 +35,9 @@ returns — so the only thing you write is the request.
 | `ref`              | `Ref<HTMLDivElement>`                      | —       |
 | …rest              | props of `div`, minus `children`           | —       |
 
-Every prop is optional and `<AvatarUpload />` renders, but two of them carry sharp edges
-that will cost you an afternoon: `onUpload` is what makes the preview stick, and `accept`
-is compared by exact string — `["image/*"]` rejects every file. See [Gotchas](#gotchas).
+Every prop is optional and `<AvatarUpload />` renders, but one of them carries a sharp edge
+that will cost you an afternoon: `accept` is compared by exact string, so `["image/*"]`
+rejects every file. See [Gotchas](#gotchas).
 
 `src` is only the *initial* image. The moment the component holds a preview or an upload
 result of its own, that wins for the rest of the instance's life and later `src` prop
@@ -53,16 +53,19 @@ A single handler runs the whole sequence, in this order:
    renders in a tooltip below the circle, `onUploadError` fires with an `Error` carrying
    that same message, and the sequence stops — the avatar does not change.
 3. An object URL for the file becomes the displayed image: the optimistic preview.
-4. If there is no `onUpload`, the handler stops here. Step 3 does not survive it — see
-   [Gotchas](#gotchas).
+4. If there is no `onUpload`, the handler stops here: the preview stands and nothing is sent.
 5. Otherwise the camera glyph is replaced by a busy spinner, the overlay is pinned visible,
-   and clicks and keystrokes are ignored until `onUpload` settles.
+   and clicks and keystrokes stop opening the picker until `onUpload` settles.
 6. On resolve, the displayed image becomes `result.url` and `onUploadComplete(result)`
    fires. On reject, the display falls back to `src`, the rejection's `message` renders in
    the tooltip, and `onUploadError` fires with the original `Error`.
 
 Anything your handler throws or rejects with that is not an `Error` is replaced by
 `new Error("Upload failed.")`, so `onUploadError` always receives a real `Error`.
+
+The object URL behind step 3 is released for you the moment the display stops pointing at
+it — the next pick, the post-upload swap, the fallback after a failed upload — and on
+unmount. You never hold it, so there is nothing to clean up on your side.
 
 ## Size
 
@@ -82,8 +85,8 @@ The overlay's contents do **not** scale: the camera SVG is a fixed 16×16 and th
 spinner is a fixed 1rem circle, so on `xs` they cover most of the avatar. Note the default
 is `xl` here, where plain [Avatar](avatar.md) defaults to `md`.
 
-Those five are display-only: with no `onUpload`, actually picking a file would clear the
-circle rather than preview it. See [Gotchas](#gotchas).
+None of those five passes `onUpload`, so picking a file previews it in the circle and sends
+it nowhere.
 
 ## Validating before you upload
 
@@ -203,16 +206,17 @@ responsive and steps up at the 40rem breakpoint.
   correctly, so the user can pick a PNG — and then validation runs `accept.includes("image/png")`,
   which is `false`, and the tooltip reads *File type "image/png" is not allowed. Accepted:
   image/\*.* Enumerate the concrete types instead.
-- **Without `onUpload` there is no usable preview.** The docs elsewhere describe this as
-  "presentational" mode, but the object URL created for the preview is revoked in the same
-  tick it is handed to state — before React commits it to the `<img>`. The image then fails
-  to load, [Avatar](avatar.md) latches its internal load-error flag, and the circle falls
-  back to initials. That flag never resets, so from then on the instance ignores `src` too:
-  one file pick permanently blanks the photo. Always pass `onUpload`.
-- **Your `onClick` or `onKeyDown` replaces the picker.** Rest props are spread *after* the
-  component's own handlers, so `<AvatarUpload onClick={track} />` fires `track` and never
-  opens the file dialog. Do your logging in `onUpload` instead. (`aria-label`, `role` and
-  `tabIndex` are overridable the same way — there the last-writer-wins order is useful.)
+- **`preventDefault()` in your `onClick` or `onKeyDown` cancels the picker.** Those two
+  compose rather than override: yours runs first, then the component's, so
+  `<AvatarUpload onClick={track} />` both fires `track` and opens the file dialog. Call
+  `preventDefault()` in yours and the component reads it as handled and does not open the
+  dialog. (`aria-label`, `role` and `tabIndex` are plain attributes, still spread *after*
+  the component's own, so those do override — there the last-writer-wins order is useful.)
+- **A URL that fails to load is remembered forever.** The nested Avatar latches an internal
+  load error and never resets it, so once a URL 404s, expires or times out, the circle shows
+  initials and ignores every later image — including the fallback to `src` after a failed
+  upload. The optimistic preview is a live object URL and is safe; the URL your `onUpload`
+  returns is not. See [Avatar's gotchas](avatar.md#gotchas).
 - **`src` is ignored once the component holds a preview.** The internal URL takes precedence
   for the instance's lifetime — it is cleared only by a *failed* upload — so a re-render with
   a server-authoritative `src` will not be shown. Remount with a `key` to force it.
@@ -241,8 +245,9 @@ page. A `<div>` gets no synthetic click from either key, which is why that handl
 all. The real
 `<input type="file">` is `sr-only`, `tabIndex={-1}` and `aria-hidden`, so it never appears
 in the tab order or the accessibility tree. The default label is generic — pass your own
-`aria-label` when several avatars appear on one page; rest props are spread last, so it
-overrides cleanly.
+`aria-label` when several avatars appear on one page; attributes in the rest props are
+spread last, so it overrides cleanly. (`onClick` and `onKeyDown` are the exception: they
+compose with the component's own — see [Gotchas](#gotchas).)
 
 Two gaps are worth planning around:
 
