@@ -136,4 +136,46 @@ describe("Collapsible", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(onOpenChange).not.toHaveBeenCalled();
   });
+
+  // jsdom implements no `inert` semantics and user-event's tab order ignores it,
+  // so these assert the attribute that drives the behaviour, not the behaviour.
+  // Same treatment as Accordion, which shares this defect under ledger #136.
+  describe("collapsed content is marked inert (#136)", () => {
+    function renderWithLink(defaultOpen?: boolean) {
+      return render(
+        <Collapsible defaultOpen={defaultOpen}>
+          <Collapsible.Trigger>Details</Collapsible.Trigger>
+          <Collapsible.Content>
+            <a href="#anchor">Buried link</a>
+          </Collapsible.Content>
+        </Collapsible>
+      );
+    }
+
+    const panel = () => document.querySelector(".collapsible-content");
+
+    it("content collapsed at mount is inert", () => {
+      renderWithLink();
+      expect(panel()).toHaveAttribute("data-state", "closed");
+      expect(panel()).toHaveAttribute("inert");
+    });
+
+    it("open content is not inert, so its links stay reachable", () => {
+      renderWithLink(true);
+      expect(panel()).toHaveAttribute("data-state", "open");
+      expect(panel()).not.toHaveAttribute("inert");
+    });
+
+    it("inert tracks the open state across toggles", async () => {
+      const user = userEvent.setup();
+      renderWithLink();
+      expect(panel()).toHaveAttribute("inert");
+
+      await user.click(screen.getByRole("button", { name: "Details" }));
+      expect(panel()).not.toHaveAttribute("inert");
+
+      await user.click(screen.getByRole("button", { name: "Details" }));
+      expect(panel()).toHaveAttribute("inert");
+    });
+  });
 });

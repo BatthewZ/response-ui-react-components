@@ -119,6 +119,11 @@ const CollapsibleContent = forwardRef<HTMLDivElement, CollapsibleContentProps>(
         id={contentId}
         role="region"
         data-state={open ? "open" : "closed"}
+        // Collapsed content is only CSS-clipped (grid-template-rows: 0fr), so
+        // without this its links stay tabbable and in the a11y tree. Same fix
+        // as Accordion.Content; `hidden` would kill the rows transition.
+        // Must sit here and not on the root, which would take the trigger with it.
+        inert={!open}
         className={cn("collapsible-content", className)}
         {...props}
       >
