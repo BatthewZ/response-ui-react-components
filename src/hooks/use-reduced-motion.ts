@@ -1,23 +1,18 @@
 "use client";
-import { useSyncExternalStore } from "react";
+import { useMediaQuery } from "./use-media-query";
 
-const query = "(prefers-reduced-motion: reduce)";
+const QUERY = "(prefers-reduced-motion: reduce)";
 
-function subscribe(callback: () => void) {
-  if (typeof window === "undefined") return () => {};
-  const mql = window.matchMedia(query);
-  mql.addEventListener("change", callback);
-  return () => mql.removeEventListener("change", callback);
-}
-
-function getSnapshot() {
-  return typeof window !== "undefined" && window.matchMedia(query).matches;
-}
-
-function getServerSnapshot() {
-  return false;
-}
-
+/**
+ * Whether the user has asked their OS for reduced motion.
+ *
+ * A thin alias over {@link useMediaQuery}, which already guards the absence of
+ * `matchMedia` — the server, jsdom, and headless runners all report "no
+ * preference" rather than throwing.
+ *
+ * @example
+ * const reduced = usePrefersReducedMotion();
+ */
 export function usePrefersReducedMotion(): boolean {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  return useMediaQuery(QUERY);
 }

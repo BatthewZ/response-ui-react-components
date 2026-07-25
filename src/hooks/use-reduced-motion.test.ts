@@ -78,3 +78,31 @@ describe("usePrefersReducedMotion", () => {
     expect(changeListeners!.size).toBe(0);
   });
 });
+
+/**
+ * The suite above stubs `matchMedia` in `beforeEach`, so it only ever exercised the
+ * world where the API exists. Every environment where it does not — SSR, jsdom, any
+ * headless runner — went untested, and the hook threw there.
+ */
+describe("usePrefersReducedMotion without matchMedia", () => {
+  const original = Object.getOwnPropertyDescriptor(window, "matchMedia");
+
+  beforeEach(() => {
+    Reflect.deleteProperty(window, "matchMedia");
+  });
+
+  afterEach(() => {
+    if (original) Object.defineProperty(window, "matchMedia", original);
+  });
+
+  it("reports no preference rather than throwing", () => {
+    expect(typeof window.matchMedia).toBe("undefined");
+    const { result } = renderHook(() => usePrefersReducedMotion());
+    expect(result.current).toBe(false);
+  });
+
+  it("unmounts cleanly, so the absent-API path installs no listener to leak", () => {
+    const { unmount } = renderHook(() => usePrefersReducedMotion());
+    expect(() => unmount()).not.toThrow();
+  });
+});
