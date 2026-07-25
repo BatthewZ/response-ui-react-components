@@ -101,6 +101,17 @@ const Step = forwardRef<HTMLLIElement, StepProps>(function Step(
   const indicatorContent: ReactNode =
     icon ?? (status === "done" ? <Check aria-hidden="true" /> : index + 1);
 
+  // The indicator's own content is a number or an aria-hidden glyph, so a
+  // clickable one is unnamed (done) or announces a bare digit (active/upcoming)
+  // unless we name it. `aria-current` sits on the <li>, not the control, so the
+  // status has to be part of the name to reach a screen reader on the button.
+  const indicatorLabel =
+    status === "done"
+      ? `${title}, completed`
+      : status === "active"
+        ? `${title}, current step`
+        : title;
+
   return (
     <li
       ref={ref}
@@ -114,6 +125,7 @@ const Step = forwardRef<HTMLLIElement, StepProps>(function Step(
         <button
           type="button"
           className="stepper-indicator"
+          aria-label={indicatorLabel}
           onClick={() => onStepClick(index)}
         >
           {indicatorContent}

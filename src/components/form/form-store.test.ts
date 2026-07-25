@@ -230,3 +230,154 @@ describe("FormStore field arrays", () => {
     expect(store.getArrayIds("items")).toEqual(ids);
   });
 });
+
+describe("FormStore field arrays — error/touched re-keying", () => {
+  type Row = { email: string };
+  type RowValues = { people: Row[]; note: string };
+
+  /** Flags every row whose email lacks an `@`, keyed `people.<i>.email`. */
+  const rowSchema: StandardSchemaV1<unknown, RowValues> = {
+    "~standard": {
+      version: 1,
+      vendor: "test",
+      validate(value) {
+        const input = value as RowValues;
+        const issues = (input.people ?? []).flatMap((row, index) =>
+          String(row?.email ?? "").includes("@")
+            ? []
+            : [{ message: "Email is invalid", path: ["people", index, "email"] }],
+        );
+        return issues.length > 0 ? { issues } : { value: input };
+      },
+    },
+  };
+
+  const rowStore = (...emails: string[]) =>
+    createFormStore<RowValues>({
+      defaultValues: { people: emails.map((email) => ({ email })), note: "" },
+      schema: rowSchema,
+    });
+
+  const emailsOf = (store: ReturnType<typeof rowStore>) =>
+    (store.getValue("people") as Row[]).map((row) => row.email);
+
+  it("carries a later row's error down when the middle row is removed", async () => {
+    const store = rowStore("a@ok.com", "b@ok.com", "bad");
+    await store.submit();
+    expect(store.getFieldSnapshot("people.2.email").error).toBe("Email is invalid");
+
+    store.arrayRemove("people", 1);
+
+    expect(emailsOf(store)).toEqual(["a@ok.com", "bad"]);
+    expect(store.getFieldSnapshot("people.0.email").error).toBeUndefined();
+    expect(store.getFieldSnapshot("people.1.email").error).toBe("Email is invalid");
+    expect(store.getErrors()).toEqual({ "people.1.email": ["Email is invalid"] });
+  });
+
+  it("drops the removed row's error instead of stranding it on its successor", async () => {
+    const store = rowStore("a@ok.com", "bad", "c@ok.com");
+    await store.submit();
+    expect(store.getFieldSnapshot("people.1.email").error).toBe("Email is invalid");
+
+    store.arrayRemove("people", 1);
+
+    expect(emailsOf(store)).toEqual(["a@ok.com", "c@ok.com"]);
+    expect(store.getFieldSnapshot("people.0.email").error).toBeUndefined();
+    expect(store.getFieldSnapshot("people.1.email").error).toBeUndefined();
+    expect(store.getErrors()).toEqual({});
+  });
+
+  it("follows the middle row's error through a move", async () => {
+    const store = rowStore("a@ok.com", "bad", "c@ok.com");
+    await store.submit();
+
+    store.arrayMove("people", 1, 2);
+
+    expect(emailsOf(store)).toEqual(["a@ok.com", "c@ok.com", "bad"]);
+    expect(store.getFieldSnapshot("people.1.email").error).toBeUndefined();
+    expect(store.getFieldSnapshot("people.2.email").error).toBe("Email is invalid");
+  });
+
+  it("follows the middle row's error through a swap", async () => {
+    const store = rowStore("a@ok.com", "bad", "c@ok.com");
+    await store.submit();
+
+    store.arraySwap("people", 1, 2);
+
+    expect(emailsOf(store)).toEqual(["a@ok.com", "c@ok.com", "bad"]);
+    expect(store.getFieldSnapshot("people.1.email").error).toBeUndefined();
+    expect(store.getFieldSnapshot("people.2.email").error).toBe("Email is invalid");
+  });
+
+  it("shifts a manual error up when a row is inserted above it", () => {
+    const store = rowStore("a@ok.com", "b@ok.com", "c@ok.com");
+    store.setError("people.1.email", "Already taken");
+
+    store.arrayInsert("people", 1, { email: "x@ok.com" });
+
+    expect(emailsOf(store)).toEqual(["a@ok.com", "x@ok.com", "b@ok.com", "c@ok.com"]);
+    expect(store.getFieldSnapshot("people.1.email").error).toBeUndefined();
+    expect(store.getFieldSnapshot("people.2.email").error).toBe("Already taken");
+  });
+
+  it("shifts a manual error up on prepend", () => {
+    const store = rowStore("a@ok.com", "b@ok.com", "c@ok.com");
+    store.setError("people.2.email", "Already taken");
+
+    store.arrayPrepend("people", { email: "z@ok.com" });
+
+    expect(store.getFieldSnapshot("people.2.email").error).toBeUndefined();
+    expect(store.getFieldSnapshot("people.3.email").error).toBe("Already taken");
+  });
+
+  it("moves touched with the row, not with the index", () => {
+    const store = rowStore("a@ok.com", "b@ok.com", "c@ok.com");
+    store.setTouched("people.2.email");
+
+    store.arrayRemove("people", 1);
+
+    expect(store.getFieldSnapshot("people.1.email").touched).toBe(true);
+    expect(store.getFieldSnapshot("people.2.email").touched).toBe(false);
+  });
+
+  it("clears the array's stale error state on replace", () => {
+    const store = rowStore("a@ok.com", "b@ok.com", "c@ok.com");
+    store.setError("people.0.email", "Already taken");
+
+    store.arrayReplace("people", [{ email: "z@ok.com" }]);
+
+    expect(store.getFieldSnapshot("people.0.email").error).toBeUndefined();
+    expect(store.getErrors()).toEqual({});
+  });
+
+  it("leaves append and update alone, and never touches non-array keys", async () => {
+    const store = rowStore("bad", "b@ok.com");
+    await store.submit();
+    store.setError("note", "Server said no");
+
+    store.arrayAppend("people", { email: "c@ok.com" });
+    expect(store.getFieldSnapshot("people.0.email").error).toBe("Email is invalid");
+    expect(store.getFieldSnapshot("note").error).toBe("Server said no");
+
+    store.arrayUpdate("people", 1, { email: "B@ok.com" });
+    expect(store.getFieldSnapshot("people.0.email").error).toBe("Email is invalid");
+    expect(store.getFieldSnapshot("note").error).toBe("Server said no");
+  });
+});
+
+describe("FormStore field arrays — key collisions", () => {
+  type ArrayValues = { items: string[] };
+
+  it("lets a moved row win an index a stale out-of-range key already holds", () => {
+    const store = createFormStore<ArrayValues>({ defaultValues: { items: ["a", "b"] } });
+    store.setError("items.1", "Row error");
+    // Out of range for a two-item array — only reachable by an imperative
+    // setError, but it must not shadow the row that prepend shifts into index 2.
+    store.setError("items.2", "Stale error");
+
+    store.arrayPrepend("items", "z");
+
+    expect(store.getValue("items")).toEqual(["z", "a", "b"]);
+    expect(store.getFieldSnapshot("items.2").error).toBe("Row error");
+  });
+});

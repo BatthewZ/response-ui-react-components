@@ -49,6 +49,38 @@ function omitKey<V>(record: Record<string, V>, key: string): Record<string, V> {
   return rest;
 }
 
+/**
+ * Rewrite `<prefix><index>` / `<prefix><index>.rest` keys through `moved`
+ * (old index → new index, `-1` = the row is gone, so its entry is dropped).
+ * Keys outside the prefix, and indices `moved` says nothing about, pass through.
+ */
+function remapIndexedKeys<V>(
+  record: Record<string, V>,
+  prefix: string,
+  moved: ReadonlyMap<number, number>,
+): Record<string, V> {
+  const out: Record<string, V> = {};
+  const remapped: Array<[string, V]> = [];
+  for (const [key, value] of Object.entries(record)) {
+    if (!key.startsWith(prefix)) {
+      out[key] = value;
+      continue;
+    }
+    const rest = key.slice(prefix.length);
+    const dot = rest.indexOf(".");
+    const segment = dot === -1 ? rest : rest.slice(0, dot);
+    const to = /^\d+$/.test(segment) ? moved.get(Number(segment)) : undefined;
+    if (to === undefined) out[key] = value;
+    else if (to !== -1) {
+      remapped.push([`${prefix}${to}${dot === -1 ? "" : rest.slice(dot)}`, value]);
+    }
+  }
+  // Applied last so a real row always beats a pass-through key that happens to
+  // sit at the index it moved into — otherwise the winner is key-order luck.
+  for (const [key, value] of remapped) out[key] = value;
+  return out;
+}
+
 const fieldSnapshotEqual = (a: FieldSnapshot, b: FieldSnapshot): boolean =>
   Object.is(a.value, b.value) &&
   a.error === b.error &&
@@ -359,70 +391,127 @@ export class FormStore<T> {
     return Array.isArray(array) ? array : [];
   }
 
-  private commitArray(name: string, next: unknown[], ids: number[]): void {
+  /** Copy of the ids for `name`, normalised to the array's current length. */
+  private currentIds(name: string): number[] {
+    return [...this.idsFor(name, this.readArray(name).length)];
+  }
+
+  /**
+   * Move each row's error/touched entries to the row's new index. Errors and
+   * `touched` are keyed by dotted path (`links.0.url`), so a mutation that only
+   * rewrote `values` would leave a message pinned to whichever row inherited
+   * the index. The stable ids are the single source of truth for where a row
+   * went: an id that moved takes its state along, an id that vanished takes its
+   * state with it.
+   */
+  private remapArrayKeys(name: string, prevIds: number[], nextIds: number[]): void {
+    const moved = new Map<number, number>();
+    let changed = false;
+    prevIds.forEach((id, from) => {
+      const to = nextIds.indexOf(id);
+      moved.set(from, to);
+      if (to !== from) changed = true;
+    });
+    if (!changed) return;
+
+    const prefix = `${name}.`;
+    this.schemaErrors = remapIndexedKeys(this.schemaErrors, prefix, moved);
+    this.manualErrors = remapIndexedKeys(this.manualErrors, prefix, moved);
+    this.touched = remapIndexedKeys(this.touched, prefix, moved);
+  }
+
+  private commitArray(
+    name: string,
+    next: unknown[],
+    ids: number[],
+    prevIds: number[],
+  ): void {
+    this.remapArrayKeys(name, prevIds, ids);
     this.arrayIds.set(name, ids);
     this.values = setPath(this.values, name, next);
     this.emit();
   }
 
   arrayAppend = (name: string, value: unknown): void => {
-    const next = [...this.readArray(name), value];
-    const ids = this.idsFor(name, next.length - 1);
-    this.commitArray(name, next, [...ids, this.nextArrayId++]);
+    const current = this.readArray(name);
+    const prevIds = this.currentIds(name);
+    this.commitArray(
+      name,
+      [...current, value],
+      [...prevIds, this.nextArrayId++],
+      prevIds,
+    );
   };
 
   arrayPrepend = (name: string, value: unknown): void => {
     const current = this.readArray(name);
-    const ids = this.idsFor(name, current.length);
-    this.commitArray(name, [value, ...current], [this.nextArrayId++, ...ids]);
+    const prevIds = this.currentIds(name);
+    this.commitArray(
+      name,
+      [value, ...current],
+      [this.nextArrayId++, ...prevIds],
+      prevIds,
+    );
   };
 
   arrayInsert = (name: string, index: number, value: unknown): void => {
     const current = this.readArray(name);
-    const ids = this.idsFor(name, current.length);
+    const prevIds = this.currentIds(name);
     const next = [...current.slice(0, index), value, ...current.slice(index)];
-    const nextIds = [...ids.slice(0, index), this.nextArrayId++, ...ids.slice(index)];
-    this.commitArray(name, next, nextIds);
+    const nextIds = [
+      ...prevIds.slice(0, index),
+      this.nextArrayId++,
+      ...prevIds.slice(index),
+    ];
+    this.commitArray(name, next, nextIds, prevIds);
   };
 
   arrayRemove = (name: string, index: number): void => {
     const current = this.readArray(name);
-    const ids = this.idsFor(name, current.length);
+    const prevIds = this.currentIds(name);
     this.commitArray(
       name,
       current.filter((_, i) => i !== index),
-      ids.filter((_, i) => i !== index),
+      prevIds.filter((_, i) => i !== index),
+      prevIds,
     );
   };
 
   arrayMove = (name: string, from: number, to: number): void => {
     const next = this.readArray(name).slice();
-    const ids = this.idsFor(name, next.length).slice();
+    const prevIds = this.currentIds(name);
+    const ids = prevIds.slice();
     const [item] = next.splice(from, 1);
     const [id] = ids.splice(from, 1);
     next.splice(to, 0, item);
     ids.splice(to, 0, id);
-    this.commitArray(name, next, ids);
+    this.commitArray(name, next, ids, prevIds);
   };
 
   arraySwap = (name: string, a: number, b: number): void => {
     const next = this.readArray(name).slice();
-    const ids = this.idsFor(name, next.length).slice();
+    const prevIds = this.currentIds(name);
+    const ids = prevIds.slice();
     [next[a], next[b]] = [next[b], next[a]];
     [ids[a], ids[b]] = [ids[b], ids[a]];
-    this.commitArray(name, next, ids);
+    this.commitArray(name, next, ids, prevIds);
   };
 
   arrayUpdate = (name: string, index: number, value: unknown): void => {
     const next = this.readArray(name).slice();
     next[index] = value;
-    const ids = this.idsFor(name, next.length);
-    this.commitArray(name, next, ids);
+    const prevIds = this.currentIds(name);
+    const nextIds = prevIds.slice();
+    while (nextIds.length < next.length) nextIds.push(this.nextArrayId++);
+    this.commitArray(name, next, nextIds, prevIds);
   };
 
   arrayReplace = (name: string, values: unknown[]): void => {
-    this.arrayIds.set(name, []);
-    this.commitArray(name, [...values], this.idsFor(name, values.length));
+    // Every row is new, so no id survives — the array's stale error/touched
+    // entries go with the rows they described.
+    const prevIds = this.currentIds(name);
+    const nextIds = values.map(() => this.nextArrayId++);
+    this.commitArray(name, [...values], nextIds, prevIds);
   };
 }
 

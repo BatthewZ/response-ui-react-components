@@ -70,6 +70,54 @@ describe("Stepper", () => {
     expect(onStepClick).toHaveBeenCalledWith(2);
   });
 
+  it("names every clickable indicator after its step, with its status", () => {
+    // activeStep=2 → steps 0 and 1 are "done" (a check glyph, no text of their own).
+    renderStepper(2, { onStepClick: vi.fn() });
+
+    expect(
+      screen.getByRole("button", { name: "Account, completed" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Profile, completed" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Confirm, current step" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names upcoming indicators too", () => {
+    renderStepper(0, { onStepClick: vi.fn() });
+
+    expect(
+      screen.getByRole("button", { name: "Account, current step" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Profile" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeInTheDocument();
+  });
+
+  it("still fires onStepClick once when reached by its accessible name", async () => {
+    const onStepClick = vi.fn();
+    renderStepper(2, { onStepClick });
+
+    await userEvent.click(screen.getByRole("button", { name: "Profile, completed" }));
+
+    expect(onStepClick).toHaveBeenCalledTimes(1);
+    expect(onStepClick).toHaveBeenCalledWith(1);
+  });
+
+  it("spreads rest props onto the li, per StepProps' li prop type", () => {
+    const { container } = render(
+      <Stepper activeStep={0} onStepClick={vi.fn()}>
+        <Stepper.Step title="Account" data-testid="step-root" id="account-step" />
+      </Stepper>,
+    );
+    const li = container.querySelector("li.stepper-step");
+    expect(li).toHaveAttribute("data-testid", "step-root");
+    expect(li).toHaveAttribute("id", "account-step");
+    // The button keeps its own name — the li's props never reach it.
+    expect(screen.getByRole("button", { name: "Account, current step" })).not.toBe(li);
+  });
+
   it("reflects orientation via data-orientation", () => {
     const { container, rerender } = renderStepper(0);
     expect(container.querySelector(".stepper")).toHaveAttribute(

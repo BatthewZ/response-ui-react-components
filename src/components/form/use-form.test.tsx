@@ -239,3 +239,88 @@ describe("useFieldArray", () => {
     expect(result.current.array.fields).toHaveLength(1);
   });
 });
+
+describe("useFieldArray — errors follow their row", () => {
+  type Row = { email: string };
+  type RowValues = { people: Row[] };
+
+  const rowSchema: StandardSchemaV1<unknown, RowValues> = {
+    "~standard": {
+      version: 1,
+      vendor: "test",
+      validate(value) {
+        const input = value as RowValues;
+        const issues = (input.people ?? []).flatMap((row, index) =>
+          String(row?.email ?? "").includes("@")
+            ? []
+            : [{ message: "Email is invalid", path: ["people", index, "email"] }],
+        );
+        return issues.length > 0 ? { issues } : { value: input };
+      },
+    },
+  };
+
+  function PeopleForm() {
+    const form = useForm<RowValues>({
+      schema: rowSchema,
+      defaultValues: {
+        people: [{ email: "a@ok.com" }, { email: "bad" }, { email: "c@ok.com" }],
+      },
+      shouldFocusError: false,
+    });
+    const array = useFieldArray({ form, name: "people" });
+    return (
+      <FormProvider form={form}>
+        <form {...form.props}>
+          {array.fields.map((row, index) => (
+            <div key={row.id}>
+              <Input {...form.field(`${row.name}.email`)} />
+              <button type="button" onClick={() => array.remove(index)}>
+                {`Remove ${index}`}
+              </button>
+            </div>
+          ))}
+          <button type="submit">Submit</button>
+        </form>
+      </FormProvider>
+    );
+  }
+
+  /** `[value, aria-invalid]` per rendered row, in document order. */
+  const rows = () =>
+    screen
+      .getAllByRole("textbox")
+      .map((el) => [(el as HTMLInputElement).value, el.getAttribute("aria-invalid")]);
+
+  it("keeps aria-invalid on the invalid row after the middle row is removed", async () => {
+    const user = userEvent.setup();
+    render(<PeopleForm />);
+
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    expect(rows()).toEqual([
+      ["a@ok.com", null],
+      ["bad", "true"],
+      ["c@ok.com", null],
+    ]);
+
+    // Remove the middle row — the invalid one. Nothing should be flagged after.
+    await user.click(screen.getByRole("button", { name: "Remove 1" }));
+    expect(rows()).toEqual([
+      ["a@ok.com", null],
+      ["c@ok.com", null],
+    ]);
+  });
+
+  it("moves aria-invalid down when a valid row above the invalid one is removed", async () => {
+    const user = userEvent.setup();
+    render(<PeopleForm />);
+
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    // Remove row 0 (valid) — the invalid row slides from index 1 to index 0.
+    await user.click(screen.getByRole("button", { name: "Remove 0" }));
+    expect(rows()).toEqual([
+      ["bad", "true"],
+      ["c@ok.com", null],
+    ]);
+  });
+});
