@@ -501,5 +501,5 @@ needed, and closing returns focus to whatever was focused before — both native
 ## Related
 
 [Dialog](dialog.md) · [Drawer](drawer.md) · [Kbd](kbd.md) · [DropdownMenu](dropdown-menu.md) ·
-[SearchInput](search-input.md) · [Combobox](combobox.md) · `AppShell` ·
+[SearchInput](search-input.md) · [Combobox](combobox.md) · [AppShell](app-shell.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

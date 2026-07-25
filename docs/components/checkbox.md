@@ -115,10 +115,10 @@ See [Gotchas](#gotchas).
   default `--tw-ring-offset-color` (`#fff`), which nothing here re-themes. On the light
   `default` / `events` themes it blends in; on the dark `grimdark` and `tech` themes
   (`color-scheme: dark`) it shows as a thin white halo between the box and the ring. The
-  sibling text controls ([Input](./input.md), `Select`, `Textarea`) avoid this by using
+  sibling text controls ([Input](./input.md), [Select](select.md), [Textarea](textarea.md)) avoid this by using
   `ring-offset-0`; Checkbox does not.
 - **The ring is `focus:`, not `focus-visible:`.** Like [Input](./input.md) — and unlike
-  `Button` — it appears on pointer clicks as well as keyboard focus.
+  [Button](button.md) — it appears on pointer clicks as well as keyboard focus.
 - **`indeterminate` is not a prop.** Set it via the `ref` after mount (see above); passing
   it as a prop does nothing, because it is a DOM property with no HTML attribute.
 - **No built-in label.** Checkbox renders a bare `<input>` — give it an accessible name
@@ -133,7 +133,7 @@ See [Gotchas](#gotchas).
 
 Checkbox has no label of its own, so always give it an accessible name: wrap the box and
 its text in one `<label>` (implicit association, as in every example here), pair a
-sibling `Label` via `htmlFor`/`id`, or pass `aria-label` / `aria-labelledby` when the box
+sibling [Label](label.md) via `htmlFor`/`id`, or pass `aria-label` / `aria-labelledby` when the box
 stands alone.
 
 Keyboard and screen-reader behaviour is the browser's native checkbox: it is focusable,
@@ -147,6 +147,6 @@ white offset gap on dark themes.
 
 ## Related
 
-`Radio` · `Switch` · `Field` · `Label` ·
+[Radio](radio.md) · [Switch](switch.md) · [Field](field.md) · [Label](label.md) ·
 [Input](./input.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

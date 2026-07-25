@@ -316,5 +316,5 @@ overlay like the one in [Portal](portal.md):
 
 ## Related
 
-[Dialog](dialog.md) · `AppShell` · `Popover` · [Portal](portal.md) ·
+[Dialog](dialog.md) · [AppShell](app-shell.md) · [Popover](popover.md) · [Portal](portal.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

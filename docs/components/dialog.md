@@ -347,6 +347,6 @@ close, and Tab is trapped in between — all native.
 
 ## Related
 
-[Drawer](drawer.md) · [Portal](portal.md) · `Popover` · `CommandPalette` · `useFocusTrap` ·
+[Drawer](drawer.md) · [Portal](portal.md) · [Popover](popover.md) · [CommandPalette](command-palette.md) · `useFocusTrap` ·
 [Button](button.md) · [FormActions](form-actions.md) · [Field](field.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

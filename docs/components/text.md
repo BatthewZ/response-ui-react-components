@@ -223,7 +223,7 @@ as a role, not a number.
   built CSS only because some *other* file under `src/` spells it out literally.
   `font-semibold` is written out by seven components, so it is not going anywhere.
   `font-bold` is written out in exactly two places — [Button](button.md)'s `link` variant
-  and `ErrorBoundary`'s fallback heading — and the second is already on this package's list
+  and [ErrorBoundary](error-boundary.md)'s fallback heading — and the second is already on this package's list
   to be rewritten in design-system tokens. `weight="bold"` works today, but it is one
   unrelated refactor away from emitting a class with no rule behind it. If you depend on
   it, keep a literal `font-bold` somewhere Tailwind scans.
@@ -269,5 +269,5 @@ names the roles, it does not guarantee the contrast.
 
 ## Related
 
-[Label](label.md) · [DescriptionList](description-list.md) · [Kbd](kbd.md) · `CodeBlock` ·
+[Label](label.md) · [DescriptionList](description-list.md) · [Kbd](kbd.md) · [CodeBlock](code-block.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

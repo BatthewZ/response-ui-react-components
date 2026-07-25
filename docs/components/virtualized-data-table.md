@@ -2,7 +2,7 @@
 
 A data table that windows its rows, so a 50,000-row dataset scrolls continuously while only
 the visible slice — plus a small overscan — is ever mounted in the DOM. Same generic
-`ColumnDef<T>` contract and sort logic as `DataTable`; reach for this one when the answer to
+`ColumnDef<T>` contract and sort logic as [DataTable](data-table.md); reach for this one when the answer to
 "how many rows?" is "too many to paginate".
 
 <!-- example:Minimal -->
@@ -57,7 +57,7 @@ they did. `SortState` is `{ key: string; direction: "asc" | "desc" }`; it is not
 that name from the package barrel, so type your own state with
 `VirtualizedDataTableProps<Invoice>["sort"]` if you need the annotation.
 
-`stickyHeader` defaults to **`true`** here (the `Table` primitive underneath defaults it to
+`stickyHeader` defaults to **`true`** here (the [Table](table.md) primitive underneath defaults it to
 `false`) — a header that scrolls away is not much use on a list this long.
 
 ## Columns
@@ -138,7 +138,7 @@ up:
 
 ## Sorting
 
-Identical contract to `DataTable`. Left alone, sorting is uncontrolled and the component sorts
+Identical contract to [DataTable](data-table.md). Left alone, sorting is uncontrolled and the component sorts
 **the whole dataset** — not the visible window — with a comparator that understands numbers,
 booleans, `Date`s and strings (via `localeCompare`), and always sorts nullish values last
 regardless of direction. Clicking a header cycles `none → asc → desc → none`; clicking a
@@ -220,7 +220,7 @@ and `setSelected` are a `useState<Set<string | number>>(new Set())`.
 ```
 <!-- /example -->
 
-The header checkbox is the difference from `DataTable`. There, select-all covers the current
+The header checkbox is the difference from [DataTable](data-table.md). There, select-all covers the current
 page slice; here there are no pages, so it toggles **every row in `data`** — 50,000 keys into
 your Set from one click. It shows the native indeterminate state when some but not all rows are selected.
 
@@ -252,13 +252,13 @@ away — so appending rows to `data` is enough to make it fire again on the next
 reorder the partial dataset you have so far and fight the server's ordering.
 
 There is no pagination here and no `footer` slot — if you want page controls instead of
-continuous scroll, use `DataTable`, which has both and renders [Pagination](pagination.md)
+continuous scroll, use [DataTable](data-table.md), which has both and renders [Pagination](pagination.md)
 itself.
 
 ## Loading and empty states
 
 Both replace the body wholesale and are **not** virtualized. The scroll viewport is dropped —
-neither branch passes `height` or the `overflow-y` class to `Table`, so the wrapper falls back
+neither branch passes `height` or the `overflow-y` class to [Table](table.md), so the wrapper falls back
 to content height and `stickyHeader` (still `true`) has nothing to pin against. `striped` is
 forced off, and the header is re-rendered in a reduced form: no sort affordances, no column
 `align`, and an empty cell where the select-all checkbox was.
@@ -411,10 +411,10 @@ assistive tech the table is windowed at all.
   is `null`, and the `<tbody>` held 17 `<tr>` elements. A screen reader therefore announces a
   table the size of the *window*, whose contents change as it scrolls, with no way to say "row
   4,201 of 50,000". You cannot patch it from outside either — the component accepts no props to
-  forward, and `Table` spreads its own rest props onto the wrapper `<div>`, not the `<table>`.
+  forward, and [Table](table.md) spreads its own rest props onto the wrapper `<div>`, not the `<table>`.
 - **Find-in-page only searches what is mounted.** Ctrl+F, browser translation and "select all"
   see the visible window and nothing else. That is inherent to windowing, but it is a real
-  regression against a plain `Table` and worth weighing before you virtualize a list of 500.
+  regression against a plain [Table](table.md) and worth weighing before you virtualize a list of 500.
 - **Row checkboxes are named with the raw key.** Each row's checkbox takes an `aria-label` of
   the literal `"Select row "` followed by whatever `rowKey` returned — measured as
   `"Select row inv_0"`. If your keys are database IDs, that is what gets read out, and there is
@@ -436,7 +436,7 @@ assistive tech the table is windowed at all.
 
 ## Related
 
-`DataTable` · `Table` · `useVirtualRows` · [Pagination](pagination.md) ·
+[DataTable](data-table.md) · [Table](table.md) · `useVirtualRows` · [Pagination](pagination.md) ·
 [Checkbox](checkbox.md) · [EmptyState](empty-state.md) · [Skeleton](skeleton.md) ·
 [Badge](badge.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

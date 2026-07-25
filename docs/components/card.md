@@ -123,7 +123,7 @@ not the component, if you want cards to sit on a different surface globally.
 - **`overflow-hidden` clips every child to the corner radius,** which is what makes rounded
   media work — but paired with the always-on padding it means nothing inside can reach the
   card's edge. There is no flush / edge-to-edge mode; for a bleed image header reach for
-  `MediaCard`.
+  [MediaCard](media-card.md).
 - **`min-w-0` is deliberate.** As a flex or grid child the card can hold wide content — a
   long unbroken string, a table — and `min-w-0` lets it shrink and wrap rather than blow out
   its container's width.
@@ -143,5 +143,5 @@ Put a real [Button](./button.md) or link inside instead.
 
 ## Related
 
-`MediaCard` · [StatCard](./stat-card.md) · `HoverCard` · `EmptyState` ·
+[MediaCard](media-card.md) · [StatCard](./stat-card.md) · [HoverCard](hover-card.md) · [EmptyState](empty-state.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -409,6 +409,6 @@ own box rather than out into the sidebar's `overflow-x: hidden` edge.
 
 ## Related
 
-`CommandPalette` · [Drawer](drawer.md) · [Breadcrumbs](breadcrumbs.md) ·
+[CommandPalette](command-palette.md) · [Drawer](drawer.md) · [Breadcrumbs](breadcrumbs.md) ·
 [Tooltip](tooltip.md) · [Portal](portal.md) · [ThemeSwitcher](theme-switcher.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -1,6 +1,6 @@
 # FieldError
 
-The inline validation message for a form field. Inside a `Field` it renders that field's
+The inline validation message for a form field. Inside a [Field](field.md) it renders that field's
 error with its id already wired to the input's `aria-describedby`; on its own it just
 styles whatever message you pass. It renders nothing when there is no error, so you can
 leave it mounted unconditionally.
@@ -19,13 +19,13 @@ leave it mounted unconditionally.
 | `ref`       | `Ref<HTMLParagraphElement>`   | —                      |
 | …rest       | props of `<p>`                | —                      |
 
-Two of these fall back to `Field` context: omit `children` and it shows the field's error,
-omit `id` and it adopts the field's `errorId`. Outside a `Field` both fall back to nothing,
+Two of these fall back to [Field](field.md) context: omit `children` and it shows the field's error,
+omit `id` and it adopts the field's `errorId`. Outside a [Field](field.md) both fall back to nothing,
 and with no content the component renders `null`. See [Gotchas](#gotchas).
 
 ## Inside a Field
 
-`Field` owns the error. Render an empty `FieldError` in it and the message appears from
+[Field](field.md) owns the error. Render an empty `FieldError` in it and the message appears from
 context, carrying the `errorId` that the input's `aria-describedby` already points at — no
 props to thread through.
 
@@ -86,16 +86,16 @@ border uses, so the message and its field read as one.
   than an empty red paragraph. A numeric `0` child would also vanish, but error copy is
   never `0`.
 - **Explicit children bypass the field's invalid state.** `children` shows the message, but
-  the input's `aria-describedby` only tracks the `Field`'s own error. Pass `children` while
-  the `Field` has no error and the message is visible yet not programmatically linked to the
-  input. Let `Field` own the error, or wire `aria-describedby` yourself.
-- **One error id per Field.** Two `FieldError`s deriving from the same `Field` both take its
+  the input's `aria-describedby` only tracks the [Field](field.md)'s own error. Pass `children` while
+  the [Field](field.md) has no error and the message is visible yet not programmatically linked to the
+  input. Let [Field](field.md) own the error, or wire `aria-describedby` yourself.
+- **One error id per Field.** Two `FieldError`s deriving from the same [Field](field.md) both take its
   `errorId`, producing a duplicate id. Only an explicit `id` prop clears it: `id` resolves to
   `field.errorId` regardless of `children`, so giving one its own content changes what shows
   but leaves the duplicate id in place.
-- **Not server-renderable.** Like the form inputs, FieldError reads `Field` context via a
+- **Not server-renderable.** Like the form inputs, FieldError reads [Field](field.md) context via a
   hook and ships **no** `"use client"` of its own, so rendering it directly from a Server
-  Component with no client ancestor throws. Inside a normal `Field` tree — itself a client
+  Component with no client ancestor throws. Inside a normal [Field](field.md) tree — itself a client
   component — this never comes up.
 - **No per-component CSS.** There is no `FieldError.css`. Both CSS imports are still required
   — the two utilities resolve to tokens from `@batthewz/response-ui-css`.
@@ -109,11 +109,11 @@ every keystroke, prefer the polite `role="status"` override above so changes que
 than interrupt.
 
 The colour is signal too, but never the only signal: the message text carries the meaning,
-so users who can't perceive the red still get the full error. Inside a `Field`, the shared
+so users who can't perceive the red still get the full error. Inside a [Field](field.md), the shared
 `errorId` is what turns this into the input's description — render it (with content) or the
 input's `aria-describedby` resolves to nothing.
 
 ## Related
 
-`Field` · [Input](input.md) · `Label` · `FormActions` ·
+[Field](field.md) · [Input](input.md) · [Label](label.md) · [FormActions](form-actions.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

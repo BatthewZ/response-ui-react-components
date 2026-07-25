@@ -40,7 +40,7 @@ where you set the field's width.
 
 The component renders a `<div>` wrapper containing the hidden input (only when you pass
 `name`), the visible [Input](input.md), an [IconButton](icon-button.md) cluster pinned to the
-right edge, and — while open — a portalled `role="dialog"` popover holding a `Calendar`.
+right edge, and — while open — a portalled `role="dialog"` popover holding a [Calendar](calendar.md).
 
 ## Typing, and when the value commits
 
@@ -235,7 +235,7 @@ Exactly one of those rows is DatePicker's own code: the right-hand gutter that k
 of the buttons, and the gap between them (the `right-r6` inset that pins the cluster to the
 edge sits on that same `--R-SIZE-6` step). Everything else is inherited — the field chrome from
 [Input](input.md), so the picker matches every other text field in the form by construction,
-and the popover shell from a class string shared with `DateRangePicker`, which is why both
+and the popover shell from a class string shared with [DateRangePicker](date-range-picker.md), which is why both
 pickers float identically.
 
 Four popover values are literals rather than tokens, and are not themeable: the stacking order
@@ -245,7 +245,7 @@ the offset from the field, which is the floating layer's default `8px`. So is th
 the field switches to when `clearable` puts a second button in the cluster: a hard `4rem`, off
 the responsive `r`-scale the rest of the padding uses.
 
-The calendar **inside** the popover is `Calendar`, which reads its own tokens from its own
+The calendar **inside** the popover is [Calendar](calendar.md), which reads its own tokens from its own
 stylesheet — the day cells, the selected fill, the today marker and the header controls are
 documented there, not here. Overriding a variable in the table above will not re-tint them.
 
@@ -277,7 +277,7 @@ documented there, not here. Overriding a variable in the table above will not re
   `en-US` → `en-GB` the text still reads `5/6/2026`. Blur it and the day-first parser reads
   that same text as 5 June, commits it, and calls `onValueChange` with a date the user never
   chose. Remount the picker (a changing `key`) when you switch locales.
-- **The calendar is fixed to one Sunday-first month with no Today button.** `Calendar`'s
+- **The calendar is fixed to one Sunday-first month with no Today button.** [Calendar](calendar.md)'s
   `weekStartsOn`, `numberOfMonths` and `showToday` are not part of DatePicker's props and are
   not forwarded, so `locale="fr-FR"` gives you French month and weekday names in a grid that
   still starts on `dim.`
@@ -331,5 +331,5 @@ Component; it just renders on the client.
 ## Related
 
 [Input](input.md) · [Field](field.md) · [Label](label.md) · [FieldError](field-error.md) ·
-`Calendar` · `DateRangePicker` · `RangeCalendar` · [IconButton](icon-button.md) ·
+[Calendar](calendar.md) · [DateRangePicker](date-range-picker.md) · [RangeCalendar](range-calendar.md) · [IconButton](icon-button.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

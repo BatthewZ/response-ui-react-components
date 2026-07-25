@@ -87,10 +87,10 @@ current position. Decide what a click may do inside the handler.
 `activeStep`/`setActiveStep` above are a `useState(1)` pair — the `Stepper` reads the value
 and the handler writes it, so navigation is entirely yours.
 
-`Wizard` is the library's multi-step form orchestrator and this is exactly how it drives
+[Wizard](wizard.md) is the library's multi-step form orchestrator and this is exactly how it drives
 its header: it renders a `Stepper` from its `steps` array and, while `allowBackNavigation`
 is on (the default), passes an `onStepClick` that acts only when `index < activeStep`.
-Reach for `Wizard` when you also want the panel and the Back/Next footer; reach for
+Reach for [Wizard](wizard.md) when you also want the panel and the Back/Next footer; reach for
 `Stepper` on its own when you already own the flow and only need the track.
 
 ## Step markers
@@ -259,6 +259,6 @@ markers are ordinary tab stops in DOM order.
 
 ## Related
 
-`Wizard` · `Timeline` · `ProgressBar` · [Tabs](tabs.md) ·
+[Wizard](wizard.md) · [Timeline](timeline.md) · [ProgressBar](progress-bar.md) · [Tabs](tabs.md) ·
 [ActivityFeed](activity-feed.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

@@ -53,21 +53,21 @@ ships two of those separately, and the line between them is sharp enough to draw
 - You want native constraint validation, where `required` participates in the browser's own
   submit check.
 
-**Reach for `Combobox` or `MultiSelect` when:**
+**Reach for [Combobox](combobox.md) or [MultiSelect](multi-select.md) when:**
 
 - The list is long enough to need filtering. Native type-ahead only jumps to entries by
-  leading characters; there is no search field and no substring match. `Combobox` is a text
+  leading characters; there is no search field and no substring match. [Combobox](combobox.md) is a text
   input over a filtered list, with `loading` and a `Combobox.Empty` "no results" slot.
 - You need more than one value. `<select multiple>` is a ctrl-click list on desktop and
-  inconsistent on mobile; `MultiSelect` gives removable chips, an inline filter, and a
+  inconsistent on mobile; [MultiSelect](multi-select.md) gives removable chips, an inline filter, and a
   `maxItems` cap.
 - An option needs to be richer than a string — an icon, a second line, an avatar. An
-  `<option>` renders its text and nothing else. This one is `Combobox` only: its `Item` takes
-  arbitrary children, whereas a `MultiSelect` option is `{ value, label }` with a `string`
+  `<option>` renders its text and nothing else. This one is [Combobox](combobox.md) only: its `Item` takes
+  arbitrary children, whereas a [MultiSelect](multi-select.md) option is `{ value, label }` with a `string`
   label and no children, so its rows are as plain as a native `<option>`.
 - You need to style the open list at all: highlight colour, spacing, a custom group header,
-  an async state. Again `Combobox` — it owns no data, so the popup's contents are whatever
-  you render; `MultiSelect` renders its own rows from the `options` array and has no
+  an async state. Again [Combobox](combobox.md) — it owns no data, so the popup's contents are whatever
+  you render; [MultiSelect](multi-select.md) renders its own rows from the `options` array and has no
   loading state.
 
 The cost of the two custom controls is the usual one: both portal, both carry hand-written
@@ -102,7 +102,7 @@ satisfies `required`, and the form submits an empty string. Marking it `disabled
 rule either way.
 
 `required` changes nothing visually: this component has no `:invalid` styling. Drive the red
-border from `error` or from a `Field`.
+border from `error` or from a [Field](field.md).
 
 ## Option groups and disabled options
 
@@ -129,7 +129,7 @@ through.
 
 ## In a Field
 
-`Field` owns the error. When it is invalid, Select reads `aria-invalid` and the id of the
+[Field](field.md) owns the error. When it is invalid, Select reads `aria-invalid` and the id of the
 [FieldError](field-error.md) from context automatically. The visible [Label](label.md),
 however, is your job: pair its `htmlFor` with the select's `id`.
 
@@ -164,7 +164,7 @@ Set `error` directly to style a standalone select as invalid.
 ```
 <!-- /example -->
 
-`error` **overrides** any `Field` it sits in — because the resolution is `error ??
+`error` **overrides** any [Field](field.md) it sits in — because the resolution is `error ??
 field.invalid`, passing `error={false}` forces the select valid even inside an errored
 field. Omit the prop entirely to inherit the field.
 
@@ -256,7 +256,7 @@ including on the empty-valued placeholder option above.
   dress the *closed* control. The popup is an OS-drawn layer: `<option>` takes no radius, no
   padding, no hover colour, and on macOS and iOS not even a font. Nothing in your theme
   reaches it beyond `color-scheme`. If the list itself has to be designed, that is what
-  `Combobox` and `MultiSelect` are for.
+  [Combobox](combobox.md) and [MultiSelect](multi-select.md) are for.
 - **The chevron is always black.** Its `currentColor` is resolved inside the background
   image's own document, not against `text-fg-primary`, so it does not follow the theme: it
   measures `rgb(0, 0, 0)` in Chromium and in Firefox whatever the select's own colour or
@@ -273,17 +273,17 @@ including on the empty-valued placeholder option above.
   pass through, but the styling assumes a one-line control. In Chromium and Firefox alike the
   chevron still paints, stranded in the vertical middle of the expanded list, and `pr-10`
   still reserves its gutter down the whole height. The ARIA role also changes from `combobox`
-  to `listbox`. Reach for `MultiSelect` instead.
-- **The `Label` is not auto-associated.** `Field` wires the *error* (`aria-invalid`,
-  `aria-describedby`) through context, but nothing links a `Label` to the select. Set
+  to `listbox`. Reach for [MultiSelect](multi-select.md) instead.
+- **The [Label](label.md) is not auto-associated.** [Field](field.md) wires the *error* (`aria-invalid`,
+  `aria-describedby`) through context, but nothing links a [Label](label.md) to the select. Set
   `Label htmlFor="x"` and `Select id="x"` yourself, or clicking the label won't focus the
   control and screen readers won't announce it as the field's name.
 - **Not server-renderable.** Unlike [Button](button.md), Select calls the `useFieldError`
   hook (it reads context), so it must run inside a Client Component. It ships **no**
   `"use client"` of its own, so rendering it directly from a Server Component with no client
   ancestor throws. In a normal client-side form tree this never comes up.
-- **`aria-describedby` needs a rendered `FieldError`.** Inside an errored `Field`, Select
-  points `aria-describedby` at the field's error id; if you don't render `FieldError` (or
+- **`aria-describedby` needs a rendered [FieldError](field-error.md).** Inside an errored [Field](field.md), Select
+  points `aria-describedby` at the field's error id; if you don't render [FieldError](field-error.md) (or
   give the error no content), that id resolves to nothing.
 - **No per-component CSS.** There is no `Select.css`. Both CSS imports are still required —
   the utilities above resolve to tokens from `@batthewz/response-ui-css`.
@@ -296,12 +296,12 @@ it are the browser's, not this library's — there is no roving `tabindex`, no
 `aria-activedescendant`, and no focus trap here to get wrong. A single-line select exposes
 the `combobox` role; adding `multiple` or `size` greater than 1 makes it a `listbox`.
 
-It has no built-in label, so always give it an accessible name — via a `Field` +
+It has no built-in label, so always give it an accessible name — via a [Field](field.md) +
 [Label](label.md) with matching `htmlFor`/`id`, an `aria-label`, or `aria-labelledby`.
 
-When invalid it sets `aria-invalid="true"`, and inside a `Field` it also sets
-`aria-describedby` to the `FieldError`. The error is signalled **visually** only by the
-border and ring colour, so pair it with a visible `FieldError` message for users who can't
+When invalid it sets `aria-invalid="true"`, and inside a [Field](field.md) it also sets
+`aria-describedby` to the [FieldError](field-error.md). The error is signalled **visually** only by the
+border and ring colour, so pair it with a visible [FieldError](field-error.md) message for users who can't
 perceive the difference.
 
 Focus shows a 2px ring in `--C-BORDER-FOCUS` plus a matching border; it is a `focus:` ring,
@@ -316,5 +316,5 @@ special semantics: it is read out as an ordinary choice, so word it as an instru
 ## Related
 
 [Input](input.md) · [Textarea](textarea.md) · [Field](field.md) · [Label](label.md) ·
-[FieldError](field-error.md) · `Combobox` · `MultiSelect` · `Radio` ·
+[FieldError](field-error.md) · [Combobox](combobox.md) · [MultiSelect](multi-select.md) · [Radio](radio.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

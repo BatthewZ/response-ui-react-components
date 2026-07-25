@@ -156,9 +156,9 @@ breakpoint, so a gap that did would drift out of proportion with it.
 Focus is `focus-visible` only — keyboard focus shows the ring, mouse clicks don't. The
 ring is always 2px and transparent until focused, so **focusing never shifts layout.**
 
-Icon-only buttons need an accessible name; reach for `IconButton`, which enforces it.
+Icon-only buttons need an accessible name; reach for [IconButton](icon-button.md), which enforces it.
 
 ## Related
 
-`IconButton` · `CopyButton` · `FormActions` ·
+[IconButton](icon-button.md) · [CopyButton](copy-button.md) · [FormActions](form-actions.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -214,5 +214,5 @@ read in place, in document order, as ordinary inline text. That is usually right
 
 ## Related
 
-[Alert](alert.md) · [StatCard](stat-card.md) · [Meter](meter.md) · [Kbd](kbd.md) · `Toast` ·
+[Alert](alert.md) · [StatCard](stat-card.md) · [Meter](meter.md) · [Kbd](kbd.md) · [Toast](toast.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

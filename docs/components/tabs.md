@@ -133,5 +133,5 @@ screen-reader users, but cannot be selected.
 
 ## Related
 
-`Accordion` · `Stepper` · `Wizard` ·
+[Accordion](accordion.md) · [Stepper](stepper.md) · [Wizard](wizard.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

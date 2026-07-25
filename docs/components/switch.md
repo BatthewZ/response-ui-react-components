@@ -309,6 +309,6 @@ giving the thumb a border or a higher-contrast fill.
 
 ## Related
 
-[Checkbox](checkbox.md) · `Radio` · [Field](field.md) · [Label](label.md) ·
+[Checkbox](checkbox.md) · [Radio](radio.md) · [Field](field.md) · [Label](label.md) ·
 [FieldError](field-error.md) · [Input](input.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

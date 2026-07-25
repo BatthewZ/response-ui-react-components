@@ -14,7 +14,7 @@ when it scrolls into view.
 ```
 <!-- /example -->
 
-**Anatomy.** Unlike a stateful compound like [`Tabs`](./tabs.md), `StatCard` holds **no shared
+**Anatomy.** Unlike a stateful compound like [[Tabs](tabs.md)](./tabs.md), `StatCard` holds **no shared
 state** — the root is a flex column and each sub-part is an independently styled slot.
 Compose the parts you want, in whatever order, and drop the rest. Because there is no
 context, the sub-parts also render fine outside a `StatCard` root (they are just styled
@@ -113,7 +113,7 @@ colour. `up` is green with an up arrow, `down` is red with the same arrow rotate
 
 ## Sparkline
 
-`StatCard.Sparkline` wraps the `Sparkline` component in a height-capped slot and adds a
+`StatCard.Sparkline` wraps the [Sparkline](sparkline.md) component in a height-capped slot and adds a
 `direction` prop that tints the line to match the trend.
 
 <!-- example:SparklineTint -->
@@ -130,7 +130,7 @@ colour. `up` is green with an up arrow, `down` is red with the same arrow rotate
 
 StatCard hard-codes no colour, radius, spacing, or timing. The value, label, trend, and
 card chrome read contract variables directly in `StatCard.css`; the sparkline tint is
-the one place utilities are used, on the `Sparkline` it wraps.
+the one place utilities are used, on the [Sparkline](sparkline.md) it wraps.
 
 | Where                         | Utility / class                                       | Override                                                                          |
 | ----------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------- |
@@ -169,14 +169,14 @@ badge will *not* follow; it stays on status. Override both if you want them in s
   metric's "good/bad" to `direction` yourself.
 - **`Trend` takes no `children`.** Its text is generated from `value` (and `format`);
   the prop type omits `children`, so you can't inject your own node.
-- **`Sparkline`'s `values` is required.** `StatCard.Sparkline` forwards to `Sparkline`,
+- **[Sparkline](sparkline.md)'s `values` is required.** `StatCard.Sparkline` forwards to [Sparkline](sparkline.md),
   which needs a `number[]`; the wrapper adds only `direction`.
 - **Client component.** `StatCard` carries `"use client"` (the value animation uses
-  effects and observers), so it can't render in an RSC server tree the way [`Button`](./button.md) can.
+  effects and observers), so it can't render in an RSC server tree the way [[Button](button.md)](./button.md) can.
 
 ## Accessibility
 
-- **The card has no inherent structure.** `StatCard` is a plain `div`; `Value`, `Label`,
+- **The card has no inherent structure.** `StatCard` is a plain `div`; `Value`, [Label](label.md),
   and `Trend` are unlabelled `span`s with no programmatic association between them. A
   screen-reader user hears "Monthly revenue 48,120 +12.5%" as three loose strings. If a
   tile needs to read as a unit, wire it yourself — e.g. an `aria-label` on the root, or
@@ -190,5 +190,5 @@ badge will *not* follow; it stays on status. Override both if you want them in s
 
 ## Related
 
-`Sparkline` · `Table` · `Timeline` ·
+[Sparkline](sparkline.md) · [Table](table.md) · [Timeline](timeline.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

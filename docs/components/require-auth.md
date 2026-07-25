@@ -74,7 +74,7 @@ To keep the user on the page instead, pass UI and omit `redirect`:
 
 ## Custom loading state
 
-The default loading branch is a large `Spinner` centered in a full-height region. Replace
+The default loading branch is a large [Spinner](spinner.md) centered in a full-height region. Replace
 it with a skeleton (or anything) that matches the page being gated:
 
 <!-- example:CustomLoading -->
@@ -90,7 +90,7 @@ it with a skeleton (or anything) that matches the page being gated:
 RequireAuth paints nothing of its own — it is a headless branch selector, with no CSS
 file and no colour, radius, or type utilities in its source. The only pixels it can put
 on screen without your help are the **default loading branch**, and even those belong to
-two other components it composes: a `Spinner` for the animation and a `Center` for the
+two other components it composes: a [Spinner](spinner.md) for the animation and a [Center](center.md) for the
 full-height centering. Override the auth-screen look on *those* components (or by passing
 your own `loadingFallback`), not here.
 
@@ -130,7 +130,7 @@ inherited `color` it lands in.
 
 ## Accessibility
 
-The default loading branch is announced: `Spinner` carries `role="status"` and a visually
+The default loading branch is announced: [Spinner](spinner.md) carries `role="status"` and a visually
 hidden "Loading" label, so assistive tech hears the wait. If you pass your own
 `loadingFallback`, you own that announcement — add a live region if the wait is meaningful.
 
@@ -141,5 +141,5 @@ router redirect over the built-in one.
 
 ## Related
 
-`Spinner` · `Center` · `RouterAdapterProvider` · `useLink` ·
+[Spinner](spinner.md) · [Center](center.md) · `RouterAdapterProvider` · `useLink` ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

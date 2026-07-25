@@ -49,7 +49,7 @@ Two boundaries worth drawing precisely:
 - **A card grid is [Grid](grid.md)'s job, not Stack's.** A Stack of [Row](row.md)s — or a
   wrapping Row — sizes each cell to its content, so widths go ragged and nothing lines up
   from one line to the next. `Grid columns={{ base: 1, md: 3 }}` gives equal-width columns
-  and equal-height rows, which is what makes card footers align. Reach for `MasonryGrid`
+  and equal-height rows, which is what makes card footers align. Reach for [MasonryGrid](masonry-grid.md)
   only when you actually want uneven heights.
 - **Stack and [Container](container.md) compose rather than compete.** Container caps the
   measure and adds the horizontal gutter; Stack sets the vertical rhythm inside it.

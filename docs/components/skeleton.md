@@ -248,5 +248,5 @@ every theme you ship, especially at the `0.4` trough of the pulse.
 ## Related
 
 [Spinner](spinner.md) · [ProgressRing](progress-ring.md) · [Meter](meter.md) ·
-[Card](card.md) · `DataTable` · `Table` · `EmptyState` ·
+[Card](card.md) · [DataTable](data-table.md) · [Table](table.md) · [EmptyState](empty-state.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

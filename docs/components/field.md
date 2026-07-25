@@ -4,8 +4,8 @@ The wrapper that turns a label, a control, and an error message into one accessi
 group. It stacks them in a column, resolves the field's error — from an explicit prop or,
 inside a `FormProvider`, from the form store by `name` — and publishes the `aria-invalid` /
 `aria-describedby` wiring on context for the control inside to pick up, so you don't repeat
-it on every input. Every control in the form module picks it up bar two — `Radio` and
-`Checkbox`, which read no context at all.
+it on every input. Every control in the form module picks it up bar two — [Radio](radio.md) and
+[Checkbox](checkbox.md), which read no context at all.
 
 <!-- example:Minimal -->
 ```tsx
@@ -27,12 +27,12 @@ it on every input. Every control in the form module picks it up bar two — `Rad
 
 Field renders a plain `<div>`; `name` is omitted from the native `div` props and
 repurposed as the form-field key. It resolves the error, but it does **not** associate the
-`Label` with the control — that wiring is still yours. See [Gotchas](#gotchas).
+[Label](label.md) with the control — that wiring is still yours. See [Gotchas](#gotchas).
 
 ## Wire it to a form
 
 With a `name` and a `FormProvider` above it, Field subscribes to that field's error in the
-form store and re-renders when it changes — no `error` prop, and the `FieldError` fills in
+form store and re-renders when it changes — no `error` prop, and the [FieldError](field-error.md) fills in
 from validation:
 
 <!-- example:FormWired -->
@@ -53,7 +53,7 @@ directly instead.
 ## Rich error content
 
 `error` is a `ReactNode`, not a string, so a message can carry a link or formatting. The
-same value flows to the `FieldError` and marks the field invalid:
+same value flows to the [FieldError](field-error.md) and marks the field invalid:
 
 <!-- example:RichError -->
 ```tsx
@@ -88,7 +88,7 @@ The wrapper is a `flex flex-col` column with a `gap-r6` between rows. Override i
 ## Theme tokens
 
 Field paints nothing of its own — no colour, border, or radius. The colours you see in a
-field group come from its children (`Label`, `FieldError`, the control). The one token
+field group come from its children ([Label](label.md), [FieldError](field-error.md), the control). The one token
 Field itself reads is the gap between its stacked rows:
 
 | Where                   | Utility  | Override     |
@@ -107,17 +107,17 @@ change it you have to override it at both breakpoints (see
 - **`name` only does something inside a `FormProvider`.** With no provider above it the
   form lookup returns nothing and `name` no-ops. It also never reaches the DOM — Field
   omits the native `div` `name` and uses it purely as the store key.
-- **Field does not associate the `Label` with the control.** It generates an id, but only
-  for the error — it never wires `htmlFor`/`id` between a `Label` and the input. Set
-  `htmlFor` on the `Label` and a matching `id` on the control yourself, or the control has
+- **Field does not associate the [Label](label.md) with the control.** It generates an id, but only
+  for the error — it never wires `htmlFor`/`id` between a [Label](label.md) and the input. Set
+  `htmlFor` on the [Label](label.md) and a matching `id` on the control yourself, or the control has
   no accessible name from its label.
 - **`aria-describedby` can dangle.** A control is described-by the error whenever *it* is
-  invalid, but the error element only exists when a `FieldError` actually has content. Mark
+  invalid, but the error element only exists when a [FieldError](field-error.md) actually has content. Mark
   a control invalid on its own (e.g. `<Input error>`) inside a Field that has no error and
-  renders an empty `FieldError`, and the control's `aria-describedby` points at an id that
-  is not in the DOM. Keep the two in sync — drive the invalid state and the `FieldError`
+  renders an empty [FieldError](field-error.md), and the control's `aria-describedby` points at an id that
+  is not in the DOM. Keep the two in sync — drive the invalid state and the [FieldError](field-error.md)
   content from the same `error`.
-- **An empty `FieldError` renders `null`.** It only paints when there's content (its own
+- **An empty [FieldError](field-error.md) renders `null`.** It only paints when there's content (its own
   children, or the field's resolved error), so it's safe to leave in the tree
   unconditionally — it costs nothing until there's a message.
 - **Client component.** Field is `"use client"` (context, `useId`, a store subscription),
@@ -126,13 +126,13 @@ change it you have to override it at both breakpoints (see
 
 ## Accessibility
 
-The error is rendered by `FieldError` as a `<p role="alert">`, so assistive tech announces
+The error is rendered by [FieldError](field-error.md) as a `<p role="alert">`, so assistive tech announces
 it when it appears.
 
 Controls read the field context to pick up their state: eleven of the package's own controls
 — Input, Textarea, Select, Combobox and Switch among them — take `aria-invalid` and
 `aria-describedby` from the field automatically, and DatePicker, DateRangePicker, NumberInput
-and SearchInput inherit both through the Input they render. `RangeSlider` is the one partial:
+and SearchInput inherit both through the Input they render. [RangeSlider](range-slider.md) is the one partial:
 it reads the same hook but forwards only `aria-invalid`, onto its wrapper, and discards the
 `aria-describedby` — so nothing there points at the message. Two controls do not.
 [Radio](radio.md) and [Checkbox](checkbox.md) read no context and take no `error` prop, so
@@ -149,5 +149,5 @@ manual, per Gotchas.
 
 ## Related
 
-`Label` · `FieldError` · [Input](input.md) · `FormActions` · `FormProvider` / `useForm` ·
+[Label](label.md) · [FieldError](field-error.md) · [Input](input.md) · [FormActions](form-actions.md) · `FormProvider` / `useForm` ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -30,7 +30,7 @@ and honors reduced-motion from your theme without a line of CSS from you.
 ## Color
 
 `accent` (default) is the neutral progress hue; the other three carry status meaning and
-draw from the same tokens as `ProgressBar` and the status system, so they re-tint with it.
+draw from the same tokens as [ProgressBar](progress-bar.md) and the status system, so they re-tint with it.
 
 <!-- example:Colors -->
 ```tsx
@@ -148,5 +148,5 @@ yourself — every example above does. If the ring is purely ornamental, hide it
 
 ## Related
 
-`ProgressBar` · `Meter` · `Sparkline` ·
+[ProgressBar](progress-bar.md) · [Meter](meter.md) · [Sparkline](sparkline.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

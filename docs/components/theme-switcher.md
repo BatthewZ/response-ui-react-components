@@ -247,7 +247,7 @@ row of buttons wearing a radiogroup role. The library has the pieces to do it pr
 `ThemeSwitcher.css` defines no `:focus-visible` rule and removes no outline, so keyboard
 focus falls back to the browser's default ring. It is visible, but it is one of only two
 focus indicators in the library that neither match the others nor re-tint from
-`--C-BORDER-FOCUS` — the other being `Collapsible`'s trigger `<button>`, which has no focus
+`--C-BORDER-FOCUS` — the other being [Collapsible](collapsible.md)'s trigger `<button>`, which has no focus
 styling in its `.tsx` or its `.css` either.
 
 The resting label is `--C-TEXT-SECONDARY` at `0.8125rem` on `--C-SURFACE-2`. No guard in

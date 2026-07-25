@@ -2,7 +2,7 @@
 
 A single-date month grid with full arrow-key navigation, localized weekday and month
 names from `Intl`, per-day disabling, and a month/year quick-jump — the picking surface
-that `DatePicker` puts inside a popover, usable on its own wherever a date belongs
+that [DatePicker](date-picker.md) puts inside a popover, usable on its own wherever a date belongs
 inline.
 
 <!-- example:Minimal -->
@@ -205,7 +205,7 @@ All three spacing tokens sit on the responsive `r`-scale, and two of them step u
 header gap (`--R-SIZE-5`, `0.5rem` → `0.75rem`). The grid gaps (`--R-SIZE-6`) hold at
 `0.25rem` on both sides. `--BodyText-2` and `--BodyText-3` are responsive too. The range
 band tokens are listed because the rules live in this stylesheet, but single-date
-`Calendar` never sets those attributes — `RangeCalendar` does.
+`Calendar` never sets those attributes — [RangeCalendar](range-calendar.md) does.
 
 Five sizing knobs are **component-local**, lowercase and outside the
 [theme contract](../theme-contract.md): `--calendar-day-size` (the one you would actually
@@ -297,6 +297,6 @@ date — `"June 13, 2026"` — so a screen reader never reads a bare `"13"`.
 
 ## Related
 
-`RangeCalendar` · `DatePicker` · `DateRangePicker` ·
+[RangeCalendar](range-calendar.md) · [DatePicker](date-picker.md) · [DateRangePicker](date-range-picker.md) ·
 [IconButton](icon-button.md) · [Popover](popover.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

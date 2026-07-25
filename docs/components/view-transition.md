@@ -94,7 +94,7 @@ the effect matches the rest of the app. See the
   `document.startViewTransition` and just calls `navigate` where it is missing.
 - **It's a client module.** The file carries `"use client"` (the hook needs it), so
   importing `ViewTransition` opts its module into the client bundle even though its render
-  is pure — unlike `Button`, it is not usable as a server component.
+  is pure — unlike [Button](button.md), it is not usable as a server component.
 
 ## Accessibility
 
@@ -110,5 +110,5 @@ the effect matches the rest of the app. See the
 
 ## Related
 
-`AnimatePresence` · `Parallax` · `ScrollReveal` · `Stagger` · `useViewTransition` ·
+[AnimatePresence](animate-presence.md) · [Parallax](parallax.md) · [ScrollReveal](scroll-reveal.md) · [Stagger](stagger.md) · `useViewTransition` ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

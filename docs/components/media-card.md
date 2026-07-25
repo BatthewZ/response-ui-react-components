@@ -261,6 +261,6 @@ change survives and the scale and lift do not.
 
 ## Related
 
-[Card](card.md) · [Badge](badge.md) · [Skeleton](skeleton.md) · `Hero` · `Swimlane` ·
-`Carousel` · `MasonryGrid` ·
+[Card](card.md) · [Badge](badge.md) · [Skeleton](skeleton.md) · [Hero](hero.md) · [Swimlane](swimlane.md) ·
+[Carousel](carousel.md) · [MasonryGrid](masonry-grid.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

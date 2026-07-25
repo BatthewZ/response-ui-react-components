@@ -126,7 +126,7 @@ Inside a [Field](field.md), every box picks up `aria-invalid` and the id of the
 <!-- /example -->
 
 Standalone, the `error` boolean does the same styling and sets `aria-invalid` on each box —
-but there is no `Field` to supply a description, so the message is yours to render and to
+but there is no [Field](field.md) to supply a description, so the message is yours to render and to
 associate. Note that `aria-describedby` passed to `OTPInput` lands on the **group**, not on
 the boxes:
 
@@ -249,8 +249,8 @@ wins over the built-in `aria-label` default.
   backup code hears "Digit 3" while the field accepts letters.
 - **`autoComplete="one-time-code"` is set on the first box only;** the rest are
   `autoComplete="off"`. See the autofill gotcha above before relying on it.
-- **The invalid state is announced, not just tinted.** `error` (or an enclosing `Field`) puts
-  `aria-invalid="true"` on every box, and inside a `Field` every box also gets the same
+- **The invalid state is announced, not just tinted.** `error` (or an enclosing [Field](field.md)) puts
+  `aria-invalid="true"` on every box, and inside a [Field](field.md) every box also gets the same
   `aria-describedby`, so the error text is repeated once per box as the user arrows across.
   The group itself receives neither.
 - **Focus is `focus:`, not `focus-visible:`,** so the ring appears on mouse clicks as well as
@@ -261,5 +261,5 @@ wins over the built-in `aria-label` default.
 ## Related
 
 [Input](input.md) · [Field](field.md) · [FieldError](field-error.md) · [Label](label.md) ·
-`NumberInput` · `SearchInput` · [Extending components](../extending.md) ·
+[NumberInput](number-input.md) · [SearchInput](search-input.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

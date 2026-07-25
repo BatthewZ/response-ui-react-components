@@ -190,7 +190,7 @@ follow a theme.**
   the component stack never reach your code, and nothing is reported to error-tracking
   tooling. React itself still logs the error to the console. To report from the root, use
   React 19's `onCaughtError` option on `createRoot`; to show the message, subclass.
-- **The retry button is hand-rolled, not a `Button`.** It re-implements the primary
+- **The retry button is hand-rolled, not a [Button](button.md).** It re-implements the primary
   variant's classes, so it doesn't track [Button](button.md)'s variants, sizes, or its
   `focus-visible`-only ring. It also sets no `type`, and a `<button>` defaults to
   `type="submit"` — so a boundary placed inside a `<form>` gives you a Try again button
@@ -228,5 +228,5 @@ focuses the heading on mount.
 ## Related
 
 [Button](button.md) · [Alert](alert.md) · [Spinner](spinner.md) ·
-[RequireAuth](require-auth.md) · [Toast](toast.md) · `EmptyState` ·
+[RequireAuth](require-auth.md) · [Toast](toast.md) · [EmptyState](empty-state.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

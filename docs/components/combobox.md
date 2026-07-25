@@ -49,7 +49,7 @@ and it returns `null` while closed. Each `Combobox.Item` is one `role="option"`,
 | `Combobox.Empty`   | `<div role="presentation">`                              | (all `div` props)                 |
 
 All four forward `ref`, merge `className`, and spread the rest of your props onto the element
-they render. `Input`, `Content` and `Item` read context and throw — `"Combobox.Item must be
+they render. [Input](input.md), `Content` and `Item` read context and throw — `"Combobox.Item must be
 used within a Combobox"`, and so on — if rendered outside the root. `Combobox.Empty` reads no
 context at all: it is a pre-styled `<div>` that works anywhere and warns nowhere.
 
@@ -156,7 +156,7 @@ descendant — the listbox holds no options at all while it shows.
 
 ## Loading
 
-`loading` replaces the popup's children with a centred `Spinner` at `size="sm"`, so use it
+`loading` replaces the popup's children with a centred [Spinner](spinner.md) at `size="sm"`, so use it
 while an async query is in flight. Your `Combobox.Item` elements are still handed to
 `Combobox.Content` as children — it just doesn't render them — which is why the option count
 does not drop to zero (see [Gotchas](#gotchas)).
@@ -229,7 +229,7 @@ wire: pair its `htmlFor` with the input's `id`.
 <!-- /example -->
 
 Set `error` on the input to mark a standalone combobox invalid. Resolution is
-`error ?? field.invalid`, so `error={false}` forces it valid even inside an errored `Field`.
+`error ?? field.invalid`, so `error={false}` forces it valid even inside an errored [Field](field.md).
 
 <!-- example:ErrorState -->
 ```tsx
@@ -371,7 +371,7 @@ Four things the code does **not** do, and that you may have to work around:
 - **`Combobox.Empty` is `role="presentation"` and there is no live region.** The "no results"
   text is inside the listbox, but nothing announces that the option count dropped to zero —
   add your own `aria-live` region if that transition needs to be spoken. The same applies to
-  `loading`: the `Spinner`'s `role="status"` sits inside the listbox rather than beside the
+  `loading`: the [Spinner](spinner.md)'s `role="status"` sits inside the listbox rather than beside the
   input.
 - **The chevron button is `tabIndex={-1}`** — deliberately outside the tab order, since the
   input handles opening — but it is still in the accessibility tree with a hard-coded English
@@ -386,7 +386,7 @@ The keyboard cue is the one to fix first, because virtual focus leaves nothing e
 
 ## Related
 
-[Select](select.md) · `MultiSelect` · [SearchInput](search-input.md) · [TagInput](tag-input.md) ·
+[Select](select.md) · [MultiSelect](multi-select.md) · [SearchInput](search-input.md) · [TagInput](tag-input.md) ·
 [Field](field.md) · [Label](label.md) · [FieldError](field-error.md) · [Spinner](spinner.md) ·
 [Popover](popover.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

@@ -228,7 +228,7 @@ token (grimdark sets `700`) leaves menu labels behind. Override `.dropdown-menu-
 own CSS if that matters. The trigger sets no colour at all: it inherits the surrounding font and
 ink, which is what makes `asChild` and a bare trigger both look right.
 
-The whole surface is styled from a single `dropdown-menu-*` class family, and `ContextMenu`
+The whole surface is styled from a single `dropdown-menu-*` class family, and [ContextMenu](context-menu.md)
 deliberately reuses it — restyle these classes and both components move together.
 
 ## Gotchas
@@ -256,9 +256,9 @@ deliberately reuses it — restyle these classes and both components move togeth
   `onPointerEnter` and `onMouseDown`. Put an analytics `onClick` on the button inside `asChild`
   and the menu opens but the handler never runs. The child's `ref` goes the same way: only
   `DropdownMenu.Trigger`'s own forwarded ref is merged onto the element, so a
-  `<Button ref={btnRef}>` inside `asChild` leaves `btnRef.current` null. (`Tooltip` is the one
-  component here that merges the child's ref instead of replacing it; `DropdownMenu`, `Popover`
-  and `HoverCard` all drop it.) Props that don't collide survive (`className` is merged; `data-*`
+  `<Button ref={btnRef}>` inside `asChild` leaves `btnRef.current` null. ([Tooltip](tooltip.md) is the one
+  component here that merges the child's ref instead of replacing it; `DropdownMenu`, [Popover](popover.md)
+  and [HoverCard](hover-card.md) all drop it.) Props that don't collide survive (`className` is merged; `data-*`
   passes through). Move handlers and refs onto `DropdownMenu.Trigger`, where they *are* merged
   with the menu's own.
 - **The trigger has no `type`, so it submits an enclosing form.** A bare `<button>` defaults to
@@ -278,9 +278,9 @@ deliberately reuses it — restyle these classes and both components move togeth
 - **Sub-parts throw outside the root, under their internal names.** Every part reads menu
   context and throws if it can't find one — but only the trigger reports itself as
   `"DropdownMenu.Trigger must be used within a menu provider"`. The other four are shared with
-  `ContextMenu` and name themselves after the shared implementation, so a stray
+  [ContextMenu](context-menu.md) and name themselves after the shared implementation, so a stray
   `DropdownMenu.Item` throws `"MenuItem must be used within a menu provider"` and
-  `Content`/`Divider`/`Label` throw as `MenuContent`/`MenuDivider`/`MenuLabel`. Grep for those
+  `Content`/[Divider](divider.md)/[Label](label.md) throw as `MenuContent`/`MenuDivider`/`MenuLabel`. Grep for those
   names, not the ones in your JSX.
 
 ## Accessibility
@@ -313,7 +313,7 @@ is the menu-button pattern implemented properly — but four real gaps remain:
   until it closes. It is **not** marked `inert`: floating-ui only does that when
   `outsideElementsInert` is set, and that defaults to `false`. So the page behind is hidden from
   assistive tech but still reachable by pointer — a mismatch that is only safe because an
-  outside press dismisses the menu first. This is the same line `ContextMenu` inherits, and it
+  outside press dismisses the menu first. This is the same line [ContextMenu](context-menu.md) inherits, and it
   is not exposed as a prop. Nothing on screen — no scrim, no scroll lock — signals it.
 
 Two smaller notes. `DropdownMenu.Label` is `role="presentation"` and is wired to nothing: it
@@ -325,6 +325,6 @@ rendered exactly as you pass it with no accessible name of its own, so mark deco
 
 ## Related
 
-`ContextMenu` · `Popover` · `Tooltip` · `CommandPalette` · [Select](select.md) ·
+[ContextMenu](context-menu.md) · [Popover](popover.md) · [Tooltip](tooltip.md) · [CommandPalette](command-palette.md) · [Select](select.md) ·
 [Button](button.md) · [Portal](portal.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

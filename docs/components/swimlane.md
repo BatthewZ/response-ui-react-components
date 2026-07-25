@@ -59,7 +59,7 @@ takes keyboard focus has to come from you:
 ```
 <!-- /example -->
 
-Or hand the job to `Carousel`, which already owns a snapping, drag-scrollable track with
+Or hand the job to [Carousel](carousel.md), which already owns a snapping, drag-scrollable track with
 prev/next buttons and Arrow-key handling on its root:
 
 <!-- example:WithCarousel -->
@@ -82,7 +82,7 @@ prev/next buttons and Arrow-key handling on its root:
 ```
 <!-- /example -->
 
-Give the `Carousel` an `aria-label` as shown — given no `title` of its own it falls back to
+Give the [Carousel](carousel.md) an `aria-label` as shown — given no `title` of its own it falls back to
 labelling itself with the literal string `"Carousel"`, so a page of shelves would otherwise
 carry several identically named ones. (Its inner track is separately a `region` named
 `"Carousel items"`; rename that by passing `aria-label` to `Carousel.Track`.)
@@ -91,7 +91,7 @@ Note the header is inset by `--R-SIZE-5` on both sides while the body is flush t
 section edge. That is deliberate — it lets a scroller run edge-to-edge and bleed under the
 viewport rim — but it means your body content only lines up with the heading if you add the
 same inline padding to it. The hand-rolled examples here use `px-r5` for exactly that;
-`Carousel` brings its own track padding instead, so it sits on a different inset.
+[Carousel](carousel.md) brings its own track padding instead, so it sits on a different inset.
 
 ## Header slots
 
@@ -246,7 +246,7 @@ structural navigation Swimlane gives you.
   `tabindex` and no label. Don't count on the browser doing it for you either — engines
   differ, and the case where a scroll container becomes focusable on its own is the one with
   no focusable descendants, which a shelf of links or buttons is not. Add `tabIndex={0}` plus
-  a `role` and an `aria-label` yourself, as the snap example does, or use `Carousel`, whose
+  a `role` and an `aria-label` yourself, as the snap example does, or use [Carousel](carousel.md), whose
   root is already focusable and Arrow-key-scrollable.
 - **Reduced motion is honoured, twice.** The reveal is skipped by the
   `prefers-reduced-motion: reduce` branch in the shared animation CSS *and* by the media-query
@@ -267,6 +267,6 @@ structural navigation Swimlane gives you.
 
 ## Related
 
-[ScrollReveal](scroll-reveal.md) · [Row](row.md) · [Card](card.md) · `Carousel` ·
-`MediaCard` · `Hero` · [Extending components](../extending.md) ·
+[ScrollReveal](scroll-reveal.md) · [Row](row.md) · [Card](card.md) · [Carousel](carousel.md) ·
+[MediaCard](media-card.md) · [Hero](hero.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

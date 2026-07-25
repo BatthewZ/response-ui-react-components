@@ -365,5 +365,5 @@ renders fully transparent instead of degrading to 50% black.
 ## Related
 
 [Parallax](parallax.md) · [ScrollReveal](scroll-reveal.md) · [Stagger](stagger.md) ·
-[Button](button.md) · [Container](container.md) · `MediaCard` · `Carousel` ·
+[Button](button.md) · [Container](container.md) · [MediaCard](media-card.md) · [Carousel](carousel.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

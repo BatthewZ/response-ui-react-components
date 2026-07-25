@@ -215,7 +215,7 @@ a card.
   that's left. `aria-invalid` and any [FieldError](field-error.md) text still carry the
   state, so nothing is lost to assistive tech, but the visual cue is.
 - **The invalid state is an outline only.** The fill and thumb stay `--C-ACCENT` when
-  `error` is set — unlike `RangeSlider`, which re-tints both to the error colour.
+  `error` is set — unlike [RangeSlider](range-slider.md), which re-tints both to the error colour.
 - **Your `value` and the rendered value can diverge silently.** The component hands `value`
   to the input as-is; the browser then applies HTML's sanitisation — clamping to
   `[min, max]` and rounding anything off the `step` grid to the nearest step. `value={37}`
@@ -272,6 +272,6 @@ relationship to the control unless you create one.
 
 ## Related
 
-[Meter](meter.md) · [ProgressRing](progress-ring.md) · `RangeSlider` · `NumberInput` ·
-`Switch` · [Field](field.md) · [Label](label.md) ·
+[Meter](meter.md) · [ProgressRing](progress-ring.md) · [RangeSlider](range-slider.md) · [NumberInput](number-input.md) ·
+[Switch](switch.md) · [Field](field.md) · [Label](label.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

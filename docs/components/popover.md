@@ -58,9 +58,9 @@ optional `-start` / `-end` suffix — re-exported from this package's barrel nex
 Reach for **Popover** when the content is interactive but secondary: a filter form, a column
 picker, a share sheet. Reach for [Dialog](dialog.md) when the task has to be finished or
 abandoned before the page carries on — it calls `showModal()`, so the page behind it is
-genuinely inert and the panel paints in the browser's top layer. Reach for `Tooltip` for a short
+genuinely inert and the panel paints in the browser's top layer. Reach for [Tooltip](tooltip.md) for a short
 label on hover or focus, and put no control in one: a hover target is unreachable by keyboard
-and by touch. `HoverCard`, `DropdownMenu` and `ContextMenu` are the same family with different
+and by touch. [HoverCard](hover-card.md), [DropdownMenu](dropdown-menu.md) and [ContextMenu](context-menu.md) are the same family with different
 open gestures and, for the menus, a different keyboard model.
 
 One caveat before you file Popover under "non-modal": nothing on screen dims, the page keeps
@@ -236,8 +236,8 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   that [Portal](portal.md) documents, and it applies here for the same reason.
 - **Padding is a literal** `0.75rem 1rem`, not the responsive `r`-scale, so it does not step up
   at the 40rem breakpoint the way [Dialog](dialog.md)'s `p-r2` does.
-- **`z-index: 40` is a literal**, the same layer `DropdownMenu`, `Combobox`, `MultiSelect` and
-  `ColorPicker` sit on. `Tooltip` (50) and `AppShell`'s mobile sidebar (49 scrim, 50 panel)
+- **`z-index: 40` is a literal**, the same layer [DropdownMenu](dropdown-menu.md), [Combobox](combobox.md), [MultiSelect](multi-select.md) and
+  [ColorPicker](color-picker.md) sit on. [Tooltip](tooltip.md) (50) and [AppShell](app-shell.md)'s mobile sidebar (49 scrim, 50 panel)
   paint above a popover; anything in the browser's top layer — [Dialog](dialog.md),
   [Drawer](drawer.md) — is above all of it regardless of `z-index`.
 - **The fade is hard-coded.** `useTransitionStyles(context, { duration: 150, initial: { opacity: 0 } })`
@@ -267,9 +267,9 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   `onMouseEnter`, `onMouseMove`, `onMouseLeave`, `onPointerEnter`, `onPointerMove` and
   `onPointerLeave` survive untouched. `className` is merged with the child's. The child's `ref`
   is **not**: only `Popover.Trigger`'s own forwarded ref reaches the element, so a
-  `<Button ref={btnRef}>` inside `asChild` leaves `btnRef.current` null. `Tooltip` is the
-  exception in this library — it does merge the child's ref; `Popover`, `HoverCard` and
-  `DropdownMenu` do not. Put the handler and the ref on `Popover.Trigger` itself, where both
+  `<Button ref={btnRef}>` inside `asChild` leaves `btnRef.current` null. [Tooltip](tooltip.md) is the
+  exception in this library — it does merge the child's ref; `Popover`, [HoverCard](hover-card.md) and
+  [DropdownMenu](dropdown-menu.md) do not. Put the handler and the ref on `Popover.Trigger` itself, where both
   *are* merged, or use `onOpenChange` on the root instead.
 - **A popover inside a [Dialog](dialog.md) lands outside it.** `FloatingPortal` appends the
   panel to `<body>`, and a `<dialog>` opened with `showModal()` puts itself in the top layer
@@ -334,7 +334,7 @@ put a focusable control in the panel.
 
 ## Related
 
-[Dialog](dialog.md) · [Drawer](drawer.md) · [Portal](portal.md) · `Tooltip` · `HoverCard` ·
-`DropdownMenu` · `ContextMenu` · `Combobox` · [Button](button.md) ·
+[Dialog](dialog.md) · [Drawer](drawer.md) · [Portal](portal.md) · [Tooltip](tooltip.md) · [HoverCard](hover-card.md) ·
+[DropdownMenu](dropdown-menu.md) · [ContextMenu](context-menu.md) · [Combobox](combobox.md) · [Button](button.md) ·
 [FormActions](form-actions.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

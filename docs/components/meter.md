@@ -148,6 +148,6 @@ colourblind users. Surface that state elsewhere when it is load-bearing.
 
 ## Related
 
-`ProgressBar` · [ProgressRing](./progress-ring.md) · [Sparkline](./sparkline.md) ·
+[ProgressBar](progress-bar.md) · [ProgressRing](./progress-ring.md) · [Sparkline](./sparkline.md) ·
 [StatCard](./stat-card.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

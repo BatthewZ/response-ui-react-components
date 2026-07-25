@@ -204,5 +204,5 @@ Finally, motion: this component does not honour `prefers-reduced-motion` — see
 ## Related
 
 [Button](button.md) · [ProgressRing](progress-ring.md) · [Meter](meter.md) ·
-[RequireAuth](require-auth.md) · [Center](center.md) · `Skeleton` ·
+[RequireAuth](require-auth.md) · [Center](center.md) · [Skeleton](skeleton.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

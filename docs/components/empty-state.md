@@ -261,4 +261,4 @@ own theme. See the [theme contract](../theme-contract.md).
 ## Related
 
 [Card](card.md) · [Skeleton](skeleton.md) · [Alert](alert.md) · [Button](button.md) ·
-`Table` · [Extending components](../extending.md) · [Theme contract](../theme-contract.md)
+[Table](table.md) · [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

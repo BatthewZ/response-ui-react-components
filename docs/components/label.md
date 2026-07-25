@@ -34,7 +34,7 @@ Match the label's `htmlFor` to the input's `id`:
 <!-- /example -->
 
 Now clicking the label focuses the input, and screen readers announce the label as the
-field's name. This is your job in every case — [Input](input.md) and its `Field` wrapper
+field's name. This is your job in every case — [Input](input.md) and its [Field](field.md) wrapper
 wire the *error*, never the label.
 
 ## Required fields
@@ -85,8 +85,8 @@ up there with no breakpoint utilities from you.
 - **No automatic input association.** Label is a bare native `<label>` — it knows nothing
   about any input. Link it explicitly with `htmlFor` matching the control's `id`, or wrap
   the control. Without one of those, clicking the label won't focus the field and screen
-  readers won't announce it as the field's name. This holds **even inside a `Field`** —
-  `Field` propagates the error state, not the label wiring.
+  readers won't announce it as the field's name. This holds **even inside a [Field](field.md)** —
+  [Field](field.md) propagates the error state, not the label wiring.
 - **No required marker.** There is no `required` prop and no built-in asterisk. Add the
   indicator yourself as children, and set `required` (or `aria-required`) on the control,
   not on the label.
@@ -127,5 +127,5 @@ its standard surfaces.
 
 ## Related
 
-[Input](input.md) · `Textarea` · `Field` · `FieldError` · `Checkbox` · `Radio` ·
+[Input](input.md) · [Textarea](textarea.md) · [Field](field.md) · [FieldError](field-error.md) · [Checkbox](checkbox.md) · [Radio](radio.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

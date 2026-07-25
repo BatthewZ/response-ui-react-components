@@ -113,5 +113,5 @@ until the animation completes, so they remain briefly readable after `show` beco
 
 ## Related
 
-`Stagger` · `ScrollReveal` · [Parallax](parallax.md) · [ViewTransition](view-transition.md) ·
+[Stagger](stagger.md) · [ScrollReveal](scroll-reveal.md) · [Parallax](parallax.md) · [ViewTransition](view-transition.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

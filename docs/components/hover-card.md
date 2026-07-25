@@ -277,10 +277,10 @@ reports `:focus-visible` on the trigger — a keyboard tab, not a click or a tap
 interaction is mouse-only, so a touch pointer is ignored outright and a tap opens nothing.
 Between them, that is the share of your users who will never see this card.
 
-If you need a preview that keyboard and touch users can actually open, that is a `Popover`.
+If you need a preview that keyboard and touch users can actually open, that is a [Popover](popover.md).
 
 ## Related
 
-`Tooltip` · `Popover` · `DropdownMenu` · `ContextMenu` · [Avatar](avatar.md) ·
+[Tooltip](tooltip.md) · [Popover](popover.md) · [DropdownMenu](dropdown-menu.md) · [ContextMenu](context-menu.md) · [Avatar](avatar.md) ·
 [Portal](portal.md) · [Dialog](dialog.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

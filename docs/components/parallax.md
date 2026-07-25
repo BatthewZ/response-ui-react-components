@@ -127,5 +127,5 @@ imagery inside it should still carry `alt=""` so it is skipped by assistive tech
 
 ## Related
 
-`ScrollReveal` · `Stagger` · `AnimatePresence` · `ViewTransition` ·
+[ScrollReveal](scroll-reveal.md) · [Stagger](stagger.md) · [AnimatePresence](animate-presence.md) · [ViewTransition](view-transition.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

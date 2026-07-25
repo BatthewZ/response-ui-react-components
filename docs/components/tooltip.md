@@ -144,7 +144,7 @@ buttons waits the full `delay` at every one.
 can never be clicked; and because the bubble is portalled to the end of `<body>`, anything
 focusable in it becomes a tab stop at the end of the document rather than after the trigger.
 A user who tabs off the trigger lands there with no idea where "there" is. When you need
-content the user can act on — a link, a button, a form — reach for `Popover`, which is built
+content the user can act on — a link, a button, a form — reach for [Popover](popover.md), which is built
 to be entered.
 
 ## When the action is unavailable
@@ -271,6 +271,6 @@ Two more things to plan around:
 
 ## Related
 
-[IconButton](icon-button.md) · [Button](button.md) · [Kbd](kbd.md) · `Popover` · `HoverCard` ·
+[IconButton](icon-button.md) · [Button](button.md) · [Kbd](kbd.md) · [Popover](popover.md) · [HoverCard](hover-card.md) ·
 [Portal](portal.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

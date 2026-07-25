@@ -295,7 +295,7 @@ The `<ViewTransition name="hero">` component is unrelated — it just sets `view
 
 ### `AvatarUpload` — presentational by default
 
-Takes `onUpload(file): Promise<{ url: string }>`. Without it, just shows a local preview. With it, posts the file via the consumer's logic and updates the preview to the returned URL.
+Takes `onUpload(file): Promise<{ url: string }>`. With it, posts the file via the consumer's logic and updates the preview to the returned URL. Without it, the intended local-preview mode is currently broken — the object URL is revoked in the same tick it is set, so a pick blanks the avatar to initials instead of previewing (see `BUGS.md` #378).
 
 ```tsx
 <AvatarUpload

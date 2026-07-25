@@ -72,7 +72,7 @@ system. It never needs re-tinting because it draws nothing.
 - **It does nothing outside a flex parent.** `flex-1` is the flex shorthand
   (`flex-grow`/`flex-shrink`/`flex-basis`), so only a flex *item* obeys it — a grid item
   ignores it entirely. In a plain block the div just lays out as a normal empty block
-  (full-width, zero height) and pushes no one. Put it inside a `Row`, a `Stack`, or any
+  (full-width, zero height) and pushes no one. Put it inside a [Row](row.md), a [Stack](stack.md), or any
   `display: flex` container. To distribute space in a `display: grid`, reach for a `1fr`
   track or a column span instead — not a Spacer.
 - **The growth axis follows the parent, not the Spacer.** Horizontal in a row, vertical in
@@ -106,5 +106,5 @@ real element, and the surrounding gap belongs on the parent's own layout.
 
 ## Related
 
-`Row` · `Stack` · `Container` · `Center` · `Divider` · `Grid` ·
+[Row](row.md) · [Stack](stack.md) · [Container](container.md) · [Center](center.md) · [Divider](divider.md) · [Grid](grid.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -164,7 +164,7 @@ job: pair its `htmlFor` with the `id` you give TagInput.
 
 `error` **overrides** the surrounding field, because the resolution is
 `error ?? field.invalid` — passing `error={false}` forces a valid-looking control inside an
-errored `Field`. Omit the prop to inherit. Either way, a live `validateTag` message paints
+errored [Field](field.md). Omit the prop to inherit. Either way, a live `validateTag` message paints
 the same red border on top of whatever `error` says.
 
 ## Disabled
@@ -292,7 +292,7 @@ not promise.
   the chips' remove buttons respond to a click.
 - **Client component, with the directive.** TagInput ships its own `"use client"`, so
   importing it straight into an RSC tree works — unlike [Select](select.md), which reads the
-  same `Field` context but ships no directive of its own.
+  same [Field](field.md) context but ships no directive of its own.
 - **No per-component CSS.** There is no `TagInput.css`. Both CSS imports are still required
   — the utilities above resolve to tokens from `@batthewz/response-ui-css`.
 
@@ -319,7 +319,7 @@ Three gaps to plan around:
   walking the remove buttons. If the set matters, mirror it into your own labelled region.
 - **The validation message is not linked to the input.** It is a `<p aria-live="polite">`
   with no `id`, so it is spoken once when it appears and is then unreachable from the field
-  itself — `aria-describedby` only ever points at a surrounding `Field`'s error. Keep
+  itself — `aria-describedby` only ever points at a surrounding [Field](field.md)'s error. Keep
   messages short enough to survive a single announcement, or render your own described-by
   text as well.
 
@@ -335,6 +335,6 @@ shifts the layout. The remove glyph's own contrast is covered under
 ## Related
 
 [Input](input.md) · [Field](field.md) · [FieldError](field-error.md) ·
-[Label](label.md) · [Badge](badge.md) · [Select](select.md) · `MultiSelect` · `Combobox` ·
-`SearchInput` · [Extending components](../extending.md) ·
+[Label](label.md) · [Badge](badge.md) · [Select](select.md) · [MultiSelect](multi-select.md) · [Combobox](combobox.md) ·
+[SearchInput](search-input.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

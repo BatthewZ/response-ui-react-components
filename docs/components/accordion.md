@@ -3,7 +3,7 @@
 A stack of disclosure sections that share one open/closed policy — `mode="single"` keeps
 exactly one section open, `mode="multiple"` lets them stack. Reach for it when a page has
 more sections than fit comfortably at once: an FAQ, a settings group, a filter panel. For
-one independent disclosure with no siblings to coordinate, use `Collapsible` instead;
+one independent disclosure with no siblings to coordinate, use [Collapsible](collapsible.md) instead;
 Accordion exists specifically to *manage a set*.
 
 <!-- example:Minimal -->
@@ -272,5 +272,5 @@ generated from a `useId` base, so nothing to wire.
 
 ## Related
 
-`Collapsible` · [Tabs](tabs.md) · [DescriptionList](description-list.md) ·
+[Collapsible](collapsible.md) · [Tabs](tabs.md) · [DescriptionList](description-list.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

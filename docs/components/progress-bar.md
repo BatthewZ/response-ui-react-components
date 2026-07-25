@@ -44,8 +44,8 @@ not clamped — see [Gotchas](#gotchas).
 ## Label and value
 
 Because the root takes no `children`, a captioned bar is two blocks you compose yourself:
-a header row holding the `Label` and the `Value`, then the bar beneath it. Put an `id` on
-the `Label` and point the bar's `aria-labelledby` at it — that association is the one
+a header row holding the [Label](label.md) and the `Value`, then the bar beneath it. Put an `id` on
+the [Label](label.md) and point the bar's `aria-labelledby` at it — that association is the one
 thing the component does not do for you.
 
 <!-- example:WithLabelAndValue -->
@@ -63,7 +63,7 @@ thing the component does not do for you.
 `ProgressBar.Value` is a styled `<span>` and nothing more: the `"64%"` above is text you
 wrote, not a readout derived from `value`. It sets `font-variant-numeric: tabular-nums`
 so a ticking percentage doesn't jitter, and it is the only part of the widget that is
-`--C-TEXT-PRIMARY`; the `Label` is the quieter `--C-TEXT-SECONDARY`.
+`--C-TEXT-PRIMARY`; the [Label](label.md) is the quieter `--C-TEXT-SECONDARY`.
 
 ## Size
 
@@ -204,7 +204,7 @@ white at 15% over your fill and there is no token to change them.
   `<ProgressBar value={64}>…</ProgressBar>` is a compile error. `ProgressBar.Label` and
   `ProgressBar.Value` go beside the bar, and you own the layout between them.
 - **`ProgressBar.Label` does not label the bar.** It is a bare styled `<span>` — it sets
-  no `id`, and the root sets no `aria-labelledby`. A bar with a `Label` sitting next to it
+  no `id`, and the root sets no `aria-labelledby`. A bar with a [Label](label.md) sitting next to it
   still announces with **no accessible name**. Wire the two yourself, as the example above
   does, or pass `aria-label`.
 - **`ProgressBar.Value` is not derived from `value`.** It renders whatever text you give

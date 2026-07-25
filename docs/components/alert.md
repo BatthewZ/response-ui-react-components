@@ -136,5 +136,5 @@ background *contrast*, not that the meaning survives without colour.
 
 ## Related
 
-`Toast` · `Badge` · `EmptyState` ·
+[Toast](toast.md) · [Badge](badge.md) · [EmptyState](empty-state.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

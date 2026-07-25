@@ -33,7 +33,7 @@ through on both parts.
 
 ## Markers: avatar or icon
 
-Pass an `avatar` and it fills the marker column directly. An `Avatar` at `size="sm"` is
+Pass an `avatar` and it fills the marker column directly. An [Avatar](avatar.md) at `size="sm"` is
 exactly the 2rem column width, so it lands flush on the connector rail:
 
 <!-- example:WithAvatars -->
@@ -124,7 +124,7 @@ dropped onto, and those text tokens are intended to read on any `surface-*` toke
 Three geometry values are **not** on the contract: the marker column width (`2rem`), the
 icon glyph size (`1rem`), and the connector thickness (`2px`) are hard literals held in
 component-internal `--_activity-feed-*` locals. They are interdependent — the dot diameter
-is derived from the column width so the fallback dot and a real `Avatar` present the same
+is derived from the column width so the fallback dot and a real [Avatar](avatar.md) present the same
 circle — so they are fixed rather than themeable.
 
 ## Gotchas
@@ -142,7 +142,7 @@ circle — so they are fixed rather than themeable.
   wrapped in your own component freely — but rendered outside `<ActivityFeed>` it also
   won't warn; you just lose the `<ol>` wrapper, its list semantics, and the rail.
 - **Server-renderable.** `ActivityFeed` and `Item` have no `"use client"` and drop into an
-  RSC tree. Note that `Avatar`, if you use it as a marker, *is* a client component.
+  RSC tree. Note that [Avatar](avatar.md), if you use it as a marker, *is* a client component.
 
 ## Accessibility
 
@@ -164,5 +164,5 @@ sentence slots read in `actor action target timestamp` order.
 
 ## Related
 
-`Avatar` · `Timeline` · [DescriptionList](description-list.md) · [Card](card.md) ·
+[Avatar](avatar.md) · [Timeline](timeline.md) · [DescriptionList](description-list.md) · [Card](card.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -249,5 +249,5 @@ matches the `id` you pass; neither [Field](field.md) nor the component wires tha
 ## Related
 
 [Input](input.md) · [Slider](slider.md) · [Field](field.md) · [Label](label.md) ·
-[FieldError](field-error.md) · `RangeSlider` ·
+[FieldError](field-error.md) · [RangeSlider](range-slider.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

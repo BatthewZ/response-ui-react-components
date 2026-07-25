@@ -223,7 +223,7 @@ The ring around the presence dot and around each stacked avatar is hard-coded to
   avatars, and the one around the presence dot, always paint `--C-SURFACE-0`. On a `surface-1`
   card, a `surface-2` panel, or a `bg-primary` band it reads as a pale halo rather than a cut-out.
 - **`className` merges last.** It is passed through `cn()` after the size class, so a `size-*`
-  utility in `className` overrides the `size` prop — that is how `AvatarUpload` stretches an
+  utility in `className` overrides the `size` prop — that is how [AvatarUpload](avatar-upload.md) stretches an
   avatar to fill its own frame.
 - **Client component.** The image-error latch is `useState`, so the file carries `"use client"`.
   Dropping an Avatar into an RSC tree opens a client boundary at that point.
@@ -249,5 +249,5 @@ presentational, so the label is announced once.
 
 ## Related
 
-`AvatarUpload` · [ActivityFeed](activity-feed.md) ·
+[AvatarUpload](avatar-upload.md) · [ActivityFeed](activity-feed.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

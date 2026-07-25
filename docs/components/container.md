@@ -109,5 +109,5 @@ around or inside it so screen-reader users still get the page outline.
 
 ## Related
 
-[Grid](grid.md) · [Divider](divider.md) · `Stack` · `Row` · `Center` · `Spacer` ·
+[Grid](grid.md) · [Divider](divider.md) · [Stack](stack.md) · [Row](row.md) · [Center](center.md) · [Spacer](spacer.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -323,5 +323,5 @@ Everything else needs a decision from you:
 ## Related
 
 [Swimlane](swimlane.md) · [MediaCard](media-card.md) · [Card](card.md) ·
-[IconButton](icon-button.md) · `MasonryGrid` ·
+[IconButton](icon-button.md) · [MasonryGrid](masonry-grid.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

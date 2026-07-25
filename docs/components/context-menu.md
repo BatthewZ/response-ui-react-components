@@ -141,7 +141,7 @@ Every right-click builds a fresh Floating UI *virtual* reference — a zero-size
 event's `clientX`/`clientY` — and the panel is placed `bottom-start` against it with a 4px
 offset. So it opens 4px below the cursor with its start edge aligned to it, not against the
 trigger's box, and right-clicking a second spot moves it there without closing it first. Neither
-the placement nor the offset is configurable: unlike `DropdownMenu`, the root takes no
+the placement nor the offset is configurable: unlike [DropdownMenu](dropdown-menu.md), the root takes no
 `placement` prop.
 
 Near a viewport edge the shared `flip()` and `shift({ padding: 8 })` middleware take over — the
@@ -242,9 +242,9 @@ cursor position, wherever on the page that was.
 
 ContextMenu has no CSS file of its own, and its `.tsx` uses no Tailwind utilities. It sets
 `CLASS_PREFIX = "dropdown-menu"`, so its panel, items, dividers, and labels render the exact
-`.dropdown-menu-*` classes that `DropdownMenu` does and are painted by `DropdownMenu.css`, which
+`.dropdown-menu-*` classes that [DropdownMenu](dropdown-menu.md) does and are painted by `DropdownMenu.css`, which
 `src/styles.css` imports for the package. Overriding the menu's look means overriding those rules
-— and doing so retints **both** components at once. The full table lives with `DropdownMenu`; in
+— and doing so retints **both** components at once. The full table lives with [DropdownMenu](dropdown-menu.md); in
 summary, that stylesheet reads `--C-SURFACE-0` and `--C-BORDER-DEFAULT` for the panel with
 `--RADIUS-MD` and `--SHADOW-LG`, `--C-TEXT-PRIMARY` at `--BodyText-2` for item labels,
 `--C-SURFACE-1` for the hover/focus row, `--C-TEXT-SECONDARY` for item icons, and
@@ -286,7 +286,7 @@ nothing in the package styles it. See the [theme contract](../theme-contract.md)
 - **Right-clicking the open menu shows the browser's menu.** `Content` does no
   `preventDefault()` of its own, so the native menu appears on top of yours; the custom menu
   stays open behind it.
-- **The sub-parts are literally `DropdownMenu`'s.** `ContextMenu.Item` and `DropdownMenu.Item`
+- **The sub-parts are literally [DropdownMenu](dropdown-menu.md)'s.** `ContextMenu.Item` and `DropdownMenu.Item`
   are the same component object, distinguished only by which provider they find at runtime. The
   practical consequences: styling `.dropdown-menu-item` restyles both, and rendering one outside
   any menu throws `"MenuItem must be used within a menu provider"` — the internal name, not the
@@ -334,5 +334,5 @@ the divider — and the trigger gets `aria-haspopup="menu"` plus a live `aria-ex
 
 ## Related
 
-`DropdownMenu` · `Popover` · `Tooltip` · [Portal](portal.md) · [Button](button.md) ·
+[DropdownMenu](dropdown-menu.md) · [Popover](popover.md) · [Tooltip](tooltip.md) · [Portal](portal.md) · [Button](button.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -134,7 +134,7 @@ falls back to `currentColor`.
   (`max === min`) draws a centreline. None throw or emit `NaN`.
 - **Client component.** Sparkline carries `"use client"` — it reads
   `usePrefersReducedMotion` to gate the draw-in — so it can't render in an RSC server tree
-  the way [`Button`](./button.md) can.
+  the way [[Button](button.md)](./button.md) can.
 
 ## Accessibility
 
@@ -146,7 +146,7 @@ falls back to `currentColor`.
   **Pass an `aria-label` that states what the data shows** (`"Revenue, last 7 days"`), as
   every example here does.
 - **Purely decorative? Silence it.** A sparkline sitting beside a visible number (as in
-  [`StatCard`](./stat-card.md)) is redundant to assistive tech. There's no built-in
+  [[StatCard](stat-card.md)](./stat-card.md)) is redundant to assistive tech. There's no built-in
   decorative mode, but `role` spreads through, so pass `role="presentation"` (or
   `aria-hidden`) to drop it from the tree — note `aria-label` is consumed by the component
   and can't be cleared that way.
@@ -156,5 +156,5 @@ falls back to `currentColor`.
 
 ## Related
 
-[StatCard](./stat-card.md) · `Meter` · `ProgressRing` ·
+[StatCard](./stat-card.md) · [Meter](meter.md) · [ProgressRing](progress-ring.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

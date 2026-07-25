@@ -53,7 +53,7 @@ the two look identical until the box is taller than what's inside it.
 ## Multiple children
 
 Center is a flex **row**, not a stack. Drop several children in and they line up side by
-side, centred as a group. To centre a column, give it one child — a `Stack`, or your own
+side, centred as a group. To centre a column, give it one child — a [Stack](stack.md), or your own
 wrapper.
 
 <!-- example:MultipleChildren -->
@@ -79,7 +79,7 @@ is the one layout primitive a theme can't reach, by design — it only positions
   content and `items-center` has nothing to work against. Give it `min-h-*`, `h-full`
   (inside a sized parent), or `min-h-screen` — see [Without a height](#without-a-height).
 - **It's a flex row.** Multiple children sit side by side, not stacked. Wrap them in a
-  single element (a `Stack`) to centre a column — see [Multiple children](#multiple-children).
+  single element (a [Stack](stack.md)) to centre a column — see [Multiple children](#multiple-children).
 - **`className` wins over the defaults.** The merged `cn` lets a passed class override the
   base utilities — `className="items-start"` un-centres the cross axis, `flex-col` switches
   to a column. Handy, but it means a stray layout class silently changes the behaviour.
@@ -97,5 +97,5 @@ element directly inside rather than reaching for a `role` on the wrapper.
 
 ## Related
 
-`Stack` · `Row` · `Container` · `Spacer` · [Grid](grid.md) · [Divider](divider.md) ·
+[Stack](stack.md) · [Row](row.md) · [Container](container.md) · [Spacer](spacer.md) · [Grid](grid.md) · [Divider](divider.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

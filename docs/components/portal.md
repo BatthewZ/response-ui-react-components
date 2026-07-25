@@ -131,7 +131,7 @@ children; unmounting it removes them from the container. Toggle by mounting.
 
 Portal solves DOM placement. It does not stack, position, dim, trap, or dismiss. A modal
 built on it supplies its own scrim, role, `aria-modal`, label, focus trap, and Escape
-handler — the same assembly `AppShell` does by hand around its own portalled mobile sidebar
+handler — the same assembly [AppShell](app-shell.md) does by hand around its own portalled mobile sidebar
 (with `role="navigation"` there rather than `dialog`).
 
 <!-- example:ModalOverlay -->
@@ -154,13 +154,13 @@ handler — the same assembly `AppShell` does by hand around its own portalled m
 ```
 <!-- /example -->
 
-Before you build that, check whether you need a portal at all: `Dialog` and `Drawer` use the
+Before you build that, check whether you need a portal at all: [Dialog](dialog.md) and [Drawer](drawer.md) use the
 native `<dialog>` element with `showModal()`, which promotes them to the browser's top layer
-— above every stacking context, with no DOM relocation and no `z-index` at all. `Popover`,
-`Tooltip`, `HoverCard`, `DropdownMenu`, `ContextMenu`, and the form comboboxes portal through
-Floating UI's own `FloatingPortal`, which also does the anchoring. `Toast` never portals
+— above every stacking context, with no DOM relocation and no `z-index` at all. [Popover](popover.md),
+[Tooltip](tooltip.md), [HoverCard](hover-card.md), [DropdownMenu](dropdown-menu.md), [ContextMenu](context-menu.md), and the form comboboxes portal through
+Floating UI's own `FloatingPortal`, which also does the anchoring. [Toast](toast.md) never portals
 itself either — `ToastProvider` holds one `createPortal` into `<body>` for the whole stack.
-`AppShell` is the one component in this library that reaches for `Portal` directly.
+[AppShell](app-shell.md) is the one component in this library that reaches for `Portal` directly.
 
 ## Theme tokens
 
@@ -195,7 +195,7 @@ or on `:root`. See the [theme contract](../theme-contract.md).
   client and its server HTML is discarded. Position doesn't help — it mismatches between siblings, as first, last, or
   only child, and at the root alike. A Portal gated behind state that starts closed renders
   `null` on that first pass and hydrates cleanly, which is the pattern in
-  [Showing and hiding](#showing-and-hiding) and what `AppShell` does. For a portal that has
+  [Showing and hiding](#showing-and-hiding) and what [AppShell](app-shell.md) does. For a portal that has
   no such state, defer it behind a `mounted` flag you set in an effect.
 - **Changing `container` remounts the subtree.** React reconciles a portal by its container:
   hand Portal a different element and the old portal is deleted and a new one created, so the
@@ -244,5 +244,5 @@ or on `:root`. See the [theme contract](../theme-contract.md).
 
 ## Related
 
-`Dialog` · `Drawer` · `Popover` · `Tooltip` · `AppShell` · `useFocusTrap` ·
+[Dialog](dialog.md) · [Drawer](drawer.md) · [Popover](popover.md) · [Tooltip](tooltip.md) · [AppShell](app-shell.md) · `useFocusTrap` ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

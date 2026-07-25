@@ -344,5 +344,5 @@ programmatic relationship to either input unless you create one.
 
 [Slider](slider.md) · [NumberInput](number-input.md) · [Meter](meter.md) ·
 [ProgressBar](progress-bar.md) · [Field](field.md) · [Label](label.md) ·
-[FieldError](field-error.md) · `DateRangePicker` ·
+[FieldError](field-error.md) · [DateRangePicker](date-range-picker.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

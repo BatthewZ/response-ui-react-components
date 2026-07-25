@@ -232,9 +232,9 @@ engines widely ignore an author border or corner radius drawn on one.
   `<Radio className="focus-visible:ring-2 focus-visible:ring-border-focus" />`.
 - **Radio ignores [Field](field.md) context.** Every other control in the form module
   inherits `aria-invalid` / `aria-describedby` automatically: eleven of them
-  ([Input](input.md), [Textarea](textarea.md), `Select`, `Combobox`, `Switch` and six more)
-  read the field-error hook directly, and four more — `DatePicker`, `DateRangePicker`,
-  `NumberInput`, `SearchInput` — get it through the `Input` they render. Radio does not, and
+  ([Input](input.md), [Textarea](textarea.md), [Select](select.md), [Combobox](combobox.md), [Switch](switch.md) and six more)
+  read the field-error hook directly, and four more — [DatePicker](date-picker.md), [DateRangePicker](date-range-picker.md),
+  [NumberInput](number-input.md), [SearchInput](search-input.md) — get it through the [Input](input.md) they render. Radio does not, and
   neither does [Checkbox](checkbox.md): those two are the module's only unwired controls.
   Radio also takes no `error` prop, so a radio inside an invalid Field is neither marked
   invalid nor linked to the message. Wire `aria-describedby` onto the group yourself.
@@ -254,8 +254,8 @@ engines widely ignore an author border or corner radius drawn on one.
 - **Server-renderable.** No `"use client"`, no hooks, and it reads no context, so Radio drops
   straight into an RSC tree. The last example's tree does not, but that is
   [Field](field.md)'s client boundary — and [FieldError](field-error.md)'s, which reads the
-  same context with no directive of its own and, as `Field`'s *child*, is rendered by
-  whoever writes it rather than from behind `Field`'s boundary. Neither is Radio's doing.
+  same context with no directive of its own and, as [Field](field.md)'s *child*, is rendered by
+  whoever writes it rather than from behind [Field](field.md)'s boundary. Neither is Radio's doing.
 
 ## Accessibility
 
@@ -296,6 +296,6 @@ picture, and the group's name has to come from `aria-label` or `aria-labelledby`
 
 ## Related
 
-[Checkbox](checkbox.md) · `Switch` · `Select` · `Rating` · [Field](field.md) ·
+[Checkbox](checkbox.md) · [Switch](switch.md) · [Select](select.md) · [Rating](rating.md) · [Field](field.md) ·
 [Label](label.md) · [FieldError](field-error.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -134,5 +134,5 @@ reader from announcing it as a list.
 ## Related
 
 [ScrollReveal](scroll-reveal.md) · [Parallax](parallax.md) ·
-[AnimatePresence](animate-presence.md) · [ViewTransition](view-transition.md) · `Hero` ·
+[AnimatePresence](animate-presence.md) · [ViewTransition](view-transition.md) · [Hero](hero.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

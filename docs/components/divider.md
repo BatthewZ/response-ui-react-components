@@ -105,5 +105,5 @@ keyboard interaction to wire up — correct for a plain visual divider.
 
 ## Related
 
-`Stack` · `Spacer` · `Row` · `Container` ·
+[Stack](stack.md) · [Spacer](spacer.md) · [Row](row.md) · [Container](container.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -260,5 +260,5 @@ signal to hang your own announcement on — see
 
 ## Related
 
-[IconButton](icon-button.md) · [Button](button.md) · `CodeBlock` · `Toast` ·
+[IconButton](icon-button.md) · [Button](button.md) · [CodeBlock](code-block.md) · [Toast](toast.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

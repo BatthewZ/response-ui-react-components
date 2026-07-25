@@ -133,7 +133,7 @@ the theme retints and reflows it with no rebuild.
 
 **No background at rest.** Only hover and press paint; at rest the button is transparent and
 inks onto whichever surface it was dropped on. That is what lets it sit inside a
-[Card](card.md), a `Toast`, or a table row without a wrapper — but it also means the resting
+[Card](card.md), a [Toast](toast.md), or a table row without a wrapper — but it also means the resting
 contrast is between `--C-TEXT-SECONDARY` and *your* background, not one the component controls.
 
 **The padding is responsive.** `--R-SIZE-5` steps `0.5rem → 0.75rem` at the 40rem breakpoint,
@@ -166,8 +166,8 @@ ring's offset *colour*, and that one is a defect: see [Gotchas](#gotchas).
 - **The focus ring sits on a white halo.** `focus-visible:ring-offset-2` is applied with no
   `ring-offset-color`, so Tailwind's default `#fff` is used instead of a surface token. On a
   dark theme the focused button gets a white gap between it and the ring. This is not an
-  IconButton quirk — [Button](button.md), [Checkbox](checkbox.md), `ErrorBoundary` and
-  `AvatarUpload` all carry the same unset offset colour.
+  IconButton quirk — [Button](button.md), [Checkbox](checkbox.md), [ErrorBoundary](error-boundary.md) and
+  [AvatarUpload](avatar-upload.md) all carry the same unset offset colour.
 - **The press animation ignores `prefers-reduced-motion`.** `active:scale-95` shrinks the
   button on pointer-down unconditionally; there is no `motion-reduce` guard.
 - **Server-renderable.** No `"use client"` directive and no hooks, so it drops straight into
@@ -184,8 +184,8 @@ that the string is non-empty; see [Gotchas](#gotchas) for both holes.
 
 - **Hide your icon.** IconButton renders `children` untouched and adds no `aria-hidden`. Icon
   sets that expose a `<title>` or `role="img"` will be announced on top of your label, so mark
-  the glyph `aria-hidden="true"` — as `CopyButton`, `Carousel`, and `Repeater` do inside this
-  package. (`Toast` and `Pagination` don't need to: `lucide-react` sets `aria-hidden="true"`
+  the glyph `aria-hidden="true"` — as [CopyButton](copy-button.md), [Carousel](carousel.md), and [Repeater](repeater.md) do inside this
+  package. ([Toast](toast.md) and [Pagination](pagination.md) don't need to: `lucide-react` sets `aria-hidden="true"`
   itself on any icon rendered with no children and no a11y prop, and Toast's hand-rolled `<svg>`
   exposes no name either. Give a lucide icon an `aria-label` or a `<title>` child and it stops
   hiding itself — that is exactly when you need to mark it up yourself.)
@@ -206,5 +206,5 @@ that the string is non-empty; see [Gotchas](#gotchas) for both holes.
 
 ## Related
 
-[Button](button.md) · `CopyButton` · `Toast` · `Pagination` ·
+[Button](button.md) · [CopyButton](copy-button.md) · [Toast](toast.md) · [Pagination](pagination.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

@@ -50,12 +50,12 @@ tree, and in the tab order. Reach for `Collapsible` when you need something `<de
 can't give you: the open state as a React value driving other UI, a controlled panel you
 open from elsewhere in the app, or the sliding height transition below.
 
-**Prefer `Accordion` for a set.** `Collapsible` is exactly one disclosure with no
+**Prefer [Accordion](accordion.md) for a set.** `Collapsible` is exactly one disclosure with no
 coordination — two of them side by side know nothing about each other, so both can be open
-at once and neither closes the other. `Accordion` manages a group: it has a `mode` of
+at once and neither closes the other. [Accordion](accordion.md) manages a group: it has a `mode` of
 `"single"` or `"multiple"`, one shared value for which items are open, and arrow-key
 navigation between the item triggers. If you find yourself lifting state to keep a stack of
-`Collapsible`s mutually exclusive, you have re-implemented `Accordion` badly. Use
+`Collapsible`s mutually exclusive, you have re-implemented [Accordion](accordion.md) badly. Use
 `Collapsible` for a standalone "show more" — one filter panel, one advanced-settings block,
 one row's detail. For tabbed content that swaps rather than stacks, see [Tabs](tabs.md); for
 content that floats over the page instead of pushing it down, [Popover](popover.md).
@@ -241,11 +241,11 @@ read straight into it. That is the same defect as the tab-order one:
 **The region has no accessible name.** `Collapsible.Content` sets `role="region"` but never
 sets `aria-labelledby`, and the trigger is given no `id` to point one at — so the role is
 either announced with no label or dropped as a landmark altogether, depending on the
-assistive technology. Either way it earns nothing. `Accordion` does wire its content's
+assistive technology. Either way it earns nothing. [Accordion](accordion.md) does wire its content's
 `aria-labelledby` to its trigger `id`; this one doesn't. Both props pass through, so supply
 your own `id` on the trigger and a matching `aria-labelledby` on the content.
 
 ## Related
 
-`Accordion` · `Stepper` · [Tabs](tabs.md) · [Popover](popover.md) · [Drawer](drawer.md) ·
+[Accordion](accordion.md) · [Stepper](stepper.md) · [Tabs](tabs.md) · [Popover](popover.md) · [Drawer](drawer.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

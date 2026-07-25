@@ -67,7 +67,7 @@ cap than its neighbours, while word-length keys simply grow:
 ## In a menu row
 
 The other common shape is a list row with the shortcut pushed to the trailing edge —
-what `CommandPalette` does with each item's `shortcut`, wrapping the whole combination
+what [CommandPalette](command-palette.md) does with each item's `shortcut`, wrapping the whole combination
 in a single cap rather than one cap per key:
 
 <!-- example:ShortcutRow -->
@@ -152,7 +152,7 @@ because Kbd sets no vertical padding, is what sets the cap's height. See
   utility in `className`.
 - **Not the theme's monospace font.** Tailwind's Preflight styles bare `kbd` with its own
   default `--font-mono` stack, and Kbd sets no font-family of its own, so the contract's
-  `--DEFAULT-MONO-FONT` — the variable `CodeBlock` reads, and the one each shipped theme
+  `--DEFAULT-MONO-FONT` — the variable [CodeBlock](code-block.md) reads, and the one each shipped theme
   redefines — never reaches a keycap. Switching themes restyles your code blocks but not
   your keys. Opt in with `<Kbd className="mono-font">`; `.mono-font` is the unlayered class
   `@batthewz/response-ui-css` ships for exactly this, and it beats Preflight.
@@ -197,5 +197,5 @@ props.
 
 ## Related
 
-`CommandPalette` · `CodeBlock` · `Tooltip` · `DropdownMenu` ·
+[CommandPalette](command-palette.md) · [CodeBlock](code-block.md) · [Tooltip](tooltip.md) · [DropdownMenu](dropdown-menu.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

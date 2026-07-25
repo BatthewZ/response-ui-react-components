@@ -198,7 +198,7 @@ the `<ul>` inside it does all the layout.
 **The current page pairs the wrong two tokens.** `--C-ACCENT` is the fill, but the ink is
 `--C-TEXT-ON-PRIMARY` — the variable the [theme contract](../theme-contract.md) defines as
 "text drawn on `--C-PRIMARY` fill". The partner it names for an accent fill is
-`--C-TEXT-ON-ACCENT`, which is what [Tabs](tabs.md) and `Calendar` use for their own
+`--C-TEXT-ON-ACCENT`, which is what [Tabs](tabs.md) and [Calendar](calendar.md) use for their own
 accent-filled selected states. In three of the four bundled themes the two variables hold
 the same value, so the mistake is invisible (default measures 5.17:1 there; `events` 2.80:1
 and `grimdark` 3.81:1 both fail AA, but they fail identically with the correct token — a
@@ -239,7 +239,7 @@ count is what actually stops the row twitching as you page from 9 to 10.
 - **The current page is invisible in the `tech` theme.** Its accent fill is paired with the
   wrong ink variable, measured at 1.00:1 — see [Theme tokens](#theme-tokens). Until it is
   fixed, patch the one rule rather than the variable, which [Tooltip](tooltip.md) and
-  `Stepper` also read: `.pagination__page--current { color: var(--C-TEXT-ON-ACCENT); }`.
+  [Stepper](stepper.md) also read: `.pagination__page--current { color: var(--C-TEXT-ON-ACCENT); }`.
 - **The current page number stays clickable by keyboard.** It is styled with
   `pointer-events: none` rather than being `disabled`, so the mouse can't reach it but Tab
   still can, and Enter or Space there calls `onPageChange` with the page you are already on.
@@ -260,9 +260,10 @@ count is what actually stops the row twitching as you page from 9 to 10.
   and for the hydration render, then swaps to `compact` immediately after. Expect a flash of
   the wide layout on narrow devices.
 - **Client component.** `Pagination.tsx` opens with `"use client"` — unconditionally, since
-  `useMediaQuery` is called whether or not `compactBelow` is set. It cannot be rendered in an
-  RSC tree without a client boundary, unlike [Button](button.md) or
-  [IconButton](icon-button.md).
+  `useMediaQuery` is called whether or not `compactBelow` is set. That directive *is* the client
+  boundary, so a server component can render `<Pagination>` directly; but unlike
+  [Button](button.md) or [IconButton](icon-button.md) — which carry no directive and ship no
+  JavaScript — its whole module ships to the browser.
 
 ## Accessibility
 
@@ -305,6 +306,6 @@ button.
 
 ## Related
 
-[IconButton](icon-button.md) · [Button](button.md) · [Tabs](tabs.md) · `Table` ·
-`DataTable` · `Stepper` · [Extending components](../extending.md) ·
+[IconButton](icon-button.md) · [Button](button.md) · [Tabs](tabs.md) · [Table](table.md) ·
+[DataTable](data-table.md) · [Stepper](stepper.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

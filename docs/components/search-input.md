@@ -285,5 +285,5 @@ ever visible.
 ## Related
 
 [Input](input.md) · [Field](field.md) · [Label](label.md) ·
-[FieldError](field-error.md) · `Combobox` · `TagInput` · `CommandPalette` ·
+[FieldError](field-error.md) · [Combobox](combobox.md) · [TagInput](tag-input.md) · [CommandPalette](command-palette.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

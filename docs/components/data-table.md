@@ -336,7 +336,7 @@ See [Gotchas](#gotchas) before you rely on either in a server-paged screen.
 
 ## Density and stripes
 
-`density` and `striped` are forwarded straight to the underlying `Table`. `dense` also
+`density` and `striped` are forwarded straight to the underlying [Table](table.md). `dense` also
 steps the type down a size; `comfortable` and `spacious` share a type size and differ only
 in padding. Striping is suppressed in the loading and empty states.
 
@@ -392,7 +392,7 @@ table and the pager.
 
 ## Theme tokens
 
-**DataTable has no stylesheet of its own.** The grid is drawn by `Table`, and its rules —
+**DataTable has no stylesheet of its own.** The grid is drawn by [Table](table.md), and its rules —
 including the `.data-table-expanded-*` animation used only here — live in `Table.css`.
 That file is what reads `--C-BORDER-DEFAULT`, `--RADIUS-MD`, `--C-SURFACE-0`,
 `--C-SURFACE-1`, `--C-SURFACE-2`, `--C-SURFACE-3`, `--C-TEXT-PRIMARY`, `--C-TEXT-MUTED`,
@@ -439,11 +439,11 @@ not as the signal itself.
   `onSelectionChange` are both optional in the type, but the select handlers bail out
   unless both are present. `<DataTable … selectable />` renders the select-all box and one
   box per row, all permanently unchecked and ignoring every click.
-- **`stickyHeader` has nothing to stick to.** `Table`'s wrapper sets `overflow-x: auto`,
+- **`stickyHeader` has nothing to stick to.** [Table](table.md)'s wrapper sets `overflow-x: auto`,
   which makes that wrapper the nearest scroll container for the header, and DataTable
   exposes no `className`, `style` or `ref` with which to give it a height — so the wrapper
   never scrolls vertically and the header never sticks, however you scroll the page. Reach
-  for `Table` directly, or `VirtualizedDataTable`, if you need a pinned header.
+  for [Table](table.md) directly, or [VirtualizedDataTable](virtualized-data-table.md), if you need a pinned header.
 - **The loading and empty states are separate, thinner renders.** Both return before
   `footer` and the pager, and both rebuild the header row without `onSort`, without
   `aria-sort`, without the sort icons, and without the column `align`. A server-paged table
@@ -507,7 +507,7 @@ cells.
 
 ## Related
 
-`Table` · `VirtualizedDataTable` · [Pagination](pagination.md) ·
+[Table](table.md) · [VirtualizedDataTable](virtualized-data-table.md) · [Pagination](pagination.md) ·
 [Checkbox](checkbox.md) · [Skeleton](skeleton.md) · [EmptyState](empty-state.md) ·
 [Badge](badge.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

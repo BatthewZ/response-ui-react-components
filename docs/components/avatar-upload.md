@@ -189,7 +189,7 @@ error tooltip:
 glyph, and the busy spinner is `border-white` — all three are Tailwind's literal colours,
 not theme variables, so they are byte-identical in every theme. The
 [theme contract](../theme-contract.md) does define `--OVERLAY-SCRIM-COLOR` for exactly this
-job ([Drawer](drawer.md), `AppShell` and `CommandPalette` all read it, and the shipped
+job ([Drawer](drawer.md), [AppShell](app-shell.md) and [CommandPalette](command-palette.md) all read it, and the shipped
 themes set it between 45% and 80% opacity), but AvatarUpload does not. Overriding it will
 not move this scrim; you have to pass your own `className`.
 
@@ -263,5 +263,5 @@ signalled by colour alone.
 
 ## Related
 
-[Avatar](avatar.md) · `FileUpload` · [Field](field.md) · [Toast](toast.md) ·
+[Avatar](avatar.md) · [FileUpload](file-upload.md) · [Field](field.md) · [Toast](toast.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

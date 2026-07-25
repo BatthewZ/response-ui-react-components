@@ -47,9 +47,9 @@ also slide a short distance as they fade — `fade-left` travels leftward, enter
 
 ## Stagger a group
 
-There is no `Stagger`-style orchestration built in — `delay` is a plain per-element
+There is no [Stagger](stagger.md)-style orchestration built in — `delay` is a plain per-element
 offset. Give a set of siblings increasing delays and they cascade in. For an
-index-driven cascade over a list, reach for `Stagger` instead.
+index-driven cascade over a list, reach for [Stagger](stagger.md) instead.
 
 <!-- example:Staggered -->
 ```tsx
@@ -135,7 +135,7 @@ governs when the reveal fires.
   `opacity: 0`. That is what prevents a flash of un-animated content, but it also means
   anything you wrap starts hidden until it scrolls into view (or reduced motion is on).
 - **`delay` offsets, it doesn't orchestrate.** Staggering a group means hand-assigning an
-  increasing `delay` per sibling. For an index-driven cascade, use `Stagger`.
+  increasing `delay` per sibling. For an index-driven cascade, use [Stagger](stagger.md).
 - **Client-only.** ScrollReveal is a `"use client"` component (it uses effects and an
   observer). The directive *is* the client boundary, so a server component can render it
   directly — but the module always ships to the browser, and the props you hand it across
@@ -161,5 +161,5 @@ always be present.
 
 ## Related
 
-`Stagger` · `Parallax` · `AnimatePresence` · `ViewTransition` ·
+[Stagger](stagger.md) · [Parallax](parallax.md) · [AnimatePresence](animate-presence.md) · [ViewTransition](view-transition.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

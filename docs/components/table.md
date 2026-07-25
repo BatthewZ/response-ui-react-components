@@ -3,7 +3,7 @@
 The presentational `<table>`: real table markup in a scroll-safe wrapper, with three
 densities, optional zebra striping, sortable header affordances and a sticky head — every
 colour of it on the theme contract. Reach for it when you own the rows; reach for
-`DataTable` when you want the sorting, selection and pagination written for you.
+[DataTable](data-table.md) when you want the sorting, selection and pagination written for you.
 
 <!-- example:Minimal -->
 ```tsx
@@ -174,7 +174,7 @@ double-headed arrow and `aria-sort="none"`. In the example, `sort` and `setSort`
 
 **`Table` does not sort anything.** It draws the affordance and announces the state; the
 rows come out in the order you passed them. Reorder your data in the `onSort` handler, or
-use `DataTable`, which wraps this component and owns a sort state for you.
+use [DataTable](data-table.md), which wraps this component and owns a sort state for you.
 
 ## Selected rows
 
@@ -393,6 +393,6 @@ from the component.
 
 ## Related
 
-`DataTable` · `VirtualizedDataTable` · [DescriptionList](description-list.md) ·
+[DataTable](data-table.md) · [VirtualizedDataTable](virtualized-data-table.md) · [DescriptionList](description-list.md) ·
 [Pagination](pagination.md) · [EmptyState](empty-state.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

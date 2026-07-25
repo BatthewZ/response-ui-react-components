@@ -143,5 +143,5 @@ verify it in VoiceOver.
 
 ## Related
 
-`StatCard` · `DataTable` · `Card` ·
+[StatCard](stat-card.md) · [DataTable](data-table.md) · [Card](card.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

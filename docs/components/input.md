@@ -1,7 +1,7 @@
 # Input
 
 A text input styled to your theme. On its own it is a native `<input>` with sensible
-defaults; dropped inside a `Field` it inherits that field's error state — the red border,
+defaults; dropped inside a [Field](field.md) it inherits that field's error state — the red border,
 `aria-invalid`, and the description link — from context, with no extra props.
 
 <!-- example:Minimal -->
@@ -19,12 +19,12 @@ defaults; dropped inside a `Field` it inherits that field's error state — the 
 
 `error` is the only prop Input adds; everything else is a passthrough `<input>`. It has
 two sharp edges worth knowing — the label is **not** auto-associated, and Input is not
-server-renderable the way `Button` is. See [Gotchas](#gotchas).
+server-renderable the way [Button](button.md) is. See [Gotchas](#gotchas).
 
 ## In a Field
 
-`Field` owns the error. When it is invalid, Input reads `aria-invalid` and the id of the
-`FieldError` from context automatically. The visible `Label`, however, is your job: pair
+[Field](field.md) owns the error. When it is invalid, Input reads `aria-invalid` and the id of the
+[FieldError](field-error.md) from context automatically. The visible [Label](label.md), however, is your job: pair
 its `htmlFor` with the input's `id`.
 
 <!-- example:InField -->
@@ -47,7 +47,7 @@ Set `error` directly to style a standalone input as invalid.
 ```
 <!-- /example -->
 
-`error` **overrides** any `Field` it sits in — because the resolution is `error ??
+`error` **overrides** any [Field](field.md) it sits in — because the resolution is `error ??
 field.invalid`, passing `error={false}` forces the input valid even inside an errored
 field. Omit the prop entirely to inherit the field.
 
@@ -105,18 +105,18 @@ ring.
 
 ## Gotchas
 
-- **The `Label` is not auto-associated.** `Field` wires the *error* (`aria-invalid`,
-  `aria-describedby`) through context, but nothing links a `Label` to the input. Set
+- **The [Label](label.md) is not auto-associated.** [Field](field.md) wires the *error* (`aria-invalid`,
+  `aria-describedby`) through context, but nothing links a [Label](label.md) to the input. Set
   `Label htmlFor="x"` and `Input id="x"` yourself, or clicking the label won't focus the
   input and screen readers won't announce it as the field's name.
-- **Not server-renderable.** Unlike `Button`, Input calls the `useFieldError` hook (it
+- **Not server-renderable.** Unlike [Button](button.md), Input calls the `useFieldError` hook (it
   reads context), so it must run inside a Client Component. It ships **no** `"use client"`
   of its own, so rendering it directly from a Server Component with no client ancestor
   throws. In a normal client-side form tree this never comes up.
 - **`error` overrides the field.** Resolution is `error ?? field.invalid`, so `error={false}`
-  forces the input valid even inside an errored `Field`. Omit it to inherit.
-- **`aria-describedby` needs a rendered `FieldError`.** Inside an errored `Field`, Input
-  points `aria-describedby` at the field's error id; if you don't render `FieldError` (or
+  forces the input valid even inside an errored [Field](field.md). Omit it to inherit.
+- **`aria-describedby` needs a rendered [FieldError](field-error.md).** Inside an errored [Field](field.md), Input
+  points `aria-describedby` at the field's error id; if you don't render [FieldError](field-error.md) (or
   give the error no content), that id resolves to nothing.
 - **No per-component CSS.** There is no `Input.css`. Both CSS imports are still required —
   the utilities above resolve to tokens from `@batthewz/response-ui-css`.
@@ -124,12 +124,12 @@ ring.
 ## Accessibility
 
 Input renders a bare `<input>` with no built-in label — always give it an accessible name,
-via a `Field` + `Label` (with matching `htmlFor`/`id`), an `aria-label`, or
+via a [Field](field.md) + [Label](label.md) (with matching `htmlFor`/`id`), an `aria-label`, or
 `aria-labelledby`.
 
-When invalid it sets `aria-invalid="true"`, and inside a `Field` it also sets
-`aria-describedby` to the `FieldError`. Note the error is signalled **visually** only by
-the border and ring colour; pair it with a visible `FieldError` message so users who can't
+When invalid it sets `aria-invalid="true"`, and inside a [Field](field.md) it also sets
+`aria-describedby` to the [FieldError](field-error.md). Note the error is signalled **visually** only by
+the border and ring colour; pair it with a visible [FieldError](field-error.md) message so users who can't
 perceive the colour still learn what's wrong.
 
 Focus shows a 2px ring in `--C-BORDER-FOCUS` plus a matching border; it is a `focus:` ring,
@@ -137,5 +137,5 @@ not `focus-visible:`, so it appears on click as well as keyboard focus.
 
 ## Related
 
-`Textarea` · `Field` · `Label` · `FieldError` · `NumberInput` · `SearchInput` ·
+[Textarea](textarea.md) · [Field](field.md) · [Label](label.md) · [FieldError](field-error.md) · [NumberInput](number-input.md) · [SearchInput](search-input.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

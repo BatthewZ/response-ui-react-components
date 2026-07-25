@@ -2,7 +2,7 @@
 
 Two typeable date fields and one shared calendar popover, for picking a start and an end
 date together. Each endpoint accepts a date typed in the user's locale format or clicked in
-the popover's two-month `RangeCalendar`, endpoints entered in the wrong order are swapped
+the popover's two-month [RangeCalendar](range-calendar.md), endpoints entered in the wrong order are swapped
 for you, and `name` emits two hidden `YYYY-MM-DD` inputs so a plain `<form>` post carries the
 range with no client state.
 
@@ -46,7 +46,7 @@ anchor the popover positions against.
 One `relative` wrapper containing, in DOM order: two hidden `<input type="hidden">` (only
 when `name` is set), the start [Input](input.md), an `aria-hidden` en-dash separator, the end
 [Input](input.md), and an [IconButton](icon-button.md) that toggles the popover. The popover
-itself is portalled to the end of `<body>` and holds a `RangeCalendar`.
+itself is portalled to the end of `<body>` and holds a [RangeCalendar](range-calendar.md).
 
 The two text fields are the primary control — the calendar is an alternative, not the only
 way in. Typing commits on **Enter** or on **blur**; there is no per-keystroke parsing, so a
@@ -176,7 +176,7 @@ Both inputs read [Field](field.md)'s error from context, so an invalid field giv
 `aria-invalid="true"` and points their `aria-describedby` at the
 [FieldError](field-error.md) with **no `error` prop passed**. Setting `error` explicitly
 overrides the field in both directions — `error={false}` forces both inputs valid inside an
-errored `Field`.
+errored [Field](field.md).
 
 The [Label](label.md) here carries no `htmlFor`, because there is no single control to point
 it at: this is two inputs, and neither takes an `id`. Naming the pair is done with
@@ -220,9 +220,9 @@ parser's business, not this component's.
 ## Theme tokens
 
 DateRangePicker has no `.css` of its own. Everything it paints comes from Tailwind utilities
-in its own `.tsx` and in the two same-directory modules it is built from — `Input`, which
+in its own `.tsx` and in the two same-directory modules it is built from — [Input](input.md), which
 draws the fields, and `date-picker-internals`, which holds the popover shell's class list
-(shared verbatim with `DatePicker`, so the two pickers can't drift apart). Override any
+(shared verbatim with [DatePicker](date-picker.md), so the two pickers can't drift apart). Override any
 variable below and both re-tint at runtime, with no rebuild.
 
 | Where                       | Utility                                                | Override                          |
@@ -248,7 +248,7 @@ fields and the popover both loosen on desktop. `--R-SIZE-6` sits on the same sca
 at `0.25rem` on both sides, so the gap between the two fields and the trigger stays constant.
 
 **The table stops at the popover's own frame.** The calendar drawn inside it belongs to
-`RangeCalendar`, which is not a same-directory sibling of this file — its day cells, range
+[RangeCalendar](range-calendar.md), which is not a same-directory sibling of this file — its day cells, range
 fill, hover preview and header live in `Calendar.css` and are documented on its own page.
 The trigger is an [IconButton](icon-button.md) and carries that component's tokens.
 
@@ -340,7 +340,7 @@ ever opening the calendar.
 
 ## Related
 
-`RangeCalendar` · `Calendar` · `DatePicker` · [Input](input.md) · [Field](field.md) ·
+[RangeCalendar](range-calendar.md) · [Calendar](calendar.md) · [DatePicker](date-picker.md) · [Input](input.md) · [Field](field.md) ·
 [FieldError](field-error.md) · [Label](label.md) · [IconButton](icon-button.md) ·
 [FormActions](form-actions.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

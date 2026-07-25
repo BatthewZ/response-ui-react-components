@@ -52,7 +52,7 @@ children line up on their centers unless you say otherwise.
 
 `justify` distributes children along the row. `between` is the workhorse — it pins the
 outer children to the edges and is how you build a title-and-action bar without a
-`Spacer`.
+[Spacer](spacer.md).
 
 <!-- example:Distribute -->
 ```tsx
@@ -165,6 +165,6 @@ sequence matters.
 
 ## Related
 
-`Stack` · `Center` · `Container` · `Spacer` · [Grid](grid.md) ·
+[Stack](stack.md) · [Center](center.md) · [Container](container.md) · [Spacer](spacer.md) · [Grid](grid.md) ·
 [Divider](divider.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)

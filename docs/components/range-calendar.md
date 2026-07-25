@@ -205,7 +205,7 @@ picker in the day view. In this component it selects nothing — see [Gotchas](#
 
 RangeCalendar declares no styling of its own: there is no `RangeCalendar.css`, and its
 source contains no Tailwind utility. It renders `CalendarBase`, whose markup is painted by
-`Calendar.css` — the same sheet behind `Calendar`, shipped in this package's `styles.css`.
+`Calendar.css` — the same sheet behind [Calendar](calendar.md), shipped in this package's `styles.css`.
 So every override below re-tints the single-date calendar at the same time, and there is no
 per-component variable to reach for here.
 
@@ -258,13 +258,13 @@ that component, not from `Calendar.css`.
   and never re-derived. Measured: a controlled calendar showing June, handed a range of
   1–7 October by a preset button, stays on June and renders **no endpoint at all** — the
   selection is silently off-screen. Drive `month` + `onMonthChange` as well, or remount the
-  calendar (which is what `DateRangePicker` does by mounting it inside its popover).
+  calendar (which is what [DateRangePicker](date-range-picker.md) does by mounting it inside its popover).
 - **`defaultMonth` loses to an existing selection.** The seed is
   `range.start ?? range.end ?? defaultMonth ?? today`, in that order. Measured:
   `defaultMonth={new Date(2026, 2, 1)}` with a `defaultValue` starting 5 January opens on
   **January 2026**, not March.
 - **`showToday` never selects in a range calendar.** The footer button navigates to today
-  and focuses it; measured, no endpoint is set. `Calendar` wires the same button to select,
+  and focuses it; measured, no endpoint is set. [Calendar](calendar.md) wires the same button to select,
   and the underlying `onTodayClick` callback is not part of this component's prop type, so
   you cannot restore that behaviour from the outside.
 - **Your `onPointerLeave` replaces the preview reset.** `CalendarBase` spreads rest props
@@ -316,9 +316,9 @@ is never the only announcement.
   instead of disappearing from the grid; the click is simply dropped.
 - **The root has no role or name.** It is a plain `<div>`, so an `aria-label` on it is not
   exposed. Wrap the calendar in something that carries the purpose — a labelled `<section>`,
-  or a dialog the way `DateRangePicker` labels its popover.
+  or a dialog the way [DateRangePicker](date-range-picker.md) labels its popover.
 
 ## Related
 
-`Calendar` · `DateRangePicker` · `DatePicker` · [IconButton](icon-button.md) ·
+[Calendar](calendar.md) · [DateRangePicker](date-range-picker.md) · [DatePicker](date-picker.md) · [IconButton](icon-button.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

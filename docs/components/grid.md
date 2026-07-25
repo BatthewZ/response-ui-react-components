@@ -85,8 +85,8 @@ structural — they track the design system's responsive scale but are not overr
   `columns` value outside that range emits a class with no matching rule and silently falls
   back to the `.rui-grid` default of 1 column.
 - **Equal heights are the whole point.** Every cell stretches to its row's tallest — so
-  card footers line up. If you need content-sized, uneven cells, use `Row` with wrap; for
-  deliberately uneven heights (masonry), use `MasonryGrid`.
+  card footers line up. If you need content-sized, uneven cells, use [Row](row.md) with wrap; for
+  deliberately uneven heights (masonry), use [MasonryGrid](masonry-grid.md).
 - **`gap` is a fixed step, not the responsive `r`-scale reflow.** It maps to `gap-r*`
   utilities; override the underlying `--R-SIZE-*` to retune globally.
 - **Ships per-component CSS.** `Grid.css` must be loaded (it is, via the `styles` import),
@@ -102,5 +102,5 @@ children for a genuine list.
 
 ## Related
 
-`Row` · `Stack` · `Container` · `MasonryGrid` ·
+[Row](row.md) · [Stack](stack.md) · [Container](container.md) · [MasonryGrid](masonry-grid.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

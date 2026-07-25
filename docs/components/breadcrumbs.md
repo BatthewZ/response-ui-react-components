@@ -254,5 +254,5 @@ trail, or if the UI isn't in English.
 
 ## Related
 
-`Pagination` · `Stepper` · `AppShell` · [Tabs](tabs.md) ·
+[Pagination](pagination.md) · [Stepper](stepper.md) · [AppShell](app-shell.md) · [Tabs](tabs.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

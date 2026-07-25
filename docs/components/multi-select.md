@@ -215,7 +215,7 @@ text in sync with the visible label. Without it the combobox has no accessible n
 
 `error` **overrides** the surrounding field, because the resolution is
 `error ?? field.invalid` — passing `error={false}` forces a valid-looking control inside an
-errored `Field`. Omit the prop to inherit.
+errored [Field](field.md). Omit the prop to inherit.
 
 ## Disabled
 
@@ -420,7 +420,7 @@ is a 2px `box-shadow`, so focusing never shifts the layout.
 
 ## Related
 
-[Select](select.md) · [TagInput](tag-input.md) · `Combobox` · [Field](field.md) ·
+[Select](select.md) · [TagInput](tag-input.md) · [Combobox](combobox.md) · [Field](field.md) ·
 [FieldError](field-error.md) · [Label](label.md) · [Input](input.md) ·
 [Popover](popover.md) · [Extending components](../extending.md) ·
 [Theme contract](../theme-contract.md)
