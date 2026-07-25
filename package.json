@@ -52,7 +52,7 @@
     "verify:component-docs": "node scripts/verify-component-docs.mjs",
     "verify:focus-affordance": "node scripts/verify-focus-affordance.mjs",
     "verify:bugs": "node scripts/bugs-ledger.mjs --check",
-    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && node scripts/gen-docs.mjs --check && node scripts/verify-component-docs.mjs && bun run typecheck && bun run test"
+    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && node scripts/gen-docs.mjs --check && node scripts/verify-component-docs.mjs && node scripts/verify-focus-affordance.mjs && bun run typecheck && bun run test"
   },
   "peerDependencies": {
     "react": "^19.0.0",
