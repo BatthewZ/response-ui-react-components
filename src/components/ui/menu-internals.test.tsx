@@ -145,3 +145,33 @@ describe("MenuItem — disabled items are inert", () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("a disabled item suppresses the DOM default too (#118, adversarial)", () => {
+  it("does not navigate when the disabled item wraps a link", async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+
+    render(
+      <DropdownMenu>
+        <DropdownMenu.Trigger>Open</DropdownMenu.Trigger>
+        <DropdownMenu.Content>
+          <DropdownMenu.Item index={0} disabled>
+            <a href="#gone" onClick={onNavigate}>
+              Delete account
+            </a>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    const link = screen.getByRole("link", { name: "Delete account" });
+
+    const evt = new MouseEvent("click", { bubbles: true, cancelable: true });
+    link.dispatchEvent(evt);
+
+    // The caller's handler may run — it is on their own element — but the
+    // activation must not survive the disabled item as a navigation.
+    expect(evt.defaultPrevented).toBe(true);
+  });
+});

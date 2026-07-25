@@ -235,7 +235,14 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
             // `aria-disabled` keeps the item focusable (menu a11y convention),
             // so nothing native suppresses the click — every effect, including
             // the caller's own `onClick`, has to be gated here.
-            if (disabled) return;
+            // preventDefault as well as returning: without it the DOM default
+            // survives, and a disabled item wrapping an <a href> still
+            // navigates. Native `disabled` would cover both but costs the
+            // focusability the aria-disabled convention exists to preserve.
+            if (disabled) {
+              e.preventDefault();
+              return;
+            }
             props.onClick?.(e);
             handleSelect();
           },
