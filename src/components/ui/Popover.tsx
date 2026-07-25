@@ -143,7 +143,6 @@ const PopoverTrigger = forwardRef<HTMLButtonElement, PopoverTriggerProps>(
   function PopoverTrigger({ children, className, asChild = false, ...props }, ref) {
     const { open, refs, getReferenceProps, contentId } = usePopoverContext();
     const triggerProps = {
-      // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
       ref: mergeRefs(ref, refs.setReference),
       "aria-expanded": open,
       "aria-haspopup": "dialog" as const,

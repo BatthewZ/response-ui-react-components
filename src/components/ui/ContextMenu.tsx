@@ -77,7 +77,6 @@ const ContextMenuTrigger = forwardRef<HTMLDivElement, ContextMenuTriggerProps>(
 
     return (
       <div
-        // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
         ref={mergeRefs(ref, refs.setReference)}
         className={cn("context-menu-trigger", className)}
         // The Menu key and Shift+F10 fire `contextmenu` at the *focused*

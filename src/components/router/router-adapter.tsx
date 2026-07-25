@@ -73,6 +73,5 @@ export function useLink(): RouterLinkComponent {
 /** Returns the current pathname using the adapter's hook (defaults to window.location). */
 export function usePathname(): string {
   const { usePathname: hook } = useContext(RouterAdapterContext);
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- adapter is stable per-render
   return (hook ?? DEFAULT_ADAPTER.usePathname!)();
 }

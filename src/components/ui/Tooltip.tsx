@@ -67,12 +67,10 @@ export function Tooltip({
     ? (children.props as Record<string, unknown>).ref as React.Ref<HTMLElement> | undefined
     : undefined;
 
-  /* eslint-disable react-hooks/refs -- refs.setReference/setFloating are stable callback setters from floating-ui */
   const mergedRef = useMemo(
     () => mergeRefs(refs.setReference, childRef),
     [refs.setReference, childRef]
   );
-  /* eslint-enable react-hooks/refs */
 
   const childProps = isValidElement(children)
     ? (children.props as Record<string, unknown>)
@@ -102,7 +100,6 @@ export function Tooltip({
       {isMounted && (
         <FloatingPortal>
           <div
-            // eslint-disable-next-line react-hooks/refs -- refs.setFloating is a stable callback setter from floating-ui
             ref={refs.setFloating}
             className="tooltip"
             style={{ ...floatingStyles, ...transitionStyles }}

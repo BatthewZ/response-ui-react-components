@@ -43,6 +43,7 @@
     "build": "vite build",
     "prepack": "bun run build",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
     "docs:examples": "node scripts/gen-docs.mjs",
@@ -52,7 +53,7 @@
     "verify:component-docs": "node scripts/verify-component-docs.mjs",
     "verify:focus-affordance": "node scripts/verify-focus-affordance.mjs",
     "verify:bugs": "node scripts/bugs-ledger.mjs --check",
-    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && node scripts/gen-docs.mjs --check && node scripts/verify-component-docs.mjs && node scripts/verify-focus-affordance.mjs && bun run typecheck && bun run test"
+    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && node scripts/gen-docs.mjs --check && node scripts/verify-component-docs.mjs && node scripts/verify-focus-affordance.mjs && bun run lint && bun run typecheck && bun run test"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -67,6 +68,7 @@
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@floating-ui/react": "^0.27.19",
     "@tailwindcss/vite": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -76,12 +78,17 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.0",
     "ajv": "^8.20.0",
+    "eslint": "^10.7.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "glob": "^13.0.6",
+    "globals": "^17.7.0",
     "jsdom": "^29.0.1",
     "lucide-react": "^0.564.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "typescript": "^5.9.0",
+    "typescript-eslint": "^8.64.0",
     "vite": "^8.0.0",
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^4.1.2"

@@ -258,7 +258,6 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
       <div className="combobox-input-wrap">
         <input
           {...getReferenceProps({
-            // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
             ref: mergeRefs(ref, refs.setReference),
             value: inputValue,
             className: cn("combobox-input", invalid && "combobox-input-error", className),
@@ -336,7 +335,6 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
       <FloatingPortal>
         <div
           {...getFloatingProps({
-            // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
             ref: mergeRefs(ref, refs.setFloating),
             className: cn("combobox-content", className),
             style: { ...floatingStyles, ...style },
@@ -395,7 +393,6 @@ const ComboboxItem = forwardRef<HTMLDivElement, ComboboxItemProps>(
 
     return (
       <div
-        // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
         ref={mergeRefs(ref, itemRef)}
         className={cn("combobox-item", className)}
         {...getItemProps({

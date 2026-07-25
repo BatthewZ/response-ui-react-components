@@ -37,7 +37,6 @@ export const ViewTransition = forwardRef<HTMLDivElement, ViewTransitionProps>(
  *     const transition = useViewTransition(navigate);
  *     transition("/dashboard");
  */
-// eslint-disable-next-line react-refresh/only-export-components
 export function useViewTransition<TArgs extends unknown[]>(
   navigate: (...args: TArgs) => unknown,
 ): (...args: TArgs) => void {

@@ -286,7 +286,6 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
           <FloatingPortal>
             <div
               {...getFloatingProps({
-                // eslint-disable-next-line react-hooks/refs -- floating-ui's setFloating is a stable ref-setter assigned via the prop getter
                 ref: refs.setFloating,
                 id: listboxId,
                 role: "listbox",

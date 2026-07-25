@@ -20,7 +20,6 @@ export function useRovingFocus(options: UseRovingFocusOptions): {
   const { orientation, loop = true } = options;
   const [focusedIndex, setFocusedIndex] = useState(0);
   const focusedIndexRef = useRef(focusedIndex);
-  // eslint-disable-next-line react-hooks/refs -- intentional sync-ref pattern for stable callback closures
   focusedIndexRef.current = focusedIndex;
 
   const elementsRef = useRef<Map<number, HTMLElement>>(new Map());

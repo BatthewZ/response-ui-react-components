@@ -67,7 +67,6 @@ const DropdownMenuTrigger = forwardRef<HTMLButtonElement, DropdownMenuTriggerPro
   function DropdownMenuTrigger({ children, className, asChild = false, ...props }, ref) {
     const { open, refs, getReferenceProps, menuId } = useMenuContext("DropdownMenu.Trigger");
     const triggerProps = {
-      // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
       ref: mergeRefs(ref, refs.setReference),
       "aria-expanded": open,
       "aria-haspopup": "menu" as const,

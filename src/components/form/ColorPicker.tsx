@@ -227,7 +227,6 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
         <button
           {...getReferenceProps({
             ...triggerProps,
-            // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
             ref: mergeRefs(ref, refs.setReference),
           })}
         >
@@ -244,7 +243,6 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
             <FloatingFocusManager context={context} modal={false}>
               <div
                 {...getFloatingProps({
-                  // eslint-disable-next-line react-hooks/refs -- floating-ui's setFloating is a stable ref-setter assigned via the prop getter
                   ref: refs.setFloating,
                   className: "colorpicker-panel",
                   style: floatingStyles,
