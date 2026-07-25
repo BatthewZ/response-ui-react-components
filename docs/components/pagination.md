@@ -150,9 +150,14 @@ your own `aria-label` replaces it. Do that whenever a screen has more than one:
 
 ## Inside a form
 
-The four arrow controls are [IconButton](icon-button.md)s rendered with **no `type`**, so
-each one is a submit button. Nesting a pagination inside a filter `<form>` means clicking
-Next submits the form. Keep it a sibling:
+Nesting a pagination inside a filter `<form>` is safe. Every control it renders carries an
+explicit `type="button"` — the four arrows through [IconButton](icon-button.md), the page
+numbers directly — so clicking Next pages instead of submitting, and no arrow can become the
+form's implicit submitter. Enter from inside a text field still fires your own submit button.
+
+It takes no *part* in the form either: it has no `name`, contributes nothing to `FormData`,
+and holds no state to reset. The page number is yours, not the form's, which is why keeping
+the pager a sibling is still the clearer shape — the form owns the filters, you own the page:
 
 <!-- example:OutsideTheFilterForm -->
 ```tsx
@@ -166,9 +171,6 @@ Next submits the form. Keep it a sibling:
 ```
 <!-- /example -->
 
-See [Gotchas](#gotchas) for the full damage; there is no prop that fixes it from the call
-site.
-
 ## Theme tokens
 
 All of Pagination's own styling lives in `Pagination.css` and reads contract variables
@@ -178,7 +180,7 @@ directly — there is not a single Tailwind utility in `Pagination.tsx`.
 | ---------------------------------------- | ------------------------------------------------- |
 | Page number and compact readout ink      | `--C-TEXT-SECONDARY`                              |
 | Page number hover                        | `--C-SURFACE-1` · `--C-TEXT-PRIMARY`              |
-| Current page fill · ink · weight         | `--C-ACCENT` · `--C-TEXT-ON-PRIMARY` · `--Semibold-Weight` |
+| Current page fill · ink · weight         | `--C-ACCENT` · `--C-TEXT-ON-ACCENT` · `--Semibold-Weight` |
 | Page number focus ring                   | `--C-BORDER-FOCUS`                                |
 | Page number corners                      | `--RADIUS-SM`                                     |
 | Number and readout type                  | `--BodyText-2` · `--BodyText-2-line-height`       |
@@ -195,17 +197,15 @@ under `@media (pointer: coarse)`. On a mouse-driven device that class matches no
 all. The same is true of the root `pagination` class — it is a bare hook for your own CSS;
 the `<ul>` inside it does all the layout.
 
-**The current page pairs the wrong two tokens.** `--C-ACCENT` is the fill, but the ink is
-`--C-TEXT-ON-PRIMARY` — the variable the [theme contract](../theme-contract.md) defines as
-"text drawn on `--C-PRIMARY` fill". The partner it names for an accent fill is
-`--C-TEXT-ON-ACCENT`, which is what [Tabs](tabs.md) and [Calendar](calendar.md) use for their own
-accent-filled selected states. In three of the four bundled themes the two variables hold
-the same value, so the mistake is invisible (default measures 5.17:1 there; `events` 2.80:1
-and `grimdark` 3.81:1 both fail AA, but they fail identically with the correct token — a
-theme problem, not this component's). In `tech` they differ: its `--C-TEXT-ON-PRIMARY` is
-byte-identical to its `--C-ACCENT`, so the current page number is painted in its own
-background colour at a measured **1.00:1** and is invisible. `--C-TEXT-ON-ACCENT` there
-would give 14.84:1.
+**How readable the current page is comes from your theme, not from here.** The fill is
+`--C-ACCENT` and the ink is the partner the [theme contract](../theme-contract.md) names for
+it, `--C-TEXT-ON-ACCENT` — the same pair [Tabs](tabs.md) and [Calendar](calendar.md) use for
+their accent-filled selected states. Pairing them correctly is the whole of what a component
+can do; the ratio that pairing yields is the theme's to set, and two of the four bundled
+themes set it badly. Measured: `tech` 14.84:1 and `default` 5.17:1 both clear AA's 4.5:1 for
+body-size text, while `events` reaches 2.80:1 and `grimdark` 3.81:1 and neither does. Both
+are fixed by re-tinting `--C-TEXT-ON-ACCENT` in the theme — which repairs every accent-filled
+control at once, rather than this one rule.
 
 **The numbers fade more slowly than the arrows beside them.** A number's hover transition
 runs on `--MOTION-DURATION-SHIFT` — 400ms by default, 250ms in `tech`, 600ms in `grimdark` —
@@ -227,23 +227,12 @@ count is what actually stops the row twitching as you page from 9 to 10.
 
 ## Gotchas
 
-- **The arrows submit an enclosing form; the numbers don't.** `Pagination.tsx` renders its
-  four icon buttons (lines 116, 129, 178, 191) with no `type`, and a `<button>` without one
-  is `type="submit"`. Its own page-number `<button>` *does* set `type="button"`
-  (line 153) — the component is inconsistent with itself. Drop a pagination into a
-  filter `<form>` and clicking Next submits the form instead of paging. Worse, on page 1 the
-  Previous arrow is `disabled` and the numbers are `type="button"`, which makes **Next the
-  form's default submitter** — the button Enter fires from inside any text field in that
-  form. Nothing at the call site fixes it: `type` would land on the `<nav>`, not the
-  buttons. Render the pagination outside the form.
-- **The current page is invisible in the `tech` theme.** Its accent fill is paired with the
-  wrong ink variable, measured at 1.00:1 — see [Theme tokens](#theme-tokens). Until it is
-  fixed, patch the one rule rather than the variable, which [Tooltip](tooltip.md) and
-  [Stepper](stepper.md) also read: `.pagination__page--current { color: var(--C-TEXT-ON-ACCENT); }`.
-- **The current page number stays clickable by keyboard.** It is styled with
-  `pointer-events: none` rather than being `disabled`, so the mouse can't reach it but Tab
-  still can, and Enter or Space there calls `onPageChange` with the page you are already on.
-  Make your handler idempotent.
+- **The current page keeps a tab stop and does nothing with it.** It stays an enabled
+  `<button>` on purpose: native `disabled` would pull it out of the tab order *and* the
+  accessibility tree, taking its `aria-current="page"` with it. So Tab lands there, and
+  nothing happens — the click handler refuses to re-fire for the page already shown, so
+  Enter, Space and a mouse click are all inert, and `cursor: default` says so. Budget one
+  dead tab stop per pager; `onPageChange` never sees a no-op call.
 - **The ellipsis is inert text, not a control.** It is an `<li aria-hidden="true">` holding a
   `<span>…</span>`. It is not focusable, not clickable, and not announced — there is no
   jump-to-page affordance and no way to add one. If users need to reach page 47 of 100

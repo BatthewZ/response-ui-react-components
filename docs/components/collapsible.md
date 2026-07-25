@@ -219,8 +219,8 @@ two variables still resolve, they just stop being animated.
 
 ## Accessibility
 
-The trigger is a real `<button>` with an explicit `type="button"` — so, unlike several
-components in this library, it will not submit an enclosing form — carrying `aria-expanded`
+The trigger is a real `<button>` with an explicit `type="button"` — as every button this
+library renders now is, so it will not submit an enclosing form — carrying `aria-expanded`
 and an `aria-controls` that points at the panel's `useId`-generated `id`. Space and Enter
 work because it is a button, not because of a key handler. `disabled` uses the native
 attribute, so the trigger leaves the tab order entirely when disabled.

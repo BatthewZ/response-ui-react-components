@@ -28,6 +28,7 @@ first-completion hint. See [Gotchas](#gotchas).
 | `value`         | `string`                          | — (uncontrolled)            |
 | `defaultValue`  | `string`                          | `""`                        |
 | `onValueChange` | `(v: string) => void`             | —                           |
+| `onChange`      | `(v: string) => void`             | —                           |
 | `onComplete`    | `(v: string) => void`             | —                           |
 | `mode`          | `"numeric" \| "alphanumeric"`     | `"numeric"`                 |
 | `error`         | `boolean`                         | `Field` state, else `false` |
@@ -35,12 +36,17 @@ first-completion hint. See [Gotchas](#gotchas).
 | `aria-label`    | `string`                          | `"One-time code"`           |
 | `className`     | `string`                          | —                           |
 | `ref`           | `Ref<HTMLDivElement>`             | —                           |
-| …rest           | props of `<div>`, minus `onChange` and `defaultValue` | —       |
+| …rest           | `<div>` props minus `defaultValue`; `onChange` is re-typed above | —       |
 
 `className` and the rest props land on the **group `<div>`**, never on the boxes — there is
 no prop that reaches an individual `<input>`. Three edges are worth reading before you ship:
 `onComplete` fires at most once per completion, the emitted string can contain spaces, and a
 `<label htmlFor>` cannot name this control. See [Gotchas](#gotchas).
+
+`onChange` is the exception to that spread. It is re-typed as `(v: string) => void` — the
+committed code, the same payload as `onValueChange`, not a `ChangeEvent` — and is
+destructured out before the rest lands on the `<div>`, so `{...form.field<string>("code")}`
+writes the whole code into the store rather than one keystroke at a time.
 
 ## Length and character set
 

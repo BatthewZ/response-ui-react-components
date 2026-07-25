@@ -160,15 +160,16 @@ it describes state the child cannot know.
 
 ## Inside a form
 
-Two traps, both consequences of the trigger being a bare `<button>` and the panel living at the
-end of `<body>`:
+One trap, and it belongs to the portal rather than the trigger: a field inside the panel is
+**not a descendant of the form**, so it never reaches `FormData` and never takes part in
+validation. Reattach it with the `form` attribute pointing at the form's `id` — the platform's
+own answer to exactly this problem.
 
-- The default trigger sets **no `type`**, so the HTML default applies and inside a `<form>` it
-  is a submit button. Opening the popover would submit the form — which is why the trigger
-  below passes `type="button"`.
-- A field inside the panel is **not a descendant of the form**, so it never reaches `FormData`
-  and never takes part in validation. Reattach it with the `form` attribute pointing at the
-  form's `id` — the platform's own answer to exactly this problem.
+The trigger needs nothing from you. `Popover.Trigger` renders an explicit `type="button"`, so
+opening the popover cannot submit the form and the trigger cannot become its implicit
+submitter. The `type="button"` on the trigger below is therefore redundant — it stays because
+it still does something: `type` is set *before* the rest spread, so a trigger that genuinely
+should submit can still ask for it.
 
 <!-- example:InsideAForm -->
 ```tsx
@@ -251,11 +252,6 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
 
 ## Gotchas
 
-- **The trigger submits your form.** `Popover.Trigger` renders a `<button>` with no `type`, and
-  a bare `<button>` is `type="submit"`. Inside a `<form>` clicking the trigger submits it; worse,
-  if it sits before your real submit button it becomes the form's default submitter — the one
-  Enter fires from inside a text field. Pass `type="button"` — see
-  [Inside a form](#inside-a-form).
 - **Fields in the panel are outside your form.** The portal puts them at the end of `<body>`,
   so they are absent from `FormData` and from the form's validity check. Use `form="<id>"`.
 - **`asChild` composes with the child rather than overwriting it.** The clone goes through

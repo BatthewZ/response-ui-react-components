@@ -44,17 +44,22 @@ FormActions never reorders its children and never inspects them — `justify-end
 against the end of the row without changing their sequence, so **DOM order is visual order
 is tab order**, and the last button in your JSX is the right-most one on screen.
 
-It also sets no `type` on anything it contains, and neither does [Button](button.md). That
-matters more here than anywhere else in the library, because this row lives inside a
-`<form>`, where a `<button>` with no `type` attribute is `type="submit"`:
+It sets no `type` on anything it contains, and it no longer needs to:
+[Button](button.md) defaults to `type="button"` whenever it renders a real `<button>`. A
+footer of bare `<Button>`s therefore submits nothing, and no button in it can be mistaken for
+the form's implicit submitter.
 
-- `<Button>Cancel</Button>` in a form footer **submits the form**.
-- The form's *first* submit button is also its implicit submitter — the one Enter fires from
-  inside a text field. Put an untyped Cancel first and Enter runs Cancel.
+The obligation runs the other way, which matters more here than anywhere else in the library
+because this row is the one that lives inside a `<form>`. **The action you actually want taken
+needs an explicit `type="submit"`** — the same one that earns the `primary` variant
+([Pick a variant](button.md#pick-a-variant)). Omit it and the form has no submit button at
+all: clicking Save calls nothing, and Enter from inside a text field submits only in the case
+HTML carves out for a form with exactly one field that blocks implicit submission. Two inputs
+and no `type="submit"`, and Enter is silently dead.
 
-So every non-submitting action needs an explicit `type="button"`, and only the action you
-actually want taken gets `type="submit"` — the same one that earns the `primary` variant
-([Pick a variant](button.md#pick-a-variant)).
+The `type="button"` on Cancel below is redundant now. It is worth keeping anyway: writing the
+type on every button in the row is what makes the single `type="submit"` legible as a choice
+rather than an omission.
 
 <!-- example:InAForm -->
 ```tsx
@@ -116,8 +121,10 @@ app, not just this footer.
 
 ## Gotchas
 
-- **It sets no `type` on your buttons.** A bare `<button>` inside a form is a submit button
-  — see [Button order and `type`](#button-order-and-type). This is the one sharp edge here.
+- **Nothing in the row submits unless you ask it to.** FormActions sets no `type` and
+  [Button](button.md) now defaults to `type="button"`, so a footer of bare `<Button>`s leaves
+  the form with no submit button — see [Button order and `type`](#button-order-and-type).
+  This is the one sharp edge here, and it points the opposite way it used to.
 - **`pt-r4` doubles inside a gapped parent.** [Stack](stack.md) defaults to `gap="r4"` and
   takes `as`, so `<Stack as="form">` — the natural way to build a form with this library —
   already puts an `r4` between its children, and FormActions then adds `pt-r4` on top of it.

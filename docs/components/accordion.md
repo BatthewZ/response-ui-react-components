@@ -222,13 +222,15 @@ onto whatever surface it is dropped onto.
   fixed, `...props` was spread after both handlers and yours won outright.)
   Put side effects on `onValueChange`, or on `Accordion.Item`, which has no handler of its
   own for a click to collide with.
-- **Closed panels stay in the DOM, in the tab order, and in the accessibility tree.**
-  `Accordion.Content` always renders its children; closing is purely visual (`0fr` plus
-  `overflow: hidden`), with no `hidden` attribute and no `inert`. A link or button inside a
-  collapsed section is still reachable with Tab — focus lands on something the user cannot
-  see — and nothing in the DOM marks the panel hidden, so its text stays reachable by
-  assistive tech despite `aria-expanded="false"`. Render the children conditionally
-  yourself if a panel holds focusable controls.
+- **Closed panels stay mounted — they go `inert`, not away.** `Accordion.Content` always
+  renders its children; closing is a `0fr` grid clip plus `inert`. The `inert` half covers
+  reachability: while closed the panel takes no clicks, leaves the tab order, and drops out of
+  the accessibility tree, so focus can't land on something the user cannot see. What it does
+  *not* cover is everything else about being mounted — effects keep running, images keep
+  loading, and an `inert` form control is still submitted with the form. Render the children
+  conditionally yourself if what you're avoiding is the cost of a closed panel rather than its
+  reachability. (`hidden`/`display: none` are not an option here: either would kill the
+  `grid-template-rows` transition.)
 - **Wrap panel content in a single element.** The panel's padding, font size and colour are
   written against `.accordion-content-inner > *`, so a bare string child
   (`<Accordion.Content>Ships today</Accordion.Content>`) gets none of them and sits flush

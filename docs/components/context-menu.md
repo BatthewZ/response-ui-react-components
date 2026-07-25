@@ -268,9 +268,11 @@ nothing in the package styles it. See the [theme contract](../theme-contract.md)
   still clicking. Numbering out of visual order makes the arrows jump around the menu. Gaps are
   the harmless case — a missing index is treated like a disabled item and skipped. Renumber
   whenever you insert an item, and for generated items use the array index.
-- **A `disabled` item still runs your `onClick`.** The item's own handler calls your `onClick`
-  first and *then* checks `disabled`, so `onSelect` is skipped and the menu stays open, but a
-  raw `onClick` fires exactly as if the item were enabled. Put the action in `onSelect`.
+- **A `disabled` item is still clickable, and the click does nothing.** `aria-disabled` keeps
+  the item focusable — the menu pattern wants it there — so nothing native suppresses the
+  click. The item's own handler drops it instead, before `onSelect`, before your `onClick`, and
+  before the close, so the menu stays open and no effect runs. (Before this was fixed, your
+  `onClick` ran first and fired exactly as if the item were enabled.)
 - **Typeahead reaches disabled items.** Arrow navigation skips anything `aria-disabled`, but
   typing the first letters of a disabled item's label still focuses it — a dead row you can
   land on but not activate.

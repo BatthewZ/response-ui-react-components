@@ -96,7 +96,8 @@ is still a working, focusable menu item, and choosing it still closes the menu.
 ```
 <!-- /example -->
 
-`disabled` sets `aria-disabled="true"` and blocks `onSelect`; it never sets the native
+`disabled` sets `aria-disabled="true"` and makes the item's click a no-op — the guard sits at
+the event boundary, so it stops your `onClick` as well as `onSelect`. It never sets the native
 `disabled` attribute, so the item is still in the DOM and still hit-testable. It also keeps its
 `index` — number around it, not through it. The arrow keys **skip** disabled items, so a
 disabled item is visible but not keyboard-reachable; typeahead can still land on one.
@@ -243,9 +244,12 @@ deliberately reuses it — restyle these classes and both components move togeth
   `setOpen(false)` runs immediately after it, every time. There is no way to keep the menu open
   after a selection — for a multi-select or a filter menu, use a controlled `open` and force it
   back to `true`.
-- **A disabled item still fires your `onClick`.** `disabled` guards the `onSelect` path only.
-  An `onClick` passed straight to the `Item` runs on every click, disabled or not — there is no
-  native `disabled` attribute to stop it. (The menu correctly stays open.) Prefer `onSelect`.
+- **A disabled item is still a `<button>` you can click — it just does nothing.** `disabled`
+  is `aria-disabled`, not the native attribute, deliberately: the item has to stay focusable to
+  follow the menu pattern. So the click still reaches the component, and the component drops it
+  before anything runs — `onSelect`, your own `onClick`, and the close. Nothing to guard at the
+  call site. (Before this was fixed, `disabled` gated `onSelect` only and a raw `onClick` ran on
+  every click.)
 - **`asChild` keeps the child's own event handlers and its `ref`.** The trigger wiring is cloned
   onto your element through `mergeProps`, so a colliding handler composes instead of being
   replaced: put an analytics `onClick` on the button inside `asChild` and both the handler and

@@ -298,11 +298,6 @@ focus tokens are documented there.
   unconditional "clear everything" for after the exit animation, and that timer does not check
   what arrived in the meantime. `dismissAll(); toast("Saved")` shows the new toast for 300 ms
   and then deletes it — verified. Wait out the animation before queueing the next one.
-- **The dismiss button has no `type`.** It is an [IconButton](icon-button.md) rendered without
-  one, so it is a submit button. Through the provider you get away with it: the portal
-  puts the button in `document.body`, where it has no form owner. Render `<Toast>` **yourself**
-  inside a `<form>` and clicking Dismiss submits that form — and if it sits before your real
-  submit button it also becomes the default submitter, so Enter in a text field fires Dismiss.
 - **`crypto.randomUUID()` is secure-context only.** Ids come from it, unguarded, so
   `toast()` throws a `TypeError` on a page served over plain `http` to anything but
   `localhost` — the usual case being a phone testing against a dev server on a LAN IP.

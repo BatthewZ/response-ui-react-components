@@ -293,14 +293,13 @@ form. Steps taller than that still grow the panel.
 
 ## Gotchas
 
-- **Step content is not keyed, so DOM and component state bleed between steps.** The panel
-  renders `{steps[i].content}` at a fixed position with no `key`, so React reconciles the
-  outgoing and incoming nodes against each other. Any two steps whose content share a root
-  element or component type keep the *same* fiber: typing `ada@example.com` into step one's
-  `<input>` and pressing Next shows that value in step two's differently-labelled input
-  (measured, including through a [Field](field.md) + [Input](input.md) pair), and a
-  `useState` counter at 2 on step one reads 2 on step two. Give each step's content a
-  distinct root, or wrap your content in an element you key by step yourself.
+- **Step content remounts on every step change.** The panel is keyed by the active index, so
+  moving between steps unmounts the outgoing content and mounts the incoming content fresh —
+  which is what stops two steps sharing a root element type from sharing a fiber and bleeding
+  state into each other. The cost is the other side of the same coin: nothing inside a step's
+  `content` survives leaving it. A `useState` draft, a scroll position, an uncontrolled
+  `<input>`'s value are all gone when the user presses Back and returns. Hold anything that has
+  to persist across steps in the parent that renders the `Wizard`, not inside a step.
 - **`onComplete` cannot be refused, only ignored.** `next()` calls the state setter and then
   fires `onComplete` in the same breath, with no check that the change was accepted. In a
   controlled wizard whose handler declines the final move, `onComplete` still runs — and

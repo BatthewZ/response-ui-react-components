@@ -18,6 +18,8 @@ error state with no extra props.
 | `value`         | `string[]`                            | — (uncontrolled)            |
 | `defaultValue`  | `string[]`                            | `[]`                        |
 | `onValueChange` | `(tags: string[]) => void`            | —                           |
+| `onChange`      | `(tags: string[]) => void`            | —                           |
+| `name`          | `string`                              | — (no hidden inputs)        |
 | `maxTags`       | `number`                              | — (no cap)                  |
 | `validateTag`   | `(tag: string) => boolean \| string`  | — (everything accepted)     |
 | `delimiter`     | `RegExp`                              | `/[,\n]/`                   |
@@ -26,12 +28,16 @@ error state with no extra props.
 | `disabled`      | `boolean`                             | —                           |
 | `className`     | `string`                              | — (lands on the wrapper)    |
 | `ref`           | `Ref<HTMLInputElement>`               | —                           |
-| …rest           | `<input>` props minus `value` / `defaultValue` / `onChange` | —     |
+| …rest           | `<input>` props minus `value` / `defaultValue`; `onChange` is re-typed above | — |
 
-Three of those have sharp edges. `className` styles the **bordered wrapper**, while every
-other passthrough prop — `id`, `name`, `style`, `aria-*`, `onFocus` — lands on the inner
-text `<input>`; the rest-spread sits *last*, so a stray `onChange` replaces the component's
-own; and `name` does not do what it looks like. See [Gotchas](#gotchas).
+`onChange` is **not** a DOM handler here: it is declared with the component's own value type
+and fires with the committed `string[]`, beside `onValueChange` and with the same payload. It
+exists so `{...form.field<string[]>("tags")}` binds directly — see [Gotchas](#gotchas).
+
+Two of the rest have sharp edges. `className` styles the **bordered wrapper**, while every
+other passthrough prop — `id`, `style`, `aria-*`, `onFocus` — lands on the inner text
+`<input>`. And `name` is intercepted rather than passed through: it names one hidden input per
+committed tag, not the draft field. See [Gotchas](#gotchas).
 
 There is no `Tag` sub-component and no render prop: the chip is drawn by TagInput itself,
 and a tag is always a plain `string`.
@@ -230,28 +236,28 @@ not promise.
 
 ## Gotchas
 
-- **`name` submits the draft, not the tags.** `name` passes through to the inner
-  `<input>`, whose value is the in-progress text — not the chip list. Rendering
-  `<TagInput name="topics" defaultValue={["react", "typescript"]} />` inside a `<form>` and
-  reading `new FormData(form)` yields `[["topics", ""]]`. There is no hidden input per tag.
-  Read the value from `onValueChange` (or `value`) and submit it yourself.
-- **Spreading `form.field()` onto it crashes on the first keystroke.** The `useForm`
-  bindings include an `onChange`, and because TagInput's rest-spread is applied *after* its
-  own `onChange={handleChange}`, that binding replaces the internal handler. The store then
-  receives a raw DOM event, writes the string `"t"` into an array-typed field, and the next
-  render throws `TypeError: tags.map is not a function`. It typechecks clean, because
-  `onChange` is `Omit`ted from the prop type and a spread of a typed object skips excess
-  property checking. Bind it through the value API instead:
+- **`name` submits one entry per tag, so read it with `getAll`.** It is kept off the draft
+  input — a half-typed word is not a value worth submitting — and instead names a
+  `<input type="hidden">` for each committed tag. `<TagInput name="topics" defaultValue={["react",
+  "typescript"]} />` inside a `<form>` gives a `FormData` of
+  `[["topics", "react"], ["topics", "typescript"]]`, which means `formData.get("topics")`
+  returns only `"react"` and `formData.getAll("topics")` returns both. With no tags there are
+  no hidden inputs and therefore **no `topics` key at all**, not an empty string — a server
+  reading the field has to treat absent as `[]`.
+- **`onChange` hands you an array, not an event.** The prop is declared with the component's
+  own value type, which is what makes the advertised binding work — spread `form.field()` and
+  the store receives `string[]`:
 
   ```tsx
   const form = useForm<{ topics: string[] }>({ defaultValues: { topics: [] } });
 
-  <TagInput
-    aria-label="Topics"
-    value={form.watch("topics") as string[]}
-    onValueChange={(topics) => form.setValue("topics", topics)}
-  />
+  <TagInput aria-label="Topics" {...form.field<string[]>("topics")} />
   ```
+
+  The cost is that anything expecting `onChange(e)` gets `onChange(tags)` and will read
+  `e.target` as `undefined`. Use `onValueChange` for your own side effects and leave `onChange`
+  to the form layer. (Before this was fixed the same spread typechecked clean and threw
+  `TypeError: tags.map is not a function` on the first keystroke.)
 
 - **Rejection destroys what you typed.** The draft is cleared on every path that does not
   produce a message — the `maxTags` cap, a duplicate, and `validateTag` returning `false`.

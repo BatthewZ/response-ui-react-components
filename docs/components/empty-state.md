@@ -256,7 +256,8 @@ own theme. See the [theme contract](../theme-contract.md).
   copy of an instruction there.
 - **Actions are your components.** `EmptyStateActions` is an unlabelled `<div>` that adds no
   semantics — focus order, button `type`, and accessible names are whatever you render into
-  it. See [Button](button.md) on why a bare `<button>` in a form submits it.
+  it. A [Button](button.md#gotchas) brings its own `type="button"`; a raw `<button>` you render
+  here does not, and inside a form that makes it a submit button.
 
 ## Related
 

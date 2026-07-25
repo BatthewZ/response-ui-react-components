@@ -17,6 +17,7 @@ never reaches your state as `NaN`.
 | `value`         | `number \| null`                                                    | — (uncontrolled)            |
 | `defaultValue`  | `number`                                                            | — (starts empty)            |
 | `onValueChange` | `(v: number \| null) => void`                                       | —                           |
+| `onChange`      | `(v: number \| null) => void`                                       | —                           |
 | `min`           | `number`                                                            | —                           |
 | `max`           | `number`                                                            | —                           |
 | `step`          | `number`                                                            | `1`                         |
@@ -24,12 +25,18 @@ never reaches your state as `NaN`.
 | `error`         | `boolean`                                                           | [Field](field.md) state, else `false` |
 | `className`     | `string`                                                            | — (lands on the input)      |
 | `ref`           | `Ref<HTMLInputElement>`                                             | —                           |
-| …rest           | `<input>` props except `type`, `value`, `defaultValue`, `onChange`  | —                           |
+| …rest           | `<input>` props except `type`, `value`, `defaultValue`; `onChange` is re-typed above | —           |
 
 Passing `value` (including `value={null}`) makes it controlled. `min`, `max`, `step` and
 `precision` are consumed by the component and are **not** forwarded as HTML attributes; only
 `min` and `max` surface at all, as `aria-valuemin` / `aria-valuemax`. See
 [Gotchas](#gotchas).
+
+`onChange` is re-typed as `(v: number | null) => void` — the committed number, the same
+payload as `onValueChange`, not a `ChangeEvent` — and is destructured out before the spread,
+so `{...form.field<number | null>("qty")}` writes a number into the store rather than
+concatenating the input's raw text onto it. Note the type argument: this control emits `null`
+when the field is cleared, so `field<number>()` is the wrong declaration.
 
 ## The draft, and when it commits
 
