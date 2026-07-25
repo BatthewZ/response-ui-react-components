@@ -17,3 +17,14 @@ with its default `::-moz-range-track`. **That is false** — pixel-sampled ident
 Firefox 146 and 123. Both engines expose the input's own `background` as the track once
 `appearance: none` is set. The claim came from `RangeSlider.css:111`'s stale comment (#88), and the
 "fix" it implied would have painted a bar *over* the fill.
+
+### 431 · Slider — the advertised `form.field()` binding corrupts the value silently (med)
+
+`<Slider {...form.field<number>("vol")} />` compiles and runs without error, and the store
+ends up holding `{"vol":"60"}` — a string in a number field. Because nothing throws, this
+survives to whatever consumes the value: arithmetic coerces, `===` comparisons fail, and a
+schema validating `number` rejects a form the user filled in correctly. Quieter than #429
+and #430 and therefore more likely to ship.
+**Also here:** `field()`'s `"aria-invalid": undefined` is spread after the computed
+`fieldErrorProps` (Slider.tsx:53-60), overriding it — see #434.
+**Fix direction is a door** — PLAN.md §3.

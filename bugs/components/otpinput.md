@@ -34,3 +34,12 @@ only Backspace / ArrowLeft / ArrowRight. Measured: with box 1 holding `"2"`, pre
 `onValueChange` **zero** times — the controlled input simply re-renders the old character with no
 feedback at all. Backspace is the only way to clear a box, which is not what any user assumes.
 **Fix:** treat an empty filtered string as a clear of that slot rather than an early return.
+
+### 433 · OTPInput — the advertised `form.field()` binding keeps only the last digit (med)
+
+`<OTPInput {...form.field<string>("code")} />` compiles, and each box's DOM `change` event
+overwrites the whole field rather than appending, so typing `1234` leaves the store holding
+`{"code":"4"}`. The visible boxes show `1234`, so the UI and the submitted value disagree
+with nothing to indicate it — the worst variant of this family for a one-time code, where
+the user has no way to tell the submission was wrong.
+**Fix direction is a door** — PLAN.md §3.

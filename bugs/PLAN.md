@@ -1,170 +1,273 @@
 # Plan of attack
 
-> **This file started as BUGS.md's "Recurring patterns" section, verbatim below.**
-> It is narrative; the workflow needs clusters. Convert each bullet into a section
-> with: root cause · member findings (ids) · the sweep command that proves the member
-> list complete · verification tool · one-way doors · status. See BUG_TRIAGE_PLAYBOOK.md §3.
+Root-cause clusters. Status lives in [`LEDGER.md`](./LEDGER.md), never here — a cluster's
+`status` line below describes the *cluster's* progress through the gates, not any row's
+verdict. Cluster membership lives here and nowhere else (adding a `Cluster` column to 422
+rows would create a second truth; the join is done at report time).
 
-- **Silent prop-drop in `as`-polymorphic wrappers.** `ScrollReveal` and `Stagger` type
-  the rendered element's full prop set (via `ComponentPropsWithRef<T>`) but never spread
-  `...rest` onto the element — so `id`, `data-*`, `aria-*`, handlers are dropped at
-  runtime while the types claim they work. Check every `as`-polymorphic component.
-  **`Swimlane` (#171) is the first confirmed downstream victim** — it spreads its own rest
-  props onto `ScrollReveal`, so a defect two components away silently deletes `id`, `role`,
-  `style`, `aria-label` and `data-*` from a public API. **`MasonryGrid.Item` (#178) is the
-  second**, measured the same way, and **`Timeline.Item` (#340, high) is the third** — which makes
-  it three of the three components audited so far that render `ScrollReveal` with a rest spread.
-  Note all three are *conditional* — the props land under `animate={false}` and vanish under the
-  default — so a test written the easy way covers only the working path, and all three test files
-  were written that way (all nine of `MasonryGrid.test.tsx`, #185; all eight of
-  `Timeline.test.tsx`, #347). That easy path is not merely convenient: rendering the default under
-  the repo's `test-setup.ts` *throws*, because `usePrefersReducedMotion` calls `window.matchMedia`
-  unguarded while its sibling `useMediaQuery` guards it — so the configuration that carries the bug
-  is the one that is hardest to test. Every component that *renders* `ScrollReveal` or `Stagger`
-  while typing itself as its host element has this bug; grep for `<ScrollReveal` and `<Stagger`
-  with a `{...rest}` nearby. Still to check: `Spotlight.Content` (passes no rest through, so clean)
-  and anything added since.
-- **Status by colour alone (WCAG 1.4.1).** `Alert`, `Meter`, **`Badge` (#44)**,
-  **`Avatar`'s presence dot (#57)** and **`ProgressBar` (#205)** encode state purely in tint —
-  no icon/label/ARIA. **Five for five** on the status surfaces audited so far; treat this as the
-  library's default failure, not an exception. `ProgressBar` is the worst of them — two bars at
-  the same `value` with `color="success"` and `color="error"` produce byte-identical
-  accessibility-tree output, where `Meter` at least emits `data-status`. Check StatCard.Trend and
-  any remaining status surface. **`CalendarBase` (#315) makes six**, and is the first where the
-  state carried by colour alone is a *selection* rather than a status: a day inside a committed
-  range renders `aria-selected="false"` with only a `data-in-range` attribute, so the extent of a
-  booking is conveyed entirely by a `--C-SURFACE-2` wash measured at 1.08–1.16:1 (#210).
-- **Types that advertise props the runtime drops.** Beyond the `...rest` cases above,
-  `Avatar` (#56) intersects `ComponentPropsWithRef<"span">` without `Omit<…, "children">`, so
-  `<Avatar name="…">child</Avatar>` compiles clean and renders only the initials. `Skeleton` and
-  `Spinner` get the same case right, so the fix is a known one-liner. Sweep every component whose
-  props are an intersection rather than an `Omit`.
-- **Hard-coded English in `sr-only` text.** `Spinner` (#39) and `Skeleton` (#64) both render a
-  literal `"Loading"` in a visually hidden node while omitting `children` from the prop type, so
-  the string is unreachable — and `aria-label` renames the region without changing its contents,
-  leaving name and content in different languages. `Rating` (#218) renders `"N stars"` the same
-  way (and announces `"1 stars"` for the first one), and `Carousel` (#192) hard-codes
-  `"Previous"`/`"Next"` on internal `IconButton`s. Any component with an `sr-only` literal or an
-  `aria-label` literal on a part the caller cannot reach. **Batch I found three more and one new
-  consequence:** `OTPInput` (#243) names every box `"Digit N"` — wrong outright in
-  `mode="alphanumeric"` — and `Repeater` (#259) gives every row the same `"Remove item"` /
-  `"Move up"` / `"Move down"`, so N rows yield N indistinguishable buttons. `SearchInput` (#222)
-  is the sharpest case, because its literal is not merely unreachable but *actively destructive*:
-  a hard-coded `aria-label="Search"` **outranks** an associated `<label for>` in the
-  accessible-name computation, so wiring a visible `Label` the way `label.md` documented changes
-  nothing (measured: computed name `"Search"`, not `"Search orders"`; `label.md` is fixed). Grep
-  every hard-coded `aria-label` for that second failure mode, not just for the language.
-  **Batch K adds the date-picker family and a third failure mode: mixed-language output in one
-  component.** `DatePicker` (#327) and `DateRangePicker` (#336) both accept a `locale` prop, use it
-  correctly for every date string, and then surround those strings with English literals the caller
-  cannot reach — measured under `locale="fr-FR"`, French month names inside a dialog labelled
-  "Choose date" between buttons labelled "Open calendar" and "Previous month". `DateRangePicker` is
-  also the `SearchInput` trap again: its `"Start date"`/`"End date"` labels outrank any `<label
-  for>`, and it forwards no `id` for one to point at in the first place.
-- **A rest-spread placed *after* a component's own handler lets a caller silently replace it.**
-  The mirror image of the bullet above: there the type promises props the runtime drops; here the
-  type *hides* a prop the runtime still honours — destructively. `TagInput` (#245) writes
-  `onChange={handleChange} … {...props}` in that order, and `onChange` is `Omit`ted from its prop
-  type, so `<TagInput {...form.field<string[]>("tags")} />` — the binding **`AGENTS.md:249` and
-  `README.md:203` both advertise** — typechecks clean (verified with `tsc`) and then throws
-  `TypeError: tags.map is not a function` on the first keystroke. `AnimatePresence` (#13) is the
-  same shape with `onAnimationEnd`, which makes two. `CalendarBase` (#316) is the third, and the
-  first where the prop is *not* `Omit`ted — `onPointerLeave` is an ordinary `div` prop, so
-  `<RangeCalendar onPointerLeave={…}/>` is a perfectly reasonable thing to write, and it silently
-  replaces the handler that clears the range hover preview (measured: four cells stay lit forever
-  versus zero without the prop). The `Omit` is what makes the first two invisible; the third shows
-  the pattern does not need one. Every component that spreads rest after its own handlers should
-  destructure those handler names out first; grep for `{...props}` following an `on[A-Z]` prop on
-  the same element. **Batch L adds `AvatarUpload` (#380).** **Batch M adds two more:**
-  `AppShell.Toggle` (#390) whose `onClick` is `Omit`ted-and-replaced like TagInput's, and
-  `FileUpload` (#407, high) — the widest case yet, where the single root `{...props}` sits after
-  *four* handlers (`onClick`/`onKeyDown`/`onDragOver`/`onDragLeave`), so a caller `onClick` deletes
-  the file picker outright (measured: 0 `input.click()`), only `onDrop` protected by the `Omit`.
-- **Contrast is measured nowhere.** #51 is the first *measured* contrast audit in this file and
-  `--C-TEXT-MUTED` fails AA on every surface of every theme. The token tables across the spokes
-  say which variable paints what; nothing checks the pair is legible. A ratio guard over the
-  theme files would catch this class of defect permanently. **It is not only `--C-TEXT-MUTED`:**
-  batch G measured `--C-ACCENT` failing AA on every surface in `events` and `grimdark` (#173,
-  and grimdark's `:hover` colour is *lower* than its rest colour), and `--C-TEXT-ON-PRIMARY`
-  falling to 2.89:1 once a themed scrim is composited over a bright photo (#163). The contract
-  guarantees ink tokens against *fill* tokens only; every composited surface — scrims,
-  gradients, imagery — is outside it and unmeasured. **Batch H widened this from ink to
-  surfaces:** `--C-SURFACE-1` on `--C-SURFACE-0` measures 1.02–1.07:1 across all four themes
-  (#206) and `--C-SURFACE-2` on it 1.08–1.16:1 (#210), so *any* component that distinguishes two
-  adjacent surface steps by colour alone — tracks, wells, insets, hairlines — is invisible by
-  construction, and neither the contract nor any guard says the ramp has to be perceptible.
-  `--C-STATUS-WARNING` is also now measured failing the 3:1 graphical floor on light surfaces
-  (#215), so three of the token families have failed the first time anyone put a number on them.
-  **Batch I moves this into the shared form recipe.** The border every text
-  control draws itself with — `--C-BORDER-STRONG` on `--C-SURFACE-0` — is **1.41–1.79:1** across
-  all four themes (#241), and since that fill equals the base page surface the border is often
-  the *only* thing drawing the control; `OTPInput`'s six empty unlabelled boxes are the worst
-  case. The focus indicator that replaces the UA outline is under 3:1 in half the themes (#242,
-  `events` 2.72:1 / `grimdark` 2.96:1) with `focus:outline-none` removing the fallback. Unlike the
-  earlier rows these are not exotic composites but the default appearance of every form on every
-  page. Every token pair anyone has put a number on so far has failed its floor.
-  **Batch J corrects the scope of that fix.** #241/#242 said the recipe was "one class string
-  shared by Input, Textarea, Select, NumberInput, SearchInput and OTPInput, so **one fix, not
-  six**." That is wrong: `Combobox.css` (#284), `ColorPicker.css` (#293) and `MultiSelect.css`
-  hand-write the *same* recipe with the *same* tokens in their own stylesheets, so retuning the
-  shared Tailwind string reaches none of them. The sweep has to cover per-component CSS as well —
-  grep for `--C-BORDER-STRONG` and `--C-BORDER-FOCUS` across `src/components/**/*.css`, not just
-  the shared class string.
-  **Batch J also widens the surface-ramp finding (#206) from decoration to keyboard navigation.**
-  `--C-SURFACE-1` on `--C-SURFACE-0` is the *entire* active-option indicator in both `Combobox`
-  (#275, high) and `MultiSelect` (#264), and both run `useListNavigation({ virtual: true })`, so
-  no option ever takes DOM focus and there is no focus ring to fall back on. An invisible ramp
-  step stops being cosmetic the moment it is the only thing telling a keyboard user where they
-  are. Check every floating list that marks its active row with an adjacent surface step.
-  **Batch K puts the first number on the contract's own intended ink/fill pair.**
-  `--C-TEXT-ON-ACCENT` on `--C-ACCENT` — the pairing the contract exists to guarantee — measures
-  5.17:1 default, **2.80:1 `events`**, **3.81:1 `grimdark`**, 14.84:1 `tech` (#319), so the
-  selected day in a calendar fails AA for body text in half the shipped themes. That makes it four
-  token families measured and four failures; the guard, when someone writes it, has to cover the
-  named ink/fill pairs first, not just incidental composites.
-  **Batch M measures a fifth family: the contract's own status pairs.** `--C-STATUS-SUCCESS` on
-  `--C-STATUS-SUCCESS-BG` = 3.15 / 3.15 / 13.39 / 6.70 and `--C-STATUS-ERROR` on `--C-STATUS-ERROR-BG`
-  = 4.41 / 4.41 / 5.35 / 4.59 (default / events / tech / grimdark) at `--BodyText-3` size (#415,
-  `FileUpload`), so both miss AA in `default` and `events` on the pairing `docs/theme-contract.md`
-  names under "Status" but attaches no ratio to. Five families measured, five failures. Batch M also
-  extends the surface-ramp/keyboard-nav case (#275/#264): `CommandPalette`'s active-option highlight
-  is `--C-SURFACE-2` on `--C-SURFACE-0` at 1.08–1.16:1 with no focus ring under virtual focus (#398,
-  high) — one step up the ramp from Combobox — and `AppShell`'s active link ink is *below* its
-  resting-link ink in `events`/`grimdark` (#393), the first time marking an item current makes it the
-  least legible thing in the group.
-- **Continuous motion with no `prefers-reduced-motion` guard.** ~25 component CSS files ship
-  a reduced-motion block and `src/hooks/use-reduced-motion.ts` exists, but utility-driven
-  motion bypasses all of it: `Spinner`'s `animate-spin` (#38) is unguarded, as is
-  `IconButton`'s `active:scale-95` (#43). The gap is specifically **Tailwind animation/
-  transform utilities**, not the hand-written CSS. Sweep for `animate-`, `scale-`,
-  `transition` utilities with no `motion-reduce:` sibling.
-- **`<button>` with no explicit `type`.** A bare `<button>` is `type="submit"`. **`Button`
-  itself (#74)** and `IconButton` (#41) both set no default, and `Toast`, `Pagination` and
-  `Carousel` call IconButton without one — so each submits an enclosing form, and a `Cancel`
-  rendered before the real submit button becomes the form's **default submitter**, so Enter in
-  any text field fires Cancel. `CopyButton`, `Repeater`, `DatePicker` and Pagination's own
-  page-number button get it right — the library is split against itself. The previous revision
-  of this bullet said "sweep every `<button>`" and *still missed `Button`*; treat a sweep as
-  incomplete until it names every component, not every pattern.
-- **Field-error context reaches only 11 of 17 form controls.** `Radio` (#75) and `Checkbox`
-  (#76) never call `useFieldError`, so they sit inside an invalid `Field` with no
-  `aria-invalid` and no `aria-describedby`. Four more (`DatePicker`, `DateRangePicker`,
-  `NumberInput`, `SearchInput`) are wired only transitively, through the `Input` they render.
-  `field.md` and `radio.md` both claimed the wiring was automatic "for the rest"; both are fixed.
-  **Batch J found a twelfth state: wired-but-partial.** `RangeSlider` (#296) *does* call the hook
-  and then reads only `aria-invalid` off it, putting that on its wrapper and throwing the
-  `aria-describedby` away — so it counts in the eleven while delivering half of what they deliver.
-  `field.md` is corrected. Reading the hook is not the same as forwarding it; check what each of
-  the eleven actually spreads, not just which ones call it.
-- **Focus indicators removed and not replaced.** `Radio` (#73) is the severe case — a measured
-  **0-pixel** change on keyboard focus — but `Switch` and `Slider` (#84) also lose their *error*
-  outline on focus because `:focus-visible` and `[aria-invalid]` are written at equal specificity
-  with focus second. Any component that writes `outline-none` or a `:focus-visible` reset.
-- **Theme/contrast token gaps.** `Card` (no paired text colour; wrong surface layer), and a
-  systemic focus-ring bug: **`ring-offset-color` is set nowhere in the library**, so every
-  `ring-offset-2` paints Tailwind's default white. Confirmed by grep — 5 affected components
-  (see #35), 3 benign (`ring-offset-0`). Fix once, library-wide, not per component.
-- **Raw Tailwind defaults where a token exists.** `ErrorBoundary`'s fallback uses
-  `text-2xl` / `mb-2` / `px-4 py-2` rather than the `text-h*` and `r*` scales, so it neither
-  re-tints nor re-scales with a theme — directly against the ETHOS "there is a token for it"
-  rule. Worth a sweep for `text-(xs|sm|base|lg|[0-9]xl)` and bare numeric spacing utilities.
+Per [`BUG_TRIAGE_PLAYBOOK.md`](../../BUG_TRIAGE_PLAYBOOK.md) §4 each cluster carries: root
+cause · member ids · **the sweep command that proves the member list complete** · the
+verification tool · one-way doors · status.
+
+> **A sweep that names patterns instead of components is incomplete** (§9). Every sweep
+> below is recorded so the next reader can re-run it, and two of them are scripts rather
+> than greps because a grep got the answer wrong — see §2's note.
+
+---
+
+## 1 · Rest props dropped by `as`-polymorphic wrappers — **FIXED**
+
+**Root cause.** `ScrollReveal` and `Stagger` type the rendered element's full prop set (via
+`ComponentPropsWithRef<T>` in the public cast) but destructured only their own named props
+and rendered `<Tag>` with no `...rest`, so every prop the type advertised was dropped at
+runtime.
+
+**Members.** #9 (`ScrollReveal`), #10 (`Stagger`) — the two roots. Downstream victims, each
+of which spreads its *own* public API through one of the roots: #171 (`Swimlane`), #178
+(`MasonryGrid.Item`), #340 (`Timeline.Item`). **One root cause, two files.**
+
+**Sweep — proves the root list complete (7 components, not "every polymorphic component"):**
+
+```bash
+grep -rln 'ComponentPropsWithRef<T>' src/          # the polymorphic surface: 7 files
+# → Button, Text, Stack, Grid, Row all spread rest correctly; only ScrollReveal + Stagger did not.
+grep -rn '<ScrollReveal\|<Stagger' src/ --include=*.tsx | grep -v '\.examples\.\|\.test\.'
+# → 6 consumers. Hero.Content and Spotlight.Content spread onto their OWN div, so they are clean;
+#   Swimlane, MasonryGrid.Item and Timeline.Item spread onto the root → #171/#178/#340.
+```
+
+**Verification tool.** vitest + jsdom. The trap: all three downstream bugs are *conditional*
+— props land under `animate={false}` and vanish under the default — and the default path
+threw in jsdom until #421 was fixed, so every existing test covered only the working path.
+A regression test here **must** use the default `animate`.
+
+**Doors.** None. The fix makes the runtime honour the *already published* type; no prop or
+type was added or removed.
+
+**Status.** `fixed`. 12 checks written and observed red first, then green; the fix re-broken
+twice (rest spread removed → 4 red incl. the downstream `Timeline` case; handler composition
+removed → 1 red). `className`/`style`/`ref` are **merged** and `onAnimationEnd` **composed**
+rather than overwritten, so forwarding rest could not itself introduce cluster §2's defect.
+
+---
+
+## 2 · A rest-spread placed *after* the component's own handler — **PARTLY FIXED**
+
+**Root cause.** The component sets `on[A-Z]…={own}` on an element and then spreads
+`{...props}` onto the same element, without destructuring that handler name out. A caller's
+handler therefore **replaces** the component's own rather than adding to it. Where the prop
+is also `Omit`ted from the public type the substitution is invisible to `tsc` — but the
+`Omit` is not what causes it, and #316 is the proof: `onPointerLeave` is an ordinary `div`
+prop there.
+
+**Members — fixed this pass.** #13 (`AnimatePresence`, `onAnimationEnd` → never unmounts) ·
+#316 (`CalendarBase`/`RangeCalendar`, `onPointerLeave` → hover preview never clears) ·
+#380 (`AvatarUpload`) · #390 (`AppShell.Toggle`) · #407 (`FileUpload`, four handlers at once).
+
+**Members — already logged, NOT yet fixed.** #135 (`Accordion.Trigger`, `onClick`+`onKeyDown`)
+· #350 (`Table.HeaderCell`, `onClick`+`onKeyDown` — mouse and keyboard diverge) ·
+#245 (`TagInput` — also in §3, and gated there).
+
+**Members — NEW, surfaced by this pass, not in the 422.** `Tabs.tsx:295` (`Tab`,
+`onClick`+`onKeyDown`) · `Tabs.tsx:345` (`TabPanel`, `onAnimationEnd` — literally #13's shape,
+kills `onExitComplete`) · `Carousel.tsx:138` (root `onKeyDown` — kills arrow navigation) ·
+`NumberInput.tsx:150` (`onChange`, also §3) · `FileUpload.tsx:492` (`onDrop` — **door**, see
+below) · marginal: `Calendar.tsx:52` and `RangeCalendar.tsx:107` pass custom `onDaySelect` /
+`onDayHover` / `onTodayClick` this way, reachable only through a spread object because the
+excess-property check blocks a literal.
+
+**Sweep.** A grep is not sufficient here and got this wrong **in both directions**: one hand
+sweep false-positived `SearchInput` (which destructures *and* composes, and spreads before
+its handlers) and another declared `NumberInput` clean when `onChange` is `Omit`ted at
+`NumberInput.tsx:25`, undestructured, and set at `:146` before the spread at `:150`. Two
+sweeps also reported `Accordion` and `Table` as new when they are #135 and #350. So the sweep
+is a script that checks all three conditions together — handler set on the element, spread
+after it, name **not** destructured out:
+
+```bash
+node ../../bug-triage-tools/sweep-spread-after-handler.mjs
+# → 8 component files / 9 element sites. Cross-check every hit against the ledger before
+#   calling it new:  grep -nE "^\| [0-9]+ \|[^|]*\| <Component> \|" bugs/LEDGER.md
+```
+
+**Verification tool.** vitest + jsdom. Two traps, both of which produce a confident wrong
+answer rather than an error:
+- **`fireEvent.animationEnd` does not work in this repo** and fails *silently* — jsdom has no
+  `AnimationEvent` constructor and React registers `webkitAnimationEnd` here. Dispatch both
+  names through RTL's `fireEvent`. Documented in `CONTRIBUTING.md` under Testing.
+- **Assert the call COUNT, not `toHaveBeenCalled()`.** Composing a handler can introduce a
+  double-fire: a programmatic `input.click()` bubbles back to a clickable ancestor and
+  re-enters its handler. That was live in *both* `AvatarUpload` and `FileUpload` (measured: 2
+  calls per single user click in `FileUpload` on the pre-fix code) and was masked by an
+  existing `toHaveBeenCalled()` — the #422 shape, in real tests, twice.
+- A `fireEvent.click`-only test hides a keyboard-path break (#126, #350). Cover Enter/Space.
+
+**Doors.** One, narrow: **composing `FileUpload`'s `onDrop`** requires removing
+`Omit<…, "onDrop">` — a public type change. Left `deferred`. Everything else in this cluster
+is additive. Note the shape of the opt-out is a judgement the fixes made explicitly and
+consistently: compose, then skip the component's own behaviour `if (e.defaultPrevented)` —
+**except** on non-cancelable events (`animationend`, `pointerleave`), where honouring
+`defaultPrevented` would invent a fake opt-out that re-creates the original bug by design.
+`onDragOver` is a genuine sharp edge: `preventDefault()` there idiomatically means "a drop is
+allowed", and it now also reads as the opt-out.
+
+**Status.** 5 fixed · 3 logged-and-open (#135, #350, #245) · 6 new to log · 1 door.
+
+---
+
+## 3 · An `Omit`ted prop is still delivered by a JSX spread — **DEFERRED, owner decision**
+
+**Root cause, and why it is not §2.** Six components `Omit` `onChange` (and sometimes `value`)
+from their public type to signal "do not pass this". **A JSX spread does not perform
+excess-property checking**, so `{...form.field("x")}` injects those very props, `tsc` reports
+nothing, and the prop reaches a DOM element the component never expected it on. The defect is
+not "my handler was replaced" — it is that **the binding the published `README.md:203` and
+`AGENTS.md:249` both advertise is typed as safe and is not.** An explicit `onChange={…}`
+attribute *is* caught (`TS2322`); only the spread form slips through.
+
+**Members.** #245 (`TagInput` — crashes `tags.map is not a function` on the first keystroke)
+· #246 (`TagInput`, `name` submits the in-progress draft instead of the committed tags).
+**NEW, none in the 422, all measured:** `DatePicker.tsx:197` (**crash**,
+`d.getFullYear is not a function`) · `MultiSelect.tsx:194` (**crash**, `selected.map is not a
+function`) · `Slider.tsx:60`, `NumberInput.tsx:150`, `RangeSlider.tsx:137`, `OTPInput.tsx:163`
+(no crash — they silently write the wrong type into the form store; `OTPInput` keeps only the
+last keystroke). `SearchInput` is safe: its `onChange` is a required own prop, so it is
+destructured. `Input`/`Textarea`/`Select` do not `Omit` it.
+
+**Sweep:**
+
+```bash
+grep -rn 'Omit<' src/components/form/*.tsx src/components/ui/*.tsx | grep -iE '"onChange"|"value"'
+# then, for each hit, confirm the Omitted name is NOT destructured out of the props param —
+# an Omit alone is not protection against a spread.
+```
+
+**Verification tool.** vitest + a real `useForm`: spread `form.field<V>(name)` onto the
+component, type one character, then read `form.getValues()` and/or the thrown error. Measured
+shape of the binding, from `src/components/form/use-form.tsx:25-37` and `:209-217`:
+`{ name, value: V, onChange: (eventOrValue: V | ChangeEvent) => void, onBlur, ref,
+"aria-invalid", disabled }` — all seven keys always present.
+
+**Doors — the owner's call, not the patcher's.**
+- **#245:** does `TagInput.onChange` become public (called with `string[]`), or does the
+  library **retract** the documented `field()`-spread promise for `TagInput`?
+  - *(a) defensive only* — destructure `onChange` out so it cannot clobber. Patch-level, but
+    measured: because `field()` also supplies `value`, `TagInput` becomes controlled with its
+    update channel discarded — after typing and pressing Enter the store holds `[]` and **zero
+    chips render.** It trades a loud crash for an inert widget.
+  - *(b) un-`Omit` and honour it with the tags array* — **minor bump.** Costs nothing in the
+    form layer: `value` is already consumed via `useControllableState`, and
+    `use-form.tsx:113-118` passes a non-event through unchanged, so `onChange(tags)` writes the
+    array. Breaks only a consumer depending on the DOM-event shape — a population that is
+    crashing today. **Revert: restore `"onChange"` to the `Omit` union and drop it from the
+    destructure list, one file.**
+  - *(c) a separate prop, keep the `Omit`* — cheapest in code, most expensive in product: it
+    must strike `TagInput` (and by the members above `Combobox`/`Slider`/`MultiSelect`) from
+    `README.md:203` and `AGENTS.md:249`, contradicting the headline claim of one unified
+    `field()` accessor with no register-vs-Controller split.
+- **#246:** should `name` mean "submit the tags" (a hidden input per tag, which
+  `DatePicker.tsx:184` and `Switch.tsx:64` **already do** in this repo) or keep passing to the
+  draft field? Barely a door — the in-repo precedent makes (b') a consistency fix. Independent
+  of #245 semantically; land together only because both edit the same destructure list.
+- **The systemic question, worth costing once instead of six times:** should every `Omit`ted
+  key be destructured out (or `{...props}` spread *first*) library-wide, as a structural rule?
+  That closes all six at once.
+
+**Status.** `deferred · owner decision`. Both #245 and #246 confirmed **measured**. Regression
+checks for the fixed behaviour are written and sit commented out in
+`src/components/form/TagInput.test.tsx` behind a `// #245 / #246 (deferred, see bugs/PLAN.md)`
+marker, with the un-comment instruction in the header.
+
+**Adjacent, found here, not fixed:** `field()`'s `"aria-invalid": undefined` is spread *after*
+`fieldErrorProps`, so it overrides the computed value — measured, a visible "too short" message
+with `aria-invalid` null. Same ordering in `Slider.tsx:53-60` and `RangeSlider.tsx`.
+
+---
+
+## 4 · SSR / hydration — **1 FIXED, the rest open**
+
+**Root cause (#46).** `ToastProvider` called `createPortal(children, document.body)` inline in
+its render body, so touching `document` threw on any server render. Its sibling `Portal`
+already carried the `typeof document === "undefined"` guard — **the correct implementation was
+already in the repo**, so the fix is to use it, not to write a second local guard.
+
+**Sweep — proves no other unguarded render-body browser global ships:**
+
+```bash
+grep -rn 'createPortal\|document\.body\|typeof document\|typeof window' src/ --include=*.tsx --include=*.ts
+grep -rn 'document\.\|window\.\|localStorage\|navigator\.' src/ | grep -v '\.test\.'
+# For each hit, classify by POSITION: render body (unsafe) vs effect/event callback (safe on
+# the server). Only ToastContext was in a render body. Portal.tsx is the one other
+# createPortal call site and is guarded.
+```
+
+**Verification tool.** vitest with `// @vitest-environment node` + `renderToStaticMarkup`.
+The trap: the default jsdom environment **has** `document`, so a naive test passes and proves
+nothing. `ToastContext.ssr.test.tsx` asserts `typeof document === "undefined"` as a
+precondition **in the same file as the measurement**, so a test taken in the wrong environment
+is visibly invalid rather than quietly green.
+
+**Doors.** None for #46. `verify-directives.mjs` cannot catch this class — it checks directive
+placement and secret access, not SSR safety.
+
+**Status.** #46 `fixed`. **#47 is now the live remaining behaviour for `ToastProvider`** and its
+blast radius is wider than the one component its row names: the server emits nothing for the
+stack and the client's first pass portals, which is the hydration mismatch `portal.md` already
+describes. Fixing it needs a `mounted`-in-effect flag. Still open, deliberately.
+
+---
+
+## 5 · Clusters not yet investigated
+
+Sizes are the **regex floor** from playbook §3, not a taxonomy — 38 rows match more than one
+lens, so an investigator assigns final membership by reading (G1). Each still needs its own
+sweep command and verification tool before it can be worked; the narrative that produced these
+groupings is preserved in git history for this file at `6e56136`.
+
+| Cluster | Floor | Notes / where the leverage is |
+| --- | --- | --- |
+| contrast / token ratio | 38 (3h) | **36 of 38 in scope**; scope is encoded in the ledger's Component field. Only #51/#52 read `**response-ui-css**` → out of scope, mark `deferred`. `**library-wide**` (#241/#242) means within this package. **Owner-gated**: for the 13 `--C-TEXT-MUTED` rows one token change out of scope competes with 13 component changes in scope. Never re-point a token inside component CSS (#3 is the worked example). Tool: `bug-triage-tools/verify-contrast.mjs`, hand-run |
+| ARIA role or shape wrong | 37 (2h) | vitest `getByRole` / `computeAccessibleName`. Covers name and shape, never what a screen reader says |
+| dead code / dead CSS | 30 (1h) | Cheap; sweep per component alongside whichever pass has the file open |
+| live region / never announced | 26 (1h) | **~10 of these no tool here can reach.** Verify the DOM precondition and declare the announcement unverified — do not let the precondition masquerade as the real check |
+| controlled-prop desync | 17 (1h) | vitest. #5 (`StatCard` renders a permanently stale *value*) is flagged for a severity upgrade |
+| rest-props dropped (types lie) | 14 (6h) | §1 closed the `as`-polymorphic half; the rest are `Avatar` (#56) and friends, where `Skeleton`/`Spinner` already `Omit` `children` correctly — a known one-liner |
+| Field error wiring | 13 (2h) | `Radio` (#75)/`Checkbox` (#76) never call `useFieldError`; #296 reads it and forwards only half. Check what each of the eleven *spreads*, not which ones call it |
+| hard-coded English | 13 | Includes the sharper second failure mode: a hard-coded `aria-label` **outranks** an associated `<label for>` (#222, measured) |
+| SSR / hydration / use client | 9 (1h) | §4 took #46; #47 next, and its scope is wider than its row says |
+| rest-spread after own handler | 8 (2h) | §2 — the floor is stale; the real membership is 14+ |
+| `prefers-reduced-motion` | 8 | The gap is **Tailwind animation/transform utilities**, not the hand-written CSS |
+| focus indicator removed | 7 (3h) | #73 is a measured **0-pixel** change on keyboard focus |
+| `<button>` type / form submit | 6 | **Door** (#41/#74). A `Cancel` before the real submit becomes the form's default submitter |
+| status by colour alone | 5 | Five for five on the status surfaces audited; treat as the library's default, not the exception |
+| raw Tailwind defaults | 2 | `ErrorBoundary` uses `text-2xl`/`mb-2`/`px-4 py-2` against the ETHOS token rule |
+
+**226 findings match no cluster**, including 10 of the 28 highs. Those are Track C — one
+component, one test file, one doc page, one commit — and must not be forced into a cluster.
+
+---
+
+## 6 · Standing traps, each already paid for once
+
+- **Re-read `## Gotchas` on every affected `docs/components/<kebab>.md`.** 90/90 spokes have
+  one, ~68 describe behaviour a fix changes, and `docs/` **ships to npm** — so a fix leaves a
+  lie in a published page and no guard can detect it. This pass rewrote 11 pages for 9 fixes.
+  **`verify:bugs`'s checklist under-reports, in both directions.** It maps a finding's
+  *component* to `docs/components/<that component>.md`, so for an internal component it names
+  a page that does not exist (`toast-context.md`, `calendar-base.md`,
+  `use-prefers-reduced-motion.md`) while missing the **consumer** spokes that actually carry
+  the false sentence — #46 needed `toast.md` *and* `portal.md`, #316 needed
+  `range-calendar.md`, and the checklist named none of the three. Treat it as a floor: also
+  grep the claim itself across `docs/`, which is how the five pages for §1 and the extra
+  false sentences in `toast.md`, `file-upload.md` and `avatar-upload.md` were found.
+- **A green test can be hiding the very bug it claims to cover** (#422). Confirmed twice more
+  this pass, both `toHaveBeenCalled()` masking a double-fire. Assert the thing the claim is
+  about, and treat an existing green test over a surface you are fixing as unproven until you
+  have read its assertions.
+- **The correct implementation is usually already in this repo.** `Portal` for #46,
+  `Collapsible.Trigger` for §2, `useMediaQuery` for #421, `Tabs.tsx:330`'s
+  `target !== currentTarget` guard for the still-open #14. Grep for the sibling first.
+- **Never renumber a finding**, and never delete a row — ids are cited from published
+  `AGENTS.md`.
+- **This package has no ESLint config** (`npx eslint` finds none; there is no `lint` script),
+  so `tsc` is the only static gate. Worth knowing before trusting "lint is clean".

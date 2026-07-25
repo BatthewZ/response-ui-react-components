@@ -190,3 +190,14 @@ the one that could not be tested, which is why all nine `MasonryGrid` tests and 
 defect and deleted its regression test. Two tests were added for the absent-API path and
 observed failing first.
 
+### 434 · library-wide — a spread `field()` binding erases the `aria-invalid` it should set (med)
+
+`field()` returns all seven keys always present, including `"aria-invalid": undefined` when
+the field is valid (use-form.tsx:209-217). `TagInput` spreads `{...props}` at :204 **after**
+`fieldErrorProps` at :199, so the `undefined` overrides the computed value: measured, a
+visible validation message ("too short") rendered while `aria-invalid` is `null` — the
+error is on screen and absent from the accessibility tree. Same ordering in
+`Slider.tsx:53-60` and `RangeSlider`.
+**Fix:** spread rest *before* the computed error props, or merge explicitly rather than
+letting a present-but-`undefined` key win. This is independent of the §3 door — it needs no
+type change — but it lives in the same lines, so land it with whatever §3 decides.

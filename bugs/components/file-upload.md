@@ -85,3 +85,28 @@ misses it narrowly in the same two. This is library-wide, not FileUpload-specifi
 these tokens explicitly (docs/theme-contract.md "Status") but promises no ratio. This is the fifth
 token family measured, and the first pairing named for status.
 **Fix:** retune the `-BG` tints, or state a ratio in the contract and add a guard.
+
+### 427 · FileUpload — `onDrop` is still uncomposed, and composing it is a public type change (med)
+
+#407 composed `onClick`/`onKeyDown`/`onDragOver`/`onDragLeave`, leaving `onDrop` as the
+only handler a spread still sits after (FileUpload.tsx:492). Today the `Omit` makes it
+unreachable through the typed surface, so nothing is broken *yet* — but the `Omit` is not
+protection: a JSX spread bypasses the excess-property check (PLAN.md §3), so an object
+carrying `onDrop` still replaces the component's drop handling.
+**Door:** composing it means removing `Omit<…, "onDrop">` and declaring the prop, which is
+a public type change. Deferred with the rest of §3 rather than decided here.
+**Related sharp edge, already shipped:** on `onDragOver`, `preventDefault()` idiomatically
+means "a drop is allowed", and it now also reads as the composition opt-out.
+
+### 435 · FileUpload — the hidden input's `click()` re-entered the dropzone handler (med)
+
+The hidden `<input type="file">` is a descendant of the clickable root, so
+`inputRef.current.click()` bubbled back up and re-invoked the root's own click handler:
+**2** `input.click()` calls per single user click on the pre-fix code. The second was a
+no-op only because of the HTML click-in-progress flag, and the existing test asserted
+`toHaveBeenCalled()`, which passes on a double-fire — the #422 shape (a green test over the
+exact failure it claims to cover), found in real tests twice this pass.
+Harmless while a caller's `onClick` was being *replaced*; once #407 composed them it would
+have double-fired the caller's handler on every click, so #407 was not deliverable without
+this. **Fixed** alongside it by stopping propagation on the input, and locked by tightening
+the assertion to an exact count.

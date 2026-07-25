@@ -69,3 +69,15 @@ twice, on the wrong control, and the control that actually owns it is not linked
 as #333 in `DateRangePicker` — they share `date-picker-internals` and the same shape of wiring.
 **Fix:** spread `getReferenceProps()` on the `IconButton` and drop its duplicate hand-written ARIA,
 keeping `onBlur`/`onKeyDown` on the input.
+
+### 429 · DatePicker — the advertised `form.field()` binding crashes it (high)
+
+`onChange` is `Omit`ted from the public type and not destructured, and a JSX spread does
+no excess-property checking, so `<DatePicker {...form.field<Date>("due")} />` — the binding
+**README.md:203 and AGENTS.md:249 both advertise** — typechecks clean and then throws
+`TypeError: d.getFullYear is not a function` (src/util/date.ts:130 via DatePicker.tsx:184)
+on the first keystroke, because the form's handler receives a DOM event and writes it where
+a `Date` is expected. Same class as #245, same measured severity: the documented binding
+is a crash.
+**Fix direction is a door** — see PLAN.md §3. The narrow patch (destructure `onChange` out)
+stops the crash but leaves the control inert, since `field()` also supplies `value`.

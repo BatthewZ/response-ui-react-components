@@ -46,3 +46,11 @@ non-percentage announcement, and there is no route to it; `minLabel`/`maxLabel` 
 per-thumb ARIA surface.
 **Fix:** expose per-thumb prop bags, or at minimum forward `aria-valuetext` and `aria-describedby`
 to each input.
+
+### 432 · RangeSlider — the advertised `form.field()` binding corrupts the tuple (med)
+
+`<RangeSlider {...form.field<[number, number]>("span")} />` compiles and leaves the store
+holding `{"span":"35"}`. The component then runs `const [lo, hi] = current` over that
+**string**, so `lo`/`hi` become its first two characters rather than numbers — a silent
+corruption that produces plausible-looking garbage instead of an error.
+**Fix direction is a door** — PLAN.md §3.

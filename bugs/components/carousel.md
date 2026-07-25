@@ -52,3 +52,13 @@ a newly focused slide into view — i.e. everything except the motion the user a
 **Fix:** read `usePrefersReducedMotion()` and pass `behavior: "auto"` when it is true at all
 three call sites. The bypass is derived from the spec plus the three literal call sites, not from
 a browser render.
+
+### 425 · Carousel — a caller's `onKeyDown` removes arrow-key navigation (med)
+
+The root sets `onKeyDown` and spreads `{...props}` after it (Carousel.tsx:138), so
+`<Carousel onKeyDown={logKeys}>` typechecks and then leaves the carousel with no keyboard
+model at all — ArrowLeft/ArrowRight stop moving the rail.
+**Fix:** destructure and compose per `Collapsible.Trigger`. Note #186 is a *different*
+defect on the same handler (no `e.target` guard, so arrows typed in a field inside a slide
+are hijacked); fixing one does not fix the other, and a fix for #186 should land in the
+same composed handler rather than beside it.

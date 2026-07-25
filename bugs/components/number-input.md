@@ -28,3 +28,15 @@ the ArrowUp/ArrowDown branches consult it. Measured:
 `4`, and ArrowUp then emits `5`. No `aria-readonly` is set either, so assistive tech is not told
 the field is meant to be immutable. **Fix:** return early from `stepBy` and the arrow branches
 when `readOnly`, and pass `aria-readonly`.
+
+### 426 · NumberInput — an `Omit`ted `onChange` still lands, replacing the draft setter (med)
+
+`onChange` is `Omit`ted at NumberInput.tsx:25, is not destructured out, and the element
+sets `onChange={(e) => setDraft(e.target.value)}` at :146 before `{...props}` at :150.
+A JSX **spread** performs no excess-property check, so
+`<NumberInput {...form.field<number>("qty")} />` — the binding README.md:203 advertises —
+compiles clean, replaces the draft setter, and writes the raw string into the store
+(measured: `{"qty":"15"}`, a string in a number field). Two earlier hand-sweeps disagreed
+about this component; the three-condition script in PLAN.md §2 settles it.
+**Fix:** destructure `onChange` out and compose. Whether it should then be *honoured*
+with the numeric value is the same owner decision as #245 — see PLAN.md §3.
