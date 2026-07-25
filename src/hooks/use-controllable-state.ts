@@ -6,7 +6,11 @@ export interface UseControllableStateParams<T> {
   value?: T;
   /** Initial value used while uncontrolled. */
   defaultValue: T;
-  /** Called with the resolved next value whenever the setter runs, in either mode. */
+  /**
+   * Called with the resolved next value in either mode, but only when that
+   * value differs from the current one (`Object.is`). A setter call that
+   * resolves to the value already held is a no-op.
+   */
   onChange?: (next: T) => void;
 }
 
@@ -24,6 +28,9 @@ export type UseControllableStateReturn<T> = [
  *   the setter updates internal state and calls `onChange`.
  * - Controlled: the setter never touches internal state; it only calls
  *   `onChange` with the resolved value, and reads return the controlled value.
+ * - In both modes a setter call resolving to the value already held is a
+ *   no-op: no internal update, no `onChange`. Without this gate a component
+ *   clamped at a bound re-emits its unchanged value on every further press.
  *
  * The setter accepts a functional updater `(prev) => next`, resolving `prev`
  * from the current effective value. Its identity is stable across renders.
@@ -49,10 +56,11 @@ export function useControllableState<T>(
   onChangeRef.current = onChange;
 
   const setValue = useCallback((next: T | ((prev: T) => T)) => {
+    const current = valueRef.current;
     const resolved =
-      typeof next === "function"
-        ? (next as (prev: T) => T)(valueRef.current)
-        : next;
+      typeof next === "function" ? (next as (prev: T) => T)(current) : next;
+
+    if (Object.is(resolved, current)) return;
 
     if (!isControlledRef.current) {
       valueRef.current = resolved;

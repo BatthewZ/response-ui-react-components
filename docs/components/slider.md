@@ -208,11 +208,12 @@ a card.
   Firefox by the same 4px. Add your own `::-moz-range-thumb { box-sizing: border-box }` if
   the difference matters. The track itself is not affected — it is one gradient on the
   input, identical in both engines (see [Theme tokens](#theme-tokens)).
-- **Keyboard focus erases the invalid outline.** `.slider[aria-invalid="true"]` and
-  `.slider:focus-visible` have identical specificity, and the focus rule — which sets
-  `outline: none` to suppress the browser default — is written second, so it wins. Tab onto
-  an invalid slider and the error outline disappears; the thumb's focus shadow is all
-  that's left. `aria-invalid` and any [FieldError](field-error.md) text still carry the
+- **The invalid outline survives focus.** `.slider:focus-visible` sets `outline: none` to
+  suppress the browser default, and at identical specificity it used to delete the
+  `[aria-invalid="true"]` outline along with it. A dedicated
+  `.slider[aria-invalid="true"]:focus-visible` rule now restores the error outline at higher
+  specificity, so tabbing onto an invalid slider keeps it. `aria-invalid` and any
+  [FieldError](field-error.md) text also carry the
   state, so nothing is lost to assistive tech, but the visual cue is.
 - **The invalid state is an outline only.** The fill and thumb stay `--C-ACCENT` when
   `error` is set — unlike [RangeSlider](range-slider.md), which re-tints both to the error colour.

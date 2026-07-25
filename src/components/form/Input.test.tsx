@@ -75,4 +75,24 @@ describe("Input", () => {
     const input = screen.getByPlaceholderText("Password");
     expect(input).toHaveAttribute("type", "password");
   });
+
+  it("keeps the error colour on the border while focused", () => {
+    render(<Input error aria-label="Name" />);
+    const className = screen.getByRole("textbox", { name: "Name" }).className;
+
+    // The base recipe paints `focus:border-border-focus`; an invalid control
+    // must out-rank it, or taking focus silently erases the error affordance.
+    expect(className).toContain("focus:border-status-error");
+    expect(className).not.toContain("focus:border-border-focus");
+    expect(className).toContain("focus:ring-status-error");
+    expect(className).not.toContain("focus:ring-border-focus");
+  });
+
+  it("keeps the base focus border when valid", () => {
+    render(<Input aria-label="Name" />);
+    const className = screen.getByRole("textbox", { name: "Name" }).className;
+
+    expect(className).toContain("focus:border-border-focus");
+    expect(className).not.toContain("focus:border-status-error");
+  });
 });

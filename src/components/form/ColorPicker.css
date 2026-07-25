@@ -26,6 +26,14 @@
   box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
 }
 
+/* (0,3,0), so focusing an invalid trigger no longer repaints its border with
+   the focus colour. The ring still reports focus; the colour still reports
+   invalid. */
+.colorpicker-trigger--error:focus-visible {
+  border-color: var(--C-STATUS-ERROR);
+  box-shadow: 0 0 0 2px var(--C-STATUS-ERROR);
+}
+
 .colorpicker-trigger--error {
   border-color: var(--C-STATUS-ERROR);
 }

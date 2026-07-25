@@ -316,11 +316,12 @@ there does not reach this component.
   nothing, because the commit path rejects it. Presets must be hex.
 - **The preset grid is always eight columns.** Three presets are three eighth-width
   swatches with five empty cells, not three wide ones.
-- **Keyboard focus erases the invalid border.** `.colorpicker-trigger:focus-visible` and
-  `.colorpicker-trigger--error` both target one class, but the focus rule adds a
-  pseudo-class and therefore wins on specificity regardless of order — tab onto an invalid
-  trigger and the red border becomes the focus border. `aria-invalid` and any
-  [FieldError](field-error.md) text still carry the state; only the visual cue goes.
+- **The invalid border survives focus.** `.colorpicker-trigger:focus-visible` adds a
+  pseudo-class to `.colorpicker-trigger--error`'s single class, so it used to win on
+  specificity regardless of order and repaint a focused invalid trigger with the focus
+  colour. A dedicated `.colorpicker-trigger--error:focus-visible` rule now out-ranks it, so
+  focus and invalid are both legible at once — the ring reports focus, the colour reports
+  invalid.
 - **`disabled` guards the trigger, not an already-open panel.** Setting `disabled`
   programmatically while the panel is open (from a save that starts in flight, say) leaves
   it open: the hex field and hue rail go disabled, but the square still responds to arrow

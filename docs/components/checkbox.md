@@ -110,13 +110,14 @@ See [Gotchas](#gotchas).
   and ignore the `border-border-strong` / `rounded-sm` utilities. `size-4` (dimensions)
   and `accent-accent` (`accent-color`) do apply; the border and corner radius largely do
   not. If you need a fully custom box, add `appearance-none` and draw the check yourself.
-- **The focus ring's offset is a hard-coded white on dark themes.** Focus is a 2px
-  `--C-BORDER-FOCUS` ring plus a 2px `ring-offset-2` gap, and that gap uses Tailwind's
-  default `--tw-ring-offset-color` (`#fff`), which nothing here re-themes. On the light
-  `default` / `events` themes it blends in; on the dark `grimdark` and `tech` themes
-  (`color-scheme: dark`) it shows as a thin white halo between the box and the ring. The
-  sibling text controls ([Input](./input.md), [Select](select.md), [Textarea](textarea.md)) avoid this by using
-  `ring-offset-0`; Checkbox does not.
+- **The focus ring's offset is themed.** Focus is a 2px `--C-BORDER-FOCUS` ring plus a 2px
+  `ring-offset-2` gap. That gap used to be filled with Tailwind's default
+  `--tw-ring-offset-color` (`#fff`) and showed as a white halo on the dark `grimdark` and
+  `tech` themes; `@batthewz/response-ui-css` now defaults the variable to `--C-SURFACE-0` in
+  `@layer base`, so the gap tracks the theme. Pass a `ring-offset-*` colour utility to
+  override it per call site. The sibling text controls ([Input](./input.md),
+  [Select](select.md), [Textarea](textarea.md)) sidestep the gap entirely with
+  `ring-offset-0`.
 - **The ring is `focus:`, not `focus-visible:`.** Like [Input](./input.md) — and unlike
   [Button](button.md) — it appears on pointer clicks as well as keyboard focus.
 - **`indeterminate` is not a prop.** Set it via the `ref` after mount (see above); passing

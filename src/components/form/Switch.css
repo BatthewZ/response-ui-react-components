@@ -42,6 +42,15 @@
   outline-offset: 2px;
 }
 
+/* Focus must not erase the invalid state. `:focus-visible` and
+   `[aria-invalid]` are both (0,2,0), so the one written later would win
+   outright; this pairs them at (0,3,0) and keeps both signals — colour still
+   reports invalid, width still reports focus. */
+.switch[aria-invalid="true"]:focus-visible {
+  outline: 2px solid var(--C-STATUS-ERROR);
+  outline-offset: 2px;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Switch — thumb                                                     */
 /* ------------------------------------------------------------------ */

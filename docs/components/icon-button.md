@@ -143,8 +143,9 @@ is also the only thing setting the button's size — see [Gotchas](#gotchas).
 **Six values are literals, not contract variables.** The press scale (`active:scale-95`), the
 disabled dimming (`disabled:opacity-50`), the focus ring's 2px width, its 2px *offset* width
 (`focus-visible:ring-offset-2`, a separate literal), and its transparent rest colour are all
-hard-coded — reasonable, since none of them are values a theme needs to own. The sixth is the
-ring's offset *colour*, and that one is a defect: see [Gotchas](#gotchas).
+hard-coded — reasonable, since none of them are values a theme needs to own. The ring's offset
+*colour* is not one of them: it resolves to `--C-SURFACE-0` through a `@layer base` default in
+`@batthewz/response-ui-css`, and a `ring-offset-*` utility overrides it.
 
 ## Gotchas
 
@@ -163,11 +164,13 @@ ring's offset *colour*, and that one is a defect: see [Gotchas](#gotchas).
   purely your icon's box plus `p-r5`. A 16px icon yields a 32px target below the 40rem
   breakpoint and 40px above it. Size the target deliberately for touch — see
   [Accessibility](#accessibility).
-- **The focus ring sits on a white halo.** `focus-visible:ring-offset-2` is applied with no
-  `ring-offset-color`, so Tailwind's default `#fff` is used instead of a surface token. On a
-  dark theme the focused button gets a white gap between it and the ring. This is not an
-  IconButton quirk — [Button](button.md), [Checkbox](checkbox.md), [ErrorBoundary](error-boundary.md) and
-  [AvatarUpload](avatar-upload.md) all carry the same unset offset colour.
+- **The focus ring's offset tracks the theme.** `focus-visible:ring-offset-2` sets no
+  `ring-offset-color` of its own, so the gap used to be filled with Tailwind's default `#fff`
+  and read as a white halo on dark themes. `@batthewz/response-ui-css` now defaults
+  `--tw-ring-offset-color` to `--C-SURFACE-0` in `@layer base`, which fixes this here and in
+  [Button](button.md), [Checkbox](checkbox.md), [ErrorBoundary](error-boundary.md) and
+  [AvatarUpload](avatar-upload.md) at the same time. A `ring-offset-*` colour utility still
+  overrides it, because the default is layered rather than unlayered.
 - **The press animation ignores `prefers-reduced-motion`.** `active:scale-95` shrinks the
   button on pointer-down unconditionally; there is no `motion-reduce` guard.
 - **Server-renderable.** No `"use client"` directive and no hooks, so it drops straight into

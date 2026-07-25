@@ -168,11 +168,11 @@ follow a theme.**
   (`--H1`…`--H6`) and responsive `r*` spacing steps (`--R-SIZE-*`) are not used, so none of
   it re-scales with the theme or steps at the 40rem breakpoint the way the rest of the
   library does.
-- **The focus ring's offset paints white.** `focus:ring-offset-2` reserves a 2px gap
-  between the button and its ring, filled from `--tw-ring-offset-color` — a variable this
-  library never sets, so it falls back to Tailwind's default `#fff`. On any dark theme the
-  retry button gets a white halo when focused. It is not overridable from a theme file;
-  this is a fix in the component. (The same defect affects four other components.)
+- **The focus ring's offset is themed.** `focus:ring-offset-2` reserves a 2px gap between the
+  button and its ring, filled from `--tw-ring-offset-color`. That variable used to be unset,
+  falling back to Tailwind's `#fff` and painting a white halo on every dark theme;
+  `@batthewz/response-ui-css` now defaults it to `--C-SURFACE-0` in `@layer base`, which also
+  covers the four other components that carried the same gap.
 - **`min-h-screen` is a hard `100vh`,** not a token, so the fallback's height is the one
   layout decision a theme cannot touch.
 

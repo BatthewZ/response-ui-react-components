@@ -111,11 +111,18 @@ useVirtualRows + type UseVirtualRowsParams + type UseVirtualRowsReturn
 ### util
 
 ```
-cn, createCn, mergeExtension, twMerge, tailwindMergeExtension, mergeRefs, formatBytes,
+cn, createCn, mergeExtension, twMerge, tailwindMergeExtension, mergeRefs,
+mergeProps, composeEventHandlers, formatBytes,
 date helpers: addDays, addMonths, buildMonthGrid, clampDate, formatDate,
 getDateFieldOrder, getMonthLabel, getWeekdayNames, isAfter, isBefore, isSameDay,
 parseDateInput, startOfDay, startOfMonth
 ```
+
+`mergeProps` / `composeEventHandlers` are the house answer to "a caller passed
+the same prop I set". Never spread `{...props}` over a handler the component
+also sets — compose it. The caller runs first and may `preventDefault()` to skip
+the component's behaviour, except on non-cancelable events, where you must pass
+`{ checkDefaultPrevented: false }`.
 
 ## Patterns and conventions
 

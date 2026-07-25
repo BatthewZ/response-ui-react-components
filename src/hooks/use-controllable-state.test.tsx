@@ -114,6 +114,48 @@ describe("useControllableState", () => {
     expect(onChange).toHaveBeenCalledWith(8);
   });
 
+  it("does not notify when an uncontrolled setter resolves to the current value", () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() =>
+      useControllableState({ defaultValue: 5, onChange })
+    );
+
+    act(() => {
+      result.current[1](5);
+    });
+    expect(onChange).toHaveBeenCalledTimes(0);
+
+    act(() => {
+      result.current[1](6);
+    });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(6);
+  });
+
+  it("does not notify when a controlled setter resolves to the current value", () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() =>
+      useControllableState({ value: 0, defaultValue: 0, onChange })
+    );
+
+    act(() => {
+      result.current[1](0);
+    });
+    expect(onChange).toHaveBeenCalledTimes(0);
+  });
+
+  it("does not notify when a functional updater returns the current value", () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() =>
+      useControllableState({ defaultValue: 3, onChange })
+    );
+
+    act(() => {
+      result.current[1]((prev) => prev);
+    });
+    expect(onChange).toHaveBeenCalledTimes(0);
+  });
+
   it("keeps a stable setter identity across renders", () => {
     const { result, rerender } = renderHook(
       ({ value }) => useControllableState({ value, defaultValue: 0 }),

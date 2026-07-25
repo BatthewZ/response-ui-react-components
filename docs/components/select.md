@@ -230,10 +230,9 @@ the surface, not the accent, not the radius, not the font.
 
 The default border is `--C-BORDER-STRONG`, not `--C-BORDER-DEFAULT` — form controls sit a
 step higher-contrast than card edges. The error state swaps the resting border and the focus
-ring to `--C-STATUS-ERROR`; it does not tint the fill, and `focus:border-border-focus`
-survives the swap, so a *focused* invalid select shows a focus-coloured border inside an
-error-coloured ring. The focus ring is `ring-offset-0`, flush against the border, so nothing
-paints in a gap.
+ring to `--C-STATUS-ERROR`; it does not tint the fill. The swap covers `focus:border-*` too,
+so a *focused* invalid select stays error-coloured throughout. The focus ring is
+`ring-offset-0`, flush against the border, so nothing paints in a gap.
 
 Three pieces of the control are **not** on the contract. The chevron is a data-URI SVG
 background image, so it is a literal, not a token: an SVG referenced as a background image is

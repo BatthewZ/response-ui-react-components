@@ -95,9 +95,9 @@ of the app. It has no `.css` file of its own; all of these are Tailwind utilitie
 
 The default border is `--C-BORDER-STRONG`, not `--C-BORDER-DEFAULT` — inputs sit a step
 higher-contrast than card edges. The error state swaps the resting border and the focus ring
-to `--C-STATUS-ERROR`; it does not tint the fill, and `focus:border-border-focus` survives
-the swap, so a *focused* invalid textarea shows a focus-coloured border inside an
-error-coloured ring.
+to `--C-STATUS-ERROR`; it does not tint the fill. The swap covers `focus:border-*` too, so a
+*focused* invalid textarea stays error-coloured throughout rather than showing a
+focus-coloured border inside an error-coloured ring.
 
 The minimum height is the one dimension a theme can't touch: it is a fixed `min-h-[6.25rem]`
 (≈100px) arbitrary value, not a token. Override it with your own `className` if you need a

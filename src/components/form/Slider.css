@@ -31,6 +31,14 @@
   outline: none;
 }
 
+/* The rule above suppresses the UA outline because the thumb paints its own
+   focus ring — but at (0,2,0) it also deleted the invalid outline whenever the
+   control was focused. Restore it at (0,3,0). */
+.slider[aria-invalid="true"]:focus-visible {
+  outline: 1px solid var(--C-STATUS-ERROR);
+  outline-offset: 2px;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Thumb — WebKit                                                     */
 /* ------------------------------------------------------------------ */

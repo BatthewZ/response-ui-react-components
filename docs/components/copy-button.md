@@ -256,7 +256,7 @@ signal to hang your own announcement on — see
   worked to anyone not watching the icon, and the icon is the only thing that moves.
 - **Focus, target size, and `disabled` behave exactly as on
   [IconButton](icon-button.md#accessibility)** — CopyButton changes none of them, including
-  the unset `ring-offset-color` that paints a white halo on dark themes.
+  the themed `--tw-ring-offset-color` it inherits from `@batthewz/response-ui-css`.
 
 ## Related
 

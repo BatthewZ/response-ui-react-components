@@ -24,7 +24,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         "duration-fast",
         "focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-0 focus:border-border-focus",
         "disabled:bg-surface-3 disabled:cursor-not-allowed",
-        invalid && "border-status-error focus:ring-status-error",
+        invalid &&
+          "border-status-error focus:ring-status-error focus:border-status-error",
         className
       )}
       {...props}

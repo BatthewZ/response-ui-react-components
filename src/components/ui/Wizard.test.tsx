@@ -96,6 +96,37 @@ describe("Wizard", () => {
     expect(screen.getByRole("button", { name: "Finish" })).toBeDisabled();
   });
 
+  it("does not emit onStepChange when goTo lands on the current step", () => {
+    const onStepChange = vi.fn();
+    const { result } = renderHook(() =>
+      useWizard({ count: 3, defaultStep: 0, onStepChange }),
+    );
+
+    act(() => {
+      result.current.goTo(0);
+    });
+    expect(onStepChange).toHaveBeenCalledTimes(0);
+
+    act(() => {
+      result.current.goTo(1);
+    });
+    expect(onStepChange).toHaveBeenCalledTimes(1);
+    expect(onStepChange).toHaveBeenCalledWith(1);
+  });
+
+  it("does not emit onStepChange when goTo clamps back onto the current step", () => {
+    const onStepChange = vi.fn();
+    const { result } = renderHook(() =>
+      useWizard({ count: 3, defaultStep: 2, onStepChange }),
+    );
+
+    // Clamps to 2, which is where it already is.
+    act(() => {
+      result.current.goTo(99);
+    });
+    expect(onStepChange).toHaveBeenCalledTimes(0);
+  });
+
   it("lets a completed step be clicked to navigate back", async () => {
     const user = userEvent.setup();
     const { container } = render(<Wizard steps={STEPS} defaultStep={2} />);

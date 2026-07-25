@@ -128,7 +128,28 @@ The full reskinning surface lives in the foundation package. These are the canon
 - **Guards** (1): RequireAuth (headless)
 - **Router** (1): RouterAdapterProvider, useLink, usePathname
 - **Hooks**: useActiveSection, useClickOutside, useControllableState, useDebounce, useDocumentTitle, useFloating, useFocusTrap, useMediaQuery, usePrefersReducedMotion, useRovingFocus, useTheme, useVirtualRows
-- **Util**: `cn`, `createCn`, `mergeExtension`, `tailwindMergeExtension`, `twMerge`, `mergeRefs`, `formatBytes`, plus date helpers (`formatDate`, `parseDateInput`, `buildMonthGrid`, `addDays`, `addMonths`, …)
+- **Util**: `cn`, `createCn`, `mergeExtension`, `tailwindMergeExtension`, `twMerge`, `mergeRefs`, `mergeProps`, `composeEventHandlers`, `formatBytes`, plus date helpers (`formatDate`, `parseDateInput`, `buildMonthGrid`, `addDays`, `addMonths`, …)
+
+### Composing props and handlers
+
+A plain `{...props}` spread **replaces** an event handler rather than adding to
+it, so a component that sets `onClick` and then spreads caller props silently
+drops one of the two. `composeEventHandlers` runs both — the caller's first, so
+it can opt out of the component's behaviour with `preventDefault()`:
+
+```tsx
+<button onClick={composeEventHandlers(props.onClick, () => setOpen(true))} />
+```
+
+Pass `{ checkDefaultPrevented: false }` for events the DOM will not let you
+cancel (`animationend`, `transitionend`, `pointerleave`) — React still marks its
+synthetic event as prevented there, and honouring it would invent an opt-out
+that drops the behaviour again.
+
+`mergeProps(a, b)` does the same for a whole prop object, which is what you want
+when handing props to a cloned `asChild` child: `on*` handlers compose,
+`className` merges through `cn`, `style` merges by key, `ref` merges through
+`mergeRefs`, and a `b` value of `undefined` no longer clobbers a defined `a`.
 
 ## Router adapter — wire your router once
 

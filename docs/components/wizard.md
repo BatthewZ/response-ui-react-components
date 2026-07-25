@@ -315,9 +315,10 @@ form. Steps taller than that still grow the panel.
   click on it drops back to the last step and re-enables Finish.
 - **`allowBackNavigation` buys you dead tab stops.** It is all-or-nothing: turning it on makes
   all N markers focusable buttons, and Wizard's handler silently ignores the forward ones.
-- **`goTo` cannot finish the flow, and reports moves it did not make.** It clamps to
-  `count - 1`, and because the underlying setter always notifies, `goTo(0)` while already on
-  step `0` still calls `onStepChange(0)`. Only `back()` guards against a no-op.
+- **`goTo` cannot finish the flow.** It clamps to `count - 1`, so it can never reach the
+  terminal "all done" index that `next()` lands on. It no longer reports moves it did not
+  make: `useControllableState` skips `onChange` when the resolved value equals the current
+  one, so `goTo(0)` while already on step `0` is silent.
 - **`aria-*` and `data-*` on the root compile and then vanish.** Wizard destructures its
   eleven props and spreads no rest, so nothing else reaches the `<div class="wizard">`.
   TypeScript catches `id` and `ref` but exempts hyphenated JSX attributes from checking, so

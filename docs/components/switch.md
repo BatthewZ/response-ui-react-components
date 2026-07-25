@@ -249,10 +249,11 @@ the page. See [Accessibility](#accessibility) — that has measurable consequenc
   `data-state`, and `data-size` are all set before `{...props}`, so any of them can be
   overridden from the call site. `aria-checked` is the dangerous one — pass it yourself and
   assistive tech reports a state that has nothing to do with the thumb.
-- **The error outline vanishes while focused.** `.switch[aria-invalid="true"]` and
-  `.switch:focus-visible` both set `outline` at identical specificity, and focus is declared
-  later, so it wins. A focused invalid switch shows the focus ring only — the error tint is
-  gone exactly while the user is on the control.
+- **The error outline survives focus.** `.switch[aria-invalid="true"]` and
+  `.switch:focus-visible` both set `outline` at identical specificity, so the later-declared
+  focus rule used to win and blank the error tint exactly while the user was on the control.
+  A dedicated `.switch[aria-invalid="true"]:focus-visible` rule now out-ranks both: a focused
+  invalid switch keeps the error colour and reports focus through the 2px outline width.
 - **`form` doesn't reach the hidden input.** `<Switch name="x" form="signup" />` puts
   `form="signup"` on the button (harmless) but leaves the hidden input unassociated, so a
   Switch rendered outside its `<form>` submits nothing at all.
@@ -284,9 +285,9 @@ own: Field resolves the error and nothing else, so without `htmlFor`/`id` the sw
 unnamed and clicking the label does nothing.
 
 **Focus is `focus-visible`,** a 2px `--C-BORDER-FOCUS` outline at 2px offset — keyboard focus
-shows it, a mouse click doesn't. It is an `outline`, not a ring, so it doesn't inherit the
-library-wide white `ring-offset` problem, and because outlines are drawn outside the box it
-never shifts layout.
+shows it, a mouse click doesn't. It is an `outline`, not a ring, so `--tw-ring-offset-color`
+never applies to it either way, and because outlines are drawn outside the box it never shifts
+layout.
 
 **Motion is guarded.** `Switch.css` ends in a `@media (prefers-reduced-motion: reduce)` block
 that sets `transition: none` on both the track and the thumb. The thumb still ends up in the
