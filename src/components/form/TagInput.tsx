@@ -15,6 +15,16 @@ type TagInputProps = {
   value?: string[];
   defaultValue?: string[];
   onValueChange?: (tags: string[]) => void;
+  /**
+   * Called with the committed tags — the same payload as `onValueChange`, not a
+   * DOM `ChangeEvent`.
+   *
+   * It exists so the documented `{...form.field<string[]>("tags")}` binding
+   * works: a JSX spread performs no excess-property check, so `Omit`ting
+   * `onChange` never stopped `field()` delivering it — it only stopped
+   * TypeScript reporting it.
+   */
+  onChange?: (tags: string[]) => void;
   maxTags?: number;
   validateTag?: (tag: string) => boolean | string;
   delimiter?: RegExp;
@@ -32,6 +42,8 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
       value,
       defaultValue,
       onValueChange,
+      onChange,
+      name,
       maxTags,
       validateTag,
       delimiter = /[,\n]/,
@@ -49,7 +61,10 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
     const [tags, setTags] = useControllableState<string[]>({
       value,
       defaultValue: defaultValue ?? [],
-      onChange: onValueChange,
+      onChange: (next) => {
+        onValueChange?.(next);
+        onChange?.(next);
+      },
     });
     const [draft, setDraft] = useState("");
     const [message, setMessage] = useState<string | null>(null);
@@ -203,6 +218,14 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
             )}
             {...props}
           />
+          {/* Native form participation: one hidden input per committed tag, so
+              `new FormData(form)` yields the tags rather than whatever is
+              half-typed in the visible field. Same shape as DatePicker and
+              Switch. `name` is deliberately kept off the draft input. */}
+          {name !== undefined &&
+            tags.map((tag) => (
+              <input key={tag} type="hidden" name={name} value={tag} />
+            ))}
         </div>
         <p
           aria-live="polite"
