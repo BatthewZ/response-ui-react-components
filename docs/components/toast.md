@@ -259,8 +259,8 @@ variant re-tints at runtime, with no rebuild.
 
 Like [Alert](alert.md), the border is the variant's own foreground token at `/20` alpha, so it
 tracks the text colour and there is no separate border variable to tune. The tinted
-background is the contrast partner the [contrast contract](../theme-contract.md) guarantees
-that foreground against, so the defaults stay legible in every theme.
+background is what the [contrast pairing](../theme-contract.md#the-contrast-pairing) puts
+that foreground on, so the defaults are built to stay legible across the shipped themes.
 
 **The width is a literal.** `w-80` — a fixed `20rem` — is not on the contract and there is no
 prop for it. With the stack's 0.75rem right offset a toast claims 332px, so on a 320px-wide

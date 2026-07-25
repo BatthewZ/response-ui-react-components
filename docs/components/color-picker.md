@@ -255,8 +255,8 @@ would reference `--color-primary`, a copy computed once at `:root`, and the over
 do nothing.) Two caveats: the panel is portalled to `<body>`, so a wrapper-scoped
 override does **not** reach the picker's own panel (the general portal caveat that
 [Portal](portal.md) documents), and overriding one variable in isolation can break the
-pairings the [theme contract](../theme-contract.md) guarantees — `--C-PRIMARY` has a
-matching `--C-TEXT-ON-PRIMARY` that does not move with it.
+[pairings](../theme-contract.md#the-contrast-pairing) the theme defines — `--C-PRIMARY` has
+a matching `--C-TEXT-ON-PRIMARY` that does not move with it.
 
 ## Theme tokens
 

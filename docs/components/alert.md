@@ -103,8 +103,9 @@ of that variant re-tints at runtime, with no rebuild.
 
 The border is that variant's foreground token at `/20` alpha, so it always tracks
 the text colour — there is no separate border token to tune. The tinted background
-(`--C-STATUS-*-BG`) is the contrast partner the [contrast contract](../theme-contract.md)
-guarantees the foreground against, so the default variants stay legible in every theme.
+(`--C-STATUS-*-BG`) is the background the [contrast pairing](../theme-contract.md#the-contrast-pairing)
+puts each status foreground on, so the default variants are built to stay legible across the
+shipped themes.
 
 ## Gotchas
 
@@ -131,8 +132,8 @@ guarantees the foreground against, so the default variants stay legible in every
 The container is a `role="alert"` live region with `aria-live="polite"`, so a message
 rendered in response to an event is announced without moving focus. Because severity
 is carried only by colour, pair the variant with a textual or icon label so it reaches
-colour-blind and screen-reader users — the contract only guarantees the foreground/
-background *contrast*, not that the meaning survives without colour.
+colour-blind and screen-reader users — the pairing only covers the foreground/background
+*contrast*, not that the meaning survives without colour.
 
 ## Related
 

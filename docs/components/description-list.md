@@ -110,8 +110,10 @@ uses the single `gap-r5` above. All three ride the responsive `r`-scale, so the 
 step up at the 40rem breakpoint with the rest of the spacing system. The type steps
 (`--BodyText-*`) are responsive the same way — the list is slightly larger on desktop
 with no breakpoint utilities from you. DescriptionList sets **no background**: it inks
-`--C-TEXT-PRIMARY`/`--C-TEXT-SECONDARY` on whatever surface it is dropped onto, and the
-[contrast contract](../theme-contract.md) guarantees both against every `surface-*` token.
+`--C-TEXT-PRIMARY`/`--C-TEXT-SECONDARY` on whatever surface it is dropped onto. Those are
+the body-text roles the shipped themes are built to keep readable on their own surfaces — a
+convention of the themes, not a ratio the [theme contract](../theme-contract.md) measures,
+so on a custom or non-standard surface, check it.
 
 ## Gotchas
 

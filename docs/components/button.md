@@ -50,13 +50,12 @@ works when `as` is a `<button>`, and `ref` is `HTMLElement`. See [Gotchas](#gotc
 ```
 <!-- /example -->
 
-`ghost-inverse` inks itself with `fg-on-primary`, which the
-[contrast contract](../theme-contract.md) guarantees against a **fill** token — never
-against a surface. On a `surface-*` background it is not guaranteed to be legible, and
-in the default and `events` themes it is not: those surfaces are light and the ink is
-white. Put it on a fill.
+`ghost-inverse` inks itself with `fg-on-primary`, the text the
+[contrast pairing](../theme-contract.md#the-contrast-pairing) puts on a **fill** — not on a
+surface. On a `surface-*` background nothing pairs it, and in the default and `events`
+themes it is not legible: those surfaces are light and the ink is white. Put it on a fill.
 
-A scrimmed photograph is not a fill either, so the guarantee does not carry over a hero
+A scrimmed photograph is not a fill either, so the pairing does not carry over a hero
 image: composited over the shipped scrim on a bright frame, `fg-on-primary` measures
 3.98:1 in the default theme and 2.89:1 in `events` — below the 3:1 large-text floor in the
 latter. See [Hero](hero.md#contrast-over-an-image) if you need the numbers per theme.

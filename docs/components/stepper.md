@@ -181,8 +181,9 @@ the property inline on the root, removes both doubts.
 
 It defaults to a **text** token rather than `--C-PRIMARY` on purpose. The current step's
 ring and the filled rail are strokes drawn straight onto the surface, and the
-[contrast contract](../theme-contract.md) only guarantees a fill token against its `on-*`
-partner — in the `grimdark` and `tech` themes `--C-PRIMARY` sits close to the surface, so a
+[contrast pairing](../theme-contract.md#the-contrast-pairing) only relates a fill to its
+`on-*` text, never to the surface it is stroked onto — and in the `grimdark` and `tech`
+themes `--C-PRIMARY` sits close to the surface, so a
 primary-coloured line would fade out. The done chips *can* fill with `--C-PRIMARY` because
 they letter and ring themselves in `--C-TEXT-ON-PRIMARY`.
 

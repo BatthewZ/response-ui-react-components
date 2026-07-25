@@ -72,6 +72,31 @@ Each status has a foreground color and a tinted background:
 | `--C-STATUS-WARNING` | `--C-STATUS-WARNING-BG` |
 | `--C-STATUS-INFO` | `--C-STATUS-INFO-BG` |
 
+### The contrast pairing
+
+A few of the colour tokens above are meant to be used **together**: a fill with the text
+that sits on it, and each status colour with its tinted background.
+
+| Draw this… | …on this |
+| --- | --- |
+| `--C-TEXT-ON-PRIMARY` | `--C-PRIMARY` |
+| `--C-TEXT-ON-ACCENT` | `--C-ACCENT` |
+| `--C-STATUS-*` (foreground) | `--C-STATUS-*-BG` |
+
+**The intention.** Each pair is designed to read against *itself* — the `on-*` text is
+chosen to be legible on its own fill, and the components use these pairings for their
+defaults. That is the whole of it. It is a **convention, not a measured ratio**: this file
+names the pairings, never a number, and says nothing about a fill set against a `surface-*`,
+against `--C-CANVAS`, or over an image. (It is also why a focus ring earns its keep — a fill
+is only reliably distinct from its *paired text*, not from whatever surface it happens to
+sit on.)
+
+**You can do whatever you like.** Re-tint any token; the pairing is a default, not a rule
+the system enforces. Two things to keep in mind if you stray from it: when you redefine a
+pair, move both so they still read against each other; and when you put a fill token
+somewhere other than under its paired text — on a surface, over a photo — the pairing says
+nothing about that, so check the contrast yourself.
+
 ### Typography
 
 | Variable | Notes |

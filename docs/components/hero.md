@@ -117,11 +117,12 @@ it — a gradient, a video poster, or a flat brand fill:
 ```
 <!-- /example -->
 
-This is the one hero composition the [theme contract](../theme-contract.md) fully backs.
+This is the one hero composition the [theme contract](../theme-contract.md) is built around.
 `--C-TEXT-ON-PRIMARY` is defined there as the ink drawn on `--C-PRIMARY` fill, so a
 `bg-primary` layer under `on-primary` text and a `ghost-inverse` [Button](button.md) is a
-guaranteed pair. The scrim is switched off because darkening a brand fill only muddies it.
-Over a photograph the guarantee does not carry — see
+[paired](../theme-contract.md#the-contrast-pairing) combination, designed to read against
+itself. The scrim is switched off because darkening a brand fill only muddies it.
+Over a photograph the pairing does not carry — see
 [Contrast over an image](#contrast-over-an-image).
 
 With a `src`, the layer renders a covering `<img>`. Leave `alt` off and it is marked
@@ -359,7 +360,7 @@ renders fully transparent instead of degrading to 50% black.
 - **Motion is reduced-motion safe.** Under `prefers-reduced-motion: reduce`, Parallax attaches
   no listener and applies no transform, ScrollReveal skips both the observer and the hidden
   state so the content is simply present, and Stagger zeroes every index.
-- **Contrast is not guaranteed.** Hero applies no text colour and cannot know what your image
+- **Contrast over an image is on you.** Hero applies no text colour and cannot know what your image
   looks like — see [Contrast over an image](#contrast-over-an-image).
 
 ## Related
