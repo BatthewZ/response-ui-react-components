@@ -167,3 +167,26 @@ leaves content focusable and in the a11y tree in a real browser too — this is 
 artefact.*
 **Fix:** set `inert` on `.accordion-content` / `.collapsible-content` while closed.
 `hidden` would also work but kills the `0fr → 1fr` transition.
+
+### 421 · usePrefersReducedMotion — threw wherever `matchMedia` was absent (med · FIXED `fbdf501`)
+
+Logged after the fact, because it was never in the 420 and it gated five of them.
+
+`use-reduced-motion.ts` called `window.matchMedia` behind only a `typeof window` check,
+while its sibling `use-media-query.ts` guarded the API itself and documented why:
+*"`matchMedia` is absent on the server and in some test/headless environments (e.g.
+jsdom) — callers treat those as 'no match' rather than throw."* The hook violated its own
+package's stated intent.
+
+Measured: `TypeError: window.matchMedia is not a function` in jsdom, which took down the
+**default** (`animate`) render path of every `ScrollReveal` and `Stagger` consumer — the
+exact path carrying #9, #10, #171, #178 and #340. The configuration holding the bugs was
+the one that could not be tested, which is why all nine `MasonryGrid` tests and all eight
+`Timeline` tests cover only `animate={false}`.
+
+**Fixed** by deleting the duplication rather than adding a second guard: reduced motion
+*is* a media query, so the hook is now a four-line alias over `useMediaQuery`. Deliberately
+**not** fixed by stubbing `matchMedia` in `test-setup.ts` — that would have masked the
+defect and deleted its regression test. Two tests were added for the absent-API path and
+observed failing first.
+
