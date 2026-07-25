@@ -10,6 +10,7 @@ describe("mergeRefs", () => {
 
     merged(node);
 
+    expect(callbackRef).toHaveBeenCalledTimes(1);
     expect(callbackRef).toHaveBeenCalledWith(node);
   });
 
@@ -31,6 +32,7 @@ describe("mergeRefs", () => {
 
     merged(node);
 
+    expect(callbackRef).toHaveBeenCalledTimes(1);
     expect(callbackRef).toHaveBeenCalledWith(node);
     expect(refObject.current).toBe(node);
   });
@@ -42,6 +44,7 @@ describe("mergeRefs", () => {
 
     merged(node);
 
+    expect(callbackRef).toHaveBeenCalledTimes(1);
     expect(callbackRef).toHaveBeenCalledWith(node);
   });
 
@@ -52,6 +55,7 @@ describe("mergeRefs", () => {
 
     merged(node);
 
+    expect(callbackRef).toHaveBeenCalledTimes(1);
     expect(callbackRef).toHaveBeenCalledWith(node);
   });
 
@@ -62,7 +66,27 @@ describe("mergeRefs", () => {
 
     merged(null);
 
+    expect(callbackRef).toHaveBeenCalledTimes(1);
     expect(callbackRef).toHaveBeenCalledWith(null);
+    expect(refObject.current).toBeNull();
+  });
+
+  // A merged setter is re-entrant: React attaches then detaches through the same
+  // closure, and each pass must visit every ref exactly once.
+  it("invokes each ref exactly once per call across attach and detach", () => {
+    const callbackRef = vi.fn();
+    const refObject = { current: null as HTMLDivElement | null };
+    const merged = mergeRefs(callbackRef, refObject);
+    const node = document.createElement("div");
+
+    merged(node);
+    expect(refObject.current).toBe(node);
+
+    merged(null);
+
+    expect(callbackRef).toHaveBeenCalledTimes(2);
+    expect(callbackRef).toHaveBeenNthCalledWith(1, node);
+    expect(callbackRef).toHaveBeenNthCalledWith(2, null);
     expect(refObject.current).toBeNull();
   });
 });

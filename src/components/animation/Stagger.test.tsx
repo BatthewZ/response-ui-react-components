@@ -1,9 +1,17 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Defaults to full motion — the reduced-motion path is opt-in per test via
+// `motion.reduced = true`.
+const motion = vi.hoisted(() => ({ reduced: false }));
 
 vi.mock("../../hooks/use-reduced-motion", () => ({
-  usePrefersReducedMotion: () => false,
+  usePrefersReducedMotion: () => motion.reduced,
 }));
+
+afterEach(() => {
+  motion.reduced = false;
+});
 
 import { Stagger } from "./Stagger";
 
@@ -98,5 +106,23 @@ describe("Stagger", () => {
     const el = container.firstElementChild as HTMLElement;
     expect(el.style.getPropertyValue("--stagger-delay")).toBe("100ms");
     expect(el.style.marginTop).toBe("8px");
+  });
+
+  it("collapses every stagger index to 0 under reduced motion", () => {
+    motion.reduced = true;
+    const { container } = render(
+      <Stagger>
+        <span>A</span>
+        <span>B</span>
+        <span>C</span>
+      </Stagger>
+    );
+
+    const indices = Array.from(
+      container.querySelectorAll<HTMLElement>(".stagger-item"),
+      (item) => item.style.getPropertyValue("--stagger-index")
+    );
+    // Every item lands at once instead of cascading by index.
+    expect(indices).toEqual(["0", "0", "0"]);
   });
 });

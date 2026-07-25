@@ -32,6 +32,7 @@ describe("useControllableState", () => {
 
     // Setter does not mutate internal state in controlled mode.
     expect(result.current[0]).toBe("a");
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("b");
 
     // Reads track the controlled value as the parent updates it.
@@ -49,12 +50,15 @@ describe("useControllableState", () => {
       result.current[1](1);
     });
     expect(result.current[0]).toBe(1);
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith(1);
 
     act(() => {
       result.current[1](2);
     });
     expect(result.current[0]).toBe(2);
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenNthCalledWith(2, 2);
   });
 
   it("fires onChange with the resolved value in both modes", () => {
@@ -65,6 +69,7 @@ describe("useControllableState", () => {
     act(() => {
       uncontrolled.current[1](5);
     });
+    expect(uncontrolledOnChange).toHaveBeenCalledTimes(1);
     expect(uncontrolledOnChange).toHaveBeenCalledWith(5);
 
     const controlledOnChange = vi.fn();
@@ -78,6 +83,7 @@ describe("useControllableState", () => {
     act(() => {
       controlled.current[1](99);
     });
+    expect(controlledOnChange).toHaveBeenCalledTimes(1);
     expect(controlledOnChange).toHaveBeenCalledWith(99);
   });
 
@@ -111,6 +117,7 @@ describe("useControllableState", () => {
       result.current[1]((prev) => prev + 1);
     });
     // prev resolves from the latest controlled value (7), not the default.
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith(8);
   });
 

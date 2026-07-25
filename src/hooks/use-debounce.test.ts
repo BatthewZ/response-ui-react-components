@@ -75,13 +75,43 @@ describe("useDebounce", () => {
     expect(result.current).toBe("ab");
   });
 
-  it("cleans up timeout on unmount", () => {
+  it("schedules exactly one timeout per value change, clearing the one it replaces", () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
     const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
 
+    const { rerender } = renderHook(({ value }) => useDebounce(value, 300), {
+      initialProps: { value: "a" },
+    });
+
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 300);
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(0);
+
+    rerender({ value: "b" });
+
+    // Exactly one new timer, and exactly one cleanup — of the timer it replaced.
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(setTimeoutSpy.mock.results[0].value);
+
+    setTimeoutSpy.mockRestore();
+    clearTimeoutSpy.mockRestore();
+  });
+
+  it("clears exactly the pending timeout on unmount", () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
     const { unmount } = renderHook(() => useDebounce("hello", 300));
+
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+    const pending = setTimeoutSpy.mock.results[0].value;
+    setTimeoutSpy.mockRestore();
+
+    // Spy only across the unmount so the count is the effect cleanup alone.
+    const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
     unmount();
 
-    expect(clearTimeoutSpy).toHaveBeenCalled();
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(pending);
     clearTimeoutSpy.mockRestore();
   });
 });

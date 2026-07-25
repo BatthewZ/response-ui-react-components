@@ -1,8 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// Defaults to full motion — the reduced-motion path is opt-in per test via
+// `motion.reduced = true`.
+const motion = vi.hoisted(() => ({ reduced: false }));
+
 vi.mock("../../hooks/use-reduced-motion", () => ({
-  usePrefersReducedMotion: () => false,
+  usePrefersReducedMotion: () => motion.reduced,
 }));
 
 import { ScrollReveal } from "./ScrollReveal";
@@ -47,6 +51,7 @@ function fireAnimationEnd(el: Element) {
 }
 
 afterEach(() => {
+  motion.reduced = false;
   vi.unstubAllGlobals();
 });
 
@@ -131,5 +136,35 @@ describe("ScrollReveal", () => {
     expect(onAnimationEnd).toHaveBeenCalledTimes(1);
     // the internal handler still clears the animating class
     expect(el.className).not.toContain("fade-up");
+  });
+
+  it("never observes and renders already-revealed under reduced motion", () => {
+    motion.reduced = true;
+    const constructed = vi.fn();
+    const observed = vi.fn();
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor() {
+          constructed();
+        }
+        observe = observed;
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return [];
+        }
+      }
+    );
+
+    const { container } = render(<ScrollReveal delay={200}>Content</ScrollReveal>);
+    const el = container.firstElementChild as HTMLElement;
+
+    expect(constructed).toHaveBeenCalledTimes(0);
+    expect(observed).toHaveBeenCalledTimes(0);
+    // Content is visible from the first paint rather than hidden pending a reveal.
+    expect(el.className).not.toContain("scroll-reveal-hidden");
+    expect(el.className).not.toContain("fade-up");
+    expect(el.style.animationDelay).toBe("");
   });
 });

@@ -1,9 +1,17 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Defaults to full motion — the reduced-motion path is opt-in per test via
+// `motion.reduced = true`.
+const motion = vi.hoisted(() => ({ reduced: false }));
 
 vi.mock("../../hooks/use-reduced-motion", () => ({
-  usePrefersReducedMotion: () => false,
+  usePrefersReducedMotion: () => motion.reduced,
 }));
+
+afterEach(() => {
+  motion.reduced = false;
+});
 
 import { AnimatePresence } from "./AnimatePresence";
 
@@ -113,6 +121,36 @@ describe("AnimatePresence", () => {
 
     // the wrapper's own animation still unmounts it
     fireAnimationEnd(el);
+    expect(screen.queryByTestId("animate")).not.toBeInTheDocument();
+  });
+
+  it("carries no enter/exit animation class under reduced motion", () => {
+    motion.reduced = true;
+    render(
+      <AnimatePresence show={true} className="custom-class" data-testid="animate">
+        Content
+      </AnimatePresence>
+    );
+
+    expect(screen.getByTestId("animate").className).toBe("custom-class");
+  });
+
+  it("unmounts on hide without waiting for an exit animation under reduced motion", () => {
+    motion.reduced = true;
+    const { rerender } = render(
+      <AnimatePresence show={true} data-testid="animate">
+        Content
+      </AnimatePresence>
+    );
+    expect(screen.getByTestId("animate")).toBeInTheDocument();
+
+    rerender(
+      <AnimatePresence show={false} data-testid="animate">
+        Content
+      </AnimatePresence>
+    );
+
+    // Gone already — no `animationend` is dispatched here, and none is needed.
     expect(screen.queryByTestId("animate")).not.toBeInTheDocument();
   });
 });

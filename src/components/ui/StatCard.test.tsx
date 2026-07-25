@@ -1,13 +1,71 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { StatCard } from "./StatCard";
 
-// Mock the reduced motion hook to avoid IntersectionObserver issues
+// Defaults to reduced motion — the count-up is opt-in per test via
+// `motion.reduced = false`, which also requires `stubMotionEnvironment()`.
+const motion = vi.hoisted(() => ({ reduced: true }));
+
 vi.mock("../../hooks/use-reduced-motion", () => ({
-  usePrefersReducedMotion: () => true,
+  usePrefersReducedMotion: () => motion.reduced,
 }));
+
+afterEach(() => {
+  motion.reduced = true;
+  vi.unstubAllGlobals();
+});
+
+/**
+ * The count-up runs off IntersectionObserver + requestAnimationFrame, neither of
+ * which jsdom drives. Stub both so the sequence is stepped by hand:
+ * `scrollIntoView()` reports the observed node visible, `runFrame(at)` runs
+ * whatever the component queued with a timestamp we choose.
+ */
+function stubMotionEnvironment() {
+  const frames: FrameRequestCallback[] = [];
+  const observed: Element[] = [];
+  const disconnected = vi.fn();
+  let reportVisible: (() => void) | null = null;
+
+  class StubIntersectionObserver {
+    constructor(private callback: IntersectionObserverCallback) {}
+    observe(node: Element) {
+      observed.push(node);
+      reportVisible = () =>
+        this.callback(
+          [{ isIntersecting: true, target: node } as unknown as IntersectionObserverEntry],
+          this as unknown as IntersectionObserver
+        );
+    }
+    unobserve() {}
+    disconnect() {
+      disconnected();
+    }
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+  }
+
+  vi.stubGlobal("IntersectionObserver", StubIntersectionObserver);
+  vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => frames.push(cb));
+
+  return {
+    observed,
+    disconnected,
+    frames,
+    scrollIntoView() {
+      act(() => reportVisible?.());
+    },
+    runFrame(at: number) {
+      const queued = frames.splice(0);
+      act(() => {
+        for (const frame of queued) frame(at);
+      });
+    },
+  };
+}
 
 describe("StatCard", () => {
   describe("Root", () => {
@@ -89,6 +147,102 @@ describe("StatCard", () => {
       const ref = createRef<HTMLSpanElement>();
       render(<StatCard.Value ref={ref}>0</StatCard.Value>);
       expect(ref.current).toBeInstanceOf(HTMLSpanElement);
+    });
+
+    it("observes nothing and requests no frames under reduced motion", () => {
+      const env = stubMotionEnvironment();
+
+      render(<StatCard.Value animateValue from={0} to={500} data-testid="value" />);
+
+      expect(screen.getByTestId("value").textContent).toBe("500");
+      expect(env.observed).toHaveLength(0);
+      expect(env.frames).toHaveLength(0);
+    });
+
+    it("counts up from `from` to `to` across frames once scrolled into view", () => {
+      motion.reduced = false;
+      const env = stubMotionEnvironment();
+      const startedAt = performance.now();
+
+      render(
+        <StatCard.Value animateValue from={0} to={500} duration={1000} data-testid="value" />
+      );
+      const el = screen.getByTestId("value");
+
+      // Observed, but nothing moves until the element is actually seen.
+      expect(el.textContent).toBe("0");
+      expect(env.observed).toHaveLength(1);
+      expect(env.frames).toHaveLength(0);
+
+      env.scrollIntoView();
+
+      // One intersection is enough: it stops observing and starts the run.
+      expect(env.disconnected).toHaveBeenCalledTimes(1);
+      expect(env.frames).toHaveLength(1);
+
+      // Mid-run. The component reads its own start timestamp, so the bounds are
+      // what can be pinned down here, not the exact figure.
+      env.runFrame(startedAt + 500);
+      const midway = Number(el.textContent);
+      expect(midway).toBeGreaterThan(0);
+      expect(midway).toBeLessThan(500);
+      expect(env.frames).toHaveLength(1);
+
+      // Past the end: lands exactly on `to` and stops asking for frames.
+      env.runFrame(startedAt + 10_000);
+      expect(el.textContent).toBe("500");
+      expect(env.frames).toHaveLength(0);
+    });
+
+    it("formats every animated tick with the custom format function", () => {
+      motion.reduced = false;
+      const env = stubMotionEnvironment();
+      const startedAt = performance.now();
+
+      render(
+        <StatCard.Value
+          animateValue
+          from={0}
+          to={100}
+          duration={1000}
+          format={(v) => `$${v}`}
+          data-testid="value"
+        />
+      );
+      const el = screen.getByTestId("value");
+      expect(el.textContent).toBe("$0");
+
+      env.scrollIntoView();
+      env.runFrame(startedAt + 500);
+      expect(el.textContent).toMatch(/^\$\d+$/);
+
+      env.runFrame(startedAt + 10_000);
+      expect(el.textContent).toBe("$100");
+    });
+
+    it("honours the duration prop, and falls back to a sub-second default", () => {
+      motion.reduced = false;
+      const slow = stubMotionEnvironment();
+      const startedAt = performance.now();
+
+      const long = render(
+        <StatCard.Value animateValue from={0} to={500} duration={100_000} data-testid="slow" />
+      );
+      slow.scrollIntoView();
+      slow.runFrame(startedAt + 1000);
+      // 1s into a 100s run — nowhere near done, and still asking for frames.
+      expect(Number(screen.getByTestId("slow").textContent)).toBeLessThan(500);
+      expect(slow.frames).toHaveLength(1);
+      long.unmount();
+
+      // No duration: the CSS custom property is absent in jsdom, so the 400ms
+      // fallback applies and the same 1s frame finishes the run.
+      const fast = stubMotionEnvironment();
+      render(<StatCard.Value animateValue from={0} to={500} data-testid="fast" />);
+      fast.scrollIntoView();
+      fast.runFrame(performance.now() + 1000);
+      expect(screen.getByTestId("fast").textContent).toBe("500");
+      expect(fast.frames).toHaveLength(0);
     });
   });
 

@@ -1,11 +1,25 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProgressBar } from "./ProgressBar";
 
+// Defaults to full motion — the reduced-motion path is opt-in per test via
+// `motion.reduced = true`.
+const motion = vi.hoisted(() => ({ reduced: false }));
+
 vi.mock("../../hooks/use-reduced-motion", () => ({
-  usePrefersReducedMotion: () => false,
+  usePrefersReducedMotion: () => motion.reduced,
 }));
+
+afterEach(() => {
+  motion.reduced = false;
+});
+
+function getFill(): HTMLElement {
+  const fill = screen.getByRole("progressbar").firstElementChild;
+  if (!(fill instanceof HTMLElement)) throw new Error("ProgressBar rendered no fill");
+  return fill;
+}
 
 describe("ProgressBar", () => {
   it("renders with role='progressbar'", () => {
@@ -63,5 +77,21 @@ describe("ProgressBar", () => {
   it("ProgressBar.Value renders its content", () => {
     const { container } = render(<ProgressBar.Value>75%</ProgressBar.Value>);
     expect(container).toHaveTextContent("75%");
+  });
+
+  it("animates the fill by default", () => {
+    render(<ProgressBar value={50} />);
+    expect(getFill().className).not.toContain("progress-bar__fill--no-animate");
+  });
+
+  it("animate={false} opts the fill out of the width transition", () => {
+    render(<ProgressBar value={50} animate={false} />);
+    expect(getFill().className).toContain("progress-bar__fill--no-animate");
+  });
+
+  it("reduced motion opts the fill out even with animate left at its default", () => {
+    motion.reduced = true;
+    render(<ProgressBar value={50} />);
+    expect(getFill().className).toContain("progress-bar__fill--no-animate");
   });
 });

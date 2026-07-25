@@ -1,19 +1,28 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProgressRing } from "./ProgressRing";
 
+// Defaults to full motion — the reduced-motion path is opt-in per test via
+// `motion.reduced = true`.
+const motion = vi.hoisted(() => ({ reduced: false }));
+
 vi.mock("../../hooks/use-reduced-motion", () => ({
-  usePrefersReducedMotion: () => false,
+  usePrefersReducedMotion: () => motion.reduced,
 }));
+
+afterEach(() => {
+  motion.reduced = false;
+});
 
 const CIRCUMFERENCE = (size: number, thickness: number) =>
   2 * Math.PI * ((size - thickness) / 2);
 
-function getIndicator(): SVGCircleElement {
-  // The progress arc is the second circle (track is first).
-  const circles = document.querySelectorAll<SVGCircleElement>(".progress-ring__indicator");
-  return circles[0];
+/** The progress arc — the second circle, after the track. */
+function getIndicator(scope: ParentNode = document): SVGCircleElement {
+  const indicator = scope.querySelector<SVGCircleElement>(".progress-ring__indicator");
+  if (!indicator) throw new Error("ProgressRing rendered no indicator circle");
+  return indicator;
 }
 
 describe("ProgressRing", () => {
@@ -87,5 +96,19 @@ describe("ProgressRing", () => {
   it("forwards className to the wrapper", () => {
     render(<ProgressRing value={50} className="custom-class" />);
     expect(screen.getByRole("progressbar").className).toContain("custom-class");
+  });
+
+  it("adds the no-animate indicator class only under reduced motion", () => {
+    const full = render(<ProgressRing value={50} />);
+    expect(
+      getIndicator(full.container).classList.contains("progress-ring__indicator--no-animate")
+    ).toBe(false);
+    full.unmount();
+
+    motion.reduced = true;
+    const reduced = render(<ProgressRing value={50} />);
+    expect(
+      getIndicator(reduced.container).classList.contains("progress-ring__indicator--no-animate")
+    ).toBe(true);
   });
 });

@@ -1,11 +1,19 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Sparkline } from "./Sparkline";
 
+// Defaults to full motion — the reduced-motion path is opt-in per test via
+// `motion.reduced = true`.
+const motion = vi.hoisted(() => ({ reduced: false }));
+
 vi.mock("../../hooks/use-reduced-motion", () => ({
-  usePrefersReducedMotion: () => false,
+  usePrefersReducedMotion: () => motion.reduced,
 }));
+
+afterEach(() => {
+  motion.reduced = false;
+});
 
 describe("Sparkline", () => {
   it("renders with role='img'", () => {
@@ -94,5 +102,18 @@ describe("Sparkline", () => {
       />
     );
     expect(node).toBeInstanceOf(SVGSVGElement);
+  });
+
+  it("carries the animate class only when motion is allowed", () => {
+    const full = render(<Sparkline values={[1, 2, 3]} />);
+    expect(full.getByRole("img").getAttribute("class")).toContain("sparkline--animate");
+    full.unmount();
+
+    motion.reduced = true;
+    const reduced = render(<Sparkline values={[1, 2, 3]} />);
+    const cls = reduced.getByRole("img").getAttribute("class") ?? "";
+    expect(cls).not.toContain("sparkline--animate");
+    // the rest of the class list is untouched
+    expect(cls).toContain("sparkline--line");
   });
 });
