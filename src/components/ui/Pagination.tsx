@@ -157,7 +157,11 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
                     )}
                     aria-current={item === page ? "page" : undefined}
                     aria-label={`Page ${item}`}
-                    onClick={() => onPageChange(item)}
+                    // Stays focusable so `aria-current` is reachable; native
+                    // `disabled` would drop it from the tab order and a11y tree.
+                    onClick={() => {
+                      if (item !== page) onPageChange(item);
+                    }}
                   >
                     {item}
                   </button>

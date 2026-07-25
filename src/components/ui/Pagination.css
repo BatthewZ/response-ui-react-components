@@ -28,7 +28,7 @@
               background-color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
 }
 
-.pagination__page:hover {
+.pagination__page:hover:not(.pagination__page--current) {
   background-color: var(--C-SURFACE-1);
   color: var(--C-TEXT-PRIMARY);
 }
@@ -38,11 +38,15 @@
   outline-offset: 2px;
 }
 
+/* Ink pairs with the --C-ACCENT fill per the theme contract; --C-TEXT-ON-PRIMARY
+   is byte-identical to --C-ACCENT in the `tech` theme (1.00:1, invisible).
+   Not actionable, but stays hit-testable so it keeps its place in the tab
+   order — the click handler is what refuses to re-fire. */
 .pagination__page--current {
   background-color: var(--C-ACCENT);
-  color: var(--C-TEXT-ON-PRIMARY);
+  color: var(--C-TEXT-ON-ACCENT);
   font-weight: var(--Semibold-Weight);
-  pointer-events: none;
+  cursor: default;
 }
 
 .pagination__ellipsis {

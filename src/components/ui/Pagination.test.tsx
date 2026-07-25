@@ -233,6 +233,66 @@ describe("Pagination", () => {
     expect([...counts][0]).toBe(9); // siblingCount(2) * 2 + 5
   });
 
+  describe("current page is inert to activation but stays navigable (#141)", () => {
+    it("clicking the current page fires nothing", async () => {
+      const user = userEvent.setup();
+      const onPageChange = vi.fn();
+      render(<Pagination page={3} totalPages={5} onPageChange={onPageChange} />);
+
+      await user.click(screen.getByRole("button", { name: "Page 3" }));
+
+      expect(onPageChange).toHaveBeenCalledTimes(0);
+    });
+
+    it("keyboard-activating the current page fires nothing", async () => {
+      const user = userEvent.setup();
+      const onPageChange = vi.fn();
+      render(<Pagination page={3} totalPages={5} onPageChange={onPageChange} />);
+
+      screen.getByRole("button", { name: "Page 3" }).focus();
+      await user.keyboard("{Enter}");
+      await user.keyboard(" ");
+
+      expect(onPageChange).toHaveBeenCalledTimes(0);
+    });
+
+    it("keyboard-activating a different page fires exactly once with that page", async () => {
+      const user = userEvent.setup();
+      const onPageChange = vi.fn();
+      render(<Pagination page={3} totalPages={5} onPageChange={onPageChange} />);
+
+      screen.getByRole("button", { name: "Page 4" }).focus();
+      await user.keyboard("{Enter}");
+
+      expect(onPageChange).toHaveBeenCalledTimes(1);
+      expect(onPageChange).toHaveBeenCalledWith(4);
+    });
+
+    it("clicking a different page fires exactly once with that page", async () => {
+      const user = userEvent.setup();
+      const onPageChange = vi.fn();
+      render(<Pagination page={3} totalPages={5} onPageChange={onPageChange} />);
+
+      await user.click(screen.getByRole("button", { name: "Page 2" }));
+
+      expect(onPageChange).toHaveBeenCalledTimes(1);
+      expect(onPageChange).toHaveBeenCalledWith(2);
+    });
+
+    it("current page keeps its place in the tab order and its aria-current", async () => {
+      const user = userEvent.setup();
+      render(<Pagination page={2} totalPages={3} onPageChange={() => {}} />);
+
+      const current = screen.getByRole("button", { name: "Page 2" });
+      screen.getByRole("button", { name: "Page 1" }).focus();
+      await user.tab();
+
+      expect(current).toHaveFocus();
+      expect(current).not.toBeDisabled();
+      expect(current).toHaveAttribute("aria-current", "page");
+    });
+  });
+
   it("collapses to compact below the configured breakpoint", () => {
     const original = window.matchMedia;
     // jsdom lacks matchMedia; stub a match.

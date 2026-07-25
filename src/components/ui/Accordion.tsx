@@ -248,6 +248,9 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
         role="region"
         aria-labelledby={triggerId}
         data-state={isOpen ? "open" : "closed"}
+        // Collapsed panels are only CSS-clipped; without this their descendants
+        // stay tab-reachable and in the a11y tree.
+        inert={!isOpen}
         className={cn("accordion-content", className)}
         {...props}
       >

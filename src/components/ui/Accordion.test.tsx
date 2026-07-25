@@ -280,6 +280,62 @@ describe("Accordion", () => {
     });
   });
 
+  // jsdom implements no `inert` semantics, and user-event's tab order ignores it,
+  // so these assert the attribute that drives the behaviour, not the behaviour.
+  describe("collapsed content is marked inert (#136)", () => {
+    function renderWithLink(defaultValue?: string) {
+      return render(
+        <Accordion defaultValue={defaultValue}>
+          <Accordion.Item value="a">
+            <Accordion.Trigger>Section A</Accordion.Trigger>
+            <Accordion.Content>
+              <a href="#anchor">Buried link</a>
+            </Accordion.Content>
+          </Accordion.Item>
+        </Accordion>,
+      );
+    }
+
+    function panelFor(name: string) {
+      const trigger = screen.getByRole("button", { name });
+      return document.getElementById(trigger.getAttribute("aria-controls")!)!;
+    }
+
+    it("panel collapsed at mount is inert", () => {
+      renderWithLink();
+
+      const panel = panelFor("Section A");
+      expect(panel).toHaveAttribute("data-state", "closed");
+      expect(panel).toHaveAttribute("inert");
+    });
+
+    it("panel open at mount is not inert and its link is focusable", () => {
+      renderWithLink("a");
+
+      const panel = panelFor("Section A");
+      expect(panel).toHaveAttribute("data-state", "open");
+      expect(panel).not.toHaveAttribute("inert");
+
+      const link = screen.getByRole("link", { name: "Buried link" });
+      link.focus();
+      expect(link).toHaveFocus();
+    });
+
+    it("inert tracks the open state across toggles", async () => {
+      const user = userEvent.setup();
+      renderWithLink();
+
+      const trigger = screen.getByRole("button", { name: "Section A" });
+      expect(panelFor("Section A")).toHaveAttribute("inert");
+
+      await user.click(trigger);
+      expect(panelFor("Section A")).not.toHaveAttribute("inert");
+
+      await user.click(trigger);
+      expect(panelFor("Section A")).toHaveAttribute("inert");
+    });
+  });
+
   describe("Trigger composes caller handlers (#135)", () => {
     function renderWithTriggerProps(triggerProps: {
       onClick?: (e: ReactMouseEvent<HTMLButtonElement>) => void;
