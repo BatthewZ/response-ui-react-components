@@ -24,10 +24,9 @@ and they animate out, then unmount when that animation ends.
 | `ref`        | `Ref<HTMLDivElement>`   | —            |
 | …rest        | props of `div`          | —            |
 
-The exit half has a sharp edge: unmounting is driven by the wrapper's `onAnimationEnd`,
-so `exitClass` **must** name a class that actually runs a CSS animation — and any
-`animationend` that reaches that wrapper counts, including one bubbling up from a child.
-See [Gotchas](#gotchas).
+The exit half has a sharp edge: unmounting is driven by the wrapper's own `animationend`,
+so `exitClass` **must** name a class that actually runs a CSS animation, or the element
+never unmounts. See [Gotchas](#gotchas).
 
 ## Custom enter and exit animations
 
@@ -85,10 +84,12 @@ different `enterClass` / `exitClass` instead.
   you pass is composed with the component's rather than replacing it: yours is called, then
   the exit-phase check unmounts. There is no `preventDefault()` opt-out here, because
   `animationend` is not a cancelable event, so the unmount always follows.
-- **A child's animation can cut the exit short.** `animationend` bubbles, and the handler
-  only checks the exit phase — not which element fired. If a descendant runs its own
-  animation while the wrapper is exiting, that child's `animationend` bubbles up and
-  unmounts the whole thing early, before the wrapper's fade-out finishes.
+- **A child's animation cannot cut the exit short.** `animationend` bubbles, so a descendant
+  animating while the wrapper is exiting fires an event that reaches the wrapper — but the
+  unmount only runs when the event's `target` *is* the wrapper, so a spinner or skeleton
+  inside an exiting panel no longer ends the exit early. Your own `onAnimationEnd` is called
+  for those bubbled events too, since it is an ordinary DOM handler on the wrapper: check
+  `e.target === e.currentTarget` yourself if you only care about the wrapper's own animation.
 - **Reduced motion drops both animations — and the class with them.** Under
   `prefers-reduced-motion: reduce`, children mount and unmount instantly and *no* class is
   applied. So anything you tucked into `enterClass` beyond the animation (a colour, a

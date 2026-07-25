@@ -53,6 +53,9 @@ export const AnimatePresence = forwardRef<HTMLDivElement, AnimatePresenceProps>(
 
     function handleAnimationEnd(e: AnimationEvent<HTMLDivElement>) {
       onAnimationEnd?.(e);
+      // Only unmount on our own animation; `animationend` bubbles, so a child finishing
+      // its animation mid-exit would otherwise cut the exit short.
+      if (e.target !== e.currentTarget) return;
       if (phase === "exit" && !show) {
         setMounted(false);
         setPhase(null);

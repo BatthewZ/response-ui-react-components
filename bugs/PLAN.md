@@ -68,6 +68,25 @@ prop there.
 · #350 (`Table.HeaderCell`, `onClick`+`onKeyDown` — mouse and keyboard diverge) ·
 #245 (`TagInput` — also in §3, and gated there).
 
+**A second sub-shape the sweep script cannot see: `cloneElement`.** `Popover`, `HoverCard`,
+`DropdownMenu` (#115) and `Tooltip` (#112, high) hand trigger props to an `asChild` child via
+`cloneElement(child, {...triggerProps})` rather than a JSX spread, so the child's *own*
+handlers are overwritten — measured: the child's `onClick` fires **0** times on Popover and
+DropdownMenu, `onPointerEnter` 0 on HoverCard, and on Tooltip `onMouseEnter` survives while
+`onFocus` does not. `Tooltip` is the worst because it calls `getReferenceProps()` with **no
+argument at all**. The script's spread test only matches `{...props}`/`{...rest}` inside a JSX
+open tag, so it is structurally blind to all four; they need their own sweep:
+
+```bash
+grep -rn 'cloneElement' src/components --include=*.tsx
+# then check whether the clone merges `children.props` and whether getReferenceProps is
+# passed the trigger's own props. Neither is true in any of the four.
+```
+
+Same *harm* as the JSX-spread members, different *mechanism* and a different fix (merge the
+child's props / compose rather than overwrite), which is why they stay as their own rows
+rather than being folded in.
+
 **Members — NEW, surfaced by this pass, not in the 422.** `Tabs.tsx:295` (`Tab`,
 `onClick`+`onKeyDown`) · `Tabs.tsx:345` (`TabPanel`, `onAnimationEnd` — literally #13's shape,
 kills `onExitComplete`) · `Carousel.tsx:138` (root `onKeyDown` — kills arrow navigation) ·
@@ -292,6 +311,17 @@ component, one test file, one doc page, one commit — and must not be forced in
   pattern; `DateRangePicker` (#439) only appeared when every form component was actually
   rendered under a real `useForm`. For a cluster defined by *runtime* behaviour, the
   authoritative sweep is an execution, not a grep over types.
+- **Always cross-check a "NEW finding" against the ledger before writing it down.** Three
+  separate investigators reported already-logged findings as new in this pass: `Accordion`
+  (#135) and `Table` (#350) twice over, and then `Popover`/`HoverCard`/`DropdownMenu` (#115)
+  and `Tooltip` (#112). Each time the row existed and the summary was accurate. One grep
+  prevents a duplicate id and a wasted investigation:
+  `grep -nE "^\| [0-9]+ \|[^|]*\| <Component> \|" bugs/LEDGER.md`
+- **Fixing one finding can widen another.** Composing a caller's `onAnimationEnd` (#13) made
+  `AnimatePresence`'s internal handler *always* run, which took #14 from "affects consumers who
+  pass no handler" to "affects everyone" — a regression created by a correct fix. Before landing
+  a composition fix, check what the replaced handler was accidentally protecting. #14 was on the
+  same file, was known, and was skipped once to keep the commit small; that was the wrong call.
 - **The correct implementation is usually already in this repo.** `Portal` for #46,
   `Collapsible.Trigger` for §2, `useMediaQuery` for #421, `Tabs.tsx:330`'s
   `target !== currentTarget` guard for the still-open #14. Grep for the sibling first.

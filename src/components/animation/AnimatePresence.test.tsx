@@ -85,4 +85,34 @@ describe("AnimatePresence", () => {
     expect(screen.queryByTestId("animate")).not.toBeInTheDocument();
     expect(onAnimationEnd).toHaveBeenCalledTimes(1);
   });
+
+  // #14 — `animationend` bubbles, so a child finishing its own animation mid-exit must not
+  // be mistaken for the wrapper's. Composing a caller's handler (#13) made the internal
+  // handler always run, which widened this from "only consumers not passing
+  // onAnimationEnd" to every consumer — so the guard is now load-bearing.
+  it("ignores an `animationend` bubbling up from a child mid-exit", () => {
+    const { rerender } = render(
+      <AnimatePresence show={true} data-testid="animate">
+        <span data-testid="child">Spinner</span>
+      </AnimatePresence>
+    );
+    rerender(
+      <AnimatePresence show={false} data-testid="animate">
+        <span data-testid="child">Spinner</span>
+      </AnimatePresence>
+    );
+
+    const el = screen.getByTestId("animate");
+    expect(el.className).toContain("fade-out");
+
+    // the CHILD's animation ends, not the wrapper's
+    fireAnimationEnd(screen.getByTestId("child"));
+
+    expect(screen.queryByTestId("animate")).toBeInTheDocument();
+    expect(el.className).toContain("fade-out");
+
+    // the wrapper's own animation still unmounts it
+    fireAnimationEnd(el);
+    expect(screen.queryByTestId("animate")).not.toBeInTheDocument();
+  });
 });
