@@ -299,7 +299,11 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
                 )}
                 <ul className="command-palette-group-items">
                   {entries.map(({ item, index }) => {
-                    const active = index === activeIndex;
+                    // Same predicate as `activeId`: when nothing is
+                    // selectable `activeIndex` still points at 0, and painting
+                    // a highlight there would show a cursor no screen reader
+                    // can follow and that Enter will not act on.
+                    const active = index === activeIndex && isSelectable(index);
                     return (
                       <li
                         key={item.id}

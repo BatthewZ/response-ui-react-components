@@ -145,9 +145,17 @@
   outline-offset: -2px;
 }
 
+/* Current page. The accent draws the edge, not the letters: --C-ACCENT ink over
+   its own 10% wash measured 2.46:1 (events) / 2.83:1 (grimdark) against a
+   resting link's 7.40 / 5.95, so marking a link current made it the least
+   legible item in the sidebar. --C-TEXT-PRIMARY reads 10.8–15.4:1 on that same
+   wash in all four themes — the current link is now the most legible one — and
+   the inset accent edge (Calendar's [data-today] marker recipe) carries "you
+   are here" on a channel the 10% wash cannot carry alone. */
 .app-shell-sidebar-link[data-active] {
   background: color-mix(in oklch, var(--C-ACCENT) 10%, transparent);
-  color: var(--C-ACCENT);
+  box-shadow: inset 0 0 0 1px var(--C-ACCENT);
+  color: var(--C-TEXT-PRIMARY);
 }
 
 .app-shell-sidebar-link-icon {

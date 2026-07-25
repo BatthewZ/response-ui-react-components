@@ -79,8 +79,16 @@
   text-align: left;
 }
 
+/* Virtual focus: DOM focus stays on the input, so `:focus-visible` never
+   matches an option and the keyboard cursor has to be drawn from the attribute
+   instead. The --C-SURFACE-1 step alone is 1.02–1.07:1 against the listbox fill
+   across the four themes — a fill-vs-fill cue no re-tint can rescue — so the
+   ring, not the wash, is what marks the option. Same ring the rest of the
+   library draws on :focus-visible. */
 .combobox-item[data-active] {
   background: var(--C-SURFACE-1);
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: -2px;
 }
 
 .combobox-item[aria-selected="true"] {

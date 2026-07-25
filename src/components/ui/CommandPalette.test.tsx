@@ -260,4 +260,49 @@ describe("CommandPalette", () => {
     expect(within(groups[0]).getAllByRole("option")).toHaveLength(2);
     expect(within(groups[1]).getAllByRole("option")).toHaveLength(2);
   });
+
+  // `data-active` is the only hook the stylesheet has for the virtual-focus
+  // ring: DOM focus never leaves the input, so `:focus-visible` cannot match an
+  // option. jsdom applies no stylesheets, so this locks the DOM contract the
+  // ring hangs off — not the ring itself.
+  it("marks exactly one option data-active, in step with aria-activedescendant", async () => {
+    const user = userEvent.setup();
+    renderPalette({ open: true });
+
+    const input = screen.getByRole("combobox");
+    await user.click(input);
+
+    const activeIds = () =>
+      screen
+        .getAllByRole("option")
+        .filter((option) => option.hasAttribute("data-active"))
+        .map((option) => option.id);
+
+    expect(activeIds()).toEqual([input.getAttribute("aria-activedescendant")]);
+
+    await user.keyboard("{ArrowDown}");
+    const second = input.getAttribute("aria-activedescendant");
+    expect(activeIds()).toEqual([second]);
+
+    await user.keyboard("{End}");
+    expect(activeIds()).toEqual([input.getAttribute("aria-activedescendant")]);
+  });
+
+  // The highlight must never outrun the a11y tree: painting `data-active` on an
+  // option `aria-activedescendant` refuses to name leaves a visible cursor that
+  // no screen reader can follow and that Enter will not act on.
+  it("paints no active highlight when every option is disabled", () => {
+    const items = makeItems([
+      { disabled: true },
+      { disabled: true },
+      { disabled: true },
+      { disabled: true },
+    ]);
+    renderPalette({ open: true, items });
+
+    expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant");
+    expect(
+      screen.getAllByRole("option").filter((option) => option.hasAttribute("data-active")),
+    ).toHaveLength(0);
+  });
 });

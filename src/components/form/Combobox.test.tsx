@@ -299,4 +299,35 @@ describe("Combobox", () => {
     expect(onValueChange).toHaveBeenCalledWith("banana");
     expect(input.value).toBe("Banana");
   });
+
+  // `data-active` is the only hook the stylesheet has for the virtual-focus
+  // ring: DOM focus never leaves the input, so `:focus-visible` cannot match an
+  // option. jsdom applies no stylesheets, so these lock the DOM contract the
+  // ring hangs off — not the ring itself.
+  it("marks exactly one option data-active, in step with aria-activedescendant", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    const input = getInput();
+    await user.click(input);
+    await user.keyboard("a");
+
+    const activeIds = () =>
+      within(screen.getByRole("listbox"))
+        .getAllByRole("option")
+        .filter((option) => option.hasAttribute("data-active"))
+        .map((option) => option.id);
+
+    await user.keyboard("{ArrowDown}");
+    const first = input.getAttribute("aria-activedescendant");
+    expect(activeIds()).toEqual([first]);
+
+    await user.keyboard("{ArrowDown}");
+    const second = input.getAttribute("aria-activedescendant");
+    expect(second).not.toBe(first);
+    expect(activeIds()).toEqual([second]);
+
+    await user.keyboard("{ArrowUp}");
+    expect(activeIds()).toEqual([first]);
+  });
 });

@@ -400,4 +400,28 @@ describe("AppShell", () => {
     expect(main.tagName).toBe("MAIN");
     expect(main).toHaveTextContent("Page body");
   });
+
+  // `data-active` is the hook the stylesheet uses to draw the current link's
+  // edge and ink; it must land on the same link as `aria-current` and nowhere
+  // else. jsdom applies no stylesheets, so this locks the DOM contract the
+  // styling hangs off — not the styling itself.
+  it("puts data-active on exactly the aria-current link", () => {
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Sidebar>
+          <AppShell.SidebarLink to="/">Home</AppShell.SidebarLink>
+          <AppShell.SidebarLink to="/about">About</AppShell.SidebarLink>
+        </AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+      { route: "/about" },
+    );
+
+    const marked = screen
+      .getAllByRole("link")
+      .filter((link) => link.hasAttribute("data-active"));
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toHaveAccessibleName("About");
+    expect(marked[0]).toHaveAttribute("aria-current", "page");
+  });
 });

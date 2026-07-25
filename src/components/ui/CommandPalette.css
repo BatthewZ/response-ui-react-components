@@ -63,6 +63,14 @@
   line-height: var(--BodyText-1-line-height);
 }
 
+/* The input is the only element that ever holds DOM focus here — options are
+   virtually focused via `aria-activedescendant` — so the reset above cannot be left
+   without a replacement. Inset so the ring stays inside the full-bleed search row. */
+.command-palette-input:focus-visible {
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: -2px;
+}
+
 .command-palette-input::placeholder {
   color: var(--C-TEXT-MUTED);
 }
@@ -120,8 +128,16 @@
   transition: background-color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
 }
 
+/* Virtual focus: DOM focus stays on the search input, so `:focus-visible` never
+   matches an option and the keyboard cursor has to be drawn from the attribute
+   instead. The --C-SURFACE-2 step alone is 1.08–1.16:1 against the palette fill
+   across the four themes — a fill-vs-fill cue no re-tint can rescue — so the
+   ring, not the wash, is what marks the option. Same ring the rest of the
+   library draws on :focus-visible. */
 .command-palette-option[data-active] {
   background: var(--C-SURFACE-2);
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: -2px;
 }
 
 .command-palette-option[data-disabled] {
