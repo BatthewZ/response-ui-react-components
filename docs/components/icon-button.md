@@ -61,8 +61,8 @@ Each button still carries its own name, because the icons cannot supply one.
 
 ## Inside a form
 
-IconButton sets **no default `type`**, so the HTML default applies and a button inside a
-`<form>` submits it. Be explicit on both the action you want and the ones you don't:
+IconButton defaults to `type="button"`, so a button inside a `<form>` does not submit it.
+Be explicit on the action that *should* submit:
 
 <!-- example:InsideAForm -->
 ```tsx
@@ -149,9 +149,9 @@ hard-coded — reasonable, since none of them are values a theme needs to own. T
 
 ## Gotchas
 
-- **No default `type`.** A `<button>` with no `type` is `submit`. Drop an IconButton into a
-  form for a non-submitting job — clear a field, remove a row, dismiss a banner — and clicking
-  it submits the form. Pass `type="button"` every time; the type system will not remind you.
+- **Defaults to `type="button"`.** Dropping an IconButton into a form for a non-submitting
+  job — clear a field, remove a row, dismiss a banner — no longer submits the form. Pass
+  `type="submit"` explicitly when you do want it to.
 - **`aria-label=""` compiles.** The type requires the *prop*, not a meaningful *value*. An
   empty string, or a variable typed `string` that happens to be empty at runtime, passes the
   compiler and leaves the button with no accessible name. The guarantee is structural, not

@@ -225,6 +225,7 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
     return (
       <button
         ref={mergeRefs(ref, itemRef)}
+        type="button"
         role="menuitem"
         className={cn(`${classPrefix}-item`, className)}
         aria-disabled={disabled || undefined}

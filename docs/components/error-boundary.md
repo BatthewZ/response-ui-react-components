@@ -192,9 +192,8 @@ follow a theme.**
   React 19's `onCaughtError` option on `createRoot`; to show the message, subclass.
 - **The retry button is hand-rolled, not a [Button](button.md).** It re-implements the primary
   variant's classes, so it doesn't track [Button](button.md)'s variants, sizes, or its
-  `focus-visible`-only ring. It also sets no `type`, and a `<button>` defaults to
-  `type="submit"` — so a boundary placed inside a `<form>` gives you a Try again button
-  that submits that form as well as resetting the boundary.
+  `focus-visible`-only ring. It does set `type="button"`, so a boundary inside a `<form>`
+  no longer submits that form when Try again is clicked.
 - **It has to be a class, and that is not a style choice.** React exposes error catching
   only through `getDerivedStateFromError`/`componentDidCatch`; there is no hook equivalent,
   which is why this is the library's class component.

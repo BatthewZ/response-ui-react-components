@@ -88,7 +88,7 @@ const DropdownMenuTrigger = forwardRef<HTMLButtonElement, DropdownMenuTriggerPro
     }
 
     return (
-      <button className={cn("dropdown-menu-trigger", className)} {...triggerProps}>
+      <button type="button" className={cn("dropdown-menu-trigger", className)} {...triggerProps}>
         {children}
       </button>
     );

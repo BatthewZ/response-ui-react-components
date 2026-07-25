@@ -286,8 +286,8 @@ The arrows are the good news: they are real `<button>`s from
 [IconButton](icon-button.md), permanently labelled `"Previous"` and `"Next"`, with their
 chevron SVGs marked `aria-hidden`, and they keep IconButton's `focus-visible` ring. They
 render after the slides in the DOM, so the tab order is root → slide content → Previous →
-Next. They carry no `type`, so inside a `<form>` clicking one submits it — pass
-`type="button"` if the rail lives in a form.
+Next. They are [IconButton](icon-button.md)s, which default to `type="button"`, so a rail
+inside a `<form>` does not submit it.
 
 Everything else needs a decision from you:
 

@@ -256,11 +256,9 @@ deliberately reuses it — restyle these classes and both components move togeth
   `cn()`, `style` merges by key, and `data-*` passes through. ARIA the trigger owns
   (`aria-expanded`, `aria-haspopup`, `aria-controls`) still wins, because it reports state the
   child cannot know.
-- **The trigger has no `type`, so it submits an enclosing form.** A bare `<button>` defaults to
-  `type="submit"`: a `DropdownMenu` inside a `<form>` both opens the menu *and* submits the form
-  when the trigger is clicked or activated with Enter. Pass `type="button"` on the trigger every
-  time — the type system will not remind you. Items are safe by accident: they are portalled
-  outside the form, so they never submit.
+- **The trigger defaults to `type="button"`.** A `DropdownMenu` inside a `<form>` opens the
+  menu without also submitting the form. Items set it too, so they are safe by construction
+  rather than by the accident of being portalled outside the form.
 - **Your `style` on `Content` overrides the positioning.** Inline styles are merged *after*
   Floating UI's, so a stray `position`, `top`, `left`, or `transform` breaks the anchoring
   outright. Size and colour there if you must; leave placement alone.

@@ -164,7 +164,7 @@ const PopoverTrigger = forwardRef<HTMLButtonElement, PopoverTriggerProps>(
     }
 
     return (
-      <button className={cn("popover-trigger", className)} {...triggerProps}>
+      <button type="button" className={cn("popover-trigger", className)} {...triggerProps}>
         {children}
       </button>
     );

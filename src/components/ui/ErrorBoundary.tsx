@@ -27,6 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
             <p className="text-fg-secondary mb-6">An unexpected error occurred.</p>
             <button
+              type="button"
               onClick={() => this.setState({ hasError: false })}
               className="px-4 py-2 bg-primary text-fg-on-primary rounded-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-2"
             >

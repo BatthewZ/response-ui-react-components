@@ -78,4 +78,37 @@ describe("Button", () => {
     render(<Button variant={variant}>Label</Button>);
     expect(screen.getByRole("button", { name: "Label" }).className).toContain(expected);
   });
+
+  it("does not submit an enclosing form", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+
+    render(
+      <form onSubmit={onSubmit}>
+        <Button>Cancel</Button>
+      </form>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onSubmit).toHaveBeenCalledTimes(0);
+  });
+
+  it("still allows an explicit submit type", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+
+    render(
+      <form onSubmit={onSubmit}>
+        <Button type="submit">Save</Button>
+      </form>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not put a type on a non-button element", () => {
+    render(<Button as="a" href="/x">Link</Button>);
+    expect(screen.getByRole("link", { name: "Link" })).not.toHaveAttribute("type");
+  });
 });

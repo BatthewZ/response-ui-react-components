@@ -13,5 +13,10 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
   { className, ...props },
   ref
 ) {
-  return <button ref={ref} className={cn(baseClasses, className)} {...props} />;
+  // Before the spread so a caller can still opt into "submit"; without it a
+  // bare <button> defaults to type="submit" and every icon button inside a
+  // form submits it.
+  return (
+    <button ref={ref} type="button" className={cn(baseClasses, className)} {...props} />
+  );
 });

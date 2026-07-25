@@ -80,4 +80,18 @@ describe("IconButton", () => {
     render(<IconButton aria-label="Submit" type="submit"><SearchIcon /></IconButton>);
     expect(screen.getByRole("button")).toHaveAttribute("type", "submit");
   });
+
+  it("does not submit an enclosing form", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+
+    render(
+      <form onSubmit={onSubmit}>
+        <IconButton aria-label="Close">x</IconButton>
+      </form>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(onSubmit).toHaveBeenCalledTimes(0);
+  });
 });

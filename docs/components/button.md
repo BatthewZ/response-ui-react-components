@@ -141,11 +141,11 @@ breakpoint, so a gap that did would drift out of proportion with it.
   silently no-op. Guard navigation yourself, or don't render the link.
 - **`ref` is typed `HTMLElement`,** not `HTMLButtonElement`, because `as` can change
   the element. Narrow it at the call site if you need `.focus()` on a specific type.
-- **No default `type`.** Button sets none, so the HTML default applies and a `<button>` in a
-  `<form>` is `type="submit"` — `<Button>Cancel</Button>` in a form footer submits the form
-  when clicked. Worse, if it sits before your real submit button it becomes the form's
-  default submitter, the one Enter fires from inside a text field, so Enter runs Cancel. Pass
-  `type="button"` on every non-submitting action; the type system will not remind you.
+- **Defaults to `type="button"`.** Button sets it whenever it renders a `<button>`, so
+  `<Button>Cancel</Button>` in a form footer no longer submits the form, and no longer becomes
+  the form's default submitter (the one Enter fires from inside a text field). Pass
+  `type="submit"` explicitly on the button that *should* submit. Nothing is set when `as`
+  renders something other than a `<button>`.
 - **No per-component CSS.** `Button.css` is an empty placeholder. Both CSS imports are
   still required — the utilities above resolve to tokens from `@batthewz/response-ui-css`.
 - **Server-renderable.** No `"use client"`, so it works directly in an RSC tree.

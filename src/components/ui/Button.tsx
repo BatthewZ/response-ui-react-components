@@ -36,6 +36,11 @@ export const Button = forwardRef<HTMLElement, ButtonProps>(function Button(
   return (
     <Tag
       ref={ref as never}
+      // A bare <button> defaults to type="submit", so a Cancel button rendered
+      // before the real submit becomes the form's default submitter. Only when
+      // we actually render a <button>, and before the spread so a caller can
+      // still ask for "submit".
+      {...(Tag === "button" ? { type: "button" as const } : {})}
       className={cn(baseClasses, variantClassMap[variant], sizeClassMap[size], className)}
       {...props}
     />
