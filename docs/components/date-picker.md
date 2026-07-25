@@ -17,6 +17,7 @@ its parsing and its formatting from the `locale` you hand it.
 | `value`          | `Date \| null`                | — (uncontrolled)                       |
 | `defaultValue`   | `Date`                        | — (starts empty)                       |
 | `onValueChange`  | `(d: Date \| null) => void`   | —                                      |
+| `onChange`       | `(d: Date \| null) => void`   | —                                      |
 | `min`            | `Date`                        | —                                      |
 | `max`            | `Date`                        | —                                      |
 | `isDateDisabled` | `(date: Date) => boolean`     | —                                      |
@@ -29,14 +30,16 @@ its parsing and its formatting from the `locale` you hand it.
 | `name`           | `string`                      | — (no hidden input is rendered)        |
 | `className`      | `string`                      | — (lands on the **wrapper**, see below) |
 | `ref`            | `Ref<HTMLInputElement>`       | — (the visible text input)             |
-| …rest            | props of `<input>`            | —                                      |
+| …rest            | props of `<input>`; `value` / `defaultValue` / `min` / `max` / `onChange` are re-typed above | — |
 
 The rest props go to the visible text input, so `id`, `aria-label`, `required`, `autoFocus`,
-`onFocus` and friends all land where you expect. Five native attributes are removed from the
-type: `value`, `defaultValue`, `min` and `max` are re-typed as `Date`s here, and `onChange` is
-gone because the field owns its own input handler — use `onValueChange`. `className` is the
-exception to the passthrough rule: it is merged onto the positioning wrapper `<div>`, which is
-where you set the field's width.
+`onFocus` and friends all land where you expect. Five native attributes are re-typed rather
+than passed through: `value`, `defaultValue`, `min` and `max` take `Date`s here, and
+`onChange` carries the committed `Date | null` — the same payload as `onValueChange`, not a
+`ChangeEvent`. Both are destructured out and never reach an element, which is what lets
+`{...form.field<Date | null>("dueDate")}` bind the picker. `className` is the exception to the
+passthrough rule: it is merged onto the positioning wrapper `<div>`, which is where you set
+the field's width.
 
 The component renders a `<div>` wrapper containing the hidden input (only when you pass
 `name`), the visible [Input](input.md), an [IconButton](icon-button.md) cluster pinned to the
@@ -170,8 +173,10 @@ format that shows every field the parser needs.
 
 Inside a [Field](field.md), the error reaches the control through the [Input](input.md) it renders: red
 border, `aria-invalid`, and `aria-describedby` pointing at the [FieldError](field-error.md),
-with no extra props. The visible [Label](label.md) is still your job — pair its `htmlFor` with
-the picker's `id`.
+with no extra props. Those two attributes are **merged** with anything you pass rather than
+replaced by it: the picker's derived values win where it has them, and yours survive where it
+does not — which is why the standalone example below keeps its own `aria-describedby`. The
+visible [Label](label.md) is still your job — pair its `htmlFor` with the picker's `id`.
 
 <!-- example:InField -->
 ```tsx

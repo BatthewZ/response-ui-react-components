@@ -111,6 +111,75 @@ describe("AvatarUpload", () => {
     expect(alert.textContent).toContain("not allowed");
   });
 
+  /* ------------------------------------------------------------------ */
+  /*  `accept` grammar (#379) — same grammar as the input's attribute    */
+  /* ------------------------------------------------------------------ */
+
+  describe("accept matching", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    /** Bypasses userEvent's own accept filter so *our* validation is what runs. */
+    function pickFile(accept: readonly string[], file: File) {
+      const { createObjectURL } = stubObjectUrls();
+      const onUploadError = vi.fn();
+      render(<AvatarUpload name="Jane Doe" accept={accept} onUploadError={onUploadError} />);
+
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      Object.defineProperty(inputEl, "files", { value: [file], configurable: true });
+      fireEvent.change(inputEl);
+
+      // Acceptance is observable: an accepted file gets an optimistic preview.
+      const accepted = createObjectURL.mock.calls.length === 1;
+      return { accepted, onUploadError, previewed: displayedImg()?.getAttribute("src") };
+    }
+
+    it("accepts a wildcard MIME rule", () => {
+      const r = pickFile(["image/*"], new File(["x"], "photo.png", { type: "image/png" }));
+      expect(r.accepted).toBe(true);
+      expect(r.previewed).toBe("blob:mock/1");
+      expect(r.onUploadError).toHaveBeenCalledTimes(0);
+    });
+
+    it("accepts */* for any file", () => {
+      const r = pickFile(["*/*"], new File(["x"], "mystery.bin", { type: "" }));
+      expect(r.accepted).toBe(true);
+      expect(r.onUploadError).toHaveBeenCalledTimes(0);
+    });
+
+    it("accepts an extension rule case-insensitively", () => {
+      const r = pickFile([".pdf"], new File(["x"], "Report.PDF", { type: "application/pdf" }));
+      expect(r.accepted).toBe(true);
+      expect(r.onUploadError).toHaveBeenCalledTimes(0);
+    });
+
+    it("accepts a typeless file on its extension alone", () => {
+      const r = pickFile([".heic"], new File(["x"], "snap.heic", { type: "" }));
+      expect(r.accepted).toBe(true);
+      expect(r.onUploadError).toHaveBeenCalledTimes(0);
+    });
+
+    it("still rejects a file no rule matches", () => {
+      const r = pickFile(["image/*", ".pdf"], new File(["x"], "notes.txt", { type: "text/plain" }));
+      expect(r.accepted).toBe(false);
+      expect(r.onUploadError).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("alert").textContent).toContain("not allowed");
+    });
+
+    it("rejects a typeless file when only MIME rules are given", () => {
+      const r = pickFile(["image/*"], new File(["x"], "mystery.bin", { type: "" }));
+      expect(r.accepted).toBe(false);
+      expect(r.onUploadError).toHaveBeenCalledTimes(1);
+    });
+
+    it("still accepts an exact MIME rule", () => {
+      const r = pickFile(["image/png"], new File(["x"], "photo.png", { type: "image/png" }));
+      expect(r.accepted).toBe(true);
+      expect(r.onUploadError).toHaveBeenCalledTimes(0);
+    });
+  });
+
   it("displays error when onUpload throws", async () => {
     const onUpload = vi.fn().mockRejectedValue(new Error("Upload failed"));
     render(<AvatarUpload onUpload={onUpload} />);

@@ -16,6 +16,7 @@ and the selected segment are painted underneath from theme tokens.
 | `value`         | `RangeSliderValue` (`[number, number]`)                 | — (uncontrolled)                        |
 | `defaultValue`  | `RangeSliderValue`                                      | `[min, max]`                            |
 | `onValueChange` | `(value: RangeSliderValue) => void`                     | —                                       |
+| `onChange`      | `(value: RangeSliderValue) => void`                     | —                                       |
 | `min`           | `number`                                                | `0`                                     |
 | `max`           | `number`                                                | `100`                                   |
 | `step`          | `number`                                                | `1`                                     |
@@ -27,13 +28,19 @@ and the selected segment are painted underneath from theme tokens.
 | `className`     | `string`                                                | — (lands on the wrapper)                |
 | `style`         | `CSSProperties`                                         | —                                       |
 | `ref`           | `Ref<HTMLDivElement>`                                   | —                                       |
-| …rest           | `<div>` props except `onChange`, `defaultValue`, `children` | —                                   |
+| …rest           | `<div>` props except `defaultValue`, `children`; `onChange` is re-typed above | —         |
 
 Read that last row twice. The rest props are **`div` props, spread onto the wrapper** — the
 two `<input>` elements are unreachable from outside. `id`, `aria-describedby`, `aria-label`
 and `aria-valuetext` all land on the wrapper; the only per-thumb props the component
 forwards are `min`, `max`, `step`, `disabled`, and the two label strings. See
 [Gotchas](#gotchas).
+
+`onChange` is the one prop that escapes that spread: it carries the committed
+`RangeSliderValue`, the same payload as `onValueChange` rather than a `ChangeEvent`, and is
+destructured out before the wrapper is rendered. That is what lets
+`{...form.field<RangeSliderValue>("span")}` write an ordered pair into the store instead of
+one thumb's raw string.
 
 `RangeSliderValue` is exported alongside the component, so a `useState` holding the pair can
 be typed without redeclaring the tuple.
@@ -143,9 +150,9 @@ the name is spoken even when the number is wrong.
 ## In a form
 
 Inside a [Field](field.md), the resolved error drives the wrapper's `aria-invalid`, which
-re-tints the fill and both thumbs. The wiring stops there: the field's error `id` is computed
-and then discarded, so give [FieldError](field-error.md) an explicit `id` and point the
-group's `aria-describedby` at it.
+re-tints the fill and both thumbs, and the field's error `id` lands on the wrapper too as
+`aria-describedby`. Both stop there — neither reaches an `<input>` — so give the wrapper
+`role="group"` if that description is to belong to anything at all.
 
 <!-- example:InField -->
 ```tsx
@@ -154,7 +161,6 @@ group's `aria-describedby` at it.
   <RangeSlider
     role="group"
     aria-labelledby="meeting-length-label"
-    aria-describedby="meeting-length-error"
     defaultValue={[30, 45]}
     min={15}
     max={120}
@@ -162,14 +168,21 @@ group's `aria-describedby` at it.
     minLabel="Shortest meeting"
     maxLabel="Longest meeting"
   />
-  <FieldError id="meeting-length-error" />
+  <FieldError />
 </Field>
 ```
 <!-- /example -->
 
+The matched `id` pair in that example is left over from when the wrapper discarded the
+derived value, and it now works against you: an `aria-describedby` of your own is merged
+*under* the component's, so inside an errored [Field](field.md) the wrapper points at the
+`id` [FieldError](field-error.md) generates for itself — which the explicit `id` has just
+overridden. Drop both and the two ends meet.
+
 Standalone, the `error` prop sets the same state directly. It takes precedence over the
 surrounding field, so `error={false}` forces a valid appearance inside an invalid
-[Field](field.md).
+[Field](field.md). With no field to derive anything from, an `aria-describedby` you pass
+reaches the wrapper untouched — which is what the example below relies on.
 
 <!-- example:ErrorState -->
 ```tsx
@@ -191,8 +204,9 @@ surrounding field, so `error={false}` forces a valid appearance inside an invali
 ```
 <!-- /example -->
 
-There is no `name`, no hidden input, and no form participation — the prop type is `div`
-props, so `name` will not even compile. To submit a range, mirror the state into two hidden
+There is no `name`, no hidden input, and no native form participation — the prop type is
+`div` props, so `name` will not even compile. A form store binds fine, since `onChange`
+hands it the pair; to submit through a plain `<form>`, mirror the state into two hidden
 inputs of your own.
 
 ## Disabled
@@ -263,13 +277,16 @@ the *base* surface — see [Gotchas](#gotchas) before dropping one on a card.
 - **The rail is not clickable.** `pointer-events` are confined to the thumbs, so clicking an
   empty stretch of track does nothing — no jump-to-position, unlike a plain
   [Slider](slider.md). Every change comes from dragging a thumb or from the keyboard.
-- **The error state does not reach the thumbs.** `aria-invalid="true"` is written on the
-  wrapper `div`, not on either input, so the control you actually focus does not report
-  itself invalid; and the `aria-describedby` the component derives from a
-  [Field](field.md) is computed and then dropped on the floor, so nothing points at the
-  [FieldError](field-error.md) text. What is left is a colour change on the fill and the
-  thumbs — status by colour alone. Add `role="group"` plus your own `aria-describedby`, as
-  the examples above do.
+- **The error state does not reach the thumbs.** `aria-invalid="true"` and the
+  `aria-describedby` the component derives from a [Field](field.md) are both written on the
+  wrapper `div`, never on either input, so the control you actually focus still reports
+  itself valid. All the thumbs get is the colour change on the fill. Add `role="group"` so
+  the wrapper is a node those attributes can describe, as the examples above do.
+- **Your own `aria-describedby` loses inside an errored [Field](field.md).** It is merged
+  under the value the component derives, which names the `id`
+  [FieldError](field-error.md) generates for itself. Pass one only where there is no field
+  to derive from, and leave FieldError's `id` alone inside one — set both and the wrapper
+  ends up pointing at an `id` that no longer exists.
 - **Nothing you pass can reach the thumbs.** The rest props are `div` props. `aria-valuetext`
   (the one attribute that fixes a non-percentage announcement), `aria-describedby`, and `id`
   all land on the wrapper. `minLabel` / `maxLabel` are the only per-thumb ARIA the component
@@ -331,11 +348,11 @@ Four things are still yours to supply.
 - **The unit.** A range input is commonly announced as a bare number or as a percentage of its
   travel, which is wrong on a scale like `-30`–`10`. `aria-valuetext` is the fix and it cannot
   be delivered here, so fold the unit into `minLabel` / `maxLabel` instead.
-- **The error description.** `aria-invalid` sits on the wrapper rather than on the inputs, and
-  the [Field](field.md)-derived `aria-describedby` is discarded — so an invalid range slider
-  is, to a screen reader, an ordinary one. With `role="group"` on the wrapper you can attach
-  your own `aria-describedby` to the group; give [FieldError](field-error.md) an explicit `id`
-  to point at.
+- **The error description.** `aria-invalid` and the [Field](field.md)-derived
+  `aria-describedby` both sit on the wrapper rather than on the inputs, so the slider a
+  screen reader actually lands on still reports itself valid and undescribed. `role="group"`
+  at least gives the pair a node those attributes belong to. Outside a field, an
+  `aria-describedby` of your own reaches the wrapper untouched.
 
 A visible readout is not a substitute for any of these: it is separate text with no
 programmatic relationship to either input unless you create one.

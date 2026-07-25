@@ -16,6 +16,11 @@ export interface ColumnDef<T> {
   align?: "left" | "center" | "right";
 }
 
+/**
+ * An ACTIVE sort. "Sorted by nothing" is `null`, never a `SortState` variant —
+ * so anywhere a sort can be absent the type is `SortState | null`, which is
+ * what `onSortChange` emits and what the `sort` prop accepts back.
+ */
 export type SortState = { key: string; direction: "asc" | "desc" };
 
 /* ------------------------------------------------------------------ */

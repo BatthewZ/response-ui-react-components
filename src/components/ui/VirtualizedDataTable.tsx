@@ -1,6 +1,7 @@
 "use client";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef } from "react";
 
+import { useControllableState } from "../../hooks/use-controllable-state";
 import { useVirtualRows } from "../../hooks/use-virtual-rows";
 import { Checkbox } from "../form/Checkbox";
 import {
@@ -26,12 +27,17 @@ export type VirtualizedDataTableProps<T> = {
 
   // Sorting (controlled/uncontrolled) — same contract as DataTable.
   /**
-   * Controlled sort state. When provided, the table assumes the server (or
-   * consumer) performs sorting and will NOT reorder rows itself.
+   * Controlled sort state; `null` means "sorted by nothing". When provided
+   * (including as `null`), the table assumes the server (or consumer) performs
+   * sorting and will NOT reorder rows itself.
+   *
+   * Controlled-ness is decided on the FIRST render and never changes, so
+   * round-tripping the `null` that `onSortChange` emits — or a legacy
+   * `sort={sort ?? undefined}` — keeps the table controlled.
    */
-  sort?: SortState;
+  sort?: SortState | null;
   /** Seeds the uncontrolled sort state on mount. Ignored when `sort` is controlled. */
-  defaultSort?: SortState;
+  defaultSort?: SortState | null;
   onSortChange?: (sort: SortState | null) => void;
   sortComparator?: (a: T, b: T, columnKey: string, direction: "asc" | "desc") => number;
 
@@ -121,19 +127,19 @@ export function VirtualizedDataTable<T>({
 }: VirtualizedDataTableProps<T>) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Uncontrolled sort state (seeded by defaultSort).
-  const [internalSort, setInternalSort] = useState<SortState | null>(defaultSort ?? null);
-  const isControlledSort = sortProp !== undefined;
-  const currentSort = isControlledSort ? sortProp : internalSort;
+  // Sort mode locks on the first render — see the `sort` prop docs. The ref is
+  // needed alongside the hook because `useControllableState` does not expose
+  // which mode it locked, and `sortedData` below must know.
+  const isControlledSortRef = useRef(sortProp !== undefined);
+  const isControlledSort = isControlledSortRef.current;
+  const [currentSort, setCurrentSort] = useControllableState<SortState | null>({
+    value: isControlledSort ? (sortProp ?? null) : undefined,
+    defaultValue: defaultSort ?? null,
+    onChange: onSortChange,
+  });
 
   function handleSort(columnKey: string) {
-    const next = cycleSort(currentSort, columnKey);
-    if (isControlledSort) {
-      onSortChange?.(next);
-    } else {
-      setInternalSort(next);
-      onSortChange?.(next);
-    }
+    setCurrentSort(cycleSort(currentSort, columnKey));
   }
 
   // Sort the WHOLE dataset (client/uncontrolled only). When sort is controlled,

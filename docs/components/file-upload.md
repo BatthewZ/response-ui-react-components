@@ -25,7 +25,7 @@ on this page. Nothing appears in the preview until you pass the array back in.
 | `onFilesSelected` | `(files: File[]) => void`     | —        |
 | `onRemoveFile`    | `(index: number) => void`     | —        |
 | `onClear`         | `() => void`                  | —        |
-| `accept`          | `string[]` — exact MIME types | —        |
+| `accept`          | `string[]` — MIME, `image/*`, or `.ext` | —        |
 | `maxSize`         | `number` — bytes              | —        |
 | `multiple`        | `boolean`                     | `false`  |
 | `previewMode`     | `"auto" \| "compact"`         | `"auto"` |
@@ -38,17 +38,18 @@ on this page. Nothing appears in the preview until you pass the array back in.
 | `ref`             | `Ref<HTMLDivElement>`         | —        |
 | …rest             | props of `div`, minus `onDrop`| —        |
 
-Three of these have sharp edges: `accept` is compared by exact string, rejected files vanish
-without a callback, and `success` is ignored once `files` is non-empty. See
-[Gotchas](#gotchas).
+Two of these have sharp edges: rejected files vanish without a callback, and `success` is
+ignored once `files` is non-empty. `accept` understands exact MIME types, wildcards
+(`image/*`), and filename extensions (`.pdf`). See [Gotchas](#gotchas).
 
 ## What happens when files arrive
 
 Drop and browse run the same path:
 
 1. A null or empty `FileList` stops here; otherwise it becomes an array.
-2. Each file is kept only if `accept` is unset/empty **or** `accept.includes(file.type)`,
-   **and** `maxSize` is unset **or** `file.size <= maxSize`.
+2. Each file is kept only if `accept` is unset/empty **or** the file matches an entry — by
+   exact MIME type, by a wildcard such as `image/*`, or by filename extension — **and**
+   `maxSize` is unset **or** `file.size <= maxSize`.
 3. If nothing survived, the sequence stops silently — `onFilesSelected` does not fire and no
    message appears.
 4. Otherwise `onFilesSelected` fires with the survivors when `multiple`, or with a
@@ -279,10 +280,9 @@ it does not lighten on the dark themes.
 
 ## Gotchas
 
-- **`accept={["image/*"]}` rejects everything.** The wildcard reaches the OS dialog fine, the
-  user picks a PNG, and then `accept.includes("image/png")` is `false`, so the file is dropped
-  and `onFilesSelected` never fires. Measured: zero calls. Same for extension forms like
-  `".pdf"`. Enumerate concrete MIME types.
+- **A file with no MIME type only matches an extension rule.** Browsers cannot always infer
+  `file.type`, and an empty one matches no MIME entry — not even `image/*`. If you need those
+  files, include an extension (`".pdf"`) alongside the MIME type, or use `*/*`.
 - **A rejected file is silent.** Nothing fires, nothing renders, no internal error state
   exists despite the `error` prop being described as overriding one. A user who drops a 6 MB
   file into a `maxSize={5 * 1024 * 1024}` zone sees precisely nothing happen. Validate in your

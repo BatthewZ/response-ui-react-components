@@ -57,7 +57,7 @@ boxes you can wrap freely.
 | `AppShell.Sidebar`        | `<aside role="navigation" aria-label="Main navigation">` | — (all `aside` props **except `role`**)                                |
 | `AppShell.SidebarSection` | `<div>`, with a `<div>` title above its children | `title?: string` (+ all `div` props)                                           |
 | `AppShell.SidebarLink`    | the router adapter's `Link` — a plain `<a href>` by default | `to: string` · `icon?: LucideIcon` · `children` required (+ all `a` props **except `href`** and `children`) |
-| `AppShell.Main`           | `<div>` — **not** `<main>`; see [The main landmark](#the-main-landmark) | — (all `div` props)                          |
+| `AppShell.Main`           | `<main>` — the page's main landmark; see [The main landmark](#the-main-landmark) | — (all `main` props)                |
 
 `className`, `id`, `ref`, `data-*` and `aria-*` pass through on every part, and each merges
 your `className` with its own through `cn`.
@@ -255,10 +255,10 @@ when `pathname === to` **or** `pathname.startsWith(to + "/")`. So `/settings` st
 
 ## The main landmark
 
-`AppShell.Main` renders a `<div>`. It has no `<main>` element and sets no `role`, so a shell
-built from the parts above exposes a `banner` and a `navigation` landmark and **no main
-landmark** — landmark navigation can't jump to the content, and there is no target for a
-skip link. Rest props reach the element, so add both yourself:
+`AppShell.Main` renders a real `<main>`, so a shell built from the parts above exposes
+`banner`, `navigation` and `main` landmarks. Landmark navigation reaches the content and a
+skip link has something to target — give it an `id` and a `tabIndex={-1}` so the link can
+move focus there:
 
 <!-- example:MainLandmark -->
 ```tsx

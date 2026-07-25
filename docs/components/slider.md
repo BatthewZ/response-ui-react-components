@@ -17,6 +17,7 @@ platform rather than from JavaScript. It is an **input**: unlike [Meter](meter.m
 | `value`         | `number`                   | —       |
 | `defaultValue`  | `number`                   | `min`   |
 | `onValueChange` | `(value: number) => void`  | —       |
+| `onChange`      | `(value: number) => void`  | —       |
 | `min`           | `number`                   | `0`     |
 | `max`           | `number`                   | `100`   |
 | `step`          | `number`                   | `1`     |
@@ -24,14 +25,16 @@ platform rather than from JavaScript. It is an **input**: unlike [Meter](meter.m
 | `className`     | `string`                   | —       |
 | `style`         | `CSSProperties`            | —       |
 | `ref`           | `Ref<HTMLInputElement>`    | —       |
-| …rest           | props of `<input>` minus `type`, `value`, `defaultValue`, `onChange` | — |
+| …rest           | props of `<input>` minus `type`; `value` / `defaultValue` / `onChange` are re-typed above | — |
 
-`onChange` is omitted from the type — `onValueChange` replaces it and hands you a
-`number` instead of an event. Everything else native still works: `id`, `name`,
-`disabled`, `aria-*` and friends are spread onto the input **last**, so they override the
-`aria-invalid`/`aria-describedby` the component derives — but not `min`, `max`, `step`, or
-`value`, which are pulled out of the rest and always come from the props above. It renders
-no number, no label, and no ticks. See [Gotchas](#gotchas).
+`onChange` is re-typed rather than removed: like `onValueChange` it hands you a `number`
+instead of an event, both fire on every commit, and neither is passed to the input — which
+is what lets `{...form.field<number>("volume")}` bind the slider. Everything else native
+still works: `id`, `name`, `disabled`, `aria-*` and friends all reach the input, though not
+`min`, `max`, `step` or `value`, which are pulled out of the rest and always come from the
+props above. `aria-invalid` and `aria-describedby` are **merged** rather than overwritten:
+the values the component derives win where it has them, and yours survive where it does not.
+It renders no number, no label, and no ticks. See [Gotchas](#gotchas).
 
 ## Show the value
 
@@ -249,9 +252,9 @@ a card.
 Because it is a real `<input type="range">`, the platform supplies `role="slider"`,
 `aria-valuenow`, `aria-valuemin`, and `aria-valuemax`, plus arrow-key, Home/End, and
 Page Up/Down handling — none of it reimplemented here, and none of it possible to break by
-*forgetting* a prop. You can still break it deliberately: `aria-*` spread onto the input
-last, so your own `aria-valuenow` or `aria-valuemin` overrides the platform's. The
-announced number is otherwise always in range: the browser clamps and
+*forgetting* a prop. You can still break it deliberately: an `aria-valuenow` or
+`aria-valuemin` of your own reaches the input through the rest spread and overrides the
+platform's. The announced number is otherwise always in range: the browser clamps and
 step-rounds the DOM value before assistive tech reads it, so there is no unclamped
 `aria-valuenow` here of the kind [Meter](meter.md) exposes.
 

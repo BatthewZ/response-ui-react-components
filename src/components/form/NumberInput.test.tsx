@@ -1,9 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef } from "react";
+import { createRef, type KeyboardEvent, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { NumberInput } from "./NumberInput";
+import { useForm } from "./use-form";
 
 describe("NumberInput", () => {
   it("renders a spinbutton", () => {
@@ -21,7 +22,7 @@ describe("NumberInput", () => {
     // Draft holds "1." but nothing is committed mid-typing.
     expect(input).toHaveValue("1.");
     expect(onValueChange).not.toHaveBeenCalledWith(NaN);
-    expect(onValueChange).not.toHaveBeenCalled();
+    expect(onValueChange).toHaveBeenCalledTimes(0);
   });
 
   it("clamps to min/max on blur", async () => {
@@ -89,18 +90,6 @@ describe("NumberInput", () => {
     expect(onValueChange).toHaveBeenLastCalledWith(4);
   });
 
-  it("steps from min when empty", async () => {
-    const user = userEvent.setup();
-    const onValueChange = vi.fn();
-    render(
-      <NumberInput aria-label="Qty" min={10} onValueChange={onValueChange} />
-    );
-
-    const buttons = screen.getAllByRole("button", { hidden: true });
-    await user.click(buttons[0]);
-    expect(onValueChange).toHaveBeenLastCalledWith(11);
-  });
-
   it("steps with ArrowUp / ArrowDown", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
@@ -151,5 +140,323 @@ describe("NumberInput", () => {
     const ref = createRef<HTMLInputElement>();
     render(<NumberInput ref={ref} aria-label="Qty" />);
     expect(ref.current).toBeInstanceOf(HTMLInputElement);
+  });
+
+  describe("regressions", () => {
+    it("#426 keeps the store numeric when bound via the form.field() spread", async () => {
+      const user = userEvent.setup();
+      const seen: { values: { qty: number | null } } = { values: { qty: 5 } };
+      function Harness() {
+        const form = useForm({ defaultValues: { qty: 5 as number | null } });
+        seen.values = form.getValues();
+        return (
+          <form {...form.props}>
+            <NumberInput aria-label="Qty" {...form.field<number | null>("qty")} />
+          </form>
+        );
+      }
+      render(<Harness />);
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+
+      await user.type(input, "7");
+      // Today the spread's `onChange` replaces the draft setter, so the raw DOM
+      // event value is written into a numeric field: {"qty":"57"} — a string,
+      // and a concatenation of the store value with the keystroke.
+      expect(typeof seen.values.qty).toBe("number");
+      expect(seen.values.qty).toBe(5); // typing alone must not commit
+
+      await user.tab();
+      expect(typeof seen.values.qty).toBe("number");
+      expect(seen.values.qty).toBe(57);
+      expect(input).toHaveValue("57");
+    });
+
+    it("#426 composes the caller's onKeyDown/onBlur rather than running past them", async () => {
+      const user = userEvent.setup();
+      const onKeyDown = vi.fn((e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "ArrowUp") e.preventDefault();
+      });
+      const onBlur = vi.fn();
+      const onValueChange = vi.fn();
+      render(
+        <NumberInput
+          aria-label="Qty"
+          defaultValue={1}
+          onKeyDown={onKeyDown}
+          onBlur={onBlur}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      input.focus();
+      await user.keyboard("{ArrowUp}");
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+      // The caller ran first and cancelled the event, so the component's own
+      // stepping must not run.
+      expect(onValueChange).toHaveBeenCalledTimes(0);
+      expect(input).toHaveValue("1");
+
+      await user.tab();
+      expect(onBlur).toHaveBeenCalledTimes(1);
+    });
+
+    it("#237 does not re-emit once clamped at a bound (buttons)", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <NumberInput
+          aria-label="Qty"
+          defaultValue={9}
+          max={10}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const [up] = screen.getAllByRole("button", { hidden: true });
+      await user.click(up);
+      await user.click(up);
+      await user.click(up);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(10);
+      expect(screen.getByRole("spinbutton", { name: "Qty" })).toHaveValue("10");
+    });
+
+    it("#237 does not re-emit once clamped at a bound (ArrowUp)", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <NumberInput
+          aria-label="Qty"
+          defaultValue={10}
+          max={10}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      input.focus();
+      await user.keyboard("{ArrowUp}{ArrowUp}");
+      expect(onValueChange).toHaveBeenCalledTimes(0);
+      expect(input).toHaveValue("10");
+    });
+
+    it("#236 first step from an empty field lands on min itself", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <NumberInput
+          aria-label="Qty"
+          min={10}
+          max={20}
+          step={1}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const [up] = screen.getAllByRole("button", { hidden: true });
+      await user.click(up);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(10);
+      expect(screen.getByRole("spinbutton", { name: "Qty" })).toHaveValue("10");
+    });
+
+    it("#236 ArrowUp from an empty field lands on min, then steps from it", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <NumberInput
+          aria-label="Qty"
+          min={16}
+          step={0.5}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      input.focus();
+      await user.keyboard("{ArrowUp}");
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(16);
+      await user.keyboard("{ArrowUp}");
+      expect(onValueChange).toHaveBeenCalledTimes(2);
+      expect(onValueChange).toHaveBeenLastCalledWith(16.5);
+      expect(input).toHaveValue("16.5");
+    });
+
+    it("#231 steps from the uncommitted draft, not the last committed value", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <NumberInput
+          aria-label="Qty"
+          defaultValue={1}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      await user.clear(input);
+      await user.type(input, "42");
+
+      const [up, down] = screen.getAllByRole("button", { hidden: true });
+      await user.click(up);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(43);
+      expect(input).toHaveValue("43");
+
+      await user.click(down);
+      expect(onValueChange).toHaveBeenCalledTimes(2);
+      expect(onValueChange).toHaveBeenLastCalledWith(42);
+    });
+
+    it("#231 ArrowUp steps from the uncommitted draft", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <NumberInput
+          aria-label="Qty"
+          defaultValue={1}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      await user.clear(input);
+      await user.type(input, "7");
+      await user.keyboard("{ArrowUp}");
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(8);
+      expect(input).toHaveValue("8");
+    });
+
+    it("#232 re-syncs the draft when a controlled parent refuses the value", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      function Parent() {
+        const [value, setValue] = useState<number | null>(5);
+        return (
+          <NumberInput
+            aria-label="Qty"
+            value={value}
+            onValueChange={(next) => {
+              onValueChange(next);
+              // Refuses anything above 5: re-renders the same value back.
+              setValue(Math.min(next ?? 0, 5));
+            }}
+          />
+        );
+      }
+      render(<Parent />);
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      const [up] = screen.getAllByRole("button", { hidden: true });
+      await user.click(up);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(6);
+      // The prop never changed, so an identity-gated reconcile leaves the
+      // refused 6 on screen forever.
+      expect(input).toHaveValue("5");
+      expect(input).toHaveAttribute("aria-valuenow", "5");
+
+      // Same again, but stepping from text the user typed and never committed.
+      await user.clear(input);
+      await user.type(input, "40");
+      await user.click(up);
+      expect(onValueChange).toHaveBeenCalledTimes(2);
+      expect(onValueChange).toHaveBeenLastCalledWith(41);
+      expect(input).toHaveValue("5");
+      expect(input).toHaveAttribute("aria-valuenow", "5");
+    });
+
+    it("#232 re-syncs typed text a controlled parent refuses", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      function Parent() {
+        const [value, setValue] = useState<number | null>(5);
+        return (
+          <NumberInput
+            aria-label="Qty"
+            value={value}
+            onValueChange={(next) => {
+              onValueChange(next);
+              setValue(Math.min(next ?? 0, 5));
+            }}
+          />
+        );
+      }
+      render(<Parent />);
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      await user.clear(input);
+      await user.type(input, "99");
+      await user.keyboard("{Enter}");
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(99);
+      expect(input).toHaveValue("5");
+      expect(input).toHaveAttribute("aria-valuenow", "5");
+    });
+
+    it("#235 rejects hexadecimal text that Number() would accept", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <NumberInput
+          aria-label="Qty"
+          defaultValue={5}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      await user.clear(input);
+      await user.type(input, "0x1f");
+      await user.tab();
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(null);
+      expect(input).toHaveValue("");
+      expect(input).not.toHaveAttribute("aria-valuenow");
+    });
+
+    it("#235 rejects Infinity and an overflowing exponent", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <NumberInput
+          aria-label="Qty"
+          defaultValue={5}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      await user.clear(input);
+      await user.type(input, "Infinity");
+      await user.keyboard("{Enter}");
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(null);
+      expect(input).toHaveValue("");
+      expect(input).not.toHaveAttribute("aria-valuenow");
+
+      // Shaped like a decimal, but overflows to Infinity — the second guard.
+      await user.type(input, "1e400");
+      await user.keyboard("{Enter}");
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(input).toHaveValue("");
+      expect(input).not.toHaveAttribute("aria-valuenow");
+    });
+
+    it("#235 still accepts signed decimals and surrounding whitespace", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(<NumberInput aria-label="Qty" onValueChange={onValueChange} />);
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      await user.type(input, " -1.5 ");
+      await user.tab();
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(-1.5);
+      expect(input).toHaveValue("-1.5");
+    });
   });
 });

@@ -20,6 +20,7 @@ what leaves the component is always one canonical lowercase `#rrggbb` string.
 | `value`         | `string`                  | —                |
 | `defaultValue`  | `string`                  | `"#000000"`      |
 | `onValueChange` | `(hex: string) => void`   | —                |
+| `onChange`      | `(hex: string) => void`   | —                |
 | `presets`       | `string[]`                | —                |
 | `placement`     | `Placement`               | `"bottom-start"` |
 | `error`         | `boolean`                 | —                |
@@ -27,14 +28,15 @@ what leaves the component is always one canonical lowercase `#rrggbb` string.
 | `className`     | `string`                  | —                |
 | `aria-label`    | `string`                  | `"Choose color"` |
 | `ref`           | `Ref<HTMLButtonElement>`  | —                |
+| …rest           | props of `<button>`; `value` / `defaultValue` / `onChange` are re-typed above | — |
 
-**That table is the whole API — there is no rest spread.** The type is a closed object
-rather than an intersection with `<button>`'s props, so `id`, `name`, `style`, `data-*`,
-`aria-labelledby` and `onBlur` are compile errors as written attributes rather than props
-that are typed and then quietly dropped. Two consequences worth knowing before you build a
-form around it: a [Label](label.md) cannot be wired to the trigger with `htmlFor`, and the
-component renders no hidden input, so a plain `<form>` submits nothing for it. A spread is
-the hole in that guarantee — see [Gotchas](#gotchas).
+**Rest props land on the trigger `<button>`.** `id`, `name`, `style`, `data-*`,
+`aria-labelledby` and `onBlur` all reach the focusable element that owns the control's node
+in the accessibility tree — which is what makes `{...form.field("brandColor")}` bind the
+picker. `onChange` is the exception to the spread: it carries the committed canonical
+`#rrggbb` string, the same payload as `onValueChange` rather than a `ChangeEvent`, and is
+destructured out so it never reaches an element. The component still renders no hidden
+input, so a plain `<form>` submits nothing for it — see [Gotchas](#gotchas).
 
 `className` lands on the wrapper `<div>`, not the trigger; `ref` lands on the trigger
 `<button>`. `Placement` is Floating UI's type — `"top"`, `"right"`, `"bottom"`, `"left"`,
@@ -117,11 +119,11 @@ silently does nothing. See [Gotchas](#gotchas).
 
 ## Naming the trigger
 
-`aria-label` is the only naming lever, and it **replaces** the visible hex in the
-accessibility tree rather than adding to it — the readout is plain text inside the button
-and the swatch is `aria-hidden`. A picker showing `#3366cc` announces as "Choose color,
-button" unless you say otherwise, so the one thing a sighted user reads off it is the one
-thing a screen-reader user never hears. Fold the value into the label:
+`aria-label` **replaces** the visible hex in the accessibility tree rather than adding to
+it — the readout is plain text inside the button and the swatch is `aria-hidden`. A picker
+showing `#3366cc` announces as "Choose color, button" unless you say otherwise, so the one
+thing a sighted user reads off it is the one thing a screen-reader user never hears. Fold
+the value into the label:
 
 <!-- example:NamedWithValue -->
 ```tsx
@@ -132,6 +134,13 @@ thing a screen-reader user never hears. Fold the value into the label:
 />
 ```
 <!-- /example -->
+
+A visible [Label](label.md) can be wired up too, now that `id` reaches the trigger — but pick
+the right attribute. The component always sets `aria-label` (`"Choose color"` when you pass
+none), and `aria-label` outranks a `<label for>` in the accessible-name computation, so
+`htmlFor` plus a matching `id` buys you click-to-focus and nothing else. `aria-labelledby`
+outranks `aria-label` in turn, so that is the one to point at the label's `id` when the
+visible text should be the name.
 
 ## Placement
 
@@ -155,9 +164,11 @@ documents the stack in full; the only difference here is that `offset` is not ex
 
 Inside a [Field](field.md), the trigger picks up `aria-invalid` and `aria-describedby`
 from the field's resolved error — ColorPicker calls `useFieldError`, so it is one of the
-controls where that wiring is automatic. The label wiring is not: with no `id` prop there
-is nothing for [Label](label.md)'s `htmlFor` to point at, so the visible label and the
-`aria-label` are two separate strings you keep in sync yourself.
+controls where that wiring is automatic. Both are **merged** with anything you pass rather
+than replaced by it: the component's derived values win where it has them, and yours survive
+where it does not. The naming is still two strings: the example below keeps the visible
+[Label](label.md) and the `aria-label` in sync by hand, because `aria-label` outranks a
+`<label for>` — see [Naming the trigger](#naming-the-trigger).
 
 <!-- example:InField -->
 ```tsx
@@ -173,15 +184,15 @@ is nothing for [Label](label.md)'s `htmlFor` to point at, so the visible label a
 ```
 <!-- /example -->
 
-The headless `useForm` layer is a separate question, and this is the sharp edge of the
-page. `form.field()` does **not** bind this control, and nothing tells you so:
-`<ColorPicker {...form.field<string>("brandColor")} />` typechecks — a JSX spread is not
-excess-property-checked — and then renders a picker that can never change. `value` and
-`disabled` are in the prop type and are honoured; `name`, `onChange`, `onBlur`, `ref` and
-`aria-invalid` are not, and with no rest spread they are silently dropped, so the store
-never hears about an edit and the controlled `value` never moves. Bind it through the
-store the way [Checkbox](checkbox.md) and [Switch](switch.md) are bound — `form` below is
-`useForm({ defaultValues: { brandColor: "#3366cc" } })`:
+The headless `useForm` layer binds through the library's usual idiom:
+`<ColorPicker {...form.field("brandColor")} />` drives the picker. `value` and `disabled`
+are declared props and are honoured, `onChange` commits the canonical hex back to the store,
+and `name`, `onBlur`, `ref` and `aria-invalid` land on the trigger. The value is an ordinary
+string, so the bind needs no type annotation.
+
+The same wiring by hand — read the hex off the store, write it back with `setValue` — is
+still perfectly good, and is what to reach for when the value needs transforming on its way
+in or out. `form` below is `useForm({ defaultValues: { brandColor: "#3366cc" } })`:
 
 <!-- example:InFormStore -->
 ```tsx
@@ -327,12 +338,10 @@ there does not reach this component.
   it open: the hex field and hue rail go disabled, but the square still responds to arrow
   keys and the preset buttons still commit. Any click outside would have closed it first,
   which is why this is narrow rather than common.
-- **It submits nothing, and `{...form.field()}` compiles into a dead control.** There is no
-  hidden input and no `name` prop, so a plain `<form>` carries no value for it; and because
-  a JSX spread skips excess-property checking, the library's own binding idiom typechecks
-  while dropping `onChange`, `onBlur`, `name`, `ref` and `aria-invalid` on the floor. The
-  picker then sits frozen at the store's value with no warning anywhere. Read the value off
-  the store and write it back with `setValue`, as [In a form](#in-a-form) shows.
+- **It submits nothing.** There is no hidden input, and `name` lands on the trigger — a
+  `<button type="button">`, which the browser never submits — so a plain `<form>` post
+  carries no value for it however the control is named. Bind it to a form store instead, or
+  mirror the hex into a hidden input of your own. See [In a form](#in-a-form).
 - **Client component.** `"use client"`, and the panel is portalled to `<body>`, so it needs
   a client boundary in an RSC tree and inherits custom properties from the document rather
   than from the JSX ancestor you wrote it inside.

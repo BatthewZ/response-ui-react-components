@@ -17,6 +17,7 @@ range with no client state.
 | `value`            | `DateRange`                   | — (uncontrolled)              |
 | `defaultValue`     | `DateRange`                   | `{ start: null, end: null }`  |
 | `onValueChange`    | `(range: DateRange) => void`  | —                             |
+| `onChange`         | `(range: DateRange) => void`  | —                             |
 | `defaultMonth`     | `Date`                        | first selected date, else today |
 | `min`              | `Date`                        | —                             |
 | `max`              | `Date`                        | —                             |
@@ -31,7 +32,7 @@ range with no client state.
 | `name`             | `string`                      | —                             |
 | `className`        | `string`                      | —                             |
 | `ref`              | `Ref<HTMLDivElement>`         | —                             |
-| …rest              | props of `<div>`, minus `onChange` / `value` / `defaultValue` / `color` | — |
+| …rest              | props of `<div>`, minus `color`; `value` / `defaultValue` / `onChange` are re-typed above | — |
 
 `DateRange` is `{ start: Date | null; end: Date | null }`, exported from the package root.
 Both endpoints are independently nullable, which is what makes a half-picked range
@@ -39,7 +40,13 @@ representable — and what you receive mid-pick, so see [Gotchas](#gotchas).
 
 Rest props land on the **wrapper `<div>`**, not on either input: `className`, `id`,
 `data-*`, `role` and `aria-*` all address the pair as a unit. That div is also the floating
-anchor the popover positions against.
+anchor the popover positions against. `onChange` is the exception — it carries the committed
+`DateRange`, the same payload as `onValueChange` rather than a `ChangeEvent`, and is
+destructured out before the spread so it never reaches the div. That is what makes
+`{...form.field<DateRange>("stay")}` bind the pair — though the `aria-invalid` that binding
+also emits lands on the wrapper like any other rest prop, so a store-level error reddens
+neither field. Route that through an enclosing [Field](field.md) or the `error` prop
+instead.
 
 ## What it renders
 

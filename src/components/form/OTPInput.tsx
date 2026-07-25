@@ -19,6 +19,16 @@ type OTPInputProps = {
   value?: string;
   defaultValue?: string;
   onValueChange?: (v: string) => void;
+  /**
+   * Called with the committed code — the same payload as `onValueChange`, not a
+   * DOM `ChangeEvent`.
+   *
+   * It exists so the documented `{...form.field<string>("code")}` binding works:
+   * a JSX spread performs no excess-property check, so `Omit`ting `onChange`
+   * never stopped `field()` delivering it — it only stopped TypeScript
+   * reporting it.
+   */
+  onChange?: (v: string) => void;
   onComplete?: (v: string) => void;
   mode?: OTPMode;
   error?: boolean;
@@ -45,6 +55,7 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
     value: controlledValue,
     defaultValue = "",
     onValueChange,
+    onChange,
     onComplete,
     mode = "numeric",
     error,
@@ -57,17 +68,22 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
 ) {
   const { invalid, ariaProps } = useFieldError(error);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
-  const completedRef = useRef(false);
+  // The last value `onComplete` fired with, so a further edit of an already
+  // complete code re-fires rather than latching on a stale one.
+  const completedRef = useRef<string | null>(null);
 
   const [value, setValue] = useControllableState<string>({
     value: controlledValue,
     defaultValue,
-    onChange: onValueChange,
+    onChange: (next) => {
+      onValueChange?.(next);
+      onChange?.(next);
+    },
   });
 
-  // Fixed-length slot array; empty slots are represented as "" but a string
-  // model would collapse internal gaps on join, so we keep an explicit array
-  // and only serialise (trailing-trimmed) for the external value.
+  // Fixed-length view of the string, one character per box. A space is read as
+  // an empty slot so a value seeded with the older space encoding still lands
+  // on the right boxes; it is never written back out.
   function toSlots(v: string): string[] {
     return Array.from({ length }, (_, i) => {
       const c = v[i];
@@ -75,11 +91,12 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
     });
   }
 
-  function fromSlots(slots: string[]): string {
-    // Serialise preserving internal gaps (as spaces) but trim trailing empties.
-    let out = "";
-    for (const s of slots) out += s === "" ? " " : s;
-    return out.replace(/ +$/, "");
+  // Slots hold only characters the user entered, so the string is a truthful
+  // count of them: `value.length` is the number of characters entered, and no
+  // filler is invented for an empty slot. The cost is that a gap cannot survive
+  // a round trip — the tail shifts left on the next commit.
+  function fromSlots(nextSlots: string[]): string {
+    return nextSlots.join("");
   }
 
   const slots = toSlots(value);
@@ -87,15 +104,13 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
   function commit(nextSlots: string[]) {
     const serialised = fromSlots(nextSlots);
     setValue(serialised);
-    const complete = nextSlots.every((s) => s !== "") && nextSlots.length === length;
-    if (complete) {
-      if (!completedRef.current) {
-        completedRef.current = true;
-        onComplete?.(serialised);
-      }
-    } else {
-      completedRef.current = false;
+    if (!nextSlots.every((s) => s !== "")) {
+      completedRef.current = null;
+      return;
     }
+    if (completedRef.current === serialised) return;
+    completedRef.current = serialised;
+    onComplete?.(serialised);
   }
 
   function focusBox(index: number) {
@@ -104,15 +119,36 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
     inputsRef.current[clamped]?.select();
   }
 
+  /** Write `chars` into `nextSlots` from `start`, returning the resting cursor. */
+  function fill(nextSlots: string[], start: number, chars: string): number {
+    let cursor = start;
+    for (const char of chars) {
+      if (cursor >= length) break;
+      nextSlots[cursor] = char;
+      cursor += 1;
+    }
+    return cursor;
+  }
+
   function handleChange(index: number, raw: string) {
-    // Take the last typed character (in case the box already had a value).
-    const filtered = filterValue(raw, mode);
-    if (filtered.length === 0) return;
-    const char = filtered[filtered.length - 1];
     const next = toSlots(value);
-    next[index] = char;
+    if (raw === "") {
+      // Delete, cut, or a selection overwritten with nothing. Clearing a box is
+      // a real edit, not an event to discard.
+      next[index] = "";
+      commit(next);
+      return;
+    }
+    const filtered = filterValue(raw, mode);
+    // Something arrived but no character survived the mode filter: reject it and
+    // leave the slot as it was, rather than reading it as a clear.
+    if (filtered.length === 0) return;
+    // A change event can carry more than one character — browser/OS autofill for
+    // `autocomplete="one-time-code"` delivers the whole code in one — so spread
+    // it across the boxes exactly as a paste does.
+    const cursor = fill(next, index, filtered);
     commit(next);
-    focusBox(index + 1);
+    focusBox(cursor);
   }
 
   function handleKeyDown(index: number, e: KeyboardEvent<HTMLInputElement>) {
@@ -144,12 +180,7 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
     if (pasted.length === 0) return;
 
     const next = toSlots(value);
-    let cursor = index;
-    for (const char of pasted) {
-      if (cursor >= length) break;
-      next[cursor] = char;
-      cursor += 1;
-    }
+    const cursor = fill(next, index, pasted);
     commit(next);
     focusBox(cursor);
   }

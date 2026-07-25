@@ -1,5 +1,6 @@
 "use client";
 import {
+  type ComponentPropsWithRef,
   type CSSProperties,
   forwardRef,
   useEffect,
@@ -18,6 +19,7 @@ import {
   useInteractions,
   useRole,
 } from "../../hooks/use-floating";
+import { mergeProps } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 
@@ -33,6 +35,17 @@ type ColorPickerProps = {
   value?: string;
   defaultValue?: string;
   onValueChange?: (hex: string) => void;
+  /**
+   * Called with the committed canonical `#rrggbb` string — the same payload as
+   * `onValueChange`, not a DOM `ChangeEvent`.
+   *
+   * It exists so the documented `{...form.field<string>("brand")}` binding
+   * works: a JSX spread performs no excess-property check, so a closed props
+   * type never stopped `field()` delivering `onChange` — it only stopped
+   * TypeScript reporting it, and with no rest spread the handler was silently
+   * swallowed, leaving a control that could never commit a value.
+   */
+  onChange?: (hex: string) => void;
   /** Swatches shown beneath the picker for one-click selection. */
   presets?: string[];
   placement?: Placement;
@@ -40,7 +53,10 @@ type ColorPickerProps = {
   disabled?: boolean;
   className?: string;
   "aria-label"?: string;
-};
+} & Omit<
+  ComponentPropsWithRef<"button">,
+  "value" | "defaultValue" | "onChange"
+>;
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
 
@@ -57,19 +73,24 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       value,
       defaultValue,
       onValueChange,
+      onChange,
       presets,
       placement = "bottom-start",
       error,
       disabled,
       className,
       "aria-label": ariaLabel = "Choose color",
+      ...props
     },
     ref,
   ) {
     const [hex, setHex] = useControllableState<string>({
       value: value !== undefined ? (normalizeHex(value) ?? "#000000") : undefined,
       defaultValue: normalizeHex(defaultValue ?? "") ?? "#000000",
-      onChange: onValueChange,
+      onChange: (next) => {
+        onValueChange?.(next);
+        onChange?.(next);
+      },
     });
 
     // HSV is the editing space; seed it from the initial hex once, then keep it
@@ -179,20 +200,35 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       commitHsv({ ...hsv, s, v });
     }
 
+    // Rest props go to the trigger `<button>`, not the `.colorpicker` wrapper:
+    // the type declares them as `<button>` props, the forwarded ref already
+    // points there, and everything `field()` hands over — `name`, `onBlur`,
+    // `aria-invalid`, `id` — only means anything on the focusable element that
+    // owns the accessibility-tree node. `className` stays destructured and on
+    // the wrapper, which is the layout box (same split as TagInput).
+    //
+    // Merged rather than spread: `field()` emits `"aria-invalid": undefined` on
+    // every render, so a plain spread after `ariaProps` would delete the error
+    // state the component computed. `mergeProps` lets the component win where it
+    // has an opinion and the caller's survive where it does not.
+    const triggerProps = mergeProps(props, {
+      type: "button" as const,
+      disabled,
+      "aria-label": ariaLabel,
+      className: cn(
+        "colorpicker-trigger",
+        invalid && "colorpicker-trigger--error",
+      ),
+      ...ariaProps,
+    });
+
     return (
       <div className={cn("colorpicker", className)} data-disabled={disabled || undefined}>
         <button
           {...getReferenceProps({
+            ...triggerProps,
             // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
             ref: mergeRefs(ref, refs.setReference),
-            type: "button",
-            disabled,
-            "aria-label": ariaLabel,
-            className: cn(
-              "colorpicker-trigger",
-              invalid && "colorpicker-trigger--error",
-            ),
-            ...ariaProps,
           })}
         >
           <span

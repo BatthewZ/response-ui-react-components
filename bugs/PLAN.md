@@ -381,6 +381,16 @@ the colour reading, or a measurement taken on an unfocused element reads as a pa
   open**. Before marking a row fixed by a root change, `grep` that the component actually
   *uses* the root. This is the same illness as the cluster itself — the primitive exists
   and the component re-implements it.
+- **The `README.md:203` / `AGENTS.md:249` citation is wrong, and it is quoted everywhere.**
+  `README.md:203` is a **blank line**; `AGENTS.md:249` is a code fence. The advertised
+  `field()` binding actually lives at `README.md:258` / `:275` and `AGENTS.md:256` / `:267`.
+  The wrong pair is repeated in `BUG_TRIAGE_PLAYBOOK.md`, `BUG_TRIAGE_HANDOVER.md` and this
+  file's own §3. It is the exact rot §7.2 of the playbook warns about — *"the first patch
+  shifts every line number below it, with nothing to notice"* — happening to the playbook's
+  own citations, in a file `verify:bugs` does not check because it only validates `src/`
+  anchors. **Cite a quoted phrase, not a line number, for anything outside `src/`.**
+- **A fix to a shared primitive does not reach the components that bypass it** (see the
+  `#237` entry above). Grep that the component actually *uses* the root before closing a row.
 - **Never renumber a finding**, and never delete a row — ids are cited from published
   `AGENTS.md`.
 - **This package has no ESLint config** (`npx eslint` finds none; there is no `lint` script),

@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { formatDate } from "../../util/date";
 import { DatePicker } from "./DatePicker";
+import { Field } from "./Field";
+import { useForm } from "./use-form";
 
 const LOCALE = "en-US";
 
@@ -252,5 +254,95 @@ describe("DatePicker", () => {
     expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange.mock.calls[0][0]).toBeNull();
     expect((input as HTMLInputElement).value).toBe("");
+  });
+
+  describe("form.field() binding (#429)", () => {
+    it("#429 binds via the advertised form.field() spread without crashing", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      let values: { when: Date | null } = { when: null };
+      function Harness() {
+        const form = useForm({ defaultValues: { when: null as Date | null } });
+        values = form.getValues();
+        return (
+          <form {...form.props}>
+            <DatePicker
+              aria-label="When"
+              onValueChange={onValueChange}
+              {...form.field<Date | null>("when")}
+            />
+          </form>
+        );
+      }
+      render(<Harness />);
+
+      const input = screen.getByRole("textbox", { name: "When" });
+      await user.type(input, "12/25/2026");
+      await user.keyboard("{Enter}");
+
+      expect((input as HTMLInputElement).value).toBe(fmt(new Date(2026, 11, 25)));
+      // The store must hold a Date, not the raw DOM ChangeEvent's target.value.
+      const committed = values.when;
+      expect(committed).toBeInstanceOf(Date);
+      expect(committed?.getFullYear()).toBe(2026);
+      expect(committed?.getMonth()).toBe(11);
+      expect(committed?.getDate()).toBe(25);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("#429 clearing through a form.field() spread writes null, not an empty string", async () => {
+      const user = userEvent.setup();
+      let values: { when: Date | null } = { when: null };
+      function Harness() {
+        const form = useForm({
+          defaultValues: { when: new Date(2026, 3, 12) as Date | null },
+        });
+        values = form.getValues();
+        return (
+          <form {...form.props}>
+            <DatePicker clearable aria-label="When" {...form.field<Date | null>("when")} />
+          </form>
+        );
+      }
+      render(<Harness />);
+
+      await user.click(screen.getByRole("button", { name: "Clear date" }));
+      expect(values.when).toBeNull();
+    });
+
+    it("#434 keeps its computed aria-invalid under a field() spread", () => {
+      function Harness() {
+        const form = useForm({ defaultValues: { when: null as Date | null } });
+        return (
+          <form {...form.props}>
+            <Field error="Required">
+              <DatePicker aria-label="When" {...form.field<Date | null>("when")} />
+            </Field>
+          </form>
+        );
+      }
+      render(<Harness />);
+      // field() always emits `"aria-invalid": undefined`; spread last it erased
+      // the Field-derived "true".
+      expect(screen.getByRole("textbox", { name: "When" })).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+    });
+
+    it("#434 keeps a caller's aria-invalid when it has no error of its own", () => {
+      render(<DatePicker aria-label="Date" aria-invalid />);
+      expect(screen.getByRole("textbox", { name: "Date" })).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+    });
+
+    it("#434 sets no aria-invalid when neither side has an opinion", () => {
+      render(<DatePicker aria-label="Date" />);
+      expect(screen.getByRole("textbox", { name: "Date" })).not.toHaveAttribute(
+        "aria-invalid",
+      );
+    });
   });
 });

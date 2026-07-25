@@ -37,13 +37,18 @@ type DataTableProps<T> = {
 
   // Sorting (controlled/uncontrolled)
   /**
-   * Controlled sort state. When provided, the table assumes the server (or
-   * consumer) performs sorting and the table will NOT reorder rows itself.
-   * If both `sort` and `defaultSort` are passed, `sort` (controlled) wins.
+   * Controlled sort state; `null` means "sorted by nothing". When provided
+   * (including as `null`), the table assumes the server (or consumer) performs
+   * sorting and will NOT reorder rows itself. If both `sort` and `defaultSort`
+   * are passed, `sort` (controlled) wins.
+   *
+   * Controlled-ness is decided on the FIRST render and never changes, so
+   * round-tripping the `null` that `onSortChange` emits — or a legacy
+   * `sort={sort ?? undefined}` — keeps the table controlled.
    */
-  sort?: SortState;
+  sort?: SortState | null;
   /** Seeds the uncontrolled sort state on mount. Ignored when `sort` is controlled. */
-  defaultSort?: SortState;
+  defaultSort?: SortState | null;
   onSortChange?: (sort: SortState | null) => void;
   sortComparator?: (a: T, b: T, columnKey: string, direction: "asc" | "desc") => number;
 
@@ -150,10 +155,20 @@ export function DataTable<T>({
   emptyContent,
   footer,
 }: DataTableProps<T>) {
-  // Uncontrolled sort state (seeded by defaultSort).
-  const [internalSort, setInternalSort] = useState<SortState | null>(defaultSort ?? null);
-  const isControlledSort = sortProp !== undefined;
-  const currentSort = isControlledSort ? sortProp : internalSort;
+  // Sort mode locks on the first render: `onSortChange` emits `null` for
+  // "unsorted", and a consumer feeding that straight back must not flip the
+  // table to uncontrolled mid-life. Only `useControllableState` reads the raw
+  // prop; this ref exists because the hook does not expose which mode it chose,
+  // and the "does the table reorder rows?" decision below needs it. Once
+  // controlled, a later `undefined` (the legacy `sort={sort ?? undefined}`) is
+  // read as `null` rather than as a mode switch.
+  const isControlledSortRef = useRef(sortProp !== undefined);
+  const isControlledSort = isControlledSortRef.current;
+  const [currentSort, setCurrentSort] = useControllableState<SortState | null>({
+    value: isControlledSort ? (sortProp ?? null) : undefined,
+    defaultValue: defaultSort ?? null,
+    onChange: onSortChange,
+  });
 
   // Client pagination is active when pageSize is a positive number.
   const clientPaged = typeof pageSize === "number" && pageSize > 0;
@@ -172,25 +187,18 @@ export function DataTable<T>({
   }
 
   function handleSort(columnKey: string) {
-    const next = cycleSort(currentSort, columnKey);
+    setCurrentSort(cycleSort(currentSort, columnKey));
 
-    if (isControlledSort) {
-      onSortChange?.(next);
-    } else {
-      setInternalSort(next);
-      onSortChange?.(next);
-      // In client mode, a sort change resets the uncontrolled page to 1.
-      if (clientPaged && !isControlledPage) {
-        setInternalPage(1);
-      }
+    // In client mode, a sort change resets the uncontrolled page to 1.
+    if (!isControlledSort && clientPaged && !isControlledPage) {
+      setInternalPage(1);
     }
   }
 
   // Sort the WHOLE dataset first (client/uncontrolled only). When sort is
   // controlled, assume the server already sorted.
   const sortedData = useMemo(() => {
-    if (!currentSort) return data;
-    if (isControlledSort) return data;
+    if (!currentSort || isControlledSort) return data;
     const comparator = sortComparator ?? defaultComparator;
     return [...data].sort((a, b) =>
       comparator(a, b, currentSort.key, currentSort.direction)

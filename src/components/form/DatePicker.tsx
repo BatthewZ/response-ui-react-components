@@ -19,18 +19,30 @@ import {
 } from "../../hooks/use-floating";
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { clampDate, formatDate, parseDateInput, toISODate } from "../../util/date";
+import { mergeProps } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 import { Calendar } from "../ui/Calendar";
 import { IconButton } from "../ui/IconButton";
 
 import { datePickerPopoverClassName } from "./date-picker-internals";
+import { useFieldErrorProps } from "./Field";
 import { Input } from "./Input";
 
 type DatePickerProps = {
   value?: Date | null;
   defaultValue?: Date;
   onValueChange?: (d: Date | null) => void;
+  /**
+   * Called with the committed date — the same payload as `onValueChange`, not a
+   * DOM `ChangeEvent`.
+   *
+   * It exists so the documented `{...form.field<Date | null>("when")}` binding
+   * works: a JSX spread performs no excess-property check, so `Omit`ting
+   * `onChange` never stopped `field()` delivering it — it only stopped
+   * TypeScript reporting it.
+   */
+  onChange?: (d: Date | null) => void;
   min?: Date;
   max?: Date;
   /** Disable individual dates beyond `[min, max]` (e.g. weekends, holidays). */
@@ -61,6 +73,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       value,
       defaultValue,
       onValueChange,
+      onChange,
       min,
       max,
       isDateDisabled,
@@ -82,7 +95,10 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     const [selected, setSelected] = useControllableState<Date | null>({
       value,
       defaultValue: defaultValue ?? null,
-      onChange: (next) => onValueChange?.(next),
+      onChange: (next) => {
+        onValueChange?.(next);
+        onChange?.(next);
+      },
     });
 
     // Source of truth #2: the draft string the user is typing. It is reseeded
@@ -98,6 +114,12 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
 
     const [open, setOpen] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // `field()` always emits the key `"aria-invalid": undefined`, so a plain
+    // `{...props}` spread would erase the error state Input derives from
+    // `error`/Field. Merging lets our value win when we have one and keeps the
+    // caller's when we don't.
+    const fieldErrorProps = useFieldErrorProps(error);
 
     const { refs, floatingStyles, context } = useFloating({
       placement: "bottom-start",
@@ -194,7 +216,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
           aria-expanded={open}
           className={clearable ? "pr-[4rem]" : "pr-r1"}
           onChange={(e) => setDraft(e.target.value)}
-          {...props}
+          {...mergeProps(props, fieldErrorProps)}
           {...referenceProps}
         />
         <div className="absolute inset-y-0 right-r6 my-auto flex items-center gap-r6">

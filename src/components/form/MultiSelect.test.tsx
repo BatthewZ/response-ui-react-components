@@ -4,6 +4,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { MultiSelect, type MultiSelectOption } from "./MultiSelect";
+import { useForm } from "./use-form";
 
 const OPTIONS: MultiSelectOption[] = [
   { value: "apple", label: "Apple" },
@@ -162,5 +163,82 @@ describe("MultiSelect", () => {
     await user.click(banana);
     // Still only the first pick.
     expect(onValueChange).toHaveBeenLastCalledWith(["apple"]);
+  });
+
+  describe("form.field() binding (#430)", () => {
+    it("binds via the advertised form.field() spread without crashing", async () => {
+      const user = userEvent.setup();
+      let values: { picks: string[] } | null = null;
+      function FieldHarness() {
+        const form = useForm({ defaultValues: { picks: [] as string[] } });
+        values = form.getValues();
+        return (
+          <form {...form.props}>
+            <MultiSelect
+              aria-label="Fruit"
+              options={OPTIONS}
+              {...form.field<string[]>("picks")}
+            />
+          </form>
+        );
+      }
+      render(<FieldHarness />);
+
+      const input = screen.getByRole("combobox");
+      await user.click(input);
+      // Today: `{...props}` lands on the wrapper div (MultiSelect.tsx:194) carrying
+      // field()'s `onChange`; React's delegated change event bubbles from the search
+      // input, so the string "a" is written into the array-typed field and the next
+      // render throws `TypeError: selected.map is not a function` (MultiSelect.tsx:216).
+      await user.type(input, "app");
+      await user.click(within(screen.getByRole("listbox")).getByText("Apple"));
+
+      expect(values).toEqual({ picks: ["apple"] });
+      expect(screen.getByRole("button", { name: "Remove Apple" })).toBeInTheDocument();
+    });
+
+    it("fires onChange with the selected values alongside onValueChange", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const onValueChange = vi.fn();
+      render(<Harness onChange={onChange} onValueChange={onValueChange} />);
+
+      await user.click(screen.getByRole("combobox"));
+      await user.click(within(screen.getByRole("listbox")).getByText("Apple"));
+
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenLastCalledWith(["apple"]);
+    });
+
+    it("fires onChange for a keyboard selection under virtual focus", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+
+      const input = screen.getByRole("combobox");
+      await user.click(input);
+      await user.keyboard("{ArrowDown}");
+      // Virtual focus: no option ever takes DOM focus, so the active option is only
+      // observable through aria-activedescendant.
+      const activeId = input.getAttribute("aria-activedescendant");
+      expect(activeId).not.toBeNull();
+      expect(document.getElementById(activeId!)).toHaveTextContent("Apple");
+
+      await user.keyboard("{Enter}");
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenLastCalledWith(["apple"]);
+    });
+
+    it("never puts onChange on a DOM element", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<Harness onChange={onChange} />);
+
+      // Typing in the search box is a DOM change event. It must not reach the
+      // value-typed onChange, which only ever receives committed selections.
+      await user.type(screen.getByRole("combobox"), "app");
+      expect(onChange).toHaveBeenCalledTimes(0);
+    });
   });
 });

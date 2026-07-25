@@ -317,4 +317,16 @@ describe("AppShell", () => {
     );
     expect(screen.getByRole("button", { name: "Profile" })).toBeInTheDocument();
   });
+
+  it("renders Main as a <main> landmark", () => {
+    render(
+      <AppShell>
+        <AppShell.Main>Page body</AppShell.Main>
+      </AppShell>
+    );
+
+    const main = screen.getByRole("main");
+    expect(main.tagName).toBe("MAIN");
+    expect(main).toHaveTextContent("Page body");
+  });
 });

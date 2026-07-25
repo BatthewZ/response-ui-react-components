@@ -34,6 +34,18 @@ type MultiSelectProps = {
   value?: string[];
   defaultValue?: string[];
   onValueChange?: (value: string[]) => void;
+  /**
+   * Called with the selected values — the same payload as `onValueChange`, not a
+   * DOM `ChangeEvent`.
+   *
+   * It exists so the documented `{...form.field<string[]>("picks")}` binding
+   * works: a JSX spread performs no excess-property check, so `Omit`ting
+   * `onChange` never stopped `field()` delivering it — it only stopped
+   * TypeScript reporting it, and the rest spread then landed it on the wrapper
+   * `<div>`, where React's delegated change event from the inner search input
+   * wrote a query string into the array-typed field.
+   */
+  onChange?: (value: string[]) => void;
   placeholder?: string;
   /** Show an inline text filter inside the control. @default true */
   searchable?: boolean;
@@ -67,6 +79,7 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
       value,
       defaultValue,
       onValueChange,
+      onChange,
       placeholder = "Select…",
       searchable = true,
       maxItems,
@@ -82,7 +95,10 @@ export const MultiSelect = forwardRef<HTMLDivElement, MultiSelectProps>(
     const [selected, setSelected] = useControllableState<string[]>({
       value,
       defaultValue: defaultValue ?? [],
-      onChange: onValueChange,
+      onChange: (next) => {
+        onValueChange?.(next);
+        onChange?.(next);
+      },
     });
 
     const [open, setOpen] = useControllableState<boolean>({

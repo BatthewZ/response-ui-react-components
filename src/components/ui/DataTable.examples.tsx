@@ -105,7 +105,8 @@ export function ClientPagination() {
 /**
  * Server-driven: `sort` and `page` are `useState` values in your component that you send to
  * the API; `data` is whatever the API returned. No `pageSize`, so the table never re-slices.
- * `sort` is typed `SortState | undefined`, so a nullable state needs the `?? undefined`.
+ * `sort` accepts `SortState | null`, so the `?? undefined` is only the legacy shape: it is
+ * present on the first render either way, which is what keeps the table controlled.
  */
 export function ServerDriven() {
   const [sort, setSort] = useState<SortState | null>({ key: "total", direction: "desc" });

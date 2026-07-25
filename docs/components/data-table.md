@@ -28,8 +28,8 @@ row or a cell yourself.
 | `data`              | `T[]`                                                                    | — (required)         |
 | `columns`           | `ColumnDef<T>[]`                                                         | — (required)         |
 | `rowKey`            | `(row: T, index: number) => string \| number`                            | — (required)         |
-| `sort`              | `SortState`                                                              | —                    |
-| `defaultSort`       | `SortState`                                                              | —                    |
+| `sort`              | `SortState \| null`                                                      | —                    |
+| `defaultSort`       | `SortState \| null`                                                      | —                    |
 | `onSortChange`      | `(sort: SortState \| null) => void`                                      | —                    |
 | `sortComparator`    | `(a: T, b: T, columnKey: string, direction: "asc" \| "desc") => number`  | built-in comparator  |
 | `selectable`        | `boolean`                                                                | `false`              |
@@ -112,7 +112,9 @@ richer than a scalar needs a `render`.
 
 Add `sortable: true` to a column and its header cycles **none → asc → desc → none**;
 clicking a different column restarts at `asc`. `onSortChange` fires on every step and
-receives `null` on the step that clears the sort.
+receives `null` on the step that clears the sort. `sort` and `defaultSort` are both typed
+`SortState | null`, so that `null` goes straight back into the prop — a controlled table
+stays controlled through the clear.
 
 Left uncontrolled, the table sorts the **entire `data` array** before it slices a page, so
 sorting a paged table reshuffles across pages rather than within the visible one. The
@@ -208,10 +210,10 @@ Below, `sort` and `setSort` are a
 Server pagination is rendered only when all three of `page`, `totalPages` and
 `onPageChange` are present.
 
-The `sort={sort ?? undefined}` above is the shape the first [Gotcha](#gotchas) is about: it
-works, but the click that clears the sort hands ordering back to the table. If the server owns
-the order, coalesce the `null` in `onSortChange` to a default sort instead, so the prop is
-never `undefined`.
+The `sort={sort ?? undefined}` above is the shape older versions forced, and it is now
+redundant: `sort={sort}` says the same thing, because the prop accepts `null`. Either way the
+table stays controlled for the whole cycle — the state is seeded with a real sort, and what
+matters is the *first* render, as the first [Gotcha](#gotchas) explains.
 
 ## Selection
 
@@ -424,17 +426,17 @@ not as the signal itself.
 
 ## Gotchas
 
-- **A controlled `sort` cannot be cleared, and clearing it hands sorting back to the
-  table.** `sort` is typed `SortState | undefined` while `onSortChange` reports
-  `SortState | null`, so the natural `useState<SortState | null>` has to be passed as
-  `sort={sort ?? undefined}` — and `undefined` is exactly what the component reads as
-  *uncontrolled*. The third click on a header (the one that clears the sort) therefore
-  drops the table into uncontrolled mode, where it starts reordering rows itself from a
-  stale internal sort state. Measured from `useState<SortState | null>(null)`: rows sit in
-  source order `Charlie, Alice, Bob` for the first two clicks, then the third — the one
-  that was meant to *clear* the sort — reorders them to `Alice, Bob, Charlie`. If your
-  server owns the ordering, intercept `null` in `onSortChange` and substitute a default
-  sort so the prop is never `undefined`.
+- **Controlled or uncontrolled is settled on the first render, and never revisited.** A
+  `sort` prop that is present on mount — `null` included — makes the table controlled for
+  the instance's life, so the `null` `onSortChange` emits can be fed straight back, and a
+  later `undefined` (the legacy `sort={sort ?? undefined}`) is read as `null` rather than as
+  a mode switch. The trap is the other direction: mount with `sort` already `undefined` —
+  a `useState<SortState | null>(null)` coalesced with `?? undefined` — and the table is
+  uncontrolled forever, sorting rows itself however the prop arrives afterwards. Measured
+  with exactly that wiring on source order `Charlie, Alice, Bob`: click one gives
+  `Alice, Bob, Charlie`, click two `Charlie, Bob, Alice`, and the third — the clear —
+  returns them to source order, all while your state was tracking every emission. Pass
+  `sort={sort}` from the first render, or remount with a `key` to re-decide.
 - **`selectable` on its own renders dead checkboxes.** `selectedKeys` and
   `onSelectionChange` are both optional in the type, but the select handlers bail out
   unless both are present. `<DataTable … selectable />` renders the select-all box and one

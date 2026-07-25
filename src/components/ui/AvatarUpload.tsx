@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 
+import { matchesAccept } from "../../util/accept";
 import { cn } from "../../util/style";
 
 import { Avatar } from "./Avatar";
@@ -43,7 +44,12 @@ export type AvatarUploadProps<TResult extends AvatarUploadResult = AvatarUploadR
   onUploadComplete?: (data: TResult) => void;
   /** Called if `onUpload` throws or validation fails. */
   onUploadError?: (error: Error) => void;
-  /** Accepted MIME types for client-side validation. */
+  /**
+   * Accepted file rules for client-side validation, in the same grammar as the
+   * input's `accept` attribute this array also feeds: exact MIME (`image/png`),
+   * wildcard MIME (`image/*`), or extension (`.pdf`). A file with no `type`
+   * matches only an extension rule.
+   */
   accept?: readonly string[];
   /** Maximum file size in bytes. */
   maxSize?: number;
@@ -100,7 +106,7 @@ function validateFile(
   accept?: readonly string[],
   maxSize?: number,
 ): string | null {
-  if (accept && accept.length > 0 && !accept.includes(file.type)) {
+  if (accept && !matchesAccept(file, accept)) {
     return `File type "${file.type || "unknown"}" is not allowed. Accepted: ${accept.join(", ")}.`;
   }
   if (maxSize != null && file.size > maxSize) {

@@ -7,6 +7,8 @@ import {
   useState,
 } from "react";
 
+import { useControllableState } from "../../hooks/use-controllable-state";
+import { composeEventHandlers } from "../../util/merge-props";
 import { cn } from "../../util/style";
 
 import { Input } from "./Input";
@@ -14,7 +16,18 @@ import { Input } from "./Input";
 type NumberInputProps = {
   value?: number | null;
   defaultValue?: number;
-  onValueChange?: (v: number | null) => void;
+  onValueChange?: (value: number | null) => void;
+  /**
+   * Called with the committed number — the same payload as `onValueChange`, not
+   * a DOM `ChangeEvent`.
+   *
+   * It exists so the documented `{...form.field<number | null>("qty")}` binding
+   * works: a JSX spread performs no excess-property check, so `Omit`ting
+   * `onChange` never stopped `field()` delivering it — it only stopped
+   * TypeScript reporting it, and the raw event then wrote the input's *text*
+   * into a numeric field.
+   */
+  onChange?: (value: number | null) => void;
   min?: number;
   max?: number;
   step?: number;
@@ -24,6 +37,9 @@ type NumberInputProps = {
   ComponentPropsWithRef<"input">,
   "type" | "value" | "defaultValue" | "onChange"
 >;
+
+/** Optionally signed decimal, with optional fraction and exponent. */
+const DECIMAL = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 
 function clamp(n: number, min: number | undefined, max: number | undefined) {
   let result = n;
@@ -36,12 +52,9 @@ function round(n: number, precision: number | undefined) {
   return precision === undefined ? n : Number(n.toFixed(precision));
 }
 
-/** Parse a draft string to a number, or null if empty/unparseable. */
-function parseDraft(draft: string): number | null {
-  const trimmed = draft.trim();
-  if (trimmed === "") return null;
-  const n = Number(trimmed);
-  return Number.isNaN(n) ? null : n;
+/** value → draft: the canonical text for a value. One of the two crossings. */
+function formatValue(value: number | null): string {
+  return value == null ? "" : String(value);
 }
 
 export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
@@ -50,6 +63,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       value,
       defaultValue,
       onValueChange,
+      onChange,
       min,
       max,
       step = 1,
@@ -63,72 +77,80 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     },
     ref
   ) {
-    const isControlled = value !== undefined;
-    // Internal numeric value used while uncontrolled.
-    const [internalValue, setInternalValue] = useState<number | null>(
-      defaultValue ?? null
-    );
-    const currentValue = isControlled ? value : internalValue;
+    const [currentValue, setValue] = useControllableState<number | null>({
+      value,
+      defaultValue: defaultValue ?? null,
+      onChange: (next) => {
+        onValueChange?.(next);
+        onChange?.(next);
+      },
+    });
 
-    // Internal string draft so partial input ("", "-", "1.") never NaN-commits.
-    const [draft, setDraft] = useState<string>(
-      currentValue == null ? "" : String(currentValue)
-    );
+    // A string draft so partial input ("", "-", "1.") never commits a number
+    // the user has not finished typing.
+    const [draft, setDraft] = useState(() => formatValue(currentValue));
 
-    // Reconcile the draft against the effective value during render (React's
-    // recommended "adjust state on prop change" pattern). Sync only when the
-    // parsed draft differs from the value, so active typing (e.g. "1.") that
-    // parses to the same number is never clobbered.
-    const prevValueRef = useRef(currentValue);
-    if (prevValueRef.current !== currentValue) {
-      prevValueRef.current = currentValue;
-      if (parseDraft(draft) !== currentValue) {
-        setDraft(currentValue == null ? "" : String(currentValue));
-      }
+    /**
+     * draft → value: the other crossing. Strict — `Number()` also reads `0x1f`,
+     * `Infinity` and `1e400`, none of which a decimal field means. `null` for
+     * empty or unreadable text.
+     */
+    function readDraft(text: string): number | null {
+      const trimmed = text.trim();
+      if (!DECIMAL.test(trimmed)) return null;
+      const parsed = Number(trimmed);
+      if (!Number.isFinite(parsed)) return null;
+      return round(clamp(parsed, min, max), precision);
     }
 
-    function emit(next: number | null) {
-      if (!isControlled) setInternalValue(next);
-      onValueChange?.(next);
+    // Every commit bumps this, so the draft is re-derived from whichever value
+    // is effective on the render that follows. Reconciling on that signature
+    // rather than on value identity is what re-syncs a value the parent
+    // refused, where the prop itself never changes.
+    const [commits, setCommits] = useState(0);
+    const signature = `${commits}:${formatValue(currentValue)}`;
+    const syncedRef = useRef(signature);
+    if (syncedRef.current !== signature) {
+      syncedRef.current = signature;
+      setDraft(formatValue(currentValue));
     }
 
-    /** Parse → clamp → round the draft and emit, then reflect canonical text. */
-    function commit(nextDraft: string) {
-      const parsed = parseDraft(nextDraft);
-      if (parsed == null) {
-        setDraft("");
-        emit(null);
-        return;
-      }
-      const next = round(clamp(parsed, min, max), precision);
-      setDraft(String(next));
-      emit(next);
+    /**
+     * Offer a value; the reconcile above then owns the text. `setValue` skips
+     * both the state write and `onChange` when nothing moved, so a press at a
+     * clamped bound is silent.
+     */
+    function apply(next: number | null) {
+      setValue(next);
+      setCommits((n) => n + 1);
     }
 
     function stepBy(direction: 1 | -1) {
-      const base = currentValue ?? min ?? 0;
-      const next = round(clamp(base + direction * step, min, max), precision);
-      setDraft(String(next));
-      emit(next);
+      // Step from the text in the box, committed or not, seeding an empty field
+      // at 0 and letting the clamp carry it to the bound — so the first press
+      // in a `min={10}` field lands on 10 itself, as a native spinner does.
+      const base = readDraft(draft) ?? 0;
+      apply(round(clamp(base + direction * step, min, max), precision));
     }
 
-    function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-      if (e.key === "Enter") {
-        commit(draft);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        stepBy(1);
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        stepBy(-1);
+    const handleKeyDown = composeEventHandlers(
+      onKeyDown,
+      (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+          apply(readDraft(draft));
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          stepBy(1);
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          stepBy(-1);
+        }
       }
-      onKeyDown?.(e);
-    }
+    );
 
-    function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
-      commit(draft);
-      onBlur?.(e);
-    }
+    const handleBlur = composeEventHandlers(onBlur, () => {
+      apply(readDraft(draft));
+    });
 
     return (
       <div className="relative">
@@ -142,12 +164,12 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           aria-valuenow={currentValue ?? undefined}
           aria-valuemin={min}
           aria-valuemax={max}
+          {...props}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           className={cn("pr-r2", className)}
-          {...props}
         />
         <div className="absolute inset-y-0 right-0 flex flex-col">
           <button

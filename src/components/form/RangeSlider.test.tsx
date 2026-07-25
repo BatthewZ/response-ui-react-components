@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { RangeSlider } from "./RangeSlider";
+import { Field } from "./Field";
+import { FieldError } from "./FieldError";
+import { RangeSlider, type RangeSliderValue } from "./RangeSlider";
+import { useForm } from "./use-form";
 
 describe("RangeSlider", () => {
   it("renders two range thumbs reflecting the value pair", () => {
@@ -119,5 +122,110 @@ describe("RangeSlider", () => {
     render(<RangeSlider defaultValue={[10, 90]} minLabel="Low" maxLabel="High" disabled />);
     expect(screen.getByLabelText("Low")).toBeDisabled();
     expect(screen.getByLabelText("High")).toBeDisabled();
+  });
+
+  it("fires onChange with the tuple alongside onValueChange", () => {
+    const onValueChange = vi.fn();
+    const onChange = vi.fn();
+    render(
+      <RangeSlider
+        defaultValue={[20, 80]}
+        minLabel="Low"
+        maxLabel="High"
+        onValueChange={onValueChange}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Low"), { target: { value: "35" } });
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledWith([35, 80]);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith([35, 80]);
+  });
+
+  describe("form.field() binding (#432) and aria-invalid erasure (#434)", () => {
+    it("#432 writes the tuple — not a string — into the bound field", () => {
+      let values: { span: RangeSliderValue } = { span: [-1, -1] };
+      function Harness() {
+        const form = useForm({ defaultValues: { span: [20, 80] as RangeSliderValue } });
+        values = form.getValues();
+        return (
+          <form {...form.props}>
+            <RangeSlider
+              minLabel="Low"
+              maxLabel="High"
+              {...form.field<RangeSliderValue>("span")}
+            />
+          </form>
+        );
+      }
+      render(<Harness />);
+
+      fireEvent.change(screen.getByLabelText("Low"), { target: { value: "35" } });
+
+      // `{...props}` (RangeSlider.tsx:137) put field()'s onChange on the container, so
+      // the bubbled DOM ChangeEvent wrote the string "35" over the tuple. `const
+      // [lo, hi] = current` then destructured that string into "3" and "5".
+      expect(values.span).toEqual([35, 80]);
+      expect(screen.getByLabelText<HTMLInputElement>("Low").value).toBe("35");
+      expect(screen.getByLabelText<HTMLInputElement>("High").value).toBe("80");
+    });
+
+    it("#434 keeps the computed aria-invalid that field() spreads away as undefined", () => {
+      function Harness() {
+        const form = useForm({ defaultValues: { span: [20, 80] as RangeSliderValue } });
+        return (
+          <form {...form.props}>
+            <Field error="Out of range">
+              <RangeSlider
+                minLabel="Low"
+                maxLabel="High"
+                {...form.field<RangeSliderValue>("span")}
+              />
+              <FieldError />
+            </Field>
+          </form>
+        );
+      }
+      const { container } = render(<Harness />);
+
+      expect(screen.getByRole("alert")).toHaveTextContent("Out of range");
+      expect(container.querySelector(".range-slider")).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+      // Merging the whole of fieldErrorProps (rather than cherry-picking
+      // aria-invalid) also stops the Field's error id being discarded.
+      expect(container.querySelector(".range-slider")).toHaveAttribute(
+        "aria-describedby",
+        screen.getByRole("alert").id,
+      );
+    });
+
+    it("#434 still honours the aria-invalid field() supplies when it has none of its own", () => {
+      function Harness() {
+        const form = useForm({ defaultValues: { span: [20, 80] as RangeSliderValue } });
+        return (
+          <form {...form.props}>
+            <RangeSlider
+              minLabel="Low"
+              maxLabel="High"
+              {...form.field<RangeSliderValue>("span")}
+            />
+            <button type="button" onClick={() => form.setError("span", "Out of range")}>
+              fail
+            </button>
+          </form>
+        );
+      }
+      const { container } = render(<Harness />);
+      const root = container.querySelector(".range-slider");
+
+      expect(root).not.toHaveAttribute("aria-invalid");
+      fireEvent.click(screen.getByRole("button", { name: "fail" }));
+      expect(root).toHaveAttribute("aria-invalid", "true");
+    });
   });
 });

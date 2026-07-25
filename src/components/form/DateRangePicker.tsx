@@ -33,6 +33,18 @@ type DateRangePickerProps = {
   value?: DateRange;
   defaultValue?: DateRange;
   onValueChange?: (range: DateRange) => void;
+  /**
+   * Called with the committed range — the same payload as `onValueChange`, not a
+   * DOM `ChangeEvent`.
+   *
+   * It exists so the documented `{...form.field<DateRange>("stay")}` binding
+   * works: a JSX spread performs no excess-property check, so `Omit`ting
+   * `onChange` never stopped `field()` delivering it — it only stopped
+   * TypeScript reporting it. Left on the wrapper `div`, that handler received
+   * the endpoint inputs' bubbling `ChangeEvent` and wrote a raw string where a
+   * `{ start, end }` object was declared.
+   */
+  onChange?: (range: DateRange) => void;
   /** Initial month shown in the popover calendar. */
   defaultMonth?: Date;
   min?: Date;
@@ -72,6 +84,7 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
       value,
       defaultValue,
       onValueChange,
+      onChange,
       defaultMonth,
       min,
       max,
@@ -92,7 +105,10 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
     const [range, setRange] = useControllableState<DateRange>({
       value,
       defaultValue: defaultValue ?? EMPTY_RANGE,
-      onChange: (next) => onValueChange?.(next),
+      onChange: (next) => {
+        onValueChange?.(next);
+        onChange?.(next);
+      },
     });
 
     // Draft strings reseeded whenever the committed range changes out from under us.

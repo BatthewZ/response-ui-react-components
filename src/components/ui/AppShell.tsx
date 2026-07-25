@@ -307,9 +307,13 @@ const AppShellSidebarLink = forwardRef<HTMLAnchorElement, SidebarLinkProps>(
 
 /* ─── Main ─── */
 
-const AppShellMain = forwardRef<HTMLDivElement, ComponentPropsWithRef<"div">>(
+// A <main>, not a <div>: this is the page's primary content region, and without
+// the landmark "skip to main content" has nothing to target and a screen-reader
+// user cannot jump past the navbar and sidebar. `.app-shell-main` is styled by
+// class, so no rule here depends on the tag.
+const AppShellMain = forwardRef<HTMLElement, ComponentPropsWithRef<"main">>(
   function AppShellMain({ className, ...props }, ref) {
-    return <div ref={ref} className={cn("app-shell-main", className)} {...props} />;
+    return <main ref={ref} className={cn("app-shell-main", className)} {...props} />;
   }
 );
 

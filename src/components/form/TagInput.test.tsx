@@ -211,4 +211,27 @@ describe("TagInput", () => {
       ]);
     });
   });
+
+  describe("aria-invalid vs a field() spread (#434)", () => {
+    it("keeps its computed aria-invalid when a spread supplies the key as undefined", () => {
+      // This is exactly what form.field() delivers: the key is always present,
+      // and its value is `undefined` when the field is valid.
+      const fieldLike = { "aria-invalid": undefined };
+      render(<TagInput aria-label="Tags" error {...fieldLike} />);
+
+      expect(screen.getByRole("textbox", { name: "Tags" })).toHaveAttribute(
+        "aria-invalid",
+        "true"
+      );
+    });
+
+    it("lets a caller's aria-invalid through when it has no opinion of its own", () => {
+      render(<TagInput aria-label="Tags" aria-invalid="true" />);
+
+      expect(screen.getByRole("textbox", { name: "Tags" })).toHaveAttribute(
+        "aria-invalid",
+        "true"
+      );
+    });
+  });
 });

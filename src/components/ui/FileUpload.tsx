@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 
+import { matchesAccept } from "../../util/accept";
 import { formatBytes } from "../../util/format";
 import { cn } from "../../util/style";
 
@@ -18,7 +19,11 @@ import { cn } from "../../util/style";
 /* ------------------------------------------------------------------ */
 
 type FileUploadProps = {
-  /** Accepted MIME types (e.g. `["image/png", "image/jpeg"]`). */
+  /**
+   * Accepted file rules, in the same grammar as the input's `accept` attribute
+   * this array also feeds: exact MIME (`image/png`), wildcard MIME (`image/*`),
+   * or extension (`.pdf`). A file with no `type` matches only an extension rule.
+   */
   accept?: string[];
   /** Maximum file size in bytes. */
   maxSize?: number;
@@ -371,7 +376,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
   const validateFiles = useCallback(
     (files: File[]): File[] => {
       return files.filter((file) => {
-        if (accept && accept.length > 0 && !accept.includes(file.type)) {
+        if (accept && !matchesAccept(file, accept)) {
           return false;
         }
         if (maxSize != null && file.size > maxSize) {

@@ -26,6 +26,7 @@ peel off the last chip. Reach for it when `<select multiple>` is the wrong shape
 | `value`         | `string[]`                                                  | — (uncontrolled)            |
 | `defaultValue`  | `string[]`                                                  | `[]`                        |
 | `onValueChange` | `(value: string[]) => void`                                 | —                           |
+| `onChange`      | `(value: string[]) => void`                                 | —                           |
 | `placeholder`   | `string`                                                    | `"Select…"`                 |
 | `searchable`    | `boolean`                                                   | `true`                      |
 | `maxItems`      | `number`                                                    | — (no cap)                  |
@@ -35,7 +36,7 @@ peel off the last chip. Reach for it when `<select multiple>` is the wrong shape
 | `aria-label`    | `string`                                                    | —                           |
 | `className`     | `string`                                                    | — (lands on the wrapper)    |
 | `ref`           | `Ref<HTMLDivElement>`                                       | —                           |
-| …rest           | `<div>` props minus `onChange` / `defaultValue` / `children` | —                          |
+| …rest           | `<div>` props minus `defaultValue` / `children`; `onChange` is re-typed above | —          |
 
 An option is `{ value: string; label: string; disabled?: boolean }` — exported as
 `MultiSelectOption`. There is no sub-component and no render prop: `children` is omitted
@@ -46,6 +47,14 @@ the **outer wrapper `<div>`**, not on the text input — so `id` and `aria-label
 land on the wrapper, and never reach the control, leaving `aria-label` as the only prop that
 names it. `name` is not a `<div>` prop, so it does not compile at all. And there is no
 `open` / `onOpenChange`: the menu's open state is internal. See [Gotchas](#gotchas).
+
+`onChange` is the one prop that escapes the wrapper spread: it carries the selected
+`string[]`, the same payload as `onValueChange` rather than a `ChangeEvent`, and is
+destructured out before the spread, so `{...form.field<string[]>("skills")}` writes the
+array into the store instead of the inner search input's query text. The `aria-invalid` and
+`name` that binding also emits land on the wrapper like any other rest prop, so a
+store-level error never reaches the `role="combobox"` input — wrap the control in a
+[Field](field.md), or pass `error`, to mark the control itself invalid.
 
 ## How a selection is made
 
@@ -347,10 +356,12 @@ Chip label ink is the one pairing with margin to spare: `--C-TEXT-SECONDARY` on
   outer element, so neither reaches the input. `<Label htmlFor="skills">` +
   `<MultiSelect id="skills">` names nothing — measured, the `id` is on the wrapper and the
   input has none, so the combobox has no accessible name. Name it with `aria-label` instead.
-- **There is no form participation, and `name` does not compile.** The rest props are `<div>`
-  props, and `name` is not one of them: `<MultiSelect name="skills">` is a TypeScript error
-  (`Property 'name' does not exist`), not a prop that is typed and then dropped. There is no
-  hidden input per value either, so submit the array yourself from `onValueChange`.
+- **There is no native form participation, and `name` does not compile.** The rest props are
+  `<div>` props, and `name` is not one of them: `<MultiSelect name="skills">` is a TypeScript
+  error (`Property 'name' does not exist`), not a prop that is typed and then dropped. There
+  is no hidden input per value either, so a plain `<form>` post carries nothing. A form store
+  binds fine — `onChange` hands it the array — but a spread `name` only reaches the wrapper
+  `<div>` as an inert attribute.
 - **`Enter` with nothing highlighted submits the surrounding form.** The keydown handler
   calls `preventDefault()` only when it is actually toggling an option, so `Enter` pressed
   while the list is open but no option is active falls through to the form — measured, one

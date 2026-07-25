@@ -170,4 +170,89 @@ describe("FileUpload", () => {
     const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
     expect(inputEl).toBeDisabled();
   });
+
+  /* ------------------------------------------------------------------ */
+  /*  `accept` grammar (#408) — same grammar as the input's attribute    */
+  /* ------------------------------------------------------------------ */
+
+  describe("accept matching", () => {
+    /** Bypasses userEvent's own accept filter so *our* validation is what runs. */
+    function pickFiles(accept: string[], files: File[]) {
+      const onFilesSelected = vi.fn();
+      render(<FileUpload accept={accept} multiple onFilesSelected={onFilesSelected} />);
+
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      Object.defineProperty(inputEl, "files", { value: files, configurable: true });
+      fireEvent.change(inputEl);
+
+      return onFilesSelected;
+    }
+
+    it("accepts a wildcard MIME rule", () => {
+      const file = new File(["x"], "photo.png", { type: "image/png" });
+      const onFilesSelected = pickFiles(["image/*"], [file]);
+
+      expect(onFilesSelected).toHaveBeenCalledTimes(1);
+      expect(onFilesSelected).toHaveBeenCalledWith([file]);
+    });
+
+    it("accepts */* for any file", () => {
+      const file = new File(["x"], "mystery.bin", { type: "" });
+      const onFilesSelected = pickFiles(["*/*"], [file]);
+
+      expect(onFilesSelected).toHaveBeenCalledTimes(1);
+      expect(onFilesSelected).toHaveBeenCalledWith([file]);
+    });
+
+    it("accepts an extension rule case-insensitively", () => {
+      const file = new File(["x"], "Report.PDF", { type: "application/pdf" });
+      const onFilesSelected = pickFiles([".pdf"], [file]);
+
+      expect(onFilesSelected).toHaveBeenCalledTimes(1);
+      expect(onFilesSelected).toHaveBeenCalledWith([file]);
+    });
+
+    it("accepts a typeless file on its extension alone", () => {
+      const file = new File(["x"], "snap.heic", { type: "" });
+      const onFilesSelected = pickFiles([".heic"], [file]);
+
+      expect(onFilesSelected).toHaveBeenCalledTimes(1);
+      expect(onFilesSelected).toHaveBeenCalledWith([file]);
+    });
+
+    it("filters out files no rule matches and keeps the rest", () => {
+      const png = new File(["x"], "photo.png", { type: "image/png" });
+      const txt = new File(["x"], "notes.txt", { type: "text/plain" });
+      const onFilesSelected = pickFiles(["image/*"], [png, txt]);
+
+      expect(onFilesSelected).toHaveBeenCalledTimes(1);
+      expect(onFilesSelected).toHaveBeenCalledWith([png]);
+    });
+
+    it("emits nothing when every file is rejected", () => {
+      const onFilesSelected = pickFiles(
+        ["image/*", ".pdf"],
+        [new File(["x"], "notes.txt", { type: "text/plain" })],
+      );
+
+      expect(onFilesSelected).toHaveBeenCalledTimes(0);
+    });
+
+    it("rejects a typeless file when only MIME rules are given", () => {
+      const onFilesSelected = pickFiles(
+        ["image/*"],
+        [new File(["x"], "mystery.bin", { type: "" })],
+      );
+
+      expect(onFilesSelected).toHaveBeenCalledTimes(0);
+    });
+
+    it("still accepts an exact MIME rule", () => {
+      const file = new File(["x"], "photo.png", { type: "image/png" });
+      const onFilesSelected = pickFiles(["image/png"], [file]);
+
+      expect(onFilesSelected).toHaveBeenCalledTimes(1);
+      expect(onFilesSelected).toHaveBeenCalledWith([file]);
+    });
+  });
 });

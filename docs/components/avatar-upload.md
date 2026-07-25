@@ -35,9 +35,9 @@ returns — so the only thing you write is the request.
 | `ref`              | `Ref<HTMLDivElement>`                      | —       |
 | …rest              | props of `div`, minus `children`           | —       |
 
-Every prop is optional and `<AvatarUpload />` renders, but one of them carries a sharp edge
-that will cost you an afternoon: `accept` is compared by exact string, so `["image/*"]`
-rejects every file. See [Gotchas](#gotchas).
+Every prop is optional and `<AvatarUpload />` renders. `accept` understands the same grammar
+the OS dialog does — exact MIME types, wildcards like `image/*`, and filename extensions like
+`.png`. See [Gotchas](#gotchas).
 
 `src` is only the *initial* image. The moment the component holds a preview or an upload
 result of its own, that wins for the rest of the instance's life and later `src` prop
@@ -202,10 +202,9 @@ responsive and steps up at the 40rem breakpoint.
 
 ## Gotchas
 
-- **`accept={["image/*"]}` rejects everything.** The wildcard reaches the OS dialog
-  correctly, so the user can pick a PNG — and then validation runs `accept.includes("image/png")`,
-  which is `false`, and the tooltip reads *File type "image/png" is not allowed. Accepted:
-  image/\*.* Enumerate the concrete types instead.
+- **A file with no MIME type only matches an extension rule.** Browsers cannot always infer
+  `file.type`, and an empty one matches no MIME entry — not even `image/*`. If you need those
+  files, include an extension (`".png"`) alongside the MIME type, or use `*/*`.
 - **`preventDefault()` in your `onClick` or `onKeyDown` cancels the picker.** Those two
   compose rather than override: yours runs first, then the component's, so
   `<AvatarUpload onClick={track} />` both fires `track` and opens the file dialog. Call

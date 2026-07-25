@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
+import { mergeProps } from "../../util/merge-props";
 import { cn } from "../../util/style";
 
 import { useFieldErrorProps } from "./Field";
@@ -18,6 +19,17 @@ type RangeSliderProps = {
   value?: RangeSliderValue;
   defaultValue?: RangeSliderValue;
   onValueChange?: (value: RangeSliderValue) => void;
+  /**
+   * Called with the committed `[low, high]` pair — the same payload as
+   * `onValueChange`, not a DOM `ChangeEvent`.
+   *
+   * It exists so the documented `{...form.field<RangeSliderValue>("span")}`
+   * binding works: a JSX spread performs no excess-property check, so `Omit`ting
+   * `onChange` never stopped `field()` delivering it — it only stopped
+   * TypeScript reporting it, and the leaked handler then received the raw change
+   * events bubbling off the two `<input type="range">` thumbs.
+   */
+  onChange?: (value: RangeSliderValue) => void;
   min?: number;
   max?: number;
   step?: number;
@@ -53,6 +65,7 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
       value,
       defaultValue,
       onValueChange,
+      onChange,
       min = 0,
       max = 100,
       step = 1,
@@ -70,7 +83,10 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
     const [current, setCurrent] = useControllableState<RangeSliderValue>({
       value,
       defaultValue: defaultValue ?? [min, max],
-      onChange: onValueChange,
+      onChange: (next) => {
+        onValueChange?.(next);
+        onChange?.(next);
+      },
     });
 
     const fieldErrorProps = useFieldErrorProps(error);
@@ -126,7 +142,6 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
         ref={ref}
         className={cn("range-slider", className)}
         data-disabled={disabled || undefined}
-        aria-invalid={fieldErrorProps["aria-invalid"]}
         style={
           {
             "--range-lo": `${loPct}%`,
@@ -134,7 +149,7 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
             ...style,
           } as CSSProperties
         }
-        {...props}
+        {...mergeProps(props, fieldErrorProps)}
       >
         <span className="range-slider__track" aria-hidden="true" />
         <span className="range-slider__fill" aria-hidden="true" />

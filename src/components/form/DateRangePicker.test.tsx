@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { formatDate } from "../../util/date";
+import type { DateRange } from "../ui/RangeCalendar";
 import { DateRangePicker } from "./DateRangePicker";
+import { useForm } from "./use-form";
 
 const LOCALE = "en-US";
 const fmt = (d: Date) => formatDate(d, LOCALE);
@@ -79,5 +81,45 @@ describe("DateRangePicker", () => {
     await user.click(screen.getByText("elsewhere"));
 
     expect((start as HTMLInputElement).value).toBe(fmt(new Date(2026, 0, 1)));
+  });
+
+  describe("form.field() binding (#439)", () => {
+    it("#439 writes a DateRange to the store, not a raw input string", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      let values: { stay: DateRange } = { stay: { start: null, end: null } };
+      function Harness() {
+        const form = useForm({
+          defaultValues: { stay: { start: null, end: null } as DateRange },
+        });
+        values = form.getValues();
+        return (
+          <form {...form.props}>
+            <DateRangePicker
+              onValueChange={onValueChange}
+              {...form.field<DateRange>("stay")}
+            />
+          </form>
+        );
+      }
+      render(<Harness />);
+
+      const start = screen.getByRole("textbox", { name: "Start date" });
+      const end = screen.getByRole("textbox", { name: "End date" });
+      await user.type(start, "06/10/2026");
+      await user.type(end, "06/14/2026");
+      await user.keyboard("{Enter}");
+
+      // The corruption is silent: the store held the string "1" (the first
+      // keystroke's target.value) where a { start, end } object is declared.
+      expect(values.stay.start).toBeInstanceOf(Date);
+      expect(values.stay.end).toBeInstanceOf(Date);
+      expect(values.stay.start?.getDate()).toBe(10);
+      expect(values.stay.end?.getDate()).toBe(14);
+      expect((start as HTMLInputElement).value).toBe(fmt(new Date(2026, 5, 10)));
+      expect((end as HTMLInputElement).value).toBe(fmt(new Date(2026, 5, 14)));
+      // One commit when focus leaves `start`, one on Enter in `end`.
+      expect(onValueChange).toHaveBeenCalledTimes(2);
+    });
   });
 });

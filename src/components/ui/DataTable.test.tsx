@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { useState } from "react";
+import { beforeEach,describe, expect, it, vi } from "vitest";
 
 import { type ColumnDef,DataTable, type SortState } from "./DataTable";
 
@@ -419,8 +420,122 @@ describe("DataTable", () => {
 
     await user.click(screen.getByText("Name"));
     // Still source order; only the callback fired.
-    expect(onSortChange).toHaveBeenCalled();
+    expect(onSortChange).toHaveBeenCalledTimes(1);
     expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  Controlled sort round trip (#357)                                */
+  /* ---------------------------------------------------------------- */
+
+  describe("controlled sort round trip", () => {
+    const unsorted: Item[] = [
+      { id: 1, name: "Charlie", age: 1 },
+      { id: 2, name: "Alice", age: 2 },
+      { id: 3, name: "Bob", age: 3 },
+    ];
+
+    let onSortChange = vi.fn();
+    beforeEach(() => {
+      onSortChange = vi.fn();
+    });
+
+    /**
+     * `defaultSort` is deliberately a DIFFERENT direction than the controlled
+     * `sort`: if the table ever drops to uncontrolled it reorders from that
+     * stale seed, which is visible in the row order.
+     */
+    function Harness({ wrap }: { wrap: (s: SortState | null) => SortState | null | undefined }) {
+      const [sort, setSort] = useState<SortState | null>({ key: "name", direction: "asc" });
+      return (
+        <DataTable
+          data={unsorted}
+          columns={sortableColumns}
+          rowKey={rowKey}
+          defaultSort={{ key: "name", direction: "desc" }}
+          sort={wrap(sort)}
+          onSortChange={(next) => {
+            onSortChange(next);
+            setSort(next);
+          }}
+        />
+      );
+    }
+
+    /** Full none→asc→desc→none cycle, feeding every emitted value straight back. */
+    async function assertRoundTrip(wrap: (s: SortState | null) => SortState | null | undefined) {
+      const user = userEvent.setup();
+      render(<Harness wrap={wrap} />);
+
+      // Controlled: the server owns ordering, so rows stay in source order.
+      expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+
+      await user.click(screen.getByText("Name")); // asc -> desc
+      expect(onSortChange).toHaveBeenCalledTimes(1);
+      expect(onSortChange).toHaveBeenNthCalledWith(1, { key: "name", direction: "desc" });
+      expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+
+      await user.click(screen.getByText("Name")); // desc -> null (clear)
+      expect(onSortChange).toHaveBeenCalledTimes(2);
+      expect(onSortChange).toHaveBeenNthCalledWith(2, null);
+      // Still controlled: a controlled table never reorders rows itself, so a
+      // reorder here means it fell back to the stale `defaultSort` seed.
+      expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+
+      await user.click(screen.getByText("Name")); // null -> asc, cycle continues
+      expect(onSortChange).toHaveBeenCalledTimes(3);
+      expect(onSortChange).toHaveBeenNthCalledWith(3, { key: "name", direction: "asc" });
+      expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+    }
+
+    it("accepts the emitted null straight back as `sort` and stays controlled", async () => {
+      await assertRoundTrip((s) => s);
+    });
+
+    it("stays controlled when a legacy `sort={sort ?? undefined}` clears", async () => {
+      await assertRoundTrip((s) => s ?? undefined);
+    });
+
+    // Mirror direction: a table that mounted UNCONTROLLED (the equally common
+    // `useState<SortState | null>(null)` + `sort={sort ?? undefined}`) must keep
+    // sorting client-side once the prop starts arriving, instead of silently
+    // rendering an unsorted body under a header that claims a sort direction.
+    it("stays uncontrolled when the prop only arrives after the first click", async () => {
+      const user = userEvent.setup();
+      const onSortChange = vi.fn();
+
+      function LateProp() {
+        const [sort, setSort] = useState<SortState | null>(null);
+        return (
+          <DataTable
+            data={unsorted}
+            columns={sortableColumns}
+            rowKey={rowKey}
+            sort={sort ?? undefined}
+            onSortChange={(next) => {
+              onSortChange(next);
+              setSort(next);
+            }}
+          />
+        );
+      }
+
+      render(<LateProp />);
+      expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+
+      await user.click(screen.getByText("Name")); // asc
+      expect(onSortChange).toHaveBeenCalledTimes(1);
+      expect(bodyFirstCells()).toEqual(["Alice", "Bob", "Charlie"]);
+
+      await user.click(screen.getByText("Name")); // desc
+      expect(onSortChange).toHaveBeenCalledTimes(2);
+      expect(bodyFirstCells()).toEqual(["Charlie", "Bob", "Alice"]);
+
+      await user.click(screen.getByText("Name")); // cleared
+      expect(onSortChange).toHaveBeenCalledTimes(3);
+      expect(onSortChange).toHaveBeenNthCalledWith(3, null);
+      expect(bodyFirstCells()).toEqual(["Charlie", "Alice", "Bob"]);
+    });
   });
 
   it("renders the footer slot", () => {

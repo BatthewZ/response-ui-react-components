@@ -87,7 +87,6 @@ export function InField() {
       <RangeSlider
         role="group"
         aria-labelledby="meeting-length-label"
-        aria-describedby="meeting-length-error"
         defaultValue={[30, 45]}
         min={15}
         max={120}
@@ -95,7 +94,7 @@ export function InField() {
         minLabel="Shortest meeting"
         maxLabel="Longest meeting"
       />
-      <FieldError id="meeting-length-error" />
+      <FieldError />
     </Field>
   );
 }

@@ -34,8 +34,8 @@ your row with no annotation.
 | `rowHeight`           | `number` — pixels, every row, no exceptions                              | — (required)             |
 | `height`              | `number \| string` — the scroll viewport                                 | `400`                    |
 | `overscan`            | `number` — extra rows rendered above and below the window                | `8`                      |
-| `sort`                | `SortState`                                                              | — (uncontrolled)         |
-| `defaultSort`         | `SortState`                                                              | —                        |
+| `sort`                | `SortState \| null`                                                      | — (uncontrolled)         |
+| `defaultSort`         | `SortState \| null`                                                      | —                        |
 | `onSortChange`        | `(sort: SortState \| null) => void`                                      | —                        |
 | `sortComparator`      | `(a: T, b: T, columnKey: string, direction: "asc" \| "desc") => number`  | built-in comparator      |
 | `selectable`          | `boolean`                                                                | `false`                  |
@@ -53,9 +53,11 @@ your row with no annotation.
 That is the **whole** surface. `VirtualizedDataTableProps<T>` is a plain object type with no
 `ComponentProps` intersection and no rest spread, so there is no `className`, no `style`, no
 `ref`, no `id` and no `data-*` — none of them compile, and none of them would land anywhere if
-they did. `SortState` is `{ key: string; direction: "asc" | "desc" }`; it is not exported under
-that name from the package barrel, so type your own state with
-`VirtualizedDataTableProps<Invoice>["sort"]` if you need the annotation.
+they did. `SortState` is `{ key: string; direction: "asc" | "desc" }` — an *active* sort, never
+nullable itself; the two sort props widen it to `SortState | null` because "sorted by nothing"
+is `null`. It is not exported under that name from the package barrel, so annotate your own
+state with `VirtualizedDataTableProps<Invoice>["sort"]`, which is exactly what you can pass
+back.
 
 `stickyHeader` defaults to **`true`** here (the [Table](table.md) primitive underneath defaults it to
 `false`) — a header that scrolls away is not much use on a list this long.
@@ -161,11 +163,11 @@ different column restarts at `asc`.
 ```
 <!-- /example -->
 
-Pass `sort` and the component flips to display-only: it renders `data` in the order you gave it
-and never reorders, on the assumption that your server did. `defaultSort` is ignored in that
-mode. Below, `sort` and `setSort` are a
-`useState<SortState>({ key: "issuedAt", direction: "desc" })` in your own component — seeded
-with a real value, never `null`, for the reason spelled out under the fence.
+Pass `sort` on the first render — `null` counts — and the component flips to display-only: it
+renders `data` in the order you gave it and never reorders, on the assumption that your server
+did. `defaultSort` is ignored in that mode. Below, `sort` and `setSort` are a
+`useState<SortState>({ key: "issuedAt", direction: "desc" })` in your own component, because
+this particular server always sorts by something.
 
 <!-- example:ServerSorting -->
 ```tsx
@@ -185,10 +187,11 @@ with a real value, never `null`, for the reason spelled out under the fence.
 ```
 <!-- /example -->
 
-The `next ?? …` in that handler is doing real work. `onSortChange` reports the third state of
-the cycle as `null`, but `sort` is typed `SortState` — the only way to pass "nothing" is
-`undefined`, which is exactly the signal the component reads as *uncontrolled*. Keeping your
-controlled state non-null avoids the mode flip described in [Gotchas](#gotchas).
+The `next ?? …` in that handler is a product decision, not a type constraint. `onSortChange`
+reports the third state of the cycle as `null` and `sort` accepts that `null` back, so
+`useState<SortState | null>(null)` with `onSortChange={setSort}` is just as valid and stays
+controlled through the clear. Coalesce, as here, when the list must always be sorted by
+*something*; round-trip the `null` when "unsorted" is an order your server understands.
 
 For a client-sorted table over a shape the default comparator can't order — a status column with
 a bespoke priority, say — pass `sortComparator`; it receives `(a, b, columnKey, direction)` and
@@ -365,16 +368,12 @@ virtualization maths has to agree with them exactly. See the
   `onSelectionChange`, the handlers return early: measured, the select-all box renders unchecked
   and *not* disabled, and clicking it changes nothing and calls nothing. The three props are a
   set; the type does not say so.
-- **Controlled `sort` cannot express "unsorted".** `sort` is `SortState`, not
-  `SortState | null`, and `undefined` is the flag for uncontrolled — so the natural
-  `useState<SortState | null>(null)` passed as `sort={sort ?? undefined}` is *already*
-  uncontrolled on mount, and every click taken in that state seeds the component's internal
-  sort. Measured with exactly that wiring and `onSortChange={setSort}`: clicks 1 and 2 leave the
-  rows in source order (`Charlie, Alice, Bob`), and click 3 — the one that was meant to *clear*
-  the sort — hands the table back to itself and it reorders to `Alice, Bob, Charlie` with
-  `aria-sort="ascending"`, from the internal state click 1 left behind. No further click is
-  needed and nothing puts it back: the prop that arrives is `undefined`. Coalesce `null` to a
-  default sort, as the server-sorting example does — measured, a state that is never null keeps
+- **Controlled `sort` is round-trippable.** `sort` and `defaultSort` accept
+  `SortState | null`, so the `null` that `onSortChange` emits can be passed straight back to
+  clear the sort. The mode is decided on the first render and then locked, so a later
+  `undefined` no longer flips a controlled table to uncontrolled — the legacy
+  `sort={sort ?? undefined}` idiom stays controlled too. What still matters is the *first*
+  render: mount with `sort={undefined}` and the table is uncontrolled for its whole life, and
   the table controlled for the whole cycle and the rows never move.
 - **`onEndReached` can fire before the user scrolls.** It fires whenever the *rendered* window
   reaches the threshold, which on mount it already does if the dataset is short or the viewport

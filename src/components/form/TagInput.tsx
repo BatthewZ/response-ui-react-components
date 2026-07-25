@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
+import { mergeProps } from "../../util/merge-props";
 import { cn } from "../../util/style";
 
 import { useFieldError } from "./Field";
@@ -211,12 +212,16 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             onBlur={handleBlur}
-            {...fieldErrorProps}
             className={cn(
               "flex-1 min-w-[6rem] bg-transparent outline-none text-body-2 text-fg-primary placeholder:text-fg-muted",
               "disabled:cursor-not-allowed"
             )}
-            {...props}
+            // `field()` always emits the KEY `aria-invalid`, valued `undefined`
+            // when the field is valid — a plain spread would therefore erase the
+            // state computed above. Merging keeps ours when we have an opinion
+            // and the caller's when we do not; swapping the spread order would
+            // just mirror the bug.
+            {...mergeProps(props, fieldErrorProps)}
           />
           {/* Native form participation: one hidden input per committed tag, so
               `new FormData(form)` yields the tags rather than whatever is
