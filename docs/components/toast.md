@@ -4,9 +4,10 @@ A transient status message that slides into the bottom-right corner, stacks with
 siblings, and removes itself after five seconds. You fire it imperatively from any handler,
 so a save deep in the tree can report success without threading state back up to a banner.
 
-**Read [Server rendering](#server-rendering) before you mount it.** `ToastProvider` renders a
-portal with no environment guard, so it throws `ReferenceError: document is not defined` on
-every server render — including the first render of any Next.js App Router page.
+**Read [Server rendering](#server-rendering) before you mount it in a server-rendered app.**
+The stack renders through [Portal](portal.md), which emits nothing on the server, so the
+client's first pass portals into HTML that isn't there — a hydration mismatch that costs you
+the page's server HTML.
 
 <!-- example:Minimal -->
 ```tsx
@@ -64,31 +65,35 @@ components can call `useToast()`.
 
 ## Server rendering
 
-`ToastProvider` calls `createPortal(…, document.body)` unconditionally in its render body. It
-does **not** go through [Portal](portal.md), and so it does not have Portal's
-`typeof document === "undefined"` guard. The `"use client"` directive at the top of the module
-does not save it: that marks the module client-*capable*, and the server still renders it to
-produce the initial HTML. Rendering it on a server throws
-`ReferenceError: document is not defined` — verified by server-rendering the provider
-directly. A Next.js App Router app that wraps its root layout in `<ToastProvider>` therefore
-fails to render every page.
+`ToastProvider` renders its stack through [Portal](portal.md), which returns `null` while
+`document` is undefined. Server-rendering the provider therefore emits your children and
+nothing else — `renderToStaticMarkup(<ToastProvider><p>app tree</p></ToastProvider>)` is
+exactly `<p>app tree</p>`, verified. The `"use client"` directive at the top of the module is
+not what does that: it marks the module client-*capable*, and the server still renders it to
+produce the initial HTML.
 
-Two workarounds work today, and both amount to keeping the provider out of the server pass:
+That guard is load-bearing. React's own server renderer refuses portals ("Portals are not
+currently supported by the server renderer"), but only once a portal is actually created — so
+returning `null` before `createPortal` is what keeps the server pass from throwing.
+
+What it leaves behind is the hydration mismatch [Portal](portal.md#gotchas) documents. The
+server emits nothing where the stack goes, `document` *is* defined on the client's first pass,
+and React discards the whole hydration root rather than reconcile the difference. The provider
+portals the stack unconditionally — toasts or none — so an empty stack does not spare you
+either.
+
+Two ways to avoid that, and both amount to keeping the provider off the server pass:
 
 - Import it with `next/dynamic` and `ssr: false`, so the module is only ever evaluated in the
   browser.
 - Mount it below a boundary that never server-renders — inside a component whose subtree is
-  gated on a `mounted` flag you set in an effect.
+  gated on a `mounted` flag you set in an effect. That renders `null` on both passes and only
+  then portals.
 
-React's own server renderer does refuse portals ("Portals are not currently supported by the
-server renderer") — but only once a portal is actually created, so a `typeof document` guard
-**is** enough to stop the crash. [Portal](portal.md) returns `null` before it ever calls
-`createPortal`, and server-rendering a tree containing one emits the surrounding markup and
-nothing else: `<div>before<!-- -->after</div>`, no throw. What the guard leaves behind is the
-hydration mismatch [Portal](portal.md#gotchas) documents — the server emits nothing where the
-stack goes, `document` *is* defined on the client's first pass, and React discards the whole
-hydration root. That is why the `mounted` flag above is the better fix: it renders `null` on
-both passes and only then portals.
+Both cost you the server HTML for everything *inside* the provider, which the provider would
+otherwise have rendered fine. So wrap it around the part of the tree that calls `useToast()`
+rather than the root layout — or accept the mismatch on a page whose first paint you don't
+need.
 
 ## Variants
 
@@ -286,8 +291,9 @@ focus tokens are documented there.
 
 ## Gotchas
 
-- **The provider cannot be server-rendered.** It throws on the server. This is the one thing
-  that will stop you shipping — see [Server rendering](#server-rendering).
+- **The stack is absent from server-rendered HTML.** The provider portals it unconditionally,
+  so the client's first pass mounts a portal the server HTML doesn't have and React throws away
+  the page's hydration root — see [Server rendering](#server-rendering).
 - **`dismissAll()` also wipes toasts created in the next 300 ms.** It schedules an
   unconditional "clear everything" for after the exit animation, and that timer does not check
   what arrived in the meantime. `dismissAll(); toast("Saved")` shows the new toast for 300 ms
@@ -321,7 +327,7 @@ focus tokens are documented there.
 - **Client-only in practice.** `ToastContext.tsx` carries `"use client"`. `Toast.tsx` has no
   directive and uses no hooks, so it compiles into an RSC tree — but `onDismiss` is required
   and event handlers cannot cross the server boundary, so a Server Component still cannot
-  render one. The provider is client-only outright, by directive and by portal.
+  render one.
 
 ## Accessibility
 

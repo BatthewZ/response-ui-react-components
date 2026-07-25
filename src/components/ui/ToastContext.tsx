@@ -8,8 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 
+import { Portal } from "./Portal";
 import { Toast, type ToastVariant } from "./Toast";
 
 type ToastOptions = {
@@ -133,7 +133,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      {createPortal(
+      <Portal>
         <div className="fixed bottom-r4 right-r4 z-50 flex flex-col gap-r5 pointer-events-none">
           {toasts.map((t) => (
             <Toast
@@ -146,9 +146,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               {t.message}
             </Toast>
           ))}
-        </div>,
-        document.body
-      )}
+        </div>
+      </Portal>
     </ToastContext.Provider>
   );
 }

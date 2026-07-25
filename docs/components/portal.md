@@ -159,8 +159,9 @@ native `<dialog>` element with `showModal()`, which promotes them to the browser
 — above every stacking context, with no DOM relocation and no `z-index` at all. [Popover](popover.md),
 [Tooltip](tooltip.md), [HoverCard](hover-card.md), [DropdownMenu](dropdown-menu.md), [ContextMenu](context-menu.md), and the form comboboxes portal through
 Floating UI's own `FloatingPortal`, which also does the anchoring. [Toast](toast.md) never portals
-itself either — `ToastProvider` holds one `createPortal` into `<body>` for the whole stack.
-[AppShell](app-shell.md) is the one component in this library that reaches for `Portal` directly.
+itself either — `ToastProvider` wraps the whole stack in one `Portal` into `<body>`. That
+provider and [AppShell](app-shell.md)'s mobile sidebar are the only two places in this library
+that reach for `Portal` directly.
 
 ## Theme tokens
 
