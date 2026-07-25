@@ -123,4 +123,52 @@ describe("CopyButton", () => {
     expect(() => button.click()).not.toThrow();
     expect(button).toHaveAttribute("aria-label", "Copy");
   });
+
+  describe("caller-supplied props", () => {
+    it("ignores a caller-supplied data-copied, which would fake the copied state", () => {
+      stubClipboard();
+      render(<CopyButton value="hello" data-copied="true" />);
+      expect(screen.getByRole("button")).not.toHaveAttribute("data-copied");
+    });
+
+    it("still reflects the real copied state after a caller passes data-copied", async () => {
+      stubClipboard();
+      render(<CopyButton value="hello" data-copied="true" />);
+      const button = screen.getByRole("button");
+
+      await act(async () => {
+        button.click();
+      });
+
+      expect(button).toHaveAttribute("data-copied", "true");
+    });
+
+    it("lets the caller override aria-label; the live region still announces the copy", async () => {
+      stubClipboard();
+      render(
+        <CopyButton value="npm i" aria-label="Copy install command" copiedLabel="Done!" />
+      );
+      const button = screen.getByRole("button", { name: "Copy install command" });
+
+      await act(async () => {
+        button.click();
+      });
+
+      expect(button).toHaveAttribute("aria-label", "Copy install command");
+      expect(screen.getByText("Done!")).toBeInTheDocument();
+    });
+
+    it("still copies when the caller supplies its own onClick", async () => {
+      const writeText = stubClipboard();
+      const onClick = vi.fn();
+      render(<CopyButton value="hello" onClick={onClick} />);
+
+      await act(async () => {
+        screen.getByRole("button").click();
+      });
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(writeText).toHaveBeenCalledTimes(1);
+    });
+  });
 });

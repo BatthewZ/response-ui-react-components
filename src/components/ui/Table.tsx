@@ -8,6 +8,7 @@ import {
   useContext,
 } from "react";
 
+import { composeEventHandlers } from "../../util/merge-props";
 import { cn } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
@@ -128,7 +129,10 @@ type TableHeaderCellProps = {
 } & ComponentPropsWithRef<"th">;
 
 const TableHeaderCell = forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
-  function TableHeaderCell({ sortDirection, onSort, className, children, ...props }, ref) {
+  function TableHeaderCell(
+    { sortDirection, onSort, className, children, onClick, onKeyDown, ...props },
+    ref
+  ) {
     const { density } = useTableContext();
     const sortable = !!onSort;
 
@@ -152,17 +156,13 @@ const TableHeaderCell = forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
           sortable && "table-header-cell--sortable",
           className
         )}
-        onClick={onSort}
-        onKeyDown={
-          sortable
-            ? (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSort?.();
-                }
-              }
-            : undefined
-        }
+        onClick={composeEventHandlers(onClick, () => onSort?.())}
+        onKeyDown={composeEventHandlers(onKeyDown, (e) => {
+          if (sortable && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            onSort?.();
+          }
+        })}
         tabIndex={sortable ? 0 : undefined}
         aria-sort={
           sortDirection === "asc"

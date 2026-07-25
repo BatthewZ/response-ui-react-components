@@ -23,8 +23,9 @@ It renders [IconButton](icon-button.md) and adds no box of its own, so the hit a
 ring, hover and press surfaces, and `className` merge are all that component's. Its glyphs
 are 16px, which makes the target exactly the 32px/40px IconButton documents. Three
 attributes are set on the way through — `type="button"`, an `aria-label` it maintains, and
-`data-copied` — and all three are written *before* your rest props, so anything you pass
-overrides them. See [Gotchas](#gotchas).
+`data-copied`. `type` and `aria-label` are written *before* your rest props, so you can
+override either. `data-copied` is written *after*, because it reports whether the clipboard
+write actually succeeded and a caller-set value would lie about it. See [Gotchas](#gotchas).
 
 ## What a click actually does
 
@@ -200,11 +201,12 @@ IconButton's padding into the 32px/40px target. Because the glyph is `currentCol
   reuses the name for the copy payload, so a CopyButton can never carry a form value.
 - **`children` is omitted too.** You cannot change the glyphs, their size, or add a visible
   label. If you need any of that, build it on [IconButton](icon-button.md).
-- **Your rest props overwrite what it sets.** `type`, `aria-label`, and `data-copied` are all
-  written before `{...props}`. `type="button"` is the default and the correct one, but
-  `type="submit"` compiles and will submit an enclosing form; a `data-copied` of your own
-  replaces the styling hook for good; `aria-label` is covered under [Naming it](#naming-it)
-  and [Accessibility](#accessibility).
+- **Your rest props overwrite `type` and `aria-label`, but not the state hook.** Both are
+  written before `{...props}`: `type="button"` is the default and the correct one, but
+  `type="submit"` compiles and will submit an enclosing form; `aria-label` is covered under
+  [Naming it](#naming-it) and [Accessibility](#accessibility). `data-copied` is no longer
+  overridable — it is derived from whether the copy succeeded, so a caller-set value would
+  make the styling hook disagree with reality.
 - **`copiedLabel=""` compiles and blanks the name while confirming.** The confirmation wording
   is a plain `string`, so an empty one — or a variable typed `string` that happens to be empty
   at runtime — passes the compiler and hands the button an empty `aria-label` and an empty live

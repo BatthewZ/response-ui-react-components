@@ -260,11 +260,6 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
           {...getReferenceProps({
             // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
             ref: mergeRefs(ref, refs.setReference),
-            role: "combobox",
-            "aria-expanded": open,
-            "aria-controls": listboxId,
-            "aria-autocomplete": "list",
-            "aria-activedescendant": activeOptionId,
             value: inputValue,
             className: cn("combobox-input", invalid && "combobox-input-error", className),
             ...ariaProps,
@@ -287,6 +282,11 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
               }
             },
           })}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeOptionId}
         />
         <button
           type="button"
@@ -338,12 +338,12 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
           {...getFloatingProps({
             // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
             ref: mergeRefs(ref, refs.setFloating),
-            id: listboxId,
-            role: "listbox",
             className: cn("combobox-content", className),
             style: { ...floatingStyles, ...style },
             ...props,
           })}
+          id={listboxId}
+          role="listbox"
         >
           {loading ? (
             <div className="combobox-loading" role="presentation">
@@ -397,11 +397,6 @@ const ComboboxItem = forwardRef<HTMLDivElement, ComboboxItemProps>(
       <div
         // eslint-disable-next-line react-hooks/refs -- mergeRefs defers ref assignment to the returned callback
         ref={mergeRefs(ref, itemRef)}
-        id={optionId(index)}
-        role="option"
-        aria-selected={selected}
-        aria-disabled={disabled || undefined}
-        data-active={index === activeIndex ? "" : undefined}
         className={cn("combobox-item", className)}
         {...getItemProps({
           ...props,
@@ -411,6 +406,11 @@ const ComboboxItem = forwardRef<HTMLDivElement, ComboboxItemProps>(
             selectIndex(index);
           },
         })}
+        id={optionId(index)}
+        role="option"
+        aria-selected={selected}
+        aria-disabled={disabled || undefined}
+        data-active={index === activeIndex ? "" : undefined}
       >
         {children}
       </div>

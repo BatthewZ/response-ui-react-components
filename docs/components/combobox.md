@@ -53,9 +53,9 @@ they render. [Input](input.md), `Content` and `Item` read context and throw — 
 used within a Combobox"`, and so on — if rendered outside the root. `Combobox.Empty` reads no
 context at all: it is a pre-styled `<div>` that works anywhere and warns nowhere.
 
-One prop is not safe to pass: **`Combobox.Item` generates its own `id`** and the rest-spread
-lands after it, so an `id` of yours replaces the one `aria-activedescendant` points at. Leave
-it alone.
+One prop has no effect: **`Combobox.Item` generates its own `id`** and now writes it after the
+rest-spread, because `aria-activedescendant` and `aria-controls` reference it across elements.
+An `id` of yours is ignored rather than breaking that wiring — the component owns these ids.
 
 ## Props
 

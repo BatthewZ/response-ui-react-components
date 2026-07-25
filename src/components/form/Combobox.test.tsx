@@ -179,6 +179,114 @@ describe("Combobox", () => {
     expect(screen.getByRole("listbox")).toBeInTheDocument();
   });
 
+  describe("caller-supplied props", () => {
+    /** Every id on the tree is supplied by the caller, so nothing can rely on the generated ones. */
+    function IdHarness() {
+      return (
+        <Combobox defaultOpen>
+          <Combobox.Input aria-label="Fruit" />
+          <Combobox.Content id="caller-listbox">
+            {FRUITS.map((f, index) => (
+              <Combobox.Item
+                key={f.value}
+                index={index}
+                value={f.value}
+                id={`caller-option-${index}`}
+                disabled={f.disabled}
+              >
+                {f.label}
+              </Combobox.Item>
+            ))}
+          </Combobox.Content>
+        </Combobox>
+      );
+    }
+
+    it("keeps aria-controls resolving to the listbox when the caller gives Content an id", () => {
+      render(<IdHarness />);
+
+      const input = getInput();
+      const listbox = screen.getByRole("listbox");
+      const controls = input.getAttribute("aria-controls");
+
+      expect(controls).toBeTruthy();
+      expect(document.getElementById(controls as string)).toBe(listbox);
+    });
+
+    it("keeps aria-activedescendant resolving to an option when the caller gives Items ids", async () => {
+      const user = userEvent.setup();
+      render(<IdHarness />);
+
+      const input = getInput();
+      const active = input.getAttribute("aria-activedescendant");
+      expect(active).toBeTruthy();
+      expect(document.getElementById(active as string)).toBe(
+        screen.getByRole("option", { name: "Apple" }),
+      );
+
+      await user.click(input);
+      await user.keyboard("{ArrowDown}");
+
+      const nextActive = input.getAttribute("aria-activedescendant");
+      expect(nextActive).not.toBe(active);
+      expect(document.getElementById(nextActive as string)).toBe(
+        screen.getByRole("option", { name: "Banana" }),
+      );
+    });
+
+    it("keeps the input's combobox identity when the caller passes conflicting ARIA", () => {
+      render(
+        <Combobox defaultOpen>
+          <Combobox.Input
+            aria-label="Fruit"
+            role="textbox"
+            aria-expanded={false}
+            aria-autocomplete="none"
+          />
+          <Combobox.Content>
+            <Combobox.Item index={0} value="apple">
+              Apple
+            </Combobox.Item>
+          </Combobox.Content>
+        </Combobox>,
+      );
+
+      const input = getInput();
+      expect(input).toHaveAttribute("aria-expanded", "true");
+      expect(input).toHaveAttribute("aria-autocomplete", "list");
+    });
+
+    it("keeps role=option and aria-selected on an Item the caller re-roles", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <Combobox defaultOpen defaultValue="apple" onValueChange={onValueChange}>
+          <Combobox.Input aria-label="Fruit" />
+          <Combobox.Content>
+            <Combobox.Item index={0} value="apple" role="presentation" aria-selected={false}>
+              Apple
+            </Combobox.Item>
+            <Combobox.Item index={1} value="banana" aria-disabled>
+              Banana
+            </Combobox.Item>
+          </Combobox.Content>
+        </Combobox>,
+      );
+
+      expect(screen.getByRole("option", { name: "Apple" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      // Not disabled by the component, so the lie must not stick and selection must work.
+      const banana = screen.getByRole("option", { name: "Banana" });
+      expect(banana).not.toHaveAttribute("aria-disabled");
+
+      await user.click(banana);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenCalledWith("banana");
+    });
+  });
+
   it("selects on click and reflects aria-selected on the chosen option", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();

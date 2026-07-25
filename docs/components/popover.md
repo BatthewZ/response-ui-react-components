@@ -133,13 +133,12 @@ writing its own state the moment `open` is defined. A `<Popover open={false}>` w
 ## Using your own trigger element
 
 `asChild` clones the single child element and merges the trigger wiring onto it instead of
-rendering the built-in `<button class="popover-trigger">`. `className` is merged with the
-child's, and props the trigger does not set — `href`, `variant`, your `type` — survive. What it
-**does** set overwrites the child's, and that set is exactly the props Floating UI's hooks emit
-for *this* component: `Popover` wires only `useClick`, `useDismiss` and `useRole`, so a child's
-`onClick`, `onKeyDown`, `onPointerDown` and `onMouseDown` are dropped. The child's `ref` is
-dropped too. Everything else — `onFocus`, `onBlur`, and the pointer and mouse
-enter/move/leave handlers — comes through. See [Gotchas](#gotchas).
+rendering the built-in `<button class="popover-trigger">`. The merge is a real one: colliding
+event handlers **compose** (the child's runs first and may `preventDefault()` to skip the
+popover's), `ref`s merge, `className` merges through `cn()`, and `style` merges by key. Props
+the trigger does not set — `href`, `variant`, your `type` — pass straight through. ARIA the
+trigger owns (`aria-expanded`, `aria-haspopup`, `aria-controls`) wins over the child's, because
+it describes state the child cannot know.
 
 <!-- example:AsChild -->
 ```tsx
@@ -259,18 +258,13 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   [Inside a form](#inside-a-form).
 - **Fields in the panel are outside your form.** The portal puts them at the end of `<body>`,
   so they are absent from `FormData` and from the form's validity check. Use `form="<id>"`.
-- **`asChild` replaces the handlers Floating UI sets, and drops the child's `ref`.** The clone
-  spreads the trigger props over the child, so any prop of the same name is silently dropped and
-  never fires. There is no one list: the casualties are whatever *that* component's Floating UI
-  hooks emit. `Popover` runs `useClick`, `useDismiss` and `useRole`, so the child loses exactly
-  `onClick`, `onKeyDown`, `onPointerDown` and `onMouseDown` — while `onFocus`, `onBlur`,
-  `onMouseEnter`, `onMouseMove`, `onMouseLeave`, `onPointerEnter`, `onPointerMove` and
-  `onPointerLeave` survive untouched. `className` is merged with the child's. The child's `ref`
-  is **not**: only `Popover.Trigger`'s own forwarded ref reaches the element, so a
-  `<Button ref={btnRef}>` inside `asChild` leaves `btnRef.current` null. [Tooltip](tooltip.md) is the
-  exception in this library — it does merge the child's ref; `Popover`, [HoverCard](hover-card.md) and
-  [DropdownMenu](dropdown-menu.md) do not. Put the handler and the ref on `Popover.Trigger` itself, where both
-  *are* merged, or use `onOpenChange` on the root instead.
+- **`asChild` composes with the child rather than overwriting it.** The clone goes through
+  `mergeProps`, so a colliding handler **runs alongside** the trigger's own — the child's first,
+  and it can skip the popover's behaviour by calling `preventDefault()`. The child's `ref` is
+  merged too, so a `<Button ref={btnRef}>` inside `asChild` populates `btnRef.current`;
+  `className` merges through `cn()` and `style` merges by key. Putting the handler and ref on
+  `Popover.Trigger` itself still works and is equivalent. (Before this was fixed the child lost
+  `onClick`, `onKeyDown`, `onPointerDown`, `onMouseDown` and its ref, silently.)
 - **A popover inside a [Dialog](dialog.md) lands outside it.** `FloatingPortal` appends the
   panel to `<body>`, and a `<dialog>` opened with `showModal()` puts itself in the top layer
   with the rest of the document inert — so the panel paints under the dialog and takes no

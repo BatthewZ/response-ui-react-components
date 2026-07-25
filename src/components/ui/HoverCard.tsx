@@ -25,6 +25,7 @@ import {
   useRole,
   useTransitionStyles,
 } from "../../hooks/use-floating";
+import { mergeProps } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 
@@ -141,13 +142,15 @@ const HoverCardTrigger = forwardRef<HTMLSpanElement, HoverCardTriggerProps>(
     };
 
     if (asChild && isValidElement(children)) {
-      return cloneElement(children as ReactElement<Record<string, unknown>>, {
-        ...triggerProps,
-        className: cn(
-          (children.props as Record<string, unknown>).className as string | undefined,
-          className
-        ),
-      });
+      // `cloneElement` overwrites props rather than merging them, so spreading
+      // `triggerProps` bare would discard the child's own handlers and ref.
+      return cloneElement(
+        children as ReactElement<Record<string, unknown>>,
+        mergeProps(children.props as Record<string, unknown>, {
+          ...triggerProps,
+          className,
+        })
+      );
     }
 
     return (

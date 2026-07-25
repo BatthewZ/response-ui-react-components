@@ -39,9 +39,10 @@ the same scroll the arrow buttons perform.
 `className`, `style`, `id`, `ref` and `aria-*` pass through on all three, and `ref` is
 `HTMLDivElement` everywhere. `className` is merged with the component's own classes;
 everything else is a plain rest spread placed **after** the attributes each part sets for
-itself, so a prop you pass replaces the internal one — `tabIndex`, `aria-label`,
-`aria-roledescription` and, less happily, the root's `onKeyDown`. `Carousel.Track` is the
-one exception: it composes your `onMouseDown` and `onClickCapture` with its own drag
+itself, so a prop you pass replaces the internal one — `tabIndex`, `aria-label` and
+`aria-roledescription`. The root's `onKeyDown` is the exception: it now composes with the
+arrow-key handler rather than replacing it. `Carousel.Track` likewise composes your
+`onMouseDown` and `onClickCapture` with its own drag
 handling instead of replacing them. See [Gotchas](#gotchas).
 
 ## How many slides you see at once
@@ -238,10 +239,12 @@ something a theme should decide for you.
   `--carousel-item-width` with a `100%` fallback, and because the component stylesheet is
   unlayered it also beats a Tailwind `w-*` utility on the same item. Set the variable, or use
   an inline `style={{ width: … }}`, which does win.
-- **Your `onKeyDown` replaces the arrow-key handler.** `{...props}` is spread after it, so
-  `<Carousel onKeyDown={…}>` silently turns off keyboard scrolling — measured at zero scroll
-  calls. `tabIndex`, `aria-label` and `aria-roledescription` are replaceable the same way on
-  all three parts, which is how you fix the labelling problems in
+- **Your `onKeyDown` composes with the arrow-key handler.** `<Carousel onKeyDown={…}>` runs
+  your handler first and still scrolls the rail; call `preventDefault()` to suppress the
+  scroll. (Before this was fixed the spread sat after the internal handler and silently turned
+  keyboard scrolling off — measured at zero scroll calls.) `tabIndex`, `aria-label` and
+  `aria-roledescription` are still replaceable on all three parts, which is how you fix the
+  labelling problems in
   [Accessibility](#accessibility) — and how you break the keyboard by accident.
 - **Arrow keys are grabbed from anywhere inside the carousel.** The handler sits on the root
   and does not check `e.target`, so <kbd>←</kbd> pressed inside a text field in a slide is

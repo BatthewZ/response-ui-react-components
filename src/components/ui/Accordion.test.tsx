@@ -1,6 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef } from "react";
+import {
+  createRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Accordion } from "./Accordion";
@@ -227,5 +231,129 @@ describe("Accordion", () => {
     await user.click(screen.getByRole("button", { name: "Section A" }));
 
     expect(onValueChange).toHaveBeenCalledWith("a");
+  });
+
+  describe("roving focus", () => {
+    it("ArrowDown moves focus to the next trigger and wraps", async () => {
+      const user = userEvent.setup();
+      renderAccordion();
+
+      const [a, b, c] = screen.getAllByRole("button");
+      a.focus();
+
+      await user.keyboard("{ArrowDown}");
+      expect(b).toHaveFocus();
+
+      await user.keyboard("{ArrowDown}");
+      expect(c).toHaveFocus();
+
+      await user.keyboard("{ArrowDown}");
+      expect(a).toHaveFocus();
+    });
+
+    it("ArrowUp moves focus to the previous trigger and wraps", async () => {
+      const user = userEvent.setup();
+      renderAccordion();
+
+      const [a, b, c] = screen.getAllByRole("button");
+      a.focus();
+
+      await user.keyboard("{ArrowUp}");
+      expect(c).toHaveFocus();
+
+      await user.keyboard("{ArrowUp}");
+      expect(b).toHaveFocus();
+    });
+
+    it("Home and End jump to the first and last trigger", async () => {
+      const user = userEvent.setup();
+      renderAccordion();
+
+      const [a, b, c] = screen.getAllByRole("button");
+      b.focus();
+
+      await user.keyboard("{End}");
+      expect(c).toHaveFocus();
+
+      await user.keyboard("{Home}");
+      expect(a).toHaveFocus();
+    });
+  });
+
+  describe("Trigger composes caller handlers (#135)", () => {
+    function renderWithTriggerProps(triggerProps: {
+      onClick?: (e: ReactMouseEvent<HTMLButtonElement>) => void;
+      onKeyDown?: (e: ReactKeyboardEvent<HTMLButtonElement>) => void;
+    }) {
+      return render(
+        <Accordion mode="multiple">
+          <Accordion.Item value="a">
+            <Accordion.Trigger {...triggerProps}>Section A</Accordion.Trigger>
+            <Accordion.Content>Content A</Accordion.Content>
+          </Accordion.Item>
+          <Accordion.Item value="b">
+            <Accordion.Trigger>Section B</Accordion.Trigger>
+            <Accordion.Content>Content B</Accordion.Content>
+          </Accordion.Item>
+        </Accordion>,
+      );
+    }
+
+    it("caller onClick fires exactly once and the toggle still runs", async () => {
+      const user = userEvent.setup();
+      const onClick = vi.fn();
+      renderWithTriggerProps({ onClick });
+
+      const trigger = screen.getByRole("button", { name: "Section A" });
+      await user.click(trigger);
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("caller onClick calling preventDefault suppresses the toggle", async () => {
+      const user = userEvent.setup();
+      const onClick = vi.fn((e: ReactMouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+      });
+      renderWithTriggerProps({ onClick });
+
+      const trigger = screen.getByRole("button", { name: "Section A" });
+      await user.click(trigger);
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(trigger).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("caller onKeyDown fires exactly once and roving focus still runs", async () => {
+      const user = userEvent.setup();
+      const onKeyDown = vi.fn();
+      renderWithTriggerProps({ onKeyDown });
+
+      const triggerA = screen.getByRole("button", { name: "Section A" });
+      const triggerB = screen.getByRole("button", { name: "Section B" });
+      triggerA.focus();
+
+      await user.keyboard("{ArrowDown}");
+
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+      expect(triggerB).toHaveFocus();
+    });
+
+    it("caller onKeyDown calling preventDefault suppresses roving focus", async () => {
+      const user = userEvent.setup();
+      const onKeyDown = vi.fn((e: ReactKeyboardEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+      });
+      renderWithTriggerProps({ onKeyDown });
+
+      const triggerA = screen.getByRole("button", { name: "Section A" });
+      triggerA.focus();
+
+      await user.keyboard("{ArrowDown}");
+
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+      expect(triggerA).toHaveFocus();
+    });
   });
 });

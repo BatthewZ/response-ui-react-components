@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 
+import { composeEventHandlers } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 
@@ -47,7 +48,7 @@ type CarouselProps = {
 } & Omit<ComponentPropsWithRef<"div">, "title">;
 
 const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel(
-  { title, className, children, ...props },
+  { title, className, children, onKeyDown, ...props },
   ref
 ) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -134,7 +135,7 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
         aria-label={titleId ? undefined : "Carousel"}
         aria-labelledby={titleId}
         tabIndex={0}
-        onKeyDown={handleKeyDown}
+        onKeyDown={composeEventHandlers(onKeyDown, handleKeyDown)}
         {...props}
       >
         {title && (

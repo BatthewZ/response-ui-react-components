@@ -210,4 +210,58 @@ describe("Carousel", () => {
     await user.keyboard("{ArrowLeft}");
     expect(scrollBySpy).toHaveBeenCalled();
   });
+
+  /* -- #425: the root must compose the caller's onKeyDown, not be replaced by it -- */
+
+  it("#425: a caller's onKeyDown on the root runs and still scrolls the rail", async () => {
+    const onKeyDown = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Carousel onKeyDown={onKeyDown}>
+        <Carousel.Track>
+          <Carousel.Item>Slide 1</Carousel.Item>
+          <Carousel.Item>Slide 2</Carousel.Item>
+        </Carousel.Track>
+      </Carousel>,
+    );
+
+    const track = screen.getByRole("region", { name: "Carousel items" });
+    const scrollBySpy = vi.fn();
+    track.scrollBy = scrollBySpy;
+
+    getCarouselRoot().focus();
+
+    await user.keyboard("{ArrowRight}");
+    expect(onKeyDown).toHaveBeenCalledTimes(1);
+    expect(scrollBySpy).toHaveBeenCalledTimes(1);
+    expect(scrollBySpy).toHaveBeenCalledWith(expect.objectContaining({ behavior: "smooth" }));
+
+    onKeyDown.mockClear();
+    scrollBySpy.mockClear();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(onKeyDown).toHaveBeenCalledTimes(1);
+    expect(scrollBySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("#425: a caller's onKeyDown may opt out of arrow scrolling with preventDefault", async () => {
+    const user = userEvent.setup();
+    render(
+      <Carousel onKeyDown={(e) => e.preventDefault()}>
+        <Carousel.Track>
+          <Carousel.Item>Slide 1</Carousel.Item>
+          <Carousel.Item>Slide 2</Carousel.Item>
+        </Carousel.Track>
+      </Carousel>,
+    );
+
+    const track = screen.getByRole("region", { name: "Carousel items" });
+    const scrollBySpy = vi.fn();
+    track.scrollBy = scrollBySpy;
+
+    getCarouselRoot().focus();
+    await user.keyboard("{ArrowRight}");
+
+    expect(scrollBySpy).not.toHaveBeenCalled();
+  });
 });

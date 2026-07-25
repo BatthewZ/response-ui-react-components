@@ -74,23 +74,43 @@ export function Tooltip({
   );
   /* eslint-enable react-hooks/refs */
 
+  const childProps = isValidElement(children)
+    ? (children.props as Record<string, unknown>)
+    : {};
+
+  // Hand the child's own props to floating-ui so it composes their handlers
+  // with its own; called bare it cannot see them, and `cloneElement` then
+  // overwrites every one.
+  const referenceProps = getReferenceProps(childProps);
+
+  // `aria-describedby` is a space-separated IDREF *list*. Overwriting it would
+  // silently delete whatever description the child already carried, so append
+  // the tooltip's id to it rather than replacing.
+  const describedBy =
+    [childProps["aria-describedby"] as string | undefined, open ? id : undefined]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
   return (
     <>
       {isValidElement(children) &&
         cloneElement(children, {
+          ...referenceProps,
           ref: mergedRef,
-          "aria-describedby": open ? id : undefined,
-          ...getReferenceProps(),
+          "aria-describedby": describedBy,
         } as Record<string, unknown>)}
       {isMounted && (
         <FloatingPortal>
           <div
             // eslint-disable-next-line react-hooks/refs -- refs.setFloating is a stable callback setter from floating-ui
             ref={refs.setFloating}
-            id={id}
             className="tooltip"
             style={{ ...floatingStyles, ...transitionStyles }}
             {...getFloatingProps()}
+            // After the spread on purpose: `getFloatingProps` supplies an `id`
+            // of its own, so setting ours above it left this panel with an id
+            // the trigger never pointed at.
+            id={id}
           >
             {content}
           </div>

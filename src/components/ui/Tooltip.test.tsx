@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { Tooltip } from "./Tooltip";
 
@@ -118,5 +118,40 @@ describe("Tooltip", () => {
     await user.hover(trigger);
     const tooltip = await screen.findByRole("tooltip");
     expect(trigger).toHaveAttribute("aria-describedby", tooltip.id);
+  });
+
+  it("keeps the child's own aria-describedby and composes its handlers", async () => {
+    const user = userEvent.setup();
+    const childFocus = vi.fn();
+
+    render(
+      <>
+        <span id="hint">Saves to your drafts</span>
+        <Tooltip content="Tooltip text" delay={0}>
+          <button aria-describedby="hint" onFocus={childFocus}>
+            Save
+          </button>
+        </Tooltip>
+      </>
+    );
+
+    const trigger = screen.getByRole("button", { name: "Save" });
+
+    // The child's own description must survive being wrapped.
+    expect(trigger.getAttribute("aria-describedby")).toContain("hint");
+
+    await user.tab();
+    expect(trigger).toHaveFocus();
+    // The child's own handler must still run — floating-ui's focus handler
+    // used to replace it outright.
+    expect(childFocus).toHaveBeenCalledTimes(1);
+
+    // Once open, the tooltip is described IN ADDITION TO the child's own hint.
+    const tip = await screen.findByRole("tooltip");
+    await waitFor(() => {
+      const described = trigger.getAttribute("aria-describedby") ?? "";
+      expect(described).toContain("hint");
+      expect(described.split(/\s+/)).toContain(tip.id);
+    });
   });
 });

@@ -129,4 +129,26 @@ describe("Popover", () => {
 
     expect(onOpenChange).toHaveBeenCalledWith(true);
   });
+
+  it("composes an asChild child's own onClick instead of replacing it", async () => {
+    const user = userEvent.setup();
+    const childClick = vi.fn();
+
+    render(
+      <Popover>
+        <Popover.Trigger asChild>
+          <button onClick={childClick}>Open</button>
+        </Popover.Trigger>
+        <Popover.Content>
+          <p>Popover body content</p>
+        </Popover.Content>
+      </Popover>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+
+    // Both must happen: the caller's handler AND the component's own behaviour.
+    expect(childClick).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Popover body content")).toBeInTheDocument();
+  });
 });

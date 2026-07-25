@@ -1,8 +1,32 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type {
+  ComponentPropsWithoutRef,
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+} from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Table } from "./Table";
+
+type HeaderCellProps = ComponentPropsWithoutRef<typeof Table.HeaderCell>;
+
+function renderSortableTable(headerCellProps: HeaderCellProps) {
+  return render(
+    <Table>
+      <Table.Head>
+        <Table.Row>
+          <Table.HeaderCell {...headerCellProps}>Name</Table.HeaderCell>
+        </Table.Row>
+      </Table.Head>
+      <Table.Body>
+        <Table.Row>
+          <Table.Cell>Cell</Table.Cell>
+        </Table.Row>
+      </Table.Body>
+    </Table>,
+  );
+}
 
 describe("Table", () => {
   it("renders a <table> element", () => {
@@ -242,5 +266,111 @@ describe("Table", () => {
     const wrapper = container.firstElementChild;
     expect(wrapper).toHaveClass("table-wrapper");
     expect(wrapper).toHaveClass("custom-class");
+  });
+
+  describe("HeaderCell keyboard sorting", () => {
+    it("Enter on a sortable header fires onSort exactly once", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      renderSortableTable({ onSort });
+
+      screen.getByRole("columnheader").focus();
+      await user.keyboard("{Enter}");
+
+      expect(onSort).toHaveBeenCalledTimes(1);
+    });
+
+    it("Space on a sortable header fires onSort exactly once", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      renderSortableTable({ onSort });
+
+      screen.getByRole("columnheader").focus();
+      await user.keyboard(" ");
+
+      expect(onSort).toHaveBeenCalledTimes(1);
+    });
+
+    it("a non-sort key does not fire onSort", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      renderSortableTable({ onSort });
+
+      screen.getByRole("columnheader").focus();
+      await user.keyboard("{ArrowDown}");
+
+      expect(onSort).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("HeaderCell composes caller handlers (#350)", () => {
+    it("caller onClick fires exactly once and onSort still runs", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      const onClick = vi.fn();
+      renderSortableTable({ onSort, onClick });
+
+      await user.click(screen.getByRole("columnheader"));
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onSort).toHaveBeenCalledTimes(1);
+    });
+
+    it("caller onKeyDown fires exactly once and Enter still runs onSort", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      const onKeyDown = vi.fn();
+      renderSortableTable({ onSort, onKeyDown });
+
+      screen.getByRole("columnheader").focus();
+      await user.keyboard("{Enter}");
+
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+      expect(onSort).toHaveBeenCalledTimes(1);
+    });
+
+    it("caller onClick calling preventDefault suppresses onSort", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      const onClick = vi.fn((e: ReactMouseEvent<HTMLTableCellElement>) => {
+        e.preventDefault();
+      });
+      renderSortableTable({ onSort, onClick });
+
+      await user.click(screen.getByRole("columnheader"));
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onSort).not.toHaveBeenCalled();
+    });
+
+    it("caller onKeyDown calling preventDefault suppresses onSort", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      const onKeyDown = vi.fn((e: ReactKeyboardEvent<HTMLTableCellElement>) => {
+        e.preventDefault();
+      });
+      renderSortableTable({ onSort, onKeyDown });
+
+      screen.getByRole("columnheader").focus();
+      await user.keyboard("{Enter}");
+
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+      expect(onSort).not.toHaveBeenCalled();
+    });
+
+    it("a non-sortable header still runs the caller's handlers", async () => {
+      const user = userEvent.setup();
+      const onClick = vi.fn();
+      const onKeyDown = vi.fn();
+      renderSortableTable({ onClick, onKeyDown, tabIndex: 0 });
+
+      const header = screen.getByRole("columnheader");
+      await user.click(header);
+      expect(onClick).toHaveBeenCalledTimes(1);
+
+      header.focus();
+      await user.keyboard("{Enter}");
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+    });
   });
 });

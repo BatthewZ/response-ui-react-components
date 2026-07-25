@@ -114,7 +114,8 @@ sitting on an element with no role. `asChild` also needs exactly one **element**
 or more than one child falls back to the `<span>` wrapper silently, and a fragment is worse —
 it is a valid element, so the props are cloned onto the fragment, React logs *"Invalid prop
 supplied to React.Fragment"*, and nothing is registered as the anchor, so hover never opens the
-card at all. `asChild` also overwrites some of the child's own props — see [Gotchas](#gotchas).
+card at all. `asChild` merges the trigger wiring into the child rather than overwriting it —
+see [Gotchas](#gotchas).
 
 ## The two delays
 
@@ -219,13 +220,12 @@ colour on the card itself with `className`. See the [theme contract](../theme-co
 
 ## Gotchas
 
-- **`asChild` silently overwrites props on your child.** The child is cloned with the trigger's
-  props on top, and its own props are never merged in first. So a child's `ref`, and its
-  `onFocus`, `onBlur`, `onKeyDown`, `onPointerDown`, `onPointerEnter`, `onMouseMove` and
-  `onMouseLeave` handlers, are dropped without warning: wrap a `<button ref={btnRef}
-  onFocus={track}>` in an `asChild` trigger and `btnRef.current` stays null and `track` is
-  never called. `onClick` and `className` do survive (`className` is merged through `cn()`).
-  Put those handlers and the ref on `HoverCard.Trigger` itself, where they are merged properly.
+- **`asChild` merges your child's props rather than overwriting them.** The child is cloned
+  through `mergeProps`, so its own handlers **compose** with the trigger's (yours runs first,
+  and can opt out with `preventDefault()`), its `ref` is merged, its `className` merges through
+  `cn()`, and its `style` merges by key. Wrap a `<button ref={btnRef} onFocus={track}>` in an
+  `asChild` trigger and both `btnRef.current` and `track` work. (Before this was fixed the
+  clone dropped the ref and seven handlers without warning.)
 - **Escape closes it, and the next twitch of the mouse reopens it.** Dismissal is a
   document-level keydown, so Escape works from anywhere while the card is open — but the
   pointer is still on the trigger, and any pointer movement over it re-opens the card after

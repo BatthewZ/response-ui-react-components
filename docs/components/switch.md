@@ -32,7 +32,8 @@ submits later with a form.
 `onChange` is removed outright, because the change channel is `onCheckedChange`. `disabled`
 and `onClick` are pulled out and applied to the `<button>` explicitly — `onClick` wrapped, see
 [Vetoing a toggle](#vetoing-a-toggle) — and everything left over (`id`, `aria-*`, `data-*`,
-`form`, `tabIndex`, …) spreads onto the button **last**, after the component's own attributes.
+`form`, `tabIndex`, …) spreads onto the button before the attributes that report the switch's
+own state (`role`, `aria-checked`, `data-state`, `data-size`), which therefore win.
 Switch renders no text of its own, so its accessible name is entirely yours to supply. See
 [Gotchas](#gotchas).
 
@@ -245,10 +246,13 @@ the page. See [Accessibility](#accessibility) — that has measurable consequenc
   as does anything else `.switch` sets (`display`, `width`, `height`, `padding`,
   `border-radius`, `background-color`, `cursor`, `transition`). Use Tailwind's important
   modifier (`bg-red-500!`), your own unlayered rule, or restyle `.switch` directly.
-- **Rest props spread last and can break the semantics.** `role`, `type`, `aria-checked`,
-  `data-state`, and `data-size` are all set before `{...props}`, so any of them can be
-  overridden from the call site. `aria-checked` is the dangerous one — pass it yourself and
-  assistive tech reports a state that has nothing to do with the thumb.
+- **The switch's own state attributes can no longer be overridden.** `role`, `aria-checked`,
+  `data-state` and `data-size` are derived from `checked`/`size` and are now written *after*
+  `{...props}`, so passing your own is ignored rather than making assistive tech report a state
+  that has nothing to do with the thumb. `type` is still yours to set, since form participation
+  is the author's call. Error wiring from a surrounding [Field](field.md) is *merged* rather
+  than ordered: the component wins when it has an opinion, and your `aria-describedby` /
+  `aria-invalid` survive when it does not.
 - **The error outline survives focus.** `.switch[aria-invalid="true"]` and
   `.switch:focus-visible` both set `outline` at identical specificity, so the later-declared
   focus rule used to win and blank the error tint exactly while the user was on the control.

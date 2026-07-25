@@ -107,4 +107,63 @@ describe("Switch", () => {
     render(<Switch aria-label="Toggle" error />);
     expect(screen.getByRole("switch")).toHaveAttribute("aria-invalid", "true");
   });
+
+  describe("caller-supplied props", () => {
+    it("reports its own state when the caller passes aria-checked", async () => {
+      const user = userEvent.setup();
+      const onCheckedChange = vi.fn();
+      render(<Switch aria-label="Toggle" aria-checked onCheckedChange={onCheckedChange} />);
+
+      const sw = screen.getByRole("switch", { checked: false });
+      expect(sw).toHaveAttribute("aria-checked", "false");
+
+      await user.click(sw);
+
+      expect(screen.getByRole("switch", { checked: true })).toBe(sw);
+      expect(onCheckedChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps role=switch when the caller passes another role", () => {
+      render(<Switch aria-label="Toggle" role="button" />);
+      expect(screen.getByRole("switch")).toBeInTheDocument();
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it("keeps data-state in sync with the thumb when the caller passes one", async () => {
+      const user = userEvent.setup();
+      render(<Switch aria-label="Toggle" data-state="checked" />);
+
+      const sw = screen.getByRole("switch");
+      expect(sw).toHaveAttribute("data-state", "unchecked");
+
+      await user.click(sw);
+      expect(sw).toHaveAttribute("data-state", "checked");
+    });
+
+    it("keeps data-size derived from the size prop", () => {
+      render(<Switch aria-label="Toggle" size="sm" data-size="md" />);
+      expect(screen.getByRole("switch")).toHaveAttribute("data-size", "sm");
+    });
+
+    it("wins on aria-invalid when in error, without dropping the caller's aria-describedby", () => {
+      render(<Switch aria-label="Toggle" error aria-invalid="false" aria-describedby="hint" />);
+
+      const sw = screen.getByRole("switch");
+      expect(sw).toHaveAttribute("aria-invalid", "true");
+      expect(sw).toHaveAttribute("aria-describedby", "hint");
+    });
+
+    it("keeps the caller's aria-describedby when it has no error of its own", () => {
+      render(<Switch aria-label="Toggle" aria-describedby="hint" />);
+
+      const sw = screen.getByRole("switch");
+      expect(sw).toHaveAttribute("aria-describedby", "hint");
+      expect(sw).not.toHaveAttribute("aria-invalid");
+    });
+
+    it("still lets the caller override type", () => {
+      render(<Switch aria-label="Toggle" type="submit" />);
+      expect(screen.getByRole("switch")).toHaveAttribute("type", "submit");
+    });
+  });
 });

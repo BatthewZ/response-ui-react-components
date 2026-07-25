@@ -336,11 +336,12 @@ Three things are **not** on the contract, and are worth knowing before you theme
 - **`stickyHeader` does nothing until the wrapper has a height.** The sticky offset is
   measured against the wrapper's own scrollport, and the wrapper is content-height by
   default. Pass a `max-h-*` or a `style={{ maxHeight: … }}` alongside it.
-- **An `onClick` on `Table.HeaderCell` replaces the sort click.** Rest props are spread
-  after the internal `onClick={onSort}`, so your handler wins for pointer clicks and
-  `onSort` is never called — while Enter and Space still call `onSort`, because the key
-  handler is a separate prop. The same shadowing applies to `onKeyDown`, `tabIndex` and
-  `aria-sort`. Put the extra work inside `onSort`.
+- **An `onClick` on `Table.HeaderCell` composes with the sort click.** Your handler runs
+  first, then `onSort` — on the pointer path and the Enter/Space path alike, which previously
+  diverged (your handler replaced `onSort` for clicks while keys still sorted). `onKeyDown`
+  composes too; `preventDefault()` is the opt-out. **`tabIndex` and `aria-sort` are still
+  shadowed** by a rest prop of the same name, so passing those still overrides what the cell
+  computed.
 - **`sortDirection` without `onSort` announces a sort it does not show.** The cell still
   gets `aria-sort="ascending"`, but with no `onSort` there is no arrow, no focusability and
   no sortable styling — screen-reader users hear the state and sighted users see nothing.

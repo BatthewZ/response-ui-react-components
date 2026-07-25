@@ -147,11 +147,10 @@ nesting a button inside a button.
 ```
 <!-- /example -->
 
-`asChild` **overwrites** the colliding props on your child rather than merging them, and drops
-the child's `ref`. What collides is whatever *this* component's Floating UI hooks emit — for
-`DropdownMenu` that is `onClick`, `onFocus`, `onKeyDown`, `onPointerDown`, `onPointerEnter` and
-`onMouseDown`. Put handlers and the ref on `DropdownMenu.Trigger` itself, where they *are*
-merged. See [Gotchas](#gotchas).
+`asChild` **merges** the trigger wiring into your child rather than overwriting it. Colliding
+event handlers compose — the child's runs first and may `preventDefault()` to skip the menu's —
+and the child's `ref`, `className` and `style` are merged rather than replaced. Putting handlers
+and the ref on `DropdownMenu.Trigger` itself is equivalent. See [Gotchas](#gotchas).
 
 ## Placement
 
@@ -248,19 +247,15 @@ deliberately reuses it — restyle these classes and both components move togeth
 - **A disabled item still fires your `onClick`.** `disabled` guards the `onSelect` path only.
   An `onClick` passed straight to the `Item` runs on every click, disabled or not — there is no
   native `disabled` attribute to stop it. (The menu correctly stays open.) Prefer `onSelect`.
-- **`asChild` drops the child's own event handlers and its `ref`.** The trigger wiring is cloned
-  onto your element and overwrites any prop of the same name. The lost set is not a fixed list
-  across the library — it is whatever that component's Floating UI hooks emit, and
-  `DropdownMenu` runs `useClick`, `useDismiss`, `useRole`, `useListNavigation` and
-  `useTypeahead`, so the child loses `onClick`, `onFocus`, `onKeyDown`, `onPointerDown`,
-  `onPointerEnter` and `onMouseDown`. Put an analytics `onClick` on the button inside `asChild`
-  and the menu opens but the handler never runs. The child's `ref` goes the same way: only
-  `DropdownMenu.Trigger`'s own forwarded ref is merged onto the element, so a
-  `<Button ref={btnRef}>` inside `asChild` leaves `btnRef.current` null. ([Tooltip](tooltip.md) is the one
-  component here that merges the child's ref instead of replacing it; `DropdownMenu`, [Popover](popover.md)
-  and [HoverCard](hover-card.md) all drop it.) Props that don't collide survive (`className` is merged; `data-*`
-  passes through). Move handlers and refs onto `DropdownMenu.Trigger`, where they *are* merged
-  with the menu's own.
+- **`asChild` keeps the child's own event handlers and its `ref`.** The trigger wiring is cloned
+  onto your element through `mergeProps`, so a colliding handler composes instead of being
+  replaced: put an analytics `onClick` on the button inside `asChild` and both the handler and
+  the menu run, the child's first. `preventDefault()` in your handler is the opt-out. The
+  child's `ref` is merged with `DropdownMenu.Trigger`'s own forwarded ref, so a
+  `<Button ref={btnRef}>` inside `asChild` populates `btnRef.current`. `className` merges through
+  `cn()`, `style` merges by key, and `data-*` passes through. ARIA the trigger owns
+  (`aria-expanded`, `aria-haspopup`, `aria-controls`) still wins, because it reports state the
+  child cannot know.
 - **The trigger has no `type`, so it submits an enclosing form.** A bare `<button>` defaults to
   `type="submit"`: a `DropdownMenu` inside a `<form>` both opens the menu *and* submits the form
   when the trigger is clicked or activated with Enter. Pass `type="button"` on the trigger every

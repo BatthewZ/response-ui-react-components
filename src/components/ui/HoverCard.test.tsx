@@ -118,4 +118,22 @@ describe("HoverCard", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(trigger).toHaveAttribute("aria-controls");
   });
+
+  it("composes an asChild child's own onPointerEnter instead of replacing it", async () => {
+    const user = userEvent.setup();
+    const childEnter = vi.fn();
+
+    render(
+      <HoverCard>
+        <HoverCard.Trigger asChild>
+          <button onPointerEnter={childEnter}>@octocat</button>
+        </HoverCard.Trigger>
+        <HoverCard.Content>Card body</HoverCard.Content>
+      </HoverCard>
+    );
+
+    await user.hover(screen.getByRole("button", { name: "@octocat" }));
+
+    expect(childEnter).toHaveBeenCalledTimes(1);
+  });
 });

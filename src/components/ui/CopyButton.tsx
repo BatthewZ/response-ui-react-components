@@ -52,9 +52,9 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(functio
       ref={ref}
       type="button"
       aria-label={label}
+      {...props}
       data-copied={copied || undefined}
       onClick={handleClick}
-      {...props}
     >
       {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
       <span className="sr-only" aria-live="polite">

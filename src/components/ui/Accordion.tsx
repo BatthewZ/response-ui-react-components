@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 
+import { composeEventHandlers } from "../../util/merge-props";
 import { cn } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
@@ -152,7 +153,7 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(function Ac
 type AccordionTriggerProps = ComponentPropsWithRef<"button">;
 
 const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
-  function AccordionTrigger({ className, children, ...props }, ref) {
+  function AccordionTrigger({ className, children, onClick, onKeyDown, ...props }, ref) {
     const { toggle } = useAccordionContext();
     const { value, isOpen, disabled, triggerId, contentId } = useItemContext();
 
@@ -204,8 +205,8 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
         aria-controls={contentId}
         disabled={disabled}
         className={cn("accordion-trigger", className)}
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
+        onClick={composeEventHandlers(onClick, handleClick)}
+        onKeyDown={composeEventHandlers(onKeyDown, handleKeyDown)}
         {...props}
       >
         <span className="accordion-trigger-text">{children}</span>

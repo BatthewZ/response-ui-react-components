@@ -125,4 +125,25 @@ describe("DropdownMenu", () => {
 
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
+
+  it("composes an asChild child's own onClick instead of replacing it", async () => {
+    const user = userEvent.setup();
+    const childClick = vi.fn();
+
+    render(
+      <DropdownMenu>
+        <DropdownMenu.Trigger asChild>
+          <button onClick={childClick}>Actions</button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content>
+          <DropdownMenu.Item index={0}>Rename</DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Actions" }));
+
+    expect(childClick).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("menuitem", { name: "Rename" })).toBeInTheDocument();
+  });
 });

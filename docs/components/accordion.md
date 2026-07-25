@@ -215,10 +215,11 @@ onto whatever surface it is dropped onto.
 
 ## Gotchas
 
-- **Your `onClick` on a `Trigger` replaces the toggle.** `Accordion.Trigger` spreads
-  `...props` *after* its own `onClick` and `onKeyDown`, so `<Accordion.Trigger onClick={…}>`
-  wins outright and the section stops opening; passing `onKeyDown` kills arrow-key
-  navigation the same way. (`Collapsible.Trigger` composes the two — Accordion does not.)
+- **Your `onClick` on a `Trigger` composes with the toggle.** `Accordion.Trigger` runs your
+  handler first and then its own, so `<Accordion.Trigger onClick={…}>` fires *and* the section
+  still opens; `onKeyDown` composes the same way, leaving arrow-key navigation intact. Call
+  `preventDefault()` in your handler to suppress the component's behaviour. (Before this was
+  fixed, `...props` was spread after both handlers and yours won outright.)
   Put side effects on `onValueChange`, or on `Accordion.Item`, which has no handler of its
   own for a click to collide with.
 - **Closed panels stay in the DOM, in the tab order, and in the accessibility tree.**

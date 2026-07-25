@@ -118,8 +118,9 @@ Same contract either way: override these and Tabs re-tints with the rest of the 
   appears. The `value` strings are the contract; nothing type-checks that they pair up.
 - **`Tabs` omits the native `defaultValue`** from its `div` props, so the prop always
   means the tab value.
-- **Panels mount eagerly.** Every `Tabs.Panel` child renders even when hidden — expensive
-  panels should lazy-load their own contents.
+- **Panels do not mount eagerly.** A `Tabs.Panel` renders only while it is active or animating
+  out; otherwise it returns `null`. So panel state is discarded when you switch away — hoist
+  anything that must survive a tab change, and expect a panel's effects to re-run on return.
 
 ## Accessibility
 

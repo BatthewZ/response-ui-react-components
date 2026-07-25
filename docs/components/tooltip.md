@@ -201,18 +201,15 @@ knowing — see [Gotchas](#gotchas).
 
 ## Gotchas
 
-- **The clone silently replaces seven of the child's event handlers.** Tooltip builds its
-  trigger with `cloneElement(children, {…getReferenceProps()})` rather than merging your props
-  through `getReferenceProps(children.props)`, so `onFocus`, `onBlur`, `onKeyDown`,
-  `onPointerDown`, `onPointerEnter`, `onMouseMove` and `onMouseLeave` on the child are
-  overwritten and **never fire**. `onClick`, `onMouseEnter` and your `ref` survive. Nothing
-  warns, and the types say it all works. Put the affected handlers on a wrapper element, not
-  on the trigger.
-- **It also erases the child's `aria-describedby`.** Wrap a control that already points at a
-  hint — `<Input aria-describedby="password-rules">` — and that association is gone: the
-  attribute is absent while the tooltip is closed and points at the tooltip while it is open.
-  The hint stops being announced. Don't put a Tooltip on a control that already has a
-  description.
+- **The child's own event handlers are composed, not replaced.** Tooltip passes your props
+  through `getReferenceProps(children.props)` before cloning, so `onFocus`, `onBlur`,
+  `onKeyDown`, `onPointerDown`, `onPointerEnter`, `onMouseMove` and `onMouseLeave` on the child
+  all still fire alongside the tooltip's own. Your `ref` is merged too. (Before this was fixed
+  those seven were overwritten and never fired, while the types said it all worked.)
+- **The child's `aria-describedby` is preserved.** `aria-describedby` is a space-separated
+  IDREF *list*, so wrapping a control that already points at a hint —
+  `<Input aria-describedby="password-rules">` — keeps that association and **appends** the
+  tooltip's id while it is open. The hint is still announced.
 - **A trigger that ignores its props disables the whole thing, silently.** The clone hands
   down a `ref` and a set of handlers; a custom component that renders `<span>{children}</span>`
   without spreading them receives them and drops them, and the tooltip then never opens — no

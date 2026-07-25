@@ -2,6 +2,7 @@
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
+import { mergeProps } from "../../util/merge-props";
 import { cn } from "../../util/style";
 
 import { useFieldErrorProps } from "./Field";
@@ -45,19 +46,18 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
       <button
         ref={ref}
         type="button"
+        {...mergeProps(props, fieldErrorProps)}
         role="switch"
         aria-checked={isChecked}
         data-state={isChecked ? "checked" : "unchecked"}
         data-size={size}
         disabled={disabled}
-        {...fieldErrorProps}
         onClick={(event) => {
           onClick?.(event);
           if (event.defaultPrevented) return;
           setChecked((prev) => !prev);
         }}
         className={cn("switch", className)}
-        {...props}
       >
         <span className="switch-thumb" />
       </button>

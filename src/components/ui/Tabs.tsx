@@ -15,6 +15,7 @@ import {
 } from "react";
 
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
+import { composeEventHandlers } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 
@@ -227,7 +228,7 @@ type TabsTabProps = {
 } & Omit<ComponentPropsWithRef<"button">, "value">;
 
 const TabsTab = forwardRef<HTMLButtonElement, TabsTabProps>(function TabsTab(
-  { value, disabled = false, className, ...props },
+  { value, disabled = false, className, onClick, onKeyDown, ...props },
   ref
 ) {
   const { activeValue, onValueChange, baseId } = useTabsContext();
@@ -290,8 +291,8 @@ const TabsTab = forwardRef<HTMLButtonElement, TabsTabProps>(function TabsTab(
       tabIndex={isSelected ? 0 : -1}
       disabled={disabled}
       className={cn("tabs-tab", className)}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
+      onClick={composeEventHandlers(onClick, handleClick)}
+      onKeyDown={composeEventHandlers(onKeyDown, handleKeyDown)}
       {...props}
     />
   );
@@ -306,7 +307,7 @@ type TabsPanelProps = {
 } & Omit<ComponentPropsWithRef<"div">, "value">;
 
 const TabsPanel = forwardRef<HTMLDivElement, TabsPanelProps>(function TabsPanel(
-  { value, className, children, ...props },
+  { value, className, children, onAnimationEnd, ...props },
   ref
 ) {
   const { activeValue, baseId, exitingValue, onExitComplete } = useTabsContext();
@@ -325,7 +326,7 @@ const TabsPanel = forwardRef<HTMLDivElement, TabsPanelProps>(function TabsPanel(
       ? "fade-out"
       : "fade-in";
 
-  function handleAnimationEnd(e: AnimationEvent) {
+  function handleAnimationEnd(e: AnimationEvent<HTMLDivElement>) {
     // Ignore bubbled animation events from children
     if (e.target !== e.currentTarget) return;
     if (isExiting) {
@@ -341,7 +342,11 @@ const TabsPanel = forwardRef<HTMLDivElement, TabsPanelProps>(function TabsPanel(
       aria-labelledby={`${baseId}-tab-${value}`}
       tabIndex={0}
       className={cn(animClass, "tabs-panel", className)}
-      onAnimationEnd={handleAnimationEnd}
+      // `animationend` is not cancelable, so a caller's `preventDefault()` must not
+      // be read as an opt-out — that would strand the exiting panel forever.
+      onAnimationEnd={composeEventHandlers(onAnimationEnd, handleAnimationEnd, {
+        checkDefaultPrevented: false,
+      })}
       {...props}
     >
       {children}

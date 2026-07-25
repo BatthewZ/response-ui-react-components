@@ -1,12 +1,29 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Tabs } from "./Tabs";
 
+// Defaults to reduced motion for every test — the panel exit animation is opt-in
+// per test via `motion.reduced = false`.
+const motion = vi.hoisted(() => ({ reduced: true }));
+
 vi.mock("../../hooks/use-reduced-motion", () => ({
-  usePrefersReducedMotion: () => true,
+  usePrefersReducedMotion: () => motion.reduced,
 }));
+
+afterEach(() => {
+  motion.reduced = true;
+});
+
+// jsdom has no `AnimationEvent` constructor, so `fireEvent.animationEnd` dispatches
+// something React never sees; React also picks exactly one of these two names via
+// vendor-prefix detection. Dispatching both fires the handler exactly once anywhere.
+function fireAnimationEnd(el: Element) {
+  for (const name of ["animationend", "webkitAnimationEnd"]) {
+    fireEvent(el, new Event(name, { bubbles: true }));
+  }
+}
 
 beforeAll(() => {
   if (typeof globalThis.ResizeObserver === "undefined") {
@@ -254,5 +271,153 @@ describe("Tabs", () => {
 
     expect(screen.getByRole("tab", { name: "Tab Three" })).toHaveFocus();
     expect(screen.getByRole("tab", { name: "Tab Three" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  /* -- #423: Tab must compose the caller's handlers, not be replaced by them -- */
+
+  it("#423: a caller's onClick on Tabs.Tab runs and still selects the tab", async () => {
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Tab value="one">Tab One</Tabs.Tab>
+          <Tabs.Tab value="two" onClick={onClick}>Tab Two</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="one">Panel One Content</Tabs.Panel>
+        <Tabs.Panel value="two">Panel Two Content</Tabs.Panel>
+      </Tabs>,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Tab Two" }));
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("tab", { name: "Tab Two" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Panel Two Content")).toBeInTheDocument();
+  });
+
+  it("#423: a caller's onClick on Tabs.Tab runs and still selects when activated with Enter", async () => {
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Tab value="one">Tab One</Tabs.Tab>
+          <Tabs.Tab value="two" onClick={onClick}>Tab Two</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="one">Panel One Content</Tabs.Panel>
+        <Tabs.Panel value="two">Panel Two Content</Tabs.Panel>
+      </Tabs>,
+    );
+
+    screen.getByRole("tab", { name: "Tab Two" }).focus();
+    await user.keyboard("{Enter}");
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("tab", { name: "Tab Two" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Panel Two Content")).toBeInTheDocument();
+  });
+
+  it("#423: a caller's onKeyDown on Tabs.Tab runs and still leaves arrow-key roving working", async () => {
+    const onKeyDown = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Tab value="one" onKeyDown={onKeyDown}>Tab One</Tabs.Tab>
+          <Tabs.Tab value="two">Tab Two</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="one">Panel One Content</Tabs.Panel>
+        <Tabs.Panel value="two">Panel Two Content</Tabs.Panel>
+      </Tabs>,
+    );
+
+    screen.getByRole("tab", { name: "Tab One" }).focus();
+    await user.keyboard("{ArrowRight}");
+
+    expect(onKeyDown).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("tab", { name: "Tab Two" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Tab Two" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Panel Two Content")).toBeInTheDocument();
+  });
+
+  it("#423: a caller's onKeyDown may opt out of roving with preventDefault", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Tab value="one" onKeyDown={(e) => e.preventDefault()}>Tab One</Tabs.Tab>
+          <Tabs.Tab value="two">Tab Two</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="one">Panel One Content</Tabs.Panel>
+        <Tabs.Panel value="two">Panel Two Content</Tabs.Panel>
+      </Tabs>,
+    );
+
+    screen.getByRole("tab", { name: "Tab One" }).focus();
+    await user.keyboard("{ArrowRight}");
+
+    expect(screen.getByRole("tab", { name: "Tab One" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Tab One" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  /* -- #424: Panel must compose the caller's onAnimationEnd, not be replaced by it -- */
+
+  it("#424: a caller's onAnimationEnd on Tabs.Panel runs and still completes the exit", async () => {
+    motion.reduced = false;
+    const onAnimationEnd = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Tab value="one">Tab One</Tabs.Tab>
+          <Tabs.Tab value="two">Tab Two</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="one" onAnimationEnd={onAnimationEnd}>Panel One Content</Tabs.Panel>
+        <Tabs.Panel value="two">Panel Two Content</Tabs.Panel>
+      </Tabs>,
+    );
+
+    const exitingPanel = screen.getByText("Panel One Content");
+
+    await user.click(screen.getByRole("tab", { name: "Tab Two" }));
+    expect(exitingPanel).toHaveClass("fade-out");
+    expect(screen.queryByText("Panel Two Content")).not.toBeInTheDocument();
+
+    fireAnimationEnd(exitingPanel);
+
+    expect(onAnimationEnd).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Panel Two Content")).toBeInTheDocument();
+    expect(screen.queryByText("Panel One Content")).not.toBeInTheDocument();
+  });
+
+  it("#424: preventDefault on the uncancelable animationend does not strand the exiting panel", async () => {
+    motion.reduced = false;
+    const onAnimationEnd = vi.fn((e: { preventDefault: () => void }) => e.preventDefault());
+    const user = userEvent.setup();
+
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Tab value="one">Tab One</Tabs.Tab>
+          <Tabs.Tab value="two">Tab Two</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="one" onAnimationEnd={onAnimationEnd}>Panel One Content</Tabs.Panel>
+        <Tabs.Panel value="two">Panel Two Content</Tabs.Panel>
+      </Tabs>,
+    );
+
+    const exitingPanel = screen.getByText("Panel One Content");
+
+    await user.click(screen.getByRole("tab", { name: "Tab Two" }));
+    fireAnimationEnd(exitingPanel);
+
+    expect(onAnimationEnd).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Panel Two Content")).toBeInTheDocument();
   });
 });
