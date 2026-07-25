@@ -91,6 +91,67 @@ describe("RangeCalendar", () => {
     expect(day(new Date(2026, 5, 12))).toHaveAttribute("data-preview");
   });
 
+  it("clears the hover preview when the pointer leaves the calendar", async () => {
+    const user = userEvent.setup();
+    render(<RangeCalendar defaultMonth={JUNE_2026} numberOfMonths={1} />);
+
+    await user.click(day(new Date(2026, 5, 10)));
+    await user.hover(day(new Date(2026, 5, 14)));
+    expect(document.querySelectorAll("[data-preview]")).toHaveLength(4);
+
+    await user.unhover(day(new Date(2026, 5, 14)));
+    expect(document.querySelectorAll("[data-preview]")).toHaveLength(0);
+  });
+
+  it("clears the hover preview on leave even when the caller passes onPointerLeave", async () => {
+    const user = userEvent.setup();
+    const onPointerLeave = vi.fn();
+    render(
+      <RangeCalendar
+        defaultMonth={JUNE_2026}
+        numberOfMonths={1}
+        onPointerLeave={onPointerLeave}
+      />,
+    );
+
+    await user.click(day(new Date(2026, 5, 10)));
+    await user.hover(day(new Date(2026, 5, 14)));
+    expect(document.querySelectorAll("[data-preview]")).toHaveLength(4);
+
+    // jsdom's synthetic pointerout carries no relatedTarget, so React cannot stop the
+    // leave chain at the common ancestor and day-to-day moves also reach the root.
+    // Count only the decisive leave, out of the calendar.
+    onPointerLeave.mockClear();
+    await user.unhover(day(new Date(2026, 5, 14)));
+    expect(document.querySelectorAll("[data-preview]")).toHaveLength(0);
+    expect(onPointerLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears a keyboard-built preview on leave even when the caller passes onPointerLeave", async () => {
+    const user = userEvent.setup();
+    const onPointerLeave = vi.fn();
+    render(
+      <RangeCalendar
+        defaultMonth={JUNE_2026}
+        numberOfMonths={1}
+        onPointerLeave={onPointerLeave}
+      />,
+    );
+
+    // Build the preview from the keyboard: Enter on a day button starts the range,
+    // then Arrow keys move the roving focus and extend the preview.
+    day(new Date(2026, 5, 15)).focus();
+    await user.keyboard("{Enter}");
+    await user.hover(day(new Date(2026, 5, 15)));
+    await user.keyboard("{ArrowRight}{ArrowRight}");
+    expect(document.querySelectorAll("[data-preview]")).toHaveLength(2);
+
+    onPointerLeave.mockClear();
+    await user.unhover(day(new Date(2026, 5, 17)));
+    expect(document.querySelectorAll("[data-preview]")).toHaveLength(0);
+    expect(onPointerLeave).toHaveBeenCalledTimes(1);
+  });
+
   it("renders a controlled range", () => {
     render(
       <RangeCalendar

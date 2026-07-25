@@ -316,6 +316,10 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
     success,
     uploading = false,
     className,
+    onClick,
+    onKeyDown,
+    onDragOver,
+    onDragLeave,
     ...props
   },
   ref,
@@ -468,10 +472,22 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
         disabled && "file-upload--disabled",
         className,
       )}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
+      onClick={(e) => {
+        onClick?.(e);
+        if (!e.defaultPrevented) handleClick();
+      }}
+      onKeyDown={(e) => {
+        onKeyDown?.(e);
+        if (!e.defaultPrevented) handleKeyDown(e);
+      }}
+      onDragOver={(e) => {
+        onDragOver?.(e);
+        if (!e.defaultPrevented) handleDragOver(e);
+      }}
+      onDragLeave={(e) => {
+        onDragLeave?.(e);
+        if (!e.defaultPrevented) handleDragLeave(e);
+      }}
       onDrop={handleDrop}
       {...props}
     >
@@ -587,6 +603,8 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
         multiple={multiple}
         disabled={disabled || uploading}
         onChange={handleInputChange}
+        // Programmatic click() bubbles back to the dropzone and re-enters its handlers.
+        onClick={(e) => e.stopPropagation()}
         className="sr-only"
         tabIndex={-1}
         aria-hidden="true"

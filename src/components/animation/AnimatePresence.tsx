@@ -1,5 +1,11 @@
 "use client";
-import { type ComponentPropsWithRef, forwardRef, type ReactNode, useState } from "react";
+import {
+  type AnimationEvent,
+  type ComponentPropsWithRef,
+  forwardRef,
+  type ReactNode,
+  useState,
+} from "react";
 
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { cn } from "../../util/style";
@@ -13,7 +19,15 @@ type AnimatePresenceProps = {
 
 export const AnimatePresence = forwardRef<HTMLDivElement, AnimatePresenceProps>(
   function AnimatePresence(
-    { show, enterClass = "fade-in", exitClass = "fade-out", className, children, ...rest },
+    {
+      show,
+      enterClass = "fade-in",
+      exitClass = "fade-out",
+      className,
+      children,
+      onAnimationEnd,
+      ...rest
+    },
     ref
   ) {
     const [mounted, setMounted] = useState(show);
@@ -37,7 +51,8 @@ export const AnimatePresence = forwardRef<HTMLDivElement, AnimatePresenceProps>(
       }
     }
 
-    function handleAnimationEnd() {
+    function handleAnimationEnd(e: AnimationEvent<HTMLDivElement>) {
+      onAnimationEnd?.(e);
       if (phase === "exit" && !show) {
         setMounted(false);
         setPhase(null);

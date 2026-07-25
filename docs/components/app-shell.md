@@ -340,11 +340,12 @@ follow.
   `click` — a separate, later event — flips it straight back open. Measured: after the
   second tap the drawer is still mounted and `onOpenChange` has been called `false` then
   `true`. `Escape` and a tap on the scrim both close it correctly; the button does not.
-- **`AppShell.Toggle` lets you delete its behaviour with `onClick`.** Only `type` is
-  `Omit`ted from its props, and `{...props}` is spread *after* `onClick={handleClick}`, so
-  `<AppShell.Toggle onClick={track}>` typechecks and then replaces the handler outright —
-  measured: your callback runs, the drawer never opens. Put analytics on a wrapper, not on
-  the toggle.
+- **`preventDefault()` in your `onClick` cancels the toggle.** `AppShell.Toggle` composes the
+  handler you pass with its own: yours runs first, then the collapse/drawer flip, but only
+  `if (!e.defaultPrevented)`. So `<AppShell.Toggle onClick={track}>` both tracks and toggles —
+  analytics belong straight on the button — while `e.preventDefault()` is the deliberate
+  escape hatch when you want the click without the state change. Only `type` is `Omit`ted
+  from its props, so every other `<button>` prop is yours.
 - **A controlled `AppShell` logs a React warning when you navigate.** The auto-close on route
   change is a render-phase state adjustment, and the setter it uses also calls your
   `onOpenChange` — so React reports *"Cannot update a component while rendering a different

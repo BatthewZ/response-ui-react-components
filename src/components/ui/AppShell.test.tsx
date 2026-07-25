@@ -201,6 +201,97 @@ describe("AppShell", () => {
     expect(sidebar).toHaveAttribute("data-collapsed", "true");
   });
 
+  it("Toggle runs a caller onClick and still collapses the sidebar", async () => {
+    const user = userEvent.setup();
+    const track = vi.fn();
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Navbar>
+          <AppShell.Toggle onClick={track} />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+    const toggle = screen.getByRole("button", { name: /sidebar/i });
+    const sidebar = screen.getByRole("navigation", { name: "Main navigation" });
+
+    await user.click(toggle);
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(sidebar).toHaveAttribute("data-collapsed", "true");
+  });
+
+  it.each(["{Enter}", " "])(
+    "Toggle runs a caller onClick and still collapses the sidebar via %s",
+    async (key) => {
+      const user = userEvent.setup();
+      const track = vi.fn();
+      renderWithRouter(
+        <AppShell>
+          <AppShell.Navbar>
+            <AppShell.Toggle onClick={track} />
+          </AppShell.Navbar>
+          <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+          <AppShell.Main>Main</AppShell.Main>
+        </AppShell>,
+      );
+      const toggle = screen.getByRole("button", { name: /sidebar/i });
+
+      await user.tab();
+      expect(toggle).toHaveFocus();
+      await user.keyboard(key);
+      expect(track).toHaveBeenCalledTimes(1);
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+    },
+  );
+
+  it("Toggle runs a caller onClick and still opens the mobile drawer", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockImplementation((query: string) => ({
+        matches: true,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+    const user = userEvent.setup();
+    const track = vi.fn();
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Navbar>
+          <AppShell.Toggle onClick={track} />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+    const toggle = screen.getByRole("button", { name: "Open navigation" });
+    expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+  });
+
+  it("Toggle skips its own behaviour when the caller prevents default", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Navbar>
+          <AppShell.Toggle onClick={(e) => e.preventDefault()} />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+    const toggle = screen.getByRole("button", { name: /sidebar/i });
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("renders brand slot in the navbar", () => {
     renderWithRouter(
       <AppShell>

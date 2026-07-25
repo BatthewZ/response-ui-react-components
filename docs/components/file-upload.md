@@ -38,9 +38,9 @@ on this page. Nothing appears in the preview until you pass the array back in.
 | `ref`             | `Ref<HTMLDivElement>`         | —        |
 | …rest             | props of `div`, minus `onDrop`| —        |
 
-Four of these have sharp edges: `accept` is compared by exact string, rejected files vanish
-without a callback, `success` is ignored once `files` is non-empty, and an `onClick` of your
-own replaces the click-to-browse handler outright. See [Gotchas](#gotchas).
+Three of these have sharp edges: `accept` is compared by exact string, rejected files vanish
+without a callback, and `success` is ignored once `files` is non-empty. See
+[Gotchas](#gotchas).
 
 ## What happens when files arrive
 
@@ -287,11 +287,17 @@ it does not lighten on the dark themes.
   exists despite the `error` prop being described as overriding one. A user who drops a 6 MB
   file into a `maxSize={5 * 1024 * 1024}` zone sees precisely nothing happen. Validate in your
   own `onFilesSelected` if you need to say why.
-- **Your `onClick`, `onKeyDown`, `onDragOver` or `onDragLeave` replaces the component's.**
-  Rest props are spread after its own handlers, so `<FileUpload onClick={track} />` fires
-  `track` and never opens the dialog — measured, zero picker opens. `onDrop` is `Omit`ted from
-  the type so at least that one can't be lost. (`aria-label`, `role` and `tabIndex` are
-  overridable by the same rule, where last-writer-wins is useful.)
+- **`preventDefault()` in your `onClick`, `onKeyDown`, `onDragOver` or `onDragLeave` cancels
+  the component's.** All four compose: your handler runs first, then the built-in one, but only
+  `if (!e.defaultPrevented)`. So `<FileUpload onClick={track} />` fires `track` *and* opens the
+  dialog, while `e.preventDefault()` opts that one interaction out. `onDrop` is `Omit`ted from
+  the type, so the drop path is not overridable at all. (`aria-label`, `role` and `tabIndex`
+  are ordinary rest props, spread last, where last-writer-wins is useful.)
+- **On `onDragOver` that opt-out collides with the platform.** Calling `preventDefault()` in a
+  `dragover` handler is also the standard way to signal "a drop is allowed here" — and here it
+  reads as the opt-out, so the drag-over class is never applied. The drop still lands (your
+  `preventDefault()` already allowed it), but the border and fill never change to say the zone
+  is armed. Leave `onDragOver` un-prevented if you only want to observe the drag.
 - **Per-row remove falls back to `onClear`.** The remove button on a row is
   `onRemoveFile ? () => onRemoveFile(i) : onClear`. With three files and only `onClear` wired,
   clicking the X on the second one clears all three — measured. Pass `onRemoveFile` whenever

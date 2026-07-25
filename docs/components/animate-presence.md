@@ -25,8 +25,9 @@ and they animate out, then unmount when that animation ends.
 | …rest        | props of `div`          | —            |
 
 The exit half has a sharp edge: unmounting is driven by the wrapper's `onAnimationEnd`,
-so `exitClass` **must** name a class that actually runs a CSS animation, and passing your
-own `onAnimationEnd` breaks the machinery. See [Gotchas](#gotchas).
+so `exitClass` **must** name a class that actually runs a CSS animation — and any
+`animationend` that reaches that wrapper counts, including one bubbling up from a child.
+See [Gotchas](#gotchas).
 
 ## Custom enter and exit animations
 
@@ -80,9 +81,10 @@ different `enterClass` / `exitClass` instead.
   `onAnimationEnd`. Pass an exit class with no `animation` rule and that event never
   arrives, so the element stays mounted forever after `show` flips to `false` — visibly
   stuck on screen. The default `fade-out` animates; a plain utility class does not.
-- **Your own `onAnimationEnd` silently disables the unmount.** `div` props are spread
-  *after* the component's internal `onAnimationEnd`, so a handler you pass via `…rest`
-  replaces it. The exit animation then plays but nothing ever unmounts.
+- **Your own `onAnimationEnd` runs first, then the unmount — and cannot stop it.** A handler
+  you pass is composed with the component's rather than replacing it: yours is called, then
+  the exit-phase check unmounts. There is no `preventDefault()` opt-out here, because
+  `animationend` is not a cancelable event, so the unmount always follows.
 - **A child's animation can cut the exit short.** `animationend` bubbles, and the handler
   only checks the exit phase — not which element fired. If a descendant runs its own
   animation while the wrapper is exiting, that child's `animationend` bubbles up and

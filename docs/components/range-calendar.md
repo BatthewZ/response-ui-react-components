@@ -267,11 +267,11 @@ that component, not from `Calendar.css`.
   and focuses it; measured, no endpoint is set. [Calendar](calendar.md) wires the same button to select,
   and the underlying `onTodayClick` callback is not part of this component's prop type, so
   you cannot restore that behaviour from the outside.
-- **Your `onPointerLeave` replaces the preview reset.** `CalendarBase` spreads rest props
-  *after* its own `onPointerLeave`, which is what clears the hover preview when the pointer
-  leaves the calendar. Measured: `<RangeCalendar onPointerLeave={…} />` typechecks (it is a
-  `div` prop) and then leaves the preview lit — four washed cells that never clear, versus
-  zero without the prop.
+- **`onPointerLeave` cannot hold the hover preview open.** A handler you pass is composed
+  with the internal one — yours runs first, then the preview is cleared unconditionally, with
+  no `preventDefault()` opt-out. So the previewed span always drops when the pointer leaves
+  the calendar: fine for your own teardown or analytics, no use for keeping those washed
+  cells lit.
 - **`numberOfMonths` is a maximum, not a promise.** Under a 40rem viewport the component
   renders exactly one month whatever you passed. Because the media query resolves to `false`
   on the server, an SSR'd page ships the full multi-month markup and collapses to one grid

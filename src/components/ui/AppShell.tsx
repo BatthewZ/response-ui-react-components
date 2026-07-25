@@ -148,7 +148,7 @@ const AppShellNavbarActions = forwardRef<HTMLDivElement, ComponentPropsWithRef<"
 /* ─── Toggle ─── */
 
 const AppShellToggle = forwardRef<HTMLButtonElement, Omit<ComponentPropsWithRef<"button">, "type">>(
-  function AppShellToggle({ className, children, ...props }, ref) {
+  function AppShellToggle({ className, children, onClick, ...props }, ref) {
     const { open, setOpen, collapsed, setCollapsed, isMobile, sidebarId } = useAppShell();
 
     function handleClick() {
@@ -166,7 +166,10 @@ const AppShellToggle = forwardRef<HTMLButtonElement, Omit<ComponentPropsWithRef<
         ref={ref}
         type="button"
         className={cn("app-shell-toggle", className)}
-        onClick={handleClick}
+        onClick={(e) => {
+          onClick?.(e);
+          if (!e.defaultPrevented) handleClick();
+        }}
         aria-expanded={isMobile ? open : !collapsed}
         aria-controls={sidebarId}
         aria-label={

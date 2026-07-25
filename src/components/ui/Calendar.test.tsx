@@ -338,6 +338,17 @@ describe("Calendar", () => {
     expect(picked.getDate()).toBe(now.getDate());
   });
 
+  it("calls a caller's onPointerLeave on the root", async () => {
+    const user = userEvent.setup();
+    const onPointerLeave = vi.fn();
+    render(<Calendar defaultMonth={JUNE_2026} onPointerLeave={onPointerLeave} />);
+
+    await user.hover(dayButton("10"));
+    await user.unhover(dayButton("10"));
+
+    expect(onPointerLeave).toHaveBeenCalledTimes(1);
+  });
+
   it("renders multiple month grids with numberOfMonths", () => {
     render(<Calendar defaultMonth={JUNE_2026} numberOfMonths={2} />);
     const grids = screen.getAllByRole("grid");

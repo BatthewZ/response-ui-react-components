@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -26,6 +26,63 @@ describe("FileUpload", () => {
 
     await user.click(screen.getByRole("button", { name: "Upload file" }));
     expect(clickSpy).toHaveBeenCalled();
+  });
+
+  it("runs a caller onClick and still opens the file picker", async () => {
+    const user = userEvent.setup();
+    const track = vi.fn();
+    render(<FileUpload onClick={track} />);
+
+    const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+    const clickSpy = vi.spyOn(inputEl, "click");
+
+    await user.click(screen.getByRole("button", { name: "Upload file" }));
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["{Enter}", " "])(
+    "runs a caller onKeyDown and still opens the file picker via %s",
+    async (key) => {
+      const user = userEvent.setup();
+      const track = vi.fn();
+      render(<FileUpload onKeyDown={track} />);
+
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      const clickSpy = vi.spyOn(inputEl, "click");
+
+      await user.tab();
+      expect(screen.getByRole("button", { name: "Upload file" })).toHaveFocus();
+      await user.keyboard(key);
+      expect(track).toHaveBeenCalledTimes(1);
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("runs caller drag handlers and still toggles the drag-over state", () => {
+    const onDragOver = vi.fn();
+    const onDragLeave = vi.fn();
+    render(<FileUpload onDragOver={onDragOver} onDragLeave={onDragLeave} />);
+    const zone = screen.getByRole("button", { name: "Upload file" });
+
+    fireEvent.dragOver(zone);
+    expect(onDragOver).toHaveBeenCalledTimes(1);
+    expect(zone.className).toContain("file-upload--drag-over");
+
+    fireEvent.dragLeave(zone);
+    expect(onDragLeave).toHaveBeenCalledTimes(1);
+    expect(zone.className).not.toContain("file-upload--drag-over");
+  });
+
+  it("skips its own click behaviour when the caller prevents default", async () => {
+    const user = userEvent.setup();
+    render(<FileUpload onClick={(e) => e.preventDefault()} />);
+
+    const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+    const clickSpy = vi.spyOn(inputEl, "click");
+
+    await user.click(screen.getByRole("button", { name: "Upload file" }));
+    expect(clickSpy).not.toHaveBeenCalled();
   });
 
   it("shows max size text when maxSize is provided", () => {

@@ -114,6 +114,7 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
     onTodayClick,
     className,
     style,
+    onPointerLeave,
     ...props
   },
   ref,
@@ -445,7 +446,10 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
       // to exactly that many on wide layouts. `max-width: 100%` then lets it
       // collapse to a single fluid column on narrow screens / mobile.
       style={{ "--calendar-months": monthCount, ...style } as CSSProperties}
-      onPointerLeave={onDayHover ? () => onDayHover(null) : undefined}
+      onPointerLeave={(e) => {
+        onPointerLeave?.(e);
+        onDayHover?.(null);
+      }}
       {...props}
     >
       <div className="calendar-header">

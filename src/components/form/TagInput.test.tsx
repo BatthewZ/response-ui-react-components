@@ -166,4 +166,55 @@ describe("TagInput", () => {
     render(<TagInput ref={ref} aria-label="Tags" />);
     expect(ref.current).toBeInstanceOf(HTMLInputElement);
   });
+
+  // #245 / #246 (deferred, see bugs/PLAN.md) — these assert the FIXED behaviour and
+  // are RED today. They are gated on a public-type decision (un-Omit `onChange`?),
+  // so they stay commented out until that door is walked through. To run them:
+  // un-comment the block below and add `useForm` to the imports at the top of the file:
+  //   import { useForm } from "./use-form";
+  //
+  // describe("form.field() binding (#245) and native submission (#246)", () => {
+  //   it("#245 binds via the advertised form.field() spread without crashing", async () => {
+  //     const user = userEvent.setup();
+  //     let values: { tags: string[] } | null = null;
+  //     function Harness() {
+  //       const form = useForm({ defaultValues: { tags: [] as string[] } });
+  //       values = form.getValues();
+  //       return (
+  //         <form {...form.props}>
+  //           <TagInput aria-label="Tags" {...form.field<string[]>("tags")} />
+  //         </form>
+  //       );
+  //     }
+  //     render(<Harness />);
+  //     const input = screen.getByRole("textbox", { name: "Tags" });
+  //     await user.type(input, "react{Enter}");
+  //     // Today: throws `TypeError: tags.map is not a function` on the first keystroke,
+  //     // because `{...props}` (TagInput.tsx:204) overrides `onChange={handleChange}`
+  //     // and the raw DOM ChangeEvent writes the string "r" into the array-typed field.
+  //     expect(screen.getByText("react")).toBeInTheDocument();
+  //     expect(values).toEqual({ tags: ["react"] });
+  //   });
+  //
+  //   it("#246 submits the committed tags, not the in-progress draft", async () => {
+  //     const user = userEvent.setup();
+  //     let formEl: HTMLFormElement | null = null;
+  //     render(
+  //       <form
+  //         ref={(node) => {
+  //           formEl = node;
+  //         }}
+  //       >
+  //         <TagInput aria-label="Tags" name="tags" defaultValue={["react", "typescript"]} />
+  //       </form>
+  //     );
+  //     await user.type(screen.getByRole("textbox", { name: "Tags" }), "half-typed");
+  //     // Today: [["tags", "half-typed"]] — `name` lands on the visible draft input
+  //     // (TagInput.tsx:192/204) and there is no hidden input per tag.
+  //     expect([...new FormData(formEl!).entries()]).toEqual([
+  //       ["tags", "react"],
+  //       ["tags", "typescript"],
+  //     ]);
+  //   });
+  // });
 });
