@@ -208,9 +208,10 @@ in `@batthewz/response-ui-css`, which read the shared `--MOTION-DURATION-ENTER` 
 - **An item's props land on both paths.** `Timeline.Item` types itself as a `<div>` and
   spreads its rest props onto [ScrollReveal](scroll-reveal.md) when animating, or onto a plain
   `<div>` under `animate={false}`. Either way `id`, `role`, `aria-*`, `data-*`, `tabIndex` and
-  handlers reach the element and a click fires. On the animating path `className`, `style`,
-  `ref` and `onAnimationEnd` are merged or composed with the reveal's own rather than replacing
-  them — see [ScrollReveal's gotchas](scroll-reveal.md#gotchas).
+  handlers reach the element and a click fires. On the animating path `className`, `ref` and
+  `onAnimationEnd` are merged or composed with the reveal's own rather than replacing them — see
+  [ScrollReveal's gotchas](scroll-reveal.md#gotchas). `Timeline.Item` passes no `delay`, so the
+  reveal contributes no `style` of its own and yours lands as written.
 - **A fragment desynchronises the entrance from the layout.** The side a card lands on is CSS
   `:nth-child`, counted over the DOM; the direction it enters from is the React index, counted
   over `Children.toArray`, which does not flatten fragments. Wrap two items in a `<>…</>` and

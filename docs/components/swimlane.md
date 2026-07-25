@@ -202,7 +202,8 @@ the spacing inside your scroller is entirely yours to pick.
   props onto [ScrollReveal](scroll-reveal.md), which forwards them to the element it renders,
   so `id`, `role`, `style`, `aria-label` and `data-*` all reach the `<section>`. `className`,
   `style` and `ref` are merged with the reveal's own rather than replacing them — see
-  [ScrollReveal's gotchas](scroll-reveal.md#gotchas) for which of the two wins on a collision.
+  [ScrollReveal's gotchas](scroll-reveal.md#gotchas). Swimlane passes no `delay`, so the
+  reveal never contributes a `style` property of its own here — your `style` lands as written.
 - **It does not scroll.** Nothing in `Swimlane.css` sets `overflow`, `scroll-snap-type` or
   `scroll-behavior` — despite the name and despite a test called "renders a scrollable
   container". Bring your own scroller (see [above](#the-body-is-yours)).

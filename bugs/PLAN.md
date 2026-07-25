@@ -125,14 +125,31 @@ not "my handler was replaced" — it is that **the binding the published `README
 `AGENTS.md:249` both advertise is typed as safe and is not.** An explicit `onChange={…}`
 attribute *is* caught (`TS2322`); only the spread form slips through.
 
-**Members.** #245 (`TagInput` — crashes `tags.map is not a function` on the first keystroke)
-· #246 (`TagInput`, `name` submits the in-progress draft instead of the committed tags).
-**NEW, none in the 422, all measured:** `DatePicker.tsx:197` (**crash**,
-`d.getFullYear is not a function`) · `MultiSelect.tsx:194` (**crash**, `selected.map is not a
-function`) · `Slider.tsx:60`, `NumberInput.tsx:150`, `RangeSlider.tsx:137`, `OTPInput.tsx:163`
-(no crash — they silently write the wrong type into the form store; `OTPInput` keeps only the
-last keystroke). `SearchInput` is safe: its `onChange` is a required own prop, so it is
-destructured. `Input`/`Textarea`/`Select` do not `Omit` it.
+**Members — nine components, every one measured under a real `useForm`.** Three crash on the
+first keystroke, six corrupt the store:
+
+| Component | Spread | Measured result |
+| --- | --- | --- |
+| `TagInput` #245 | :204 | **crash** `tags.map is not a function` (thrown at :172); store `{"tags":"x"}` |
+| `DatePicker` #429 | :197 | **crash** `d.getFullYear is not a function` (`util/date.ts:130` via :184) |
+| `MultiSelect` #430 | :194 | **crash** `selected.map is not a function` (thrown at :216) |
+| `OTPInput` #433 | :163 | **unusable** — each keystroke wipes the last; `1234` → store `{"code":"4"}`, boxes `["4","","",""]` |
+| `RangeSlider` #432 | :137 | string into `[number, number]`; destructured, so thumbs visibly jump to `3`/`5` |
+| `NumberInput` #426 | :150 | `{"qty":"57"}` — the event value is *concatenated* onto the store value |
+| `Slider` #431 | :60 | `{"vol":"60"}` — a string in a number field, **no visible symptom at all** |
+| `DateRangePicker` #439 | :165 | `{"stay":"1"}` — a string where `{ start, end }` is declared |
+| `TagInput` #246 | :192 | `name` submits the in-progress draft rather than the committed tags |
+
+**Measured OUT of the cluster, so the list does not grow by assumption:** `Rating` and
+`Calendar` also `Omit` `onChange` but expose no change-event surface — an injected handler
+received **0** calls. `SearchInput` is safe: `onChange` is a required own prop and is
+destructured (two earlier sweeps disagreed; measurement settles it — spreading `field()` onto
+it stores `{"q":"hello"}` correctly). `Input`/`Textarea`/`Select` do not `Omit` it.
+**Unverified:** `Switch` also `Omit`s `onChange`, on a `<button>`; nobody has measured it.
+
+**#431 is the most dangerous of the nine**, despite being the least dramatic: it is the only
+one with no visible symptom, so a string reaches submission and schema validation while the UI
+looks correct. The two crashes announce themselves.
 
 **Sweep:**
 
@@ -264,6 +281,17 @@ component, one test file, one doc page, one commit — and must not be forced in
   this pass, both `toHaveBeenCalled()` masking a double-fire. Assert the thing the claim is
   about, and treat an existing green test over a surface you are fixing as unproven until you
   have read its assertions.
+- **Run the adversarial pass over your own output, and give it the source rather than your
+  summary.** It is not ceremony; it refuted work from this pass three times. It found four
+  false sentences in the freshly-rewritten `## Gotchas` (all inheriting one overstated
+  precedence claim that ignored `delay`'s default of `0`), partially refuted three of the
+  sixteen new findings that had been filed on a single agent's report, and turned up a tenth
+  cluster member the sweep had missed. **A finding filed from another reader's report is not
+  `measured`** — re-measure before writing it down, and say which of the two you did.
+- **A sweep can find the right *shape* and still miss a member.** §3's script found the
+  pattern; `DateRangePicker` (#439) only appeared when every form component was actually
+  rendered under a real `useForm`. For a cluster defined by *runtime* behaviour, the
+  authoritative sweep is an execution, not a grep over types.
 - **The correct implementation is usually already in this repo.** `Portal` for #46,
   `Collapsible.Trigger` for §2, `useMediaQuery` for #421, `Tabs.tsx:330`'s
   `target !== currentTarget` guard for the still-open #14. Grep for the sibling first.

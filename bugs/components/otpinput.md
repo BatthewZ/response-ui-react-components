@@ -39,7 +39,9 @@ feedback at all. Backspace is the only way to clear a box, which is not what any
 
 `<OTPInput {...form.field<string>("code")} />` compiles, and each box's DOM `change` event
 overwrites the whole field rather than appending, so typing `1234` leaves the store holding
-`{"code":"4"}`. The visible boxes show `1234`, so the UI and the submitted value disagree
-with nothing to indicate it — the worst variant of this family for a one-time code, where
-the user has no way to tell the submission was wrong.
+`{"code":"4"}` — and the boxes show `["4","","",""]`, because each keystroke wipes the
+previous one (measured per keystroke: `1` → `2` → `3` → `4`). So this is not lossy, it is
+**unusable**: a 4-digit code can never be entered at all. Filed `med` on first report as
+"silent corruption"; re-measured and raised to `high`, since the control simply does not
+work on the documented binding.
 **Fix direction is a door** — PLAN.md §3.

@@ -124,11 +124,18 @@ governs when the reveal fires.
 - **Four props are merged rather than overwritten.** Everything the `as` generic types —
   `id`, `data-*`, `aria-*`, event handlers, `tabIndex` — is spread onto the rendered
   element. The exceptions are the four the component needs for itself: `className` is
-  merged with the reveal's own classes, `style` is merged with the animation delay (the
-  component's `animationDelay`/`animationFillMode` win on a collision, so use the `delay`
-  prop rather than setting them yourself), `ref` is merged with the internal one, and
-  `onAnimationEnd` is composed — the internal handler clears the animating state first,
-  then yours runs. You cannot replace any of those four by passing your own.
+  merged with the reveal's own classes, `style` is merged with the animation delay, `ref`
+  is merged with the internal one, and `onAnimationEnd` is composed — the internal handler
+  clears the animating state first, then yours runs. You cannot replace any of those four
+  by passing your own.
+- **The `style` merge only bites while a non-zero `delay` is animating.** The component
+  contributes `animationDelay` and `animationFillMode` to the merged `style` *only* while
+  the element is mid-animation with `delay` greater than `0` and reduced motion off — and
+  `delay` defaults to `0`. So with the default, before the reveal fires, after the
+  animation ends, or under `prefers-reduced-motion`, the component contributes nothing and
+  your `style` lands exactly as written, `animationDelay` included. In the one window where
+  both exist the component's two properties win, which is why `delay` is the prop to reach
+  for rather than hand-writing `animationDelay`.
 - **No IntersectionObserver, no reveal.** If `IntersectionObserver` is undefined (an old
   browser, or a server-rendered page whose JS never runs) and reduced motion is *not*
   requested, the element keeps `scroll-reveal-hidden` — `opacity: 0` — and never appears.

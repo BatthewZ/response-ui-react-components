@@ -36,7 +36,8 @@ sets `onChange={(e) => setDraft(e.target.value)}` at :146 before `{...props}` at
 A JSX **spread** performs no excess-property check, so
 `<NumberInput {...form.field<number>("qty")} />` — the binding README.md:203 advertises —
 compiles clean, replaces the draft setter, and writes the raw string into the store
-(measured: `{"qty":"15"}`, a string in a number field). Two earlier hand-sweeps disagreed
+(measured: `{"qty":"57"}` after typing `7` into a field holding `5` — the DOM event's value is
+concatenated onto the existing store value, so it is not even a clean replacement). Two earlier hand-sweeps disagreed
 about this component; the three-condition script in PLAN.md §2 settles it.
 **Fix:** destructure `onChange` out and compose. Whether it should then be *honoured*
 with the numeric value is the same owner decision as #245 — see PLAN.md §3.

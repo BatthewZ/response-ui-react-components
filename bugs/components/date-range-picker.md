@@ -50,3 +50,14 @@ same trap measured on `SearchInput` (#222). The documented workaround (name the 
 `role="group"` + `aria-labelledby`) works, but leaves the two English field names underneath it.
 **Fix:** accept `startLabel`/`endLabel` props defaulting to the current strings, and forward an `id`
 to each input.
+
+### 439 · DateRangePicker — the advertised `form.field()` binding corrupts the value (med)
+
+`<DateRangePicker {...form.field<{ start: Date | null; end: Date | null }>("stay")} />`
+compiles (the `Omit` does not stop a spread) and typing `1` in the "Start date" field leaves
+the store holding `{"stay":"1"}` — a string where an object is declared, with no error.
+Found by the adversarial re-measurement of #429-#433, not by the original sweep, which is
+worth noting: the sweep found the *shape* and still missed a member, so the member list for
+PLAN.md §3 came from measuring every form component's behaviour under a real `useForm`
+rather than from reading types.
+**Fix direction is a door** — PLAN.md §3, decided once for the whole family.

@@ -57,7 +57,8 @@ the fix a one-liner. Instance of the pattern named for #257.
 ### 430 · MultiSelect — the advertised `form.field()` binding crashes it (high)
 
 `<MultiSelect {...form.field<string[]>("picks")} />` typechecks (the `Omit` does not stop a
-spread) and then throws `selected.map is not a function`, leaving the store holding
+spread) and then throws `selected.map is not a function` (at MultiSelect.tsx:216; the spread that
+injects the handler is at :194), leaving the store holding
 `{"picks":"a"}` — a string where an array is declared. The spread is applied to the
 **wrapper div**, and React's delegated `onChange` still catches the inner search input's
 event as it bubbles, so there is no element-level reason for it to be safe.

@@ -237,8 +237,10 @@ which is applied inline and is not themeable.
   spreads its rest props onto [ScrollReveal](scroll-reveal.md) when animating, or onto a plain
   `<div>` under `animate={false}`. Either way `id`, `role`, `aria-*`, `data-*` and handlers
   reach the element. On the animating path `className`, `style` and `ref` are merged with the
-  reveal's own instead of replacing them, and the item's stagger `delay` is derived from its
-  index — so a `style` of your own cannot override `animationDelay`. See
+  reveal's own instead of replacing them, and each item's stagger `delay` is derived from its
+  index (`index * 50`ms) — so the **first** item has no delay of its own and an
+  `animationDelay` in your `style` lands unopposed, while a later item's own delay wins for
+  as long as it is animating. See
   [ScrollReveal's gotchas](scroll-reveal.md#gotchas).
 - **Column counts above 4 silently collapse to 1.** `columns` is typed `number`, but
   `MasonryGrid.css` only defines rules for `2`, `3` and `4` at each breakpoint. `columns={6}`

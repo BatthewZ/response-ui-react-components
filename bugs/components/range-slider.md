@@ -51,6 +51,7 @@ to each input.
 
 `<RangeSlider {...form.field<[number, number]>("span")} />` compiles and leaves the store
 holding `{"span":"35"}`. The component then runs `const [lo, hi] = current` over that
-**string**, so `lo`/`hi` become its first two characters rather than numbers — a silent
-corruption that produces plausible-looking garbage instead of an error.
+**string**, so `lo`/`hi` become its first two characters rather than numbers: measured, the
+two thumbs jump to `3` and `5`. Corrupt but **not silent** — unlike #431, the damage is on
+screen, which makes this the more discoverable of the two and #431 the more dangerous.
 **Fix direction is a door** — PLAN.md §3.
