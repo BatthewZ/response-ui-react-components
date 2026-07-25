@@ -127,6 +127,7 @@ describe("Popover", () => {
 
     await user.click(screen.getByRole("button", { name: "Toggle popover" }));
 
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(true);
   });
 

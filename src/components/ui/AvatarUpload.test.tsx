@@ -94,7 +94,10 @@ describe("AvatarUpload", () => {
     const user = userEvent.setup();
     await user.upload(inputEl, file);
 
+    expect(onUpload).toHaveBeenCalledTimes(1);
     expect(onUpload).toHaveBeenCalledWith(file);
+    expect(onUploadComplete).toHaveBeenCalledTimes(1);
+    expect(onUploadComplete).toHaveBeenCalledWith({ url: "https://example.com/uploaded.jpg" });
   });
 
   it("displays validation error for disallowed file type", async () => {
@@ -224,9 +227,12 @@ describe("AvatarUpload", () => {
       await userEvent.setup().upload(inputEl, new File(["x"], "x.png", { type: "image/png" }));
 
       const objectUrl = createObjectURL.mock.results[0]?.value as string;
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
       expect(revokeObjectURL).not.toHaveBeenCalled();
 
       unmount();
+      // Exactly one revoke: a double-revoke would mean the effect cleanup ran twice.
+      expect(revokeObjectURL).toHaveBeenCalledTimes(1);
       expect(revokeObjectURL).toHaveBeenCalledWith(objectUrl);
     });
 
@@ -254,6 +260,10 @@ describe("AvatarUpload", () => {
 
       const objectUrl = createObjectURL.mock.results[0]?.value as string;
       expect(displayedImg()?.getAttribute("src")).toBe("https://example.com/uploaded.jpg");
+      // One optimistic preview in, one revoked out — no leak, no double-revoke.
+      expect(onUpload).toHaveBeenCalledTimes(1);
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURL).toHaveBeenCalledTimes(1);
       expect(revokeObjectURL).toHaveBeenCalledWith(objectUrl);
     });
   });

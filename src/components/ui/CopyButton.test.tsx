@@ -36,6 +36,7 @@ describe("CopyButton", () => {
     await act(async () => {
       screen.getByRole("button").click();
     });
+    expect(writeText).toHaveBeenCalledTimes(1);
     expect(writeText).toHaveBeenCalledWith("hello");
   });
 

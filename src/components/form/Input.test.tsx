@@ -66,8 +66,11 @@ describe("Input", () => {
     const onChange = vi.fn();
     render(<Input aria-label="Name" onChange={onChange} />);
 
-    await user.type(screen.getByRole("textbox", { name: "Name" }), "hello");
-    expect(onChange).toHaveBeenCalled();
+    const input = screen.getByRole("textbox", { name: "Name" }) as HTMLInputElement;
+    await user.type(input, "hello");
+    // One change event per keystroke — five characters, five calls.
+    expect(onChange).toHaveBeenCalledTimes(5);
+    expect(input.value).toBe("hello");
   });
 
   it("supports password type", () => {

@@ -42,7 +42,7 @@ describe("Drawer", () => {
     const showModal = vi.spyOn(HTMLDialogElement.prototype, "showModal");
     renderDrawer({ open: true });
 
-    expect(showModal).toHaveBeenCalled();
+    expect(showModal).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("dialog")).toHaveAttribute("open");
     showModal.mockRestore();
   });
@@ -110,7 +110,7 @@ describe("Drawer", () => {
       </Drawer>,
     );
 
-    expect(close).toHaveBeenCalled();
+    expect(close).toHaveBeenCalledTimes(1);
     expect(dialog).not.toHaveAttribute("open");
     close.mockRestore();
   });

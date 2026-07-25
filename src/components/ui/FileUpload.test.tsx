@@ -25,7 +25,9 @@ describe("FileUpload", () => {
     const clickSpy = vi.spyOn(inputEl, "click");
 
     await user.click(screen.getByRole("button", { name: "Upload file" }));
-    expect(clickSpy).toHaveBeenCalled();
+    // The hidden input's own click bubbles back to the dropzone; if that were not
+    // stopped, one user click would open the picker twice.
+    expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
   it("runs a caller onClick and still opens the file picker", async () => {

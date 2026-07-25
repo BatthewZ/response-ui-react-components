@@ -67,8 +67,11 @@ describe("Textarea", () => {
     const onChange = vi.fn();
     render(<Textarea aria-label="Bio" onChange={onChange} />);
 
-    await user.type(screen.getByRole("textbox", { name: "Bio" }), "hello");
-    expect(onChange).toHaveBeenCalled();
+    const textarea = screen.getByRole("textbox", { name: "Bio" }) as HTMLTextAreaElement;
+    await user.type(textarea, "hello");
+    // One change event per keystroke — five characters, five calls.
+    expect(onChange).toHaveBeenCalledTimes(5);
+    expect(textarea.value).toBe("hello");
   });
 
   it("supports rows attribute", () => {

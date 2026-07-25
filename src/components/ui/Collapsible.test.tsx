@@ -114,10 +114,13 @@ describe("Collapsible", () => {
     renderCollapsible({ onOpenChange });
 
     await user.click(screen.getByRole("button", { name: "Toggle" }));
-    expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
 
     await user.click(screen.getByRole("button", { name: "Toggle" }));
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    // One emission per click — a trigger wired twice would report four.
+    expect(onOpenChange).toHaveBeenCalledTimes(2);
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
   });
 
   it("disabled prevents toggle", async () => {

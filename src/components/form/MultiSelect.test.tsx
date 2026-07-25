@@ -42,6 +42,7 @@ describe("MultiSelect", () => {
     const listbox = screen.getByRole("listbox");
     await user.click(within(listbox).getByText("Apple"));
 
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith(["apple"]);
     // Multi-select: the listbox stays open after a pick.
     expect(screen.getByRole("listbox")).toBeInTheDocument();
@@ -113,9 +114,41 @@ describe("MultiSelect", () => {
     await user.click(screen.getByRole("combobox"));
     await user.click(within(screen.getByRole("listbox")).getByText("Apple"));
     await user.click(within(screen.getByRole("listbox")).getByText("Banana"));
+    expect(onValueChange).toHaveBeenCalledTimes(2);
 
     await user.type(screen.getByRole("combobox"), "{backspace}");
+    // One press peels off exactly one chip — the last one.
+    expect(onValueChange).toHaveBeenCalledTimes(3);
     expect(onValueChange).toHaveBeenLastCalledWith(["apple"]);
+    expect(screen.getByRole("button", { name: "Remove Apple" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove Banana" })).not.toBeInTheDocument();
+  });
+
+  it("keeps every chip on Backspace while the query is non-empty", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<Harness onValueChange={onValueChange} />);
+
+    await user.click(screen.getByRole("combobox"));
+    await user.click(within(screen.getByRole("listbox")).getByText("Apple"));
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    const input = screen.getByRole("combobox") as HTMLInputElement;
+    await user.type(input, "ba");
+    // Backspace edits the query first; the chip is only at risk once it empties.
+    await user.type(input, "{backspace}");
+    expect(input.value).toBe("b");
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Remove Apple" })).toBeInTheDocument();
+  });
+
+  it("Backspace on an empty selection is a no-op", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<Harness onValueChange={onValueChange} />);
+
+    await user.type(screen.getByRole("combobox"), "{backspace}");
+    expect(onValueChange).toHaveBeenCalledTimes(0);
   });
 
   it("keeps a placeholder on the input once chips exist so a half-typed query stays visible on blur", async () => {

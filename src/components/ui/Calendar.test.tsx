@@ -1,13 +1,31 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getMonthLabel, getWeekdayNames } from "../../util/date";
 import { Calendar } from "./Calendar";
 
 // A fixed month so tests are deterministic regardless of "today".
+// June 1 2026 is a Monday, so the 15th, 22nd and 29th are Mondays too.
 const JUNE_2026 = new Date(2026, 5, 15);
+
+/**
+ * jsdom's `matchMedia` never matches a width query, so `useMediaQuery` — and
+ * with it CalendarBase's compact (below-40rem) layout — is permanently false
+ * unless the global is replaced.
+ */
+function stubMatchMedia(matches: boolean) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+}
 
 /**
  * The in-month day button for a given day-of-month. Day buttons carry a full-date
@@ -110,6 +128,114 @@ describe("Calendar", () => {
     expect(screen.getByRole("grid")).toHaveAccessibleName(
       getMonthLabel(new Date(2026, 6, 1), "en-US"),
     );
+  });
+
+  it("changes the displayed month on PageUp", async () => {
+    const user = userEvent.setup();
+    const onMonthChange = vi.fn();
+    render(
+      <Calendar
+        defaultValue={new Date(2026, 5, 15)}
+        defaultMonth={JUNE_2026}
+        onMonthChange={onMonthChange}
+      />,
+    );
+
+    dayButton("15").focus();
+    await user.keyboard("{PageUp}");
+
+    expect(onMonthChange).toHaveBeenCalledTimes(1);
+    const prev = onMonthChange.mock.calls[0][0] as Date;
+    expect(prev.getMonth()).toBe(4); // May
+    expect(screen.getByRole("grid")).toHaveAccessibleName(
+      getMonthLabel(new Date(2026, 4, 1), "en-US"),
+    );
+    // Roving focus follows the same day-of-month into the revealed month.
+    expect(dayButton("15")).toHaveFocus();
+    expect(dayButton("15")).toHaveAttribute("tabindex", "0");
+  });
+
+  it("Home jumps to the first day of the focused week", async () => {
+    const user = userEvent.setup();
+    const onMonthChange = vi.fn();
+    render(
+      <Calendar
+        defaultValue={new Date(2026, 5, 15)}
+        defaultMonth={JUNE_2026}
+        onMonthChange={onMonthChange}
+      />,
+    );
+
+    dayButton("15").focus(); // Monday
+    await user.keyboard("{Home}");
+
+    // weekStartsOn defaults to 0 (Sunday), so the week containing Mon 15 starts Sun 14.
+    expect(dayButton("14")).toHaveFocus();
+    expect(dayButton("14")).toHaveAttribute("tabindex", "0");
+    expect(dayButton("15")).toHaveAttribute("tabindex", "-1");
+    // Same month — the window must not page.
+    expect(onMonthChange).toHaveBeenCalledTimes(0);
+  });
+
+  it("Home honours weekStartsOn when locating the start of the week", async () => {
+    const user = userEvent.setup();
+    render(
+      <Calendar
+        defaultValue={new Date(2026, 5, 17)}
+        defaultMonth={JUNE_2026}
+        weekStartsOn={1}
+      />,
+    );
+
+    dayButton("17").focus(); // Wednesday
+    await user.keyboard("{Home}");
+
+    // Monday-start weeks: Wed 17 belongs to the week beginning Mon 15 (not Sun 14).
+    expect(dayButton("15")).toHaveFocus();
+    expect(dayButton("14")).not.toHaveFocus();
+  });
+
+  it("End jumps to the last day of the focused week", async () => {
+    const user = userEvent.setup();
+    const onMonthChange = vi.fn();
+    render(
+      <Calendar
+        defaultValue={new Date(2026, 5, 15)}
+        defaultMonth={JUNE_2026}
+        onMonthChange={onMonthChange}
+      />,
+    );
+
+    dayButton("15").focus(); // Monday
+    await user.keyboard("{End}");
+
+    // Sunday-start weeks: Mon 15 sits in the week ending Sat 20.
+    expect(dayButton("20")).toHaveFocus();
+    expect(dayButton("20")).toHaveAttribute("tabindex", "0");
+    expect(onMonthChange).toHaveBeenCalledTimes(0);
+  });
+
+  it("End pages the window when the week spills into the next month", async () => {
+    const user = userEvent.setup();
+    const onMonthChange = vi.fn();
+    render(
+      <Calendar
+        defaultValue={new Date(2026, 5, 29)}
+        defaultMonth={JUNE_2026}
+        onMonthChange={onMonthChange}
+      />,
+    );
+
+    dayButton("29").focus(); // Monday of the last June week
+    await user.keyboard("{End}");
+
+    // That week ends Sat July 4 — outside the displayed month, so the window pages.
+    expect(onMonthChange).toHaveBeenCalledTimes(1);
+    expect((onMonthChange.mock.calls[0][0] as Date).getMonth()).toBe(6); // July
+    expect(screen.getByRole("grid")).toHaveAccessibleName(
+      getMonthLabel(new Date(2026, 6, 1), "en-US"),
+    );
+    expect(dayButton("4")).toHaveFocus();
   });
 
   it("crosses the month boundary with an arrow and keeps focus on the target date", async () => {
@@ -355,5 +481,66 @@ describe("Calendar", () => {
     expect(grids).toHaveLength(2);
     expect(grids[0]).toHaveAccessibleName(getMonthLabel(new Date(2026, 5, 1), "en-US"));
     expect(grids[1]).toHaveAccessibleName(getMonthLabel(new Date(2026, 6, 1), "en-US"));
+  });
+
+  // CalendarBase collapses to one paged month below 40rem. The switch is a media
+  // query, not a prop, so it only runs with `matchMedia` replaced — both
+  // directions are asserted so a regression that collapsed unconditionally
+  // (or never collapsed) fails.
+  describe("compact layout (below the 40rem breakpoint)", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("collapses a multi-month calendar to a single paged month", () => {
+      stubMatchMedia(true);
+      render(<Calendar defaultMonth={JUNE_2026} numberOfMonths={2} />);
+
+      const grids = screen.getAllByRole("grid");
+      expect(grids).toHaveLength(1);
+      expect(grids[0]).toHaveAccessibleName(getMonthLabel(new Date(2026, 5, 1), "en-US"));
+    });
+
+    it("keeps both months when the viewport is wide enough", () => {
+      stubMatchMedia(false);
+      render(<Calendar defaultMonth={JUNE_2026} numberOfMonths={2} />);
+
+      expect(screen.getAllByRole("grid")).toHaveLength(2);
+    });
+
+    it("turns the header caption into the month/year quick-jump once collapsed", async () => {
+      const user = userEvent.setup();
+      stubMatchMedia(true);
+      render(<Calendar defaultMonth={JUNE_2026} numberOfMonths={2} />);
+
+      // Multi-month grids leave the caption an inert spacer; the collapsed
+      // single-month layout makes it the quick-nav trigger.
+      const caption = screen.getByRole("button", {
+        name: getMonthLabel(JUNE_2026, "en-US"),
+      });
+      await user.click(caption);
+      expect(screen.getByRole("button", { name: "2026" })).toBeInTheDocument();
+    });
+
+    it("leaves the caption inert when two months are shown", () => {
+      stubMatchMedia(false);
+      render(<Calendar defaultMonth={JUNE_2026} numberOfMonths={2} />);
+
+      expect(
+        screen.queryByRole("button", { name: getMonthLabel(JUNE_2026, "en-US") }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("pages one month at a time with the nav buttons once collapsed", async () => {
+      const user = userEvent.setup();
+      stubMatchMedia(true);
+      render(<Calendar defaultMonth={JUNE_2026} numberOfMonths={2} />);
+
+      await user.click(screen.getByRole("button", { name: "Next month" }));
+
+      const grids = screen.getAllByRole("grid");
+      expect(grids).toHaveLength(1);
+      expect(grids[0]).toHaveAccessibleName(getMonthLabel(new Date(2026, 6, 1), "en-US"));
+    });
   });
 });

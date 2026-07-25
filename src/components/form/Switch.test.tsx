@@ -45,10 +45,13 @@ describe("Switch", () => {
     await user.click(sw);
     // Still false — parent did not update the prop.
     expect(sw).toHaveAttribute("aria-checked", "false");
+    expect(onCheckedChange).toHaveBeenCalledTimes(1);
     expect(onCheckedChange).toHaveBeenCalledWith(true);
 
     rerender(<Switch aria-label="Toggle" checked onCheckedChange={onCheckedChange} />);
     expect(sw).toHaveAttribute("aria-checked", "true");
+    // Catching up to the emitted value is not itself a change.
+    expect(onCheckedChange).toHaveBeenCalledTimes(1);
   });
 
   it("does not toggle when disabled", async () => {

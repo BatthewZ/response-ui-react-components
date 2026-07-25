@@ -16,6 +16,7 @@ describe("SearchInput", () => {
     render(<SearchInput value="" onChange={onChange} />);
 
     await user.type(screen.getByRole("searchbox", { name: "Search" }), "a");
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("a");
   });
 
@@ -36,8 +37,9 @@ describe("SearchInput", () => {
     render(<SearchInput value="test" onChange={onChange} onClear={onClear} />);
 
     await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("");
-    expect(onClear).toHaveBeenCalled();
+    expect(onClear).toHaveBeenCalledTimes(1);
   });
 
   it("clears input on Escape key", async () => {
@@ -48,6 +50,8 @@ describe("SearchInput", () => {
     const input = screen.getByRole("searchbox", { name: "Search" });
     await user.click(input);
     await user.keyboard("{Escape}");
+    // Escape routes through the same single clear — no duplicate emission.
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("");
   });
 

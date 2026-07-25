@@ -93,7 +93,8 @@ describe("Select", () => {
     );
 
     await user.selectOptions(screen.getByRole("combobox", { name: "Country" }), "ca");
-    expect(onChange).toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.calls[0][0].target).toHaveValue("ca");
   });
 
   it("merges custom className with default classes", () => {

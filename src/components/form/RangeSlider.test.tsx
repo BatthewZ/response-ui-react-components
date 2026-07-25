@@ -21,6 +21,7 @@ describe("RangeSlider", () => {
       <RangeSlider defaultValue={[20, 80]} minLabel="Low" maxLabel="High" onValueChange={onValueChange} />,
     );
     fireEvent.change(screen.getByLabelText("Low"), { target: { value: "35" } });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith([35, 80]);
   });
 
@@ -30,7 +31,10 @@ describe("RangeSlider", () => {
       <RangeSlider defaultValue={[20, 80]} minLabel="Low" maxLabel="High" onValueChange={onValueChange} />,
     );
     fireEvent.change(screen.getByLabelText("High"), { target: { value: "60" } });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith([20, 60]);
+    // Moving one thumb must not re-emit for its sibling.
+    expect(screen.getByLabelText<HTMLInputElement>("Low").value).toBe("20");
   });
 
   it("clamps the lower thumb so it cannot cross the upper (respecting minDistance)", () => {
@@ -46,6 +50,8 @@ describe("RangeSlider", () => {
     );
     // Try to drag low up to 90 — it must stop at high(50) - minDistance(10) = 40.
     fireEvent.change(screen.getByLabelText("Low"), { target: { value: "90" } });
+    // One clamp, one emission — not an emission per intermediate value.
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith([40, 50]);
   });
 
@@ -55,6 +61,7 @@ describe("RangeSlider", () => {
       <RangeSlider defaultValue={[40, 70]} minLabel="Low" maxLabel="High" onValueChange={onValueChange} />,
     );
     fireEvent.change(screen.getByLabelText("High"), { target: { value: "10" } });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith([40, 40]);
   });
 
@@ -65,6 +72,7 @@ describe("RangeSlider", () => {
     );
     const low = screen.getByLabelText("Low") as HTMLInputElement;
     fireEvent.change(low, { target: { value: "35" } });
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith([35, 80]);
     expect(low.value).toBe("20"); // parent controls it
 
@@ -72,6 +80,8 @@ describe("RangeSlider", () => {
       <RangeSlider value={[35, 80]} minLabel="Low" maxLabel="High" onValueChange={onValueChange} />,
     );
     expect(low.value).toBe("35");
+    // Catching up to the emitted value is not itself a change.
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 
   it("exposes the fill geometry as CSS custom properties", () => {

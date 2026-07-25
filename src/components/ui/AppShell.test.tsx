@@ -33,16 +33,25 @@ function renderWithRouter(ui: React.ReactElement, { route = "/" } = {}) {
   });
 }
 
-beforeEach(() => {
+function stubMatchMedia(matches: boolean) {
   vi.stubGlobal(
     "matchMedia",
     vi.fn().mockImplementation((query: string) => ({
-      matches: false,
+      matches,
       media: query,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     })),
   );
+}
+
+/** Puts AppShell under its `(max-width: 639px)` mobile branch. */
+function stubMobileMatchMedia() {
+  stubMatchMedia(true);
+}
+
+beforeEach(() => {
+  stubMatchMedia(false);
 });
 
 afterEach(() => {
@@ -247,15 +256,7 @@ describe("AppShell", () => {
   );
 
   it("Toggle runs a caller onClick and still opens the mobile drawer", async () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockImplementation((query: string) => ({
-        matches: true,
-        media: query,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      })),
-    );
+    stubMobileMatchMedia();
     const user = userEvent.setup();
     const track = vi.fn();
     renderWithRouter(
@@ -273,6 +274,76 @@ describe("AppShell", () => {
     await user.click(toggle);
     expect(track).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+  });
+
+  it("Escape closes the open mobile sidebar", async () => {
+    stubMobileMatchMedia();
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    renderWithRouter(
+      <AppShell onOpenChange={onOpenChange}>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>
+          <AppShell.SidebarLink to="/">Home</AppShell.SidebarLink>
+        </AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+
+    await user.keyboard("{Escape}");
+
+    expect(
+      screen.queryByRole("navigation", { name: "Main navigation" }),
+    ).not.toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenCalledTimes(2);
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+    expect(screen.getByRole("button", { name: "Open navigation" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("Escape does nothing while the mobile sidebar is already closed", async () => {
+    stubMobileMatchMedia();
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    renderWithRouter(
+      <AppShell onOpenChange={onOpenChange}>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+
+    await user.keyboard("{Escape}");
+    expect(onOpenChange).toHaveBeenCalledTimes(0);
+  });
+
+  it("Escape leaves the desktop sidebar alone", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    renderWithRouter(
+      <AppShell open onOpenChange={onOpenChange}>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+
+    // Desktop keeps the sidebar inline; Escape is not a dismissal there.
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenCalledTimes(0);
   });
 
   it("Toggle skips its own behaviour when the caller prevents default", async () => {

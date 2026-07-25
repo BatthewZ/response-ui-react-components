@@ -244,6 +244,7 @@ describe("Tabs", () => {
 
     await user.click(screen.getByRole("tab", { name: "Tab Two" }));
 
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith("two");
   });
 

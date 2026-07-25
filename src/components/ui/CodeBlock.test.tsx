@@ -69,6 +69,7 @@ describe("CodeBlock", () => {
 
     // CopyButton must receive the raw `code` prop (including the trailing
     // newline) — not the per-line split used for numbering.
+    expect(writeText).toHaveBeenCalledTimes(1);
     expect(writeText).toHaveBeenCalledWith(code);
   });
 

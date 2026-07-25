@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getMonthLabel } from "../../util/date";
 import { type DateRange, RangeCalendar } from "./RangeCalendar";
@@ -212,5 +212,62 @@ describe("RangeCalendar", () => {
     await user.click(day(new Date(2026, 5, 28))); // late June (grid 1)
     await user.click(day(new Date(2026, 6, 3))); // early July (grid 2)
     expect(screen.getByTestId("out")).toHaveTextContent("28/3");
+  });
+
+  // RangeCalendar's two-month default is exactly what CalendarBase collapses
+  // below 40rem. jsdom's matchMedia never matches a width query, so the branch
+  // is unreachable without replacing the global.
+  describe("compact layout (below the 40rem breakpoint)", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    function stubMatchMedia(matches: boolean) {
+      vi.stubGlobal(
+        "matchMedia",
+        vi.fn().mockImplementation((query: string) => ({
+          matches,
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        })),
+      );
+    }
+
+    it("collapses the default two-month range calendar to one month", () => {
+      stubMatchMedia(true);
+      render(<RangeCalendar defaultMonth={JUNE_2026} />);
+
+      const grids = screen.getAllByRole("grid");
+      expect(grids).toHaveLength(1);
+      expect(grids[0]).toHaveAccessibleName(getMonthLabel(new Date(2026, 5, 1), "en-US"));
+    });
+
+    it("keeps both months when the viewport is wide enough", () => {
+      stubMatchMedia(false);
+      render(<RangeCalendar defaultMonth={JUNE_2026} />);
+
+      expect(screen.getAllByRole("grid")).toHaveLength(2);
+    });
+
+    it("still selects a range across the paged months while collapsed", async () => {
+      const user = userEvent.setup();
+      stubMatchMedia(true);
+      const onValueChange = vi.fn();
+      render(<RangeCalendar defaultMonth={JUNE_2026} onValueChange={onValueChange} />);
+
+      await user.click(day(new Date(2026, 5, 28)));
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+
+      // Only June is mounted, so July's endpoint needs the ‹ › nav to page there.
+      await user.click(screen.getByRole("button", { name: "Next month" }));
+      expect(screen.getAllByRole("grid")).toHaveLength(1);
+
+      await user.click(day(new Date(2026, 6, 3)));
+      expect(onValueChange).toHaveBeenCalledTimes(2);
+      const last = onValueChange.mock.calls[1][0] as DateRange;
+      expect(last.start!.getDate()).toBe(28);
+      expect(last.end!.getDate()).toBe(3);
+    });
   });
 });

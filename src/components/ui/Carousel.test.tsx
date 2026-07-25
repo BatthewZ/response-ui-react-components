@@ -197,18 +197,23 @@ describe("Carousel", () => {
     const track = screen.getByRole("region", { name: "Carousel items" });
     const scrollBySpy = vi.fn();
     track.scrollBy = scrollBySpy;
+    // jsdom has no layout, so clientWidth is 0 and every scroll delta would be
+    // 0 — the direction of travel is only observable with a width stubbed in.
+    Object.defineProperty(track, "clientWidth", { configurable: true, value: 300 });
 
     // Focus the carousel root (it has tabIndex={0})
     const root = getCarouselRoot();
     root.focus();
 
     await user.keyboard("{ArrowRight}");
-    expect(scrollBySpy).toHaveBeenCalled();
+    expect(scrollBySpy).toHaveBeenCalledTimes(1);
+    expect(scrollBySpy).toHaveBeenCalledWith({ left: 300, behavior: "smooth" });
 
     scrollBySpy.mockClear();
 
     await user.keyboard("{ArrowLeft}");
-    expect(scrollBySpy).toHaveBeenCalled();
+    expect(scrollBySpy).toHaveBeenCalledTimes(1);
+    expect(scrollBySpy).toHaveBeenCalledWith({ left: -300, behavior: "smooth" });
   });
 
   /* -- #425: the root must compose the caller's onKeyDown, not be replaced by it -- */

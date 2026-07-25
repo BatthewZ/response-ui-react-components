@@ -115,6 +115,7 @@ describe("DataTable", () => {
     await user.click(
       screen.getByRole("checkbox", { name: /select all rows/i }),
     );
+    expect(onSelectionChange).toHaveBeenCalledTimes(1);
     expect(onSelectionChange).toHaveBeenCalledWith(new Set([1, 2]));
   });
 
@@ -136,7 +137,9 @@ describe("DataTable", () => {
     await user.click(
       screen.getByRole("checkbox", { name: /select row 1/i }),
     );
-    expect(onSelectionChange).toHaveBeenCalled();
+    // A row checkbox nested in a clickable row is the classic double-fire site.
+    expect(onSelectionChange).toHaveBeenCalledTimes(1);
+    expect(onSelectionChange).toHaveBeenCalledWith(new Set([1]));
   });
 
   it("renders Pagination when page and totalPages are provided", () => {
@@ -371,6 +374,7 @@ describe("DataTable", () => {
     expect(bodyFirstCells()).toEqual(["C", "D"]);
 
     await user.click(screen.getByRole("button", { name: /^page 3$/i }));
+    expect(onPageChange).toHaveBeenCalledTimes(1);
     expect(onPageChange).toHaveBeenCalledWith(3);
     // Page did not self-advance (still showing controlled page 2).
     expect(bodyFirstCells()).toEqual(["C", "D"]);

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { Field } from "./Field";
@@ -22,6 +23,7 @@ describe("Slider", () => {
     const slider = screen.getByRole("slider") as HTMLInputElement;
     fireEvent.change(slider, { target: { value: "55" } });
 
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith(55);
     expect(slider.value).toBe("55");
   });
@@ -35,21 +37,38 @@ describe("Slider", () => {
     const slider = screen.getByRole("slider") as HTMLInputElement;
     fireEvent.change(slider, { target: { value: "80" } });
 
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith(80);
     // Value did not move — parent controls it.
     expect(slider.value).toBe("20");
 
     rerender(<Slider aria-label="Volume" value={80} onValueChange={onValueChange} />);
     expect(slider.value).toBe("80");
+    // Catching up to the emitted value is not itself a change: no second emission.
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 
-  it("does not fire change when disabled", () => {
+  it("does not fire change when disabled", async () => {
+    const user = userEvent.setup();
     const onValueChange = vi.fn();
     render(
       <Slider aria-label="Volume" defaultValue={10} disabled onValueChange={onValueChange} />
     );
-    const slider = screen.getByRole("slider");
+    const slider = screen.getByRole("slider") as HTMLInputElement;
     expect(slider).toBeDisabled();
+
+    // A real interaction attempt, not a synthesised change event: `fireEvent.change`
+    // reaches React's handler even on a disabled input, so it proves nothing here.
+    // Clicking and tabbing are the two attempts whose outcome genuinely differs —
+    // an enabled range takes focus from both, a disabled one from neither.
+    await user.click(slider);
+    expect(slider).not.toHaveFocus();
+    await user.tab();
+    expect(slider).not.toHaveFocus();
+    await user.keyboard("{ArrowRight}{ArrowLeft}");
+
+    expect(onValueChange).toHaveBeenCalledTimes(0);
+    expect(slider.value).toBe("10");
   });
 
   it("respects custom min/max/step in aria attributes", () => {

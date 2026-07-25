@@ -224,6 +224,8 @@ describe("DatePicker", () => {
     expect((input as HTMLInputElement).value).toBe(fmt(new Date(2026, 3, 12)));
 
     await user.click(screen.getByRole("button", { name: "Clear date" }));
+    // Clearing commits once; the refocus it performs must not commit again.
+    expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith(null);
     expect((input as HTMLInputElement).value).toBe("");
   });

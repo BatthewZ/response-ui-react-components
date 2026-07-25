@@ -71,6 +71,7 @@ describe("useForm — validation lifecycle", () => {
       await result.current.handleSubmit()();
     });
     expect(onSubmit).not.toHaveBeenCalled();
+    expect(onInvalid).toHaveBeenCalledTimes(1);
     expect(onInvalid).toHaveBeenCalledWith({ email: ["Email is required"] });
     expect(result.current.formState.isSubmitted).toBe(true);
     expect(result.current.formState.isValid).toBe(false);
@@ -171,6 +172,8 @@ describe("useForm — Field/FieldError integration", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Submit" }));
+    // Only the second submit is valid — the first must not have leaked through.
+    expect(onValid).toHaveBeenCalledTimes(1);
     expect(onValid).toHaveBeenCalledWith(
       { email: "person@example.com" },
       expect.anything(),

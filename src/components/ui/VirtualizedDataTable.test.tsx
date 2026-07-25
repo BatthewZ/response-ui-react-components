@@ -286,8 +286,13 @@ describe("VirtualizedDataTable", () => {
       />
     );
     // 20 small rows: the initial window already reaches the end.
-    expect(onEndReached).toHaveBeenCalled();
-    expect(container).toBeTruthy();
+    // The source guards with a `firedRef` so this fires exactly once per arrival.
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+    // …and the precondition is itself observable rather than assumed: the
+    // window ends on row 15 of 20 — inside the default 8-row threshold.
+    const rendered = container.querySelectorAll("tbody tr:not(.table-virtual-spacer)");
+    expect(rendered).toHaveLength(16);
+    expect(rendered[rendered.length - 1]).toHaveTextContent("Row 15");
   });
 
   it("renders the empty state", () => {
