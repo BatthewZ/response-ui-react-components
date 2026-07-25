@@ -119,3 +119,51 @@ Both are token-level, so they are **one fix, not six**: raise `--C-BORDER-STRONG
 form controls a dedicated boundary token. Keeping a transparent `outline` would also preserve a
 UA indicator under forced-colors. Ratios computed with the same OKLCH→sRGB converter as
 #206-207/#215.
+
+### 98 · 98 · Drawer · FileUpload — `--C-TEXT-DEFAULT` does not exist (low · downgraded from med)
+
+**Downgraded from med after investigation.** The token is genuinely undefined: `--C-TEXT-DEFAULT`
+has exactly two readers repo-wide (Drawer.css:9, FileUpload.css:344) and **zero definitions**,
+including in the installed `node_modules/@batthewz/response-ui-css`. The real set is
+`--C-TEXT-{PRIMARY,SECONDARY,MUTED,INVERSE,ON-ACCENT,ON-PRIMARY}`. So the declaration is
+invalid at computed-value time and falls back to `inherit`.
+Why it is not user-visible: the inherited value resolves to the root's `canvastext`, and
+`base.css:9` sets `color-scheme: light` while `grimdark.css:5`/`tech.css:5` set `dark` — so
+the UA fallback flips with the theme and stays legible on every shipped surface. No library
+component sets an inherited `color` on a wrapper, so no in-library nesting breaks it. Worst
+observed effect is grimdark's warm sepia ink rendering as pure white: higher contrast, wrong hue.
+**Fix:** one word — `--C-TEXT-PRIMARY`. This is exactly the token drift ETHOS's "known
+fragility" section warns about, and nothing would have caught it.
+
+### 119 · Popover · DropdownMenu — the trigger submits the enclosing form (med)
+
+Popover.tsx:164 and DropdownMenu.tsx:88 both render `<button ...triggerProps>` with no
+`type`, and `getReferenceProps` supplies none — so both default to `type="submit"`.
+Measured: `el.type === "submit"` for both; clicking a trigger inside a `<form>` fired
+`onSubmit` **once and** opened the menu; being the form's first button, the trigger is also
+its **default submitter**, so Enter in any text field fires it instead of Save. An
+"Actions" menu above a Save button is enough. A caller-supplied `type="button"` is
+honoured, and `asChild` triggers are unaffected.
+**Fix:** set `type="button"` before the `...triggerProps` spread.
+This is the *no-default-button-type* cluster (#74, #41) — and note that bullet's own
+warning that "a sweep is incomplete until it names every component": these two were not
+named. `HoverCard`'s default trigger is a `<span>`, genuinely out of scope.
+
+### 136 · Accordion · Collapsible — closed panels stay focusable and readable (med)
+
+Closed panels are only *visually* clipped — `grid-template-rows: 0fr` plus an inner
+`overflow: hidden` (Accordion.css:76-88, Collapsible.css:13-25) — with no `hidden`,
+`inert` or `aria-hidden`. Measured closed-panel `outerHTML`:
+`<div id="…-content-one" role="region" aria-labelledby="…" data-state="closed"
+class="accordion-content"><div class="accordion-content-inner"><a href="/hidden-link">Hidden
+link</a></div></div>` — `hidden=false`, `inert=false`, `aria-hidden=null`;
+`getByRole('link')` returns `['Hidden link']`, `getByRole('region')` returns 1 while
+closed, and the **second Tab lands on the link**. Identical for `Collapsible`
+(`hidden/inert/aria-hidden: false false null`, Tab 2 → `<button>Buried action</button>`).
+An FAQ with every section closed puts Tab focus on invisible links and reads every closed
+panel to a screen reader.
+*jsdom applies no stylesheet, but the clipping mechanism (`0fr` + `overflow:hidden`)
+leaves content focusable and in the a11y tree in a real browser too — this is not a jsdom
+artefact.*
+**Fix:** set `inert` on `.accordion-content` / `.collapsible-content` while closed.
+`hidden` would also work but kills the `0fr → 1fr` transition.

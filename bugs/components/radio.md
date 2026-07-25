@@ -22,3 +22,15 @@ and it also fails in forced-colours mode: `outline-none` emits no forced-colors 
 **Fix:** drop `focus:outline-none` and add `focus-visible:ring-2 focus-visible:ring-border-focus`
 — verified to render (144/188 px change) and matching the `:focus-visible` pattern already used by
 Slider, Switch, ColorPicker, Rating and eight more.
+
+### 75 · Radio — never consumes the Field context (med)
+
+Radio.tsx is 22 lines and imports only `cn` (:1-3); there is no `useFieldError` call,
+and the `<input type="radio">` at :12-20 emits neither `aria-invalid` nor
+`aria-describedby`. Inside `<Field name="plan" error="Pick a plan">` the Field computes
+`invalid` and an `errorId` (Field.tsx:69-75) and renders the visible error, while the
+radio announces as valid with no error text linked — sighted users see the error, screen
+reader users hear nothing.
+**Fix:** spread `useFieldErrorProps()` onto the input, **before** `{...props}`. Pattern:
+*field-error context reaches only 11 of 17 form controls*; Radio and Checkbox (#76) are
+the only two with zero wiring, and the twelve that do it show the one-line shape.
