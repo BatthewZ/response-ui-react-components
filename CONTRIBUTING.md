@@ -106,6 +106,28 @@ When mocking the package in **app-side** tests (a consumer concern, documented i
 [AGENTS.md](./AGENTS.md)), mock the whole module path once with every export the
 subject-under-test uses — vitest honors only the last `vi.mock` per module path.
 
+`window.matchMedia` is deliberately **not** stubbed in [test-setup.ts](./test-setup.ts).
+Hooks that read it guard its absence (`useMediaQuery`, and `usePrefersReducedMotion` via
+it), and a global stub would hide a regression in that guard — one already shipped this
+way. A test that needs `prefers-reduced-motion: reduce` stubs `matchMedia` itself, per
+test; see [use-reduced-motion.test.ts](./src/hooks/use-reduced-motion.test.ts), which
+covers both the stubbed and the absent-API path.
+
+## Known-defect ledger
+
+Code defects found while documenting are recorded, not fixed inline, in
+[bugs/LEDGER.md](./bugs/LEDGER.md) — one row per finding, with evidence in
+`bugs/components/<name>.md` and the root-cause clusters in [bugs/PLAN.md](./bugs/PLAN.md).
+`verify:bugs` ([scripts/bugs-ledger.mjs](./scripts/bugs-ledger.mjs)) is the oracle over
+it: unique and ordered ids, statuses in the lifecycle enum, terminal statuses carrying
+their evidence, `src/` anchors resolving to a real file and an in-range line, and a detail
+block for every high or medium. **Run it after any patch** — fixing a bug shifts every
+line number below it, and nothing else would notice.
+
+It is intentionally absent from `prepublishOnly`: every guard in that chain checks a
+shipped artifact, and `bugs/` is not in `package.json` `files`. The workflow for taking a
+finding from logged to fixed is the workspace-root `BUG_TRIAGE_PLAYBOOK.md`.
+
 ## Build & publish
 
 `vite build` (library mode, ESM-only, `preserveModules: true`, `vite-plugin-dts` for
