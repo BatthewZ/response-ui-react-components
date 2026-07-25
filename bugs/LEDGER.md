@@ -29,7 +29,7 @@ single-source, unverified; a few carry a caveat where a passing guard disagrees.
 | 11 | unaudited · corroborated | RequireAuth | [RequireAuth.tsx:44](src/components/guards/RequireAuth.tsx#L44) | med | Inline ref callback `ref={el=>el?.click()}` re-fires navigation every render |
 | 12 | unaudited | RequireAuth | [RequireAuth.tsx:25](src/components/guards/RequireAuth.tsx#L25) | low | Docblock "hard navigation via `<a>`" is misleading (delegates to adapter Link) |
 | 13 | fixed · 418ff90 | AnimatePresence | [AnimatePresence.tsx:62](src/components/animation/AnimatePresence.tsx#L62) | med | Caller `onAnimationEnd` replaces internal handler → element never unmounts |
-| 14 | unaudited | AnimatePresence | [AnimatePresence.tsx:41](src/components/animation/AnimatePresence.tsx#L41) | med | No `target===currentTarget` guard → descendant `animationend` unmounts mid-exit |
+| 14 | fixed · 5b258f4 | AnimatePresence | [AnimatePresence.tsx:41](src/components/animation/AnimatePresence.tsx#L41) | med | No `target===currentTarget` guard → descendant `animationend` unmounts mid-exit |
 | 15 | unaudited | AnimatePresence | [AnimatePresence.tsx:41](src/components/animation/AnimatePresence.tsx#L41) | low | `exitClass` without a CSS animation → mounted forever (no timeout fallback) |
 | 16 | unaudited · corroborated | ScrollReveal | [ScrollReveal.tsx:59](src/components/animation/ScrollReveal.tsx#L59) | med | No IntersectionObserver / no-JS / SSR → element stuck `opacity:0`, content hidden |
 | 17 | unaudited | Stagger | [Stagger.tsx:26](src/components/animation/Stagger.tsx#L26) | med | `staggerDelay` may be a no-op — sets `--stagger-delay`; confirm the CSS consumes it |
