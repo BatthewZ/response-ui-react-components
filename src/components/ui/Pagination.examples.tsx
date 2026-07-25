@@ -75,8 +75,10 @@ export function NamedRegions() {
   );
 }
 
-/** The arrow buttons carry no `type`, so nesting a Pagination inside a `<form>` makes them
- *  submit it. Keep the pagination a sibling of the form, not a descendant. */
+/** Paging is navigation, not part of the filter form's data — so the pager sits beside the
+ *  `<form>` rather than inside it, and `Apply filters` stays the form's only submitter.
+ *  Every button Pagination renders is already `type="button"`, so nesting it would no longer
+ *  submit anything; keeping it a sibling is about what the form *means*, not a workaround. */
 export function OutsideTheFilterForm() {
   const [page, setPage] = useState(1);
 

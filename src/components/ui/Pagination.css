@@ -38,8 +38,9 @@
   outline-offset: 2px;
 }
 
-/* Ink pairs with the --C-ACCENT fill per the theme contract: --C-TEXT-ON-PRIMARY
-   is byte-identical to --C-ACCENT in `tech`, i.e. 1.00:1, invisible.
+/* ON-ACCENT is the contract's partner for an --C-ACCENT fill. Do not "simplify"
+   it to --C-TEXT-ON-PRIMARY: `tech` sets that byte-identical to --C-ACCENT, so
+   the page number renders at 1.00:1 and disappears.
    Deliberately no `pointer-events: none` — the current page stays focusable and
    hit-testable so `aria-current="page"` remains reachable; the click handler is
    what refuses to re-fire. */
