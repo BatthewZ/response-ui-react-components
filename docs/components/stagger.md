@@ -107,12 +107,11 @@ CSS foundation, not this package, so there is no per-component variable to reach
   inserted between the container and each child. That means `as="ul"`/`as="ol"` produce
   invalid markup (a `<div>` between the list and its `<li>`s), and any direct-child
   selector, `flex`/`grid`, or `gap` on the container targets the wrappers, not your nodes.
-- **Extra element props are accepted by the types but not forwarded.** The public type
-  lets you pass any prop of the `as` element (`id`, `aria-label`, `onClick`, …), yet the
-  component spreads only `className`, `ref`, and — when set — the `--stagger-delay` style
-  onto the outer element. Every other prop you pass is silently dropped at runtime, so put
-  attributes like `aria-label` on a wrapper around `Stagger` rather than on `Stagger`
-  itself.
+- **`style` is merged, not replaced.** Every prop the `as` element accepts (`id`,
+  `aria-label`, `onClick`, `data-*`, …) is spread onto the outer element. The two
+  exceptions are `className`, which lands as given, and `style`, which is merged with the
+  `--stagger-delay` custom property — so setting `--stagger-delay` yourself via `style`
+  loses to the `staggerDelay` prop when both are present.
 - **Children are keyed by array index.** Re-ordering or inserting mid-list can mis-map an
   in-flight animation to the wrong item; keep the list stable, or it is a non-issue for
   static content.

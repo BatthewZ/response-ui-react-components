@@ -121,12 +121,14 @@ governs when the reveal fires.
 
 ## Gotchas
 
-- **Extra props are silently dropped.** The `as` generic types the element's full prop
-  set onto the component, so `<ScrollReveal as="section" id="pricing" onClick={…}>`
-  compiles — but the implementation spreads none of them. Only `animation`, `threshold`,
-  `delay`, `once`, `rootMargin`, `className`, `children`, `as`, and `ref` take effect;
-  `id`, `style`, event handlers, `data-*`, and `aria-*` reach the DOM through **none** of
-  them. Put those on a child element you control, not on the ScrollReveal wrapper.
+- **Four props are merged rather than overwritten.** Everything the `as` generic types —
+  `id`, `data-*`, `aria-*`, event handlers, `tabIndex` — is spread onto the rendered
+  element. The exceptions are the four the component needs for itself: `className` is
+  merged with the reveal's own classes, `style` is merged with the animation delay (the
+  component's `animationDelay`/`animationFillMode` win on a collision, so use the `delay`
+  prop rather than setting them yourself), `ref` is merged with the internal one, and
+  `onAnimationEnd` is composed — the internal handler clears the animating state first,
+  then yours runs. You cannot replace any of those four by passing your own.
 - **No IntersectionObserver, no reveal.** If `IntersectionObserver` is undefined (an old
   browser, or a server-rendered page whose JS never runs) and reduced motion is *not*
   requested, the element keeps `scroll-reveal-hidden` — `opacity: 0` — and never appears.

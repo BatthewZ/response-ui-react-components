@@ -83,4 +83,18 @@ describe("Timeline", () => {
     const item = container.querySelector(".timeline-item");
     expect(item?.className).toContain("item-extra");
   });
+
+  // #340 — with `animate` at its default the item renders through ScrollReveal,
+  // which is the path that used to drop every prop the `<div>` type advertises.
+  it("forwards rest props to an item on the default animating path", () => {
+    const { container } = render(
+      <Timeline>
+        <Timeline.Item title="First" id="step-1" aria-label="Step one" data-analytics="s1" />
+      </Timeline>,
+    );
+    const item = container.querySelector(".timeline-item") as HTMLElement;
+    expect(item.id).toBe("step-1");
+    expect(item.getAttribute("aria-label")).toBe("Step one");
+    expect(item.dataset.analytics).toBe("s1");
+  });
 });

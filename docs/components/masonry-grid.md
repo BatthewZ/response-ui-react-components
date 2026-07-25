@@ -233,14 +233,13 @@ which is applied inline and is not themeable.
 
 ## Gotchas
 
-- **An item's props are dropped unless the grid sets `animate={false}`.** `MasonryGrid.Item`
-  types itself as a `<div>` and spreads its rest props onto [ScrollReveal](scroll-reveal.md),
-  which never spreads them onto the element it renders. With animation on, the element that
-  `<MasonryGrid.Item id="x" role="listitem" style={…} aria-label="…" onClick={…}>` first
-  renders is exactly `<div class="scroll-reveal-hidden masonry-grid__item">` — every one of
-  those attributes is gone, and no later state brings them back. Only
-  `className`, `ref` and `children` survive. Turn animation off, or move the attributes onto an
-  element inside the item.
+- **An item's props land on both paths.** `MasonryGrid.Item` types itself as a `<div>` and
+  spreads its rest props onto [ScrollReveal](scroll-reveal.md) when animating, or onto a plain
+  `<div>` under `animate={false}`. Either way `id`, `role`, `aria-*`, `data-*` and handlers
+  reach the element. On the animating path `className`, `style` and `ref` are merged with the
+  reveal's own instead of replacing them, and the item's stagger `delay` is derived from its
+  index — so a `style` of your own cannot override `animationDelay`. See
+  [ScrollReveal's gotchas](scroll-reveal.md#gotchas).
 - **Column counts above 4 silently collapse to 1.** `columns` is typed `number`, but
   `MasonryGrid.css` only defines rules for `2`, `3` and `4` at each breakpoint. `columns={6}`
   compiles, renders `class="masonry-grid masonry-grid--base-6"`, matches no rule, and shows one

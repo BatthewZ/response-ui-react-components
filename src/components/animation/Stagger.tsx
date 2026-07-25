@@ -1,5 +1,11 @@
 "use client";
-import { Children, type ElementType, forwardRef, type ReactNode } from "react";
+import {
+  Children,
+  type ComponentPropsWithoutRef,
+  type ElementType,
+  forwardRef,
+  type ReactNode,
+} from "react";
 
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 
@@ -10,8 +16,11 @@ type StaggerProps = {
   as?: ElementType;
 };
 
-export const Stagger = forwardRef<HTMLElement, StaggerProps>(function Stagger(
-  { staggerDelay, className, children, as: Tag = "div" },
+/** What the implementation destructures. The public signature is the cast below. */
+type StaggerImplProps = StaggerProps & ComponentPropsWithoutRef<"div">;
+
+export const Stagger = forwardRef<HTMLElement, StaggerImplProps>(function Stagger(
+  { staggerDelay, className, children, as: Tag = "div", style, ...rest },
   ref
 ) {
   const reducedMotion = usePrefersReducedMotion();
@@ -20,10 +29,13 @@ export const Stagger = forwardRef<HTMLElement, StaggerProps>(function Stagger(
 
   return (
     <Tag
+      {...rest}
       ref={ref}
       className={className}
       style={
-        staggerDelay ? ({ "--stagger-delay": staggerDelay } as React.CSSProperties) : undefined
+        staggerDelay || style
+          ? ({ ...style, ...(staggerDelay && { "--stagger-delay": staggerDelay }) } as React.CSSProperties)
+          : undefined
       }
     >
       {items.map((child, index) => (

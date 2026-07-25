@@ -113,6 +113,28 @@ way. A test that needs `prefers-reduced-motion: reduce` stubs `matchMedia` itsel
 test; see [use-reduced-motion.test.ts](./src/hooks/use-reduced-motion.test.ts), which
 covers both the stubbed and the absent-API path.
 
+**`fireEvent.animationEnd` / `transitionEnd` do not work here, and they fail silently.**
+Two independent reasons, both measured in this repo: jsdom exposes no `AnimationEvent`
+constructor, and React resolves animation-event names through vendor-prefix detection, so
+in this environment it registers `webkitAnimationEnd` rather than `animationend`. The
+result is a dispatch React never receives — the handler is not called, no error is raised,
+and a test asserting a *consequence* of the handler passes for the wrong reason. React
+only ever registers one of the two names, so dispatch both and exactly one lands:
+
+```ts
+function fireAnimationEnd(el: Element) {
+  for (const name of ["animationend", "webkitAnimationEnd"]) {
+    fireEvent(el, new Event(name, { bubbles: true }));
+  }
+}
+```
+
+Go through RTL's `fireEvent`, not a raw `el.dispatchEvent` — the latter is not wrapped in
+`act`, so React never flushes the state update and the assertion reads stale DOM. Keep the
+helper inside the `*.test.tsx` file that needs it: `src/` ships to npm and only
+`*.test.*` is excluded from the tarball, so a shared `src/test-utils/` module would be
+published. `ScrollReveal.test.tsx` and `AnimatePresence.test.tsx` each carry a copy.
+
 ## Known-defect ledger
 
 Code defects found while documenting are recorded, not fixed inline, in

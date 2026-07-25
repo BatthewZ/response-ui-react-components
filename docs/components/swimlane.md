@@ -198,12 +198,11 @@ the spacing inside your scroller is entirely yours to pick.
 
 ## Gotchas
 
-- **Every prop except the eight named above is silently dropped.** Swimlane spreads its rest
-  props onto [ScrollReveal](scroll-reveal.md), which never spreads them onto the element it
-  renders. Pass `id`, `role`, `style`, `aria-label` and `data-*` to a Swimlane and the markup
-  that comes out is `<section class="scroll-reveal-hidden swimlane">` — none of them survive.
-  `className` and `ref` *do* land on the `<section>`. Put everything else on an element inside
-  `children`.
+- **Rest props land on the `<section>`, and `className` merges.** Swimlane spreads its rest
+  props onto [ScrollReveal](scroll-reveal.md), which forwards them to the element it renders,
+  so `id`, `role`, `style`, `aria-label` and `data-*` all reach the `<section>`. `className`,
+  `style` and `ref` are merged with the reveal's own rather than replacing them — see
+  [ScrollReveal's gotchas](scroll-reveal.md#gotchas) for which of the two wins on a collision.
 - **It does not scroll.** Nothing in `Swimlane.css` sets `overflow`, `scroll-snap-type` or
   `scroll-behavior` — despite the name and despite a test called "renders a scrollable
   container". Bring your own scroller (see [above](#the-body-is-yours)).

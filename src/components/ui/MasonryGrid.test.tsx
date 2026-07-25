@@ -96,4 +96,20 @@ describe("MasonryGrid", () => {
     const item = container.querySelector(".masonry-grid__item");
     expect(item?.className).toContain("item-extra");
   });
+
+  // #178 — with `animate` at its default the item renders through ScrollReveal,
+  // which is the path that used to drop every prop but className/ref/children.
+  it("forwards rest props to an item on the default animating path", () => {
+    const { container } = render(
+      <MasonryGrid>
+        <MasonryGrid.Item id="card-1" aria-label="First card" data-analytics="tile-1">
+          A
+        </MasonryGrid.Item>
+      </MasonryGrid>,
+    );
+    const item = container.querySelector(".masonry-grid__item") as HTMLElement;
+    expect(item.id).toBe("card-1");
+    expect(item.getAttribute("aria-label")).toBe("First card");
+    expect(item.dataset.analytics).toBe("tile-1");
+  });
 });

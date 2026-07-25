@@ -205,16 +205,12 @@ in `@batthewz/response-ui-css`, which read the shared `--MOTION-DURATION-ENTER` 
 
 ## Gotchas
 
-- **An item's props are dropped unless the root sets `animate={false}`.** `Timeline.Item`
-  types itself as a `<div>` and spreads its rest props onto [ScrollReveal](scroll-reveal.md),
-  which never spreads them onto the element it renders. Measured: with animation on,
-  `<Timeline.Item id="evt-1" role="listitem" aria-label="…" data-status="done" style={…}
-  tabIndex={0} onClick={…} className="mine">` renders as exactly
-  `<div class="scroll-reveal-hidden timeline-item mine">` — every attribute gone, and a click
-  on it fires the handler **zero** times. Only `className`, `ref` and `children` survive. With
-  `animate={false}` all of them land and the click fires. The root is unaffected: its rest
-  props always reach the DOM. The same defect hits
-  [MasonryGrid](masonry-grid.md) and [Swimlane](swimlane.md).
+- **An item's props land on both paths.** `Timeline.Item` types itself as a `<div>` and
+  spreads its rest props onto [ScrollReveal](scroll-reveal.md) when animating, or onto a plain
+  `<div>` under `animate={false}`. Either way `id`, `role`, `aria-*`, `data-*`, `tabIndex` and
+  handlers reach the element and a click fires. On the animating path `className`, `style`,
+  `ref` and `onAnimationEnd` are merged or composed with the reveal's own rather than replacing
+  them — see [ScrollReveal's gotchas](scroll-reveal.md#gotchas).
 - **A fragment desynchronises the entrance from the layout.** The side a card lands on is CSS
   `:nth-child`, counted over the DOM; the direction it enters from is the React index, counted
   over `Children.toArray`, which does not flatten fragments. Wrap two items in a `<>…</>` and

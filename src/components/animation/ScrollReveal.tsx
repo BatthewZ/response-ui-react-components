@@ -1,6 +1,7 @@
 "use client";
 import {
   type AnimationEvent,
+  type ComponentPropsWithoutRef,
   type ElementType,
   forwardRef,
   type ReactNode,
@@ -35,7 +36,10 @@ type ScrollRevealProps = {
   as?: ElementType;
 };
 
-export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealProps>(function ScrollReveal(
+/** What the implementation destructures. The public signature is the cast below. */
+type ScrollRevealImplProps = ScrollRevealProps & ComponentPropsWithoutRef<"div">;
+
+export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealImplProps>(function ScrollReveal(
   {
     animation = "fade-up",
     threshold = 0.1,
@@ -45,6 +49,9 @@ export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealProps>(function 
     className,
     children,
     as: Tag = "div",
+    style,
+    onAnimationEnd,
+    ...rest
   },
   forwardedRef
 ) {
@@ -78,24 +85,33 @@ export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealProps>(function 
     return () => observer.disconnect();
   }, [threshold, rootMargin, once, reducedMotion]);
 
-  const handleAnimationEnd = useCallback((e: AnimationEvent) => {
-    // Only handle our own animation, not bubbled events from children
-    if (e.target === e.currentTarget) {
-      setAnimating(false);
-    }
-  }, []);
+  const handleAnimationEnd = useCallback(
+    (e: AnimationEvent<HTMLDivElement>) => {
+      // Only handle our own animation, not bubbled events from children
+      if (e.target === e.currentTarget) {
+        setAnimating(false);
+      }
+      onAnimationEnd?.(e);
+    },
+    [onAnimationEnd]
+  );
 
   const isHidden = !reducedMotion && !revealed;
+  const delayStyle =
+    animating && delay > 0 && !reducedMotion
+      ? { animationDelay: `${delay}ms`, animationFillMode: "backwards" as const }
+      : undefined;
 
   return (
     <Tag
+      {...rest}
       ref={setRefs}
       className={cn(
         isHidden && "scroll-reveal-hidden",
         animating && animationClassMap[animation],
         className
       )}
-      style={animating && delay > 0 && !reducedMotion ? { animationDelay: `${delay}ms`, animationFillMode: "backwards" } : undefined}
+      style={delayStyle || style ? { ...style, ...delayStyle } : undefined}
       onAnimationEnd={handleAnimationEnd}
     >
       {children}

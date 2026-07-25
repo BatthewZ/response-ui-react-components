@@ -89,4 +89,18 @@ describe("Swimlane", () => {
     const root = container.querySelector(".swimlane");
     expect(root?.className).toContain("extra-class");
   });
+
+  // #171 — rest props are spread onto ScrollReveal, which has to forward them.
+  it("forwards rest props onto the rendered section", () => {
+    const { container } = render(
+      <Swimlane title="Featured" id="lane-1" aria-label="Featured titles" data-analytics="row-1">
+        <div>Content</div>
+      </Swimlane>,
+    );
+    const root = container.querySelector(".swimlane") as HTMLElement;
+    expect(root.tagName).toBe("SECTION");
+    expect(root.id).toBe("lane-1");
+    expect(root.getAttribute("aria-label")).toBe("Featured titles");
+    expect(root.dataset.analytics).toBe("row-1");
+  });
 });
