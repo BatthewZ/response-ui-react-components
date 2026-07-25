@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -268,5 +268,59 @@ describe("Carousel", () => {
     await user.keyboard("{ArrowRight}");
 
     expect(scrollBySpy).not.toHaveBeenCalled();
+  });
+
+  /* -- #186: arrow keys belong to the focused control, not the rail -- */
+
+  function renderWithField() {
+    const result = render(
+      <Carousel>
+        <Carousel.Track>
+          <Carousel.Item>
+            <input aria-label="Note" defaultValue="abc" />
+            <button type="button">Buy</button>
+          </Carousel.Item>
+          <Carousel.Item>Slide 2</Carousel.Item>
+        </Carousel.Track>
+      </Carousel>,
+    );
+    const track = screen.getByRole("region", { name: "Carousel items" });
+    const scrollBySpy = vi.fn();
+    track.scrollBy = scrollBySpy;
+    Object.defineProperty(track, "clientWidth", { configurable: true, value: 300 });
+    return { ...result, scrollBySpy };
+  }
+
+  it("#186: arrow keys typed in a field inside a slide do not page the rail", () => {
+    const { scrollBySpy } = renderWithField();
+    const input = screen.getByLabelText("Note");
+    input.focus();
+
+    // fireEvent returns false when a handler called preventDefault() — the caret
+    // only moves while the default survives.
+    expect(fireEvent.keyDown(input, { key: "ArrowLeft" })).toBe(true);
+    expect(fireEvent.keyDown(input, { key: "ArrowRight" })).toBe(true);
+
+    expect(scrollBySpy).toHaveBeenCalledTimes(0);
+  });
+
+  it("#186: arrow keys on a button inside a slide do not page the rail", () => {
+    const { scrollBySpy } = renderWithField();
+    screen.getByRole("button", { name: "Buy" }).focus();
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "Buy" }), { key: "ArrowRight" });
+
+    expect(scrollBySpy).toHaveBeenCalledTimes(0);
+  });
+
+  it("#186: arrow keys on the root itself still page the rail", () => {
+    const { scrollBySpy } = renderWithField();
+    const root = getCarouselRoot();
+    root.focus();
+
+    fireEvent.keyDown(root, { key: "ArrowRight" });
+
+    expect(scrollBySpy).toHaveBeenCalledTimes(1);
+    expect(scrollBySpy).toHaveBeenCalledWith({ left: 300, behavior: "smooth" });
   });
 });

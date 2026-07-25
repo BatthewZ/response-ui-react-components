@@ -149,8 +149,13 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
             }}
             onMouseLeave={() => setHover(null)}
           >
+            {/* Each radio is named for the value it stands for. Under
+                `allowHalf` a star covers two values, so the checked one is
+                named for the value actually held — naming every star
+                `position - 0.5` left no radio named `max` and misnamed the
+                checked one whenever the value was a whole star. */}
             <span className="sr-only">
-              {allowHalf ? position - 0.5 : position} stars
+              {allowHalf && isChecked ? value : position} stars
             </span>
             <StarIcon fill={fillFor(position, display)} />
           </button>

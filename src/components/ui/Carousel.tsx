@@ -110,6 +110,10 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // Keydown bubbles, so without this an arrow pressed in an input, slider or
+      // listbox inside a slide would page the rail and swallow the keystroke.
+      // The root is its own tab stop, so paging is still reachable.
+      if (e.target !== e.currentTarget) return;
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         scrollPrev();

@@ -142,6 +142,51 @@ describe("Rating", () => {
     expect(radios[4]).toHaveAttribute("aria-checked", "false");
   });
 
+  /* -- #211: under allowHalf every radio was named `position - 0.5` -- */
+
+  it("#211: allowHalf still offers a radio named for `max`", () => {
+    render(<Rating aria-label="Rate" allowHalf max={5} value={3} onValueChange={() => {}} />);
+
+    expect(screen.getByRole("radio", { name: "5 stars" })).toBeInTheDocument();
+    expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual([
+      "1 stars",
+      "2 stars",
+      "3 stars",
+      "4 stars",
+      "5 stars",
+    ]);
+  });
+
+  it("#211: the checked radio is named for the value the component holds", () => {
+    render(<Rating aria-label="Rate" allowHalf max={5} value={2.5} onValueChange={() => {}} />);
+
+    const checked = screen
+      .getAllByRole("radio")
+      .filter((r) => r.getAttribute("aria-checked") === "true");
+    expect(checked).toHaveLength(1);
+    expect(checked[0]).toHaveAccessibleName("2.5 stars");
+  });
+
+  it("#211: a whole-star value names its radio without a half", () => {
+    render(<Rating aria-label="Rate" allowHalf max={5} value={5} onValueChange={() => {}} />);
+
+    const checked = screen
+      .getAllByRole("radio")
+      .filter((r) => r.getAttribute("aria-checked") === "true");
+    expect(checked).toHaveLength(1);
+    expect(checked[0]).toHaveAccessibleName("5 stars");
+  });
+
+  it("#211: names are unchanged without allowHalf", () => {
+    render(<Rating aria-label="Rate" max={3} value={2} onValueChange={() => {}} />);
+
+    expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual([
+      "1 stars",
+      "2 stars",
+      "3 stars",
+    ]);
+  });
+
   it("disabled radios do not fire onValueChange", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
