@@ -38,10 +38,11 @@
   outline-offset: 2px;
 }
 
-/* Ink pairs with the --C-ACCENT fill per the theme contract; --C-TEXT-ON-PRIMARY
-   is byte-identical to --C-ACCENT in the `tech` theme (1.00:1, invisible).
-   Not actionable, but stays hit-testable so it keeps its place in the tab
-   order — the click handler is what refuses to re-fire. */
+/* Ink pairs with the --C-ACCENT fill per the theme contract: --C-TEXT-ON-PRIMARY
+   is byte-identical to --C-ACCENT in `tech`, i.e. 1.00:1, invisible.
+   Deliberately no `pointer-events: none` — the current page stays focusable and
+   hit-testable so `aria-current="page"` remains reachable; the click handler is
+   what refuses to re-fire. */
 .pagination__page--current {
   background-color: var(--C-ACCENT);
   color: var(--C-TEXT-ON-ACCENT);
