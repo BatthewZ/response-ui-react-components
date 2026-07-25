@@ -142,7 +142,8 @@ export function Wizard({
   // In the terminal completed state `activeStep === steps.length`, so clamp for
   // content lookup — the last step's panel stays visible while its indicator
   // shows done.
-  const active = steps[Math.min(wizard.activeStep, steps.length - 1)];
+  const activeIndex = Math.min(wizard.activeStep, steps.length - 1);
+  const active = steps[activeIndex];
 
   // Only completed (earlier) steps are clickable when back-navigation is on.
   const onStepClick = useMemo(() => {
@@ -164,7 +165,11 @@ export function Wizard({
         ))}
       </Stepper>
 
-      <div className="wizard__content">{active?.content}</div>
+      {/* Keyed so each step's content remounts: without it React reconciles
+          adjacent steps whose content shares a root type, and state bleeds. */}
+      <div key={activeIndex} className="wizard__content">
+        {active?.content}
+      </div>
 
       <div className="wizard__footer">
         <Button

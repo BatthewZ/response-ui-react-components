@@ -209,10 +209,9 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
       useMenuContext("MenuItem");
 
     const handleSelect = useCallback(() => {
-      if (disabled) return;
       onSelect?.();
       setOpen(false);
-    }, [disabled, onSelect, setOpen]);
+    }, [onSelect, setOpen]);
 
     const itemRef = useCallback(
       (node: HTMLButtonElement | null) => {
@@ -233,6 +232,10 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
         {...getItemProps({
           ...props,
           onClick(e: React.MouseEvent<HTMLButtonElement>) {
+            // `aria-disabled` keeps the item focusable (menu a11y convention),
+            // so nothing native suppresses the click — every effect, including
+            // the caller's own `onClick`, has to be gated here.
+            if (disabled) return;
             props.onClick?.(e);
             handleSelect();
           },

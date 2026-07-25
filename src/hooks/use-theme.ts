@@ -49,8 +49,14 @@ export interface UseThemeReturn<T extends string = DefaultTheme> {
 
 /**
  * Theme hook. Reads the current theme from `<html data-theme>` and writes
- * theme changes back. Persists to localStorage. Pass a custom `themes` list
- * to register app-defined themes.
+ * theme changes back. Pass a custom `themes` list to register app-defined
+ * themes.
+ *
+ * Persistence is not included. `setTheme` _writes_ `localStorage["theme"]` (and
+ * clears it for the default theme), but nothing in this package ever reads that
+ * key back — so the user's choice is silently discarded on reload. Restoring it
+ * before the first paint needs a blocking inline `<script>` in your document
+ * `<head>`, which this package does not ship; see the ThemeSwitcher docs.
  *
  *     const { theme, setTheme, themes } = useTheme({
  *       themes: ["default", "grimdark", "aurora"] as const,

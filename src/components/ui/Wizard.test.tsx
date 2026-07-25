@@ -1,8 +1,19 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { useWizard, Wizard, type WizardStep } from "./Wizard";
+
+function StatefulField({ label }: { label: string }) {
+  const [value, setValue] = useState("");
+  return (
+    <label>
+      {label}
+      <input value={value} onChange={(e) => setValue(e.target.value)} />
+    </label>
+  );
+}
 
 const STEPS: WizardStep[] = [
   { title: "Account", description: "Your details", content: <p>Step one body</p> },
@@ -125,6 +136,25 @@ describe("Wizard", () => {
       result.current.goTo(99);
     });
     expect(onStepChange).toHaveBeenCalledTimes(0);
+  });
+
+  it("remounts step content so state cannot bleed between adjacent steps", async () => {
+    const user = userEvent.setup();
+    // Both steps root at the same component type, so without a key on the
+    // content wrapper React reconciles them as one element and step two
+    // inherits step one's state.
+    const sharedRootSteps: WizardStep[] = [
+      { title: "Account", content: <StatefulField label="Email" /> },
+      { title: "Plan", content: <StatefulField label="Coupon" /> },
+    ];
+    render(<Wizard steps={sharedRootSteps} />);
+
+    await user.type(screen.getByLabelText("Email"), "typed-into-step-one");
+    expect(screen.getByLabelText("Email")).toHaveValue("typed-into-step-one");
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByLabelText("Coupon")).toHaveValue("");
   });
 
   it("lets a completed step be clicked to navigate back", async () => {
