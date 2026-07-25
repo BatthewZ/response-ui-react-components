@@ -90,3 +90,17 @@ describe("Radio", () => {
     expect(screen.getByRole("radio", { name: "Blue" })).toHaveAttribute("name", "color");
   });
 });
+
+describe("focus affordance (#73)", () => {
+  // The verify:focus-affordance gate reads src/components/**/*.css only, so a
+  // Tailwind `focus:outline-none` written in a .tsx is invisible to it. This is
+  // the check that covers that gap for Radio.
+  it("pairs its outline reset with a visible replacement ring", () => {
+    render(<Radio aria-label="Choice" value="a" name="g" />);
+    const cls = screen.getByRole("radio").className;
+
+    expect(cls).toContain("focus:outline-none");
+    expect(cls).toMatch(/focus:ring-\d/);
+    expect(cls).toContain("focus:ring-border-focus");
+  });
+});

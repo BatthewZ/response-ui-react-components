@@ -32,7 +32,10 @@ describe("useTheme", () => {
     expect(result.current.theme).toBe("default");
   });
 
-  it("setTheme updates the data-theme attribute and persists to localStorage", () => {
+  // NOT "persists": the write is one-way. Nothing in this package reads the key
+  // back, which README.md:86 states as intentional. A title claiming persistence
+  // would assert a feature the docs disclaim — see the read-back test below.
+  it("setTheme sets data-theme and writes the localStorage key nothing reads back", () => {
     const { result } = renderHook(() => useTheme());
 
     act(() => {
@@ -87,5 +90,20 @@ describe("useTheme", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("grimdark");
 
     setItemSpy.mockRestore();
+  });
+});
+
+describe("the localStorage write is one-way (#90)", () => {
+  // Guards the documented contract, not a hoped-for one: README.md:86 says
+  // "Persistence is not included." If someone later implements restore-on-init,
+  // this fails and forces the README, AGENTS.md and the docblock to move with it.
+  it("does not restore a stored theme on mount", () => {
+    localStorage.setItem(STORAGE_KEY, "tech");
+    document.documentElement.removeAttribute("data-theme");
+
+    const { result } = renderHook(() => useTheme());
+
+    expect(result.current.theme).not.toBe("tech");
+    expect(document.documentElement.getAttribute("data-theme")).toBeNull();
   });
 });
