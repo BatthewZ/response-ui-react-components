@@ -74,9 +74,10 @@ The object is exported as `RepeaterItem`, so a row that outgrows an inline arrow
 into its own component with a real prop type.
 
 `name` is positional, not identity-based: it is rebuilt as `` `${name}.${index}` `` on every
-render, so remove row 0 and what was `links.1` becomes `links.0`. `id` is the only thing that
-follows a row through a reorder, and the component spends it on the React key. That asymmetry
-is the source of the error-shifting bug in [Gotchas](#gotchas).
+render, so remove row 0 and what was `links.1` becomes `links.0`. `id` is the thing that
+follows a row through a reorder: the component spends it on the React key, and the form store
+uses it to move each row's error and touched state to its new index — see
+[Gotchas](#gotchas).
 
 ## Reordering
 
@@ -330,14 +331,14 @@ their own pages; there is nothing here to override. See the
 
 ## Gotchas
 
-- **Validation errors are keyed by index, not by row — removing or reordering strands them.**
-  The store's error and touched maps are keyed `links.0.url`, and the array mutations rewrite
-  the values without re-keying them. Submit a two-row form where row 0 is invalid, then remove
-  row 0: the message stays on screen, now sitting under the surviving, valid row. Reordering
-  does the same in reverse — move an invalid row up and its message stays behind at the old
-  index. It corrects itself only when validation next runs: a keystroke under the default
-  `reValidateMode: "onChange"`, or the next submit. If rows can be removed after a failed
-  submit, call `form.trigger()` (or `form.clearErrors()`) after the mutation.
+- **Validation errors follow their row through a mutation — via the ids, not the indices.**
+  The store's error and touched maps are keyed by dotted path (`links.0.url`), so on every
+  array mutation it remaps those keys through an old-index → new-index map derived from the
+  stable `id`s: a row that moves takes its message and its `aria-invalid` along, and a row that
+  is removed takes them with it. Submit a form where the middle row is invalid, remove a valid
+  row above it, and the message travels down with its row (measured). Nothing needs to be
+  re-run afterwards. (Before this was fixed the mutations rewrote only the values, and a
+  message stayed pinned to whichever row inherited the index.)
 - **Removing a row throws focus to the document body.** The Remove button you just pressed is
   inside the row that unmounts, so a keyboard or screen-reader user is dumped back to the top
   of the page with no announcement. There is no focus-restoration hook to opt into.

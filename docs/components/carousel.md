@@ -27,8 +27,8 @@ fade themselves out at each end of the rail. There is no autoplay — no timer, 
 paints the two arrow buttons over the rail. `Carousel.Track` is the element that actually
 scrolls — it registers itself with the root through context, so the arrows and the arrow
 keys have something to drive. `Carousel.Item` is one snap-aligned slide. The root also
-takes the keyboard: it renders with `tabIndex={0}` and maps <kbd>←</kbd>/<kbd>→</kbd> onto
-the same scroll the arrow buttons perform.
+takes the keyboard: it renders with `tabIndex={0}` and, while that tab stop holds focus, maps
+<kbd>←</kbd>/<kbd>→</kbd> onto the same scroll the arrow buttons perform.
 
 | Part              | Renders                              | Props                                          |
 | ----------------- | ------------------------------------ | ---------------------------------------------- |
@@ -246,9 +246,13 @@ something a theme should decide for you.
   `aria-roledescription` are still replaceable on all three parts, which is how you fix the
   labelling problems in
   [Accessibility](#accessibility) — and how you break the keyboard by accident.
-- **Arrow keys are grabbed from anywhere inside the carousel.** The handler sits on the root
-  and does not check `e.target`, so <kbd>←</kbd> pressed inside a text field in a slide is
-  `preventDefault()`ed and scrolls the rail instead of moving the caret.
+- **Arrow keys page only from the root's own tab stop.** The handler returns unless
+  `e.target === e.currentTarget`, so <kbd>←</kbd>/<kbd>→</kbd> pressed inside a slide — in a
+  text field, a slider, a listbox — is left alone and does what that control expects. (Before
+  this was fixed, any arrow anywhere in the carousel was `preventDefault()`ed and paged the
+  rail instead of moving the caret.) The flip side: focus has to be on the root for paging to
+  work, so from one of the arrow buttons, or from anything else inside, the arrow keys do
+  nothing.
 - **Mousedown inside a slide is `preventDefault()`ed** — the drag gesture does it on every
   left-button press over the track to stop native image dragging. That also suppresses the
   browser's focus and caret-placement defaults, so clicking into an `<input>` inside a slide
@@ -320,8 +324,8 @@ Everything else needs a decision from you:
   they are all screen-reader-only. `"Carousel"`, `"Carousel items"`,
   `"carousel"` and `"slide"` can all be overridden through props — the arrow labels
   `"Previous"` and `"Next"` cannot, because the arrows are internal.
-- Also see the hidden-but-focusable arrows and the swallowed arrow keys in
-  [Gotchas](#gotchas); both are keyboard-only failures.
+- Also see the hidden-but-focusable arrows, and the fact that the arrow keys page only while
+  the root itself holds focus, in [Gotchas](#gotchas).
 
 ## Related
 

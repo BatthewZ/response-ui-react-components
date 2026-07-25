@@ -135,7 +135,9 @@ Map to `shadow-sm`, `shadow-md`, `shadow-lg`. For dark themes you'll often want 
 
 Each has both a base value and a `@media (width >= 40rem)` override (these scale up at 640px). If you override them, override at both breakpoints in the same media-query structure as `responsive/text.css`.
 
-`--H*`, `--BodyText-*` and `--R-SIZE-*` all share one numbering rule: **`1` is always the most significant value; numbers ascend as values shrink.**
+`--H*`, `--BodyText-*` and `--R-SIZE-*` all share one numbering rule: **`1` is always the most significant value; a higher number never carries a larger value.** Hold that direction when you re-theme — inverting it is what makes an `h6` outshout an `h1`.
+
+The rule is a direction, not a strict ordering: equal neighbours are allowed, and one ships. Above `40rem` the default scale sets both `--H5` and `--H6` to `1.25rem`, so at that breakpoint an `h5` and an `h6` are the same size and are told apart by weight alone (`700` against `600`). Below it the H scale descends strictly, as `--BodyText-*` and `--R-SIZE-*` do at both breakpoints.
 
 ```
 --H1, --H1-line-height        (down through H6)

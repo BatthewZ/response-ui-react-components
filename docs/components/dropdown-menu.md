@@ -212,6 +212,7 @@ rebuild.
 | Menu surface              | `--C-SURFACE-0` · `--C-BORDER-DEFAULT` · `--RADIUS-MD` · `--SHADOW-LG` |
 | Item label                | `--C-TEXT-PRIMARY` · `--BodyText-2`                               |
 | Item hover / focus wash   | `--C-SURFACE-1`                                                   |
+| Item focus ring           | `--C-BORDER-FOCUS`                                                |
 | Item icon                 | `--C-TEXT-SECONDARY`                                              |
 | Disabled item label       | `--C-TEXT-MUTED`                                                  |
 | Divider rule              | `--C-BORDER-DEFAULT`                                              |
@@ -285,14 +286,16 @@ The trigger is `aria-haspopup="menu"` with `aria-expanded` and `aria-controls` p
 surface; the surface is `role="menu"` labelled by the trigger's own text, and each `Item` is a
 `role="menuitem"` in a roving tab order. Escape and every selection return focus to the trigger.
 Items are skipped by the arrow keys when `aria-disabled`, which is Floating UI's default. That
-is the menu-button pattern implemented properly — but four real gaps remain:
+is the menu-button pattern implemented properly — with four things still to know:
 
-- **Keyboard focus inside the menu is close to invisible.** `.dropdown-menu-item` sets
-  `outline: none` and replaces the indicator with a background wash — the same
-  `--C-SURFACE-1` used for hover. Measured against `--C-SURFACE-0`, that wash is **1.02:1 to
-  1.07:1** across all four shipped themes, against the 3:1 that WCAG 2.2 SC 1.4.11 asks of a
-  focus indicator. Sighted keyboard users have no reliable way to see where they are. Add your
-  own `:focus-visible` outline on `.dropdown-menu-item` until this is fixed upstream.
+- **The focus ring is real, but thin in two themes.** `.dropdown-menu-item` resets the UA
+  outline and paints the same `--C-SURFACE-1` wash it uses for hover — **1.02:1 to 1.07:1**
+  against `--C-SURFACE-0`, which on its own is no indicator at all — so a `:focus-visible` rule
+  puts a 2px `--C-BORDER-FOCUS` outline back at `-2px` offset. Against that wash it measures
+  **3.52 / 2.63 / 14.56 / 2.77:1** (default / `events` / `tech` / `grimdark`), so it clears the
+  3:1 that WCAG 2.2 SC 1.4.11 asks of a focus indicator in two shipped themes and falls just
+  short in `events` and `grimdark`. Re-tint `--C-BORDER-FOCUS` in those two rather than
+  overriding the rule.
 - **`Tab` does not close the menu.** The APG menu-button pattern closes on Tab and moves focus
   onward. Here `Content` traps it: with focus on an item, Tab and Shift+Tab both leave focus on
   that same item and the menu stays open. Worse, if you opened the menu **with the mouse**, no

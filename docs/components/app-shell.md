@@ -313,7 +313,8 @@ The width transition and both drawer animations are dropped under
 (`3.5rem`, written three times — the navbar's own `height`, the sidebar's sticky `top`, and
 its `calc(100vh - 3.5rem)`), the sidebar widths (`16.25rem` expanded, `4rem` collapsed,
 `17.5rem` for the drawer), the corner radius (`0.375rem`, not `--RADIUS-*`), the
-section-title type size (`0.6875rem`, which no `--BodyText-*` step matches), and the stacking
+section-title type size (`0.6875rem` — a literal rather than `--BodyText-3`, which it happens
+to equal in the `tech` theme and in no other), and the stacking
 order (`10` navbar, `49` scrim, `50` drawer —
 the drawer ties with [Tooltip](tooltip.md)'s layer). The `639px` breakpoint is written
 twice, once in `AppShell.tsx`'s `matchMedia` and once in the stylesheet's `@media` block.

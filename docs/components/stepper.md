@@ -234,13 +234,15 @@ The track is a semantic `<ol>` of `<li>` items and the current step's `<li>` car
 There is no roving focus or arrow-key model as in [Tabs](tabs.md) — in clickable mode the
 markers are ordinary tab stops in DOM order.
 
-- **The clickable marker on a completed step has no accessible name.** Its only child is the
-  check glyph, which is rendered `aria-hidden="true"`, so a screen reader announces a bare
-  unnamed button. Active and upcoming markers fare only slightly better: their name is the
-  step number ("3"), because the title is a sibling `<span>` that is never associated with
-  the control. Rest props on `Stepper.Step` land on the `<li>`, not the button, so you cannot
-  fix this with an `aria-label` — the only lever is to pass your own `icon` containing a
-  visually hidden label, which means deriving the step's status yourself.
+- **The clickable marker is named, in English only.** In clickable mode the indicator carries
+  an `aria-label` built from the step's own `title` plus its status — `"Profile, completed"`,
+  `"Confirm, current step"`, or the bare `"Confirm"` for one still ahead. That is what keeps a
+  completed marker, whose only child is an `aria-hidden` check glyph, from announcing as an
+  unnamed button, and it holds whatever you pass as `icon` because the label beats the content.
+  The two status phrases are hard-coded, and rest props on `Stepper.Step` land on the `<li>`
+  rather than on the button, so neither the wording nor its language can be changed from
+  outside. Note also that an upcoming step announces no status of its own; `aria-current="step"`
+  on the `<li>` is what marks the current row.
 - **Done reads without colour; current does not.** A completed step changes shape — filled
   chip, check glyph — so it survives greyscale. `active` and `upcoming` are the same hollow
   ring with the same number at the same weight, separated only by ring, number, and title

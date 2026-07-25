@@ -44,9 +44,10 @@ throw `"Collapsible compound components must be used within <Collapsible>"` with
 widget, and it is better than this one in three concrete ways: it needs no JavaScript, so
 it works before hydration and in an RSC tree with no client boundary; it is keyboard- and
 screen-reader-correct without you checking; and when closed it genuinely does not render
-its content, so nothing inside is focusable or announced. `Collapsible` does none of those
-three — it is `"use client"`, and its closed panel stays in the DOM, in the accessibility
-tree, and in the tab order. Reach for `Collapsible` when you need something `<details>`
+its content, so nothing inside costs anything. `Collapsible` misses the first two outright —
+it is `"use client"` — and matches the third only halfway: its closed panel is `inert` rather
+than gone, so nothing inside is focusable or announced, but all of it is still mounted and
+still paying for itself. Reach for `Collapsible` when you need something `<details>`
 can't give you: the open state as a React value driving other UI, a controlled panel you
 open from elsewhere in the app, or the sliding height transition below.
 
@@ -154,12 +155,20 @@ staggered reveal you compose it inside `Collapsible.Content` yourself.
 `Collapsible.css` ships a `prefers-reduced-motion: reduce` block that drops the transition to
 `none`, so the panel opens instantly for users who ask for that.
 
-## Closed content is not hidden
+## A closed panel is inert, not gone
 
-The panel is never unmounted, `hidden`, `inert`, or `display: none` — closing it only clips it
-to zero height. Everything inside stays in the DOM, in the accessibility tree, and **in the tab
-order**, so a keyboard user can Tab into a control they cannot see. If the panel holds anything
-interactive, mount it on the open state, which means controlling the component:
+Closing clips the panel to zero height **and** marks it `inert`. The `inert` half is what covers
+reachability: while closed the panel takes no clicks, leaves the tab order, and drops out of the
+accessibility tree, so focus cannot land on a control the user can't see. The attribute sits on
+`Collapsible.Content` and not on the root, which would take the trigger with it and leave a
+closed `Collapsible` with no way to open it from the keyboard. `hidden` and `display: none` are
+not options here — either would kill the `grid-template-rows` transition.
+
+What `inert` does *not* cover is everything else about being mounted. The children still render
+on every pass, so effects keep running, images keep loading, and an `inert` form control is
+still submitted with its form. If what you're avoiding is the cost of a closed panel rather than
+its reachability, mount its contents on the open state yourself, which means controlling the
+component:
 
 <!-- example:GatedContent -->
 ```tsx
@@ -193,13 +202,14 @@ two variables still resolve, they just stop being animated.
 
 ## Gotchas
 
-- **A closed panel is still tabbable** — it is clipped, not hidden. See
-  [Closed content is not hidden](#closed-content-is-not-hidden).
+- **A closed panel is still mounted** — `inert` and clipped, not unmounted. See
+  [A closed panel is inert, not gone](#a-closed-panel-is-inert-not-gone).
 - **Don't pass `id` to `Collapsible.Content`.** `{...props}` spreads last, so your `id`
   replaces the generated one while the trigger's `aria-controls` keeps pointing at the
   original — the association silently breaks. The same spread order applies everywhere: on
   the trigger a hand-written `aria-expanded` or `disabled` overrides the computed one, and on
-  the content so does `role`.
+  the content so do `role` and `inert` — passing `inert={false}` puts a closed panel's
+  contents back in the tab order.
 - **The trigger cannot be re-rendered as another component.** There is no `as` or `asChild`
   prop, and `Collapsible.Trigger` always renders its own `<button>`. Nesting a
   [Button](button.md) inside it would produce a `<button>` inside a `<button>` — invalid HTML.
@@ -232,11 +242,12 @@ library that neither match the others nor re-tint from `--C-BORDER-FOCUS` — th
 [ThemeSwitcher](theme-switcher.md). Add your own, as
 [Styling](#styling) does, or keyboard users get a ring that ignores your theme.
 
-**`aria-expanded` and the accessibility tree disagree.** The trigger reports
-`aria-expanded="false"`, but the panel it names is still present and readable — the closed
-state is purely visual. A screen-reader user is told the section is collapsed and can then
-read straight into it. That is the same defect as the tab-order one:
-[Closed content is not hidden](#closed-content-is-not-hidden).
+**`aria-expanded` and the accessibility tree agree.** The trigger reports
+`aria-expanded="false"` and the panel it names is `inert` while closed, so it leaves the
+accessibility tree and the tab order together: a screen-reader user is told the section is
+collapsed and cannot then read straight into it, and a keyboard user cannot Tab into a control
+they can't see. The panel is still *mounted* while closed, which costs something else entirely —
+see [A closed panel is inert, not gone](#a-closed-panel-is-inert-not-gone).
 
 **The region has no accessible name.** `Collapsible.Content` sets `role="region"` but never
 sets `aria-labelledby`, and the trigger is given no `id` to point one at — so the role is

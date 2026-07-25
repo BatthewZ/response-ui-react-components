@@ -295,7 +295,7 @@ at runtime with the rest of the app.
 | Chevron ink                        | `--C-TEXT-SECONDARY`                         |
 | Listbox fill · border · shadow     | `--C-SURFACE-0` · `--C-BORDER-DEFAULT` · `--SHADOW-LG` |
 | Option ink                         | `--C-TEXT-PRIMARY`                           |
-| Highlighted option row             | `--C-SURFACE-1`                              |
+| Highlighted option — wash · ring   | `--C-SURFACE-1` · `--C-BORDER-FOCUS`         |
 | Disabled option ink · empty text   | `--C-TEXT-MUTED`                             |
 | Selected-option check              | `--C-ACCENT`                                 |
 | Query, option & empty-row type     | `--BodyText-2`                               |
@@ -320,10 +320,12 @@ like [TagInput](tag-input.md) reaches through a utility, so they track the theme
 **Measured contrast**, from the shipped OKLCH values in `@batthewz/response-ui-css`, in
 default / `events` / `tech` / `grimdark`:
 
-- The **highlighted option** is `--C-SURFACE-1` on the listbox's `--C-SURFACE-0` — **1.05 /
-  1.03 / 1.02 / 1.07:1**. It is the only marker of where the arrow keys are, and it is
-  invisible in every shipped theme (WCAG 1.4.11 asks 3:1 of a focus indicator). See
-  [Gotchas](#gotchas).
+- The **highlighted option**'s wash is `--C-SURFACE-1` on the listbox's `--C-SURFACE-0` —
+  **1.05 / 1.03 / 1.02 / 1.07:1**, invisible in every shipped theme, which is why it is no
+  longer the marker. The 2px `--C-BORDER-FOCUS` ring drawn over it measures **3.52 / 2.63 /
+  14.56 / 2.77:1** against that wash, clearing the 3:1 WCAG 1.4.11 asks of a focus indicator
+  in the default and `tech` themes and falling just short of it in `events` and `grimdark`.
+  See [Accessibility](#accessibility).
 - The **remove glyph** on a chip is `--C-TEXT-MUTED` on `--C-SURFACE-2`: **2.31 / 2.27 /
   1.94 / 2.23:1**, under the same 3:1 floor for a control's graphical affordance. It only
   reaches `--C-TEXT-PRIMARY` (9.70–16.12:1) on hover.
@@ -406,14 +408,19 @@ rows are `role="option"` with `aria-selected`, and `aria-disabled` on anything b
 `tabIndex={-1}` and navigation is virtual — so `Escape` returns you to a control that never
 lost focus. Each chip's × is a real `<button type="button">` named `Remove <label>`.
 
-Five gaps to plan around:
+Five things to plan around:
 
 - **Only `aria-label` can name it.** See [Gotchas](#gotchas) — `id`/`aria-labelledby` land on
   the wrapper, so omitting `aria-label` leaves the combobox with no accessible name at all.
-- **The highlighted option is invisible.** The `data-active` row is a `--C-SURFACE-1`
-  background and nothing else — no border, no ink change, no outline — measured at
-  1.02–1.07:1 (see [Theme tokens](#theme-tokens)). A sighted keyboard user cannot see where
-  the arrow keys are. Screen-reader users are fine: `aria-activedescendant` is correct.
+- **The highlighted option is marked by a ring, not by its wash.** The `--C-SURFACE-1`
+  background is 1.02–1.07:1 and carries nothing on its own, so `.multiselect-item[data-active]`
+  also draws a 2px `--C-BORDER-FOCUS` outline at `-2px` offset. It has to come from the
+  attribute rather than `:focus-visible`, because DOM focus never leaves the input and that
+  pseudo-class can never match an option. The ring measures 3.52 / 2.63 / 14.56 / 2.77:1
+  against the wash (see [Theme tokens](#theme-tokens)) — a real indicator in the default and
+  `tech` themes, marginally short of 3:1 in `events` and `grimdark`, where re-tinting
+  `--C-BORDER-FOCUS` is the fix. Screen-reader users are unaffected either way:
+  `aria-activedescendant` is correct.
 - **Nothing announces a change.** There is no live region. Toggling an option, hitting the
   `maxItems` cap, and Backspacing a chip away all happen silently; so does the "No options"
   row, which is `role="presentation"` inside a listbox the user is not focused in.

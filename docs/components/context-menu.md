@@ -6,9 +6,9 @@ row, a card, or a canvas item has more actions than a toolbar can hold, and trea
 shortcut rather than the only route to them.
 
 That last part is not a style preference. Read
-[Opening it without a mouse](#opening-it-without-a-mouse) before you ship one: the right-click is
-not the only gesture the platform fires for a context menu, and this component covers only some
-of the rest.
+[Opening it without a mouse](#opening-it-without-a-mouse) before you ship one: the keyboard
+gestures the platform fires for a context menu are wired, but the tab stop they arrive on is a
+bare `<div>` with no accessible name and no focus style until you give it one.
 
 <!-- example:Minimal -->
 ```tsx
@@ -29,8 +29,9 @@ of the rest.
 <!-- /example -->
 
 **Anatomy.** `ContextMenu` renders no DOM of its own — it is a provider holding the open state
-and the Floating UI wiring. `ContextMenu.Trigger` is the region you right-click: a plain `<div>`
-that registers itself as the anchor and listens for `contextmenu`. `ContextMenu.Content` is the
+and the Floating UI wiring. `ContextMenu.Trigger` is the region you right-click: a `<div>` that
+registers itself as the anchor, sets `tabIndex={0}` so it can be focused, and listens for
+`contextmenu` plus the two keys that stand in for it. `ContextMenu.Content` is the
 menu panel; it renders through Floating UI's `FloatingPortal` (so no ancestor's `overflow`,
 `transform`, or `z-index` can clip it) and returns `null` while closed. Inside it,
 `ContextMenu.Item` is one action, and `ContextMenu.Label` / `ContextMenu.Divider` are
@@ -158,9 +159,10 @@ was opened on. Native context menus close instead; if that matters, close it you
 `Trigger` calls `event.preventDefault()` on every `contextmenu` before it does anything else.
 That is the whole reason a custom context menu can exist — and it is a real cost, paid across the
 entire trigger region: no *Copy*, no *Paste*, no *Inspect*, no *Open link in new tab*, no *Save
-image as*, no spell-check suggestions, no browser-extension entries. There is no escape hatch in
-the API; your own `onContextMenu` handler runs *after* the `preventDefault()`, so it cannot
-decline it for a sub-region.
+image as*, no spell-check suggestions, no browser-extension entries. There is no escape hatch on
+this path; your own `onContextMenu` handler runs *after* the `preventDefault()`, so it cannot
+decline it for a sub-region. (The keyboard path is the other way round — see
+[Opening it without a mouse](#opening-it-without-a-mouse).)
 
 The trade is worth it where the region is a UI object with actions of its own — a file row, a
 node on a canvas, a calendar event — and the browser's menu would offer nothing useful. It is a
@@ -171,12 +173,22 @@ screen.
 ## Opening it without a mouse
 
 `contextmenu` is not a mouse-only event: the platform also fires it from the **Menu key** and
-**Shift+F10**, dispatched at `document.activeElement`. Listening for `onContextMenu` — which is
-what this component does — gets those for free, but only if the event has somewhere to bubble
-*from*. `Trigger` is a `<div>` and sets no `tabIndex`, so by default it can never be the focused
-element itself. Wrap something focusable and the keyboard route works; wrap plain text, as the
-shorter examples on this page do, and **there is no way to open the menu without a pointer at
-all**.
+**Shift+F10**, dispatched at `document.activeElement`. `Trigger` covers both. It sets
+`tabIndex={0}` on its `<div>`, so the region is a tab stop and can *be* `document.activeElement`,
+and it handles those two keys itself rather than waiting for a synthesised `contextmenu` — with
+`preventDefault()` on the keydown, so the browser's own menu does not open alongside this one.
+A keyboard press has no cursor point, so it clears any position reference an earlier right-click
+left behind and the panel anchors on the trigger's box instead.
+
+Your own `onKeyDown` runs **first** here and can veto: call `preventDefault()` in it and the
+component leaves the key alone. That is the opposite of the `contextmenu` path, where the
+suppression happens before your handler ever sees the event — see
+[Suppressing the browser menu](#suppressing-the-browser-menu).
+
+The tab stop you get by default is a bare `<div>`. Nothing in the package styles
+`.context-menu-trigger`, and a `<div>` takes no accessible name from its own text the way a
+button does, so a keyboard user arrives at an unnamed region wearing only the browser's default
+focus ring. Wrapping a real control gives it both, and is the shape to reach for:
 
 <!-- example:KeyboardReachable -->
 ```tsx
@@ -195,23 +207,20 @@ all**.
 ```
 <!-- /example -->
 
-A focusable child buys a second route too: Floating UI's list navigation is wired to the trigger,
-so ArrowDown or ArrowUp on that child opens the menu as well — anchored under the trigger box,
-since no pointer coordinates exist. That is also a hazard; see [Gotchas](#gotchas).
+A focusable child buys a third route: Floating UI's list navigation is wired to the trigger, so
+ArrowDown or ArrowUp on that child opens the menu as well — anchored under the trigger box, since
+no pointer coordinates exist. That is also a hazard; see [Gotchas](#gotchas). It costs one extra
+tab stop, because the region itself is already one. `tabIndex` is written *before* the rest
+spread, so `<ContextMenu.Trigger tabIndex={-1}>` takes the wrapper back out of the tab order and
+leaves the child as the only stop.
 
-The other half of the problem is what happens *after* it opens. The focus manager is configured
-`initialFocus={-1}`, so opening the menu never moves focus into it — focus stays exactly where it
-was, which after a right-click on plain content is `<body>`. Escape still closes it, because that
-listener is on the document, but ArrowDown, Home/End, and typeahead are delivered to the focused
-element, and that element is neither the menu nor the trigger — so they do nothing at all. The
-menu is keyboard-operable only when focus was already inside the trigger when it opened; one
-ArrowDown then moves into the first item.
-
-If the region has no focusable content of its own, `tabIndex` passes straight through to the
-trigger `<div>`, and `<ContextMenu.Trigger tabIndex={0}>` fixes all three problems at once: the
-region enters the tab order, Shift+F10 and the Menu key fire at it, arrow keys reach the menu,
-and on close focus returns to the trigger instead of being dropped. Give it a visible focus style
-and an accessible name to go with it.
+What happens *after* it opens is wired too, but not by the focus manager. That is still
+configured `initialFocus={-1}`, so opening the menu never moves focus into the panel. What makes
+the open menu take keys is that focus is on the trigger — a right-click focuses it before
+opening, and a keyboard open never left it — and the trigger is exactly where
+`getReferenceProps` installs the list-navigation and typeahead handlers. So after a right-click,
+ArrowDown moves into the first item and typing jumps to the item you typed (both measured).
+Escape closes from anywhere, because that listener is on the document.
 
 ## Controlling it yourself
 
@@ -235,8 +244,10 @@ state — it only calls `onOpenChange`, so ignoring that callback means the menu
 
 Opening it programmatically is legitimate, but understand what it anchors to: with no right-click
 yet, there is no virtual reference and the menu falls back to the trigger's own box. After the
-first right-click that reference is set for good — a later programmatic open reuses the last
-cursor position, wherever on the page that was.
+first right-click that reference sticks — nothing on the programmatic path clears it, so a later
+`setOpen(true)` reuses the last cursor position, wherever on the page that was. Only a keyboard
+open resets it: the Menu key and Shift+F10 drop the reference before opening, so they always
+anchor on the trigger box.
 
 ## Theme tokens
 
@@ -247,8 +258,9 @@ ContextMenu has no CSS file of its own, and its `.tsx` uses no Tailwind utilitie
 — and doing so retints **both** components at once. The full table lives with [DropdownMenu](dropdown-menu.md); in
 summary, that stylesheet reads `--C-SURFACE-0` and `--C-BORDER-DEFAULT` for the panel with
 `--RADIUS-MD` and `--SHADOW-LG`, `--C-TEXT-PRIMARY` at `--BodyText-2` for item labels,
-`--C-SURFACE-1` for the hover/focus row, `--C-TEXT-SECONDARY` for item icons, and
-`--C-TEXT-MUTED` for disabled items and for the `--BodyText-3` group label.
+`--C-SURFACE-1` for the hover/focus row with a 2px `--C-BORDER-FOCUS` ring on
+`:focus-visible`, `--C-TEXT-SECONDARY` for item icons, and `--C-TEXT-MUTED` for disabled items
+and for the `--BodyText-3` group label.
 
 Two things are *not* on the contract. The panel's geometry — its `0.25rem 0` padding, the items'
 `0.375rem 0.75rem`, the `0.5rem` icon gap, an `11.25rem` minimum width and `z-index: 40` — is
@@ -305,23 +317,26 @@ nothing in the package styles it. See the [theme contract](../theme-contract.md)
 
 The parts carry the right roles — `menu` on the panel, `menuitem` on each item, `separator` on
 the divider — and the trigger gets `aria-haspopup="menu"` plus a live `aria-expanded` and
-`aria-controls`. What is underneath those is weaker than the markup suggests.
+`aria-controls`, on an element the keyboard can actually reach. What the markup does not cover
+is a name for that element, and what the focus manager does with focus around it.
 
-- **Keyboard access is conditional, and can be zero.** See
-  [Opening it without a mouse](#opening-it-without-a-mouse). A trigger wrapping only
-  non-focusable content has no keyboard route in, and one opened by right-click cannot be
-  navigated by keyboard afterwards — Escape is the only key that reaches it. Make the trigger or
-  its contents focusable, and treat a context menu as a shortcut for actions that also exist
-  somewhere focusable, never as the only way to reach them.
-- **Focus is not restored to where it was.** On close, focus goes to the trigger if the trigger is
-  itself tabbable, and otherwise to the *first* tabbable element inside it — not the one the user
-  was on when they opened the menu. With no tabbable descendant either, `.focus()` is called on
-  the non-focusable trigger `<div>`, does nothing, and focus is left on `<body>`, so the next Tab
-  restarts from the top of the document.
-- **`aria-haspopup` lands on an element nobody can focus.** The trigger announces itself as
-  having a menu, but by default it sets no `tabIndex` and is not in the tab order, so a keyboard
-  user never arrives there to hear it. It is discoverable only by browsing the page with a screen
-  reader.
+- **Keyboard access is wired, whatever the trigger wraps.** The region is a tab stop, the Menu
+  key and Shift+F10 open the menu from it, and arrows and typeahead reach the panel after a
+  right-click open as well as a keyboard one — see
+  [Opening it without a mouse](#opening-it-without-a-mouse). Still treat a context menu as a
+  shortcut for actions that exist somewhere else too: it is a gesture most users never try.
+- **The tab stop has no name and no focus style of its own.** `tabIndex={0}` puts a `<div>` in
+  the tab order, but a `<div>` takes no accessible name from its own text the way a button does,
+  nothing sets an `aria-label` for you, and nothing in the package styles
+  `.context-menu-trigger`. So a keyboard user arrives at an unnamed region wearing only the
+  browser's default ring. Wrap a real control, or give the trigger an `aria-label` and a focus
+  style yourself.
+- **A right-click moves focus, and close returns it to the trigger.** The `contextmenu` handler
+  focuses the trigger `<div>` before opening — that is what leaves the open menu able to take
+  keys — and the focus manager returns focus there on close. So closing does not put focus back
+  where it was *before* the gesture; for a mouse user who was typing elsewhere, the caret is
+  gone. A keyboard open leaves focus wherever it already was inside the trigger, and that is what
+  it restores.
 - **The menu is named after the whole trigger.** Floating UI labels the panel `aria-labelledby`
   the trigger element, so the menu's accessible name is *all* of the trigger's text. Over a
   paragraph or a card that is a long, useless name; give `Content` its own `aria-label` when the

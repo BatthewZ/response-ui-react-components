@@ -283,7 +283,8 @@ the field and the popup re-tint at runtime.
 | Chevron and loading spinner ink             | `--C-TEXT-SECONDARY`                |
 | Popup border                                | `--C-BORDER-DEFAULT`                |
 | Popup shadow                                | `--SHADOW-LG`                       |
-| Active-option highlight                     | `--C-SURFACE-1`                     |
+| Active-option highlight — wash and ring     | `--C-SURFACE-1` · `--C-BORDER-FOCUS` |
+| Selected option's weight                    | `--Semibold-Weight`                 |
 | Corners — input and popup                   | `--RADIUS-MD`                       |
 
 The spinner has no colour of its own: it is drawn with `border-current`, so it takes the
@@ -292,13 +293,18 @@ The spinner has no colour of its own: it is drawn with `border-current`, so it t
 A handful of values are **not** on the contract and cannot be themed: the input's padding
 (`0.5rem 2.25rem 0.5rem 0.75rem`, the right side reserving the chevron's gutter), the option
 padding (`0.375rem 0.75rem`), the popup's `min-width: 11.25rem`, `max-height: 16rem` and
-`z-index: 40`, the 2px focus-ring width, the selected option's `font-weight: 600` (a literal,
-not `--Semibold-Weight`), and the chevron's `size={16}`.
+`z-index: 40`, the 2px focus-ring width, and the chevron's `size={16}`. The selected option's
+weight *is* on the contract — it reads `--Semibold-Weight` rather than a frozen `600`, which
+was the wrong number in two of the four shipped themes (`tech` sets `500`, `grimdark` `700`)
+and skipped the default scale's step up at 40rem in all of them.
 
 Three token pairs here are worth measuring before you ship a theme, because the defaults are
-thin. The active-option highlight is `--C-SURFACE-1` painted on the popup's `--C-SURFACE-0`,
-which is **1.02–1.07:1** across the four shipped themes — see [Gotchas](#gotchas), because with
-virtual focus that background is the *only* cue. The input border is `--C-BORDER-STRONG` on
+thin. The active-option **wash** is `--C-SURFACE-1` painted on the popup's `--C-SURFACE-0`,
+which is **1.02–1.07:1** across the four shipped themes — invisible, which is why the wash is
+no longer what marks the option. The **ring** drawn over it is `--C-BORDER-FOCUS` at
+**3.52 / 2.63 / 14.56 / 2.77:1** (default / `events` / `tech` / `grimdark`) against that wash,
+so it clears the 3:1 floor in two themes of the four and lands just under it in the other two;
+see [Gotchas](#gotchas). The input border is `--C-BORDER-STRONG` on
 `--C-SURFACE-0` at **1.41–1.79:1**, and the focus ring `--C-BORDER-FOCUS` on the same fill is
 **2.72:1** in `events` and **2.96:1** in `grimdark` — both under the 3:1 floor for a non-text
 indicator, with `outline: none` removing the browser's fallback. See the
@@ -336,10 +342,15 @@ indicator, with `outline: none` removing the browser's fallback. See the
 - **Nothing closes the popup when focus leaves.** There is no blur or focus-out dismissal —
   tabbing from the input to the next control leaves the portalled listbox mounted and
   `aria-expanded="true"` on an unfocused combobox.
-- **The active-option highlight is close to invisible.** It is a `--C-SURFACE-1` background on
-  a `--C-SURFACE-0` popup — 1.02–1.07:1 in every shipped theme — and because navigation is
-  virtual there is no focus ring on the option to back it up. Override
-  `.combobox-item[data-active]` with something that clears 3:1 if keyboard users matter.
+- **The active option is marked by its ring, not its wash.** The `--C-SURFACE-1` background is
+  1.02–1.07:1 on the `--C-SURFACE-0` popup — invisible in every shipped theme — so
+  `.combobox-item[data-active]` also draws a 2px `--C-BORDER-FOCUS` outline at `-2px` offset,
+  the same ring the rest of the library draws on `:focus-visible`. It has to be drawn from the
+  attribute because navigation is virtual: DOM focus never leaves the input, so `:focus-visible`
+  can never match an option. That ring measures 3.52 / 2.63 / 14.56 / 2.77:1 against the wash
+  (default / `events` / `tech` / `grimdark`), so in `events` and `grimdark` it is still just
+  under the 3:1 floor — re-tint `--C-BORDER-FOCUS` there, or override the rule, if keyboard
+  users matter.
 - **Hovering an option makes it the active one,** overwriting whatever the arrow keys had
   selected. Moving the mouse across the list while typing will move the `Enter` target.
 - **Client-only.** `Combobox.tsx` carries `"use client"`, so the whole subtree is a client
@@ -379,10 +390,11 @@ Four things the code does **not** do, and that you may have to work around:
   user browsing element-by-element meets a button that does not say what it opens, and cannot
   be renamed.
 
-Contrast is the weak point. The active-option highlight (1.02–1.07:1) and the input border
-(1.41–1.79:1) sit under the 3:1 non-text floor in **every** shipped theme, and the focus ring
-sits under it in `events` and `grimdark` — see [Theme tokens](#theme-tokens) for the numbers.
-The keyboard cue is the one to fix first, because virtual focus leaves nothing else to see.
+Contrast is still the weak point. The input border (1.41–1.79:1) sits under the 3:1 non-text
+floor in **every** shipped theme, and `--C-BORDER-FOCUS` — which now carries the keyboard cue
+on an option as well as the focus ring on the input — sits under it in `events` and `grimdark`.
+See [Theme tokens](#theme-tokens) for the numbers. Re-tinting that one variable fixes both
+cues at once, which makes it the first thing to measure when you ship a theme.
 
 ## Related
 

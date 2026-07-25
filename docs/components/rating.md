@@ -90,8 +90,8 @@ With `allowHalf`, a click is resolved against the star's bounding box: land left
 midpoint and it commits `n − 0.5`, right of it `n`. The arrow-key step drops from `1` to
 `0.5` at the same time — so the arrows still walk the whole ladder and still reach `max`
 (measured: ten `ArrowRight`s from `0` commit `0.5, 1, 1.5 … 5`). What breaks is
-*activation*: `Enter`/`Space` on a star can only ever commit `n − 0.5`. That, and the
-announced star names being wrong by half a star, are covered in [Gotchas](#gotchas).
+*activation*: `Enter`/`Space` on a star can only ever commit `n − 0.5`. That, and the way the
+announced star names shift while a half value is held, are covered in [Gotchas](#gotchas).
 
 ## Scale
 
@@ -223,10 +223,15 @@ print the number beside them, as [Read-only display](#read-only-display) does.
   value. The arrow keys are unaffected — they never look at the pointer, so all four of them
   step the value by `0.5` and do reach `max` (measured). This is only a trap if you expect
   `Enter` on the last star to mean "five stars"; it means 4.5.
-- **`allowHalf` mislabels every star.** The hidden name is `position − 0.5`, so the five
-  radios announce as "0.5 stars" … "4.5 stars" — no radio is ever named "5 stars", and at
-  `value={3}` the one reporting `aria-checked="true"` is the radio named **"2.5 stars"**.
-  A screen-reader user cannot tell `2.5` from `3`.
+- **Under `allowHalf` the star names move with the value.** Each radio is named for the value
+  it stands for — its own position, except the *checked* one, which is named for the value
+  actually held. On a whole value that is the plain ladder: at `value={3}` the five radios
+  announce "1 stars" … "5 stars" and the checked one is "3 stars". On a **half** value the
+  checked star is renamed and the whole value it would otherwise offer drops out of the set:
+  at `value={2.5}` the radios read 1 · 2 · **2.5** · 4 · 5, with no "3 stars" to pick. At
+  `value={max − 0.5}` the one that drops out is `max` itself — `value={4.5}` of five leaves
+  1 · 2 · 3 · 4 · **4.5**, so there is no radio named "5 stars" while that value is held. The
+  arrow keys still reach `max`; only the named options are short one rung.
 - **`readOnly` throws away your `aria-label`.** The read-only branch overwrites it with the
   generated `"{value} out of {max} stars"`, so
   `<Rating readOnly value={4} aria-label="Average customer rating" />` announces "4 out of
@@ -255,9 +260,10 @@ The buttons carry an explicit `type="button"`, so a rating inside a `<form>` nev
 it.
 
 - **Each star has a hidden name.** An `sr-only` span renders "N stars" inside every button,
-  and `aria-checked` tracks the current value. The string is hard-coded English with no way
-  to translate it, and under `allowHalf` the number in it is wrong — see
-  [Gotchas](#gotchas).
+  and `aria-checked` tracks the current value — the checked radio is now always named for the
+  value it actually holds. The string is hard-coded English with no way to translate it, and
+  under `allowHalf` the *set* of names shifts as the value moves, which can leave `max`
+  unnamed — see [Gotchas](#gotchas).
 - **The glyphs are hidden.** Each star span is `aria-hidden="true"`, so the icon never
   double-announces over the hidden name.
 - **The focus indicator is real and does not shift layout.** `.rating-button` resets itself

@@ -370,7 +370,8 @@ through `var()` — the component's `.tsx` carries no Tailwind utilities at all,
 | Query text · option label                                       | `--C-TEXT-PRIMARY`                                                |
 | Leading icon slot                                               | `--C-TEXT-SECONDARY`                                              |
 | Placeholder · group header · empty message · disabled option    | `--C-TEXT-MUTED`                                                  |
-| Highlighted option wash                                         | `--C-SURFACE-2`                                                   |
+| Highlighted option — wash · ring                                | `--C-SURFACE-2` · `--C-BORDER-FOCUS`                              |
+| Search input focus ring                                         | `--C-BORDER-FOCUS`                                                |
 | Option corners                                                  | `--RADIUS-MD`                                                     |
 | Query type                                                      | `--BodyText-1` · `--BodyText-1-line-height`                       |
 | Option and empty-message type                                   | `--BodyText-2` · `--BodyText-2-line-height`                       |
@@ -407,13 +408,16 @@ palette's colour, spacing and timing but not its shape.
 
 ## Gotchas
 
-- **The highlight is a 1.1:1 wash, and nothing else marks it.** The only style on the active
-  row is `background: var(--C-SURFACE-2)` over the panel's `--C-SURFACE-0` — no border, no ink
-  change, no weight change. Measured, that is 1.10:1 in the default theme, 1.08:1 in `events`,
-  1.08:1 in `tech` and 1.16:1 in `grimdark`, against a 3:1 floor for a non-text indicator. Since
-  DOM focus never leaves the search input, there is no focus ring on the row either. Sighted
-  keyboard users are effectively arrowing blind; give `.command-palette-option[data-active]` a
-  border or an ink change in your own unlayered CSS.
+- **The highlight's wash is a 1.1:1 nothing — the ring over it is the cue.** `background:
+  var(--C-SURFACE-2)` over the panel's `--C-SURFACE-0` measures 1.10:1 in the default theme,
+  1.08:1 in `events`, 1.08:1 in `tech` and 1.16:1 in `grimdark`, against a 3:1 floor for a
+  non-text indicator, so `.command-palette-option[data-active]` also draws a 2px
+  `--C-BORDER-FOCUS` outline at `-2px` offset. It comes from the attribute rather than
+  `:focus-visible` because DOM focus never leaves the search input, so no pseudo-class can ever
+  match the row. Against that wash the ring measures 3.34 / 2.52 / 13.70 / 2.55:1 (default /
+  `events` / `tech` / `grimdark`) — over the floor in two themes, just under it in the other
+  two, where re-tinting `--C-BORDER-FOCUS` (which also carries the search input's own ring) is
+  the single fix.
 - **Arrow keys walk the array, not the screen.** Grouping is a rendering pass over the same
   flat filtered list, but `activeIndex` moves through that flat list by ±1. With
   `[File-A, Edit-A, File-B]` the palette *renders* File-A, File-B, Edit-A — and ArrowDown from
@@ -468,9 +472,12 @@ needed, and closing returns focus to whatever was focused before — both native
 - **Arrow keys, Home, End and Enter are handled; nothing else is.** Arrow wrapping runs both
   ways, Home and End jump to the first and last *selectable* rows, and all four skip disabled
   items. There is no Tab-to-select, no PageUp/PageDown, and no type-ahead beyond the query.
-- **The highlight has no visible indicator worth the name** — 1.08–1.16:1, and no focus ring
-  because focus is virtual. This is the component's most serious gap; see
-  [Gotchas](#gotchas).
+- **The highlight is drawn as a ring, because focus is virtual.** Its wash is 1.08–1.16:1 and
+  carries nothing, so the row's `data-active` rule draws a `--C-BORDER-FOCUS` outline instead —
+  2.52–13.70:1 depending on the theme, which is over the 3:1 floor in two of the four and just
+  under it in `events` and `grimdark`. See [Gotchas](#gotchas). The highlight is also gated on
+  the same predicate as `aria-activedescendant`, so a palette whose rows are all disabled shows
+  no cursor at all rather than one pointing at a row Enter would not act on.
 - **You cannot give the search input an accessible name.** Rest props are spread on the
   `<dialog>`, not the input, so an `aria-label` you pass renames the *dialog*. The input carries
   no `aria-label`, no `aria-labelledby` and no `<label>`, which leaves it with only the
