@@ -66,6 +66,15 @@ const StatCardValue = forwardRef<HTMLSpanElement, StatCardValueProps>(function S
     const el = innerRef.current;
     if (!el) return;
 
+    // Same guard as ScrollReveal: without IntersectionObserver there is no way
+    // to know when the value scrolls into view, so settle on the final value
+    // rather than throwing or freezing on the `from` placeholder. Kept in the
+    // effect, not the render, so the server and the first client render agree.
+    if (typeof IntersectionObserver === "undefined") {
+      setDisplayValue(formatValue(target));
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting || hasAnimated.current) return;

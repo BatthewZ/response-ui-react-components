@@ -421,4 +421,21 @@ describe("StatCard", () => {
       expect(screen.getByTestId("trend").textContent).toContain("+15%");
     });
   });
+
+  describe("environments without IntersectionObserver", () => {
+    it("renders the final value instead of throwing", () => {
+      motion.reduced = false;
+      vi.stubGlobal("IntersectionObserver", undefined);
+
+      expect(() =>
+        render(
+          <StatCard>
+            <StatCard.Value animateValue from={0} to={500} />
+          </StatCard>
+        )
+      ).not.toThrow();
+
+      expect(screen.getByText("500")).toBeInTheDocument();
+    });
+  });
 });
