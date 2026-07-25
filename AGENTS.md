@@ -339,7 +339,7 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
 
 ## Naming conventions for AI-generated code
 
-- Every design-system scale is numbered **descending**: **`1` is always the most significant value; numbers ascend as values shrink.** `r1` is the biggest gap and `r6` the tightest; likewise `h1` > `h6` and `body-1` > `body-3`.
+- Every design-system scale is numbered **descending**: **`1` is always the most significant value; a higher number never carries a larger value.** `r1` is the biggest gap and `r6` the tightest; likewise `h1` > `h6` and `body-1` > `body-3`. (Non-strict at one point: `--H5` and `--H6` are both `1.25rem` above `40rem`, separated by weight rather than size.)
 - Use Tailwind utilities backed by the design system's tokens, not raw values:
   - Spacing: `p-r3 m-r2 gap-r4` not `p-4 m-2 gap-6`
   - Text: `text-h1 text-body-2` not `text-3xl text-sm`

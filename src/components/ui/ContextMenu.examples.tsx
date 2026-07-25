@@ -76,8 +76,9 @@ export function DisabledItem() {
   );
 }
 
-/** Wrap something focusable, or there is no keyboard route in: the Menu key and Shift+F10 fire
- *  `contextmenu` at the focused element, and ArrowDown on it opens the menu too. */
+/** The trigger is a tab stop by default, so there is always a keyboard route in — the Menu key
+ *  and Shift+F10 open it. Wrapping a real control instead gives the region a name and a focus
+ *  style, which a bare trigger `<div>` has neither of. */
 export function KeyboardReachable() {
   return (
     <ContextMenu>
@@ -95,8 +96,10 @@ export function KeyboardReachable() {
   );
 }
 
-/** Controlled by `const [open, setOpen] = useState(false)`. Right-click still supplies the
- *  position; opening it yourself anchors the menu under the trigger box instead. */
+/** Controlled by `const [open, setOpen] = useState(false)`. Right-click supplies a cursor
+ *  position; opening it yourself anchors under the trigger box only until the first
+ *  right-click, after which the last cursor point is reused — a keyboard open clears it, a
+ *  programmatic one does not. */
 export function Controlled() {
   const [open, setOpen] = useState(false);
 
