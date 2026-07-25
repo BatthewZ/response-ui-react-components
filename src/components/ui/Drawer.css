@@ -6,7 +6,7 @@
   padding: var(--R-SIZE-2);
   border: none;
   background: var(--C-SURFACE-0);
-  color: var(--C-TEXT-DEFAULT);
+  color: var(--C-TEXT-PRIMARY);
   box-shadow: var(--SHADOW-LG);
   /* Enter/exit: animate transform + opacity, and discrete props (overlay,
      display) so the panel stays in the top layer while it slides out. */

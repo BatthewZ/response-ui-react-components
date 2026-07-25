@@ -24,7 +24,7 @@
 /* Header Cell */
 .table-header-cell {
   text-align: left;
-  font-weight: 600;
+  font-weight: var(--Semibold-Weight);
   color: var(--C-TEXT-PRIMARY);
   white-space: nowrap;
 }

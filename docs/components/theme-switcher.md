@@ -187,6 +187,7 @@ control that changes your theme is itself fully themed by that theme.
 | ---------------------------- | ------------------------------------- |
 | Track fill · track border    | `--C-SURFACE-2` · `--C-BORDER-DEFAULT` |
 | Track corners · option corners | `--RADIUS-LG` · `--RADIUS-MD`       |
+| Option label type · weight   | `--BodyText-2` · `--Semibold-Weight`  |
 | Option label at rest         | `--C-TEXT-SECONDARY`                  |
 | Option label hovered / selected | `--C-TEXT-PRIMARY`                 |
 | Hover wash                   | `--C-SURFACE-1`                       |
@@ -197,17 +198,15 @@ control that changes your theme is itself fully themed by that theme.
 The three surfaces stack on purpose: the track sits one step *into* the page
 (`--C-SURFACE-2`), the hover wash lifts one step (`--C-SURFACE-1`), and the selected option
 lands on `--C-SURFACE-0`, the most-elevated surface, plus `--SHADOW-SM` — so selection reads
-as raised without needing a border or an accent colour. Only the inline padding is
-responsive: `--R-SIZE-4` steps `0.75rem` → `1.25rem` at the 40rem breakpoint while
-`--R-SIZE-6` holds at `0.25rem` on both sides, so the control widens on desktop but never
-gets taller.
+as raised without needing a border or an accent colour. Of the padding, only the inline side
+is responsive: `--R-SIZE-4` steps `0.75rem` → `1.25rem` at the 40rem breakpoint while
+`--R-SIZE-6` holds at `0.25rem` block-wise, so the control widens on desktop and grows taller
+only by the label's own type step.
 
-Four values are **not** on the contract. The label's `font-size` (`0.8125rem`) and
-`font-weight` (`500`) are hard literals rather than `--BodyText-2` / `--Semibold-Weight`.
-`0.8125rem` is exactly what `--BodyText-2` resolves to at base, so the literal freezes today's
-value: label type neither follows a theme's typography nor steps up to `0.875rem` at the 40rem
-breakpoint the way [Tabs](tabs.md) labels do, which read that very pair. The track's `1px` border and its `0.125rem` padding and gap are
-literals too, and can only be changed with your own CSS.
+Label type reads the same `--BodyText-2` / `--Semibold-Weight` pair [Tabs](tabs.md) does, so
+it follows a theme's typography and steps up (`0.8125rem` → `0.875rem`, `500` → `600`) at the
+40rem breakpoint. The track's `1px` border and its `0.125rem` padding and gap are literals off
+the contract, and can only be changed with your own CSS.
 
 ## Gotchas
 

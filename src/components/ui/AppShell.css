@@ -31,7 +31,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 600;
+  font-weight: var(--Bold-Weight);
   color: var(--C-TEXT-PRIMARY);
   white-space: nowrap;
 }
@@ -109,7 +109,7 @@
 .app-shell-sidebar-section-title {
   padding: 0.25rem 0.75rem;
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: var(--Semibold-Weight);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--C-TEXT-MUTED);
@@ -127,8 +127,8 @@
   border-radius: 0.375rem;
   text-decoration: none;
   color: var(--C-TEXT-SECONDARY);
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: var(--BodyText-1);
+  font-weight: var(--Semibold-Weight);
   white-space: nowrap;
   overflow: hidden;
   transition: background var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER),

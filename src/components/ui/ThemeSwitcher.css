@@ -10,8 +10,8 @@
 .theme-switcher__option {
   padding: var(--R-SIZE-6) var(--R-SIZE-4);
   border-radius: var(--RADIUS-MD);
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: var(--BodyText-2);
+  font-weight: var(--Semibold-Weight);
   color: var(--C-TEXT-SECONDARY);
   background: transparent;
   border: none;

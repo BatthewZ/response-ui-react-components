@@ -295,7 +295,7 @@ the app, at runtime, with no rebuild.
 | Wrapper border · corners       | `--C-BORDER-DEFAULT` · `--RADIUS-MD`                      |
 | Table background               | `--C-SURFACE-0`                                           |
 | Header band · its 2px underline| `--C-SURFACE-1` · `--C-BORDER-DEFAULT`                    |
-| Header label ink               | `--C-TEXT-PRIMARY`                                        |
+| Header label ink · weight      | `--C-TEXT-PRIMARY` · `--Semibold-Weight`                  |
 | Sortable header hover · active | `--C-SURFACE-2` · `--C-SURFACE-3`                         |
 | Sortable header focus outline  | `--C-BORDER-FOCUS`                                        |
 | Sort arrow                     | `--C-TEXT-MUTED` unsorted · `--C-ACCENT` sorted           |
@@ -319,9 +319,6 @@ Three things are **not** on the contract, and are worth knowing before you theme
 - **Only the size step is read, not its paired line height.** `Table.css` sets `font-size`
   from the `--BodyText-*` scale and leaves `line-height` to inherit, so row height tracks
   whatever the surrounding text is doing.
-- **Header weight is a literal `font-weight: 600`,** not the contract's semibold token. A
-  theme that changes its semibold weight — `grimdark` sets it to 700 — does not reach the
-  table header.
 
 ## Gotchas
 

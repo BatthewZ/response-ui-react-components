@@ -135,6 +135,8 @@ Map to `shadow-sm`, `shadow-md`, `shadow-lg`. For dark themes you'll often want 
 
 Each has both a base value and a `@media (width >= 40rem)` override (these scale up at 640px). If you override them, override at both breakpoints in the same media-query structure as `responsive/text.css`.
 
+`--H*`, `--BodyText-*` and `--R-SIZE-*` all share one numbering rule: **`1` is always the most significant value; numbers ascend as values shrink.**
+
 ```
 --H1, --H1-line-height        (down through H6)
 --BodyText-1, --BodyText-1-line-height  (down through BodyText-3)
@@ -147,7 +149,7 @@ Each has both a base value and a `@media (width >= 40rem)` override (these scale
 --R-SIZE-1, --R-SIZE-2, --R-SIZE-3, --R-SIZE-4, --R-SIZE-5, --R-SIZE-6
 ```
 
-Maps to `p-r1`, `m-r1`, `gap-r1`, etc. Has a base + `@media (width >= 40rem)` step-up.
+Maps to `p-r1`, `m-r1`, `gap-r1`, etc. Has a base + `@media (width >= 40rem)` step-up. `--R-SIZE-1` is the largest gap, `--R-SIZE-6` the tightest.
 
 ### Motion
 

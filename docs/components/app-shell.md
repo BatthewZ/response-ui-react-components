@@ -294,11 +294,12 @@ rebuild.
 | Page background behind content | `--C-SURFACE-1`                                                  |
 | Navbar · sidebar · drawer fill | `--C-SURFACE-0`                                                  |
 | Every hairline                 | `--C-BORDER-DEFAULT`                                             |
-| Brand text                     | `--C-TEXT-PRIMARY`                                               |
+| Brand text                     | `--C-TEXT-PRIMARY` · `--Bold-Weight`                             |
 | Toggle and link ink            | `--C-TEXT-SECONDARY` at rest · `--C-TEXT-PRIMARY` on hover       |
 | Toggle and link hover wash     | `--C-SURFACE-2`                                                  |
 | Active link                    | `--C-ACCENT` — as the ink, and as a 10% `color-mix` wash behind it |
-| Section title                  | `--C-TEXT-MUTED`                                                 |
+| Section title                  | `--C-TEXT-MUTED` · `--Semibold-Weight`                           |
+| Sidebar link type · weight     | `--BodyText-1` · `--Semibold-Weight`                             |
 | Focus outline                  | `--C-BORDER-FOCUS`                                               |
 | Drawer scrim                   | `--OVERLAY-SCRIM-COLOR`                                          |
 | Drawer elevation               | `--SHADOW-LG`                                                    |
@@ -311,8 +312,9 @@ The width transition and both drawer animations are dropped under
 **What is not on the contract.** The whole geometry is literals: the navbar height
 (`3.5rem`, written three times — the navbar's own `height`, the sidebar's sticky `top`, and
 its `calc(100vh - 3.5rem)`), the sidebar widths (`16.25rem` expanded, `4rem` collapsed,
-`17.5rem` for the drawer), the corner radius (`0.375rem`, not `--RADIUS-*`), the link and
-section-title type sizes, and the stacking order (`10` navbar, `49` scrim, `50` drawer —
+`17.5rem` for the drawer), the corner radius (`0.375rem`, not `--RADIUS-*`), the
+section-title type size (`0.6875rem`, which no `--BodyText-*` step matches), and the stacking
+order (`10` navbar, `49` scrim, `50` drawer —
 the drawer ties with [Tooltip](tooltip.md)'s layer). The `639px` breakpoint is written
 twice, once in `AppShell.tsx`'s `matchMedia` and once in the stylesheet's `@media` block.
 Restyle the navbar's height in your own CSS and the sidebar's `top` and `height` do **not**

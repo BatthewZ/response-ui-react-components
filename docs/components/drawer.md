@@ -218,35 +218,27 @@ directly.
 | ------------------------ | ------------------------ |
 | Panel padding            | `--R-SIZE-2`             |
 | Panel surface            | `--C-SURFACE-0`          |
+| Panel ink                | `--C-TEXT-PRIMARY`       |
 | Panel elevation          | `--SHADOW-LG`            |
 | Edge corner radius       | `--RADIUS-LG`            |
 | Slide + fade duration    | `--MOTION-DURATION-ENTER`|
 | Slide + fade easing      | `--MOTION-EASE-ENTER`    |
 | Scrim                    | `--OVERLAY-SCRIM-COLOR`  |
 
-Panel ink is deliberately absent from that table. `Drawer.css` does set `color` — but from
-`--C-TEXT-DEFAULT`, which is not on the contract, so overriding it re-tints nothing.
-
 The padding is responsive: `--R-SIZE-2` steps from `1.25rem` to `2rem` at the 40rem
 breakpoint, so a drawer is roomier on desktop with nothing from you. The motion and scrim
 rules carry hard-coded fallbacks (`0.2s`, `ease`, `rgb(0 0 0 / 0.5)`) which only apply if
 `@batthewz/response-ui-css` isn't loaded at all; with it, the contract values win.
 
-**`--C-TEXT-DEFAULT` is not a token this design system defines.** No theme sets it and neither
-does the base layer — the text variable in the contract is `--C-TEXT-PRIMARY`. An undefined
-custom property makes the whole declaration invalid at computed-value time, and for an
-inherited property like `color` that means `inherit`. So the panel takes its ink from its DOM
-parent instead of pinning it: usually indistinguishable from correct, and wrong the moment the
-Drawer sits under an ancestor that sets its own colour — inverse text on a section fill will
-follow it onto the drawer's `--C-SURFACE-0` background.
+`.drawer` **pins** its ink to `--C-TEXT-PRIMARY` rather than inheriting, so a Drawer opened
+under an ancestor that sets its own colour — inverse text on a section fill, say — still
+renders the theme's body ink against the panel's `--C-SURFACE-0` background.
 
-A `className` of `text-fg-primary` does **not** patch it. Invalid-at-computed-value-time
-changes what a declaration computes to, not whether it wins: `.drawer`'s `color` is still the
-winning declaration, and because this package's stylesheet is unlayered it outranks any
-Tailwind utility — the same cascade that defeats a width utility in the first
-[gotcha](#gotchas). Pin the ink with something that outranks the rule instead: an inline
-`style={{ color: "var(--C-TEXT-PRIMARY)" }}`, or your own unlayered rule at `.drawer`
-specificity or higher. See the [theme contract](../theme-contract.md).
+That also means a `className` of `text-fg-muted` does **not** re-tint the panel. `.drawer`'s
+`color` is unlayered author CSS, and unlayered styles outrank anything Tailwind puts in
+`@layer utilities` — the same cascade that defeats a width utility in the first
+[gotcha](#gotchas). Recolour with an inline `style={{ color: "…" }}`, or your own unlayered
+rule at `.drawer` specificity or higher. See the [theme contract](../theme-contract.md).
 
 Geometry is not on the contract: the 24rem panel size, the 90vw/90dvh caps, and the full-bleed
 cross axis are literals, so re-theming changes colour, spacing, and timing but not the shape

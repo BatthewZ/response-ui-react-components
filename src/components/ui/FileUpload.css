@@ -341,7 +341,7 @@
 .file-upload__preview-name {
   font-size: var(--BodyText-2);
   line-height: var(--BodyText-2-line-height);
-  color: var(--C-TEXT-DEFAULT);
+  color: var(--C-TEXT-PRIMARY);
   font-weight: var(--Semibold-Weight);
   overflow: hidden;
   text-overflow: ellipsis;

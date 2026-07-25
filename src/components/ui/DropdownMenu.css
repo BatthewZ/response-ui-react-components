@@ -64,5 +64,5 @@
   padding: 0.375rem 0.75rem;
   font-size: var(--BodyText-3);
   color: var(--C-TEXT-MUTED);
-  font-weight: 600;
+  font-weight: var(--Semibold-Weight);
 }

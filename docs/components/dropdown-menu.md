@@ -214,17 +214,16 @@ rebuild.
 | Item icon                 | `--C-TEXT-SECONDARY`                                              |
 | Disabled item label       | `--C-TEXT-MUTED`                                                  |
 | Divider rule              | `--C-BORDER-DEFAULT`                                              |
-| Section label             | `--C-TEXT-MUTED` · `--BodyText-3`                                 |
+| Section label             | `--C-TEXT-MUTED` · `--BodyText-3` · `--Semibold-Weight`           |
 
 `--BodyText-2` and `--BodyText-3` are responsive and step up at the 40rem breakpoint, so menu
 type grows on desktop with no work from you.
 
 Several values are **not** on the contract and cannot be themed: item padding
 (`0.375rem 0.75rem`), the icon gap (`0.5rem`), the icon box (`1rem`), the menu's `min-width`
-(`11.25rem`), the divider's `1px` rule, and the surface `z-index` (`40`). The section label's
-`font-weight: 600` is a literal too, so it ignores `--Semibold-Weight` — a theme that moves that
-token (grimdark sets `700`) leaves menu labels behind. Override `.dropdown-menu-label` in your
-own CSS if that matters. The trigger sets no colour at all: it inherits the surrounding font and
+(`11.25rem`), the divider's `1px` rule, and the surface `z-index` (`40`). Override
+`.dropdown-menu-label` in your own CSS if any of those matter. The trigger sets no colour at
+all: it inherits the surrounding font and
 ink, which is what makes `asChild` and a bare trigger both look right.
 
 The whole surface is styled from a single `dropdown-menu-*` class family, and [ContextMenu](context-menu.md)

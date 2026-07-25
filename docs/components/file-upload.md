@@ -215,6 +215,7 @@ these re-tints it at runtime with no rebuild.
 | Dashed border · row separators · action bar   | `--C-BORDER-DEFAULT`                            |
 | Hover + drag-over border · glyph · focus ring | `--C-BORDER-FOCUS`                              |
 | Prompt · hint · size · glyphs · Clear all     | `--C-TEXT-MUTED`                                |
+| File name in a preview row                    | `--C-TEXT-PRIMARY`                              |
 | "browse" emphasis · Replace                   | `--C-ACCENT`                                    |
 | Success border, glyph and message             | `--C-STATUS-SUCCESS`                            |
 | Success fill                                  | `--C-STATUS-SUCCESS-BG`                         |
@@ -239,11 +240,9 @@ responsive too. Every element that declares a transition is covered by the reduc
 block — the zone, the icon and all five button classes — so `prefers-reduced-motion: reduce`
 leaves nothing animating.
 
-**The file name in a preview row is not on the contract.** `FileUpload.css` inks it from
-`--C-TEXT-DEFAULT`, which no theme and no base layer defines. An undefined custom property
-makes the whole declaration invalid at computed-value time, and for an inherited property
-like `color` that means `inherit` — so the file name takes its colour from whatever ancestor
-last set one. [Drawer](drawer.md#theme-tokens) has the same line and the same consequence.
+**The file name is the one piece of ink that is pinned, not muted.** `FileUpload.css` inks it
+from `--C-TEXT-PRIMARY`, so it holds the theme's body colour regardless of what an ancestor
+sets — everything else in a preview row reads from `--C-TEXT-MUTED`.
 
 **Contrast numbers worth knowing before you ship this.** Computed from the shipped OKLCH
 values, each pair against the background the component itself paints behind it:

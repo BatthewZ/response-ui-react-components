@@ -288,7 +288,7 @@ at runtime with the rest of the app.
 | Chip fill                          | `--C-SURFACE-2`                              |
 | Chip label ink                     | `--C-TEXT-SECONDARY`                         |
 | Chip corners                       | `--RADIUS-SM`                                |
-| Chip type                          | `--BodyText-3`                               |
+| Chip type · weight                 | `--BodyText-3` · `--Semibold-Weight`         |
 | Remove glyph ink · its hover ink   | `--C-TEXT-MUTED` · `--C-TEXT-PRIMARY`        |
 | Query text ink                     | `--C-TEXT-PRIMARY`                           |
 | Placeholder ink                    | `--C-TEXT-MUTED`                             |
@@ -312,11 +312,10 @@ every other gap, size and inner padding is a hard literal: the chip row's
 `1px` border, the `2px` focus ring, the listbox's `11.25rem` minimum width, `16rem` maximum
 height and `z-index: 40` (the same layer [Popover](popover.md) and
 [DropdownMenu](dropdown-menu.md) sit on), the `0.875rem` check gutter, and the three lucide
-icon sizes, which are `size` props in the `.tsx` rather than CSS. Two **font weights** are
-literal `600` — the chip label and the selected option — where a sibling like
-[TagInput](tag-input.md) reaches `--Semibold-Weight` through a utility; since that token is `500` below
-40rem and `600` above it, MultiSelect's chips are a step heavier than the rest of the
-design system on mobile and identical to it on desktop.
+icon sizes, which are `size` props in the `.tsx` rather than CSS. The two emphasised weights —
+the chip label and the selected option — read `--Semibold-Weight`, the same token a sibling
+like [TagInput](tag-input.md) reaches through a utility, so they track the theme and step
+`500` → `600` at 40rem with the rest of the design system.
 
 **Measured contrast**, from the shipped OKLCH values in `@batthewz/response-ui-css`, in
 default / `events` / `tech` / `grimdark`:

@@ -30,7 +30,7 @@
 
 .timeline-item {
   position: relative;
-  padding-bottom: var(--R-SIZE-6);
+  padding-bottom: var(--R-SIZE-3);
 }
 
 .timeline-item:last-child {
@@ -82,7 +82,7 @@
   font-size: var(--BodyText-3);
   line-height: var(--BodyText-3-line-height);
   color: var(--C-TEXT-MUTED);
-  margin-bottom: var(--R-SIZE-1);
+  margin-bottom: var(--R-SIZE-6);
 }
 
 /* ------------------------------------------------------------------ */

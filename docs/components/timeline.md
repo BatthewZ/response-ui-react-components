@@ -160,8 +160,8 @@ contract variables directly, the way Tabs and ActivityFeed do.
 | Card padding                                | `--R-SIZE-4`                                 |
 | Mobile gutter · desktop card inset · space under the title | `--R-SIZE-2`                  |
 | Rail offset from the left edge (mobile)     | `--R-SIZE-5`                                 |
-| Space between two events                    | `--R-SIZE-6`                                 |
-| Space under the date                        | `--R-SIZE-1`                                 |
+| Space between two events                    | `--R-SIZE-3`                                 |
+| Space under the date                        | `--R-SIZE-6`                                 |
 | Date ink                                    | `--C-TEXT-MUTED`                             |
 | Date type                                   | `--BodyText-3` · `--BodyText-3-line-height`  |
 | Title ink · weight                          | `--C-TEXT-PRIMARY` · `--Bold-Weight`         |
@@ -178,8 +178,8 @@ Because they are declared on the root element you can still reach them through `
 they are outside the contract and free to change.
 
 Most of the spacing is on the responsive `r`-scale, where a **lower** number is a **larger**
-value and every step except `--R-SIZE-6` grows at the `40rem` breakpoint: `--R-SIZE-1`
-`2.25rem` → `6rem`, `--R-SIZE-2` `1.25rem` → `2rem`, `--R-SIZE-4` `0.75rem` → `1.25rem`,
+value and every step except `--R-SIZE-6` grows at the `40rem` breakpoint: `--R-SIZE-2`
+`1.25rem` → `2rem`, `--R-SIZE-3` `1rem` → `1.5rem`, `--R-SIZE-4` `0.75rem` → `1.25rem`,
 `--R-SIZE-5` `0.5rem` → `0.75rem`, and `--R-SIZE-6` flat at `0.25rem`. `--R-SIZE-2` carries
 three jobs at once: the left padding that clears the rail below `40rem`, the amount each card
 is inset from the centre line above it (`width: calc(50% - …)`), and the gap between a card's
@@ -188,13 +188,12 @@ responsive too — `--BodyText-2` `0.8125rem` → `0.875rem`, `--BodyText-3` `0.
 `0.8125rem` — and `--Bold-Weight` is both responsive (`600` → `700`) and themed, running from
 `600` in `tech` to `900` in `grimdark`.
 
-Read the spacing rows together and the rhythm is worth checking before you ship: the gap
-**between two events** is `--R-SIZE-6`, the smallest step on the scale (`0.25rem` at every
-width), while the gap **between an entry's date and its title** is `--R-SIZE-1`, the
-largest (`2.25rem`, rising to `6rem` on desktop). The nearest sibling component,
-[ActivityFeed](activity-feed.md), uses those same two tokens the other way round —
-`--R-SIZE-3` for the gap between rows and `--R-SIZE-6` for its tightest inner gap. Both
-values are covered under [Gotchas](#gotchas).
+Read the spacing rows together and the rhythm groups by proximity: the gap **between two
+events** is `--R-SIZE-3` (`1rem`, `1.5rem` on desktop), while the gap **between an entry's
+date and its title** is `--R-SIZE-6`, the tightest step on the scale (`0.25rem` at every
+width) — so a date reads as belonging to its own entry rather than floating between two. The
+nearest sibling component, [ActivityFeed](activity-feed.md), spends the same two tokens in
+the same roles.
 
 The card sits on `--C-SURFACE-1`, so inside an ancestor already painted `--C-SURFACE-1` it
 has nothing but its `--C-BORDER-DEFAULT` hairline to separate it. The date is deliberately
@@ -228,14 +227,6 @@ in `@batthewz/response-ui-css`, which read the shared `--MOTION-DURATION-ENTER` 
   through. A bare `<div>` between two items gets no `.timeline-item` class, no node and no dot —
   but it still occupies an index *and* an `nth-child` slot, so index and slot stay in step and
   the alternation of the real items continues correctly around it.
-- **The vertical rhythm reads inverted.** On the `r`-scale a lower number is a larger value, and
-  `Timeline.css` spends the largest step inside a card and the smallest step between cards:
-  `.timeline-item` gets `padding-bottom: var(--R-SIZE-6)` — `0.25rem`, 4px, at every width — while
-  `.timeline-date` gets `margin-bottom: var(--R-SIZE-1)`, `2.25rem` on mobile and `6rem` at
-  `40rem` and up. A three-event timeline on a desktop viewport therefore puts 96px between "12
-  March" and "Order placed" and 4px between one event and the next. Nothing in the public API
-  changes it: both values come from global tokens shared with every other component, and the
-  utility escape below is blocked by the layer order.
 - **The rail overshoots the last dot.** `.timeline::before` is pinned `top: 0; bottom: 0` on the
   root while `.timeline-node` sits at `top: 0` of its item, so the line runs from the top edge of
   the first card down to the bottom edge of the last one — a tail as tall as the final card hangs
