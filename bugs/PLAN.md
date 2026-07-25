@@ -53,6 +53,16 @@ rather than overwritten, so forwarding rest could not itself introduce cluster �
 
 ## 2 · A rest-spread placed *after* the component's own handler — **PARTLY FIXED**
 
+> **The root fix now exists.** `src/util/merge-props.ts` (`567061e`) adds
+> `composeEventHandlers(theirs, ours, { checkDefaultPrevented })` and
+> `mergeProps(a, b)`. Until it landed, this package had a shared merge strategy for
+> **refs** (`mergeRefs`, 23 files) and for **class names** (`cn`, everywhere) and none
+> for props or handlers, across **138 JSX spread sites** — which is the single deepest
+> cause behind clusters §1, §2 and §3 alike. Every remaining member of this cluster
+> should be fixed by *calling the primitive*, not by hand-writing the composition a
+> ninth time. `checkDefaultPrevented: false` is mandatory on `animationend`,
+> `transitionend` and `pointerleave`.
+
 **Root cause.** The component sets `on[A-Z]…={own}` on an element and then spreads
 `{...props}` onto the same element, without destructuring that handler name out. A caller's
 handler therefore **replaces** the component's own rather than adding to it. Where the prop
@@ -283,6 +293,45 @@ component, one test file, one doc page, one commit — and must not be forced in
 
 ---
 
+## 5b · Focus styling out-specifies error styling — **FIXED** (`567061e`)
+
+**Root cause.** Six controls painted their focus affordance at a specificity that beat
+their invalid affordance, so taking keyboard focus *erased the error cue* — precisely
+while the user was on the field. Three distinct mechanisms, one shape:
+
+- `Input` · `Select` · `Textarea` (#81) — `focus:border-border-focus` in the base recipe
+  survived the error swap, because the invalid branch only overrode `border` and `ring`.
+- `Switch` · `Slider` (#84) — `:focus-visible` and `[aria-invalid="true"]` are both
+  (0,2,0) and focus is written second. `Slider`'s focus rule is `outline: none`, so it
+  deleted the error outline outright rather than merely recolouring it.
+- `ColorPicker` (#291) — `.colorpicker-trigger:focus-visible` (0,2,0) out-ranks
+  `.colorpicker-trigger--error` (0,1,0) regardless of source order.
+
+**This cluster had no row naming it as a cause.** It was found by three independent
+investigators in three separate id ranges, each filing it as a local one-off. Worth
+remembering when reading the ledger: a cause can be invisible precisely *because* every
+instance was logged accurately.
+
+**Fix shape.** An explicit invalid-and-focused rule at higher specificity, so both
+signals survive: colour reports invalid, ring/outline width reports focus. Never
+`:not()`-gate the focus rule — that trades one lost signal for another.
+
+**Sweep — every control that paints a focus affordance and an invalid affordance:**
+
+```bash
+grep -rln 'aria-invalid\|--error\|status-error' src/components --include=*.css
+# cross-check each against its :focus-visible rule's specificity
+grep -rn 'focus:border-\|focus:ring-' src/components --include=*.tsx | grep -v test
+```
+
+**Verification tool.** A real engine — jsdom does not compute the cascade. Inject the
+control, focus it with a real `Tab`, and assert `:focus-visible` **in the same eval** as
+the colour reading, or a measurement taken on an unfocused element reads as a pass.
+
+**Doors.** None. Additive rules only.
+
+---
+
 ## 6 · Standing traps, each already paid for once
 
 - **Re-read `## Gotchas` on every affected `docs/components/<kebab>.md`.** 90/90 spokes have
@@ -325,6 +374,13 @@ component, one test file, one doc page, one commit — and must not be forced in
 - **The correct implementation is usually already in this repo.** `Portal` for #46,
   `Collapsible.Trigger` for §2, `useMediaQuery` for #421, `Tabs.tsx:330`'s
   `target !== currentTarget` guard for the still-open #14. Grep for the sibling first.
+- **A fix to a shared primitive does not reach the components that bypass it.** The
+  `useControllableState` equality gate (`567061e`) was reported by an investigator as
+  retiring "the same row in every component, incl. #237". It does not: `NumberInput`
+  hand-rolls `useState` + `isControlled` and never imports the hook, so **#237 is still
+  open**. Before marking a row fixed by a root change, `grep` that the component actually
+  *uses* the root. This is the same illness as the cluster itself — the primitive exists
+  and the component re-implements it.
 - **Never renumber a finding**, and never delete a row — ids are cited from published
   `AGENTS.md`.
 - **This package has no ESLint config** (`npx eslint` finds none; there is no `lint` script),
