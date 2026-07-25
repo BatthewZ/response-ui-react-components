@@ -145,10 +145,16 @@ to clicks, and leaves the tab order entirely.
 
 `Accordion.Item` renders a `<div>`, not a heading, and there is no `headingLevel` prop — so
 out of the box a screen-reader user cannot jump between sections with heading navigation.
-Wrap the trigger in whatever level your page outline calls for. The trigger is a plain
-`<button>`, so this is layout-neutral: the base reset shipped by `response-ui-css` zeroes
-heading margins and makes heading type inherit, and `.accordion-trigger` sets its own size
-and weight regardless.
+Wrap the trigger in whatever level your page outline calls for.
+
+**This is not quite layout-neutral, so check it in your theme.** `.accordion-trigger` starts
+from `all: unset` and then re-sets its own `font-size`, `font-weight`, `line-height` and
+`color` — but not `font-family`, `letter-spacing` or `text-transform`. Those three are
+inherited properties, and `response-ui-css` sets all three on `h1`–`h6`, so the trigger
+picks up the heading face, tracking and casing from whatever level you wrap it in. In the
+shipped themes that means Playfair Display (`events`), Space Grotesk (`tech`), and Cinzel
+**uppercase** with wide tracking (`grimdark`). Heading margins are zeroed by the reset, so
+spacing is unaffected.
 
 <!-- example:WithHeadings -->
 ```tsx
