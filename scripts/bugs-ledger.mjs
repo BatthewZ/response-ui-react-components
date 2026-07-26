@@ -6,18 +6,28 @@
  * oracle at all — and the moment a patch lands, every `file:line` anchor below it
  * shifts with nothing to notice. That is the defect class this catches.
  *
+ * Bounds-checking the line number was never enough: a patch above an anchor shifts it
+ * onto unrelated code that still *exists*, so the number stays valid while the row
+ * silently starts describing something else. One reconcile moved 157 such anchors and
+ * no gate saw one. Every anchor therefore carries a content fingerprint in the markdown
+ * link title — `(src/x.tsx#L12 "fp:1a2b3c4d")` — which renders as a tooltip, stays out
+ * of the table, and is asserted against source on every run. A missing or malformed
+ * fingerprint is a violation, not a skip.
+ *
  * Deliberately NOT wired into `prepublishOnly`. Every guard in that chain checks a
  * shipped artifact (`docs/`, `README.md`, `AGENTS.md`, `dist/`); `bugs/` is not in
  * package.json `files` and is not published, so gating a release on it would cross
  * the boundary this repo is careful about. Run it at the land gate instead — see
- * BUG_TRIAGE_PLAYBOOK.md §4 G5.
+ * CONTRIBUTING.md "Known-defect ledger".
  *
  *   bun run verify:bugs                  # report
  *   bun run verify:bugs -- --check       # exit 1 on any structural violation
+ *   node scripts/bugs-ledger.mjs --reanchor   # relocate shifted anchors, restamp fingerprints
  *   node scripts/bugs-ledger.mjs --json
  *   node scripts/bugs-ledger.mjs --status confirmed   # filter the row listing
  */
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -51,6 +61,42 @@ const LIFECYCLE = {
 };
 const CONFIDENCE = new Set(["corroborated", "spot-checked", "candidate", "caveat"]);
 const SEVERITIES = new Set(["high", "med", "low"]);
+
+/**
+ * `[text](src/path#L12 "fp:1a2b3c4d")` — link text, path, line, title, all optional
+ * past the path. `[^)#\s]+` stops the path before the fragment and before a title.
+ */
+const ANCHOR_RE = /(?:\[([^\]]*)\])?\((src\/[^)#\s]+)(?:#L(\d+))?(?:\s+"([^"]*)")?\)/;
+const FINGERPRINT_RE = /^fp:([0-9a-f]{8})$/;
+
+/** A trailing newline terminates the last line; it does not begin another one. */
+const sourceCache = new Map();
+function sourceLines(abs) {
+  if (!sourceCache.has(abs)) {
+    const src = readFileSync(abs, "utf8").split("\n");
+    if (src.at(-1) === "") src.pop();
+    sourceCache.set(abs, src);
+  }
+  return sourceCache.get(abs);
+}
+
+/**
+ * Hashes the anchored line plus one line either side, each trimmed and internally
+ * whitespace-collapsed. The line alone is ambiguous — 13.8% of this table's anchors
+ * sit on a line that repeats verbatim elsewhere in its own file, and 11 sit on a blank
+ * line — so a lone-line digest would silently accept a shifted anchor. Reformatting is
+ * the opposite risk: a digest that reddens every row on a reindent gets re-baselined,
+ * and a gate everyone re-baselines is worse than none. Normalising whitespace answers
+ * that, and the wider window costs nothing measurable — replaying the last 18 commits,
+ * 148 anchors changed content and *zero* of them would have fired from a neighbour
+ * moving while the anchored line held still.
+ */
+function fingerprint(fileLines, line) {
+  const window = [line - 2, line - 1, line]
+    .map((i) => (fileLines[i] ?? "").trim().replace(/\s+/g, " "))
+    .join("\n");
+  return createHash("sha256").update(window).digest("hex").slice(0, 8);
+}
 
 const raw = readFileSync(LEDGER, "utf8");
 const lines = raw.split("\n");
@@ -99,6 +145,93 @@ if (DETAILS_DIR && existsSync(DETAILS_DIR)) {
 }
 const covered = coveredIds(detailSources);
 
+/**
+ * Rewrites anchors in place. A shifted anchor is *relocated*: the stored fingerprint is
+ * searched for across the file, and a single hit moves the line number while keeping the
+ * digest — which is the case that produced 157 hand-reconciled rows last time. Anything
+ * else (content gone, or several equally-good candidates) is restamped and reported
+ * loudly, because those are the rows where only a human can say whether the finding
+ * still holds. Restamping asserts nothing about the row's sentence; that re-reading is
+ * the part this mode cannot do for you.
+ */
+if (flag("reanchor")) {
+  const out = [...lines];
+  const moved = [];
+  const changed = [];
+  const stampedRows = [];
+  const unresolved = [];
+
+  for (const r of rows) {
+    const anchor = r.loc.match(ANCHOR_RE);
+    if (!anchor) continue;
+    const [whole, text = "", file, lineNo, title] = anchor;
+    if (!lineNo) continue;
+
+    const abs = path.join(PKG, file);
+    if (!existsSync(abs)) {
+      unresolved.push(`#${r.id} ${file} — file missing`);
+      continue;
+    }
+    const fileLines = sourceLines(abs);
+    const was = Number(lineNo);
+    const prior = title?.match(FINGERPRINT_RE)?.[1];
+    if (was <= fileLines.length && prior && prior === fingerprint(fileLines, was)) continue;
+
+    let line = was;
+    let digest;
+    if (prior) {
+      const hits = [];
+      for (let n = 1; n <= fileLines.length; n++) if (fingerprint(fileLines, n) === prior) hits.push(n);
+      if (hits.length === 1) {
+        line = hits[0];
+        digest = prior;
+        moved.push(`#${r.id} ${file}:${was} → :${line}`);
+      } else if (was > fileLines.length) {
+        unresolved.push(
+          `#${r.id} ${file}:${was} — past end of file (${fileLines.length} lines) and ` +
+            `${hits.length === 0 ? "the old content is gone" : `${hits.length} candidate lines match`}; re-anchor by hand`,
+        );
+        continue;
+      } else {
+        digest = fingerprint(fileLines, line);
+        changed.push(
+          `#${r.id} ${file}:${line} — ${hits.length === 0 ? "old content gone" : `${hits.length} candidates, ambiguous`}; ` +
+            `now \`${(fileLines[line - 1] ?? "").trim().slice(0, 60)}\` · ${r.summary.slice(0, 60)}`,
+        );
+      }
+    } else if (was > fileLines.length) {
+      unresolved.push(`#${r.id} ${file}:${was} — past end of file (${fileLines.length} lines); re-anchor by hand`);
+      continue;
+    } else {
+      digest = fingerprint(fileLines, line);
+      stampedRows.push(`#${r.id} ${file}:${line}`);
+    }
+
+    const label = text.replace(/:\d+$/, `:${line}`);
+    const token = `${text ? `[${label}]` : ""}(${file}#L${line} "fp:${digest}")`;
+    const at = out[r.line - 1].indexOf(whole);
+    if (at < 0) {
+      unresolved.push(`#${r.id} ${file} — could not locate anchor text in ledger line ${r.line}`);
+      continue;
+    }
+    out[r.line - 1] = out[r.line - 1].slice(0, at) + token + out[r.line - 1].slice(at + whole.length);
+  }
+
+  writeFileSync(LEDGER, out.join("\n"));
+  const report = (title, xs) => {
+    if (!xs.length) return;
+    console.log(`\n${title} (${xs.length}):`);
+    for (const x of xs) console.log(`  ${x}`);
+  };
+  console.log(`reanchored ${path.relative(process.cwd(), LEDGER)}`);
+  report("relocated — line moved, content identical, row still holds", moved);
+  report("RE-VERIFY BY HAND — content at the anchor changed", changed);
+  report("stamped for the first time — fingerprint records today's content, nothing verified", stampedRows);
+  report("UNRESOLVED — left untouched, still a violation", unresolved);
+  if (!moved.length && !changed.length && !stampedRows.length && !unresolved.length) console.log("  nothing to do");
+  process.exit(0);
+}
+
 const violations = [];
 const v = (row, msg) => violations.push({ id: row.id, line: row.line, msg });
 
@@ -124,16 +257,33 @@ for (const r of rows) {
   // A row either points at one resolvable source line, or declares why it cannot:
   // library-wide sweeps and cross-package findings have no single anchor.
   const SCOPED = /^(library-wide|cross-package|\d+ files, see detail)$/i;
-  const anchor = r.loc.match(/\((src\/[^)#]+)(?:#L(\d+))?\)/);
+  const anchor = r.loc.match(ANCHOR_RE);
   if (!anchor) {
     const scoped = SCOPED.test(r.loc) || /cross-package|response-ui-(css|tw-merge)/i.test(`${r.component} ${r.summary}`);
     if (!scoped) v(r, `no src/ anchor and no declared scope in "${r.loc}"`);
   } else {
-    const abs = path.join(PKG, anchor[1]);
-    if (!existsSync(abs)) v(r, `anchor file missing: ${anchor[1]}`);
-    else if (anchor[2]) {
-      const total = readFileSync(abs, "utf8").split("\n").length;
-      if (Number(anchor[2]) > total) v(r, `anchor line ${anchor[2]} > ${total} lines in ${anchor[1]}`);
+    const [, , file, lineNo, title] = anchor;
+    const abs = path.join(PKG, file);
+    if (!existsSync(abs)) v(r, `anchor file missing: ${file}`);
+    else if (lineNo) {
+      const fileLines = sourceLines(abs);
+      const line = Number(lineNo);
+      if (line > fileLines.length) v(r, `anchor line ${line} > ${fileLines.length} lines in ${file}`);
+      else {
+        const want = fingerprint(fileLines, line);
+        const stamped = title?.match(FINGERPRINT_RE);
+        if (!stamped) {
+          v(r, `anchor has no content fingerprint: write \`(${file}#L${line} "fp:${want}")\`, or run --reanchor`);
+        } else if (stamped[1] !== want) {
+          v(
+            r,
+            `anchor content changed: ${file}:${line} was fp:${stamped[1]}, now fp:${want} — ` +
+              `the row may be describing the wrong code. Re-read the row's summary against ` +
+              `${file}:${line} (now \`${(fileLines[line - 1] ?? "").trim().slice(0, 60)}\`); ` +
+              `--reanchor relocates it if the code merely moved`,
+          );
+        }
+      }
     }
   }
 
