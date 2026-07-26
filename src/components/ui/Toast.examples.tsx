@@ -27,7 +27,8 @@ export function MountTheProvider() {
   );
 }
 
-/** `variant` sets both the tint and the announcement — `error` alone is assertive. */
+/** `variant` sets the tint, the leading glyph and the announcement — `error` alone is
+ *  assertive. */
 export function Variants() {
   const { toast } = useToast();
 

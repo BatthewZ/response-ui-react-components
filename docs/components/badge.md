@@ -1,8 +1,8 @@
 # Badge
 
-A small inline chip for status and metadata — five theme-tinted variants on a plain
-`<span>`, so it drops into a heading, a table cell, or a list row without a wrapper and
-re-tints from your theme's status tokens for free.
+A small inline chip for status and metadata — five variants on a plain `<span>`, each
+with its own glyph as well as its own tint, so it drops into a heading, a table cell, or
+a list row without a wrapper and re-tints from your theme's status tokens for free.
 
 <!-- example:Minimal -->
 ```tsx
@@ -14,19 +14,25 @@ re-tints from your theme's status tokens for free.
 | ----------- | ------------------------------------------------------------- | ----------- |
 | `variant`   | `"default" \| "success" \| "warning" \| "error" \| "info"`    | `"default"` |
 | `statusLabel` | `string`                                                    | the word for `variant` |
+| `statusIcon` | `ReactNode`                                                  | the glyph for `variant` |
 | `children`  | `ReactNode`                                                   | —           |
 | `className` | `string`                                                      | —           |
 | `ref`       | `Ref<HTMLSpanElement>`                                        | —           |
 | …rest       | props of `span` (`role`, `title`, `id`, `aria-*`, `onClick`, …) | —          |
 
-That is the whole surface: no `size`, no `icon`, no `dot`, no `removable`. A badge is a
-styled `<span>` you put content into. Rest props land on that span, which is how you add a
-`role` or a live region — see [Gotchas](#gotchas).
+That is the whole surface: no `size`, no `dot`, no `removable`, and no general-purpose
+icon slot. A badge is a styled `<span>` you put content into. `statusIcon` is not that
+slot — it names the *variant*, defaults from it, and is the visual twin of `statusLabel`;
+an icon of your own is still a child. Rest props land on that span, which is how you add
+a `role` or a live region — see [Gotchas](#gotchas).
 
 ## Variants
 
-The variant changes **only** the fill and the ink. Geometry, weight, and type are the same
-across all five, so a row of mixed badges stays on one baseline.
+The variant changes the fill, the ink, and — for the four status variants — the glyph in
+front of the label: `CircleCheck`, `TriangleAlert`, `CircleX`, `Info` from `lucide-react`,
+the peer dependency the package already requires. `default` carries no state, so it is
+iconless as well as wordless. Geometry, weight, and type are the same across all five, so
+a row of mixed badges stays on one baseline.
 
 | Variant   | Reach for it when                                                |
 | --------- | ---------------------------------------------------------------- |
@@ -50,14 +56,22 @@ across all five, so a row of mixed badges stays on one baseline.
 
 ## Don't lean on colour alone
 
-The four status variants ship a visually-hidden word — "Success", "Warning", "Error",
-"Information" — read before the children, so a screen reader hears "Error, 3" rather than
-"3". `statusLabel` replaces it (`statusLabel="Échec"`), `statusLabel=""` removes it, and
-passing one to a `default` badge names a state the variant has no word for. `default`
-is silent otherwise: it carries no state.
+The four status variants ship two channels, one per audience.
 
-On screen nothing changed — a greyscale or colour-blind reader still sees five identical
-chips. Put the state in the text where it has to be *seen*:
+**To a screen reader:** a visually-hidden word — "Success", "Warning", "Error",
+"Information" — read before the children, so it hears "Error, 3" rather than "3".
+`statusLabel` replaces it (`statusLabel="Échec"`), `statusLabel=""` removes it, and
+passing one to a `default` badge names a state the variant has no word for.
+
+**On screen:** a glyph before the label, one shape per variant, so the chips are
+distinguishable in greyscale. `statusIcon` replaces it, `statusIcon={null}` removes it —
+the same defaulting and the same removal as `statusLabel`, on purpose.
+
+The glyph is `aria-hidden`: the word already reaches assistive tech, and naming the icon
+too would read the variant twice. Mark your own `statusIcon` the same way.
+
+Neither channel is a substitute for a label that says what it means. Put the state in the
+text where it has to be *read*:
 
 <!-- example:LabelledNotJustTinted -->
 ```tsx
@@ -74,13 +88,14 @@ colour. `"3 checks failed"` isn't.
 
 ## Composing content
 
-Children render as-is inside an `inline-flex` row. There is no `icon` prop, and the base
-classes set no `gap`, so an icon sits flush against the label until you add one:
+Children render as-is inside an `inline-flex` row, after the variant's own glyph. The base
+classes set `gap-r6`, so a further icon of your own is spaced from the label without any
+work — pass `statusIcon={null}` when yours is meant to replace the variant's rather than
+join it:
 
 <!-- example:WithIcon -->
 ```tsx
-<Badge variant="warning" className="gap-r6">
-  <TriangleAlert size={12} aria-hidden />
+<Badge variant="warning" statusIcon={<Clock size={12} aria-hidden />}>
   Certificate expires in 5 days
 </Badge>
 ```
@@ -140,6 +155,7 @@ variant re-tints at runtime, with no rebuild.
 | Corner radius    | `rounded-sm`                                       | `--RADIUS-SM`                                |
 | Horizontal pad   | `px-r5`                                            | `--R-SIZE-5`                                 |
 | Vertical pad     | `py-r6`                                            | `--R-SIZE-6`                                 |
+| Glyph/label gap  | `gap-r6`                                           | `--R-SIZE-6`                                 |
 | Type scale       | `text-body-3`                                      | `--BodyText-3`                               |
 | Label weight     | `font-semibold`                                    | `--Semibold-Weight`                          |
 
@@ -170,10 +186,15 @@ tracking the rest of the type system.
 
 ## Gotchas
 
-- **Variant is still colour-only on screen.** The variant map swaps a `bg-*` and a `text-*`
-  class and nothing else — the visually-hidden word reaches a screen reader, but two badges
-  with the same children and different variants remain indistinguishable in greyscale. Say
-  the state in the visible label.
+- **The glyph is the variant's only non-colour channel.** Pass `statusIcon={null}` and two
+  badges with the same children and different variants are indistinguishable in greyscale
+  again. Remove it only where the visible label already says the state.
+- **The glyph is drawn in `currentColor`** at `size={12}`, the chip's own `text-body-3`
+  scale, so it inks the variant's `--C-STATUS-*` foreground — the same token as the label
+  beside it, and no new colour pairing.
+- **A status badge is now wider than it was.** The glyph plus `gap-r6` adds roughly
+  `1rem` to every non-`default` chip. In a fixed-width column, budget for it or drop the
+  glyph.
 - **The hidden word is part of the badge's text.** It renders as the span's first child, so
   `textContent`, `innerText` and `getByText`-style queries see it. Pass `statusLabel=""`
   where that is a problem — and note that a chip whose visible label repeats the word
@@ -210,13 +231,17 @@ tracking the rest of the type system.
 Badge contributes no role: it is a `<span>` whose children are read in place, in document
 order, as ordinary inline text — preceded by the variant's visually-hidden word.
 
-- **The status is announced, and still only tinted on screen** (WCAG 1.4.1). `statusLabel`
-  puts "Error" in front of a badge reading "3", which fixes the non-visual half. Nothing
-  visible distinguishes the variants, so a colour-blind reader gains nothing — write
-  self-describing labels where the state has to be seen.
-- **Name or hide composed icons.** An icon you pass as a child renders as-is with no
-  accessible name. Mark it `aria-hidden` when the label already says it; give it a label of
-  its own when it doesn't.
+- **Both halves of WCAG 1.4.1 are covered.** `statusLabel` puts "Error" in front of a badge
+  reading "3" for a screen reader; `statusIcon` puts a distinct shape in front of it for a
+  colour-blind one. Measured, the glyph is the variant foreground on the variant tinted
+  background — the pairing the label already uses: **success 4.57 · warning 3.07 · error
+  4.41 · info 4.75** in the default theme, `events` the same but info 5.20, `tech` 13.39 /
+  11.78 / 5.35 / 8.47, `grimdark` 6.70 / 7.97 / 4.59 / 3.53. All clear the 3:1 floor WCAG
+  1.4.11 sets for a meaningful graphical object.
+- **The variant glyph is `aria-hidden`, and yours should be too.** The hidden word already
+  names the variant; a named icon beside it would announce it twice. An icon you pass as a
+  *child* renders as-is with no accessible name — mark it `aria-hidden` when the label says
+  it, and give it a label of its own when it doesn't.
 - **Nothing is announced on change.** See the live-region example above.
 - **Small text.** `body-3` is the smallest step on the type scale — `0.75rem` below 40rem in
   the default theme, `0.6875rem` under `tech` — and `font-semibold` resolves to whatever

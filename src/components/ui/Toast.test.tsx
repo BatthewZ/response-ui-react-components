@@ -227,3 +227,72 @@ describe("Toast · severity has a text channel", () => {
     expect(screen.getByRole("alert").querySelector(".sr-only")).toBeNull();
   });
 });
+
+// #104, visual half — the hidden word closed the assistive-tech half and left
+// the tint as the only channel a sighted colour-blind reader has.
+describe("Toast · severity is visible without colour", () => {
+  // The dismiss button's own glyph is a hand-rolled <svg> inside a <button>;
+  // scoping to the root's direct children keeps this about the status icon.
+  const icon = (root: HTMLElement) =>
+    Array.from(root.children).find((c) => c.tagName.toLowerCase() === "svg") ?? null;
+
+  it("renders one glyph per variant, and it is decorative", () => {
+    for (const variant of ["success", "warning", "error", "info"] as const) {
+      const { unmount } = render(
+        <Toast variant={variant} onDismiss={vi.fn()}>
+          Notice
+        </Toast>,
+      );
+      const root = screen.getByRole(variant === "error" ? "alert" : "status");
+      const svg = icon(root);
+      expect(svg).not.toBeNull();
+      expect(svg).toHaveAttribute("aria-hidden", "true");
+      expect(svg).not.toHaveAttribute("aria-label");
+      expect(svg).not.toHaveAttribute("aria-labelledby");
+      expect(svg).not.toHaveAttribute("role");
+      expect(svg!.querySelector("title")).toBeNull();
+      unmount();
+    }
+  });
+
+  it("gives each variant a different glyph", () => {
+    const seen = new Set<string>();
+    for (const variant of ["success", "warning", "error", "info"] as const) {
+      const { unmount } = render(
+        <Toast variant={variant} onDismiss={vi.fn()}>
+          Notice
+        </Toast>,
+      );
+      const root = screen.getByRole(variant === "error" ? "alert" : "status");
+      seen.add(icon(root)?.getAttribute("class") ?? "");
+      unmount();
+    }
+    expect(seen.size).toBe(4);
+  });
+
+  it("adds no text, so the severity is not announced twice", () => {
+    render(
+      <Toast variant="error" title="Payment failed" onDismiss={vi.fn()}>
+        Card declined
+      </Toast>,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("ErrorPayment failedCard declined");
+  });
+
+  it("statusIcon replaces it, and null drops it", () => {
+    const { rerender } = render(
+      <Toast variant="error" statusIcon={<i data-testid="mine" aria-hidden="true" />} onDismiss={vi.fn()}>
+        Nachricht
+      </Toast>,
+    );
+    expect(screen.getByTestId("mine")).toBeInTheDocument();
+    expect(icon(screen.getByRole("alert"))).toBeNull();
+
+    rerender(
+      <Toast variant="error" statusIcon={null} onDismiss={vi.fn()}>
+        Nachricht
+      </Toast>,
+    );
+    expect(icon(screen.getByRole("alert"))).toBeNull();
+  });
+});

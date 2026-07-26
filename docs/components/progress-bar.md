@@ -107,8 +107,13 @@ so consecutive bars need a wrapper to space them; the examples below use
 
 `accent` (default) is the neutral progress hue; the other three draw from the
 `--C-STATUS-*` family — the same tokens [ProgressRing](progress-ring.md) paints its arc
-with, so the two re-tint together. These change the fill hue and **nothing else**: no
-attribute, no announced text.
+with, so the two re-tint together. These change the fill hue and **nothing else you can
+see**. The status does reach a screen reader — see
+[Carrying status to assistive tech](#carrying-status-to-assistive-tech) — but on screen it
+is the hue and only the hue, which is a live WCAG 1.4.1 gap. The sibling status surfaces
+([Alert](alert.md), [Badge](badge.md), [Toast](toast.md), [Meter](meter.md)) all close it
+with a severity glyph; ProgressBar cannot, and the reason is geometric. See
+[Gotchas](#gotchas).
 
 <!-- example:Colors -->
 ```tsx
@@ -238,6 +243,16 @@ white at 15% over your fill and there is no token to change them.
   `100` and `value={-10}` announces `0`, so the announcement never sits outside the range
   it is announced against — and an out-of-range `value` is narrowed silently rather than
   reported.
+- **The status is colour-only on screen, and there is nowhere to put a glyph.** The track
+  is the `role="progressbar"` element itself and it is `4px` / `12px` / `20px` tall for
+  `sm` / `md` / `lg` at and above 40rem (`4` / `8` / `12` below it — measured in Firefox at
+  1280px), with `overflow: hidden`, so a 12–16px glyph is either illegible or clipped. The
+  root also `Omit`s `children`, and `ProgressBar.Label`/`ProgressBar.Value` are the bar's
+  *siblings* rather than its children, so no element the component renders sits beside the
+  track either. Put the status in a `ProgressBar.Label` of your own, or use
+  [Meter](meter.md), which has the room. Note that ARIA would not have objected: children
+  of `role="progressbar"` are presentational, so a decorative glyph inside would have been
+  harmless — it simply could not be seen.
 - **`variant="gradient"` silently discards `color`.** The gradient rule sets the
   `background` shorthand — which resets `background-color` — and sits after the four
   colour rules at equal specificity, so it always wins.
@@ -310,7 +325,8 @@ range. There is no `min` prop, so the exposed floor is always zero.
   visually-hidden child because `role="progressbar"` makes its children presentational,
   the same reason [Avatar](avatar.md) labels its presence dot through the name. **Nothing
   about this helps a sighted colourblind reader** — the bar itself still differs only in
-  tint, so put the status in a visible label when it is load-bearing.
+  tint, and unlike its sibling status surfaces there is no room in the track for a glyph
+  (see [Gotchas](#gotchas)), so put the status in a visible label when it is load-bearing.
 - **The announced number cannot leave the announced range.** `aria-valuenow` is clamped
   into `[0, max]` alongside the fill width (see Gotchas), so an out-of-range `value` is
   narrowed silently rather than announced as something impossible.

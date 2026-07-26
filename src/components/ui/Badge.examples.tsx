@@ -1,4 +1,4 @@
-import { TriangleAlert } from "lucide-react";
+import { Clock } from "lucide-react";
 
 import { Badge } from "./Badge";
 
@@ -7,7 +7,8 @@ export function Minimal() {
   return <Badge>Draft</Badge>;
 }
 
-/** Five variants. Each swaps only the fill and the ink — padding, radius, and weight are identical. */
+/** Five variants. Each swaps the fill, the ink and — for the four status ones — the glyph;
+ *  padding, radius, and weight are identical. */
 export function Variants() {
   return (
     <div className="flex flex-wrap gap-r6">
@@ -32,12 +33,11 @@ export function LabelledNotJustTinted() {
   );
 }
 
-/** Children lay out in an `inline-flex` row with no gap of its own — add one, and hide a glyph
- *  the label already says. */
+/** `statusIcon` replaces the variant's own glyph rather than joining it; `gap-r6` in the base
+ *  classes spaces it off the label. */
 export function WithIcon() {
   return (
-    <Badge variant="warning" className="gap-r6">
-      <TriangleAlert size={12} aria-hidden />
+    <Badge variant="warning" statusIcon={<Clock size={12} aria-hidden />}>
       Certificate expires in 5 days
     </Badge>
   );

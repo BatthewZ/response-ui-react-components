@@ -1,4 +1,5 @@
-import { type ComponentPropsWithRef, forwardRef } from "react";
+import { type ComponentPropsWithRef, forwardRef, type ReactNode } from "react";
+import { CircleX, TriangleAlert } from "lucide-react";
 
 import { cn } from "../../util/style";
 
@@ -18,6 +19,13 @@ export type MeterProps = {
    * of a threshold rather than a state to announce.
    */
   statusLabels?: Partial<Record<MeterStatus, string>>;
+  /**
+   * Decorative glyph for the threshold the value has crossed, drawn after the
+   * last segment. The twin of `statusLabels`: merged over the defaults, so
+   * `{ critical: <Skull /> }` replaces one and `{ critical: null }` drops it.
+   * `ok` is iconless by default, as it is wordless.
+   */
+  statusIcons?: Partial<Record<MeterStatus, ReactNode>>;
   "aria-label": string;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
@@ -33,6 +41,22 @@ const filledColor: Record<MeterStatus, string> = {
 const defaultStatusLabels: Partial<Record<MeterStatus, string>> = {
   warning: "Warning",
   critical: "Critical",
+};
+
+/**
+ * The threshold's *visible* channel, and the twin of `defaultStatusLabels`.
+ * It sits inside `role="meter"`, whose children ARIA makes presentational — so
+ * the glyph is painted and never announced, which is what is wanted here: the
+ * word is already in the accessible name and a second channel would double it.
+ * `currentColor` would be the inherited body ink rather than the status, so the
+ * fill token is named outright; that is the same ink the filled segments
+ * already paint, so no new colour pairing is introduced.
+ */
+const defaultStatusIcons: Partial<Record<MeterStatus, ReactNode>> = {
+  warning: (
+    <TriangleAlert size={16} aria-hidden="true" className="self-center text-status-warning" />
+  ),
+  critical: <CircleX size={16} aria-hidden="true" className="self-center text-status-error" />,
 };
 
 /**
@@ -52,6 +76,7 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
     warningAt,
     criticalAt,
     statusLabels,
+    statusIcons,
     className,
     style,
     "aria-label": ariaLabel,
@@ -84,6 +109,12 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
   // makes its children presentational, so text inside it never reaches AT.
   const statusText = { ...defaultStatusLabels, ...statusLabels }[status];
   const accessibleName = [ariaLabel, statusText].filter(Boolean).join(", ");
+  const statusIcon = { ...defaultStatusIcons, ...statusIcons }[status];
+  // The glyph takes a track of its own rather than a segment's: a meter with an
+  // extra grid item and no extra column wraps onto a second row.
+  const gridTemplateColumns = statusIcon
+    ? `repeat(${segments}, 1fr) auto`
+    : `repeat(${segments}, 1fr)`;
 
   return (
     <div
@@ -95,7 +126,7 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
       aria-label={accessibleName}
       data-status={status}
       className={cn("grid gap-r6", className)}
-      style={{ ...style, gridTemplateColumns: `repeat(${segments}, 1fr)` }}
+      style={{ ...style, gridTemplateColumns }}
       {...props}
     >
       {Array.from({ length: segments }, (_, i) => (
@@ -108,6 +139,7 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
           )}
         />
       ))}
+      {statusIcon}
     </div>
   );
 });

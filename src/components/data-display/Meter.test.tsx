@@ -203,3 +203,82 @@ describe("Meter · range integrity", () => {
     expect(screen.getByRole("meter", { name: "Disk" })).toHaveAttribute("aria-valuenow", "0");
   });
 });
+
+// #21, visual half — the crossed threshold reached the name and left the fill
+// hue as the only channel on screen. `role="meter"` makes children
+// presentational, so the glyph inside is *seen* and never announced; that is
+// exactly what is wanted, since the word is already in the name.
+describe("Meter · the crossed threshold is visible without colour", () => {
+  const icon = (el: HTMLElement) => el.querySelector("svg");
+
+  it("draws a glyph once a threshold is crossed, and it is decorative", () => {
+    const { rerender } = render(
+      <Meter value={75} warningAt={70} criticalAt={90} aria-label="Disk" />
+    );
+    const warning = icon(screen.getByRole("meter"));
+    expect(warning).not.toBeNull();
+    expect(warning).toHaveAttribute("aria-hidden", "true");
+    expect(warning).not.toHaveAttribute("aria-label");
+    expect(warning).not.toHaveAttribute("role");
+    expect(warning!.querySelector("title")).toBeNull();
+
+    rerender(<Meter value={95} warningAt={70} criticalAt={90} aria-label="Disk" />);
+    const critical = icon(screen.getByRole("meter"));
+    expect(critical!.getAttribute("class")).not.toBe(warning!.getAttribute("class"));
+  });
+
+  it("leaves `ok` iconless, the way it is already wordless", () => {
+    render(<Meter value={10} warningAt={70} criticalAt={90} aria-label="Disk" />);
+    expect(icon(screen.getByRole("meter"))).toBeNull();
+  });
+
+  it("keeps the glyph out of the segment run", () => {
+    render(<Meter value={95} segments={8} criticalAt={90} aria-label="Disk" />);
+    const meter = screen.getByRole("meter");
+    expect(meter.querySelectorAll("span")).toHaveLength(8);
+    expect(meter.style.gridTemplateColumns).toBe("repeat(8, 1fr) auto");
+  });
+
+  it("adds no text content, which role=meter would drop anyway", () => {
+    render(<Meter value={95} criticalAt={90} aria-label="Disk" />);
+    expect(screen.getByRole("meter")).toHaveTextContent("");
+    expect(screen.getByRole("meter")).toHaveAccessibleName("Disk, Critical");
+  });
+
+  it("statusIcons merges over the defaults, and null drops one", () => {
+    const { rerender } = render(
+      <Meter
+        value={95}
+        warningAt={70}
+        criticalAt={90}
+        statusIcons={{ critical: <i data-testid="mine" aria-hidden="true" /> }}
+        aria-label="Disk"
+      />
+    );
+    expect(screen.getByTestId("mine")).toBeInTheDocument();
+    expect(icon(screen.getByRole("meter"))).toBeNull();
+
+    rerender(
+      <Meter
+        value={75}
+        warningAt={70}
+        criticalAt={90}
+        statusIcons={{ critical: <i data-testid="mine" aria-hidden="true" /> }}
+        aria-label="Disk"
+      />
+    );
+    expect(icon(screen.getByRole("meter"))).not.toBeNull();
+
+    rerender(
+      <Meter
+        value={95}
+        warningAt={70}
+        criticalAt={90}
+        statusIcons={{ critical: null }}
+        aria-label="Disk"
+      />
+    );
+    expect(icon(screen.getByRole("meter"))).toBeNull();
+    expect(screen.getByRole("meter").style.gridTemplateColumns).toBe("repeat(10, 1fr)");
+  });
+});

@@ -41,6 +41,7 @@ Three exports, and they are the whole API.
 | `variant`  | `"success" \| "warning" \| "error" \| "info"` | `"info"` |
 | `title`    | `string`                                      | —        |
 | `statusLabel` | `string` — visually-hidden severity word    | the word for `variant` |
+| `statusIcon` | `ReactNode` — decorative severity glyph     | the glyph for `variant` |
 | `duration` | `number` (ms; `0` disables auto-dismiss)      | `5000`   |
 
 `ToastProvider` takes **`children` and nothing else**. Corner, stack limit, gap, width, and
@@ -98,10 +99,12 @@ need.
 
 ## Variants
 
-`variant` picks the tint **and** the announcement: `error` renders `role="alert"` with
-`aria-live="assertive"`; `success`, `warning`, and `info` render `role="status"` with
-`aria-live="polite"`. Nothing else differs — padding, radius, width, and layout are identical
-across all four.
+`variant` picks the tint, the leading glyph **and** the announcement: `error` renders
+`role="alert"` with `aria-live="assertive"`; `success`, `warning`, and `info` render
+`role="status"` with `aria-live="polite"`. The glyphs are `CircleCheck`, `TriangleAlert`,
+`CircleX` and `Info` from `lucide-react`, the peer dependency the package already requires,
+and they are what makes the four cards tell apart in greyscale. Nothing else differs —
+padding, radius, width, and layout are identical across all four.
 
 <!-- example:Variants -->
 ```tsx
@@ -209,6 +212,7 @@ You own placement, the exit animation flag, and removal.
 | `variant`    | `"success" \| "warning" \| "error" \| "info"`        | `"info"` |
 | `title`      | `string`                                             | —        |
 | `statusLabel` | `string` — visually-hidden severity word            | the word for `variant` |
+| `statusIcon` | `ReactNode` — decorative severity glyph              | the glyph for `variant` |
 | `dismissing` | `boolean` — swaps the slide-in animation for slide-out | `false`  |
 | `className`  | `string`                                             | —        |
 | `ref`        | `Ref<HTMLDivElement>`                                | —        |
@@ -339,14 +343,20 @@ insertion case screen readers do special-case, because it is the variant that mu
   persistent container, so the region and its text arrive in the same update — the pattern
   screen readers handle least consistently. Mount your own `aria-live` wrapper first if you
   are running your own queue.
-- **Severity is announced, and still only tinted on screen.** Each variant renders a
+- **Severity travels on two channels, one per audience.** To a screen reader, a
   visually-hidden word — "Success", "Warning", "Error", "Information" — ahead of the title
-  and the message, so success and error no longer read identically. `statusLabel` overrides
-  it from either entry point: `toast(msg, { variant: "error", statusLabel: "Fehler" })` or
-  the prop on a hand-rendered `<Toast>`; `""` drops it when your message already says it.
-  Visually nothing changed, so a colour-blind reader still sees one tinted card — lead with
-  the meaning (`toast("Payment failed. Your card was declined.", { variant: "error" })`) or
-  put it in `title`. Same treatment on [Alert](alert.md#gotchas) and [Badge](badge.md).
+  and the message, so success and error no longer read identically. On screen, a glyph
+  before the title, one shape per variant, so they no longer *look* identical either. Both
+  are overridable from either entry point:
+  `toast(msg, { variant: "error", statusLabel: "Fehler", statusIcon: null })` or the props
+  on a hand-rendered `<Toast>`; `statusLabel=""` and `statusIcon={null}` remove them. The
+  glyph is `aria-hidden` — the word already reaches assistive tech, and naming the icon
+  would read the severity twice. Measured, the glyph is the variant foreground on the
+  variant tinted background, the pairing the message text already uses: **success 4.57 ·
+  warning 3.07 · error 4.41 · info 4.75** default, `events` the same but info 5.20, `tech`
+  13.39 / 11.78 / 5.35 / 8.47, `grimdark` 6.70 / 7.97 / 4.59 / 3.53 — all above the 3:1
+  floor WCAG 1.4.11 sets for a meaningful graphical object. Same treatment on
+  [Alert](alert.md#gotchas) and [Badge](badge.md).
 - **Dismissing returns focus to where it came from.** The toast records what was focused
   before focus entered it and restores that element *before* the unmount, so a keyboard user
   who tabs into a toast and closes it lands back where they were rather than on `<body>`.
@@ -355,7 +365,8 @@ insertion case screen readers do special-case, because it is the variant that mu
   speed, and there is no prop to extend it. That is a WCAG 2.2.1 (Timing Adjustable) problem
   for anything a user is expected to act on. `duration: 0` is the only escape, and it makes
   dismissal entirely manual.
-- **The dismiss icon is a hand-rolled inline `<svg>`,** not a `lucide-react` glyph. It exposes
+- **The dismiss icon is a hand-rolled inline `<svg>`,** not a `lucide-react` glyph — unlike
+  the severity glyph beside the title, which is. It exposes
   no `<title>` and no `role="img"`, so it contributes no accessible name and the button reads
   as its `aria-label`, "Dismiss" — a hard-coded English string with no prop reaching it.
 - **Focus is never moved to a toast.** Correct for a transient message, but it means anything

@@ -1,4 +1,12 @@
-import { type ComponentPropsWithRef, forwardRef, useCallback, useMemo, useRef } from "react";
+import {
+  type ComponentPropsWithRef,
+  forwardRef,
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import { CircleCheck, CircleX, Info, TriangleAlert } from "lucide-react";
 
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
@@ -38,6 +46,19 @@ const statusLabelMap: Record<ToastVariant, string> = {
   info: "Information",
 };
 
+/**
+ * The severity's *visible* channel, and the twin of `statusLabelMap` above.
+ * Decorative on purpose: `statusLabel` already announces the severity into the
+ * live region, so a named glyph would announce it a second time. Drawn in
+ * `currentColor`, which is the variant's own `text-status-*` ink.
+ */
+const statusIconMap: Record<ToastVariant, ReactNode> = {
+  success: <CircleCheck size={16} aria-hidden="true" className="shrink-0" />,
+  warning: <TriangleAlert size={16} aria-hidden="true" className="shrink-0" />,
+  error: <CircleX size={16} aria-hidden="true" className="shrink-0" />,
+  info: <Info size={16} aria-hidden="true" className="shrink-0" />,
+};
+
 type ToastProps = {
   variant?: ToastVariant;
   title?: string;
@@ -48,6 +69,12 @@ type ToastProps = {
    * `""` drops it, for a message that already names its own severity.
    */
   statusLabel?: string;
+  /**
+   * Decorative glyph for the severity, drawn before the title. `null` drops it
+   * — the `statusLabel=""` of the visual channel. Anything you pass here must
+   * be `aria-hidden`, or the severity is announced twice.
+   */
+  statusIcon?: ReactNode;
 } & Omit<ComponentPropsWithRef<"div">, "title">;
 
 export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
@@ -57,6 +84,7 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
     onDismiss,
     dismissing = false,
     statusLabel,
+    statusIcon,
     className,
     children,
     onFocus,
@@ -65,6 +93,9 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
   ref
 ) {
   const statusText = statusLabel ?? statusLabelMap[variant];
+  // Not `??`: `null` is this prop's remover, and `??` would treat it as absent
+  // and restore the default — the mirror of `statusLabel=""` surviving `??`.
+  const icon = statusIcon === undefined ? statusIconMap[variant] : statusIcon;
   const rootRef = useRef<HTMLDivElement>(null);
   const mergedRef = useMemo(() => mergeRefs(ref, rootRef), [ref]);
   // Where focus was before it entered the toast. Dismissing unmounts the button
@@ -105,6 +136,7 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
       {...ariaMap[variant]}
       {...props}
     >
+      {icon}
       <div className="flex-1 min-w-0">
         {statusText && <span className="sr-only">{statusText}</span>}
         {title && <p className="font-semibold">{title}</p>}

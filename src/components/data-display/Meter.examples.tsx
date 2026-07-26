@@ -5,7 +5,8 @@ export function Minimal() {
   return <Meter value={72} aria-label="Disk usage" />;
 }
 
-/** `warningAt`/`criticalAt` re-tint the whole filled run once `value` crosses them. */
+/** `warningAt`/`criticalAt` re-tint the whole filled run once `value` crosses them, and add
+ *  a glyph after the last segment so the threshold is not colour alone. */
 export function Thresholds() {
   return (
     <>

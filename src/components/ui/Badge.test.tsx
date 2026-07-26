@@ -117,3 +117,61 @@ describe("Badge · the chip is sized by its padding, not its leading", () => {
     expect(screen.getByText("New").className).toContain("leading-none");
   });
 });
+
+// #44, visual half — the hidden word closed the assistive-tech half and left the
+// tint as the only channel on screen. The glyph is the visible one, and it is
+// decorative: `statusLabel` already announces the variant.
+describe("Badge · the variant is visible without colour", () => {
+  const icon = (el: HTMLElement) => el.closest("span[class]")?.querySelector("svg") ?? null;
+
+  it("renders one glyph per status variant, and it is decorative", () => {
+    for (const variant of ["success", "warning", "error", "info"] as const) {
+      const { unmount } = render(<Badge variant={variant}>Ok</Badge>);
+      const svg = icon(screen.getByText("Ok"));
+      expect(svg).not.toBeNull();
+      expect(svg).toHaveAttribute("aria-hidden", "true");
+      expect(svg).not.toHaveAttribute("aria-label");
+      expect(svg).not.toHaveAttribute("aria-labelledby");
+      expect(svg).not.toHaveAttribute("role");
+      expect(svg!.querySelector("title")).toBeNull();
+      unmount();
+    }
+  });
+
+  it("gives each variant a different glyph", () => {
+    const seen = new Set<string>();
+    for (const variant of ["success", "warning", "error", "info"] as const) {
+      const { unmount } = render(<Badge variant={variant}>Ok</Badge>);
+      seen.add(icon(screen.getByText("Ok"))?.getAttribute("class") ?? "");
+      unmount();
+    }
+    expect(seen.size).toBe(4);
+  });
+
+  it("leaves `default` iconless, the way it is already wordless", () => {
+    render(<Badge>Draft</Badge>);
+    expect(icon(screen.getByText("Draft"))).toBeNull();
+  });
+
+  it("spaces the glyph off the label", () => {
+    render(<Badge variant="error">Failed</Badge>);
+    expect(screen.getByText("Failed").className).toContain("gap-r6");
+  });
+
+  it("statusIcon replaces it, and null drops it", () => {
+    const { rerender } = render(
+      <Badge variant="error" statusIcon={<i data-testid="mine" aria-hidden="true" />}>
+        Failed
+      </Badge>,
+    );
+    expect(screen.getByTestId("mine")).toBeInTheDocument();
+    expect(icon(screen.getByTestId("mine"))).toBeNull();
+
+    rerender(
+      <Badge variant="error" statusIcon={null}>
+        Failed
+      </Badge>,
+    );
+    expect(icon(screen.getByText("Failed"))).toBeNull();
+  });
+});

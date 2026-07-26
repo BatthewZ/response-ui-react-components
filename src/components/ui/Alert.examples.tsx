@@ -8,8 +8,8 @@ export function Minimal() {
   return <Alert>Your changes are saved automatically as you type.</Alert>;
 }
 
-/** Four semantic variants. Each only re-tints — fill, text, and border all read the
- *  matching `--C-STATUS-*` pair, so the shape never changes. */
+/** Four semantic variants. Each sets a `--C-STATUS-*` pair for fill, text and border,
+ *  and its own leading glyph — the channel that survives greyscale. */
 export function Variants() {
   return (
     <>
@@ -21,7 +21,8 @@ export function Variants() {
   );
 }
 
-/** Children are rendered as-is inside a flex row — compose a heading and body yourself. */
+/** Children are rendered as-is inside a flex row, after the glyph — compose a heading and
+ *  body yourself. */
 export function WithTitle() {
   return (
     <Alert variant="warning">
@@ -33,10 +34,9 @@ export function WithTitle() {
   );
 }
 
-/** The hidden `statusLabel` reaches screen readers, but on screen the variant is still
- *  tint alone. Prefix a visible label (or an icon with an accessible name) so the
- *  severity survives greyscale — and drop the hidden word once the text repeats it,
- *  or it is announced twice. */
+/** Both default channels are overridable. Here the visible text names the severity itself,
+ *  so the hidden word is dropped — leaving it would announce "Error, Error". The glyph
+ *  stays: it is the channel a colour-blind reader has. */
 export function LabelledForColorBlindness() {
   return (
     <Alert variant="error" statusLabel="">

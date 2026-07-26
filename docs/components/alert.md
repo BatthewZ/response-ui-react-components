@@ -2,8 +2,8 @@
 
 A tinted, bordered banner for a single status message — `info`, `success`,
 `warning`, or `error`. It renders one live region, names its own severity for
-screen readers, and re-tints from your theme's status tokens, so a custom theme
-restyles every alert for free.
+screen readers, shows that severity as a glyph rather than a colour, and re-tints
+from your theme's status tokens, so a custom theme restyles every alert for free.
 
 <!-- example:Minimal -->
 ```tsx
@@ -15,6 +15,7 @@ restyles every alert for free.
 | ----------- | ----------------------------------------------- | -------- |
 | `variant`   | `"success" \| "warning" \| "error" \| "info"`   | `"info"` |
 | `statusLabel` | `string`                                      | the word for `variant` |
+| `statusIcon` | `ReactNode`                                    | the glyph for `variant` |
 | `className` | `string`                                        | —        |
 | `ref`       | `Ref<HTMLDivElement>`                            | —        |
 | …rest       | props of `div` (`role`, `aria-live`, `id`, …)   | —        |
@@ -25,8 +26,12 @@ so a call-site prop overrides either. See [Gotchas](#gotchas).
 
 ## Variants
 
-The four variants only re-tint — fill, text, and border all read the matching
-`--C-STATUS-*` pair, so padding, radius, and layout stay identical across them.
+Each variant sets two things: the `--C-STATUS-*` pair that fills, inks and borders
+the banner, and the glyph that leads it — `CircleCheck`, `TriangleAlert`,
+`CircleX`, `Info` from `lucide-react`, the peer dependency the package already
+requires. Padding, radius, and layout stay identical across all four; the glyph is
+the only shape that changes, and it is what makes the variants tell apart in
+greyscale.
 
 <!-- example:Variants -->
 ```tsx
@@ -39,8 +44,9 @@ The four variants only re-tint — fill, text, and border all read the matching
 
 ## Rich content
 
-Children render as-is inside a flex row. There is no `title` or `icon` prop —
-compose the structure you need:
+Children render as-is inside a flex row, after the severity glyph. There is no
+`title` prop and no general-purpose icon slot — `statusIcon` names the severity
+and nothing else, so compose the structure you need:
 
 <!-- example:WithTitle -->
 ```tsx
@@ -55,16 +61,24 @@ compose the structure you need:
 
 ## Don't lean on colour alone
 
-Each variant ships a visually-hidden severity word — "Success", "Warning",
-"Error", "Information" — as the first thing inside the live region, so a screen
-reader hears "Error, Payment failed" rather than the message alone. Override it
-with `statusLabel="Fehler"` to translate it, or `statusLabel=""` when the message
-already names the severity itself.
+Severity travels on two channels, one per audience, and neither repeats the other.
 
-That closes the assistive-tech half of WCAG 1.4.1 and nothing else: **on screen
-the variants still differ only in tint**, so a greyscale or colour-blind reader
-still can't tell success from error. Lead with a visible text label (or an icon
-that has an accessible name) when the severity matters:
+**To a screen reader:** a visually-hidden word — "Success", "Warning", "Error",
+"Information" — as the first thing inside the live region, so it hears "Error,
+Payment failed" rather than the message alone. `statusLabel="Fehler"` translates
+it; `statusLabel=""` removes it when the message already names the severity.
+
+**On screen:** a glyph before the message, one shape per variant, so the four
+banners are distinguishable in greyscale and to a colour-blind reader.
+`statusIcon` replaces it; `statusIcon={null}` removes it. The two props are twins
+on purpose — same defaulting, same removal, one idea to learn.
+
+The glyph is `aria-hidden`, deliberately: the word is already in the live region,
+and a named icon beside it would announce the severity twice. If you pass your
+own `statusIcon`, mark it `aria-hidden` for the same reason.
+
+Both channels are defaults, not requirements — a message that says what it means
+still reads better than one leaning on either:
 
 <!-- example:LabelledForColorBlindness -->
 ```tsx
@@ -118,10 +132,12 @@ shipped themes.
 
 ## Gotchas
 
-- **Variant is still colour-only on screen.** The visually-hidden severity word reaches
-  assistive tech, but nothing visible changes between variants except the tint — in
-  greyscale the four are one banner. Supply your own visible label or icon (see the
-  example above).
+- **The glyph is the variant's only non-colour channel.** Pass `statusIcon={null}` and the
+  four banners are identical in greyscale again — the tint is all that is left. Remove it
+  only where your own text already names the severity.
+- **The glyph is drawn in `currentColor`,** so it inks the variant's `--C-STATUS-*`
+  foreground, the same token as the message text beside it. It introduces no new colour
+  pairing, and it inherits whatever contrast your theme gives that pair.
 - **The hidden word is part of the alert's text.** It sits inside the live region as the
   first child, so `textContent` and any `getByText`-style query see it too. Pass
   `statusLabel=""` where that is a problem.
@@ -144,10 +160,16 @@ to an event is announced without moving focus. The severity travels with it as a
 visually-hidden first child (`statusLabel`), which is what stops an error and a success
 announcing identically.
 
-That leaves the **visual** half of WCAG 1.4.1 open: the variants differ only in tint on
-screen, so pair one with a visible label or icon when a colour-blind reader has to tell
-them apart. The theme's status pairing covers foreground/background *contrast* only, not
-that the meaning survives without colour.
+The **visual** half of WCAG 1.4.1 is carried by the glyph (`statusIcon`), not by the
+tint: `CircleCheck`, `TriangleAlert`, `CircleX` and `Info` are four different shapes, so
+the variants survive greyscale and colour-vision deficiency. It is `aria-hidden`, so it
+adds nothing to what is announced — the word already did that.
+
+Measured, the glyph is the variant's foreground on the variant's tinted background, the
+pairing the message text already uses: **success 4.57 · warning 3.07 · error 4.41 · info
+4.75** in the default theme, `events` the same but info 5.20, `tech` 13.39 / 11.78 / 5.35
+/ 8.47, `grimdark` 6.70 / 7.97 / 4.59 / 3.53. Every one clears the 3:1 floor WCAG 1.4.11
+sets for a meaningful graphical object. A custom `--C-STATUS-*` pair is yours to measure.
 
 ## Related
 

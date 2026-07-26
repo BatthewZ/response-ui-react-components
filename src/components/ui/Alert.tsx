@@ -1,4 +1,5 @@
-import { type ComponentPropsWithRef, forwardRef } from "react";
+import { type ComponentPropsWithRef, forwardRef, type ReactNode } from "react";
+import { CircleCheck, CircleX, Info, TriangleAlert } from "lucide-react";
 
 import { cn } from "../../util/style";
 
@@ -37,6 +38,20 @@ const statusLabelMap: Record<Variant, string> = {
   info: "Information",
 };
 
+/**
+ * The severity's *visible* channel, and the twin of `statusLabelMap` above.
+ * Decorative on purpose: `statusLabel` already announces the severity into the
+ * live region, so a named glyph would announce it a second time. Drawn in
+ * `currentColor`, which is the variant's own `text-status-*` ink — the same
+ * pairing the message text already uses, so it introduces no new contrast.
+ */
+const statusIconMap: Record<Variant, ReactNode> = {
+  success: <CircleCheck size={16} aria-hidden="true" className="shrink-0" />,
+  warning: <TriangleAlert size={16} aria-hidden="true" className="shrink-0" />,
+  error: <CircleX size={16} aria-hidden="true" className="shrink-0" />,
+  info: <Info size={16} aria-hidden="true" className="shrink-0" />,
+};
+
 type AlertProps = {
   variant?: Variant;
   /**
@@ -44,13 +59,22 @@ type AlertProps = {
    * for a message that already names its own severity.
    */
   statusLabel?: string;
+  /**
+   * Decorative glyph for the severity, drawn before the message. `null` drops
+   * it — the `statusLabel=""` of the visual channel. Anything you pass here
+   * must be `aria-hidden`, or the severity is announced twice.
+   */
+  statusIcon?: ReactNode;
 } & ComponentPropsWithRef<"div">;
 
 export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
-  { variant = "info", statusLabel, className, children, ...props },
+  { variant = "info", statusLabel, statusIcon, className, children, ...props },
   ref
 ) {
   const statusText = statusLabel ?? statusLabelMap[variant];
+  // Not `??`: `null` is this prop's remover, and `??` would treat it as absent
+  // and restore the default — the mirror of `statusLabel=""` surviving `??`.
+  const icon = statusIcon === undefined ? statusIconMap[variant] : statusIcon;
 
   return (
     <div
@@ -60,6 +84,7 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
       {...props}
     >
       {statusText && <span className="sr-only">{statusText}</span>}
+      {icon}
       {children}
     </div>
   );

@@ -44,6 +44,11 @@ function TestHarness() {
         Add translated error toast
       </button>
       <button
+        onClick={() => toast("Iconless", { variant: "error", statusIcon: null })}
+      >
+        Add iconless error toast
+      </button>
+      <button
         onClick={() => {
           const id = document.body.dataset.lastToastId;
           if (id) dismiss(id);
@@ -173,6 +178,27 @@ describe("ToastContext", () => {
 
     await user.click(screen.getByRole("button", { name: "Add translated error toast" }));
     expect(screen.getByText("Fehler").className).toContain("sr-only");
+  });
+
+  // #104, visual half — the glyph has to reach the queue for the same reason the
+  // word does: `toast()` is how the component is actually consumed.
+  it("carries the severity glyph through the queue, decorative", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderWithProvider();
+
+    await user.click(screen.getByRole("button", { name: "Add error toast" }));
+    const root = screen.getByRole("alert");
+    const svg = Array.from(root.children).find((c) => c.tagName.toLowerCase() === "svg");
+    expect(svg).toBeDefined();
+    expect(svg).toHaveAttribute("aria-hidden", "true");
+    expect(svg).not.toHaveAttribute("aria-label");
+    expect(svg).not.toHaveAttribute("role");
+
+    await user.click(screen.getByRole("button", { name: "Add iconless error toast" }));
+    const iconless = screen.getByText("Iconless").closest("div[class*='bg-status']");
+    expect(
+      Array.from(iconless!.children).find((c) => c.tagName.toLowerCase() === "svg"),
+    ).toBeUndefined();
   });
 
   it("renders toast with correct variant", async () => {

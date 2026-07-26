@@ -127,3 +127,64 @@ describe("Alert · severity has a text channel", () => {
     expect(screen.getByRole("alert").querySelector(".sr-only")).toBeNull();
   });
 });
+
+// #1, visual half — the severity word closed the assistive-tech half and left the
+// tint as the only channel a sighted colour-blind reader has. The glyph is the
+// second *visible* channel; it is decorative because `statusLabel` already
+// announces the severity, and a named icon would announce it twice.
+describe("Alert · severity is visible without colour", () => {
+  const icon = (root: HTMLElement) => root.querySelector("svg");
+
+  it("renders one glyph per variant, and it is decorative", () => {
+    const cases = ["success", "warning", "error", "info"] as const;
+    for (const variant of cases) {
+      const { unmount } = render(<Alert variant={variant}>Notice</Alert>);
+      const root = screen.getByRole(variant === "error" ? "alert" : "status");
+      const svg = icon(root);
+      expect(svg).not.toBeNull();
+      // Every route into the accessible name, closed. The word already reaches
+      // the live region; a named glyph would make it announce twice.
+      expect(svg).toHaveAttribute("aria-hidden", "true");
+      expect(svg).not.toHaveAttribute("aria-label");
+      expect(svg).not.toHaveAttribute("aria-labelledby");
+      expect(svg).not.toHaveAttribute("role");
+      expect(svg!.querySelector("title")).toBeNull();
+      unmount();
+    }
+  });
+
+  it("the glyph is a different one per variant", () => {
+    const seen = new Set<string>();
+    for (const variant of ["success", "warning", "error", "info"] as const) {
+      const { unmount } = render(<Alert variant={variant}>Notice</Alert>);
+      const root = screen.getByRole(variant === "error" ? "alert" : "status");
+      seen.add(icon(root)?.getAttribute("class") ?? "");
+      unmount();
+    }
+    expect(seen.size).toBe(4);
+  });
+
+  it("adds no text, so the severity is not announced twice", () => {
+    render(<Alert variant="error">Payment failed</Alert>);
+    expect(screen.getByRole("alert")).toHaveTextContent("ErrorPayment failed");
+  });
+
+  it("statusIcon replaces the default glyph", () => {
+    render(
+      <Alert variant="error" statusIcon={<i data-testid="mine" aria-hidden="true" />}>
+        Boom
+      </Alert>,
+    );
+    expect(screen.getByTestId("mine")).toBeInTheDocument();
+    expect(screen.getByRole("alert").querySelector("svg")).toBeNull();
+  });
+
+  it("statusIcon={null} drops it, the twin of statusLabel=''", () => {
+    render(
+      <Alert variant="error" statusIcon={null}>
+        Boom
+      </Alert>,
+    );
+    expect(screen.getByRole("alert").querySelector("svg")).toBeNull();
+  });
+});

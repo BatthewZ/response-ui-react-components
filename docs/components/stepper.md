@@ -147,6 +147,7 @@ runtime, with no rebuild.
 | Where                              | Override                                      |
 | ---------------------------------- | --------------------------------------------- |
 | Progress ink (current ring, filled rail) | `--stepper-progress-color`, defaulting to `--C-TEXT-PRIMARY` |
+| Current ring weight                | `--_stepper-active-line-width`, `2 x --_stepper-line-width` |
 | Done chip fill · ring and glyph    | `--C-PRIMARY` · `--C-TEXT-ON-PRIMARY`         |
 | Unfilled rail · upcoming ring      | `--C-BORDER-DEFAULT`                          |
 | Marker background                  | `--C-SURFACE-1`                               |
@@ -193,10 +194,16 @@ marker gap (`--R-SIZE-5`, `0.5rem` → `0.75rem`), the horizontal rail inset (`-
 vertical rail inset (`--R-SIZE-6`) holds at `0.25rem` on both sides, so the two orientations
 do not inset their rails by the same amount. The `--BodyText-*` steps are responsive too.
 
-Two geometry values are **not** on the contract: the marker diameter (`2rem`) and the rail
-thickness (`2px`), held in component-internal `--_stepper-*` locals. Every connector offset
-is derived from both, so they are fixed rather than themeable. The clickable marker's
-hover transition is likewise a hard-coded `0.15s ease` rather than a motion token.
+Three geometry values are **not** on the contract: the marker diameter (`2rem`), the rail
+thickness (`2px`), and the current marker's doubled ring (`4px`), held in
+component-internal `--_stepper-*` locals. Every connector offset is derived from the first
+two, so they are fixed rather than themeable. The doubled ring costs no layout because
+`.stepper-indicator` states `box-sizing: border-box` itself rather than inheriting it from
+a reset — under content-box the current marker would grow past `2rem` and pull off the
+rail's centre line, which is positioned from that variable. Measured in Firefox at 1280px:
+every marker is `32 x 32` in all four themes, current `4px` ring against `2px` for done and
+upcoming. The clickable marker's hover transition is likewise a hard-coded `0.15s ease`
+rather than a motion token.
 
 Upcoming numbers and titles are deliberately `--C-TEXT-MUTED` (hint-level contrast), so
 treat what is still ahead as supplementary rather than load-bearing text.
@@ -230,7 +237,9 @@ treat what is still ahead as supplementary rather than load-bearing text.
 ## Accessibility
 
 The track is a semantic `<ol>` of `<li>` items and the current step's `<li>` carries
-`aria-current="step"`, so "you are here" is exposed as real state rather than tint alone.
+`aria-current="step"`, so "you are here" is exposed as real state rather than tint alone —
+and the current marker's ring is drawn at double weight, so it is not tint alone on screen
+either.
 There is no roving focus or arrow-key model as in [Tabs](tabs.md) — in clickable mode the
 markers are ordinary tab stops in DOM order.
 
@@ -243,11 +252,14 @@ markers are ordinary tab stops in DOM order.
   rather than on the button, so neither the wording nor its language can be changed from
   outside. Note also that an upcoming step announces no status of its own; `aria-current="step"`
   on the `<li>` is what marks the current row.
-- **Done reads without colour; current does not.** A completed step changes shape — filled
-  chip, check glyph — so it survives greyscale. `active` and `upcoming` are the same hollow
-  ring with the same number at the same weight, separated only by ring, number, and title
-  tint. `aria-current` covers assistive tech; a sighted reader with a colour-vision
-  deficiency has nothing else to go on.
+- **Every status reads without colour.** A completed step changes shape — filled chip,
+  check glyph. The current step keeps the hollow ring but draws it at **double weight**
+  (`--_stepper-active-line-width`), which is what separates it from an upcoming step for a
+  reader who cannot see the tint difference; the progress-ink ring, number and title colour
+  reinforce it for everyone else. A width rather than a colour, so it holds under any
+  `--stepper-progress-color` override and in all four themes. Nothing was added to what is
+  *announced*: `aria-current="step"` already carried the state, and a hidden word beside it
+  would only make the current step announce twice.
 - **`list-style: none` can strip the list role.** The `<ol>` hides its markers in CSS, and in
   Safari + VoiceOver that WebKit quirk drops `list`/`listitem` semantics. The component adds
   no `role="list"` itself, but `role` passes through — set `<Stepper role="list">` if

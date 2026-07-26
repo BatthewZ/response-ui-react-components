@@ -2,8 +2,8 @@
 
 A segmented capacity gauge for a measurement inside a known range — disk usage, memory
 pressure, a battery. It renders `role="meter"` (deliberately **not** `progressbar`),
-fills left-to-right in discrete segments, and re-tints the whole filled run to a single
-semantic colour once the value crosses a `warningAt` or `criticalAt` threshold you set.
+fills left-to-right in discrete segments, and marks a crossed `warningAt` or `criticalAt`
+threshold with both a semantic colour and a glyph after the last segment.
 
 <!-- example:Minimal -->
 ```tsx
@@ -20,6 +20,7 @@ semantic colour once the value crosses a `warningAt` or `criticalAt` threshold y
 | `warningAt`  | `number`                            | —          |
 | `criticalAt` | `number`                            | —          |
 | `statusLabels` | `Partial<Record<"ok" \| "warning" \| "critical", string>>` | `{ warning: "Warning", critical: "Critical" }` |
+| `statusIcons` | `Partial<Record<"ok" \| "warning" \| "critical", ReactNode>>` | `TriangleAlert` for `warning`, `CircleX` for `critical` |
 | `aria-label` | `string`                            | (required) |
 | `className`  | `string`                            | —          |
 | `style`      | `CSSProperties`                     | —          |
@@ -49,6 +50,15 @@ own styling hooks.
 Thresholds are compared against the **raw** `value`, not the fraction — on a custom
 range they are absolute numbers in that range, not percentages. `criticalAt` is tested
 first, so if the two ever cross, critical wins.
+
+The crossed threshold is also **drawn**, not just tinted: a `TriangleAlert` (warning) or
+`CircleX` (critical) from `lucide-react` takes a grid track of its own after the last
+segment, so the two states differ in shape and not only in hue. `statusIcons` merges over
+the defaults exactly as `statusLabels` does — `{ critical: <Skull /> }` replaces one,
+`{ critical: null }` drops it — and `ok` is iconless for the same reason it is wordless.
+The glyph inks `--C-STATUS-WARNING`/`--C-STATUS-ERROR` outright rather than `currentColor`,
+which would be the inherited body text; that is the same ink the filled segments already
+paint, so no new colour pairing is introduced.
 
 The crossed threshold is also **named**, not just tinted: the word joins `aria-label`, so
 the meter above announces "Swap, Critical". `statusLabels` merges over the defaults —
@@ -106,6 +116,8 @@ in one file and every healthy meter in the app re-tints at runtime, no rebuild.
 | Empty segment track           | `bg-surface-2`      | `--C-SURFACE-2`      |
 | Segment corners               | `rounded-sm`        | `--RADIUS-SM`        |
 | Gap between segments          | `gap-r6`            | `--R-SIZE-6`         |
+| Warning glyph                 | `text-status-warning` | `--C-STATUS-WARNING` |
+| Critical glyph                | `text-status-error`   | `--C-STATUS-ERROR`   |
 
 Segment thickness is `h-r3` and the gap is `gap-r6`, both on the `--R-SIZE-*` scale, but
 only the thickness actually scales: `--R-SIZE-3` grows from `1rem` to `1.5rem` above the
@@ -121,6 +133,11 @@ meter.
 - **`style.gridTemplateColumns` is silently ignored.** The component spreads your `style`
   and then overwrites `gridTemplateColumns` from `segments`, so it always wins. Change the
   segment count, not the grid template.
+- **Crossing a threshold narrows the segments.** The glyph takes a real `auto` track — a
+  grid item with no column of its own wraps onto a second row — so the run of segments
+  gives up the glyph's width plus one gap at the moment the status flips. It is about
+  `1.25rem` across the whole meter. Pass `statusIcons={{ warning: null, critical: null }}`
+  where a bar that never resizes matters more than a cue that is not a colour.
 - **The last segment is reserved, which distorts low `segments`.** Because a sub-`max`
   value can't fill the final bar and a supra-`min` value must fill at least one, small
   counts are dominated by the guards: `segments={1}` is effectively binary (empty until
@@ -134,12 +151,12 @@ meter.
   range collapses the fraction to `0` rather than throwing or dividing by zero, but the
   min-guard still fires — any `value > min` paints exactly one segment, and the meter is
   fully empty only when `value <= min`.
-- **Status is named to assistive tech, but still only tinted on screen.** Crossing
-  `warningAt`/`criticalAt` appends the `statusLabels` word to `aria-label` and flips
-  `data-status`, so a screen-reader user hears "Disk usage, Critical" — but the visible
-  meter changes hue and nothing else. A sighted colourblind reader is no better off; add
-  your own visible cue (or key one off `data-status`) when the distinction is
-  load-bearing.
+- **Status reaches both audiences, by different routes.** Crossing `warningAt`/`criticalAt`
+  appends the `statusLabels` word to `aria-label` and flips `data-status`, so a
+  screen-reader user hears "Disk usage, Critical"; the `statusIcons` glyph is what a sighted
+  colourblind reader sees. The glyph is *inside* `role="meter"`, whose children ARIA makes
+  presentational — which is exactly what is wanted here: it is painted and never announced,
+  so the word is not read twice. `data-status` is still on the root for a cue of your own.
 - **No per-component CSS; server-renderable.** There is no `Meter.css` and no
   `"use client"`, so it drops straight into an RSC tree — but the `@batthewz/response-ui-css`
   import is still required for the utilities above to resolve to tokens.
@@ -153,10 +170,18 @@ so assistive tech announces one measured value rather than ten separate bars.
 
 The warning/critical status reaches assistive tech through the **name**: the
 `statusLabels` word for the crossed threshold is appended to `aria-label`, so the meter
-announces "Disk usage, Critical" rather than a bare percentage. That closes the
-screen-reader half of WCAG 1.4.1 and no more — on screen the status is still a hue
-change, so a sighted colourblind reader sees the same meter either way. Pair it with a
-visible cue of your own when that matters.
+announces "Disk usage, Critical" rather than a bare percentage. On screen it reaches a
+colourblind reader through the `statusIcons` glyph, which is `aria-hidden` *and* inside a
+role whose children are presentational — two reasons it can never be announced, and the
+word is already doing that job.
+
+Measured against the surfaces a meter is likely to sit on, the glyph ink is: warning
+**3.19 / 3.05 / 2.90** and critical **4.83 / 4.62 / 4.39** on `--C-SURFACE-0/1/2` in the
+default theme; `events` 3.09 / 3.00 / 2.87 and 4.68 / 4.54 / 4.35; `tech` 13.16 / 12.91 /
+12.15 and 5.55 / 5.44 / 5.12; `grimdark` 9.99 / 9.35 / 8.59 and 5.09 / 4.76 / 4.38. The
+warning glyph is **below the 3:1 floor of WCAG 1.4.11 on `--C-SURFACE-2`** in the default
+and `events` themes — the same shortfall the filled segments already have there, since
+they paint the identical token, but worth knowing before putting a meter on that surface.
 
 ## Related
 

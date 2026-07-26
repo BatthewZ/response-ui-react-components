@@ -6,6 +6,13 @@
   /* Component geometry tokens — interdependent, defined together */
   --_stepper-indicator-size: 2rem;
   --_stepper-line-width: 2px;
+  /* The current step's ring, doubled. This is the ONLY thing separating active
+     from upcoming that survives greyscale: both are hollow rings with the same
+     numeral at the same weight, and before this they differed by tint alone
+     (WCAG 1.4.1). A width, not a colour, so it holds in all four themes and
+     under any --stepper-progress-color override. It costs no layout because
+     .stepper-indicator is border-box — see there. */
+  --_stepper-active-line-width: calc(var(--_stepper-line-width) * 2);
   --_stepper-gap: var(--R-SIZE-4);
 
   /* The progress ink: colours the active step's ring/number and the completed
@@ -69,6 +76,11 @@
   position: relative;
   z-index: 1;
   flex: none;
+  /* Stated rather than inherited from a reset: the active step thickens the
+     ring, and under content-box that would grow the chip past
+     --_stepper-indicator-size and pull it off the connector's centre line,
+     which is positioned from that variable. */
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -121,11 +133,14 @@ button.stepper-indicator:focus-visible {
 
 /* Active (current): "you are here" — NOT yet covered, so it stays an UNFILLED
    ring rather than a brand chip. The hollow (surface) fill sets it apart from
-   the filled done steps; the strong progress-ink ring/number sets it apart from
-   the muted upcoming steps. Uses a text token (--stepper-progress-color), not
-   --C-PRIMARY, because the ring is a stroke on the surface — see the contrast
-   contract note on --stepper-progress-color above. */
+   the filled done steps; the DOUBLE-WEIGHT ring sets it apart from the thin
+   upcoming ones without asking anyone to see a colour, and the progress-ink
+   ring/number reinforces it for those who can. Uses a text token
+   (--stepper-progress-color), not --C-PRIMARY, because the ring is a stroke on
+   the surface — see the contrast contract note on --stepper-progress-color
+   above. */
 .stepper-step[data-status="active"] .stepper-indicator {
+  border-width: var(--_stepper-active-line-width);
   border-color: var(--stepper-progress-color);
   background-color: var(--C-SURFACE-1);
   color: var(--stepper-progress-color);

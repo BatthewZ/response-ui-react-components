@@ -20,6 +20,12 @@ type ToastOptions = {
   duration?: number;
   /** Overrides the variant's visually-hidden severity word. See `Toast`. */
   statusLabel?: string;
+  /**
+   * Overrides the variant's decorative severity glyph; `null` drops it. Reaches
+   * the queue for the same reason `statusLabel` does — an override the primary
+   * entry point cannot get to is not an override path. See `Toast`.
+   */
+  statusIcon?: ReactNode;
 };
 
 type ToastApi = {
@@ -34,6 +40,7 @@ type ToastEntry = {
   variant: ToastVariant;
   title?: string;
   statusLabel?: string;
+  statusIcon?: ReactNode;
   duration: number;
   dismissing: boolean;
 };
@@ -116,6 +123,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       variant: options?.variant ?? "info",
       title: options?.title,
       statusLabel: options?.statusLabel,
+      statusIcon: options?.statusIcon,
       duration: options?.duration ?? DEFAULT_DURATION_MS,
       dismissing: false,
     };
@@ -203,6 +211,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               variant={t.variant}
               title={t.title}
               statusLabel={t.statusLabel}
+              statusIcon={t.statusIcon}
               dismissing={t.dismissing}
               onDismiss={() => dismiss(t.id)}
               {...liveOverride(t.variant)}
