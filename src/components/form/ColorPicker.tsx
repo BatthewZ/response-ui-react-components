@@ -18,6 +18,12 @@ import {
   useInteractions,
   useRole,
 } from "../../hooks/use-floating";
+import {
+  focusOutlineResetButton,
+  focusOutlineResetControl,
+  focusRingButton,
+  focusRingControl,
+} from "../../util/focus";
 import { mergeProps } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
@@ -61,9 +67,12 @@ type ColorPickerProps = {
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
 
+/** 0–1 axis position as the whole percent the axis's `<input type="range">` carries. */
+const toPercent = (n: number) => Math.round(n * 100);
+
 /**
  * Hex color picker with an HSV editing surface in a floating popover: a 2D
- * saturation/value square (drag or arrow-key), a hue rail, a hex text field,
+ * saturation/brightness area (drag or arrow-key), a hue rail, a hex text field,
  * and optional preset swatches. HSV is held internally so hue survives at the
  * greyscale extremes (where it can't be recovered from the hex), while the
  * committed value is always a canonical `#rrggbb` string.
@@ -117,6 +126,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
     const [draft, setDraft] = useState<string | null>(null);
     const hexText = draft ?? hex;
     const svRef = useRef<HTMLDivElement>(null);
+    const saturationRef = useRef<HTMLInputElement>(null);
 
     const { invalid, ariaProps } = useFieldError(error);
 
@@ -150,6 +160,8 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
     }
 
     const hueHex = hsvToHex({ h: hsv.h, s: 1, v: 1 });
+    const saturationPercent = toPercent(hsv.s);
+    const brightnessPercent = toPercent(hsv.v);
 
     // Presets the hex parser cannot read — a CSS colour name, an 8-digit hex —
     // paint a perfectly clickable swatch and then commit nothing. Drop them
@@ -158,7 +170,11 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       .map((preset) => normalizeHex(preset))
       .filter((hexValue): hexValue is string => hexValue != null);
 
-    /* — saturation/value square pointer handling — */
+    /* — saturation/brightness area pointer handling — */
+    // There is deliberately no key handler here. Each axis is a real
+    // `<input type="range">`, so the browser already owns arrows, Home, End,
+    // Page Up and Page Down for the axis that holds focus; a second handler on
+    // the container would move both axes on one press.
     function updateFromPointer(clientX: number, clientY: number) {
       const el = svRef.current;
       if (!el) return;
@@ -171,6 +187,15 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
     function handleSvPointerDown(event: React.PointerEvent<HTMLDivElement>) {
       if (disabled) return;
       event.currentTarget.setPointerCapture(event.pointerId);
+      // A drag has to leave the keyboard somewhere usable, and the axis inputs
+      // are the only focusable things in the area. `preventDefault` first, or
+      // the press's own default action focuses the nearest focusable ancestor
+      // — the panel — a beat later and the arrow keys go nowhere. Measured in
+      // Firefox; jsdom implements neither default, so no test here can see it.
+      // `preventScroll` because the input is a clipped 1px box, not where the
+      // user is looking.
+      event.preventDefault();
+      saturationRef.current?.focus({ preventScroll: true });
       updateFromPointer(event.clientX, event.clientY);
     }
 
@@ -178,31 +203,6 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       if (disabled) return;
       if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
       updateFromPointer(event.clientX, event.clientY);
-    }
-
-    function handleSvKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-      if (disabled) return;
-      const stepS = 0.02;
-      const stepV = 0.02;
-      let { s, v } = hsv;
-      switch (event.key) {
-        case "ArrowLeft":
-          s = clamp01(s - stepS);
-          break;
-        case "ArrowRight":
-          s = clamp01(s + stepS);
-          break;
-        case "ArrowUp":
-          v = clamp01(v + stepV);
-          break;
-        case "ArrowDown":
-          v = clamp01(v - stepV);
-          break;
-        default:
-          return;
-      }
-      event.preventDefault();
-      commitHsv({ ...hsv, s, v });
     }
 
     // Rest props go to the trigger `<button>`, not the `.colorpicker` wrapper:
@@ -223,8 +223,14 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       // element's text outright, so the label has to carry it or the current
       // colour never reaches AT at all.
       "aria-label": `${ariaLabel} ${hex}`,
+      // The ring is the shared button recipe, not a local rule: `focus.ts` keys
+      // buttons on `:focus-visible` (which is what this trigger already did) and
+      // paints ring only, never the border — so the invalid border survives
+      // focus by construction rather than by a specificity tie-break.
       className: cn(
-        "colorpicker-trigger",
+        "colorpicker-trigger duration-fast",
+        focusOutlineResetButton,
+        focusRingButton,
         invalid && "colorpicker-trigger--error",
       ),
       ...ariaProps,
@@ -257,22 +263,55 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   "aria-label": panelLabel,
                 })}
               >
-                {/* Saturation / value square */}
+                {/* Saturation / brightness area. Two axes are two sliders: a
+                    named `role="group"` holding one visually-hidden
+                    `<input type="range">` per axis, which is the only shape
+                    where each axis gets its own name, `aria-valuenow` and
+                    bounds — a single `role="slider"` can carry exactly one
+                    value, and carried none. The square is the pointer surface
+                    and the thumb is presentational. */}
                 <div
                   ref={svRef}
                   className="colorpicker-sv"
-                  role="slider"
-                  tabIndex={disabled ? -1 : 0}
+                  role="group"
                   aria-disabled={disabled || undefined}
                   aria-label="Saturation and brightness"
-                  aria-valuetext={`Saturation ${Math.round(hsv.s * 100)}%, brightness ${Math.round(hsv.v * 100)}%`}
                   style={{ "--hue": hueHex } as CSSProperties}
                   onPointerDown={handleSvPointerDown}
                   onPointerMove={handleSvPointerMove}
-                  onKeyDown={handleSvKeyDown}
                 >
+                  <input
+                    ref={saturationRef}
+                    type="range"
+                    className="colorpicker-sv__input"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={saturationPercent}
+                    disabled={disabled}
+                    aria-label="Saturation"
+                    aria-valuetext={`${saturationPercent}%`}
+                    onChange={(event) =>
+                      commitHsv({ ...hsv, s: Number(event.target.value) / 100 })
+                    }
+                  />
+                  <input
+                    type="range"
+                    className="colorpicker-sv__input"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={brightnessPercent}
+                    disabled={disabled}
+                    aria-label="Brightness"
+                    aria-valuetext={`${brightnessPercent}%`}
+                    onChange={(event) =>
+                      commitHsv({ ...hsv, v: Number(event.target.value) / 100 })
+                    }
+                  />
                   <span
                     className="colorpicker-sv__thumb"
+                    aria-hidden="true"
                     style={{
                       left: `${hsv.s * 100}%`,
                       top: `${(1 - hsv.v) * 100}%`,
@@ -305,7 +344,17 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   />
                   <input
                     type="text"
-                    className="colorpicker-hex"
+                    // The border is a utility rather than a rule in
+                    // `ColorPicker.css` so that `focusRingControl`'s border
+                    // swap can reach it: this package's stylesheets are
+                    // unlayered, and unlayered CSS outranks every Tailwind
+                    // utility whatever the specificity.
+                    className={cn(
+                      "colorpicker-hex duration-fast",
+                      "border border-border-strong",
+                      focusOutlineResetControl,
+                      focusRingControl,
+                    )}
                     aria-label="Hex value"
                     spellCheck={false}
                     value={hexText}

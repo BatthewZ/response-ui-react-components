@@ -20,19 +20,11 @@
   cursor: pointer;
 }
 
-.colorpicker-trigger:focus-visible {
-  outline: none;
-  border-color: var(--C-BORDER-FOCUS);
-  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
-}
-
-/* Same (0,2,0) as the plain focus rule but declared after it, so focusing an
-   invalid trigger no longer repaints its border with the focus colour. The ring
-   still reports focus; the colour still reports invalid. */
-.colorpicker-trigger--error:focus-visible {
-  border-color: var(--C-STATUS-ERROR);
-  box-shadow: 0 0 0 2px var(--C-STATUS-ERROR);
-}
+/* No focus rule here: the trigger's ring is `focusOutlineResetButton` +
+   `focusRingButton` from `src/util/focus.ts`, applied in ColorPicker.tsx, so a
+   single edit there reaches this control the way it reaches Button. The button
+   recipe paints ring only and never touches the border, which is what lets the
+   invalid border below survive focus without a specificity tie-break. */
 
 .colorpicker-trigger--error {
   border-color: var(--C-STATUS-ERROR);
@@ -84,7 +76,7 @@
   outline: none;
 }
 
-/* Saturation / value square */
+/* Saturation / brightness area */
 .colorpicker-sv {
   position: relative;
   width: 100%;
@@ -97,7 +89,35 @@
     linear-gradient(to right, #fff, var(--hue, #f00));
 }
 
-.colorpicker-sv:focus-visible {
+/* One `<input type="range">` per axis, taken off the screen but left in the tab
+   order and in the accessibility tree: the browser owns the keyboard model, the
+   square owns the pixels. `outline: none` is declared rather than left to the
+   clip, because an explicit reset is what `scripts/verify-focus-affordance.mjs`
+   traces to the `:focus-within` ring below — deleting that ring then fails the
+   guard instead of silently leaving a focusable control with no affordance. */
+.colorpicker-sv__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  outline: none;
+}
+
+/* Focus lands on a hidden input, so the ring belongs to the square — the same
+   wrapper-ring shape as `.multiselect-control:focus-within`. It stays a local
+   rule rather than `focusRingWithin` because that recipe paints a flush ring,
+   and this surface paints an arbitrary colour of the user's own: the 2px gap is
+   what keeps `--C-BORDER-FOCUS` legible against a fill that may be that exact
+   colour. `:focus-within` also cannot distinguish the two axis inputs, and does
+   not need to — one ring says the area has focus, and the focused input's own
+   name and value say which axis. */
+.colorpicker-sv:focus-within {
   outline: 2px solid var(--C-BORDER-FOCUS);
   outline-offset: 2px;
 }
@@ -187,15 +207,14 @@
   font-variant-numeric: tabular-nums;
   color: var(--C-TEXT-PRIMARY);
   background: var(--C-SURFACE-0);
-  border: 1px solid var(--C-BORDER-STRONG);
   border-radius: var(--RADIUS-MD);
-  outline: none;
 }
 
-.colorpicker-hex:focus-visible {
-  border-color: var(--C-BORDER-FOCUS);
-  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
-}
+/* No border and no focus rule here: both are `src/util/focus.ts` recipes
+   applied in ColorPicker.tsx (`border border-border-strong` +
+   `focusOutlineResetControl` + `focusRingControl`). The border has to be a
+   utility for the recipe's border swap to reach it at all — this stylesheet is
+   unlayered, and unlayered CSS outranks every Tailwind utility. */
 
 /* Presets */
 .colorpicker-presets {

@@ -89,16 +89,99 @@ describe("ColorPicker", () => {
     expect(lastHex.startsWith("#")).toBe(true);
   });
 
-  it("adjusts saturation/brightness with arrow keys", async () => {
-    const user = userEvent.setup();
-    const onValueChange = vi.fn();
-    render(<Harness onValueChange={onValueChange} />);
-    await user.click(screen.getByRole("button", { name: /^Choose color/ }));
+  describe("the saturation/brightness area is two sliders, not one (#287)", () => {
+    it("is a named group holding one named, bounded slider per axis", async () => {
+      const user = userEvent.setup();
+      render(<ColorPicker defaultValue="#3366cc" />);
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
-    const sv = screen.getByLabelText("Saturation and brightness");
-    sv.focus();
-    await user.keyboard("{ArrowRight}");
-    expect(onValueChange).toHaveBeenCalled();
+      const area = screen.getByRole("group", { name: "Saturation and brightness" });
+      // The old shape: one `role="slider"` for two axes, carrying no value at
+      // all. ARIA requires valuenow/valuemin/valuemax on that role, and one
+      // slider cannot carry two of them.
+      expect(screen.queryByRole("slider", { name: "Saturation and brightness" })).toBeNull();
+
+      const saturation = screen.getByRole("slider", { name: "Saturation" });
+      const brightness = screen.getByRole("slider", { name: "Brightness" });
+      expect(area).toContainElement(saturation);
+      expect(area).toContainElement(brightness);
+
+      // #3366cc is hsv(220, 75%, 80%).
+      for (const [axis, now] of [
+        [saturation, "75"],
+        [brightness, "80"],
+      ] as const) {
+        // Implicit from `<input type="range">` — jsdom reports the attributes,
+        // and the platform computes valuenow from `value`.
+        expect(axis).toHaveAttribute("min", "0");
+        expect(axis).toHaveAttribute("max", "100");
+        expect(axis).toHaveValue(now);
+        expect(axis).toHaveAttribute("aria-valuetext", `${now}%`);
+      }
+    });
+
+    it("moves one axis per input, leaving the other where it was", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(<Harness onValueChange={onValueChange} />);
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
+
+      const saturation = screen.getByRole("slider", { name: "Saturation" });
+      const brightness = screen.getByRole("slider", { name: "Brightness" });
+
+      // What a real ArrowRight on the saturation input produces. jsdom does not
+      // implement the range key model, so the event is the honest stand-in —
+      // the browser half is verified separately (see the note in this file's
+      // sibling docs).
+      fireEvent.change(saturation, { target: { value: "76" } });
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("slider", { name: "Saturation" })).toHaveValue("76");
+      expect(screen.getByRole("slider", { name: "Brightness" })).toHaveValue("80");
+
+      fireEvent.change(brightness, { target: { value: "81" } });
+      expect(screen.getByRole("slider", { name: "Saturation" })).toHaveValue("76");
+      expect(screen.getByRole("slider", { name: "Brightness" })).toHaveValue("81");
+    });
+
+    it("keeps a pointer drag in sync with both axis inputs, and leaves focus in the area", async () => {
+      const user = userEvent.setup();
+      render(<ColorPicker defaultValue="#3366cc" />);
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
+
+      const area = screen.getByRole("group", { name: "Saturation and brightness" });
+      // jsdom performs no layout and synthesises no pointer path: without a
+      // stubbed rect the drag maths divides by zero, and the capture calls do
+      // not exist on the element at all.
+      area.getBoundingClientRect = () =>
+        ({ left: 0, top: 0, width: 200, height: 100 }) as DOMRect;
+      area.setPointerCapture = vi.fn();
+      area.hasPointerCapture = () => true;
+
+      fireEvent.pointerDown(area, { clientX: 50, clientY: 25, pointerId: 1 });
+      expect(screen.getByRole("slider", { name: "Saturation" })).toHaveValue("25");
+      expect(screen.getByRole("slider", { name: "Brightness" })).toHaveValue("75");
+      // A drag has to leave the keyboard on the axis it just moved.
+      expect(document.activeElement).toBe(screen.getByRole("slider", { name: "Saturation" }));
+
+      fireEvent.pointerMove(area, { clientX: 150, clientY: 75, pointerId: 1 });
+      expect(screen.getByRole("slider", { name: "Saturation" })).toHaveValue("75");
+      expect(screen.getByRole("slider", { name: "Brightness" })).toHaveValue("25");
+    });
+
+    it("keeps the thumb and the trigger on the value the axes report", async () => {
+      const user = userEvent.setup();
+      render(<ColorPicker defaultValue="#3366cc" />);
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
+
+      fireEvent.change(screen.getByRole("slider", { name: "Brightness" }), {
+        target: { value: "0" },
+      });
+
+      expect(screen.getByRole("slider", { name: "Brightness" })).toHaveValue("0");
+      expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
+        "#000000",
+      );
+    });
   });
 
   describe("controlled sync (#289)", () => {
@@ -109,19 +192,22 @@ describe("ColorPicker", () => {
       render(<ColorPicker value="#3366cc" onValueChange={onValueChange} />);
       await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
-      const sv = screen.getByLabelText("Saturation and brightness");
-      const valueTextBefore = sv.getAttribute("aria-valuetext");
-      sv.focus();
-      await user.keyboard("{ArrowRight}{ArrowRight}");
+      const saturation = screen.getByRole("slider", { name: "Saturation" });
+      fireEvent.change(saturation, { target: { value: "76" } });
+      fireEvent.change(saturation, { target: { value: "77" } });
 
       // The refused edits are still reported to the parent…
       expect(onValueChange).toHaveBeenCalledTimes(2);
-      // …but nothing on screen may drift away from the value the parent holds.
+      // …but nothing on screen may drift away from the value the parent holds,
+      // including the axis input's own DOM value: a controlled range input
+      // whose `value` prop did not move has to be restored, or the panel is
+      // showing an edit that was never committed.
       expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
         "#3366cc",
       );
       expect(screen.getByLabelText("Hex value")).toHaveValue("#3366cc");
-      expect(sv.getAttribute("aria-valuetext")).toBe(valueTextBefore);
+      expect(screen.getByRole("slider", { name: "Saturation" })).toHaveValue("75");
+      expect(screen.getByRole("slider", { name: "Brightness" })).toHaveValue("80");
     });
 
     it("#289 an accepted edit does move the panel", async () => {
@@ -130,9 +216,9 @@ describe("ColorPicker", () => {
       render(<Harness onValueChange={onValueChange} />);
       await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
-      const sv = screen.getByLabelText("Saturation and brightness");
-      sv.focus();
-      await user.keyboard("{ArrowRight}");
+      fireEvent.change(screen.getByRole("slider", { name: "Saturation" }), {
+        target: { value: "76" },
+      });
 
       expect(onValueChange).toHaveBeenCalledTimes(1);
       const committed = onValueChange.mock.calls[0][0] as string;
@@ -148,16 +234,20 @@ describe("ColorPicker", () => {
       await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
       fireEvent.change(screen.getByLabelText("Hue"), { target: { value: "200" } });
-      const sv = screen.getByLabelText("Saturation and brightness");
-      // 0.02 per step from v=0.8 — 40 steps bottoms the square out at black.
-      for (let i = 0; i < 40; i++) fireEvent.keyDown(sv, { key: "ArrowDown" });
+      const brightness = () => screen.getByRole("slider", { name: "Brightness" });
+      // One percent per arrow press, so 80 of them bottom the axis out at black.
+      for (let i = Number(brightness().getAttribute("value")) - 1; i >= 0; i--) {
+        fireEvent.change(brightness(), { target: { value: String(i) } });
+      }
 
       expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
         "#000000",
       );
       // Hue is unrecoverable from #000000; it must be remembered, not re-derived.
       expect(screen.getByLabelText("Hue")).toHaveValue("200");
-      fireEvent.keyDown(sv, { key: "ArrowUp" });
+      // …and so is saturation, which #000000 cannot carry either.
+      expect(screen.getByRole("slider", { name: "Saturation" })).toHaveValue("75");
+      fireEvent.change(brightness(), { target: { value: "1" } });
       expect(screen.getByLabelText("Hue")).toHaveValue("200");
     });
   });
@@ -345,7 +435,7 @@ describe("ColorPicker", () => {
   });
 
   describe("disabled reaches the open panel (#290)", () => {
-    it("stops the square's arrow keys and the preset buttons", async () => {
+    it("disables both axis inputs and the preset buttons", async () => {
       const user = userEvent.setup();
       const onValueChange = vi.fn();
       const props = {
@@ -360,9 +450,21 @@ describe("ColorPicker", () => {
       // dismiss it before the assertion could run.
       rerender(<ColorPicker {...props} disabled />);
 
-      const square = screen.getByRole("slider", { name: "Saturation and brightness" });
-      square.focus();
-      fireEvent.keyDown(square, { key: "ArrowRight" });
+      // A disabled range input is out of the tab order and emits no change, so
+      // the axes are inert without the component having to gate a key handler.
+      expect(screen.getByRole("slider", { name: "Saturation" })).toBeDisabled();
+      expect(screen.getByRole("slider", { name: "Brightness" })).toBeDisabled();
+      expect(screen.getByRole("group", { name: "Saturation and brightness" })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+
+      // The pointer surface is not a form control and has to be gated by hand.
+      const area = screen.getByRole("group", { name: "Saturation and brightness" });
+      area.setPointerCapture = vi.fn();
+      area.hasPointerCapture = () => true;
+      fireEvent.pointerDown(area, { clientX: 10, clientY: 10, pointerId: 1 });
+      fireEvent.pointerMove(area, { clientX: 40, clientY: 40, pointerId: 1 });
       expect(onValueChange).not.toHaveBeenCalled();
 
       expect(screen.getByRole("button", { name: "#ff0000" })).toBeDisabled();

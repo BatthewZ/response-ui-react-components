@@ -79,8 +79,8 @@ export function Placement() {
 }
 
 /** Inside a `Field` the trigger inherits `aria-invalid` and `aria-describedby` from the
- *  field's error. There is no `id` prop, so a `Label` cannot be wired to it with `htmlFor` —
- *  repeat the label text in `aria-label`. */
+ *  field's error. `id` does reach the trigger, but `aria-label` outranks a `<label for>` in
+ *  the name computation, so the label text is repeated here rather than wired with `htmlFor`. */
 export function InField() {
   const [badgeColor, setBadgeColor] = useState("#fff59d");
 
@@ -97,9 +97,10 @@ export function InField() {
   );
 }
 
-/** `form.field()` bindings do not work here — spread them and the picker goes inert. Bind it
- *  the way `Checkbox` and `Switch` are bound, off
- *  `const form = useForm({ defaultValues: { brandColor: "#3366cc" } })`. */
+/** Wiring the store by hand, off
+ *  `const form = useForm({ defaultValues: { brandColor: "#3366cc" } })`. The advertised
+ *  `{...form.field("brandColor")}` spread works too; reach for this shape when the value
+ *  needs transforming on its way in or out. */
 export function InFormStore() {
   const form = useForm({ defaultValues: { brandColor: "#3366cc" } });
 

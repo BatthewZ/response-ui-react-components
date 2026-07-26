@@ -27,6 +27,7 @@ what leaves the component is always one canonical lowercase `#rrggbb` string.
 | `disabled`      | `boolean`                 | —                |
 | `className`     | `string`                  | —                |
 | `aria-label`    | `string`                  | `"Choose color"` |
+| `panelLabel`    | `string`                  | `"Color picker"` |
 | `ref`           | `Ref<HTMLButtonElement>`  | —                |
 | …rest           | props of `<button>`; `value` / `defaultValue` / `onChange` are re-typed above | — |
 
@@ -85,8 +86,9 @@ desynchronise from the value you are actually holding.
 Two behaviours fall out of it:
 
 - **Everything commits immediately.** A drag across the square fires `onValueChange` once per
-  pointer move that lands on a different hex; each arrow key moves 2% of a full axis and fires
-  if that changes the hex. There is no commit-on-release, so debounce anything expensive.
+  pointer move that lands on a different hex; each arrow key moves its axis by one percentage
+  point and fires if that changes the hex. There is no commit-on-release, so debounce anything
+  expensive.
 - **At brightness 0 the hue rail moves without committing anything.** Every hue at `v = 0` is
   `#000000`, so dragging the rail there updates the remembered hue — the thumb tracks your
   finger — while the hex it resolves to never changes, and `onValueChange` therefore **does not
@@ -281,18 +283,24 @@ a matching `--C-TEXT-ON-PRIMARY` that does not move with it.
 
 ## Theme tokens
 
-`ColorPicker.css` paints everything; the `.tsx` carries no Tailwind utilities at all.
-Every value below is a contract variable, so overriding one re-tints every picker in the
-app at runtime with no rebuild.
+`ColorPicker.css` paints nearly everything, with one deliberate exception: the trigger's and
+the hex field's focus affordances come from the shared `src/util/focus.ts` recipes applied in
+`ColorPicker.tsx` (`focusRingButton` on the trigger, `focusRingControl` on the hex field), so a
+single edit there reaches this control the way it reaches [Button](button.md) and
+[Input](input.md). Every value below is still a contract variable, so overriding one re-tints
+every picker in the app at runtime with no rebuild.
 
 | Where                                            | Override             |
 | ------------------------------------------------ | -------------------- |
 | Trigger fill, panel fill, hex-field fill          | `--C-SURFACE-0`      |
-| Trigger and hex-field border                      | `--C-BORDER-STRONG`  |
+| Trigger border                                    | `--C-BORDER-STRONG`  |
+| Hex-field border — `border-border-strong`         | `--C-BORDER-STRONG`  |
 | Panel border                                      | `--C-BORDER-DEFAULT` |
 | Panel drop shadow                                 | `--SHADOW-LG`        |
 | Hex readout and hex-field text                    | `--C-TEXT-PRIMARY`   |
-| Focus ring on the trigger, square, rail, hex field, and presets | `--C-BORDER-FOCUS` |
+| Focus ring on the square, hue rail and presets    | `--C-BORDER-FOCUS`   |
+| Focus ring on the trigger — `focus-visible:ring-border-focus` | `--C-BORDER-FOCUS` |
+| Focus ring and border on the hex field — `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
 | Trigger border when invalid                       | `--C-STATUS-ERROR`   |
 | Disabled trigger fill                             | `--C-SURFACE-3`      |
 | Hex readout and hex-field type                    | `--BodyText-2`       |
@@ -315,9 +323,16 @@ the layout around it reflows.
 One pair is worth a contrast check before you ship a theme. The trigger and the hex field
 are a `--C-SURFACE-0` fill with a 1px `--C-BORDER-STRONG` border — the same recipe
 [Input](input.md) uses — so on a page that is also `--C-SURFACE-0` that border is the only
-thing drawing the control. Note that ColorPicker re-implements the recipe in hand-written
-CSS rather than sharing the Tailwind class string the text controls use, so retuning it
-there does not reach this component.
+thing drawing the control.
+
+Two details of that split are worth knowing if you restyle the component. The hex field's
+**border** is written as a utility (`border border-border-strong`) rather than a rule in
+`ColorPicker.css`, because this package's stylesheets are unlayered and unlayered CSS outranks
+every Tailwind utility whatever the specificity — declared in the stylesheet, the border could
+never be swapped by `focusRingControl`'s `focus:border-border-focus`. And the trigger, being a
+`<button>`, takes the **button** recipe: it rings on `:focus-visible` only (so a mouse press
+does not ring it) and the recipe never repaints a border, which is what leaves the invalid
+border standing while the control is focused.
 
 ## Gotchas
 
@@ -343,17 +358,18 @@ there does not reach this component.
   swatches with five empty cells, not three wide ones.
 - **The floating panel is a named `role="dialog"`.** Its name is `panelLabel`, default
   `"Color picker"` — pass your own to translate it.
-- **The invalid border survives focus.** `.colorpicker-trigger:focus-visible` is `(0,2,0)`
-  against `.colorpicker-trigger--error`'s `(0,1,0)`, so it used to out-rank the error rule
-  regardless of order and repaint a focused invalid trigger with the focus colour. A dedicated
-  `.colorpicker-trigger--error:focus-visible` rule fixes it — **not** by out-ranking, but by
-  tying: it is `(0,2,0)` too, and is declared after, so source order settles it. Focus and
-  invalid are now both legible at once — the ring reports focus, the colour reports invalid.
-  If you re-declare either rule in your own CSS, order is what you have to get right.
+- **The invalid border survives focus, and no longer by a tie-break.** The trigger's ring is
+  `focusRingButton`, which paints a ring and never touches `border-color`, so
+  `.colorpicker-trigger--error`'s red border is simply never contested: measured focused and
+  invalid, the border is `--C-STATUS-ERROR` and the ring is `--C-BORDER-FOCUS`. (Previously two
+  hand-written `:focus-visible` rules settled it on source order, and the ring went red along
+  with the border.) Re-declare a focus border in your own CSS and you are back to owning that
+  ordering yourself.
 - **`disabled` reaches an already-open panel.** Setting it programmatically while the panel is
   open (from a save that starts in flight, say) leaves the panel up, but everything in it is
-  inert: the hex field and hue rail are disabled, the square drops out of the tab order and
-  ignores arrow keys, and the preset buttons are disabled.
+  inert: the hex field, the hue rail and both saturation/brightness sliders are `disabled`
+  (so they leave the tab order and the browser's key model stops moving them), the square
+  ignores pointer presses, and the preset buttons are disabled.
 - **It submits nothing.** There is no hidden input, and `name` lands on the trigger — a
   `<button type="button">`, which the browser never submits — so a plain `<form>` post
   carries no value for it however the control is named. Bind it to a form store instead, or
@@ -372,35 +388,67 @@ The trigger is a real `<button>` with `type="button"`, so it never submits a sur
 form, and Floating UI's `useRole` gives it `aria-haspopup="dialog"`, `aria-expanded`, and
 `aria-controls` while open.
 
-Focus management is deliberately **non-modal**, and measurably so: opening the panel — by
-click or by Enter — leaves focus on the trigger. Tab then walks into the panel in DOM
-order (square → hue rail → hex field → presets), Shift+Tab from the square returns to the
-trigger with the panel still open, Escape closes it and returns focus to the trigger, and
-tabbing past the last preset closes it and carries on into the page. Nothing is trapped,
-nothing is inert, and there is no scrim — unlike [Dialog](dialog.md), and unlike
-[Popover](popover.md), whose focus management *is* modal.
+Focus management is deliberately **non-modal**: nothing is trapped, nothing is inert, and
+there is no scrim — unlike [Dialog](dialog.md), and unlike [Popover](popover.md), whose focus
+management *is* modal. Opening the panel moves focus to its first control, the **Saturation**
+slider. Tab then walks the panel in DOM order — saturation → brightness → hue rail → hex field
+→ presets — Shift+Tab from the saturation slider returns to the trigger with the panel still
+open, Escape closes it and returns focus to the trigger, and tabbing past the last preset
+closes it and carries on into the page.
 
-Four gaps to work around, none of which the component will do for you.
+### The saturation/brightness area is two sliders
+
+The square is a `role="group"` named "Saturation and brightness", holding one visually hidden
+`<input type="range">` per axis: **Saturation** and **Brightness**, each 0–100 with
+`aria-valuetext` in percent. That is the only shape in which each axis gets its own accessible
+name, `aria-valuenow` and bounds — a single `role="slider"` can carry exactly one value, and
+this one used to carry none at all, which is what ARIA requires for the role.
+
+The consequence worth knowing is the **keyboard model, which is the platform's, not ours**.
+Whichever axis holds focus:
+
+| Key                  | Effect on the focused axis |
+| -------------------- | -------------------------- |
+| ← → ↑ ↓              | ±1 percentage point        |
+| Page Up / Page Down  | ±10 percentage points      |
+| Home / End           | 0 / 100                    |
+
+All four arrows move the **focused** axis, the way they do on any `<input type="range">`; the
+other axis does not move. Switching axis is a Tab press, not an arrow. (Verified in Firefox:
+jsdom implements no key model for a range input at all, so no test in this package can assert
+it.)
+
+The visible thumb is `aria-hidden` decoration, and dragging the square commits both axes at
+once — a press also moves focus onto the saturation slider, so the keyboard picks up where the
+pointer left off. A drag can land between two whole percentages: the sliders report the
+rounded value, and the next arrow press steps from there.
+
+The focus ring belongs to the square, not to the input that actually holds focus: the inputs
+are clipped to a pixel, so `.colorpicker-sv:focus-within` paints a 2px `--C-BORDER-FOCUS`
+outline with a 2px offset around the whole area. The offset is load-bearing rather than
+decorative here — the square paints an arbitrary colour of the user's choosing, and the gap is
+what keeps the ring legible when that colour is close to the focus colour.
+
+### Remaining gaps
+
+Three, none of which the component will do for you.
 
 - **The current colour is never announced.** `aria-label` overrides the button's text
   content, so the visible `#3366cc` and the swatch (which is `aria-hidden`) are both absent
   from the accessible name. Pass the value in the label yourself — see
   [Naming the trigger](#naming-the-trigger).
-- **The panel is an unnamed dialog.** It gets `role="dialog"` and no `aria-label` or
-  `aria-labelledby`, and the prop type offers no way to supply one, so it announces as a
-  bare "dialog".
-- **The square is a slider with no value.** It carries `role="slider"` and a helpful
-  `aria-valuetext` ("Saturation 75%, brightness 80%"), but no `aria-valuenow`,
-  `aria-valuemin` or `aria-valuemax` — all of which ARIA requires for that role — and it
-  models two axes as one slider. Arrow keys move 2% per press; Home, End, Page Up and Page
-  Down do nothing.
 - **Presets announce as hex strings.** Each is a toggle button named by its normalised
   value, so a screen reader reads "#e53935, toggle button", never "red". If the palette has
   names, they are not reachable through this API.
+- **Every name inside the panel but the dialog's is hard-coded English.** "Saturation and
+  brightness", "Saturation", "Brightness", "Hue" and "Hex value" have no override; only the
+  panel itself takes one, through `panelLabel`.
 
 The hue rail is a native `<input type="range">` labelled "Hue", so the platform supplies
-`role="slider"`, `aria-valuenow`, its bounds, and the full arrow/Home/End/Page key set —
-it is announced as a bare number from 0 to 360 with no unit.
+`role="slider"`, `aria-valuenow`, its bounds, and the same key set — it is announced as a bare
+number from 0 to 360 with no unit.
+
+The panel is a named `role="dialog"`: its name is `panelLabel`, default `"Color picker"`.
 
 ## Related
 
