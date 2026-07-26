@@ -10,14 +10,25 @@
 //
 // The invariant:
 //
-//   If something resets the outline (a CSS `outline: none | 0 | <any> transparent`
-//   declaration, or a Tailwind `outline-none` / `focus:outline-none` utility) AND it
-//   lands on an element that can take DOM focus, then some focus-keyed rule or
-//   utility must paint a replacement ring in `--C-BORDER-FOCUS`.
+//   If something resets the outline AND it lands on an element that can take DOM focus,
+//   then some focus-keyed rule or utility must paint a replacement ring in
+//   `--C-BORDER-FOCUS` — a ring with both a COLOUR and a WIDTH, since either alone
+//   paints zero pixels.
+//
+// "Resets the outline" is read in every spelling, because each of these paints nothing
+// and each was found live: `outline: none`, `outline: 0`, `outline: 0 solid red`,
+// `outline: medium none`, `outline: 2px solid transparent`, a separate
+// `outline-color: transparent` after a real `outline:` shorthand, and the Tailwind
+// `outline-none` / `focus-visible:outline-none` utilities (see `isOutlineReset`).
+//
+// "Paints a replacement" likewise requires pixels. `focus-visible:ring-border-focus`
+// with no `ring-2` leaves `--tw-ring-shadow` at `0 0 #0000`, and
+// `border-0 focus-visible:border-border-focus` recolours a border with no width; both
+// used to pass here (see `twRing` / `hasRingWidth`).
 //
 // Both halves of the codebase are read, because the same defect is written both ways:
-// component stylesheets (src/components/**/*.css, ledger #116/#129) and Tailwind
-// utilities in JSX `className` expressions (src/**/*.tsx, ledger #73).
+// stylesheets (src/**/*.css, ledger #116/#129) and Tailwind utilities in JSX
+// `className` expressions (src/**/*.tsx, ledger #73).
 //
 // Focusability is derived from source, never from a list. For every class that
 // appears as the subject of a reset rule, the JSX in src/**/*.tsx is scanned for the
@@ -31,6 +42,13 @@
 // prints each one with its reason rather than skipping it silently. A reset class
 // that cannot be located in any .tsx is an error, not an exemption — the guard says
 // so instead of guessing.
+//
+// The `<FloatingFocusManager>` exemption — "the panel holds tabbable content, so the
+// manager focuses that instead" — requires POSITIVE evidence of a tab stop: a native
+// control, an explicit `tabIndex >= 0`, or a child component this script can show
+// renders one (`buildTabbableComponents`). A child it cannot resolve, or one marked
+// `aria-hidden="true"` / `hidden`, confers nothing. An exemption granted on a guess is
+// a false alarm pointing the wrong way, and it is the one that costs a ring.
 //
 // A replacement may live on the element's own `:focus-visible` (or a pseudo-element
 // under it: `.slider:focus-visible::-webkit-slider-thumb`) or its own
@@ -56,11 +74,18 @@
 // - Only string-literal constants resolve. A class string built by a function call or
 //   assembled at runtime is invisible: its reset is not seen (a miss, never a false
 //   alarm) and it does not count as a replacement.
-// - Tabbable content inside a floating panel is judged statically, and any child
-//   component (`<Calendar>`) is assumed to render something tabbable. A panel whose
-//   only tabbable children come from a component that in fact renders none is
-//   therefore judged non-focusable — a miss, not a false alarm.
 // - Runtime focus() calls other than `<FloatingFocusManager>`'s are not modelled.
+// - A CSS ring is judged on the presence of `var(--C-BORDER-FOCUS)` in a `box-shadow`
+//   or `outline`, and only the `outline` half is checked for zero width. A
+//   `box-shadow: 0 0 0 0 var(--C-BORDER-FOCUS)` would count while painting nothing —
+//   the CSS twin of the Tailwind colour-without-width hole closed in `twRing`.
+// - Reset rules whose subject is not a class (`*:focus`, `button:focus-visible`,
+//   `[data-x]:focus`) are skipped: `subjectClass` returns null and there is no class to
+//   trace to a JSX carrier. A global element-selector reset is therefore invisible.
+// - `buildTabbableComponents` resolves at FILE granularity — every component a file
+//   declares inherits that file's verdict. A file that exports both a `<button>`-based
+//   trigger and a decorative sibling marks both as holding a tab stop, which can grant
+//   an exemption that a per-component analysis would refuse.
 //
 // Exits 1 on any violation.
 
@@ -70,21 +95,86 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = join(ROOT, "src");
-const COMPONENTS = join(SRC, "components");
 
 /** A declaration that paints the house focus ring. */
-const AFFORDANCE = /(?:box-shadow|outline):\s*[^;]*var\(--C-BORDER-FOCUS\)/;
+const AFFORDANCE = /(?:box-shadow|outline):\s*[^;]*var\(--C-BORDER-FOCUS\)/g;
 
-/** A declaration that removes the outline: `none`, a zero width, or an invisible one. */
-const RESET =
-  /(?:^|;)\s*outline(?:-style|-width)?\s*:\s*(?:none|0(?:px|rem|em)?|[^;]*\btransparent\b)\s*(?:!important\s*)?(?=;|$)/;
+const ZERO_LENGTH = /^0(?:px|rem|em|pt|%)?$/;
+
+/**
+ * Whether an `outline*` declaration leaves nothing painted. Every spelling counts, not
+ * just `outline: none`: the width can be zeroed (`outline: 0 solid red`), the style can
+ * be dropped inside the shorthand (`outline: medium none`), and the colour can be made
+ * invisible from a separate longhand (`outline: 2px solid; outline-color: transparent`)
+ * — which is the form that used to vanish from the report entirely.
+ */
+function isOutlineReset(longhand, value) {
+  const v = value.replace(/!important/gi, "").trim().toLowerCase();
+  if (!v) return false;
+  if (longhand === "-offset") return false;
+  if (longhand === "-style") return /^(?:none|hidden)$/.test(v);
+  if (longhand === "-width") return ZERO_LENGTH.test(v);
+  if (longhand === "-color")
+    return /\btransparent\b/.test(v) || /rgba?\([^)]*,\s*0(?:\.0+)?\s*\)/.test(v);
+  return splitTopLevel(v, (c) => " \t\n".includes(c)).some(
+    (t) => t === "none" || t === "hidden" || t === "transparent" || ZERO_LENGTH.test(t),
+  );
+}
+
+const OUTLINE_DECL = /(?:^|;)[ \t\r\n]*outline(-style|-width|-color|-offset)?\s*:\s*([^;]*)/g;
+
+/** Offset of the `outline` in the first outline-removing declaration of a block, or -1. */
+function resetIndex(decls) {
+  OUTLINE_DECL.lastIndex = 0;
+  for (let m; (m = OUTLINE_DECL.exec(decls)); )
+    if (isOutlineReset(m[1] ?? "", m[2])) return m.index + m[0].indexOf("outline");
+  return -1;
+}
+
+/**
+ * Offset of the first declaration that paints the house ring, or -1. An `outline`
+ * shorthand that names the colour and still resets (`outline: 0 solid var(--C-BORDER-FOCUS)`)
+ * is not an affordance — it is the reset wearing the token's name.
+ */
+function affordanceIndex(decls) {
+  AFFORDANCE.lastIndex = 0;
+  for (let m; (m = AFFORDANCE.exec(decls)); ) {
+    const shorthand = /^outline\s*:\s*([^;]*)/.exec(decls.slice(m.index));
+    if (shorthand && isOutlineReset("", shorthand[1])) continue;
+    return m.index;
+  }
+  return -1;
+}
 
 const NATIVELY_FOCUSABLE = new Set(["button", "input", "select", "textarea", "summary", "iframe"]);
 
-/** Tailwind bases that remove the outline, and the ones that paint the house ring. */
+/** Tailwind bases that remove the outline, and the ones that name the house ring colour. */
 const TW_RESET = /^(?:outline-none|outline-hidden|outline-0|outline-transparent)$/;
-const TW_RING = /^(?:ring|outline|border|shadow)-border-focus$/; // --color-border-focus: var(--C-BORDER-FOCUS)
+const TW_RING_COLOR = /^(ring|outline|border|shadow)-border-focus$/; // --color-border-focus: var(--C-BORDER-FOCUS)
 const FOCUS_VARIANTS = new Set(["focus", "focus-visible", "focus-within"]);
+
+/**
+ * Variants that narrow WHERE a utility applies but not to which interaction state, so a
+ * reset carrying one still applies while the element is focused. Anything outside this
+ * set (`hover:`, `disabled:`, `group-*`, `peer-*`, `data-*`) may exclude the focused
+ * state, and a reset carrying one is not read as a focus-state reset.
+ */
+const STATE_NEUTRAL_VARIANT =
+  /^(?:sm|md|lg|xl|2xl|dark|light|print|rtl|ltr|portrait|landscape|motion-safe|motion-reduce|min-\[.*\]|max-.*|supports-.*|\[.*\])$/;
+
+/** Per family: what counts as a ring WIDTH, and which members of that family are zero. */
+const RING_WIDTH = {
+  ring: { width: /^ring(?:-(?:\d+|\[[^\]]+\]))?$/, zero: /^ring-0$/ },
+  outline: { width: /^outline(?:-(?:\d+|\[[^\]]+\]))?$/, zero: /^outline-0$/ },
+  border: {
+    width: /^border(?:-[xytrbles])?(?:-(?:\d+|\[[^\]]+\]))?$/,
+    zero: /^border(?:-[xytrbles])?-0$/,
+  },
+  shadow: {
+    width: /^shadow(?:-(?:sm|md|lg|xl|2xl|inner|\[[^\]]+\]))?$/,
+    zero: /^shadow-none$/,
+  },
+};
 
 const twParts = (token) => {
   const parts = token.split(":");
@@ -94,16 +184,53 @@ const twParts = (token) => {
 /** A reset applies to the focused state when it is unconditional or focus-keyed. */
 function isTwReset(token) {
   const { variants, base } = twParts(token);
-  return TW_RESET.test(base) && variants.every((v) => FOCUS_VARIANTS.has(v));
+  return (
+    TW_RESET.test(base) &&
+    variants.every((v) => FOCUS_VARIANTS.has(v) || STATE_NEUTRAL_VARIANT.test(v))
+  );
 }
 
-const isTwRing = (token, variant) => {
-  const { variants, base } = twParts(token);
-  return TW_RING.test(base) && variants.includes(variant);
-};
+/**
+ * A width for `family` that is in effect while `variant` matches. An unqualified width
+ * counts — that is how `util/focus.ts` writes the recipe, hoisting `ring-2` out of the
+ * variant and switching only the colour. A width scoped to the variant overrides the
+ * unqualified ones, so `border-0 focus-visible:border-2` has a width and
+ * `border-0 focus-visible:border-border-focus` does not.
+ */
+function hasRingWidth(tokens, family, variant) {
+  const { width, zero } = RING_WIDTH[family];
+  const applies = [];
+  for (const token of tokens) {
+    const { variants, base } = twParts(token);
+    if (!width.test(base) && !zero.test(base)) continue;
+    if (variants.length && !variants.includes(variant)) continue;
+    applies.push({ scoped: variants.length > 0, base });
+  }
+  const scoped = applies.filter((a) => a.scoped);
+  const pool = scoped.length ? scoped : applies;
+  return pool.some((a) => !zero.test(a.base));
+}
 
-const twOwnRing = (token) => isTwRing(token, "focus") || isTwRing(token, "focus-visible");
-const twWithinRing = (token) => isTwRing(token, "focus-within");
+/**
+ * The token that paints a visible house ring for `variant`, or undefined.
+ *
+ * A COLOUR ALONE PAINTS NOTHING. `ring-border-focus` sets `--tw-ring-color` and leaves
+ * `--tw-ring-shadow` at `0 0 #0000`; `border-border-focus` recolours a border that
+ * `border-0` gave no width. Both used to pass here at zero pixels painted, which is the
+ * whole defect this script exists to catch. A width in the same family is required.
+ */
+function twRing(tokens, variant) {
+  for (const token of tokens) {
+    const { variants, base } = twParts(token);
+    const m = TW_RING_COLOR.exec(base);
+    if (!m || !variants.includes(variant)) continue;
+    if (hasRingWidth(tokens, m[1], variant)) return token;
+  }
+  return undefined;
+}
+
+const twOwnRing = (tokens) => twRing(tokens, "focus") ?? twRing(tokens, "focus-visible");
+const twWithinRing = (tokens) => twRing(tokens, "focus-within");
 
 /** Roles whose elements are pointed at by `aria-activedescendant` instead of focused. */
 const VIRTUALLY_FOCUSED_ROLES = new Set([
@@ -206,7 +333,7 @@ function subjectClass(selector) {
   return null;
 }
 
-const cssFiles = walk(COMPONENTS, (p) => p.endsWith(".css")).sort();
+const cssFiles = walk(SRC, (p) => p.endsWith(".css")).sort();
 
 const resets = []; // { cls, file, line, selector }
 const ringFor = new Map(); // class -> [{ file, line, selector }]  (:focus-visible / :focus)
@@ -218,8 +345,9 @@ for (const file of cssFiles) {
     const focusKeyed = /:focus(-visible|-within)?\b/.test(rule.selector);
     const within = /:focus-within\b/.test(rule.selector);
 
-    if (focusKeyed && AFFORDANCE.test(rule.decls)) {
-      const line = lineAt(css, rule.declsStart + rule.decls.search(AFFORDANCE));
+    const paint = focusKeyed ? affordanceIndex(rule.decls) : -1;
+    if (paint !== -1) {
+      const line = lineAt(css, rule.declsStart + paint);
       for (const one of selectorList(rule.selector)) {
         const cls = subjectClass(one);
         if (!cls) continue;
@@ -229,7 +357,7 @@ for (const file of cssFiles) {
       }
     }
 
-    const hit = rule.decls.search(RESET);
+    const hit = resetIndex(rule.decls);
     if (hit === -1) continue;
     const line = lineAt(css, rule.declsStart + hit);
     for (const one of selectorList(rule.selector)) {
@@ -534,6 +662,8 @@ function scanElements(file, text, literals, consts) {
       href: hasAttr(attrs, "href"),
       contentEditable: hasAttr(attrs, "contentEditable"),
       role: attrValue(attrs, "role"),
+      ariaHidden: attrValue(attrs, "aria-hidden"),
+      hidden: hasAttr(attrs, "hidden"),
       managerOrder: manager && attrValue(manager.attrs, "order"),
       managed: manager !== undefined,
     });
@@ -559,12 +689,92 @@ for (const file of tsxFiles.filter((p) => p.endsWith(".tsx"))) {
 
 const carriersOf = (cls) => elements.filter((el) => el.classes.includes(cls));
 
-/** Anything that could hold a tab stop, including a component whose render we cannot see. */
+/** Removed from the accessibility tree or from layout, so it holds no tab stop. */
+const isDecorative = (el) =>
+  el.ariaHidden?.trim().replace(/^["']|["']$/g, "") === "true" ||
+  el.hidden ||
+  el.classes.includes("hidden") ||
+  el.utilities.includes("hidden");
+
+/** A tab stop visible in the element's own attributes, with no guessing about children. */
+const nativeTabStop = (el) =>
+  el.tabIndex !== undefined
+    ? !/^-\s*1$/.test(el.tabIndex.trim())
+    : NATIVELY_FOCUSABLE.has(el.tag) || (el.tag === "a" && el.href) || el.contentEditable;
+
+/**
+ * Component names whose render is KNOWN to contain a tab stop. Resolved at file
+ * granularity — every component a file declares inherits that file's verdict — and to a
+ * fixpoint through the capitalized tags each file renders, so `<Calendar>` is known to
+ * hold day buttons while an icon imported from outside `src` is known only as "no
+ * evidence".
+ *
+ * The polarity is the point. The rule this replaces treated ANY `<Capitalized/>` child
+ * as a possible tab stop, so adding one decorative icon to a floating panel made
+ * `managerTabStop` conclude the manager would focus the icon instead of the panel — and
+ * a real NO-AFFORDANCE violation became an "Exempt" line (ledger #129, reachable by the
+ * most ordinary edit anyone makes to a popover). Requiring positive evidence instead
+ * means an unknown child leaves the panel looking like the tab stop, which demands a
+ * ring: the direction that reports rather than excuses.
+ */
+function buildTabbableComponents(files, els) {
+  const declares = new Map();
+  const uses = new Map();
+  const tabbableFiles = new Set();
+  for (const file of files) {
+    const text = blankComments(readFileSync(file, "utf8"));
+    declares.set(
+      file,
+      new Set(
+        [...text.matchAll(/\b(?:function|const|let|var|class)\s+([A-Z][\w$]*)/g)].map((m) => m[1]),
+      ),
+    );
+    uses.set(file, new Set());
+  }
+  for (const el of els) {
+    if (isDecorative(el)) continue;
+    if (nativeTabStop(el)) tabbableFiles.add(el.file);
+    else if (/^[A-Z]/.test(el.tag)) uses.get(el.file)?.add(el.tag);
+  }
+
+  const declarersOf = new Map(); // component name -> files declaring it
+  for (const [file, names] of declares) {
+    for (const name of names) {
+      if (!declarersOf.has(name)) declarersOf.set(name, []);
+      declarersOf.get(name).push(file);
+    }
+  }
+
+  for (let pass = 0; pass < 10; pass++) {
+    let grew = false;
+    for (const [file, tags] of uses) {
+      if (tabbableFiles.has(file)) continue;
+      for (const tag of tags) {
+        if ((declarersOf.get(tag) ?? []).some((f) => tabbableFiles.has(f))) {
+          tabbableFiles.add(file);
+          grew = true;
+          break;
+        }
+      }
+    }
+    if (!grew) break;
+  }
+
+  const known = new Set();
+  for (const file of tabbableFiles) for (const name of declares.get(file) ?? []) known.add(name);
+  return known;
+}
+
+const tabbableComponents = buildTabbableComponents(
+  tsxFiles.filter((p) => p.endsWith(".tsx")),
+  elements,
+);
+
+/** Something that holds a tab stop: seen directly, or a component known to render one. */
 const maybeTabbable = (el) =>
-  NATIVELY_FOCUSABLE.has(el.tag) ||
-  (el.tag === "a" && el.href) ||
-  (el.tabIndex !== undefined && !/^-\s*1$/.test(el.tabIndex.trim())) ||
-  /^[A-Z]/.test(el.tag);
+  !isDecorative(el) &&
+  (nativeTabStop(el) ||
+    (el.tabIndex === undefined && /^[A-Z]/.test(el.tag) && tabbableComponents.has(el.tag)));
 
 const hasTabbableContent = (el) =>
   elements.some((d) => d.file === el.file && d.ancestorIds.includes(el.id) && maybeTabbable(d));
@@ -691,8 +901,8 @@ for (const el of elements) {
     continue;
   }
 
-  const own = el.utilities.find(twOwnRing);
-  const wrapper = el.ancestorUtilities.find(twWithinRing);
+  const own = twOwnRing(el.utilities);
+  const wrapper = twWithinRing(el.ancestorUtilities);
   const ownCss = el.classes.flatMap((cls) => ringFor.get(cls) ?? [])[0];
   const wrapperCss = el.ancestorClasses.flatMap((cls) => withinRingFor.get(cls) ?? [])[0];
 
