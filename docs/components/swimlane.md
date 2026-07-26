@@ -32,12 +32,11 @@ supply.
 | `className`   | `string` — merged onto the root `<section>`                        | —           |
 | `children`    | `ReactNode` — the lane body                                        | —           |
 | `ref`         | `Ref<HTMLElement>` — the root `<section>`                          | —           |
-| …rest         | `section` props minus `title` — **typed but never reach the DOM**  | —           |
+| …rest         | `section` props minus `title` — spread onto the root `<section>`   | —           |
 
-That last row is the sharp edge. `title`, `subtitle`, `viewAllHref`, `animation`, `once`,
-`className`, `children` and `ref` are the only props that do anything; `id`, `style`,
-`role`, `aria-*`, `data-*` and event handlers compile and are then dropped. See
-[Gotchas](#gotchas).
+`id`, `style`, `role`, `aria-*`, `data-*` and event handlers all reach the `<section>`, on
+both the animated and the `animate={false}` path. See [Gotchas](#gotchas) for how `className`,
+`style` and `ref` merge with the reveal's own.
 
 ## The body is yours
 
@@ -244,10 +243,19 @@ The root is a real `<section>` and the title a real `<h2>`, so the heading lands
 document outline and shows up in a screen reader's heading list — which is the only
 structural navigation Swimlane gives you.
 
-- **The section cannot be named.** A `<section>` is only exposed as a `region` landmark when
-  it has an accessible name, and `aria-label` / `aria-labelledby` are among the props that
-  never reach the DOM. There is no `titleId` wired up internally either, so the lane is an
-  unlabelled generic container to assistive tech no matter what you pass.
+- **Name the section yourself — nothing does it for you.** A `<section>` is only exposed as a
+  `region` landmark when it has an accessible name, and Swimlane wires up no `titleId`
+  internally, so by default the lane is an unlabelled generic container to assistive tech.
+  Pass `aria-label` (or `aria-labelledby`) and it reaches the `<section>`, on both the
+  animated and the `animate={false}` path:
+
+  ```tsx
+  <Swimlane title="Featured" aria-label="Featured titles">…</Swimlane>
+  ```
+
+  Give it the same words as the visible `title` unless you have a reason not to. If your
+  `title` already has an `id` in the page, `aria-labelledby` pointing at it avoids stating
+  the name twice.
 - **Your scroller needs a tabindex and a name.** An overflowing container that a keyboard
   user cannot focus is unreachable once its cards scroll past the edge, and Swimlane adds no
   `tabindex` and no label. Don't count on the browser doing it for you either — engines
