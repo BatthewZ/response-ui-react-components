@@ -156,6 +156,18 @@ finding from logged to fixed is the workspace-root `BUG_TRIAGE_PLAYBOOK.md`.
 types). Externalised: react, react-dom, react/jsx-runtime, @floating-ui/\*, lucide-react,
 clsx, tailwind-merge.
 
-`bun pm pack` produces a publishable `.tgz`. `prepublishOnly` runs
-`build → verify:directives → verify:docs → typecheck → test`, so a broken directive, a doc
-drift, a type error, or a failing test each block publish.
+`bun pm pack` produces a publishable `.tgz`. `prepublishOnly` is the publish gate — the
+authoritative list is the script itself in [package.json](./package.json); in order it runs:
+
+```
+build → verify-directives → verify-docs → gen-docs --check → verify-component-docs
+      → verify-focus-affordance → verify-omit-discipline --check → lint → typecheck → test
+```
+
+So a broken RSC directive, an undocumented export, a stale doc fence, a bad token table or
+dead link, an unrepaid `outline` reset, a compile-time-only `Omit`, a lint error, a type
+error, or a failing test each block publish.
+
+Every guard in that chain checks a **shipped** artifact. `verify:bugs` is deliberately
+excluded for that reason (see [Known-defect ledger](#known-defect-ledger)) — `bugs/` is not
+in `files`. Run it at the land gate instead, not at publish.

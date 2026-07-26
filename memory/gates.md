@@ -17,9 +17,17 @@
   publish runs the whole suite against the *previous* version still in `node_modules`; everything
   passes and the thing you changed was never loaded. Loud failure is a gift — silent success on
   the wrong inputs is the expensive case.
-- **`tsc` and `eslint` are both silent on a prop delivered through a JSX spread** — measured
-  directly. No guard in this repo inspects a prop type, so the type layer is not a runtime
-  guarantee and an `Omit<>` reproduces the class every time.
+- **The type layer is not a runtime guarantee.** `Omit` is compile-time only and TypeScript's
+  excess-property check never applies to a spread of a *variable*, so
+  `<Switch {...form.field("on")} />` delivers the very `onChange` the props type removed, and
+  both `tsc` and `eslint` say nothing. Every omitted key here is a legitimate DOM attribute, so
+  React warns nothing either — the damage is behavioural, never a console message.
+- **A defect class no gate can see recurs until someone builds the gate.** The above outlived two
+  passes that each re-typed the symptom; `verify:omit-discipline` (`00f6b03`) finally encoded the
+  invariant. **Prefer the guard over another round of instances.**
+- **A one-key probe gives a false green.** A spread bag of exactly one key *is* caught (TS2559),
+  so a minimal repro of this class "passes" while the real `useForm` binding — always several
+  keys — slips through. Reproduce with the shape the caller actually uses.
 - **Prose about a gate drifts exactly like prose about a component.** `CONTRIBUTING.md`'s
   description of the publish chain was four gates out of date; the chain in `package.json` is the
   only source worth reading.
