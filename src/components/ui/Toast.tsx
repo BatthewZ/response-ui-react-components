@@ -59,6 +59,9 @@ const statusIconMap: Record<ToastVariant, ReactNode> = {
   info: <Info size={16} aria-hidden="true" className="shrink-0" />,
 };
 
+/** The dismiss button's name when the caller supplies none. */
+const DEFAULT_DISMISS_LABEL = "Dismiss";
+
 type ToastProps = {
   variant?: ToastVariant;
   title?: string;
@@ -75,6 +78,12 @@ type ToastProps = {
    * be `aria-hidden`, or the severity is announced twice.
    */
   statusIcon?: ReactNode;
+  /**
+   * Accessible name of the dismiss button. Unlike `statusLabel` this is not
+   * removable: the button's only content is an `aria-hidden` glyph, so an empty
+   * name would leave it unnamed rather than quieter.
+   */
+  dismissLabel?: string;
 } & Omit<ComponentPropsWithRef<"div">, "title">;
 
 export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
@@ -85,6 +94,7 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
     dismissing = false,
     statusLabel,
     statusIcon,
+    dismissLabel,
     className,
     children,
     onFocus,
@@ -96,6 +106,9 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
   // Not `??`: `null` is this prop's remover, and `??` would treat it as absent
   // and restore the default — the mirror of `statusLabel=""` surviving `??`.
   const icon = statusIcon === undefined ? statusIconMap[variant] : statusIcon;
+  // `||` rather than `??`: an empty string here would ship a button with no
+  // accessible name at all, which is worse than the English default.
+  const dismissText = dismissLabel || DEFAULT_DISMISS_LABEL;
   const rootRef = useRef<HTMLDivElement>(null);
   const mergedRef = useMemo(() => mergeRefs(ref, rootRef), [ref]);
   // Where focus was before it entered the toast. Dismissing unmounts the button
@@ -142,7 +155,7 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
         {title && <p className="font-semibold">{title}</p>}
         <p>{children}</p>
       </div>
-      <IconButton aria-label="Dismiss" onClick={handleDismiss} className="shrink-0 -mr-r6 -mt-r6">
+      <IconButton aria-label={dismissText} onClick={handleDismiss} className="shrink-0 -mr-r6 -mt-r6">
         <svg
           width="16"
           height="16"

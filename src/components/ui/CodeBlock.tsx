@@ -9,6 +9,17 @@ type CodeBlockProps = {
   filename?: string;
   showLineNumbers?: boolean;
   copyable?: boolean;
+  /**
+   * Props for the header's [CopyButton]. One bag rather than a prop each,
+   * because everything that button accepts — `aria-label`, `copiedLabel`,
+   * `timeout`, `onCopyError` — is otherwise unreachable, and mirroring them one
+   * by one would mean adding a CodeBlock prop every time CopyButton gains one.
+   * Same shape as `Spotlight`'s `imgProps` and `Swimlane`'s `viewAllProps`.
+   *
+   * `value` is not accepted: the button copies `code`, which is the whole point
+   * of the block. `className` is merged onto `code-block-copy`, not replacing it.
+   */
+  copyButtonProps?: Omit<ComponentPropsWithRef<typeof CopyButton>, "value">;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 export const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(function CodeBlock(
@@ -18,6 +29,7 @@ export const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(function Cod
     filename,
     showLineNumbers = false,
     copyable = true,
+    copyButtonProps,
     className,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
@@ -57,7 +69,13 @@ export const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(function Cod
         <div className="code-block-header">
           {filename && <span className="code-block-filename">{filename}</span>}
           {language && <span className="code-block-language">{language.toLowerCase()}</span>}
-          {copyable && <CopyButton value={code} className="code-block-copy" />}
+          {copyable && (
+            <CopyButton
+              value={code}
+              {...copyButtonProps}
+              className={cn("code-block-copy", copyButtonProps?.className)}
+            />
+          )}
         </div>
       )}
       {/* The scrollport is the <pre>, so the <pre> is what a keyboard user must

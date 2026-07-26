@@ -106,6 +106,14 @@ const ALLOWLIST = new Map([
       "Exempted rather than answered in source: the alternative is adding a meaningless " +
       "`href?: never` to Swimlane to satisfy a check that is asking the wrong question.",
   ],
+  [
+    "src/components/ui/CodeBlock.tsx:CodeBlock.value",
+    "FALSE POSITIVE, same shape as the Swimlane entry above (AUDIT.md #473). The " +
+      "`Omit<ComponentPropsWithRef<typeof CopyButton>, \"value\">` this fires on types the " +
+      "`copyButtonProps` *sub-prop bag* for the header's copy button, not CodeBlock's own " +
+      "props — CodeBlock supplies that button's `value` from `code`, so omitting it there " +
+      "is the point. `value` is not a CodeBlock prop at all and reaches no <div>.",
+  ],
 ]);
 
 /**

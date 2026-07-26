@@ -18,6 +18,7 @@ anywhere in it.
 | `filename`        | `string` — header label, and the region's accessible name    | —            |
 | `showLineNumbers` | `boolean`                                                    | `false`      |
 | `copyable`        | `boolean`                                                    | `true`       |
+| `copyButtonProps` | every [CopyButton](copy-button.md) prop except `value`        | —            |
 | `className`       | `string` — merged onto the root's `code-block` class          | —            |
 | `ref`             | `Ref<HTMLDivElement>`                                        | —            |
 | …rest             | every `div` prop except `children`                           | —            |
@@ -190,12 +191,15 @@ only if `@batthewz/response-ui-css` was never imported.
   nothing here. Utilities for properties the stylesheet never touches — width, margin,
   shadow — still apply. Re-tint through the variables above, or write your own unlayered
   rule.
-- **The copy button cannot be configured.** CodeBlock hands
-  [CopyButton](copy-button.md) only `value` and a positioning class, so `copiedLabel`,
-  `timeout` and a per-block `aria-label` are unreachable: every block's button is named
-  "Copy". Whether a click lands at all depends on the browser —
-  [`navigator.clipboard` needs a secure context](copy-button.md#when-there-is-no-clipboard),
-  and CodeBlock surfaces no success or failure signal either.
+- **The copy button is configured through one bag, not through CodeBlock props.**
+  `copyButtonProps` goes straight to [CopyButton](copy-button.md), so `aria-label`,
+  `copiedLabel`, `timeout` and `onCopyError` are all reachable per block — without CodeBlock
+  growing a prop each time CopyButton gains one. Two keys are not yours to set: `value` is
+  typed out (the button copies `code`), and `className` is *merged* onto `code-block-copy`
+  rather than replacing it, so the header layout survives. Whether a click lands at all still
+  depends on the browser —
+  [`navigator.clipboard` needs a secure context](copy-button.md#when-there-is-no-clipboard) —
+  and `onCopyError` is now the way to hear about it from a block.
 - **The number gutter widens in whole characters.** It is a `2.5ch` box up to 99 lines, then
   one `ch` per digit (`3ch` from line 100, `4ch` from 1000), applied to the whole block so
   every line's code starts at the same column. The code shifts right when a block crosses a
@@ -224,10 +228,11 @@ the accessibility tree rather than being collapsed the way they would be in a `<
   `--C-TEXT-MUTED`, which measures between 2.10:1 and 2.59:1 against `--C-SURFACE-0` across
   the four shipped themes — under the 3:1 large-text floor — so treat a visible line number
   as decoration and don't build prose ("see line 12") on it.
-- **The copy button's own behaviour is unchanged** — its name, its focus ring and its
-  visually hidden confirmation are all
-  [CopyButton's](copy-button.md#accessibility), including the caveat that the confirmation
-  may not be announced at all.
+- **The copy button's own behaviour is CopyButton's** — its focus ring and its visually
+  hidden confirmation are [documented there](copy-button.md#accessibility), including the
+  caveat that the confirmation may not be announced at all. Its *name* is yours: several
+  blocks on one page all read "Copy" otherwise, so give each one an
+  `copyButtonProps={{ "aria-label": … }}` naming what it copies.
 
 ## Related
 

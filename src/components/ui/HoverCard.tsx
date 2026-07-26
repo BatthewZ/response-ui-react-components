@@ -28,6 +28,7 @@ import {
 import { mergeProps } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
+import { useFadeDuration } from "./floating-motion";
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                            */
@@ -210,15 +211,17 @@ type HoverCardContentProps = ComponentPropsWithRef<"div">;
 
 const HoverCardContent = forwardRef<HTMLDivElement, HoverCardContentProps>(
   function HoverCardContent({ children, className, style, ...props }, ref) {
-    const { refs, floatingStyles, context, getFloatingProps, contentId, triggerId } =
+    const { open, refs, floatingStyles, context, getFloatingProps, contentId, triggerId } =
       useHoverCardContext();
 
     // Only as a default: an explicit name from the caller must not be beaten by
     // `aria-labelledby`, which wins the name computation wherever both appear.
     const named = props["aria-label"] != null || props["aria-labelledby"] != null;
 
+    const duration = useFadeDuration(open);
+
     const { isMounted, styles: transitionStyles } = useTransitionStyles(context, {
-      duration: 150,
+      duration,
       initial: { opacity: 0 },
     });
 

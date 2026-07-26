@@ -266,8 +266,9 @@ deliberately reuses it — restyle these classes and both components move togeth
 - **Your `style` on `Content` overrides the positioning.** Inline styles are merged *after*
   Floating UI's, so a stray `position`, `top`, `left`, or `transform` breaks the anchoring
   outright. Size and colour there if you must; leave placement alone.
-- **The menu unmounts when closed.** `Content` renders `null` until it is open (plus a 150ms
-  fade-out), so anything inside it — component state, an uncontrolled input, a mounted chart —
+- **The menu unmounts when closed.** `Content` renders `null` until it is open (plus the exit
+  fade — `--MOTION-DURATION-EXIT`, 150ms with no token layer, `0` under reduced motion), so
+  anything inside it — component state, an uncontrolled input, a mounted chart —
   is destroyed and rebuilt on every open. Keep state above the menu.
 - **It's a client component.** Both `DropdownMenu.tsx` and the shared `menu-internals.tsx` carry
   `"use client"`, so importing it pulls the module into the client bundle; it cannot be used

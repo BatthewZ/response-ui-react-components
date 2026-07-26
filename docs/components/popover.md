@@ -249,9 +249,15 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   [ColorPicker](color-picker.md) sit on. [Tooltip](tooltip.md) (50) and [AppShell](app-shell.md)'s mobile sidebar (49 scrim, 50 panel)
   paint above a popover; anything in the browser's top layer — [Dialog](dialog.md),
   [Drawer](drawer.md) — is above all of it regardless of `z-index`.
-- **The fade is hard-coded.** `useTransitionStyles(context, { duration: 150, initial: { opacity: 0 } })`
-  is written in the `.tsx`, resolving to no `--MOTION-*` variable, so retiming the library's
-  motion does not retime this one — and it carries no `prefers-reduced-motion` guard.
+- **The fade reads the theme, and is dropped under reduced motion.** The open/close opacity
+  transition takes its duration from `--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT`,
+  read from `:root` at runtime (the shipped themes set these between 120ms and 500ms), and
+  falls back to 150ms when no token layer is present. Under
+  `prefers-reduced-motion: reduce` the duration is `0`, which removes the fade *and* the
+  delayed unmount. The value has to be read in JS rather than written in CSS:
+  `useTransitionStyles` writes `transition-duration` as an inline style, and an inline
+  declaration outranks any stylesheet rule. It is re-read on each open, so switching theme at
+  runtime reaches the next one.
 - **`.popover-trigger` paints nothing.** It resets the button (`background: none`, `border:
   none`, `padding: 0`, `font: inherit`) and lays it out `inline-flex`. It reads no token, which
   is why `asChild` with a [Button](button.md) looks like a Button and the default trigger looks
@@ -289,7 +295,8 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   element unrelated to the popover dismisses it (`closeOnFocusOut` is on by default), so a
   panel is not a place to park focus. Escape and an outside click do the same thing more
   obviously.
-- **The panel outlives `open` by 150ms.** `useTransitionStyles` keeps it mounted for the exit
+- **The panel outlives `open` by the exit duration** (`--MOTION-DURATION-EXIT`, 150ms with no
+  token layer, `0` under reduced motion). `useTransitionStyles` keeps it mounted for the exit
   fade, so a test that asserts the content is gone immediately after a close will still find it.
   It is unmounted for good once the transition finishes.
 - **Opening a second popover closes the first.** The click is an outside `pointerdown` for the

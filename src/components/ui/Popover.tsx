@@ -7,7 +7,6 @@ import {
   isValidElement,
   type ReactElement,
   useContext,
-  useId,
   useMemo,
   useRef,
 } from "react";
@@ -27,6 +26,7 @@ import {
 import { mergeProps } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
+import { useFadeDuration } from "./floating-motion";
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                           */
@@ -40,7 +40,8 @@ interface PopoverContextValue {
   context: ReturnType<typeof useFloating>["context"];
   getReferenceProps: ReturnType<typeof useInteractions>["getReferenceProps"];
   getFloatingProps: ReturnType<typeof useInteractions>["getFloatingProps"];
-  contentId: string;
+  /** `string | undefined` because Floating UI types its own id that way. */
+  contentId: string | undefined;
 }
 
 const PopoverContext = createContext<PopoverContextValue | null>(null);
@@ -77,8 +78,6 @@ function PopoverRoot({
   offset: offsetPx = 8,
   children,
 }: PopoverRootProps) {
-  const contentId = useId();
-
   // Only `useControllableState` reads the raw prop; this ref is the mode lock's
   // one job here — keep feeding the hook a defined value once controlled, so a
   // later `open={undefined}` reads as closed rather than a mode switch.
@@ -95,6 +94,12 @@ function PopoverRoot({
     open,
     onOpenChange: handleOpenChange,
   });
+
+  // The id the panel will actually carry. `useRole` supplies its own `id`
+  // through `getFloatingProps`, and that spread wins on the element — so
+  // minting a second id here would be a second source for one value, which is
+  // what #127 caught a reader assuming their way through (#469).
+  const contentId = context.floatingId;
 
   const click = useClick(context);
   const dismiss = useDismiss(context);
@@ -182,11 +187,13 @@ type PopoverContentProps = ComponentPropsWithRef<"div">;
 
 const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
   function PopoverContent({ children, className, style, ...props }, ref) {
-    const { refs, floatingStyles, context, getFloatingProps, contentId } =
+    const { open, refs, floatingStyles, context, getFloatingProps, contentId } =
       usePopoverContext();
 
+    const duration = useFadeDuration(open);
+
     const { isMounted, styles: transitionStyles } = useTransitionStyles(context, {
-      duration: 150,
+      duration,
       initial: { opacity: 0 },
     });
 

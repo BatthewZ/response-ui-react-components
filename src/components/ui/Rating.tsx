@@ -5,7 +5,6 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   useEffect,
-  useRef,
   useState,
 } from "react";
 import { Star } from "lucide-react";
@@ -108,20 +107,14 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
   const { getRovingProps, setFocusedIndex } = useRovingFocus({
     orientation: "horizontal",
   });
-  const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Focus and value are one state machine, not two: the tab stop is always the
-  // star holding the value, and DOM focus follows it whenever the group already
-  // had focus. Without this, arrow keys loop the tab stop while the value
-  // clamps, a click never moves the tab stop, and Tab re-enters on star 1.
+  // star holding the value, and `setFocusedIndex` carries DOM focus with it
+  // whenever the group already had focus. Without this, arrow keys loop the tab
+  // stop while the value clamps, a click never moves the tab stop, and Tab
+  // re-enters on star 1.
   useEffect(() => {
-    const index = starIndexOf(value, max);
-    setFocusedIndex(index);
-    const buttons = buttonsRef.current;
-    const active = document.activeElement;
-    if (active instanceof HTMLButtonElement && buttons.includes(active)) {
-      buttons[index]?.focus();
-    }
+    setFocusedIndex(starIndexOf(value, max));
   }, [value, max, setFocusedIndex]);
 
   const nameFor = (v: number) => (formatValue ? formatValue(v, max) : String(v));
@@ -223,10 +216,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
             aria-checked={isChecked}
             disabled={disabled}
             tabIndex={disabled ? -1 : roving.tabIndex}
-            ref={(node) => {
-              roving.ref(node);
-              buttonsRef.current[i] = node;
-            }}
+            ref={roving.ref}
             className="rating-button"
             // Deliberately not `roving.onKeyDown` as well: the hook's own key
             // handling is the second state machine this component used to run

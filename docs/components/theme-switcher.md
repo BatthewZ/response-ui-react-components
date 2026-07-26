@@ -255,8 +255,10 @@ trap the library falls into elsewhere is avoided here.
 option, `←`/`↑` and `→`/`↓` move to the previous and next theme and *select* it, `Home` and
 `End` jump to the first and last, and both directions wrap. Selection and focus are one
 state machine — the tab stop is always the checked option, so clicking one moves the tab stop
-too, and `Tab` re-enters where you left off. The roving `tabIndex` comes from the package's
-`useRovingFocus` hook; the key handling is the component's own, because the hook's handler
+too, and `Tab` re-enters where you left off. The roving `tabIndex`, and the DOM focus move
+that follows it, both come from the package's `useRovingFocus` hook — `setFocusedIndex` moves
+focus with the tab stop when the group already holds focus, and leaves it alone when it does
+not. The key handling is the component's own, because the hook's handler
 moves focus *without* selecting, which for a radiogroup would leave the tab stop and the
 checked option in different places (the same split [Rating](rating.md) settled on).
 

@@ -209,9 +209,11 @@ utility resolving through the token layer, so it re-tints with a theme change at
 The padding is the only responsive value: `--R-SIZE-4` steps `0.75rem → 1.25rem` at the 40rem
 breakpoint. The trigger's own `inline-flex w-fit` reads no tokens at all.
 
-Two values sit **outside** the contract: the `w-72` width is a fixed 18rem, and the open/close
-fade is an inline `opacity` transition hard-coded to 150ms — not a `--MOTION-*` or
-`--DURATION-*` variable, and not dropped under `prefers-reduced-motion`.
+One value sits **outside** the contract: the `w-72` width is a fixed 18rem. The open/close
+fade is on it — an inline `opacity` transition whose duration comes from
+`--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT` (150ms if no token layer is present), and
+`0` under `prefers-reduced-motion: reduce`, which removes the fade and the delayed unmount
+with it.
 
 The card also sets no text colour and no type scale, so it inherits both — but it is portalled
 to `<body>`, so it inherits from *there*, not from where it sits in your JSX. A `--C-TEXT-*`
@@ -238,8 +240,9 @@ colour on the card itself with `className`. See the [theme contract](../theme-co
 - **`className` merges last.** It runs through `cn()` after the defaults, so `w-96` replaces
   `w-72` and `bg-surface-1` replaces `bg-surface-0` rather than fighting them.
 - **The card is absent, then it lingers.** Nothing is rendered while closed — you cannot query
-  the content, and search-in-page never finds it. After closing it stays mounted for the 150ms
-  fade, so with default delays the DOM node outlives your `unhover` by about 300ms. Tests
+  the content, and search-in-page never finds it. After closing it stays mounted for the exit
+  fade (`--MOTION-DURATION-EXIT`, 150ms with no token layer), so with default delays the DOM
+  node outlives your `unhover` by about 300ms. Tests
   should wait for it to go, not assert immediately.
 - **Client component.** The file carries `"use client"`; importing HoverCard opens a client
   boundary. The content inside it is rendered on the client, so nothing in the card is in the

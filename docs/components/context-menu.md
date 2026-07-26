@@ -266,10 +266,11 @@ Two things are *not* on the contract. The panel's geometry — its `0.25rem 0` p
 `0.375rem 0.75rem`, the `0.5rem` icon gap, an `11.25rem` minimum width and `z-index: 40` — is
 hard literals in that stylesheet rather than the responsive `r`-scale, so the item **type** steps
 up at the 40rem breakpoint with the rest of the app while the padding around it does not. And the
-parts ContextMenu owns are unthemeable
-by design: the 4px pointer offset and the 150ms open/close opacity fade are numbers in
-`menu-internals.tsx`, tied to no `--DURATION-*` token, and the fade is not dropped under
-`prefers-reduced-motion`. The trigger's own `context-menu-trigger` class is a naming hook only —
+part ContextMenu owns is unthemeable
+by design: the 4px pointer offset is a number in `menu-internals.tsx`, tied to no token. The
+open/close opacity fade is **not** — it reads `--MOTION-DURATION-ENTER` /
+`--MOTION-DURATION-EXIT` (150ms when no token layer is present) and drops to `0` under
+`prefers-reduced-motion: reduce`. The trigger's own `context-menu-trigger` class is a naming hook only —
 nothing in the package styles it. See the [theme contract](../theme-contract.md).
 
 ## Gotchas
@@ -288,11 +289,14 @@ nothing in the package styles it. See the [theme contract](../theme-contract.md)
 - **Typeahead reaches disabled items.** Arrow navigation skips anything `aria-disabled`, but
   typing the first letters of a disabled item's label still focuses it — a dead row you can
   land on but not activate.
-- **ArrowUp/ArrowDown inside the trigger are taken.** The list-navigation hook is attached to the
-  trigger, and it calls `preventDefault()` on the main-axis arrow keys. Wrap a
-  [Textarea](textarea.md), a [Select](select.md), or a slider in a `Trigger` and its up/down keys
-  stop working — they open the context menu instead. Keep interactive controls out of the trigger
-  region, or put the trigger on a wrapper that excludes them.
+- **A text control inside the trigger keeps its own keys, and loses the menu's.** Floating UI's
+  list-navigation and typeahead handlers are attached to the *trigger*, so every key pressed
+  inside it bubbles to them: the arrow keys were `preventDefault()`ed (freezing the caret of a
+  wrapped [Textarea](textarea.md), [Select](select.md) or slider) and printable characters were
+  swallowed as a typeahead query while the menu was open. Both are now skipped when the key is
+  aimed at an `input`, `textarea`, `select` or `contenteditable`. The trade is the other
+  direction: with the caret in such a control, the arrow keys and typeahead do **not** drive the
+  open menu — move focus to the trigger itself (a right-click does this for you) to navigate it.
 - **Nested triggers open both menus.** The handler prevents the default but never stops
   propagation, so a right-click on an inner `Trigger` bubbles to an outer one and both panels
   mount. Worse, each one's focus manager marks the other `aria-hidden`, so a screen reader is
@@ -320,10 +324,11 @@ the divider — and the trigger gets `aria-haspopup="menu"` plus a live `aria-ex
 `aria-controls`, on an element the keyboard can actually reach. What the markup does not cover
 is a name for that element, and what the focus manager does with focus around it.
 
-- **Keyboard access is wired, whatever the trigger wraps.** The region is a tab stop, the Menu
-  key and Shift+F10 open the menu from it, and arrows and typeahead reach the panel after a
-  right-click open as well as a keyboard one — see
-  [Opening it without a mouse](#opening-it-without-a-mouse). Still treat a context menu as a
+- **Keyboard access is wired.** The region is a tab stop, the Menu key and Shift+F10 open the
+  menu from it, and arrows and typeahead reach the panel after a right-click open as well as a
+  keyboard one — see [Opening it without a mouse](#opening-it-without-a-mouse). The one
+  exception is deliberate: with focus inside a text control the trigger wraps, those keys stay
+  with the control (see [Gotchas](#gotchas)). Still treat a context menu as a
   shortcut for actions that exist somewhere else too: it is a gesture most users never try.
 - **The tab stop has no name and no focus style of its own.** `tabIndex={0}` puts a `<div>` in
   the tab order, but a `<div>` takes no accessible name from its own text the way a button does,

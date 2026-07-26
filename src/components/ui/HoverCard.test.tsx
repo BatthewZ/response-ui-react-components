@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { HoverCard } from "./HoverCard";
 
@@ -184,5 +184,29 @@ describe("HoverCard", () => {
     const trigger = screen.getByRole("button", { name: "@octocat" });
     expect(trigger).toHaveFocus();
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+});
+
+/**
+ * #128, the hover-card half — see `Popover.test.tsx` for the full set,
+ * including the reduced-motion branch this hook shares.
+ */
+describe("fade timing", () => {
+  afterEach(() => {
+    document.documentElement.style.removeProperty("--MOTION-DURATION-ENTER");
+  });
+
+  it("#128: takes its open duration from --MOTION-DURATION-ENTER", async () => {
+    document.documentElement.style.setProperty("--MOTION-DURATION-ENTER", "380ms");
+
+    render(
+      <HoverCard open>
+        <HoverCard.Trigger>@octocat</HoverCard.Trigger>
+        <HoverCard.Content>Card body</HoverCard.Content>
+      </HoverCard>,
+    );
+
+    const panel = await screen.findByRole("dialog");
+    await waitFor(() => expect(panel.style.transitionDuration).toBe("380ms"));
   });
 });

@@ -4,7 +4,6 @@ import {
   forwardRef,
   type KeyboardEvent,
   useEffect,
-  useRef,
 } from "react";
 
 import { useRovingFocus } from "../../hooks/use-roving-focus";
@@ -40,22 +39,17 @@ export const ThemeSwitcher = forwardRef<HTMLDivElement, ThemeSwitcherProps>(func
   const { theme, setTheme, themes } = useTheme({ themes: themesProp ?? THEMES });
 
   const { getRovingProps, setFocusedIndex } = useRovingFocus({ orientation: "horizontal" });
-  const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
   const selectedIndex = Math.max(0, themes.indexOf(theme));
 
   // Selection and focus are one state machine: a radiogroup's tab stop is its
-  // checked option, and DOM focus follows selection whenever the group already
-  // held focus. The hook's own `onKeyDown` is deliberately unused — it moves
-  // focus without selecting, which would drift the tab stop away from the
-  // checked option and leave the arrow keys doing nothing a radiogroup promises.
+  // checked option, and `setFocusedIndex` carries DOM focus with it whenever the
+  // group already held focus. The hook's own `onKeyDown` is deliberately unused
+  // — it moves focus without selecting, which would drift the tab stop away from
+  // the checked option and leave the arrow keys doing nothing a radiogroup
+  // promises.
   useEffect(() => {
     setFocusedIndex(selectedIndex);
-    const buttons = buttonsRef.current;
-    const active = document.activeElement;
-    if (active instanceof HTMLButtonElement && buttons.includes(active)) {
-      buttons[selectedIndex]?.focus();
-    }
   }, [selectedIndex, setFocusedIndex]);
 
   function handleKeyDown(e: KeyboardEvent) {
@@ -103,10 +97,7 @@ export const ThemeSwitcher = forwardRef<HTMLDivElement, ThemeSwitcherProps>(func
             role="radio"
             aria-checked={theme === t}
             tabIndex={roving.tabIndex}
-            ref={(node) => {
-              roving.ref(node);
-              buttonsRef.current[i] = node;
-            }}
+            ref={roving.ref}
             className={cn("theme-switcher__option", theme === t && "theme-switcher__option--active")}
             onKeyDown={handleKeyDown}
             onClick={() => setTheme(t)}

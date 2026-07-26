@@ -182,3 +182,31 @@ describe("CodeBlock", () => {
     expect(node).toBeInstanceOf(HTMLDivElement);
   });
 });
+
+describe("#152 · reaching the copy button", () => {
+  it("copyButtonProps names the button per block and keeps the positioning class", () => {
+    render(
+      <CodeBlock
+        code="bun add x"
+        copyButtonProps={{ "aria-label": "Kopieren: install", copiedLabel: "Kopiert" }}
+      />,
+    );
+
+    const button = screen.getByRole("button", { name: "Kopieren: install" });
+    // The bag must not replace the class the header layout depends on.
+    expect(button.className).toContain("code-block-copy");
+  });
+
+  it("still copies the block's own code, which the bag cannot override", async () => {
+    const writeText = stubClipboard();
+    render(<CodeBlock code="the real code" copyButtonProps={{ timeout: 10 }} />);
+
+    await act(async () => {
+      screen.getByRole("button", { name: "Copy" }).click();
+    });
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith("the real code");
+  });
+});
+

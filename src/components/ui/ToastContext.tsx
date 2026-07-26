@@ -26,6 +26,12 @@ type ToastOptions = {
    * entry point cannot get to is not an override path. See `Toast`.
    */
   statusIcon?: ReactNode;
+  /**
+   * Overrides the dismiss button's accessible name. Reaches the queue for the
+   * same reason `statusLabel` does — an override the primary entry point cannot
+   * get to is not an override path. See `Toast`.
+   */
+  dismissLabel?: string;
 };
 
 type ToastApi = {
@@ -41,6 +47,7 @@ type ToastEntry = {
   title?: string;
   statusLabel?: string;
   statusIcon?: ReactNode;
+  dismissLabel?: string;
   duration: number;
   dismissing: boolean;
 };
@@ -124,6 +131,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       title: options?.title,
       statusLabel: options?.statusLabel,
       statusIcon: options?.statusIcon,
+      dismissLabel: options?.dismissLabel,
       duration: options?.duration ?? DEFAULT_DURATION_MS,
       dismissing: false,
     };
@@ -212,6 +220,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               title={t.title}
               statusLabel={t.statusLabel}
               statusIcon={t.statusIcon}
+              dismissLabel={t.dismissLabel}
               dismissing={t.dismissing}
               onDismiss={() => dismiss(t.id)}
               {...liveOverride(t.variant)}

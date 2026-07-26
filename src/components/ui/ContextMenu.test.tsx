@@ -284,6 +284,40 @@ describe("ContextMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
+  it("#468: leaves printable characters to a text control inside an open trigger", async () => {
+    render(
+      <ContextMenu>
+        <ContextMenu.Trigger>
+          <textarea defaultValue="" aria-label="Notes" />
+        </ContextMenu.Trigger>
+        <ContextMenu.Content>
+          <ContextMenu.Item index={0}>Duplicate</ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu>,
+    );
+
+    const textarea = screen.getByLabelText<HTMLTextAreaElement>("Notes");
+    textarea.focus();
+
+    // Shift+F10 is the keyboard equivalent of a right-click and leaves focus
+    // where it was, so the menu is open *and* the caret is in the textarea —
+    // the only state in which `useTypeahead` can eat a character.
+    fireEvent.keyDown(textarea, { key: "F10", shiftKey: true });
+    await screen.findByRole("menu");
+
+    const event = createEvent.keyDown(textarea, { key: "d" });
+    fireEvent(textarea, event);
+
+    // `useTypeahead` sits on the reference element, where the key bubbles to,
+    // and `stopEvent`s every printable character while the menu is open — so
+    // the letter never reaches the textarea.
+    expect(event.defaultPrevented).toBe(false);
+    expect(textarea).toHaveFocus();
+    expect(
+      screen.getByRole("menuitem", { name: "Duplicate" }),
+    ).not.toHaveFocus();
+  });
+
   it("closes when Tab moves focus out of an open menu", async () => {
     const user = userEvent.setup();
     renderMenu();

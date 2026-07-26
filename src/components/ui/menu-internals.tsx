@@ -5,7 +5,6 @@ import {
   forwardRef,
   useCallback,
   useContext,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -27,6 +26,7 @@ import {
 } from "../../hooks/use-floating";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
+import { useFadeDuration } from "./floating-motion";
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                           */
@@ -44,7 +44,8 @@ export interface MenuContextValue {
   listRef: React.RefObject<(HTMLElement | null)[]>;
   listContentRef: React.RefObject<(string | null)[]>;
   activeIndex: number | null;
-  menuId: string;
+  /** `string | undefined` because Floating UI types its own id that way. */
+  menuId: string | undefined;
   /** kebab-case class-name root, e.g. "dropdown-menu" or "context-menu". */
   classPrefix: string;
 }
@@ -96,13 +97,12 @@ const CARET_KEYS = new Set([
 ]);
 
 /**
- * True when the key belongs to a form control the browser already binds it on.
+ * True when the key was aimed at a control that owns its own text entry.
  * `ContextMenu.Trigger` wraps arbitrary content, so a `<textarea>` inside one
- * bubbles its arrow keys to the reference element, where `useListNavigation`
- * `preventDefault`s them and freezes the caret.
+ * bubbles every key it receives to the reference element, where the menu's own
+ * handlers are mounted.
  */
-function keyBelongsToTextEntry(event: React.KeyboardEvent<Element>): boolean {
-  if (!CARET_KEYS.has(event.key)) return false;
+function targetIsTextEntry(event: React.KeyboardEvent<Element>): boolean {
   const target = event.target as HTMLElement | null;
   if (!target) return false;
   return (
@@ -111,6 +111,40 @@ function keyBelongsToTextEntry(event: React.KeyboardEvent<Element>): boolean {
     target.tagName === "SELECT" ||
     target.isContentEditable
   );
+}
+
+/**
+ * `useListNavigation` `preventDefault`s Arrow/Home/End on the reference, which
+ * freezes the caret of a text control inside the trigger (#125).
+ */
+function keyBelongsToTextEntry(event: React.KeyboardEvent<Element>): boolean {
+  return CARET_KEYS.has(event.key) && targetIsTextEntry(event);
+}
+
+/** The shape both guarded interactions share. */
+type MenuInteraction = ReturnType<typeof useTypeahead>;
+
+/**
+ * Wraps only Floating UI's own reference `onKeyDown`, so `useInteractions`
+ * still composes anything the trigger passes in.
+ */
+function skipReferenceKeys(
+  interaction: MenuInteraction,
+  shouldSkip: (event: React.KeyboardEvent<Element>) => boolean
+): MenuInteraction {
+  const reference = interaction.reference;
+  const onKeyDown = reference?.onKeyDown;
+  if (typeof onKeyDown !== "function") return interaction;
+  return {
+    ...interaction,
+    reference: {
+      ...reference,
+      onKeyDown(event: React.KeyboardEvent<Element>) {
+        if (shouldSkip(event)) return;
+        onKeyDown(event);
+      },
+    },
+  };
 }
 
 /**
@@ -135,8 +169,6 @@ export function useMenuRoot(options: UseMenuRootOptions = {}) {
     onChange: onOpenChange,
   });
 
-  const menuId = useId();
-
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const listRef = useRef<(HTMLElement | null)[]>([]);
   const listContentRef = useRef<(string | null)[]>([]);
@@ -147,6 +179,12 @@ export function useMenuRoot(options: UseMenuRootOptions = {}) {
     open,
     onOpenChange: setOpen,
   });
+
+  // The id the panel will actually carry. `useRole` supplies its own `id`
+  // through `getFloatingProps`, and that spread wins on the element — so
+  // minting a second id here would be a second source for one value, which is
+  // what #127 caught a reader assuming their way through (#469).
+  const menuId = context.floatingId;
 
   const click = useClick(context, { enabled: enableClick });
   const dismiss = useDismiss(context);
@@ -163,23 +201,19 @@ export function useMenuRoot(options: UseMenuRootOptions = {}) {
     onMatch: setActiveIndex,
   });
 
-  // Only Floating UI's own reference handler is skipped, never the caller's:
-  // `useInteractions` still composes anything the trigger passes in.
-  const guardedListNavigation = useMemo(() => {
-    const reference = listNavigation.reference;
-    const onKeyDown = reference?.onKeyDown;
-    if (typeof onKeyDown !== "function") return listNavigation;
-    return {
-      ...listNavigation,
-      reference: {
-        ...reference,
-        onKeyDown(event: React.KeyboardEvent<Element>) {
-          if (keyBelongsToTextEntry(event)) return;
-          onKeyDown(event);
-        },
-      },
-    };
-  }, [listNavigation]);
+  const guardedListNavigation = useMemo(
+    () => skipReferenceKeys(listNavigation, keyBelongsToTextEntry),
+    [listNavigation]
+  );
+
+  // Every key, not just the caret set: a printable character aimed at a text
+  // control is that control's text, and typeahead `preventDefault`s it while
+  // the menu is open — so the letter never arrives (#468). The menu is still
+  // fully typeahead-able from the trigger itself, which is not a text control.
+  const guardedTypeahead = useMemo(
+    () => skipReferenceKeys(typeahead, targetIsTextEntry),
+    [typeahead]
+  );
 
   // Tab must not leave an open menu behind. A mouse-opened menu holds no
   // tabbable item, so the browser moves focus straight past it and the menu
@@ -205,7 +239,7 @@ export function useMenuRoot(options: UseMenuRootOptions = {}) {
     dismiss,
     role,
     guardedListNavigation,
-    typeahead,
+    guardedTypeahead,
     tabDismiss,
   ]);
 
@@ -233,11 +267,13 @@ export type MenuContentProps = ComponentPropsWithRef<"div">;
 
 export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
   function MenuContent({ children, className, style, ...props }, ref) {
-    const { refs, floatingStyles, context, getFloatingProps, menuId, classPrefix } =
+    const { open, refs, floatingStyles, context, getFloatingProps, menuId, classPrefix } =
       useMenuContext("MenuContent");
 
+    const duration = useFadeDuration(open);
+
     const { isMounted, styles: transitionStyles } = useTransitionStyles(context, {
-      duration: 150,
+      duration,
       initial: { opacity: 0 },
     });
 

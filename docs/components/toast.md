@@ -42,6 +42,7 @@ Three exports, and they are the whole API.
 | `title`    | `string`                                      | —        |
 | `statusLabel` | `string` — visually-hidden severity word    | the word for `variant` |
 | `statusIcon` | `ReactNode` — decorative severity glyph     | the glyph for `variant` |
+| `dismissLabel` | `string` — accessible name of the dismiss button | `"Dismiss"` |
 | `duration` | `number` (ms; `0` disables auto-dismiss)      | `5000`   |
 
 `ToastProvider` takes **`children` and nothing else**. Corner, stack limit, gap, width, and
@@ -213,6 +214,7 @@ You own placement, the exit animation flag, and removal.
 | `title`      | `string`                                             | —        |
 | `statusLabel` | `string` — visually-hidden severity word            | the word for `variant` |
 | `statusIcon` | `ReactNode` — decorative severity glyph              | the glyph for `variant` |
+| `dismissLabel` | `string` — accessible name of the dismiss button   | `"Dismiss"` |
 | `dismissing` | `boolean` — swaps the slide-in animation for slide-out | `false`  |
 | `className`  | `string`                                             | —        |
 | `ref`        | `Ref<HTMLDivElement>`                                | —        |
@@ -366,9 +368,12 @@ insertion case screen readers do special-case, because it is the variant that mu
   for anything a user is expected to act on. `duration: 0` is the only escape, and it makes
   dismissal entirely manual.
 - **The dismiss icon is a hand-rolled inline `<svg>`,** not a `lucide-react` glyph — unlike
-  the severity glyph beside the title, which is. It exposes
-  no `<title>` and no `role="img"`, so it contributes no accessible name and the button reads
-  as its `aria-label`, "Dismiss" — a hard-coded English string with no prop reaching it.
+  the severity glyph beside the title, which is. It exposes no `<title>` and no `role="img"`,
+  so it contributes no accessible name and the button reads as its `aria-label`. That string
+  is `dismissLabel`, defaulting to `"Dismiss"` and reachable from both entry points:
+  `toast(msg, { dismissLabel: "Schließen" })` or the prop on a hand-rendered `<Toast>`. Unlike
+  `statusLabel`, an empty string does **not** remove it — it is the button's only accessible
+  name, so `""` falls back to the default rather than shipping an unnamed control.
 - **Focus is never moved to a toast.** Correct for a transient message, but it means anything
   inside one is only reachable by tabbing to it before it disappears. `Toast` offers no action
   slot, so in practice the only thing to reach is the dismiss button.

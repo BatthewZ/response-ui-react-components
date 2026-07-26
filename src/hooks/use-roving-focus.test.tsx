@@ -10,7 +10,7 @@ function RovingList({
   orientation?: "horizontal" | "vertical";
   loop?: boolean;
 }) {
-  const { getRovingProps, focusedIndex } = useRovingFocus({
+  const { getRovingProps, focusedIndex, setFocusedIndex } = useRovingFocus({
     orientation,
     loop,
   });
@@ -25,6 +25,9 @@ function RovingList({
         );
       })}
       <span data-testid="focused">{focusedIndex}</span>
+      <button data-testid="outside" onClick={() => setFocusedIndex(2)}>
+        outside
+      </button>
     </div>
   );
 }
@@ -165,5 +168,38 @@ describe("useRovingFocus", () => {
 
     expect(document.activeElement).toBe(screen.getByTestId("item-2"));
     expect(screen.getByTestId("focused").textContent).toBe("2");
+  });
+
+  /**
+   * `setFocusedIndex` is the entry point a value-driven widget uses instead of
+   * the key handler above (Rating, ThemeSwitcher). Both directions matter: it
+   * has to carry DOM focus with the tab stop, and it must not pull focus into
+   * the group from outside it.
+   */
+  describe("setFocusedIndex", () => {
+    it("carries DOM focus with the tab stop when the group already has focus", () => {
+      render(<RovingList />);
+
+      screen.getByTestId("item-0").focus();
+      // `fireEvent.click` does not move focus in jsdom, so focus is still on
+      // item-0 when the handler calls `setFocusedIndex(2)`.
+      fireEvent.click(screen.getByTestId("outside"));
+
+      expect(document.activeElement).toBe(screen.getByTestId("item-2"));
+      expect(screen.getByTestId("item-2")).toHaveAttribute("tabindex", "0");
+    });
+
+    it("does not steal focus when the group does not hold it", () => {
+      render(<RovingList />);
+
+      const outside = screen.getByTestId("outside");
+      outside.focus();
+      fireEvent.click(outside);
+
+      // Tab stop moved; focus did not. Moving it would drag a user out of
+      // whatever they were doing elsewhere on the page.
+      expect(screen.getByTestId("item-2")).toHaveAttribute("tabindex", "0");
+      expect(document.activeElement).toBe(outside);
+    });
   });
 });

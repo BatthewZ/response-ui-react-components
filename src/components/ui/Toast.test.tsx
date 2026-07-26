@@ -66,6 +66,24 @@ describe("Toast", () => {
     expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
   });
 
+  it("#476: dismissLabel names the dismiss button, and empty falls back", () => {
+    const { rerender } = render(
+      <Toast onDismiss={vi.fn()} dismissLabel="Schließen">
+        Message
+      </Toast>,
+    );
+    expect(screen.getByRole("button", { name: "Schließen" })).toBeInTheDocument();
+
+    // Not the `statusLabel=""` convention: this string is the button's only
+    // accessible name, so an empty one is a defect rather than an opt-out.
+    rerender(
+      <Toast onDismiss={vi.fn()} dismissLabel="">
+        Message
+      </Toast>,
+    );
+    expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
+  });
+
   it("clicking dismiss calls onDismiss", async () => {
     const user = userEvent.setup();
     const onDismiss = vi.fn();

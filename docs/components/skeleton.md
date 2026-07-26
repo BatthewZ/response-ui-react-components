@@ -18,8 +18,9 @@ shapes, colour and corners straight off the theme contract, and a pulse that sto
 | `height`    | `string \| number`                                       | —        |
 | `className` | `string`                                                 | —        |
 | `style`     | `CSSProperties`                                          | —        |
+| `children`  | `ReactNode` — visually hidden label; makes this one a `role="status"` | — |
 | `ref`       | `Ref<HTMLSpanElement>`                                   | —        |
-| …rest       | props of `span`, less `children`                         | —        |
+| …rest       | props of `span`                                          | —        |
 
 `variant` picks the corner treatment — and, on `text` only, a `1em` height. Size otherwise
 comes from `width` and `height`, which are written straight into the element's inline
@@ -40,8 +41,8 @@ The tiebreaker is **layout stability**, not aesthetics. A skeleton that isn't th
 the content it replaces buys you nothing a spinner wouldn't — you still get the reflow, you
 just get it prettier. If you can't predict the size, use a spinner.
 
-Two practical differences follow from that. Skeleton is plural by nature (a screen is
-many of them), which is exactly what makes its baked-in `role="status"` a problem — see
+Two practical differences follow from that. Skeleton is plural by nature (a screen is many
+of them), which is why it announces nothing until you give one of them `children` — see
 [Accessibility](#accessibility). And Skeleton drops its animation under
 `prefers-reduced-motion`; Spinner does not.
 
@@ -108,8 +109,22 @@ invisible.
 
 ## Announcing the wait
 
-A skeleton screen is a dozen elements, and every one of them ships its own
-`role="status"` live region labelled "Loading". Hide them and own the announcement yourself:
+A skeleton screen is a dozen elements and one wait, so a skeleton is decoration by default:
+`aria-hidden`, no role, nothing to announce. There are two ways to say what is loading, and
+both end with exactly one region.
+
+Give **one** skeleton in the group some `children` and it becomes the region, named in your
+own language:
+
+```tsx
+<div className="flex flex-col gap-r6">
+  <Skeleton width="35%">Chargement des commentaires…</Skeleton>
+  <Skeleton />
+  <Skeleton width="70%" />
+</div>
+```
+
+Or own the region yourself and leave every skeleton decorative:
 
 <!-- example:AnnounceOnce -->
 ```tsx
@@ -122,8 +137,8 @@ A skeleton screen is a dozen elements, and every one of them ships its own
 ```
 <!-- /example -->
 
-`aria-hidden` removes the element and its hidden label from the accessibility tree outright,
-so the screen reader meets one region instead of twelve. This is the same shape as
+The explicit `aria-hidden` is redundant with the default and harmless — it is what the
+example shipped before skeletons went silent. This is the same shape as
 [Spinner's labelled region](spinner.md#labelling-the-wait), and it carries the same caveat:
 mounting a live region that already contains its text is not reliably announced. For a wait
 the user must be told about, render the region up front and change what is inside it.
@@ -163,9 +178,11 @@ That is the whole contract surface, and three things are deliberately *outside* 
 - **The circular corner is a literal `50%`,** not a radius token. A theme that squares
   everything off (`grimdark` sets `--RADIUS-SM` and `--RADIUS-MD` to `0`) still gets round
   circular skeletons — correct here, but worth knowing it can't be turned off.
-- **The pulse is hard-coded `1.5s ease-in-out infinite`,** and the reduced-motion resting
-  state is a hard-coded `opacity: 0.7`. Neither reads `--MOTION-DURATION-*` or
-  `--MOTION-EASE-*`, so re-timing a theme's motion leaves the pulse at exactly 1.5s.
+- **The pulse tracks the theme's tempo; its resting opacity does not.** The duration is
+  `calc(var(--MOTION-DURATION-SHIFT, 400ms) * 4)` — 1.6s on the token layer's default, and
+  1.0s–2.4s across the shipped themes — but the easing is a literal `ease-in-out` and the
+  reduced-motion resting state is a literal `opacity: 0.7`. No opacity token exists in the
+  contract to carry that last one.
 - **The fill is a surface token, and nothing pairs with it.** Skeleton draws
   `--C-SURFACE-2` as a solid block with no border and no text colour, on whatever background
   it is dropped onto. Inside a `--C-SURFACE-2` container it is the same colour as its
@@ -192,13 +209,11 @@ That is the whole contract surface, and three things are deliberately *outside* 
   `@layer utilities`, so the class loses and the box stays one line tall.
 - **`style` beats both size props.** The caller's `style` spreads *after* `{ width, height }`,
   so `style={{ height: "2rem" }}` wins. Deliberate, and the escape hatch for `variant="text"`.
-- **Every instance is a live region.** `role="status"` and `aria-label="Loading"` are on the
-  element itself, not on a wrapper — N skeletons means N polite live regions all named
-  "Loading". See [Accessibility](#accessibility).
-- **The "Loading" text is hard-coded English and unreachable.** `children` is omitted from
-  the prop type, so nothing you pass replaces the hidden label. `aria-label` from `…rest`
-  replaces the *attribute* but leaves the text node in place; only `aria-hidden` takes the
-  whole element — attribute and text node — out of the accessibility tree.
+- **A skeleton announces nothing unless you give it `children`.** By default it is
+  `aria-hidden` with no role, so a card of four placeholders adds nothing to the
+  accessibility tree. Passing `children` turns *that* one into a `role="status"` whose
+  visually hidden text is what you passed — there is no built-in English string to translate.
+  See [Accessibility](#accessibility).
 - **It is an `inline-block` `<span>`.** Stacked in normal flow each one takes a line box, so
   the inherited `line-height` sets the pitch, not the height you gave it — under Tailwind's
   `line-height: 1.5` three `text` skeletons are 72px, not 48px. Wrap them in a flex or grid
@@ -210,30 +225,24 @@ That is the whole contract surface, and three things are deliberately *outside* 
 
 ## Accessibility
 
-Skeleton is not treated as decoration by default. Each one renders
-`<span role="status" aria-label="Loading">` wrapping a visually hidden `"Loading"` text
-node — a named, polite live region per placeholder. That is a deliberate choice (a silent
-placeholder tells a screen-reader user nothing at all), but it does not scale, and scaling
-is the normal case for this component:
+Skeleton is decoration by default: `aria-hidden`, no role, no text. A card with an avatar
+and three lines therefore adds *nothing* to the accessibility tree, which is the right
+default — it is one wait, not four, and four regions each named "Loading" told a
+screen-reader user less than one region does.
 
-- **N placeholders, N regions.** A card with an avatar and three lines is four live regions,
-  each named "Loading". Nothing tells the user *what* is loading, and nothing tells them when
-  it finished — the regions simply vanish when the content arrives.
-- **The name and the content say the same thing.** The element carries both
-  `aria-label="Loading"` and a `"Loading"` text node — the identical string as the region's
-  accessible name and as its contents, so an AT that surfaces both repeats it.
-- **Your props win.** `…rest` spreads *after* `role` and `aria-label`, so both are
-  replaceable; `className` and `style` are merged rather than replaced. `aria-hidden` is the
-  only one that removes the hidden text along with everything else.
-
-So the caller is left responsible for the announcement. The pattern that works is the one in
-[Announcing the wait](#announcing-the-wait): `aria-hidden` on every Skeleton, one region of
-your own describing what is loading. Do that and the "wall of empty boxes" problem goes away
-— the boxes become what they look like, decoration.
+- **`children` promotes one skeleton to the announcement.** It renders as visually hidden
+  text inside a `role="status"`, in whatever language you pass; the element drops its
+  `aria-hidden` at the same time. Give it to one skeleton per group, not to all of them.
+- **A region that mounts with its text already inside it may not be announced.** That is a
+  general live-region caveat, not a Skeleton bug: for a wait the user must be told about,
+  render your own region up front and change what is inside it — see
+  [Announcing the wait](#announcing-the-wait).
+- **Your props win.** `…rest` spreads *after* `role` and `aria-hidden`, so both are
+  replaceable; `className` and `style` are merged rather than replaced.
 
 **Motion.** `Skeleton.css` ships a `@media (prefers-reduced-motion: reduce)` block that sets
 `animation: none` and pins `opacity: 0.7`, so a reader who has asked their OS for reduced
-motion gets a static, still-visible placeholder rather than a 1.5s opacity cycle. This is the
+motion gets a static, still-visible placeholder rather than an opacity cycle. This is the
 library's normal behaviour — 23 component stylesheets carry the same guard — and it is the
 concrete way Skeleton differs from [Spinner](spinner.md), whose `animate-spin` utility is
 unguarded because it is a Tailwind utility with no stylesheet to put the guard in. If you are

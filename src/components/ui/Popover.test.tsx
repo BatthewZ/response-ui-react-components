@@ -1,8 +1,25 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Popover } from "./Popover";
+
+/**
+ * jsdom never matches a media query, so the reduced-motion branch is
+ * unreachable unless the global is replaced. Stubbed per test, opt-in — a
+ * global stub hides regressions in the guard that reads it.
+ */
+function stubReducedMotion(matches: boolean) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+}
 
 function renderPopover(props: Record<string, unknown> = {}) {
   return render(
@@ -77,6 +94,22 @@ describe("Popover", () => {
     await screen.findByText("Popover body content");
 
     expect(trigger).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("#469: the trigger's aria-controls resolves to the panel that rendered", async () => {
+    const user = userEvent.setup();
+    renderPopover();
+
+    const trigger = screen.getByRole("button", { name: "Toggle popover" });
+    await user.click(trigger);
+    const panel = await screen.findByRole("dialog");
+
+    const controls = trigger.getAttribute("aria-controls");
+    expect(controls).toBeTruthy();
+    // One source for one id: the panel's `id` comes from the same
+    // `context.floatingId` the trigger advertises, rather than a second
+    // `useId()` that the floating props then overwrite.
+    expect(document.getElementById(controls ?? "")).toBe(panel);
   });
 
   it("trigger has aria-haspopup='dialog'", () => {
@@ -190,6 +223,52 @@ describe("Popover", () => {
     // Both must happen: the caller's handler AND the component's own behaviour.
     expect(childClick).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("Popover body content")).toBeInTheDocument();
+  });
+});
+
+/**
+ * #128. `useTransitionStyles` writes `transition-duration` inline, so the value
+ * is observable here even though no test in this package can read a stylesheet.
+ * What is NOT observable: whether the fade actually paints — jsdom performs no
+ * layout and computes no animation.
+ */
+describe("fade timing", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.documentElement.style.removeProperty("--MOTION-DURATION-ENTER");
+  });
+
+  it("#128: takes its open duration from --MOTION-DURATION-ENTER", async () => {
+    document.documentElement.style.setProperty("--MOTION-DURATION-ENTER", "380ms");
+    const user = userEvent.setup();
+    renderPopover();
+
+    await user.click(screen.getByRole("button", { name: "Toggle popover" }));
+    const panel = await screen.findByRole("dialog");
+
+    await waitFor(() => expect(panel.style.transitionDuration).toBe("380ms"));
+  });
+
+  it("#128: falls back to 150ms when no token layer is present", async () => {
+    const user = userEvent.setup();
+    renderPopover();
+
+    await user.click(screen.getByRole("button", { name: "Toggle popover" }));
+    const panel = await screen.findByRole("dialog");
+
+    await waitFor(() => expect(panel.style.transitionDuration).toBe("150ms"));
+  });
+
+  it("#128: removes the fade under prefers-reduced-motion", async () => {
+    document.documentElement.style.setProperty("--MOTION-DURATION-ENTER", "380ms");
+    stubReducedMotion(true);
+    const user = userEvent.setup();
+    renderPopover();
+
+    await user.click(screen.getByRole("button", { name: "Toggle popover" }));
+    const panel = await screen.findByRole("dialog");
+
+    await waitFor(() => expect(panel.style.transitionDuration).toBe("0ms"));
   });
 });
 

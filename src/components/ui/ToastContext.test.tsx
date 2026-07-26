@@ -49,6 +49,11 @@ function TestHarness() {
         Add iconless error toast
       </button>
       <button
+        onClick={() => toast("Fertig", { dismissLabel: "Schließen" })}
+      >
+        Add translated dismiss toast
+      </button>
+      <button
         onClick={() => {
           const id = document.body.dataset.lastToastId;
           if (id) dismiss(id);
@@ -302,3 +307,17 @@ describe("ToastContext", () => {
     expect(screen.queryByText("Hello toast")).not.toBeInTheDocument();
   });
 });
+
+describe("#476 · dismiss label through the queue", () => {
+  it("toast(msg, { dismissLabel }) reaches the rendered toast", async () => {
+    const user = userEvent.setup();
+    renderWithProvider();
+
+    await user.click(screen.getByText("Add translated dismiss toast"));
+
+    // traps §J: an override the primary entry point cannot reach is not an
+    // override path, so the queue has to carry it as well as the props.
+    expect(await screen.findByRole("button", { name: "Schließen" })).toBeInTheDocument();
+  });
+});
+

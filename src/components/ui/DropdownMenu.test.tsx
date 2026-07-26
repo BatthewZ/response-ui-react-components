@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DropdownMenu } from "./DropdownMenu";
 
@@ -126,6 +126,22 @@ describe("DropdownMenu", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("#469: the trigger's aria-controls resolves to the panel that rendered", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+
+    const trigger = screen.getByRole("button", { name: "Open menu" });
+    await user.click(trigger);
+    const panel = await screen.findByRole("menu");
+
+    const controls = trigger.getAttribute("aria-controls");
+    expect(controls).toBeTruthy();
+    // One source for one id: the panel's `id` comes from the same
+    // `context.floatingId` the trigger advertises, rather than a second
+    // `useId()` that the floating props then overwrite.
+    expect(document.getElementById(controls ?? "")).toBe(panel);
+  });
+
   it("composes an asChild child's own onClick instead of replacing it", async () => {
     const user = userEvent.setup();
     const childClick = vi.fn();
@@ -161,5 +177,27 @@ describe("DropdownMenu", () => {
     await waitFor(() =>
       expect(screen.queryByRole("menu", { hidden: true })).not.toBeInTheDocument(),
     );
+  });
+});
+
+/**
+ * #128, the menu half — the same fade wiring `Popover.test.tsx` covers in full,
+ * asserted here because a row naming three surfaces needs all three. What no
+ * test here can see: whether the fade paints, since jsdom performs no layout.
+ */
+describe("fade timing", () => {
+  afterEach(() => {
+    document.documentElement.style.removeProperty("--MOTION-DURATION-ENTER");
+  });
+
+  it("#128: takes its open duration from --MOTION-DURATION-ENTER", async () => {
+    document.documentElement.style.setProperty("--MOTION-DURATION-ENTER", "380ms");
+    const user = userEvent.setup();
+    renderMenu();
+
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    const panel = await screen.findByRole("menu");
+
+    await waitFor(() => expect(panel.style.transitionDuration).toBe("380ms"));
   });
 });
