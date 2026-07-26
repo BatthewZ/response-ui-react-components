@@ -117,6 +117,25 @@ button.stepper-indicator:focus-visible {
   height: 1rem;
 }
 
+/* The status word, and the text twin of the marker's shape. A completed marker's
+   only child is an aria-hidden check glyph, so without this it reaches assistive
+   tech as nothing at all while an upcoming one at least reads its numeral.
+   Hidden rather than drawn, because the status IS on screen already — the filled
+   chip and the check say it without colour. Written here rather than as a
+   `sr-only` utility so the component keeps its rule that all of its styling
+   lives in this file. Out of flow, so it costs the 2rem marker no layout. */
+.stepper-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 /* Status colors */
 /* Done: covered ground — a filled --C-PRIMARY brand chip with a check glyph,
    lettered and ringed in --C-TEXT-ON-PRIMARY. Per the contrast contract a fill
