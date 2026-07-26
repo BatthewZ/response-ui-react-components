@@ -57,3 +57,14 @@ exists to prevent.
   that the rest is unverified. **Never let a precondition check masquerade as the real one.**
 - **Red first.** No patch lands without a check observed failing, and re-break it once after it
   goes green. Fixes have shipped here whose tests never exercised them.
+- **This harness cannot read CSS, and that was probed rather than assumed.**
+  `import.meta.glob(path, { query: "?raw" })` returns a stub here, so a stylesheet-only fix has
+  no assertion available at all — not a weak one, none. Roughly a dozen fixes in one pass were
+  CSS-only. Say "uncovered" in the record; a suite that goes green over an untestable change is
+  not evidence, and the next reader will assume it was.
+- **Name the specific thing jsdom cannot see, not "jsdom limitations".** Four different walls
+  were hit in one pass and each needs a different answer: implicit ARIA roles are computed
+  regardless of the attribute, so `role="list"` tests prove nothing about Safari; no layout is
+  performed, so an alignment fix can only assert classes; no pointer path is synthesised, so
+  `safePolygon` passes with and without it; and measurement overwrites an SSR seed immediately.
+  A record that says which wall it hit can be re-opened by someone with a real browser.

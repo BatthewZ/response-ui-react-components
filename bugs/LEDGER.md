@@ -114,10 +114,58 @@ those may now describe different code, and only a reader can say.
 | 463 | confirmed · source | DataTable | [DataTable.tsx:87](src/components/ui/DataTable.tsx#L87 "fp:4e6f7108") | low | API asymmetry, deliberately not added: `sort` has a `defaultSort` (:51) but `page` (:80) has no `defaultPage`, so deep-linking to a page — "open this table on page 3, then let it manage itself" — requires taking full control of `page` + `onPageChange` and re-implementing the paging the component already does. `7f651a6` migrated paging onto `useControllableState`, which is what would make `defaultPage` a one-line addition; it was left out because it is a public API addition, not a fix |
 | 465 | confirmed · measured | FileUpload | [FileUpload.css:94](src/components/ui/FileUpload.css#L94 "fp:d8c521e6") | med | The dropzone's call to action — the word "browse" in `.file-upload__text-emphasis` — inks `--C-ACCENT` on the `--C-SURFACE-1` fill the component paints: **2.63:1 `events` / 2.77:1 `grimdark`**, under AA for body text. Surfaced 2026-07-26 by the contrast re-scope, not by any earlier pass; the same category-1 defect as #173 and unlogged until now. Not closed by the `--C-TEXT-MUTED` retune — this is accent ink, a different token **Reproduced independently** from the shipped OKLCH token values: `--C-ACCENT` on `--C-SURFACE-1` = **2.63:1 events / 2.77:1 grimdark**. Same family and same door as #173 and #319 — a palette value owned by the CSS package. |
 | 466 | confirmed · measured | Pagination | [Pagination.css:47](src/components/ui/Pagination.css#L47 "fp:ff3688c7") | med | The current page chip inks `--C-TEXT-ON-ACCENT` on `--C-ACCENT` — **2.80:1 `events` / 3.81:1 `grimdark`**, the same failing pair as #319. Surfaced 2026-07-26 by the contrast re-scope. `#133`'s fix was correct as far as it went (it escaped a 1.00:1 pairing) but landed on a pairing that still fails AA in two themes, so the row it closed should not be read as clearing this surface **Out of this package.** `--C-TEXT-ON-ACCENT` on `--C-ACCENT` is the contract-designated pairing, so the component is doing the right thing; the ratio is a palette value owned by `@batthewz/response-ui-css`. Same family as #319 — fixing it here means abandoning the named pairing. |
+| 467 | confirmed · source | Swimlane | [Swimlane.tsx:66](src/components/ui/Swimlane.tsx#L66 "fp:4dda1c95") | med | `docs/components/swimlane.md` contradicts the component and the a11y advice built on it is wrong. The prop table (`:35`) says rest props are "**typed but never reach the DOM**" and `:249` repeats it, then concludes the lane "cannot be named" because `aria-label`/`aria-labelledby` are "among the props that never reach the DOM". They do reach it: `{...rest}` is spread onto the `<section>` at `Swimlane.tsx:66` and `:79`, with a passing test. `docs/` ships to npm, so this tells consumers they cannot do something they can |
+| 468 | confirmed · source | menu-internals | [menu-internals.tsx:160](src/components/ui/menu-internals.tsx#L160 "fp:df916459") | med | `useTypeahead`'s reference handler consumes printable characters, so typing into a `<textarea>`/`<input>` inside a `ContextMenu.Trigger` is swallowed by menu typeahead. Identical shape to #125, which fixed only the Arrow/Home/End half — that fix skips caret keys aimed at a text control, and the same exemption was never applied to the typeahead handler |
+| 469 | confirmed · source | Popover · menu-internals | [Popover.tsx:80](src/components/ui/Popover.tsx#L80 "fp:a6107544") | low | Both mint a `useId()` beside the id `useRole` actually puts on the element. Harmless today and measured so under #127 — both sides resolve to `floatingId` — but it is two sources for one id, and #127 is the worked example of what happens when a reader assumes the local one wins. `HoverCard` now reads `context.floatingId` directly and is the pattern to follow |
+| 470 | confirmed · source | Rating | [Rating.tsx:108](src/components/ui/Rating.tsx#L108 "fp:d46db0bf") | low | `useRovingFocus` is consumed for `tabIndex`/`setFocusedIndex` only; the hook's own `onKeyDown` — and so its `Home`/`End` and looping — is dead code for this consumer, which now runs one key handler of its own. #91 cites Rating as the hook's exemplar and that citation is now weaker than it reads |
+| 471 | confirmed · source | Select | [Select.tsx:40](src/components/form/Select.tsx#L40 "fp:eae6d908") | low | `pr-10` is Tailwind's default `2.5rem` step, not the `r`-scale the rest of the component's padding uses — off-contract per ETHOS. Pre-existing, documented in `select.md`, and surfaced only because the chevron work put eyes on the line |
 
 ## Detail blocks
 
 Added by the 2026-07 reconcile for `med` rows with no spoke in `bugs/components/`.
+
+### 467 · Swimlane — the published page contradicts the component (med)
+
+Surfaced while fixing #174–#176, and **not** caused by that work — both halves predate it.
+
+`docs/components/swimlane.md` states twice that rest props do not reach the DOM:
+
+| where | what it says |
+| ----- | ------------ |
+| `:35` (prop table) | "`section` props minus `title` — **typed but never reach the DOM**" |
+| `:249` (accessibility) | "`id`, `style`, `role`, `aria-*`, `data-*` and event handlers compile and are then dropped" |
+
+Both are false. `Swimlane.tsx:66` renders `<section … {...rest}>` and `:79` does the same on the
+animated path; `Swimlane.test.tsx` has a passing *"forwards rest props with the reveal off"*
+asserting `id` and `data-analytics` land on the element. #171 fixed this in the code and the page
+was never reconciled.
+
+The consequence is worse than a stale sentence. The accessibility section reasons *from* the
+false claim to a false conclusion — "The section cannot be named… `aria-label`/`aria-labelledby`
+are among the props that never reach the DOM" — so a reader who needs to name the landmark is
+told, on a page shipped to npm, that the library cannot do it. It can, with the obvious prop.
+
+Fix: correct `:35` and `:249`, then rewrite the accessibility bullet to say `aria-label` works.
+The Gotchas section already describes the true behaviour, so the page contradicts itself and only
+one half needs to move.
+
+### 468 · menu-internals — typeahead swallows text typed into a trigger (med)
+
+The sibling #125 did not close. That row named `useListNavigation`'s reference handler, which
+`preventDefault`s Arrow/Home/End and froze the caret of a `<textarea>` inside a
+`ContextMenu.Trigger`; the fix wraps **only** Floating UI's own reference `onKeyDown` and skips
+caret keys aimed at `input`/`textarea`/`select`/`contenteditable`.
+
+`useTypeahead` (`menu-internals.tsx:160`) has the identical shape and never got the exemption, so
+every **printable** character typed into that same `<textarea>` is consumed as a typeahead query
+against the menu items. The caret moves now; the letters still do not arrive.
+
+Fix: apply #125's existing text-control exemption to the typeahead handler as well. The predicate
+is already written and already tested — this is reuse, not new logic.
+
+A regression test belongs on the composed path, not on `useTypeahead` in isolation: the defect
+only exists because the handler is mounted on the *reference*, and a unit test of the hook would
+pass while the trigger stayed broken.
 
 ### 446 · response-ui-css — headings ignore the theme's weight tokens (med, cross-package)
 

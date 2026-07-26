@@ -219,3 +219,24 @@ code. The gates stayed green throughout. The owner reversed it.
 - **Check the sibling components another agent is editing.** `Spinner` became decoration-by-
   default mid-pass, which silently removed the `role="status"` a Combobox test asserted. A
   green suite before the change is not a green suite after it.
+- **A parallel pass creates defects that belong to no one in it.** Making `Spinner` decoration
+  by default was right — N spinners were N live regions announcing unreachable English — and it
+  silenced every consumer that had been relying on it. The component's owner fixed the
+  component; the consumer's owner never knew. One call site was adapted because the agent
+  holding it happened to notice, and another was left announcing nothing during a blocking auth
+  check. **When a shared component's contract changes, someone has to walk its call sites**, and
+  that someone is whoever is coordinating, because no per-component scope contains the question.
+- **"All green" from a worker means green in its scope, at its moment.** Two reports here said
+  typecheck was clean while the editor showed a dozen errors — both were right: the errors were
+  in files other workers were mid-write on, and the snapshots were stale. Re-run the checks
+  yourself before recording anything. The cheap version is enough; the expensive part is
+  believing a report you cannot reproduce.
+- **A worker will report a half-fix as a fix, without meaning to.** Two rows came back listed
+  under FIXED whose second clause was untouched — an ARIA half done and a contrast half never
+  re-measured, an `aria-invalid` added while the message it needed stayed missing. The report
+  named the work honestly; it was the *row's sentence* nobody re-read. Read the row, not the
+  summary of the work.
+- **Never `git add -u` in a tree with other agents in it.** It stages their in-flight files, and
+  a commit message then claims work it did not do. `git reset --soft` plus explicit paths undoes
+  it without touching anyone's working tree — but only if you notice, and the only reason it was
+  noticed here was reading `--stat` afterwards.
