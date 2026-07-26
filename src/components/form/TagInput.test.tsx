@@ -600,8 +600,12 @@ describe("TagInput", () => {
   describe("chip styling (#50)", () => {
     // Asserted against what Badge actually renders, not a copy of its class
     // string: restyle Badge and this stays true only while the chip follows.
+    // The reference is a BARE Badge. It used to pass `className="gap-r6"`,
+    // mirroring the gap TagInput added by hand; Badge's own base classes carry
+    // that gap now (it is what keeps the status glyph off the label), so the
+    // chip must add nothing at all — which is the stronger form of this claim.
     it("renders each chip with exactly Badge's own classes", () => {
-      const { unmount } = render(<Badge className="gap-r6">apple</Badge>);
+      const { unmount } = render(<Badge>apple</Badge>);
       const badgeClass = screen.getByText("apple").className;
       unmount();
 

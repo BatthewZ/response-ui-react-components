@@ -435,3 +435,64 @@ collision, left alone because briefs in flight cite the later one by letter.)
   ledger became false without a line of this package changing, and the doc pages quoting their
   ratios became false statements shipped to npm. Any measured claim needs its input version
   named in the row, or nobody can tell later whether it was re-checked or merely re-read.
+
+## O · From the pass that was asked whether a dialog's padding was too big
+
+- **When a padded surface looks over-padded, measure before you retune the token.** A surface
+  that owns its padding and a caller that adds a padding wrapper inside it *stack*, so the
+  rendered gutter is the sum and neither value is individually wrong. The instinct — drop the
+  component's rung one step — permanently shrinks the surface for every correct caller to
+  compensate for one incorrect one. Derive the expected gutter from the tokens, compare it to
+  what is on screen, and only suspect the default when the two agree. Screenshots make this
+  worse by hiding the arithmetic behind an unknown device pixel ratio: recover the scale from
+  a known quantity in the shot, such as the surface's own `max-w`, before trusting any
+  measurement taken off it.
+- **The demo harness is a claim about the component's API, not a neutral sandbox.** A wrapper
+  added there to make one tile look right teaches every reader that the component needs help
+  it does not need, and it is the surface people screenshot when they report the component
+  looks wrong. Overlay surfaces in this package already carry their own padding — `Dialog` and
+  `Drawer` both sit at the `r2` rung, one rung airier than `Card`'s `r3` default, deliberately,
+  because a floating panel earns more gutter than an inline one. Children go in unpadded.
+
+## P · From the wave that acted on the owner's six decisions
+
+- **jsdom implements no key model for `<input type="range">`.** Probed directly: `{ArrowRight}`
+  leaves the value untouched and fires zero change events, and `{Home}`/`{End}` throw *"Not
+  implemented. The result of this interaction is unreliable."* So a component whose whole design
+  is "let the browser own the keyboard model" has **no** in-repo test for the thing it bought.
+  Drive `fireEvent.change` — the event a real press produces — and verify the key model in a
+  browser, saying so in the test.
+- **A browser can refute a test that passes both before and after the bug.** `pointerdown`'s
+  default action focuses the nearest focusable ancestor *after* your handler runs, so a drag
+  silently stole focus and arrow keys went nowhere. jsdom implements neither the default nor the
+  focus move, so the test was green either way. If a fix is about focus or default actions,
+  jsdom green is not evidence of anything.
+- **`??` is the wrong operator for a `ReactNode` twin of a `string` prop.** The house convention
+  lets `""` remove a defaulted word. Its node equivalent is `null` — and `""` survives `??` while
+  `null` does not, so `icon ?? defaultIcon` silently restores the default the caller just removed.
+  Resolve with `=== undefined`.
+- **An icon library may already set the attribute your test asserts.** `lucide-react` adds
+  `aria-hidden="true"` itself when no a11y prop is present, so `svg[aria-hidden="true"]` passes
+  whether or not you wrote it. Select the element unconditionally and assert every naming route is
+  closed, or the test is checking the library rather than your code.
+- **Accessible-name computation has two traps that look like styling problems.** A hidden child
+  only separates from its neighbours where `display !== inline`, so an `sr-only` `<span>` inside a
+  button computed as `"Sort byName"` — and no test here can read the stylesheet that would fix it.
+  And `aria-hidden` does **not** exclude a node that is *directly referenced* by `aria-labelledby`,
+  so a hidden action word leaked onto the `<th>` and would have been announced by every cell in the
+  column. Both were found by reading the computed name in a browser, with a positive control.
+- **A shadowed custom property can be un-shadowed from downstream, and the price is a duplicate.**
+  `--x: inherit` on the element that re-declares it, plus a re-read supplying the token as the
+  `var()` fallback, makes an ancestor's value reach it. But the rule now permanently outranks the
+  upstream one on source order, so **write the deletion condition into the file** — otherwise a
+  future upstream change silently does nothing and nobody knows why.
+- **Key a descendant animation off the class that is removed once, not the one that is added.** A
+  reveal wrapper drops its entrance class on `animationend`; a descendant rule keyed off that class
+  loses it mid-flight and later items snap instead of finishing. Keying off the *absence* of the
+  hidden class is stable, because that class is removed exactly once.
+- **The seam between two lanes is a class name.** One lane moved a utility into a shared
+  component's base classes; another lane's test built its expectation by rendering that component
+  *with the utility passed by hand*. Both were correct in isolation and the suite went red only
+  when the redundant pass-through was finally deleted. A test that constructs its reference by
+  mirroring the caller encodes the caller's workaround — build the reference from the bare
+  component instead, which is the stronger claim anyway.

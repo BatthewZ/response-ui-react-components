@@ -383,7 +383,7 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
           {tags.length > 0 && (
             <div role="list" className="contents">
               {tags.map((tag, index) => (
-                <Badge key={`${index}:${tag}`} role="listitem" className="gap-r6">
+                <Badge key={`${index}:${tag}`} role="listitem">
                   {tag}
                   <button
                     type="button"
