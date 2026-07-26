@@ -39,6 +39,8 @@
   background: var(--C-SURFACE-2);
 }
 
+/* Still reachable: `tabIndex` passes through the rest spread, so a caller can
+   put focus back on the cell itself. The component no longer does. */
 .table-header-cell--sortable:focus-visible {
   outline: 2px solid var(--C-BORDER-FOCUS);
   outline-offset: -2px;
@@ -46,6 +48,28 @@
 
 .table-header-cell--sortable:active {
   background: var(--C-SURFACE-3);
+}
+
+/* The sort control (#353). The <th> keeps `columnheader` and `aria-sort`; this
+   is what announces as activatable and holds the tab stop. Inline-level and
+   unstyled on purpose: `text-align` on the cell still positions it, and the
+   hover/active wash stays the cell's, so the whole header remains the target. */
+.table-header-cell__sort-button {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: inherit;
+}
+
+.table-header-cell__sort-button:focus-visible {
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: 2px;
 }
 
 .table-header-cell__sort-icon {

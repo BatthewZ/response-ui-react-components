@@ -456,13 +456,105 @@ describe("Table", () => {
     });
   });
 
+  /* ---------------------------------------------------------------- */
+  /*  #353 · the sort control is a real button                         */
+  /* ---------------------------------------------------------------- */
+
+  describe("a sortable header wraps its label in a <button>", () => {
+    // jsdom computes the IMPLICIT role whatever the markup says, so
+    // `getByRole("button")` would find a `<div role="button">`, a `<th
+    // role="button">` and a real `<button>` alike. These assert the element
+    // TYPE and the attributes that actually carry the fix.
+    it("renders a real <button type='button'> inside the columnheader", () => {
+      renderSortableTable({ onSort: vi.fn() });
+
+      const header = screen.getByRole("columnheader");
+      const button = header.querySelector("button");
+      expect(button).not.toBeNull();
+      expect(button?.tagName).toBe("BUTTON");
+      // Without this a sortable header inside a <form> submits it.
+      expect(button).toHaveAttribute("type", "button");
+    });
+
+    it("moves the tab stop off the <th> and onto the button", async () => {
+      const user = userEvent.setup();
+      renderSortableTable({ onSort: vi.fn() });
+
+      const header = screen.getByRole("columnheader");
+      expect(header).not.toHaveAttribute("tabindex");
+
+      await user.tab();
+      expect(document.activeElement).toBe(header.querySelector("button"));
+    });
+
+    it("names the button with the action and the column", () => {
+      renderSortableTable({ onSort: vi.fn() });
+
+      expect(screen.getByRole("button", { name: "Sort by Name" })).toBeInTheDocument();
+    });
+
+    // Measured in Firefox before this attribute existed: the header computed as
+    // `columnheader "Sort by Customer"`, because accname excludes a hidden node
+    // only while it is "not directly referenced by aria-labelledby" — and the
+    // action span is. Every data cell in the column inherits that name, so the
+    // verb would be read with every value.
+    it("leaves the columnheader named by the column alone, not by the action", () => {
+      renderSortableTable({ onSort: vi.fn() });
+
+      expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
+      expect(screen.queryByRole("columnheader", { name: "Sort by Name" })).toBeNull();
+    });
+
+    it("sortLabel replaces the default words, and '' leaves the column alone", () => {
+      const { unmount } = renderSortableTable({ onSort: vi.fn(), sortLabel: "Trier par" });
+      expect(screen.getByRole("button", { name: "Trier par Name" })).toBeInTheDocument();
+      unmount();
+
+      renderSortableTable({ onSort: vi.fn(), sortLabel: "" });
+      expect(screen.getByRole("button", { name: "Name" })).toBeInTheDocument();
+      expect(screen.getByRole("columnheader").querySelector(".sr-only")).toBeNull();
+    });
+
+    // aria-sort is a property of the `columnheader` role. ARIA 1.2 does not
+    // support it on `button`, so putting it on the control would drop it.
+    it("keeps aria-sort on the <th> and never puts it on the button", () => {
+      renderSortableTable({ onSort: vi.fn(), sortDirection: "asc" });
+
+      const header = screen.getByRole("columnheader");
+      expect(header).toHaveAttribute("aria-sort", "ascending");
+      expect(header.querySelector("button")).not.toHaveAttribute("aria-sort");
+    });
+
+    // The direction is already spoken from aria-sort; an arrow that reached the
+    // accessible name would make the button announce it a second time.
+    it("keeps the arrow out of the button's accessible name", () => {
+      renderSortableTable({ onSort: vi.fn(), sortDirection: "desc" });
+
+      const icon = screen.getByRole("columnheader").querySelector("svg");
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(screen.getByRole("button", { name: "Sort by Name" })).toBeInTheDocument();
+    });
+
+    it("renders no button when there is no onSort", () => {
+      renderSortableTable({ sortDirection: "asc" });
+
+      expect(screen.getByRole("columnheader").querySelector("button")).toBeNull();
+    });
+  });
+
+  // The tab stop is the button now (#353), so these focus it rather than the
+  // <th>. The keys are not handled by the component at all: the button's own
+  // activation behaviour turns Enter/Space into the click the <th> composes.
+  const sortButton = () =>
+    screen.getByRole("columnheader").querySelector("button") as HTMLButtonElement;
+
   describe("HeaderCell keyboard sorting", () => {
     it("Enter on a sortable header fires onSort exactly once", async () => {
       const user = userEvent.setup();
       const onSort = vi.fn();
       renderSortableTable({ onSort });
 
-      screen.getByRole("columnheader").focus();
+      sortButton().focus();
       await user.keyboard("{Enter}");
 
       expect(onSort).toHaveBeenCalledTimes(1);
@@ -473,7 +565,7 @@ describe("Table", () => {
       const onSort = vi.fn();
       renderSortableTable({ onSort });
 
-      screen.getByRole("columnheader").focus();
+      sortButton().focus();
       await user.keyboard(" ");
 
       expect(onSort).toHaveBeenCalledTimes(1);
@@ -484,7 +576,7 @@ describe("Table", () => {
       const onSort = vi.fn();
       renderSortableTable({ onSort });
 
-      screen.getByRole("columnheader").focus();
+      sortButton().focus();
       await user.keyboard("{ArrowDown}");
 
       expect(onSort).not.toHaveBeenCalled();
@@ -504,17 +596,38 @@ describe("Table", () => {
       expect(onSort).toHaveBeenCalledTimes(1);
     });
 
+    it("caller onClick fires exactly once when the button itself is clicked", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      const onClick = vi.fn();
+      renderSortableTable({ onSort, onClick });
+
+      // The click that matters after #353: it starts on the button and reaches
+      // the caller's handler by bubbling. Once, not twice, and still ordered
+      // caller-then-onSort.
+      await user.click(sortButton());
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onSort).toHaveBeenCalledTimes(1);
+      expect(onClick.mock.invocationCallOrder[0]).toBeLessThan(
+        onSort.mock.invocationCallOrder[0],
+      );
+    });
+
     it("caller onKeyDown fires exactly once and Enter still runs onSort", async () => {
       const user = userEvent.setup();
       const onSort = vi.fn();
       const onKeyDown = vi.fn();
       renderSortableTable({ onSort, onKeyDown });
 
-      screen.getByRole("columnheader").focus();
+      sortButton().focus();
       await user.keyboard("{Enter}");
 
       expect(onKeyDown).toHaveBeenCalledTimes(1);
       expect(onSort).toHaveBeenCalledTimes(1);
+      expect(onKeyDown.mock.invocationCallOrder[0]).toBeLessThan(
+        onSort.mock.invocationCallOrder[0],
+      );
     });
 
     it("caller onClick calling preventDefault suppresses onSort", async () => {
@@ -531,19 +644,57 @@ describe("Table", () => {
       expect(onSort).not.toHaveBeenCalled();
     });
 
-    it("caller onKeyDown calling preventDefault suppresses onSort", async () => {
+    it("caller onKeyDown calling preventDefault suppresses onSort — Enter", async () => {
       const user = userEvent.setup();
       const onSort = vi.fn();
+      const onClick = vi.fn();
       const onKeyDown = vi.fn((e: ReactKeyboardEvent<HTMLTableCellElement>) => {
         e.preventDefault();
       });
-      renderSortableTable({ onSort, onKeyDown });
+      renderSortableTable({ onSort, onClick, onKeyDown });
 
-      screen.getByRole("columnheader").focus();
+      sortButton().focus();
       await user.keyboard("{Enter}");
 
       expect(onKeyDown).toHaveBeenCalledTimes(1);
+      // The opt-out now works by suppressing the button's activation, so no
+      // click is synthesised either — assert that, or the mechanism could break
+      // while onSort stayed silent for some other reason.
+      expect(onClick).not.toHaveBeenCalled();
       expect(onSort).not.toHaveBeenCalled();
+    });
+
+    it("caller onKeyDown calling preventDefault suppresses onSort — Space", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      const onClick = vi.fn();
+      const onKeyDown = vi.fn((e: ReactKeyboardEvent<HTMLTableCellElement>) => {
+        e.preventDefault();
+      });
+      renderSortableTable({ onSort, onClick, onKeyDown });
+
+      sortButton().focus();
+      await user.keyboard(" ");
+
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+      expect(onClick).not.toHaveBeenCalled();
+      expect(onSort).not.toHaveBeenCalled();
+    });
+
+    // The half of the contract that CHANGED with #353. Keyboard activation is
+    // now a real click, so a caller's onClick runs on the key path too — it
+    // used to run only on the pointer path.
+    it("Enter now also runs the caller's onClick, because activation is a real click", async () => {
+      const user = userEvent.setup();
+      const onSort = vi.fn();
+      const onClick = vi.fn();
+      renderSortableTable({ onSort, onClick });
+
+      sortButton().focus();
+      await user.keyboard("{Enter}");
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onSort).toHaveBeenCalledTimes(1);
     });
 
     it("a non-sortable header still runs the caller's handlers", async () => {

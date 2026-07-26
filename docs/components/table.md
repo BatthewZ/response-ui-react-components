@@ -52,7 +52,7 @@ header cell is where sorting lives.
 | `Table.Head`       | `<thead>` | —                                                                                     |
 | `Table.Body`       | `<tbody>` | —                                                                                     |
 | `Table.Row`        | `<tr>`    | `selected?: boolean` · `index?: number` (data position; decides the zebra band — `Table.Body` supplies it for its own children) |
-| `Table.HeaderCell` | `<th>`    | `sortDirection?: "asc" \| "desc" \| false` · `onSort?: () => void`                     |
+| `Table.HeaderCell` | `<th>`    | `sortDirection?: "asc" \| "desc" \| false` · `onSort?: () => void` · `sortLabel?: string` (words read before the column in the sort button's name; default `"Sort by"`, `""` drops them) |
 | `Table.Cell`       | `<td>`    | —                                                                                     |
 
 Every part also accepts the props of the element it renders, so `className`, `id`,
@@ -143,11 +143,11 @@ usually what you want for a second logical table.
 
 ## Sorting
 
-`onSort` is the switch: pass it and the header cell becomes clickable, focusable, and
-keyboard-operable (Enter and Space), gains a hover/active wash and grows a sort arrow.
-`sortDirection` picks which arrow and sets `aria-sort` — `"asc"` and `"desc"` render the
-up/down arrow tinted with the accent, `false` (or omitting it) renders a muted
-double-headed arrow and `aria-sort="none"`. In the example, `sort` and `setSort` are a
+`onSort` is the switch: pass it and the header cell wraps its label in a real `<button>`,
+gains a hover/active wash and grows a sort arrow. `sortDirection` picks which arrow and
+sets `aria-sort` on the `<th>` — `"asc"` and `"desc"` render the up/down arrow tinted with
+the accent, `false` (or omitting it) renders a muted double-headed arrow and
+`aria-sort="none"`. In the example, `sort` and `setSort` are a
 `useState<"asc" | "desc" | false>(false)` in your own component.
 
 <!-- example:Sortable -->
@@ -181,6 +181,25 @@ double-headed arrow and `aria-sort="none"`. In the example, `sort` and `setSort`
 **`Table` does not sort anything.** It draws the affordance and announces the state; the
 rows come out in the order you passed them. Reorder your data in the `onSort` handler, or
 use [DataTable](data-table.md), which wraps this component and owns a sort state for you.
+
+### Where the control lives
+
+The `<th>` keeps `role="columnheader"` and carries `aria-sort` — the only two roles ARIA
+supports that state on. Inside it sits the `<button>`: it holds the tab stop, it is what
+announces as pressable, and it is what Enter and Space activate. That is the
+[WAI-ARIA APG sortable-table shape](https://www.w3.org/WAI/ARIA/apg/patterns/table/examples/sortable-table/),
+and before v0.10.0 this component had neither half of it — see
+[Accessibility](#accessibility) and the note on handler composition in [Gotchas](#gotchas).
+
+The button's accessible name is the action plus the column: **"Sort by Customer"**.
+`sortLabel` is the word or words in front — `sortLabel="Trier par"` for a French app,
+`sortLabel=""` to drop them and leave the button named by the column alone. They reach the
+button through `aria-labelledby` and are `aria-hidden` inside the cell, so the
+*columnheader* is still named plain "Customer" and a data cell in that column does not
+announce the verb with every value.
+
+The **whole cell** stays clickable, hoverable and the sort target — the button is
+inline-level and does not fill it. Only the tab stop and the focus ring moved.
 
 ## Selected rows
 
@@ -300,9 +319,10 @@ which is also usable inside `Table.Body` to mark the cell that labels a row.
 
 ## Theme tokens
 
-`Table.tsx` uses **no Tailwind utilities** — every rule lives in `Table.css` and reads the
-contract variables directly. Override any of these and the table re-tints with the rest of
-the app, at runtime, with no rebuild.
+Apart from `sr-only` on the sort button's hidden action word, `Table.tsx` uses **no Tailwind
+utilities** — every rule lives in `Table.css` and reads the contract variables directly.
+Override any of these and the table re-tints with the rest of the app, at runtime, with no
+rebuild.
 
 | Where                          | Override                                                  |
 | ------------------------------ | --------------------------------------------------------- |
@@ -311,7 +331,7 @@ the app, at runtime, with no rebuild.
 | Header band · its 2px underline| `--C-SURFACE-1` · `--C-BORDER-DEFAULT`                    |
 | Header label ink · weight      | `--C-TEXT-PRIMARY` · `--Semibold-Weight`                  |
 | Sortable header hover · active | `--C-SURFACE-2` · `--C-SURFACE-3`                         |
-| Sortable header focus outline  | `--C-BORDER-FOCUS`                                        |
+| Sort button focus outline      | `--C-BORDER-FOCUS`                                        |
 | Sort arrow                     | `--C-TEXT-MUTED` unsorted · `--C-ACCENT` sorted           |
 | Row divider                    | `--C-BORDER-DEFAULT`                                      |
 | Striped row                    | `--C-SURFACE-1`                                           |
@@ -352,14 +372,24 @@ Three things are **not** on the contract, and are worth knowing before you theme
 - **An `onClick` on `Table.HeaderCell` composes with the sort click.** Your handler runs
   first, then `onSort` — on the pointer path and the Enter/Space path alike, which previously
   diverged (your handler replaced `onSort` for clicks while keys still sorted). `onKeyDown`
-  composes too; `preventDefault()` is the opt-out. **`tabIndex` and `aria-sort` are still
-  shadowed** by a rest prop of the same name, so passing those still overrides what the cell
-  computed.
+  runs first too; `preventDefault()` on either is the opt-out. This survived the move to an
+  inner `<button>` (v0.10.0) because the button holds **no handler of its own**: its click
+  bubbles to the `<th>`, where the same composed `onClick` runs, and Enter/Space reach that
+  handler as the button's own activation — which a `preventDefault()` on your `onKeyDown`
+  suppresses, exactly as it used to suppress the cell's key handler.
+  **One half did change**: keyboard activation is now a real click, so your `onClick` runs
+  on the Enter/Space path as well. It used to run only on the pointer path.
+  **`aria-sort` and `aria-labelledby` are still shadowed** by a rest prop of the same name —
+  and a sortable cell now computes an `aria-labelledby` of its own (that is what keeps the
+  hidden "Sort by" out of the *columnheader's* name), so overriding it is yours to get right.
+  **`tabIndex` is no longer shadowed** — the cell does not set one any more, so a `tabIndex`
+  you pass is simply yours, and it adds a second tab stop in front of the button rather than
+  replacing it.
 - **`sortDirection` without `onSort` is display-only, and it does show.** The cell gets
   `aria-sort` **and** the matching arrow, so the state is announced and visible. What it does
-  not get is focusability or the sortable hover/active styling: it is a statement about the
-  data, not a control. `sortDirection={false}` with no `onSort` renders and announces
-  nothing.
+  not get is the button, the tab stop or the sortable hover/active styling: it is a statement
+  about the data, not a control. `sortDirection={false}` with no `onSort` renders and
+  announces nothing.
 - **`selected` is a tint and nothing else.** No `aria-selected`, no `data-selected`, no
   focus or click behaviour. Selection is entirely yours to wire up and to announce.
 - **Sub-parts throw outside `<Table>`.** All five call the context hook, so a stray
@@ -383,14 +413,22 @@ from the component.
   `none` on every cell that has an `onSort`, and the arrow itself renders
   `aria-hidden="true"` (lucide adds it to any icon with no children and no ARIA of its
   own), so the direction is spoken once rather than twice.
-- **A sortable header is not announced as actionable.** It gets `tabIndex={0}` plus
-  Enter/Space handling, so it *is* keyboard-operable — but it keeps its `columnheader`
-  role, with no `role="button"` and no button inside it. Nothing tells a screen-reader user
-  that pressing the header does something; the arrow glyph is the only hint, and it is
-  visual.
-- **Sortable headers have a visible focus indicator.** `:focus-visible` (so keyboard only,
-  not mouse) draws a 2px `--C-BORDER-FOCUS` outline with `outline-offset: -2px`, which puts
-  it inside the cell rather than over its neighbours.
+- **A sortable header is announced as actionable.** The label sits in a real
+  `<button type="button">` inside the `<th>`, so it reports the `button` role, takes the tab
+  stop, and Enter and Space activate it natively. `aria-sort` stays on the `<th>` — ARIA
+  supports that state on `columnheader` and `rowheader` and on nothing else, so moving it to
+  the button would drop it. The button is named "Sort by <column>" via `aria-labelledby`;
+  the arrow is `aria-hidden` and is not part of it. *Before v0.10.0 the `<th>` carried
+  `tabIndex={0}` and its own Enter/Space handling and nothing else, so it was operable
+  without ever announcing that it was.*
+- **The sort button has a visible focus indicator.** `.table-header-cell__sort-button:focus-visible`
+  (so keyboard only, not mouse) draws a 2px `--C-BORDER-FOCUS` outline at
+  `outline-offset: 2px`, so the ring is around the label rather than around the whole cell —
+  which is where it used to be, when the cell was the tab stop. Measured in Firefox at
+  `density="dense"`, the tightest of the three: the ring's outer edge lands exactly on the
+  cell's top edge and 1px inside its bottom, so it never crosses into a neighbouring cell.
+  The cell keeps its own `:focus-visible` rule for the case where you pass a `tabIndex` and
+  focus the `<th>` yourself.
 - **The sort arrow is low contrast.** Unsorted, it is `--C-TEXT-MUTED` on the
   `--C-SURFACE-1` header band: 2.43:1 in the default and `grimdark` themes, 2.37:1 in
   `events`, 2.06:1 in `tech` — all under the 3:1 that WCAG 1.4.11 asks of a non-text
