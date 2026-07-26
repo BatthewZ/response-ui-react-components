@@ -19,11 +19,12 @@ the branch.
 | `children`                | `ReactNode`                                          | — (required)         |
 | `redirect`                | `string`                                             | —                    |
 | `loadingFallback`         | `ReactNode`                                          | centered `Spinner`   |
+| `loadingLabel`            | `string`                                             | `"Loading"`          |
 | `unauthenticatedFallback` | `ReactNode`                                          | —                    |
 
 There is no `variant`, no fetching, and no subscription — RequireAuth is a pure branch
 selector over the `status` you pass. It also does **not** spread arbitrary props onto a
-DOM node; the five above are the whole surface. The `unauthenticated` branch has real
+DOM node; the six above are the whole surface. The `unauthenticated` branch has real
 sharp edges — see [Gotchas](#gotchas).
 
 ## The three branches
@@ -118,11 +119,11 @@ inherited `color` it lands in.
   ignored — the fallback is returned and the redirect branch never runs.
 - **`unauthenticated` with neither renders nothing.** No `unauthenticatedFallback` and no
   `redirect` returns `null` — a blank screen with no signal to the user. Always supply one.
-- **The default redirect can re-fire.** It clicks the hidden anchor from an inline `ref`
-  callback, which React re-runs on every render of the gate, so the click repeats while the
-  status stays `unauthenticated`. A hard reload tears the page down before that bites, but a
-  client-side router Link routed through the adapter can be clicked more than once. Passing a
-  real `<Navigate>` avoids it entirely.
+- **The default redirect fires once per destination.** The click happens in an effect keyed
+  on `redirect`, so re-rendering the gate while the status stays `unauthenticated` does not
+  re-click the hidden anchor; changing `redirect` to a new path does. (It used to click from
+  an inline `ref` callback, which React re-ran on every render — harmless under a hard reload,
+  a repeat navigation through a client-side adapter Link.)
 - **It's a client component.** RequireAuth is `"use client"` (it reads the router adapter
   via context), so the default redirect only fires after hydration — the server renders the
   hidden anchor, the browser clicks it. The `authenticated` and custom-fallback branches are
@@ -130,8 +131,10 @@ inherited `color` it lands in.
 
 ## Accessibility
 
-The default loading branch is announced: [Spinner](spinner.md) carries `role="status"` and a visually
-hidden "Loading" label, so assistive tech hears the wait. If you pass your own
+The default loading branch is announced: [Spinner](spinner.md) is decoration unless it is given
+children, and the gate gives it `loadingLabel` — so it renders as `role="status"` with a
+visually hidden "Loading", and assistive tech hears the wait. Pass `loadingLabel` to say it in
+your users' language, or `loadingLabel=""` to silence it. If you pass your own
 `loadingFallback`, you own that announcement — add a live region if the wait is meaningful.
 
 The default redirect anchor is `display: none` and exists only to trigger navigation; it is

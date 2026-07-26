@@ -10,7 +10,7 @@ import {
   EmptyStateTitle,
 } from "./EmptyState";
 
-/** Five sibling imports, not `EmptyState.Icon`. The icon slot scales by `font-size`, so `size="1em"` makes a lucide glyph follow the root's `size`. */
+/** Five sibling imports, not `EmptyState.Icon`. The icon slot sizes the glyph itself, so a lucide icon follows the root's `size` with or without `size="1em"`. */
 export function Minimal() {
   return (
     <EmptyState>
@@ -28,7 +28,7 @@ export function Minimal() {
   );
 }
 
-/** `size` steps the root's padding and gap and the title's type scale. The icon step is `sm` only — `md` and `lg` share one size. */
+/** `size` steps the root's padding and gap, the title's type scale, and the icon — three distinct icon sizes, one per step. */
 export function Sizes() {
   return (
     <>
@@ -101,6 +101,21 @@ export function InCard() {
         </EmptyStateActions>
       </EmptyState>
     </Card>
+  );
+}
+
+/** When the empty state stands in for a page's main content, `as` puts its title in the heading outline. */
+export function TitleAsHeading() {
+  return (
+    <EmptyState size="lg">
+      <EmptyStateIcon>
+        <FolderOpen size="1em" />
+      </EmptyStateIcon>
+      <EmptyStateTitle as="h2">This workspace is empty</EmptyStateTitle>
+      <EmptyStateDescription>
+        Create your first project and it will show up here.
+      </EmptyStateDescription>
+    </EmptyState>
   );
 }
 

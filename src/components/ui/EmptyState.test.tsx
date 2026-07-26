@@ -85,6 +85,19 @@ describe("EmptyState", () => {
     expect(title.tagName).toBe("P");
   });
 
+  // An empty state that replaces a page's main content has to reach the heading
+  // outline; `role="heading" aria-level` was the only route before `as`.
+  it("EmptyState.Title renders the element given by `as`", () => {
+    render(
+      <EmptyState>
+        <EmptyStateTitle as="h2">Nothing here</EmptyStateTitle>
+      </EmptyState>,
+    );
+    const title = screen.getByRole("heading", { name: "Nothing here", level: 2 });
+    expect(title.tagName).toBe("H2");
+    expect(title).toHaveClass("empty-state__title");
+  });
+
   it("EmptyState.Description renders text in a paragraph", () => {
     render(
       <EmptyState>

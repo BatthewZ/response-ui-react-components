@@ -1,5 +1,11 @@
 "use client";
-import { type ComponentPropsWithRef, createContext, forwardRef, useContext } from "react";
+import {
+  type ComponentPropsWithRef,
+  createContext,
+  type ElementType,
+  forwardRef,
+  useContext,
+} from "react";
 
 import { cn } from "../../util/style";
 
@@ -63,19 +69,23 @@ const EmptyStateIcon = forwardRef<HTMLDivElement, EmptyStateIconProps>(function 
 /*  EmptyState.Title                                                   */
 /* ------------------------------------------------------------------ */
 
-type EmptyStateTitleProps = ComponentPropsWithRef<"p">;
+type EmptyStateTitleProps<T extends ElementType = "p"> = {
+  /**
+   * Element to render. Defaults to `p`; pass a heading (`as="h2"`) when the
+   * empty state replaces a page's or region's main content, so it lands in the
+   * heading outline.
+   */
+  as?: T;
+} & Omit<ComponentPropsWithRef<T>, "as">;
 
-const EmptyStateTitle = forwardRef<HTMLParagraphElement, EmptyStateTitleProps>(
-  function EmptyStateTitle({ className, children, ...props }, ref) {
-    useEmptyStateContext();
+const EmptyStateTitle = forwardRef<HTMLElement, EmptyStateTitleProps>(function EmptyStateTitle(
+  { as: Tag = "p", className, ...props },
+  ref
+) {
+  useEmptyStateContext();
 
-    return (
-      <p ref={ref} className={cn("empty-state__title", className)} {...props}>
-        {children}
-      </p>
-    );
-  }
-);
+  return <Tag ref={ref as never} className={cn("empty-state__title", className)} {...props} />;
+}) as <T extends ElementType = "p">(props: EmptyStateTitleProps<T>) => React.JSX.Element;
 
 /* ------------------------------------------------------------------ */
 /*  EmptyState.Description                                             */

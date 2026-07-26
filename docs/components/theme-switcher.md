@@ -12,15 +12,18 @@ never reads it back, so without a restore script of your own the theme resets on
 ```
 <!-- /example -->
 
-| Prop        | Type                                           | Default |
-| ----------- | ---------------------------------------------- | ------- |
-| `className` | `string`                                       | —       |
-| `ref`       | `Ref<HTMLDivElement>`                          | —       |
-| …rest       | `div` props, **except `children`**             | —       |
+| Prop        | Type                                           | Default                |
+| ----------- | ---------------------------------------------- | ---------------------- |
+| `themes`    | `readonly string[]`                            | the four shipped themes |
+| `labels`    | `Partial<Record<string, string>>`              | English theme names    |
+| `className` | `string`                                       | —                      |
+| `ref`       | `Ref<HTMLDivElement>`                          | —                      |
+| …rest       | `div` props, **except `children`**             | —                      |
 
-That is the entire surface: `Omit<ComponentPropsWithRef<"div">, "children">`. There is no
-`themes` prop, no `labels` prop, no `value`/`onChange`. The theme list and its four English
-labels are module constants inside `ThemeSwitcher.tsx` — see
+That is the entire surface: those two plus
+`Omit<ComponentPropsWithRef<"div">, "children">`. There is no `value`/`onChange` — the
+selected theme is `<html data-theme>`, which `useTheme` owns. `themes` and `labels` are what
+make the control reusable outside the shipped four and outside English; see
 [Custom themes and other languages](#custom-themes-and-other-languages).
 
 <!-- example:InANavbar -->
@@ -34,8 +37,9 @@ labels are module constants inside `ThemeSwitcher.tsx` — see
 
 ## How it switches
 
-`ThemeSwitcher` is a thin view over the `useTheme` hook — it calls `useTheme()` itself, with
-no arguments, and renders one `<button>` per entry in the returned `themes` array. The two
+`ThemeSwitcher` is a thin view over the `useTheme` hook — it calls `useTheme({ themes })`
+itself, passing whatever you gave it (the four shipped themes if you gave nothing), and
+renders one `<button>` per entry in the returned `themes` array. The two
 are both public exports of the package, and the split of responsibilities is worth knowing
 before you mix them:
 
@@ -112,19 +116,29 @@ matches and the checked option corrects itself a beat later. With the head scrip
 
 ## Custom themes and other languages
 
-Two hard limits, both flowing from the same line — `ThemeSwitcher` calls `useTheme()` with
-no options, so it always gets the four shipped themes:
+Both are props, and they compose:
 
-- **The theme list is fixed.** A theme you register elsewhere with
-  `useTheme({ themes: [...] })` is invisible to it. Worse, when the page *is* on that theme,
-  the switcher's own `useTheme()` doesn't recognise the attribute value and falls back to
-  the first entry — so it highlights **Default** while an `aurora` page renders around it,
-  and clicking that apparently-already-selected Default really does clear the theme.
-- **The labels are hard-coded English.** `Default` / `Events` / `Grimdark` / `Tech` come
-  from a module-private map, and `children` is omitted from the props, so there is no way to
-  translate or rename an option from outside the component.
+- **`themes`** is handed straight to `useTheme`, so a theme you register in your own CSS is
+  selectable *and* correctly reported. Without it the component knows only the four shipped
+  themes, and a page sitting on `data-theme="aurora"` would make it highlight **Default** —
+  where clicking that apparently-already-selected option really does clear the theme.
+  Declare the array at **module scope**: the hook memoises its snapshot reader on the array's
+  identity, so a fresh literal every render rebuilds that reader every render.
+- **`labels`** replaces option text, keyed by theme id. Anything you leave out keeps its
+  English default (`Default` / `Events` / `Grimdark` / `Tech`); a theme with no default and
+  no entry is labelled by its own id, so `aurora` reads as `aurora` until you name it.
 
-The group's accessible name is the one string you *can* change, because `{...props}` is
+<!-- example:AppThemesAndLabels -->
+```tsx
+<ThemeSwitcher
+  themes={APP_THEMES}
+  labels={{ default: "Standard", grimdark: "Sombre", aurora: "Aurore" }}
+  aria-label="Thème"
+/>
+```
+<!-- /example -->
+
+The group's accessible name is changed the same way it always was, because `{...props}` is
 spread after the built-in attributes:
 
 <!-- example:RenameTheGroup -->
@@ -133,11 +147,12 @@ spread after the built-in attributes:
 ```
 <!-- /example -->
 
-When either limit bites, drop to the hook — the component is about twenty lines, and
-`useTheme` types `theme` and `setTheme` to the exact union you hand it. The two lines the
-fence trims are `const APP_THEMES = ["default", "grimdark", "aurora"] as const;` at **module
-scope** and `const { theme, setTheme } = useTheme({ themes: APP_THEMES });` at the top of the
-component:
+What the props cannot change is the *markup*: one `<button role="radio">` per theme, and no
+`children`. When you need a different shape — a select, a menu, buttons with icons — drop to
+the hook; the component is about a hundred lines, and `useTheme` types `theme` and `setTheme`
+to the exact union you hand it. The two lines the fence trims are
+`const APP_THEMES = ["default", "grimdark", "aurora"] as const;` at **module scope** and
+`const { theme, setTheme } = useTheme({ themes: APP_THEMES });` at the top of the component:
 
 <!-- example:CustomSwitcher -->
 ```tsx
@@ -214,11 +229,12 @@ the contract, and can only be changed with your own CSS.
   back. Without the head script in [Persistence is your job](#persistence-is-your-job) the
   user's theme is gone on the next load — this is the single most common way to ship this
   component broken.
-- **It only ever shows the four themes shipped by `@batthewz/response-ui-css`.** It cannot
-  select an app-defined theme, and when the document carries a `data-theme` value it doesn't
-  know, it reports the first theme as selected while the page renders the other one.
-- **Labels are unreachable.** No `labels` prop, no `children` — the English strings cannot
-  be translated or shortened. `aria-label` on the group is the only overridable text.
+- **Without `themes` it shows only the four themes shipped by `@batthewz/response-ui-css`.**
+  Pass an app-defined theme through `themes` or the switcher cannot select it — and when the
+  document carries a `data-theme` value the switcher was not told about, it reports the first
+  theme as selected while the page renders the other one.
+- **A theme with no `labels` entry is labelled by its id.** The four shipped themes have
+  English defaults; anything else reads as its raw `data-theme` value until you name it.
 - **`children` is a type error, not a silent drop.** The props `Omit` it, so
   `<ThemeSwitcher>…</ThemeSwitcher>` won't compile — better than dropping it at runtime, but
   it also means the option row is not composable.
@@ -235,13 +251,14 @@ The container is `role="radiogroup"` with `aria-label="Theme"`; each option is a
 that ARIA state and by a visible text label, not by colour alone — so the "status by colour"
 trap the library falls into elsewhere is avoided here.
 
-**The keyboard model does not match the role, though.** A radiogroup is expected to be a
-single tab stop, with arrow keys moving between and selecting options. `ThemeSwitcher`
-implements none of that — no `tabIndex`, no `onKeyDown` — so all four options are separate
-tab stops and arrow keys do nothing. A screen reader announces "Theme, radio group,
-Default, 1 of 4" and then the interaction that announcement promises isn't there. It is a
-row of buttons wearing a radiogroup role. The library has the pieces to do it properly:
-[Tabs](tabs.md) implements roving focus, and the package exports a `useRovingFocus` hook.
+**The keyboard model matches the role.** The group is a single tab stop held by the checked
+option, `←`/`↑` and `→`/`↓` move to the previous and next theme and *select* it, `Home` and
+`End` jump to the first and last, and both directions wrap. Selection and focus are one
+state machine — the tab stop is always the checked option, so clicking one moves the tab stop
+too, and `Tab` re-enters where you left off. The roving `tabIndex` comes from the package's
+`useRovingFocus` hook; the key handling is the component's own, because the hook's handler
+moves focus *without* selecting, which for a radiogroup would leave the tab stop and the
+checked option in different places (the same split [Rating](rating.md) settled on).
 
 `ThemeSwitcher.css` defines no `:focus-visible` rule and removes no outline, so keyboard
 focus falls back to the browser's default ring. It is visible, but it is one of only two

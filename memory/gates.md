@@ -70,3 +70,14 @@ good. These are the ways they have still let defects through.
 - **Prose about a gate drifts exactly like prose about a component.** A maintainer doc described
   the publish chain as five steps when it ran nine; the script itself is the only trustworthy
   source. If you document a chain, assert your description against it mechanically.
+- **The docs generator deletes a section when you hand it an *empty* fence.** Adding a new
+  example to a component page means writing the `<!-- example:Name -->` marker by hand and
+  letting `gen-docs` fill the fence — but its marker pattern treats the fence body as optional
+  and non-greedy, so an empty ```` ```tsx``` ```` block matches all the way to the *next*
+  example's closing fence and the injection swallows every heading, paragraph and fence in
+  between. The only signal is an `unused example` error naming a **different** example than the
+  one you added, and `--check` then agrees with the damaged file because the damage is already
+  written. Put a placeholder line inside a new fence before running it, and diff the page's
+  heading list afterwards. This also fires across component boundaries: the generator rewrites
+  every doc on every run, so an empty fence another agent has just added in a page you do not
+  own gets eaten by *your* run.

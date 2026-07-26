@@ -46,7 +46,18 @@ export function RenameTheGroup() {
   return <ThemeSwitcher aria-label="Colour theme" />;
 }
 
-/** For app-defined themes or non-English labels, skip the component and drive `useTheme` yourself. */
+/** App-registered themes and translated option text: `themes` and `labels` keep both inside the component. */
+export function AppThemesAndLabels() {
+  return (
+    <ThemeSwitcher
+      themes={APP_THEMES}
+      labels={{ default: "Standard", grimdark: "Sombre", aurora: "Aurore" }}
+      aria-label="Thème"
+    />
+  );
+}
+
+/** For different markup — buttons, a select, a menu — skip the component and drive `useTheme` yourself. */
 export function CustomSwitcher() {
   const { theme, setTheme } = useTheme({ themes: APP_THEMES });
   return (

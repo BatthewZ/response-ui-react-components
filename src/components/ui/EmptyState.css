@@ -36,6 +36,15 @@
   color: var(--C-TEXT-MUTED);
 }
 
+/* The slot owns the glyph size, as Stepper and ActivityFeed do for theirs.
+   `font-size` alone moves nothing an SVG with its own width/height attributes:
+   every lucide-react icon renders 24px, so the size steps below were invisible
+   unless the caller happened to pass `size="1em"`. */
+.empty-state__icon svg {
+  width: 1em;
+  height: 1em;
+}
+
 .empty-state[data-size="sm"] .empty-state__icon {
   font-size: var(--H5);
 }
@@ -45,7 +54,7 @@
 }
 
 .empty-state[data-size="lg"] .empty-state__icon {
-  font-size: var(--H4);
+  font-size: var(--H3);
 }
 
 /* ------------------------------------------------------------------ */

@@ -36,11 +36,12 @@ gap still only spaces its **direct** children, so nest for semantics, not for la
 | ----------------------- | ------- | --------------------------------- |
 | `EmptyState`            | `<div>` | `size?` (+ all `div` props)       |
 | `EmptyStateIcon`        | `<div>` | — (+ all `div` props)             |
-| `EmptyStateTitle`       | `<p>`   | — (+ all `p` props)               |
+| `EmptyStateTitle`       | `<p>`   | `as?` (+ all props of that element) |
 | `EmptyStateDescription` | `<p>`   | — (+ all `p` props)               |
 | `EmptyStateActions`     | `<div>` | — (+ all `div` props)             |
 
-`size` is the only bespoke prop in the whole component, and it lives on the root only.
+`size` is the root's only bespoke prop; `as` on the title is the only other one in the
+component.
 
 | Prop        | Type                   | Default |
 | ----------- | ---------------------- | ------- |
@@ -69,13 +70,14 @@ empty state — reach for `sm` when it is filling a small panel rather than a pa
 
 ## Size
 
-`size` moves the root's padding, the root's gap, and the title's type scale. It does
-**not** touch the description (always `--BodyText-2`) or the actions row (always the same
-gap), so the body copy stays put while the frame around it grows.
+`size` moves the root's padding, the root's gap, the title's type scale and the icon. It
+does **not** touch the description (always `--BodyText-2`) or the actions row (always the
+same gap), so the body copy stays put while the frame around it grows.
 
-The icon steps **once**, at `sm` — `md` and `lg` give it the same type scale. And because
-the icon slot sizes its contents with `font-size` alone, an SVG that carries its own
-`width`/`height` attributes never changes size at all; see [Gotchas](#gotchas).
+The icon steps once per size — `--H5`, `--H4`, `--H3` — and the slot sizes the glyph itself
+(`width`/`height` of `1em` on a descendant `svg`), so an icon that carries its own
+`width`/`height` attributes follows `size` too. Measured in Firefox above the 40rem
+breakpoint, a bare 24px lucide glyph renders 20px / 28px / 36px at `sm` / `md` / `lg`.
 
 <!-- example:Sizes -->
 ```tsx
@@ -104,6 +106,26 @@ All of these values sit on the responsive `r`- and type-scales, so each size is 
 again above the 40rem breakpoint — with one exception worth knowing: `sm`'s gap is
 `--R-SIZE-6`, which holds at `0.25rem` on both sides of the breakpoint, so a small empty
 state stays tight on desktop rather than opening up.
+
+## When the empty state *is* the page
+
+A panel inside a page wants a paragraph title; a page-level empty state wants a heading, or
+it leaves a hole in the document outline. `as` on the title renders any element you name,
+keeping the `empty-state__title` styling either way.
+
+<!-- example:TitleAsHeading -->
+```tsx
+<EmptyState size="lg">
+  <EmptyStateIcon>
+    <FolderOpen size="1em" />
+  </EmptyStateIcon>
+  <EmptyStateTitle as="h2">This workspace is empty</EmptyStateTitle>
+  <EmptyStateDescription>
+    Create your first project and it will show up here.
+  </EmptyStateDescription>
+</EmptyState>
+```
+<!-- /example -->
 
 ## Actions
 
@@ -184,7 +206,7 @@ runtime, with no rebuild.
 | Root padding      | `--R-SIZE-5` (sm) · `--R-SIZE-3` (md) · `--R-SIZE-2` (lg)                                            |
 | Root gap          | `--R-SIZE-6` (sm) · `--R-SIZE-5` (md) · `--R-SIZE-4` (lg)                                            |
 | Icon ink          | `--C-TEXT-MUTED`                                                                                     |
-| Icon type scale   | `--H5` (sm) · `--H4` (md and lg)                                                                     |
+| Icon type scale   | `--H5` (sm) · `--H4` (md) · `--H3` (lg) — the glyph is `1em` of it                                    |
 | Title ink         | `--C-TEXT-PRIMARY`                                                                                   |
 | Title weight      | `--Semibold-Weight`                                                                                  |
 | Title type        | `--BodyText-1` `--BodyText-1-line-height` (sm) · `--H5` `--H5-line-height` (md) · `--H4` `--H4-line-height` (lg) |
@@ -213,16 +235,12 @@ own theme. See the [theme contract](../theme-contract.md).
   `"EmptyState compound components must be used within <EmptyState>"` when it is missing.
   Wrapping them in your own component is fine — context crosses any depth — but rendering
   one standalone takes down the tree rather than degrading.
-- **A fixed-size SVG ignores `size`.** `.empty-state__icon` sizes its contents with
-  `font-size` and sets no `width`/`height`. `lucide-react`, this package's own icon
-  dependency, renders `width="24" height="24"` **attributes**, so a bare `<Inbox />` stays
-  24px in all three sizes. Pass `size="1em"` (as every example here does), or size the
-  glyph yourself. Sibling components solve this in CSS — [ActivityFeed](activity-feed.md)
-  and [Stepper](stepper.md) both write an explicit `width`/`height` rule for a descendant
-  `svg`; EmptyState does not.
-- **`md` and `lg` size the icon identically.** Both set `font-size: var(--H4)`, so even an
-  em-sized glyph only grows once, going from `sm` to `md`. Padding, gap and the title all
-  step at `lg`; the icon does not.
+- **The icon slot sizes the glyph, so a `width`/`height` you set in CSS loses to it.**
+  `.empty-state__icon svg` is `1em` square — the same answer [ActivityFeed](activity-feed.md)
+  and [Stepper](stepper.md) give their markers — because `font-size` alone moves nothing on
+  an SVG carrying its own attributes, and `lucide-react` renders `width="24" height="24"` on
+  every icon. A caller who wants a different size sets it inline (`style`), which outranks the
+  stylesheet, or changes the slot's `font-size`.
 - **A Tailwind padding utility never wins here, at any size.** `cn` cannot dedupe the pair —
   `empty-state` is not a Tailwind class — so `p-r1` and `empty-state` both land on the
   element. This package's stylesheet declares no cascade layer while Tailwind v4 puts
@@ -238,10 +256,12 @@ own theme. See the [theme contract](../theme-contract.md).
 
 ## Accessibility
 
-- **The title is a `<p>`, not a heading.** `EmptyStateTitle` renders a paragraph with no
-  heading role, so a screen-reader user navigating by heading will not land on it. When the
-  empty state replaces a page's or region's main content, restore the outline through the
-  pass-through props: `<EmptyStateTitle role="heading" aria-level={2}>`.
+- **The title is a `<p>` by default, not a heading.** A paragraph is right for a panel inside
+  a page that already has an outline, and wrong when the empty state *is* the page's main
+  content — a screen-reader user navigating by heading lands on nothing. Pass `as`:
+  `<EmptyStateTitle as="h2">`, at the level the surrounding outline calls for. (`role="heading"
+  aria-level={2}` still works through the prop spread, but a real element is better: it
+  survives CSS-free rendering and needs no `aria-level` to be correct.)
 - **The icon is hidden from assistive tech.** `EmptyStateIcon` sets `aria-hidden="true"` on
   its wrapper, which is right for a decorative glyph — the title carries the meaning. The
   attribute is written before the prop spread, so `aria-hidden={false}` from the call site
