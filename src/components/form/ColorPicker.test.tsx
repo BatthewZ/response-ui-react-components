@@ -162,6 +162,44 @@ describe("ColorPicker", () => {
     });
   });
 
+  describe("mode lock", () => {
+    it("survives the controlled value dropping to undefined, and stays controlled", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      const { rerender } = render(
+        <ColorPicker
+          value="#3366cc"
+          onValueChange={onValueChange}
+          presets={["#ff0000"]}
+        />,
+      );
+      rerender(
+        <ColorPicker
+          value={undefined}
+          onValueChange={onValueChange}
+          presets={["#ff0000"]}
+        />,
+      );
+
+      // The dropped prop reads as the empty colour, never as `undefined` on screen.
+      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+        "#000000",
+      );
+
+      await user.click(screen.getByRole("button", { name: "Choose color" }));
+      await user.click(screen.getByRole("button", { name: "#ff0000" }));
+
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith("#ff0000");
+      // Still controlled: this parent refused the commit, so nothing may be
+      // adopted into internal state behind its back.
+      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+        "#000000",
+      );
+      expect(screen.getByLabelText("Hex value")).toHaveValue("#000000");
+    });
+  });
+
   describe("form.field() binding (#285)", () => {
     it("binds via the advertised form.field() spread and commits edits", async () => {
       const user = userEvent.setup();

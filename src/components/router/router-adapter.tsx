@@ -24,6 +24,18 @@ export type RouterLinkProps = {
   /** Replace history entry instead of pushing. */
   replace?: boolean;
   children?: ReactNode;
+  /**
+   * Not a link prop — the destination is `to`, which the adapter turns into the
+   * `href`.
+   *
+   * Declared `never` rather than only `Omit`ted because a JSX spread performs no
+   * excess-property check: `Omit` alone let a bag's `href` through to
+   * `DefaultLink`, which renders `<a href={to} {...rest}>`, so the spread value
+   * silently won the destination. Now that spread is a compile error, and the
+   * destructure in every Link implementation keeps the key off the `<a>`
+   * regardless.
+   */
+  href?: never;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">;
 
 export type RouterLinkComponent = ForwardRefExoticComponent<
@@ -32,7 +44,7 @@ export type RouterLinkComponent = ForwardRefExoticComponent<
 
 /** Default fallback Link — plain `<a href="...">`. */
 const DefaultLink: RouterLinkComponent = forwardRef<HTMLAnchorElement, RouterLinkProps>(
-  function DefaultLink({ to, replace: _replace, children, ...rest }, ref) {
+  function DefaultLink({ to, replace: _replace, href: _href, children, ...rest }, ref) {
     return (
       <a ref={ref} href={to} {...rest}>
         {children}

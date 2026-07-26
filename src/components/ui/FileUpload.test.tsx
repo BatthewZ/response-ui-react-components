@@ -5,6 +5,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { FileUpload } from "./FileUpload";
 
+/**
+ * A caller's bag arriving from a carrier TypeScript cannot see — plain JS, or
+ * props forwarded through `any` (same helper as AppShell.test.tsx).
+ */
+function untypedProps(bag: Record<string, unknown>): Record<string, never> {
+  return bag as Record<string, never>;
+}
+
 describe("FileUpload", () => {
   it("renders dropzone area with button role", () => {
     render(<FileUpload />);
@@ -171,6 +179,74 @@ describe("FileUpload", () => {
     render(<FileUpload disabled />);
     const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
     expect(inputEl).toBeDisabled();
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  Drop pipeline — the caller's onDrop must not replace ours          */
+  /* ------------------------------------------------------------------ */
+
+  describe("drop", () => {
+    const dropped = new File(["x"], "notes.txt", { type: "text/plain" });
+
+    function dropOnZone() {
+      fireEvent.drop(screen.getByRole("button", { name: "Upload file" }), {
+        dataTransfer: { files: [dropped] },
+      });
+    }
+
+    it("reports dropped files", () => {
+      const onFilesSelected = vi.fn();
+      render(<FileUpload multiple onFilesSelected={onFilesSelected} />);
+
+      dropOnZone();
+      expect(onFilesSelected).toHaveBeenCalledTimes(1);
+      expect(onFilesSelected).toHaveBeenCalledWith([dropped]);
+    });
+
+    it("runs a caller onDrop and still reports the dropped files", () => {
+      const onFilesSelected = vi.fn();
+      const onDrop = vi.fn();
+      render(<FileUpload multiple onFilesSelected={onFilesSelected} onDrop={onDrop} />);
+
+      dropOnZone();
+      expect(onDrop).toHaveBeenCalledTimes(1);
+      expect(onFilesSelected).toHaveBeenCalledTimes(1);
+    });
+
+    it("survives an onDrop arriving inside a spread bag TypeScript cannot see", () => {
+      const onFilesSelected = vi.fn();
+      const onDrop = vi.fn();
+      render(
+        <FileUpload
+          multiple
+          onFilesSelected={onFilesSelected}
+          {...untypedProps({ onDrop, "data-slot": "dropzone" })}
+        />,
+      );
+
+      dropOnZone();
+      expect(onDrop).toHaveBeenCalledTimes(1);
+      expect(onFilesSelected).toHaveBeenCalledTimes(1);
+      // The rest of the bag is still forwarded.
+      expect(screen.getByRole("button", { name: "Upload file" })).toHaveAttribute(
+        "data-slot",
+        "dropzone",
+      );
+    });
+
+    it("skips its own drop behaviour when the caller prevents default", () => {
+      const onFilesSelected = vi.fn();
+      render(
+        <FileUpload
+          multiple
+          onFilesSelected={onFilesSelected}
+          onDrop={(e) => e.preventDefault()}
+        />,
+      );
+
+      dropOnZone();
+      expect(onFilesSelected).toHaveBeenCalledTimes(0);
+    });
   });
 
   /* ------------------------------------------------------------------ */

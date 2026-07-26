@@ -260,10 +260,17 @@ export function DataTable<T>({
 
   // Decide whether to render pagination:
   // - client mode: when derived page count > 1 (no onPageChange required)
-  // - server mode: the existing page + totalPages + onPageChange triple
+  // - server mode: `totalPages` + `onPageChange` — the props that say a pager
+  //   belongs here and give it something to render and somewhere to report.
+  //
+  // Deliberately NOT gated on the paging mode: a parent that mounts with
+  // `page={undefined}` and supplies it once the first fetch lands is locked
+  // uncontrolled, and losing the page VALUE is the documented cost of the lock.
+  // Losing the pager itself is not — an uncontrolled page still drives the same
+  // block from internal state and still reports through `onPageChange`.
   const showClientPagination = clientPaged && derivedTotalPages > 1;
   const showServerPagination =
-    !clientPaged && isControlledPage && totalPagesProp != null && !!onPageChange;
+    !clientPaged && totalPagesProp != null && !!onPageChange;
   const showPagination = showClientPagination || showServerPagination;
 
   function renderPaginationBlock() {

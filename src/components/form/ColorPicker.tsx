@@ -83,8 +83,15 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
     },
     ref,
   ) {
+    // Only `useControllableState` reads the raw prop; this ref is the mode
+    // lock's one job here — keep feeding the hook a defined value once
+    // controlled, so a later `value={undefined}` reads as the empty colour
+    // rather than a mode switch (which would hand `undefined` to `hexToHsv`).
+    const isControlledRef = useRef(value !== undefined);
     const [hex, setHex] = useControllableState<string>({
-      value: value !== undefined ? (normalizeHex(value) ?? "#000000") : undefined,
+      value: isControlledRef.current
+        ? (normalizeHex(value ?? "") ?? "#000000")
+        : undefined,
       defaultValue: normalizeHex(defaultValue ?? "") ?? "#000000",
       onChange: (next) => {
         onValueChange?.(next);

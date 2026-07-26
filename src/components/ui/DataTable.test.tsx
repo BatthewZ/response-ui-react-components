@@ -694,6 +694,45 @@ describe("DataTable", () => {
     expect(bodyFirstCells()).toEqual(["A", "B"]);
   });
 
+  it("keeps the pager when an uncontrolled table is handed a late page", async () => {
+    const user = userEvent.setup();
+    const onPageChange = vi.fn();
+
+    // The ordinary async-fetch parent: `page` is undefined on mount and arrives
+    // once the first response lands. Locking the paging MODE is intended — the
+    // late `page` value is ignored — but the pager itself is not a mode concern.
+    function Harness() {
+      const [page, setPage] = useState<number | undefined>(undefined);
+      return (
+        <>
+          <button type="button" onClick={() => setPage(1)}>
+            arrive
+          </button>
+          <DataTable
+            data={data}
+            columns={columns}
+            rowKey={rowKey}
+            page={page}
+            totalPages={5}
+            onPageChange={onPageChange}
+          />
+        </>
+      );
+    }
+
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "arrive" }));
+
+    expect(
+      screen.getByRole("navigation", { name: /pagination/i }),
+    ).toBeInTheDocument();
+
+    // …and it is a working pager, not just present.
+    await user.click(screen.getByRole("button", { name: /^page 3$/i }));
+    expect(onPageChange).toHaveBeenCalledTimes(1);
+    expect(onPageChange).toHaveBeenCalledWith(3);
+  });
+
   it("renders the footer slot", () => {
     render(
       <DataTable

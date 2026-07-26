@@ -12,6 +12,7 @@ import {
 
 import { matchesAccept } from "../../util/accept";
 import { formatBytes } from "../../util/format";
+import { composeEventHandlers } from "../../util/merge-props";
 import { cn } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
@@ -53,7 +54,7 @@ type FileUploadProps = {
   success?: string | null;
   /** Whether the component is in an uploading state. */
   uploading?: boolean;
-} & Omit<ComponentPropsWithRef<"div">, "onDrop">;
+} & ComponentPropsWithRef<"div">;
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -325,6 +326,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
     onKeyDown,
     onDragOver,
     onDragLeave,
+    onDrop,
     ...props
   },
   ref,
@@ -477,23 +479,11 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
         disabled && "file-upload--disabled",
         className,
       )}
-      onClick={(e) => {
-        onClick?.(e);
-        if (!e.defaultPrevented) handleClick();
-      }}
-      onKeyDown={(e) => {
-        onKeyDown?.(e);
-        if (!e.defaultPrevented) handleKeyDown(e);
-      }}
-      onDragOver={(e) => {
-        onDragOver?.(e);
-        if (!e.defaultPrevented) handleDragOver(e);
-      }}
-      onDragLeave={(e) => {
-        onDragLeave?.(e);
-        if (!e.defaultPrevented) handleDragLeave(e);
-      }}
-      onDrop={handleDrop}
+      onClick={composeEventHandlers(onClick, handleClick)}
+      onKeyDown={composeEventHandlers(onKeyDown, handleKeyDown)}
+      onDragOver={composeEventHandlers(onDragOver, handleDragOver)}
+      onDragLeave={composeEventHandlers(onDragLeave, handleDragLeave)}
+      onDrop={composeEventHandlers(onDrop, handleDrop)}
       {...props}
     >
       {hasFiles ? (
