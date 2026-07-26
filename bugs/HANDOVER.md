@@ -7,14 +7,14 @@ someone arriving cold.
 
 | File                           | Holds                                                                                                                       |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| [`LEDGER.md`](./LEDGER.md)     | **64 open defects.** The work list. Every row believed true at source.                                                      |
+| [`LEDGER.md`](./LEDGER.md)     | **24 open defects.** The work list. Every row believed true at source.                                                      |
 | [`ARCHIVE.md`](./ARCHIVE.md)   | ~400 closed rows — fixed, declined, refuted. Ids never reused. Anchors deliberately not maintained.                         |
 | [`AUDIT.md`](./AUDIT.md)       | 6 open findings about the _checking_ — gates, tests, the record. Not component defects.                                     |
 | [`TAXONOMY.md`](./TAXONOMY.md) | What a row _is_ (kind) and who it hurts (harm). Work order comes from harm.                                                 |
-| [`PLAN.md`](./PLAN.md)         | **Stale.** Clusters sized against a 466-row file; most are now closed. Rewrite or retire it before trusting a number in it. |
+| [`PLAN.md`](./PLAN.md)         | **Retired.** Kept only as a section map, because ~30 archived rows cite it by number. Do not rewrite it into a new plan.   |
 | `../memory/`                   | Traps, testing failure modes, ledger failure modes. **Read `traps.md` before planning.**                                    |
 
-Started at 320 open. 1868 tests, all gates green, zero `unaudited` rows.
+Started at 320 open, then 64. Now **24**. 2017 tests, all gates green, zero `unaudited` rows.
 
 ---
 
@@ -122,21 +122,61 @@ re-anchor mid-wave; you would stamp fingerprints against half-written files.
 
 ---
 
-## Decisions the owner must make — 26 rows blocked
+## Decisions the owner must make — 4 items
 
-### 1 · Colour-alone visual cue — #1 #21 #44 #104 #147 #205
+### 1 · A release call in `response-ui-css` — blocks nothing here, reaches every consumer
 
-AT half is done (hidden text / accessible name / `aria-valuetext`, all overridable). What remains is
-that a sighted colourblind user sees variants differing only in tint. One decision, applied six
-times; do not let six agents invent six visual languages.
+`--C-BORDER-FOCUS` is **already fixed** in that package's working tree (`2b41af9`) and deliberately
+left unreleased — `package.json` stays at 0.10.0 and the entry sits under *Unreleased*. Verified
+against both trees: `events` 2.72 → 3.39 and `grimdark` 2.96 → 3.66 across SURFACE-0..2, so it
+genuinely clears WCAG 1.4.11 where the published build does not. **The fix is correct and reaching
+nobody.** It needs a publish (0.10.1) plus a dependency bump here, then `calendar.md` and
+`file-upload.md` — whose `--C-BORDER-FOCUS` tables are *currently correct* — become false and need
+updating in the same pass. Details and the full table are in §2 below.
 
-| Option                              | Pro                                                                               | Con                                                                           |
-| ----------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Icon per severity                   | Fully closes 1.4.1; the convention users expect                                   | Needs an icon set; adds SVGs or a dependency to six components                |
-| Shape/weight/border differentiation | No new dependency; works for Stepper (#147), whose AT channel is already complete | Weaker signal; per-component design work                                      |
-| Accept and document                 | Zero work                                                                         | Keeps a known 1.4.1 gap in a package whose README sells "accessibility-first" |
+Two more cross-package items sit behind the same door: **#415**'s error half (`--C-STATUS-ERROR` on
+its own `-BG` is 4.41 in default and `events`, and the same recipe is in `Badge`, `Alert`, `Toast`),
+and **#384**'s "ink on an overlay" gap — there is no such token in the contract, so `text-white`
+stays hard-coded. **#446** (heading weights) is the third.
 
-### 2 · Palette / contrast — RESOLVED except one release call
+### 2 · Public API surface — #486, #491, #492, #61, #490
+
+Five rows that are decisions about what this package promises, not defects:
+
+- **#486** — narrowing `Repeater`'s `name` to a typed path (#260) means a *generic wrapper* over
+  `Repeater` no longer compiles. Exporting a `RepeaterName<T>` alias fixes it, at the cost of one
+  barrel line and one more public type. Concrete call sites are unaffected.
+- **#492** — `README.md:132` claims "the props type of every component" is exported. Most are not.
+  Either export them or narrow the sentence; no gate can see this, because `verify-docs` checks
+  exports→docs and never docs→exports.
+- **#491** — `AGENTS.md` says "Components are forwardRef." Four are now generic function components
+  instead, because `forwardRef` erases a type parameter.
+- **#61** — re-scoped this wave from a missing token to an **API** gap: `Avatar`'s ring lives on an
+  inner status dot that `className` cannot reach, so there is no override path at all.
+- **#490** — `FileUploadRejection` is documented but not exported from the barrel.
+
+### 3 · Two shipped defaults that need an owner, not a measurement
+
+- **#470** — `useRovingFocus` is a *published* hook whose `onKeyDown`, `focusedIndex`, `loop` and
+  `orientation` have **no in-package consumer**. The handler is correct code for toolbars and
+  menubars and wrong for the two radiogroups that use the hook, and `theme-switcher.md` documents
+  that split as intentional. Deleting the unused surface is a breaking change to public API.
+- **#66** — restoring `w-*` on `Skeleton` requires **layering this package's component CSS**, which
+  was measured: unlayered CSS behaves identically to the inline default (1280px both ways), and only
+  `@layer` works (320px). But the unlayered behaviour is a contract stated on ~12 doc pages with
+  documented escape hatches, so layering is a `styles.css`-wide packaging decision plus a doc sweep.
+
+### 4 · #8 — decide what a `<dl>` should expose
+
+Grounded in the installed `aria-query` this wave: `role="list"` would own **zero** listitems
+(`dt`→`term`, `dd`→`definition`), there is **no** role to restore (`elementRoles` has no `dl` entry
+and ARIA 1.3's `associationlist` family is absent from the shipped vocabulary), and `role="group"`
+plus a name would be valid but changes what the element *is* in every browser — including those
+that get it right today. The three facts are on `description-list.md`. This needs a decision, not
+another investigation.
+
+
+### The palette re-measurement, in full — supporting detail for §1
 
 **Re-measured 2026-07-26 against the installed v0.10.0, by two independently written converters,
 each validated at white-on-black = 21.0000 and against WebAIM reference pairs, and cross-checked
@@ -211,59 +251,27 @@ literal override collapses chart-1/chart-2 to **0.000** (it sets ACCENT byte-ide
 A dark theme also needs the whole ramp lifted to ~0.65–0.78 lightness, which contract ink values do
 not supply. Do not "finish the job" by aliasing the other two.
 
-### 3 · Public API — #24 #287 #353
 
-The owner has authorised adding props pre-1.0. These are larger than a prop:
 
-| Row                  | What it needs                                                                   | Pro                                          | Con                                                                                                                                                                    |
-| -------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #24 Field↔Label      | `Field` publishes a `controlId`; `Label` and the three text controls consume it | Closes the last structural a11y gap in forms | Touches Label + Input/Select/Textarea. The tempting Field-only route is _actively wrong_ — `mergeProps` would override a caller's explicit `id` on every wired control |
-| #353 sortable `<th>` | APG shape: `<th aria-sort><button>`                                             | Correct semantics                            | Moves the tab stop and handlers off the `<th>`, breaking a documented composition contract eight tests encode                                                          |
-| #287 ColorPicker     | React-Aria ColorArea shape: `role="group"` + two hidden range inputs            | Correct 2-axis keyboard model                | A redesign of the panel, ~a day. `aria-valuenow` alone does **not** fix it                                                                                             |
+## What is left — 24 rows
 
-**Two breaking type changes already shipped** this wave — `ProgressBar` and `IconButton` now require
-an accessible name. Correct pre-1.0; note they arrived from two lanes converging independently.
+All of it is `low` or `med`; nothing blocking, nothing content-loss. The shape of the remainder:
 
-### 4 · Shared-primitive defaults — #16, #252/#262
+- **9 rows are decisions**, listed above (#486 #491 #492 #61 #490 #470 #66 #8, plus the release call).
+- **5 are cross-package** and cannot be fixed here: #415 #384 #446 #67 #17's consumer half.
+- **4 are SSR/no-JS clauses** on the reveal family — #16 #182 #194 and #196's overscan — each
+  measured this wave and each correctly left, with the rejected alternative recorded in the row.
+- **#397** is confirmed structurally unfixable without a build step; do not re-attempt it.
+- The rest are small and self-contained: #487 #488 #489 #481's naming clause, #478, #205.
 
-- **#16** — `ScrollReveal` renders `opacity: 0` by default, so a page whose JS never runs shows
-  nothing. `animate={false}` opts out. Auto-revealing when `IntersectionObserver` is absent is a
-  one-line change **not made**: it flips a shared default and breaks a sibling's test. Owner's call.
-- **#252 / #262** — TagInput and Repeater both need add/remove announcements with overridable words.
-  One convention, two components. Cheap once decided; do not solve it twice with two prop shapes.
+**#205 is the one worth reading before touching:** it is the only member of the colour-only status
+family still open, and the ledger carries the measurement showing why a glyph cannot work — the
+`role="progressbar"` element *is* the track, 4/12/20px with `overflow: hidden`, and the root `Omit`s
+children while Label/Value are siblings with no context joining them.
 
-### 5 · Cross-package, not fixable here — #17 (consumer half) #61 #67 #161 #446
-
-Each needs a token or rule in `response-ui-css`: a `--stagger-delay` fallback instead of a
-re-declaration, a themeable ring token, an opacity token, `stagger.css`'s missing `animation-name`,
-heading weight tokens. Bundle them with the palette release or decline them explicitly.
-
-### 6 · #75 — re-scope before archiving
-
-Its `aria-describedby` half is fixed; its `aria-invalid` half is **refuted** (ARIA 1.2 does not
-support it on `radio`). The row as written asks for a defect. Rewrite the sentence, then archive.
-
----
-
-## Work needing no decision — ~38 rows
-
-Runnable as a wave of 4–5 lanes on the existing method. Suggested partition by file ownership:
-
-- **Tables / data-display** — #351 #376 #377 #342 #343 #344 #345 #139 #146 #477 #6 #29 #8
-- **Media / upload / shell** — #383 #384 #386 #395 #397 #416 #420 #182 #194 #196
-- **Overlays / menus** — #128 #468 #469 #476 #152
-- **Forms / small UI** — #260 #293 #330 #338 #470 #471 #474 #475 #66 #61(if in-package route found)
-- **Docs-truth** — #467 (published page contradicts the component and misstates a11y), #478
-  (ProgressBar track vs Card, 1.00:1 — needs a token choice across two components)
-
-`#344`/`#345` (Timeline rail) need a browser; they were left because no test here can read CSS.
-
----
 
 ## Housekeeping
 
-- **`PLAN.md` is stale.** Its cluster sizes describe the 466-row file. Rewrite against the current
-  64 or retire it; a stale plan is believed.
 - **`dist/` is stale**, so `verify:directives` fails for reasons unrelated to source (AUDIT #472).
   Run `bun run build` before trusting it.
 - **AUDIT #479 is FIXED** — `gen-docs.mjs` no longer deletes doc sections when an example fence is
@@ -272,9 +280,19 @@ Runnable as a wave of 4–5 lanes on the existing method. Suggested partition by
   path*, so the pattern cannot regress silently. Old and new patterns match the same 541 blocks, so
   nothing else moved. **The generator still rewrites every page on every run**, which remains a
   reason not to have two lanes run it — but a run can no longer damage a page it did not target.
-- **AUDIT #473**: `verify:omit-discipline` misattributes a nested prop bag's `Omit` to the component.
-  One exemption is recorded with its reasoning; the pattern (`viewAllProps`, `imgProps`,
-  `tableProps`) is spreading, so the scan should be bound to the component's own props type.
-- **README claim.** `README.md:3` sells "~80 accessibility-first React 19 components" while
-  accessibility rows remain open. Either close them or qualify the line — the cheapest integrity fix
-  on this list.
+- **AUDIT #473 now has two instances**: `verify:omit-discipline` misattributes a nested prop bag's
+  `Omit` to the component — `Swimlane.href` and now `CodeBlock.value`, each exempted in `ALLOWLIST`
+  with its reasoning. The pattern (`viewAllProps`, `imgProps`, `tableProps`, `copyButtonProps`) is
+  spreading, so the scan should be bound to the component's own props type. **AUDIT #488** is the
+  companion blind spot in `verify-component-docs`, and it is worse than under-reporting: it pushed a
+  shipped fix (#471) off a better-fitting gutter onto one the gate could see.
+- **README claim — materially better, deliberately not edited.** `README.md:3` sells "~80
+  accessibility-first React 19 components". When that note was first written, six of the most-used
+  status components failed WCAG 1.4.1 by conveying severity through colour alone; **five of those
+  six are now closed** (#1 #21 #44 #104 #147), along with the sortable-header semantics (#353), the
+  two-axis colour slider (#287), typeahead swallowing typed text (#468), table selection semantics
+  (#351) and the sidebar heading gap (#395). The line is a positioning claim the owner owns, so it
+  was left alone rather than rewritten by a fix pass — but the honest current position is: **one
+  known 1.4.1 gap remains (#205, and the ledger carries the measurement showing a glyph cannot fit
+  in a 4px track), one semantics question is open (#8), and the remaining contrast items are waiting
+  on a `response-ui-css` release rather than on this package.**

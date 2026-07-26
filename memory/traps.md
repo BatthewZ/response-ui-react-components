@@ -490,6 +490,19 @@ collision, left alone because briefs in flight cite the later one by letter.)
   reveal wrapper drops its entrance class on `animationend`; a descendant rule keyed off that class
   loses it mid-flight and later items snap instead of finishing. Keying off the *absence* of the
   hidden class is stable, because that class is removed exactly once.
+- **An editor-written `\u0000` in a TS template literal can land as a LITERAL NUL byte.** `tsc`,
+  eslint and vitest all accept it silently — and git then classifies the whole file as *binary*,
+  so `git diff` prints "Binary files differ" and every diff, blame and review on that file is
+  quietly lost. Worse, `grep`/`sed`/`perl` re-break probes against such a file no-op **without
+  failing**, so a fail-first check "passes" for the wrong reason. Build re-break probes with an
+  asserted marker (`assert old in s`), never a bare substitution that cannot tell you it matched
+  nothing.
+- **A "corrected" number in a row can be the wrong one.** A contrast figure was re-scoped upward
+  and the correction was believed for a whole pass; measured from *rendered pixels* it was
+  2x off, and the older figure the correction replaced had been closer. The cause: the model
+  composited a translucent layer in **linear light**, where browsers composite in gamma-encoded
+  sRGB. Any ratio involving an alpha wash has to come from pixels, not from arithmetic — and a
+  row that has already been "corrected once" is not thereby more trustworthy.
 - **Reviewing a diff in windowed chunks is not reviewing the diff.** A coordinator paged through
   an unfamiliar change with `head -40` and then `sed -n '40,80p'`, judged it sound, and committed
   it. The very first line of the function under review was `return …; // TEMP-AB-BYPASS`, which
