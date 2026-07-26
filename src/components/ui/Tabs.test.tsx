@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Tabs } from "./Tabs";
 
@@ -420,5 +420,105 @@ describe("Tabs", () => {
 
     expect(onAnimationEnd).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Panel Two Content")).toBeInTheDocument();
+  });
+});
+
+/**
+ * The controlled/uncontrolled mode must lock on the first render. A parent that
+ * writes `value={v ?? undefined}` otherwise flips the tabs uncontrolled mid-life
+ * and they start answering clicks from internal state the parent cannot see.
+ */
+describe("mode lock", () => {
+  let onValueChange = vi.fn();
+
+  beforeEach(() => {
+    onValueChange = vi.fn();
+  });
+
+  function ControlledTabs({ value }: { value: string | undefined }) {
+    return (
+      <Tabs defaultValue="one" value={value} onValueChange={onValueChange}>
+        <Tabs.List>
+          <Tabs.Tab value="one">Tab One</Tabs.Tab>
+          <Tabs.Tab value="two">Tab Two</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="one">Panel One Content</Tabs.Panel>
+        <Tabs.Panel value="two">Panel Two Content</Tabs.Panel>
+      </Tabs>
+    );
+  }
+
+  it("controlled tabs never adopt internal state when `value` goes undefined", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ControlledTabs value="one" />);
+
+    rerender(<ControlledTabs value={undefined} />);
+    await user.click(screen.getByRole("tab", { name: "Tab Two" }));
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith("two");
+    expect(screen.getByRole("tab", { name: "Tab Two" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+    expect(screen.getByText("Panel One Content")).toBeInTheDocument();
+  });
+
+  it("controlled tabs keep honouring the parent after the undefined blip", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ControlledTabs value="one" />);
+
+    rerender(<ControlledTabs value={undefined} />);
+    await user.click(screen.getByRole("tab", { name: "Tab Two" }));
+    rerender(<ControlledTabs value="two" />);
+
+    expect(screen.getByRole("tab", { name: "Tab Two" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByText("Panel Two Content")).toBeInTheDocument();
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("uncontrolled tabs are not turned controlled by a later `value`", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ControlledTabs value={undefined} />);
+
+    await user.click(screen.getByRole("tab", { name: "Tab Two" }));
+    rerender(<ControlledTabs value="one" />);
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("tab", { name: "Tab Two" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByText("Panel Two Content")).toBeInTheDocument();
+  });
+
+  // Behaviour change from the migration: `useControllableState` gates the change
+  // channel on the value actually differing, so re-selecting the tab that is
+  // already active is a no-op instead of an echo the parent has to filter.
+  it("re-selecting the active tab does not re-emit", async () => {
+    const user = userEvent.setup();
+    render(<ControlledTabs value={undefined} />);
+
+    await user.click(screen.getByRole("tab", { name: "Tab Two" }));
+    await user.click(screen.getByRole("tab", { name: "Tab Two" }));
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith("two");
+  });
+
+  it("the exit-animation bookkeeping still tracks a controlled value change", async () => {
+    motion.reduced = false;
+    const { rerender } = render(<ControlledTabs value="one" />);
+
+    rerender(<ControlledTabs value="two" />);
+
+    const exiting = screen.getByText("Panel One Content");
+    expect(exiting).toHaveClass("fade-out");
+    fireAnimationEnd(exiting);
+    expect(screen.getByText("Panel Two Content")).toBeInTheDocument();
+    expect(screen.queryByText("Panel One Content")).not.toBeInTheDocument();
   });
 });

@@ -5,7 +5,6 @@ import {
   createContext,
   forwardRef,
   type ReactNode,
-  useCallback,
   useContext,
   useEffect,
   useId,
@@ -15,6 +14,7 @@ import {
 } from "react";
 
 import { useClickOutside } from "../../hooks/use-click-outside";
+import { useControllableState } from "../../hooks/use-controllable-state";
 import { useFocusTrap } from "../../hooks/use-focus-trap";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
@@ -36,6 +36,16 @@ interface AppShellContextValue {
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
 
+/**
+ * The mobile branch, named so the JS side states it once (#397). `AppShell.css`
+ * still restates the same condition for the pre-hydration layout, and nothing
+ * enforces the match: a media query cannot read a custom property, this package
+ * has no CSS build step, and vitest runs with `css: false` — which stubs every
+ * CSS request, `?raw` included — so no test here can read the stylesheet. Change
+ * one and you must change the other by hand.
+ */
+const MOBILE_VIEWPORT_QUERY = "(max-width: 639px)";
+
 function useAppShell() {
   const ctx = useContext(AppShellContext);
   if (!ctx) throw new Error("AppShell compound components must be used within <AppShell>");
@@ -46,9 +56,15 @@ function useAppShell() {
 
 type AppShellRootProps = {
   defaultOpen?: boolean;
+  /**
+   * Controlled mobile-drawer state. Controlled-ness is decided on the FIRST
+   * render and never changes, so `open={o ?? undefined}` keeps the shell
+   * controlled — a later `undefined` reads as closed rather than switching mode.
+   */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultCollapsed?: boolean;
+  /** Controlled desktop-rail state; locks on the first render like `open`. */
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   children: ReactNode;
@@ -68,31 +84,29 @@ const AppShellRoot = forwardRef<HTMLDivElement, AppShellRootProps>(function AppS
   },
   ref
 ) {
-  const [openInternal, setOpenInternal] = useState(defaultOpen);
-  const open = openProp ?? openInternal;
-  const setOpen = useCallback(
-    (val: boolean) => {
-      setOpenInternal(val);
-      onOpenChange?.(val);
-    },
-    [onOpenChange]
-  );
+  // Only `useControllableState` reads the raw props; these refs are the mode
+  // lock's one job here — keep feeding the hooks a defined value once
+  // controlled, so a later `undefined` reads as closed/expanded rather than
+  // handing the shell back internal state the caller cannot see.
+  const isOpenControlledRef = useRef(openProp !== undefined);
+  const [open, setOpen] = useControllableState<boolean>({
+    value: isOpenControlledRef.current ? (openProp ?? false) : undefined,
+    defaultValue: defaultOpen,
+    onChange: onOpenChange,
+  });
 
-  const [collapsedInternal, setCollapsedInternal] = useState(defaultCollapsed);
-  const collapsed = collapsedProp ?? collapsedInternal;
-  const setCollapsed = useCallback(
-    (val: boolean) => {
-      setCollapsedInternal(val);
-      onCollapsedChange?.(val);
-    },
-    [onCollapsedChange]
-  );
+  const isCollapsedControlledRef = useRef(collapsedProp !== undefined);
+  const [collapsed, setCollapsed] = useControllableState<boolean>({
+    value: isCollapsedControlledRef.current ? (collapsedProp ?? false) : undefined,
+    defaultValue: defaultCollapsed,
+    onChange: onCollapsedChange,
+  });
 
   const [isMobile, setIsMobile] = useState(false);
   const sidebarId = `app-shell-sidebar-${useId()}`;
 
   useEffect(() => {
-    const mql = window.matchMedia("(max-width: 639px)");
+    const mql = window.matchMedia(MOBILE_VIEWPORT_QUERY);
     const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
     handler(mql);
     mql.addEventListener("change", handler);
@@ -272,10 +286,25 @@ type SidebarLinkProps = {
   to: string;
   icon?: LucideIcon;
   children: ReactNode;
+  /**
+   * Not a SidebarLink prop — the destination is `to`, which the router adapter
+   * turns into the `href`.
+   *
+   * Declared `never` rather than only `Omit`ted because a JSX spread performs no
+   * excess-property check: `{...props}` lands after `to` on the adapter's Link,
+   * which renders `<a href={to} {...rest}>`, so a spread `href` silently won the
+   * destination and the link navigated somewhere else. Now that spread is a
+   * compile error, and the destructure below keeps the key off the element
+   * regardless.
+   */
+  href?: never;
 } & Omit<ComponentPropsWithRef<"a">, "href" | "children">;
 
 const AppShellSidebarLink = forwardRef<HTMLAnchorElement, SidebarLinkProps>(
-  function AppShellSidebarLink({ to, icon: Icon, className, children, ...props }, ref) {
+  function AppShellSidebarLink(
+    { to, icon: Icon, className, children, href: _href, ...props },
+    ref
+  ) {
     const { collapsed, isMobile } = useAppShell();
     const Link = useLink();
     const pathname = usePathname();

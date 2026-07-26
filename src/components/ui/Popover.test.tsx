@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Popover } from "./Popover";
 
@@ -190,5 +190,72 @@ describe("Popover", () => {
     // Both must happen: the caller's handler AND the component's own behaviour.
     expect(childClick).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("Popover body content")).toBeInTheDocument();
+  });
+});
+
+/**
+ * The controlled/uncontrolled mode must lock on the first render. A parent that
+ * writes `open={o ?? undefined}` otherwise flips the popover uncontrolled
+ * mid-life and it starts opening from internal state the parent cannot see.
+ */
+describe("mode lock", () => {
+  let onOpenChange = vi.fn();
+
+  beforeEach(() => {
+    onOpenChange = vi.fn();
+  });
+
+  function ControlledPopover({ open }: { open: boolean | undefined }) {
+    return (
+      <Popover open={open} onOpenChange={onOpenChange}>
+        <Popover.Trigger>Toggle popover</Popover.Trigger>
+        <Popover.Content>
+          <p>Popover body content</p>
+        </Popover.Content>
+      </Popover>
+    );
+  }
+
+  it("a controlled popover never adopts internal state when `open` goes undefined", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ControlledPopover open={false} />);
+
+    rerender(<ControlledPopover open={undefined} />);
+    await user.click(screen.getByRole("button", { name: "Toggle popover" }));
+
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
+    expect(screen.queryByText("Popover body content")).not.toBeInTheDocument();
+  });
+
+  it("a controlled popover keeps honouring the parent after the undefined blip", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ControlledPopover open={false} />);
+
+    rerender(<ControlledPopover open={undefined} />);
+    await user.click(screen.getByRole("button", { name: "Toggle popover" }));
+    rerender(<ControlledPopover open={true} />);
+
+    expect(await screen.findByText("Popover body content")).toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("an uncontrolled popover is not turned controlled by a later `open`", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ControlledPopover open={undefined} />);
+
+    await user.click(screen.getByRole("button", { name: "Toggle popover" }));
+    expect(await screen.findByText("Popover body content")).toBeInTheDocument();
+
+    rerender(<ControlledPopover open={false} />);
+
+    // `Popover.Content` unmounts on a 150ms transition, so its presence right
+    // after the rerender proves nothing. `aria-expanded` follows `open` on the
+    // same commit.
+    expect(screen.getByRole("button", { name: "Toggle popover" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
   });
 });

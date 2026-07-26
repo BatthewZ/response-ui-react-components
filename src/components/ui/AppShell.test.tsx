@@ -425,3 +425,165 @@ describe("AppShell", () => {
     expect(marked[0]).toHaveAttribute("aria-current", "page");
   });
 });
+
+/**
+ * A caller's bag arriving from a carrier TypeScript cannot see — plain JS, or
+ * props forwarded through `any`. `href?: never` makes the *typed* spread of the
+ * same object a compile error; the runtime destructure is what covers this half,
+ * and it is the half a published package cannot assume away.
+ */
+function untypedProps(bag: Record<string, unknown>): Record<string, never> {
+  return bag as Record<string, never>;
+}
+
+/**
+ * The controlled/uncontrolled mode must lock on the first render. A parent that
+ * writes `open={o ?? undefined}` / `collapsed={c ?? undefined}` otherwise flips
+ * the shell uncontrolled mid-life and it starts answering the toggle from
+ * internal state the parent cannot see.
+ */
+describe("mode lock", () => {
+  let onOpenChange = vi.fn();
+  let onCollapsedChange = vi.fn();
+
+  beforeEach(() => {
+    onOpenChange = vi.fn();
+    onCollapsedChange = vi.fn();
+  });
+
+  function ControlledDrawer({ open }: { open: boolean | undefined }) {
+    return (
+      <AppShell open={open} onOpenChange={onOpenChange}>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>
+    );
+  }
+
+  function ControlledSidebar({ collapsed }: { collapsed: boolean | undefined }) {
+    return (
+      <AppShell collapsed={collapsed} onCollapsedChange={onCollapsedChange}>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>
+    );
+  }
+
+  it("a controlled drawer never adopts internal state when `open` goes undefined", async () => {
+    stubMobileMatchMedia();
+    const user = userEvent.setup();
+    const { rerender } = renderWithRouter(<ControlledDrawer open={false} />);
+
+    rerender(<ControlledDrawer open={undefined} />);
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
+    expect(
+      screen.queryByRole("navigation", { name: "Main navigation" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open navigation" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("an uncontrolled drawer is not turned controlled by a later `open`", async () => {
+    stubMobileMatchMedia();
+    const user = userEvent.setup();
+    const { rerender } = renderWithRouter(<ControlledDrawer open={undefined} />);
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    rerender(<ControlledDrawer open={false} />);
+
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+  });
+
+  it("a controlled sidebar never adopts internal state when `collapsed` goes undefined", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderWithRouter(<ControlledSidebar collapsed={false} />);
+
+    rerender(<ControlledSidebar collapsed={undefined} />);
+    await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+
+    expect(onCollapsedChange).toHaveBeenCalledTimes(1);
+    expect(onCollapsedChange).toHaveBeenLastCalledWith(true);
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).not.toHaveAttribute(
+      "data-collapsed",
+    );
+  });
+
+  it("an uncontrolled sidebar is not turned controlled by a later `collapsed`", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderWithRouter(<ControlledSidebar collapsed={undefined} />);
+
+    await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+    rerender(<ControlledSidebar collapsed={false} />);
+
+    expect(onCollapsedChange).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toHaveAttribute(
+      "data-collapsed",
+    );
+  });
+});
+
+describe("omitted props", () => {
+  it("a spread `href` cannot override the `to`-derived destination", () => {
+    const bag = { href: "/somewhere-else", rel: "noopener" };
+
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Sidebar>
+          <AppShell.SidebarLink to="/dashboard" {...untypedProps(bag)}>
+            Dashboard
+          </AppShell.SidebarLink>
+        </AppShell.Sidebar>
+      </AppShell>,
+    );
+
+    const link = screen.getByRole("link", { name: "Dashboard" });
+    expect(link).toHaveAttribute("href", "/dashboard");
+    // The rest of the bag is still forwarded — the fix strips one key, not all.
+    expect(link).toHaveAttribute("rel", "noopener");
+  });
+});
+
+/**
+ * #397 — the layout's two shared magnitudes.
+ *
+ * The navbar height was written into three rules; it now has one declaration
+ * (`--app-shell-navbar-height`) that the other two read. That half is not
+ * asserted here: vitest runs with `css: false`, which replaces every CSS request
+ * — `?raw` included — with an empty string, so no test in this package can read
+ * a stylesheet. Only `scripts/verify-*` can.
+ *
+ * The breakpoint half cannot be single-sourced at all: a CSS media query cannot
+ * read a custom property, this package has no CSS build step, and neither copy
+ * is removable (the stylesheet's block is what keeps the pre-hydration render
+ * from showing the inline sidebar on a phone; the `matchMedia` call is what
+ * drives `isMobile`). What is fixable is the JS side stating it twice, so this
+ * pins it to one named constant that the effect reads.
+ */
+describe("#397 · the mobile breakpoint is stated once in AppShell.tsx", () => {
+  // Vite's raw glob rather than `node:fs` — `@types/node` is not a dependency
+  // and `tsconfig.types` is an allowlist, so `readFileSync` would not typecheck.
+  const sources = import.meta.glob<string>("./AppShell.tsx", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  });
+  const tsx = sources["./AppShell.tsx"];
+
+  it("names the query once and subscribes through the name", () => {
+    expect(tsx.match(/\(max-width: 639px\)/g)).toHaveLength(1);
+    expect(tsx).toMatch(/const MOBILE_VIEWPORT_QUERY = "\(max-width: 639px\)";/);
+    expect(tsx).toContain("window.matchMedia(MOBILE_VIEWPORT_QUERY)");
+  });
+});

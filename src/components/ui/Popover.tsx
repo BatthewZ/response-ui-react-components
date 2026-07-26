@@ -6,13 +6,13 @@ import {
   forwardRef,
   isValidElement,
   type ReactElement,
-  useCallback,
   useContext,
   useId,
   useMemo,
-  useState,
+  useRef,
 } from "react";
 
+import { useControllableState } from "../../hooks/use-controllable-state";
 import {
   FloatingFocusManager,
   FloatingPortal,
@@ -56,6 +56,11 @@ function usePopoverContext() {
 /* ------------------------------------------------------------------ */
 
 interface PopoverRootProps {
+  /**
+   * Controlled open state. Controlled-ness is decided on the FIRST render and
+   * never changes, so `open={o ?? undefined}` keeps the popover controlled — a
+   * later `undefined` reads as closed rather than switching mode.
+   */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultOpen?: boolean;
@@ -72,18 +77,17 @@ function PopoverRoot({
   offset: offsetPx = 8,
   children,
 }: PopoverRootProps) {
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
-  const isControlled = controlledOpen !== undefined;
-  const open = isControlled ? controlledOpen : uncontrolledOpen;
   const contentId = useId();
 
-  const handleOpenChange = useCallback(
-    (v: boolean) => {
-      if (!isControlled) setUncontrolledOpen(v);
-      onOpenChange?.(v);
-    },
-    [isControlled, onOpenChange]
-  );
+  // Only `useControllableState` reads the raw prop; this ref is the mode lock's
+  // one job here — keep feeding the hook a defined value once controlled, so a
+  // later `open={undefined}` reads as closed rather than a mode switch.
+  const isControlledRef = useRef(controlledOpen !== undefined);
+  const [open, handleOpenChange] = useControllableState<boolean>({
+    value: isControlledRef.current ? (controlledOpen ?? false) : undefined,
+    defaultValue: defaultOpen,
+    onChange: onOpenChange,
+  });
 
   const { refs, floatingStyles, context } = useFloating({
     placement,

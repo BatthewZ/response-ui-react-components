@@ -7,9 +7,10 @@ import {
   useCallback,
   useContext,
   useId,
-  useState,
+  useRef,
 } from "react";
 
+import { useControllableState } from "../../hooks/use-controllable-state";
 import { composeEventHandlers } from "../../util/merge-props";
 import { cn } from "../../util/style";
 
@@ -57,6 +58,11 @@ function useItemContext() {
 type AccordionProps = {
   mode?: Mode;
   defaultValue?: string | string[];
+  /**
+   * Controlled open set. Controlled-ness is decided on the FIRST render and
+   * never changes, so `value={v ?? undefined}` keeps the accordion controlled —
+   * a later `undefined` reads as "nothing open", not as a mode switch.
+   */
   value?: string | string[];
   onValueChange?: (value: string | string[]) => void;
 } & Omit<ComponentPropsWithRef<"div">, "defaultValue">;
@@ -78,30 +84,28 @@ const AccordionRoot = forwardRef<HTMLDivElement, AccordionProps>(function Accord
   },
   ref
 ) {
-  const [uncontrolledValue, setUncontrolledValue] = useState(() => normalizeValues(defaultValue));
   const baseId = useId();
 
-  const isControlled = controlledValue !== undefined;
-  const openValues = isControlled ? normalizeValues(controlledValue) : uncontrolledValue;
+  // Only `useControllableState` reads the raw prop; this ref is the mode lock's
+  // one job here — keep feeding the hook a defined value once controlled, so a
+  // later `value={undefined}` is read as an empty set rather than a mode switch.
+  const isControlledRef = useRef(controlledValue !== undefined);
+  const [openValues, setOpenValues] = useControllableState<string[]>({
+    value: isControlledRef.current ? normalizeValues(controlledValue) : undefined,
+    defaultValue: normalizeValues(defaultValue),
+    onChange: (next) => onValueChange?.(mode === "single" ? (next[0] ?? "") : next),
+  });
 
   const toggle = useCallback(
     (itemValue: string) => {
-      let next: string[];
-
-      if (mode === "single") {
-        next = openValues.includes(itemValue) ? [] : [itemValue];
-      } else {
-        next = openValues.includes(itemValue)
-          ? openValues.filter((v) => v !== itemValue)
-          : [...openValues, itemValue];
-      }
-
-      if (!isControlled) {
-        setUncontrolledValue(next);
-      }
-      onValueChange?.(mode === "single" ? (next[0] ?? "") : next);
+      setOpenValues((prev) => {
+        if (mode === "single") return prev.includes(itemValue) ? [] : [itemValue];
+        return prev.includes(itemValue)
+          ? prev.filter((v) => v !== itemValue)
+          : [...prev, itemValue];
+      });
     },
-    [mode, openValues, isControlled, onValueChange]
+    [mode, setOpenValues]
   );
 
   return (

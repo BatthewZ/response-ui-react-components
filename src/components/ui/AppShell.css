@@ -4,6 +4,10 @@
 
 /* Root grid */
 .app-shell {
+  /* The navbar's height is also the sidebar's sticky offset and the amount its
+     viewport-height is short by. Stated once so restyling the navbar carries the
+     sidebar with it (#397). */
+  --app-shell-navbar-height: 3.5rem;
   display: grid;
   grid-template-rows: auto 1fr;
   grid-template-columns: auto 1fr;
@@ -21,7 +25,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  height: 3.5rem;
+  height: var(--app-shell-navbar-height);
   padding-inline: 1rem;
   background: var(--C-SURFACE-0);
   border-bottom: 1px solid var(--C-BORDER-DEFAULT);
@@ -76,8 +80,8 @@
   grid-column: 1;
   grid-row: 2;
   position: sticky;
-  top: 3.5rem;
-  height: calc(100vh - 3.5rem);
+  top: var(--app-shell-navbar-height);
+  height: calc(100vh - var(--app-shell-navbar-height));
   width: 16.25rem;
   overflow-y: auto;
   overflow-x: hidden;
@@ -236,7 +240,12 @@
   }
 }
 
-/* ── Mobile: hide desktop sidebar, show full-width main ── */
+/* ── Mobile: hide desktop sidebar, show full-width main ──
+   `isMobile` starts false (the effect can only run after the first paint), so
+   this block is what keeps the pre-hydration render from showing the inline
+   sidebar on a phone — neither this copy nor the JS one is removable. It
+   restates AppShell.tsx's MOBILE_VIEWPORT_QUERY because a media query cannot
+   read a custom property, and nothing enforces the match: edit both (#397). */
 @media (max-width: 639px) {
   .app-shell {
     grid-template-columns: 1fr;

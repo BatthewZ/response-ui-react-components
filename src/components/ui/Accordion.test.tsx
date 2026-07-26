@@ -5,7 +5,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Accordion } from "./Accordion";
 
@@ -411,5 +411,107 @@ describe("Accordion", () => {
       expect(onKeyDown).toHaveBeenCalledTimes(1);
       expect(triggerA).toHaveFocus();
     });
+  });
+});
+
+/**
+ * The controlled/uncontrolled mode must lock on the first render. A parent that
+ * writes `value={v ?? undefined}` — the shape a nullable selection produces —
+ * otherwise flips the accordion uncontrolled mid-life, and it starts answering
+ * clicks from internal state the parent cannot see.
+ */
+describe("mode lock", () => {
+  let onValueChange = vi.fn();
+
+  beforeEach(() => {
+    onValueChange = vi.fn();
+  });
+
+  function ControlledAccordion({ value }: { value: string | string[] | undefined }) {
+    return (
+      <Accordion mode="multiple" value={value} onValueChange={onValueChange}>
+        <Accordion.Item value="a">
+          <Accordion.Trigger>Section A</Accordion.Trigger>
+          <Accordion.Content>Content A</Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="b">
+          <Accordion.Trigger>Section B</Accordion.Trigger>
+          <Accordion.Content>Content B</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>
+    );
+  }
+
+  it("a controlled accordion never adopts internal state when `value` goes undefined", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ControlledAccordion value={["a"]} />);
+
+    rerender(<ControlledAccordion value={undefined} />);
+    await user.click(screen.getByRole("button", { name: "Section B" }));
+
+    // The parent still owns the value: B reports its emitted change and nothing else.
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenLastCalledWith(["b"]);
+    expect(screen.getByRole("button", { name: "Section B" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("a controlled accordion keeps honouring the parent after the undefined blip", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ControlledAccordion value={["a"]} />);
+
+    rerender(<ControlledAccordion value={undefined} />);
+    await user.click(screen.getByRole("button", { name: "Section B" }));
+    rerender(<ControlledAccordion value={["a", "b"]} />);
+
+    expect(screen.getByRole("button", { name: "Section A" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Section B" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("an uncontrolled accordion is not turned controlled by a later `value`", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ControlledAccordion value={undefined} />);
+
+    await user.click(screen.getByRole("button", { name: "Section A" }));
+    rerender(<ControlledAccordion value={[]} />);
+    await user.click(screen.getByRole("button", { name: "Section B" }));
+
+    expect(onValueChange).toHaveBeenCalledTimes(2);
+    expect(onValueChange).toHaveBeenLastCalledWith(["a", "b"]);
+    expect(screen.getByRole("button", { name: "Section B" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  /**
+   * Measurement for the `isEqual` question: the accordion's value is an array, so
+   * `Object.is` can never report two of them equal — but every reachable setter
+   * call is a toggle, which provably changes the set. Repeated presses against a
+   * frozen controlled parent emit once each, and none of them is a re-emit of an
+   * equal value.
+   */
+  it("repeated presses against a frozen controlled parent emit once per press, never twice", async () => {
+    const user = userEvent.setup();
+    render(<ControlledAccordion value={["a"]} />);
+
+    const b = screen.getByRole("button", { name: "Section B" });
+    await user.click(b);
+    await user.click(b);
+    await user.click(b);
+
+    expect(onValueChange).toHaveBeenCalledTimes(3);
+    expect(onValueChange).toHaveBeenNthCalledWith(1, ["a", "b"]);
+    expect(onValueChange).toHaveBeenNthCalledWith(2, ["a", "b"]);
+    expect(onValueChange).toHaveBeenNthCalledWith(3, ["a", "b"]);
   });
 });

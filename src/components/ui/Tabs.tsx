@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 
+import { useControllableState } from "../../hooks/use-controllable-state";
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { composeEventHandlers } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
@@ -48,6 +49,11 @@ function useTabsContext() {
 
 type TabsProps = {
   defaultValue: string;
+  /**
+   * Controlled active tab. Controlled-ness is decided on the FIRST render and
+   * never changes, so `value={v ?? undefined}` keeps the tabs controlled — a
+   * later `undefined` falls back to `defaultValue` rather than switching mode.
+   */
   value?: string;
   onValueChange?: (value: string) => void;
   variant?: Variant;
@@ -65,12 +71,18 @@ const TabsRoot = forwardRef<HTMLDivElement, TabsProps>(function Tabs(
   },
   ref
 ) {
-  const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
   const baseId = useId();
   const reducedMotion = usePrefersReducedMotion();
 
-  const isControlled = controlledValue !== undefined;
-  const activeValue = isControlled ? controlledValue : uncontrolledValue;
+  // Only `useControllableState` reads the raw prop; this ref is the mode lock's
+  // one job here — keep feeding the hook a defined value once controlled, so a
+  // later `value={undefined}` reads as `defaultValue` rather than a mode switch.
+  const isControlledRef = useRef(controlledValue !== undefined);
+  const [activeValue, setActiveValue] = useControllableState<string>({
+    value: isControlledRef.current ? (controlledValue ?? defaultValue) : undefined,
+    defaultValue,
+    onChange: onValueChange,
+  });
 
   /* -- Exit coordination ------------------------------------------------ */
   const [exitingValue, setExitingValue] = useState<string | null>(null);
@@ -95,21 +107,11 @@ const TabsRoot = forwardRef<HTMLDivElement, TabsProps>(function Tabs(
     setExitingValue(null);
   }, []);
 
-  const handleValueChange = useCallback(
-    (newValue: string) => {
-      if (!isControlled) {
-        setUncontrolledValue(newValue);
-      }
-      onValueChange?.(newValue);
-    },
-    [isControlled, onValueChange]
-  );
-
   return (
     <TabsContext.Provider
       value={{
         activeValue,
-        onValueChange: handleValueChange,
+        onValueChange: setActiveValue,
         variant,
         baseId,
         exitingValue,
