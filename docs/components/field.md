@@ -125,9 +125,9 @@ change it you have to override it at both breakpoints (see
 - **An empty [FieldError](field-error.md) renders `null`.** It only paints when there's content (its own
   children, or the field's resolved error), so it's safe to leave in the tree
   unconditionally — it costs nothing until there's a message.
-- **Client component.** Field is `"use client"` (context, `useId`, a store subscription),
-  so it needs a client boundary in an RSC tree — unlike Button, it can't render directly
-  on the server.
+- **Client Component, self-declared.** Field is `"use client"` (context, `useId`, a store
+  subscription), so it runs on the client — but the directive is its own, so importing it
+  straight from a Server Component works; React draws the boundary for you.
 
 ## Accessibility
 
@@ -137,10 +137,10 @@ it when it appears.
 Controls read the field context to pick up their state: [Input](input.md), Textarea, Select,
 Combobox, Switch and [Checkbox](checkbox.md) among them take `aria-invalid` and
 `aria-describedby` from the field automatically, and DatePicker, DateRangePicker, NumberInput
-and SearchInput inherit both through the [Input](input.md) they render. Two are partial, for
-different reasons. [RangeSlider](range-slider.md) reads the same hook but forwards only
-`aria-invalid`, onto its wrapper, and discards the `aria-describedby` — so nothing there
-points at the message. [Radio](radio.md) is the deliberate one: it takes the
+and SearchInput inherit both through the [Input](input.md) they render.
+[RangeSlider](range-slider.md) takes both as well, merged onto each of its two thumb inputs —
+the focusable controls — rather than its wrapper. One consumer is partial, deliberately:
+[Radio](radio.md) takes the
 `aria-describedby` and never `aria-invalid`, because ARIA 1.2 does not support that
 attribute on the `radio` role — the invalid state belongs on a `role="radiogroup"` container
 you own. A plain, un-wrapped `<input>` gets none of it — Field wires nothing onto arbitrary

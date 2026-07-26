@@ -14,8 +14,10 @@ context while staying exactly where it is in your React tree.
 ```
 <!-- /example -->
 
-That Portal is unconditional, which is fine in a client-rendered app and breaks hydration in
-a server-rendered one — read [Gotchas](#gotchas) before you paste it into Next.js.
+That Portal is unconditional, and that is fine even in a server-rendered app: Portal renders
+nothing until after mount, so the hydration pass matches the server's empty output. The cost
+is that portalled content is absent from the initial HTML and appears one commit late — read
+[Gotchas](#gotchas).
 
 | Prop        | Type              | Default         |
 | ----------- | ----------------- | --------------- |
@@ -180,24 +182,21 @@ or on `:root`. See the [theme contract](../theme-contract.md).
 
 ## Gotchas
 
-- **Nothing renders on the server.** Portal returns `null` whenever `document` is undefined,
-  which is every server render. That guard isn't a nicety: React's server renderer throws
-  outright on portals ("Portals are not currently supported by the server renderer"), so it
-  is what keeps an SSR page from crashing. The price is that portalled content is absent from
-  the initial HTML, so anything that must be in the first paint, be crawlable, or work
-  without JS does not belong in a Portal.
-- **An unconditional Portal fails hydration.** The guard that saves the server render does
-  nothing on the client: `document` *is* defined during hydration, so React's first client
-  pass already contains the portal while the server emitted nothing there. React walks into
-  the portal fiber, tries to match its children against the server DOM, and reports a
-  hydration error — "the server rendered HTML didn't match the client" in development, where
-  the printed tree diff names the `Portal` as the mismatch site, and minified error #418 in
-  production. This is not a dev-only warning: the whole hydration root is regenerated on the
-  client and its server HTML is discarded. Position doesn't help — it mismatches between siblings, as first, last, or
-  only child, and at the root alike. A Portal gated behind state that starts closed renders
-  `null` on that first pass and hydrates cleanly, which is the pattern in
-  [Showing and hiding](#showing-and-hiding) and what [AppShell](app-shell.md) does. For a portal that has
-  no such state, defer it behind a `mounted` flag you set in an effect.
+- **Nothing renders on the server — or on the first client pass.** Portal returns `null`
+  until a mount effect has run, which covers every server render and the hydration render
+  alike. The server half isn't a nicety: React's server renderer throws outright on portals
+  ("Portals are not currently supported by the server renderer"), so returning `null` before
+  `createPortal` is what keeps an SSR page from crashing. The price is that portalled content
+  is absent from the initial HTML, so anything that must be in the first paint, be crawlable,
+  or work without JS does not belong in a Portal.
+- **An unconditional Portal hydrates cleanly, one paint late.** Because the mount flag is
+  still `false` during hydration, the first client pass renders the same nothing the server
+  sent — no mismatch, nothing discarded — and the children portal in the commit right after.
+  (Portal used to gate on `typeof document` instead, which *is* defined during hydration; that
+  version portalled into HTML that wasn't there and cost the page its whole hydration root.)
+  The mount gate means even a Portal you render conditionally appears an effect-tick after
+  its condition flips on first mount; for overlays toggled by state, as in
+  [Showing and hiding](#showing-and-hiding), you will never notice.
 - **Changing `container` remounts the subtree.** React reconciles a portal by its container:
   hand Portal a different element and the old portal is deleted and a new one created, so the
   children unmount and remount. Component state, uncontrolled input values, scroll position,

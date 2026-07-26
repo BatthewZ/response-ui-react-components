@@ -64,7 +64,7 @@ component rendering two items can no longer split the two apart.
 | `children`  | `ReactNode` — the body block under the title; omitted when falsy      | —       |
 | `className` | `string` — merged after `timeline-item`; survives on **both** paths   | —       |
 | `ref`       | `Ref<HTMLDivElement>` — reaches the rendered element on both paths    | —       |
-| …rest       | `div` props **minus `title`** — dropped unless `animate={false}`       | —       |
+| …rest       | `div` props **minus `title`** — reach the DOM on both paths            | —       |
 
 `title` is `ReactNode`, and the item's div props are `Omit<…, "title">` — so the prop always
 means the heading content and the native `title` tooltip attribute is unavailable. `titleAs`
@@ -116,8 +116,8 @@ can be a single line:
 
 With `animate` at its default every item renders as a [ScrollReveal](scroll-reveal.md) and
 therefore starts at `opacity: 0`. `animate={false}` renders plain `<div>`s that are painted
-immediately — the right choice above the fold, and the only configuration in which an
-item's own props reach the DOM:
+immediately — the right choice above the fold and for anything that must stay readable when
+the bundle never runs. Item attributes like `id` and `data-*` land on either path:
 
 <!-- example:NoAnimation -->
 ```tsx
@@ -135,8 +135,8 @@ item's own props reach the DOM:
 ## Giving the timeline list semantics
 
 The root is a bare `<div>` with no role, and its rest props are spread straight onto it, so
-`role`, `aria-label` and friends land there whatever `animate` is set to. On the items they
-land only with the entrance off:
+`role`, `aria-label` and friends land there whatever `animate` is set to. The same is true
+of the items — `role="listitem"` survives the animating path too:
 
 <!-- example:SemanticList -->
 ```tsx
@@ -268,9 +268,9 @@ up, which is how the entrance direction stays welded to the card's side.
 ## Accessibility
 
 The root is a plain `<div>` — no role, no list semantics, no label — and every entry is a
-`<div>` too. Because the root's rest props do reach the DOM, `role="list"` and `aria-label`
-on it are yours to add at any time; `role="listitem"` on the entries needs the entrance off,
-as the list example shows.
+`<div>` too. Rest props reach the DOM on the root and on the items alike, whatever `animate`
+is set to, so `role="list"` / `role="listitem"` and `aria-label` are yours to add at any
+time, as the list example shows.
 
 - **The default renders the whole timeline at `opacity: 0` until the bundle executes.** Every
   animating item ships with `scroll-reveal-hidden`, cleared from an effect. A browser with **no
@@ -293,8 +293,7 @@ as the list example shows.
   reads whatever string you pass, verbatim and unparsed. Write dates you would be happy to hear
   read aloud, or pass a full date and let the card be wordy.
 - **Icons get no accessible name.** `icon` is rendered as-is inside the node, so mark a decorative
-  glyph `aria-hidden` yourself — as the icon example does. That much *does* work on the animating
-  path, because the attribute is on your element rather than on the item.
+  glyph `aria-hidden` yourself — as the icon example does.
 - **Nothing distinguishes one event from another but its text.** Every dot is the same
   `--C-ACCENT` circle at the same size, and no `data-*` state, icon or label is emitted to mark an
   event as done, failed or pending. If the status of an entry matters, put it in the `title`, the

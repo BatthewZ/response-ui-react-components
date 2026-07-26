@@ -69,14 +69,13 @@ export function Presets() {
   );
 }
 
-/** `aria-label` is the trigger's whole accessible name — it replaces the visible hex rather
- *  than adding to it — so fold the current value in if it has to be announced. */
+/** The trigger appends the current hex to `aria-label` itself — pass only the subject. */
 export function NamedWithValue() {
   const [accentColor, setAccentColor] = useState("#3949ab");
 
   return (
     <ColorPicker
-      aria-label={`Accent color, ${accentColor}`}
+      aria-label="Accent color"
       value={accentColor}
       onValueChange={setAccentColor}
     />

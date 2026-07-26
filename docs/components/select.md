@@ -29,8 +29,7 @@ Dropped inside a [Field](field.md) it inherits that field's error state — the 
 `name`, `required`, `disabled`, `multiple` — is a passthrough `<select>` attribute, and the
 choices are `<option>` / `<optgroup>` children you supply; there is no `options` prop. Its
 sharp edges are the ones the native control brings with it: you cannot style the open list,
-`multiple`/`size` pass through and look wrong, and Select is not server-renderable. See
-[Gotchas](#gotchas).
+and `multiple`/`size` pass through and look wrong. See [Gotchas](#gotchas).
 
 ## Native control, or `Combobox` / `MultiSelect`?
 
@@ -71,8 +70,8 @@ ships two of those separately, and the line between them is sharp enough to draw
   loading state.
 
 The cost of the two custom controls is the usual one: both portal, both carry hand-written
-ARIA, and both are client components. Select is the sturdy default — stay on it until one of
-the bullets above actually bites.
+ARIA, and both are inert without JavaScript, where a server-rendered `<select>` still works.
+Select is the sturdy default — stay on it until one of the bullets above actually bites.
 
 ## Placeholder and required
 
@@ -283,13 +282,13 @@ merges over it — the class list runs through tailwind-merge — at the cost of
   `aria-describedby`) through context, but nothing links a [Label](label.md) to the select. Set
   `Label htmlFor="x"` and `Select id="x"` yourself, or clicking the label won't focus the
   control and screen readers won't announce it as the field's name.
-- **Not server-renderable.** Unlike [Button](button.md), Select calls the `useFieldError`
-  hook (it reads context), so it must run inside a Client Component. It ships **no**
-  `"use client"` of its own, so rendering it directly from a Server Component with no client
-  ancestor throws. In a normal client-side form tree this never comes up.
+- **Client Component, self-declared.** Select calls the `useFieldError` hook (it reads
+  context), so it runs on the client — but it ships its own `"use client"`, so importing it
+  straight from a Server Component works; React draws the boundary for you.
 - **`aria-describedby` needs a rendered [FieldError](field-error.md).** Inside an errored [Field](field.md), Select
-  points `aria-describedby` at the field's error id; if you don't render [FieldError](field-error.md) (or
-  give the error no content), that id resolves to nothing.
+  points `aria-describedby` at the error element a [FieldError](field-error.md) actually mounted; if you
+  don't render one (or the error has no content), the attribute is simply omitted — no
+  dangling id, but no announced message either.
 - **No per-component CSS.** There is no `Select.css`. Both CSS imports are still required —
   the utilities above resolve to tokens from `@batthewz/response-ui-css`.
 

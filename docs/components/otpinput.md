@@ -16,11 +16,11 @@ characters the code has.
 ```
 <!-- /example -->
 
-`onComplete` is the headline API and the one edge not to copy blind: it fires on the
-*first* completion and then latches, so a user who corrects a digit never re-triggers it.
-Used as the only submit path — which is what the prop invites — the screen deadlocks on a
-visibly correct code. Gate submission on `onValueChange` and treat `onComplete` as a
-first-completion hint. See [Gotchas](#gotchas).
+`onComplete` is the headline API: it fires when every box holds a character, and it
+re-fires whenever a further edit produces a *different* complete code — a user who
+corrects a digit triggers it again with the corrected value. The one thing it never does
+is fire twice in a row with the same code, so re-pasting an identical code is silent.
+See [Gotchas](#gotchas).
 
 | Prop            | Type                              | Default                     |
 | --------------- | --------------------------------- | --------------------------- |
@@ -31,6 +31,7 @@ first-completion hint. See [Gotchas](#gotchas).
 | `onChange`      | `(v: string) => void`             | —                           |
 | `onComplete`    | `(v: string) => void`             | —                           |
 | `mode`          | `"numeric" \| "alphanumeric"`     | `"numeric"`                 |
+| `charLabel`     | `(position: number, length: number) => string` | `` (p, n) => `Character ${p} of ${n}` `` |
 | `error`         | `boolean`                         | `Field` state, else `false` |
 | `disabled`      | `boolean`                         | —                           |
 | `aria-label`    | `string`                          | `"One-time code"`           |
@@ -39,9 +40,10 @@ first-completion hint. See [Gotchas](#gotchas).
 | …rest           | `<div>` props minus `defaultValue`; `onChange` is re-typed above | —       |
 
 `className` and the rest props land on the **group `<div>`**, never on the boxes — there is
-no prop that reaches an individual `<input>`. Three edges are worth reading before you ship:
-`onComplete` fires at most once per completion, the emitted string can contain spaces, and a
-`<label htmlFor>` cannot name this control. See [Gotchas](#gotchas).
+no prop that reaches an individual `<input>` beyond `charLabel`. Three edges are worth
+reading before you ship: `onComplete` never fires the same code twice in a row, a gap
+between filled boxes does not survive the next edit, and a `<label htmlFor>` cannot name
+this control. See [Gotchas](#gotchas).
 
 `onChange` is the exception to that spread. It is re-typed as `(v: string) => void` — the
 committed code, the same payload as `onValueChange`, not a `ChangeEvent` — and is
@@ -105,16 +107,17 @@ its whole life.
 ```
 <!-- /example -->
 
-That `replace(/ /g, "")` is load-bearing. The component models the boxes as a fixed-length
-slot array and serialises it back to one string, writing an **empty slot as a space** so the
-positions of the characters after it survive the round trip. Fill only boxes 1, 3, 5 and 7
-of a seven-box code and `onValueChange` receives `"1 3 5 7"` — seven characters long, with
-four characters entered. Trailing empties are trimmed; internal ones are not. So
-`code.length === length` is not a completeness test, and `onComplete` (which checks the
-slots, not the string) is the only reliable one.
+That `replace(/ /g, "")` is belt-and-braces, not load-bearing: the emitted string holds
+only characters the user actually entered. The component models the boxes as a
+fixed-length slot array and joins the filled slots back into one string with **no
+filler**, so `value.length` is a truthful count of entered characters and
+`code.length === 6` alone would gate the button correctly. The cost of the truthful
+encoding is that a *gap* cannot survive: fill boxes 1 and 3 of an empty control and the
+next commit shifts the tail left, collapsing out-of-order entry toward the front.
 
-The encoding round-trips, so it is also how you seed a partially filled control:
-`value="1 3"` renders `1`, empty, `3`, empty.
+Seeding still understands the older space encoding, one way only: a space in an incoming
+`value` is read as an empty slot — `value="1 3"` renders `1`, empty, `3` — but a space is
+never written back out.
 
 ## Error state
 
@@ -205,28 +208,24 @@ rather than of this component's markup, so a custom theme owns them: if you retu
 
 ## Gotchas
 
-- **`onComplete` goes stale if the user corrects a digit.** It fires once when the last box
-  fills and then latches; a further edit that leaves the code *still complete* does not fire
-  it again. Type `123`, then fix the first digit to `9`: `onValueChange` reports `"923"`,
-  `onComplete` has still only ever been called with `"123"`. Re-pasting a whole replacement
-  code over a complete one behaves the same way. If `onComplete` is your only submit path —
-  the pattern the prop invites — the screen deadlocks on a visibly correct code. The user's
-  only escape is to clear a box (which unlatches it) and retype. Gate your submit on
-  `onValueChange` instead, or treat `onComplete` as a *first*-completion hint.
-- **A multi-character value arriving in one box keeps only the last character.** Paste is
-  handled separately and spreads correctly across the boxes, but a plain `change` event
-  carrying several characters is reduced to `filtered[filtered.length - 1]`. Feeding `123456`
-  to the first box of a six-box control leaves `6` in box 1 and the rest empty. This is the
-  shape platform SMS autofill uses for the `autoComplete="one-time-code"` hint the component
-  sets, so treat mobile autofill as unverified until you have tested it on a real device.
-- **Delete and cut do nothing.** `handleChange` returns early on an empty filtered string and
-  `handleKeyDown` only implements Backspace, ArrowLeft and ArrowRight. Pressing <kbd>Delete</kbd>
-  on a filled box, or cutting its contents, leaves the value untouched and fires no callback —
-  the controlled input simply re-renders the old character. Backspace is the only way to clear.
-- **The emitted string can contain spaces.** Empty slots before a filled one serialise as
-  `" "`, so `value`/`onValueChange` may hand you `"1 3 5 7"`. Do not `trim()` it — that shifts
-  every remaining character into the wrong box on the way back in. Strip spaces only when you
-  are counting or submitting, never when you are storing it as the control's `value`.
+- **`onComplete` deduplicates, it does not latch.** Each edit that yields a complete code
+  *different* from the last one reported fires it again — correcting a digit of a complete
+  code re-fires with the corrected value, and clearing any box resets the memory entirely.
+  What it will not do is fire twice in a row for the *same* string, so re-pasting an
+  identical code over a complete one is silent. If "the user re-submitted the same code"
+  matters to you, gate on your own state rather than waiting for a second callback.
+- **A multi-character value arriving in one box spreads across the boxes,** exactly as a
+  paste does — which is the shape browser/OS autofill uses for the
+  `autoComplete="one-time-code"` hint the component sets on the first box. Characters that
+  fail the `mode` filter are dropped, and anything beyond the last box is discarded.
+- **Delete and cut clear the box.** An edit that empties a box — <kbd>Delete</kbd>, cut, or
+  a selection overwritten with nothing — commits as a real clear. Only <kbd>Backspace</kbd>
+  additionally walks back: on an already-empty box it moves to the previous one and clears
+  that.
+- **Gaps collapse.** Empty slots serialise as nothing, so the emitted string never contains
+  filler — but fill boxes out of order and the commit shifts everything left. If you need
+  to preserve a partial code's positions across a round trip, the space encoding only works
+  on the way *in*.
 - **A `value` longer than `length` is displayed truncated but not corrected.** With
   `length={4}` and `value="123456"` the control renders `1 2 3 4` and leaves `"56"` sitting in
   your state until the next edit rewrites it. Truncate before you store.
@@ -249,7 +248,8 @@ wins over the built-in `aria-label` default.
   clears a filled box in place, and on an already-empty box steps back and clears the previous
   one. <kbd>←</kbd> and <kbd>→</kbd> move between boxes and are `preventDefault`-ed. Focus is
   clamped at both ends, so the last box keeps focus after it fills. There is no
-  <kbd>Home</kbd>/<kbd>End</kbd> handling and, as above, no <kbd>Delete</kbd>.
+  <kbd>Home</kbd>/<kbd>End</kbd> handling; <kbd>Delete</kbd> and cut clear through the
+  change path rather than a key handler, so they clear in place without walking back.
 - **Focusing a box selects its contents,** so typing over a filled box replaces rather than
   appends.
 - **Every box is named from `charLabel`**, which defaults to `"Character N of M"` — right in

@@ -164,7 +164,7 @@ not need to fold the value in yourself:
 <!-- example:NamedWithValue -->
 ```tsx
 <ColorPicker
-  aria-label={`Accent color, ${accentColor}`}
+  aria-label="Accent color"
   value={accentColor}
   onValueChange={setAccentColor}
 />
@@ -469,13 +469,11 @@ what keeps the ring legible when that colour is close to the focus colour.
 
 ### Remaining gaps
 
-Two, neither of which the component will do for you. (A third — hard-coded English inside the
-panel — is closed: every name in there is a prop, listed in the table at the top.)
+One, which the component will not do for you. (Two others are closed: hard-coded English
+inside the panel — every name in there is now a prop, listed in the table at the top — and
+a current colour missing from the trigger's name, which now appends the committed hex to
+whatever `aria-label` you pass. See [Naming the trigger](#naming-the-trigger).)
 
-- **The current colour is never announced.** `aria-label` overrides the button's text
-  content, so the visible `#3366cc` and the swatch (which is `aria-hidden`) are both absent
-  from the accessible name. Pass the value in the label yourself — see
-  [Naming the trigger](#naming-the-trigger).
 - **Presets announce as hex strings.** Each is a toggle button named by its normalised
   value, so a screen reader reads "#e53935, toggle button", never "red". If the palette has
   names, they are not reachable through this API.

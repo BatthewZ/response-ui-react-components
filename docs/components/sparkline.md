@@ -134,7 +134,7 @@ falls back to `currentColor`.
   (`max === min`) draws a centreline. None throw or emit `NaN`.
 - **Client component.** Sparkline carries `"use client"` — it reads
   `usePrefersReducedMotion` to gate the draw-in — so it can't render in an RSC server tree
-  the way [[Button](button.md)](./button.md) can.
+  the way [Button](button.md) can.
 
 ## Accessibility
 
@@ -154,7 +154,7 @@ falls back to `currentColor`.
   `aria-label` is emitted alongside — the element is named by yours and nothing competes with
   it in the tree.
 - **Purely decorative? `aria-hidden` is the mode.** A sparkline sitting beside a visible
-  number (as in [[StatCard](stat-card.md)](./stat-card.md)) is redundant to assistive tech.
+  number (as in [StatCard](stat-card.md)) is redundant to assistive tech.
   Pass `aria-hidden` and the `<svg>` renders with **no `role` and no `aria-label`** — nothing
   left in the accessibility tree to announce. `role="presentation"` also works, because an
   explicit `role` rides the rest spread and wins, but it leaves the generated `aria-label` on

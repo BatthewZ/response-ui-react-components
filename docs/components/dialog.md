@@ -31,7 +31,7 @@ and `onClose`; everything inside the panel is yours.
 | `onClose`   | `() => void`               | — _(required)_ |
 | `className` | `string`                   | —              |
 | `ref`       | `Ref<HTMLDialogElement>`   | —              |
-| …rest       | `dialog` props, less `open` | —             |
+| …rest       | `dialog` props, less `open` and the native `onClose` | — |
 
 That is the whole API — no header slot, no size preset, no close button, no `defaultOpen`.
 `open` is required, so Dialog is **always** controlled; if `onClose` does not change the
@@ -105,10 +105,12 @@ becomes `false`. The payoff is that the usual failure of this component shape �
 Escape, the DOM closes, your `open` is still `true`, and re-opening does nothing — cannot
 happen here.
 
-The gap is the other native close paths. Submitting a `<form method="dialog">`, clicking a
-`<button formmethod="dialog">`, or calling `close()` on a ref all close the element directly
-and fire `close`, not `cancel` — and nothing listens for `close`. So drive the form from your
-own submit handler:
+The other native close paths are covered too. Submitting a `<form method="dialog">`, clicking
+a `<button formmethod="dialog">`, or calling `close()` on a ref all close the element directly
+and fire `close`, not `cancel` — and the component listens for that as well: a `close` that
+arrives while your `open` is still `true` is mirrored into `onClose`, so your state follows
+the element. Driving the form from your own submit handler is still the shape to prefer when
+you want the data before anything closes:
 
 <!-- example:WithForm -->
 ```tsx
@@ -245,7 +247,8 @@ while closed — see [Gotchas](#gotchas).
 ## Theme tokens
 
 Dialog has no CSS file: everything it paints is a Tailwind utility in the `.tsx`. Six of them
-do the painting, and four resolve to a contract variable a theme can override:
+do the painting, and five resolve to a contract variable a theme can override — four in the
+table, plus the scrim described below it:
 
 | Where          | Utility        | Override        |
 | -------------- | -------------- | --------------- |
@@ -257,23 +260,19 @@ do the painting, and four resolve to a contract variable a theme can override:
 `p-r2` is on the responsive `r`-scale — 1.25rem below the 40rem breakpoint, 2rem above it —
 so the panel's padding grows with the viewport without a breakpoint utility from you.
 
-**The scrim is not on the contract.** The backdrop is `backdrop:bg-black/50`, a literal 50%
-black written into the component, not the `--OVERLAY-SCRIM-COLOR` variable that
-`response-ui-css` defines and re-tints per theme. The default theme's scrim happens to be
-exactly that value, so nothing looks wrong until you switch themes: `grimdark` dims to 80%,
-`tech` to 70% of a blue-black, and the light `events` theme to 45% of a warm near-black —
-and Dialog ignores all three. Its sibling [Drawer](drawer.md), otherwise the same component in every
-respect, paints `::backdrop` from the variable in `Drawer.css`. Overriding
-`--OVERLAY-SCRIM-COLOR` will not change this dialog's backdrop; pass
-`className="backdrop:bg-(--OVERLAY-SCRIM-COLOR)"` if you need it to follow the theme.
+**The scrim follows the theme.** The backdrop is
+`backdrop:bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]` — the same contract token
+[Drawer](drawer.md) and [CommandPalette](command-palette.md) read in their stylesheets, with
+the same 50% black fallback, which only applies when `@batthewz/response-ui-css` isn't loaded
+at all. Override `--OVERLAY-SCRIM-COLOR` and all three scrims re-tint together.
 
 **Motion** is `animate-fade-in`, which resolves through `--animate-fade-in` to
 `--MOTION-DURATION-ENTER` and `--MOTION-EASE-ENTER`, so retiming every enter animation in the
 library retimes this one. It is enter-only: nothing transitions on the way out, so `close()`
 takes the panel and its scrim off the screen instantly. ([Drawer](drawer.md) gets a real exit by
 transitioning `overlay` and `display` with `transition-behavior: allow-discrete`; Dialog's
-one-shot animation utility cannot.) It also carries no `motion-reduce:` sibling — see
-[Accessibility](#accessibility).
+one-shot animation utility cannot.) A `motion-reduce:animate-none` sibling suppresses it for
+users who ask for less motion — see [Accessibility](#accessibility).
 
 **Off the contract:** the geometry — a hard `40rem` cap, plus the `w-full` and `m-auto` that
 centre it — resolves to no contract variable, so the panel's proportions are not themeable;
@@ -288,17 +287,18 @@ scroll, so if you have not imported that package's CSS, the page scrolls behind 
 - **Nothing closes it but your own state.** `open` is required and there is no internal
   fallback. An `onClose` that logs but doesn't flip the boolean leaves Escape looking broken,
   and there is no built-in close button to fall back on — render your own.
-- **`<form method="dialog">` desyncs it.** That form, `formmethod="dialog"`, and
-  `ref.current.close()` all close the element natively and fire `close`, which nothing
-  listens for. `onClose` never runs, your `open` stays `true`, and because the sync effect
-  only reacts to a *change* in `open`, the dialog stays shut until you toggle the boolean off
-  and on again. Close from a submit handler instead — see [Closing it](#closing-it).
+- **`<form method="dialog">` cannot desync it.** That form, `formmethod="dialog"`, and
+  `ref.current.close()` all close the element natively and fire `close` — which the component
+  listens for, calling `onClose` whenever the element closes while your `open` is still
+  `true`. Ignore that callback, though, and the element still ends up closed with `open`
+  `true`; the sync effect only reacts to a *change* in `open`, so the dialog then stays shut
+  until you toggle the boolean off and on again.
 - **You can't subscribe to the DOM `close` event through the props.** The custom `onClose`
   occupies the name of the native `dialog` React handler and is destructured out rather than
-  spread, so no `close` listener ever reaches the element. `onCancel` *is* spread and does
-  fire, but it can't opt out of the interception — the internal listener calls
-  `preventDefault()` unconditionally. Use the `ref` and `addEventListener` if you need the
-  real `close`.
+  spread, so a `close` listener of your own never reaches the element through props.
+  `onCancel` *is* spread and does fire, but it can't opt out of the interception — the
+  internal listener calls `preventDefault()` unconditionally. Use the `ref` and
+  `addEventListener` if you need the real `close`.
 - **A `display` utility unhides it.** Browsers hide a closed dialog with a UA-stylesheet rule,
   `dialog:not([open]) { display: none }`. Author declarations beat the UA origin no matter how
   low their specificity, so `className="flex"`, `"grid"` or `"block"` makes the dialog render
@@ -336,12 +336,10 @@ close, and Tab is trapped in between — all native.
   documents — does need marking; this one does not.
 - **Escape is the only built-in dismissal**, and it is keyboard-only. Always render a visible
   close or cancel control for pointer and touch users; the component provides none.
-- **The fade ignores `prefers-reduced-motion`.** `animate-fade-in` has no `motion-reduce:`
-  sibling, and the reduced-motion block in `response-ui-css` guards the `.fade-in` *class*,
-  not the Tailwind utility Dialog uses. So the panel plays the full fade even for a user who
-  asked for less motion — and its length is whatever the theme sets `--MOTION-DURATION-ENTER`
-  to: 300ms by default, 180ms on `tech`, 380ms on `events`, 500ms on `grimdark`. Add
-  `className="motion-reduce:animate-none"` — it survives the merge.
+- **The fade respects `prefers-reduced-motion`.** The reduced-motion block in
+  `response-ui-css` guards the `.fade-in` *class*, not the Tailwind utility Dialog uses — so
+  the component carries its own `motion-reduce:animate-none`, and the panel appears without
+  the fade for a user who asked for less motion.
 - **Heading levels are yours.** The panel imposes no structure, so pick a level that makes
   sense standing alone rather than continuing the page's outline underneath it.
 

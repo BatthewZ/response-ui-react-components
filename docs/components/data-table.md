@@ -528,16 +528,19 @@ The output is a real `<table>` — `<thead>`, `<tbody>`, `<th>`, `<td>` — so a
 reader's table navigation works, and `colSpan` is used for the detail and empty-state
 cells.
 
-- **Sortable headers are `<th>` elements, not buttons.** A sortable header gets
-  `tabIndex={0}`, an `aria-sort` of `ascending` / `descending` / `none`, and an
-  Enter/Space key handler. It gets no `role="button"` and contains no `<button>`, so a
-  screen reader announces a column header whose sort state is known but whose
-  *activatability* is signalled only by the arrow icon — and that icon carries
-  `aria-hidden="true"` (lucide adds it to any icon with no children and no ARIA of its own), so
-  it is not in the accessibility tree at all. Non-sortable headers carry no `aria-sort`, which
-  is correct.
-- **Header focus is visible.** `Table.css` gives a `:focus-visible` sortable header a 2px
-  `--C-BORDER-FOCUS` outline, inset by 2px so it draws inside the cell.
+- **Sortable headers contain a real `<button>`.** The `<th>` keeps `columnheader` and an
+  `aria-sort` of `ascending` / `descending` / `none`, and the tab stop and activation
+  semantics live in an inner button named via `aria-labelledby` — "Sort by" plus the
+  column, action first, with `sortLabel` to translate or drop the prefix (see
+  [Sorting](#sorting)). Enter/Space are the button's own activation, so a screen reader
+  hears something pressable rather than a header that happens to take focus. The arrow
+  icon stays decorative — its wrapping SVG carries `aria-hidden="true"` (lucide adds it to
+  any icon with no children and no ARIA of its own). Non-sortable headers carry no
+  `aria-sort`, which is correct.
+- **Header focus is visible.** The operative ring is the sort button's: `Table.css` gives
+  it a `:focus-visible` 2px `--C-BORDER-FOCUS` outline, offset 2px outside it. The cell's
+  own inset outline rule still exists, but it applies only if you put a `tabIndex` back on
+  the `<th>` yourself.
 - **The expander is a proper button.** It carries `aria-expanded` and an `aria-label` that
   flips between "Expand row" and "Collapse row". There is no `aria-controls`; the detail
   row is the immediately following `<tr>`, so DOM order carries the relationship. The

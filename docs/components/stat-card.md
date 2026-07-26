@@ -14,7 +14,7 @@ when it scrolls into view.
 ```
 <!-- /example -->
 
-**Anatomy.** Unlike a stateful compound like [[Tabs](tabs.md)](./tabs.md), `StatCard` holds **no shared
+**Anatomy.** Unlike a stateful compound like [Tabs](tabs.md), `StatCard` holds **no shared
 state** — the root is a flex column and each sub-part is an independently styled slot.
 Compose the parts you want, in whatever order, and drop the rest. Because there is no
 context, the sub-parts also render fine outside a `StatCard` root (they are just styled
@@ -78,8 +78,8 @@ raw number is rendered as currency.
 ```
 <!-- /example -->
 
-The animation is **one-shot and view-triggered** (an `IntersectionObserver` fires it
-once at 10% visibility). It reads its default duration from `--MOTION-DURATION-SHIFT`
+The animation is **view-triggered and runs once per target** (an `IntersectionObserver`
+fires it at 10% visibility; a changed `to` re-arms it — see [Gotchas](#gotchas)). It reads its default duration from `--MOTION-DURATION-SHIFT`
 unless you pass `duration` in ms, and is skipped entirely under `prefers-reduced-motion`
 — the final value shows immediately. While the count is still running — and before it
 starts, which is most of the page's life for a card below the fold — the ticking figure is
@@ -174,7 +174,7 @@ badge will *not* follow; it stays on status. Override both if you want them in s
 - **[Sparkline](sparkline.md)'s `values` is required.** `StatCard.Sparkline` forwards to [Sparkline](sparkline.md),
   which needs a `number[]`; the wrapper adds only `direction`.
 - **Client component.** `StatCard` carries `"use client"` (the value animation uses
-  effects and observers), so it can't render in an RSC server tree the way [[Button](button.md)](./button.md) can.
+  effects and observers), so it can't render in an RSC server tree the way [Button](button.md) can.
 
 ## Accessibility
 

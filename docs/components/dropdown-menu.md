@@ -185,13 +185,12 @@ Measured against the component, not assumed:
 | `Home` / `End`                  | —                                        | first / last enabled item                         |
 | Printable characters            | —                                        | typeahead to the first item whose text matches    |
 | `Escape`                        | —                                        | closes, focus returns to the trigger              |
-| `Tab`                           | moves on, **leaving the menu open**      | **stays put — the menu neither closes nor lets go** |
+| `Tab`                           | **closes the menu**, focus moves on      | **closes the menu**                               |
 
 Only the item you last landed on is in the tab order (`tabIndex=0`, everything else `-1`) — the
 standard roving-focus arrangement — and until you land on one, *every* item is `-1`. Clicking the
 trigger a second time closes the menu; clicking anywhere outside closes it and leaves focus
-wherever you clicked. The `Tab` column is where this diverges from the APG menu-button pattern —
-see [Accessibility](#accessibility).
+wherever you clicked.
 
 `Space` is deliberately absent from the table. Nothing in `DropdownMenu` or the shared menu
 internals handles it — no `Space` keydown or keyup of its own, and no `preventDefault` on
@@ -233,9 +232,10 @@ deliberately reuses it — restyle these classes and both components move togeth
 
 ## Gotchas
 
-- **`index` is manual, and a duplicate silently eats an item.** Two `Item`s with the same
+- **`index` is manual, and a duplicate eats an item.** Two `Item`s with the same
   `index` write to the same navigation slot; the later one wins and the earlier one becomes
-  permanently unreachable by keyboard — with no warning, and no visible difference. Rendering
+  permanently unreachable by keyboard. The menu looks and clicks unchanged, but a
+  `console.warn` names both items when a duplicate claims a slot. Rendering
   items from an array is the risky case: index by the *rendered* position
   (`items.map((item, i) => <DropdownMenu.Item index={i} …>)`) **after** any filtering, never by
   an id or by the source array's position.
@@ -298,12 +298,11 @@ is the menu-button pattern implemented properly — with four things still to kn
   focus indicator in every shipped theme. `events` and `grimdark` read 2.63 and 2.77 before
   that release, which retuned `--C-BORDER-FOCUS` in exactly those two. If you ship your own
   theme, that token is yours to check — re-tint it rather than overriding this rule.
-- **`Tab` does not close the menu.** The APG menu-button pattern closes on Tab and moves focus
-  onward. Here `Content` traps it: with focus on an item, Tab and Shift+Tab both leave focus on
-  that same item and the menu stays open. Worse, if you opened the menu **with the mouse**, no
-  item has been focused yet, so focus is still on the trigger, no item is tabbable, and Tab
-  jumps straight past the menu to the next control on the page — leaving an open menu behind
-  with focus outside it. Escape is the reliable way out.
+- **`Tab` closes the menu, as the APG menu-button pattern asks.** A `Tab` or `Shift+Tab`
+  keydown on the trigger or inside the menu closes it rather than leaving it open behind. The
+  case that made this matter: a menu opened **with the mouse** has no focused item, so focus
+  is still on the trigger and Tab moves straight past the menu — before this was fixed, that
+  left an open menu stranded on screen with focus somewhere else entirely.
 - **Muted ink clears AA, but still reads as hint-level.** Disabled items and
   `DropdownMenu.Label` both paint `--C-TEXT-MUTED` on `--C-SURFACE-0` at **4.85:1 to 5.23:1**
   since `@batthewz/response-ui-css` **v0.10.0**, where it measured 2.10–2.59 and failed AA outright. It is legible now; it is

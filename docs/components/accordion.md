@@ -30,16 +30,17 @@ plain full-width `<div>` and draws nothing itself. Each `Accordion.Item` is a `<
 carrying one required `value` — that string is the item's identity in
 `defaultValue`/`value` and in every `onValueChange` payload. Inside an item,
 `Accordion.Trigger` renders the `<button>` (with its own chevron `<svg>`, `aria-hidden`)
-and `Accordion.Content` renders the panel. Both read the item's identity from context
+inside a heading element — `<h3>` by default, set by the root's `headingLevel` — and
+`Accordion.Content` renders the panel. Both read the item's identity from context
 rather than taking an accordion `value` prop, so they cannot be mismatched — and both throw
 if rendered outside an `Accordion.Item`. (`Trigger` still accepts the *native* `button`
 `value` attribute; it has no effect on the accordion.)
 
 | Part                 | Renders    | Props                                                    |
 | -------------------- | ---------- | -------------------------------------------------------- |
-| `Accordion`          | `<div>`    | `mode?` · `defaultValue?` · `value?` · `onValueChange?`   |
+| `Accordion`          | `<div>`    | `mode?` · `defaultValue?` · `value?` · `onValueChange?` · `headingLevel?` |
 | `Accordion.Item`     | `<div>`    | `value` (required) · `disabled?`                         |
-| `Accordion.Trigger`  | `<button>` | — (plus `button` props)                                   |
+| `Accordion.Trigger`  | heading › `<button>` | — (plus `button` props)                         |
 | `Accordion.Content`  | `<div>`    | — (plus `div` props)                                      |
 
 | Root prop       | Type                                    | Default    |
@@ -48,6 +49,7 @@ if rendered outside an `Accordion.Item`. (`Trigger` still accepts the *native* `
 | `defaultValue`  | `string \| string[]`                    | — (none open) |
 | `value`         | `string \| string[]`                    | —          |
 | `onValueChange` | `(value: string \| string[]) => void`   | —          |
+| `headingLevel`  | `1 \| 2 \| 3 \| 4 \| 5 \| 6`            | `3`        |
 
 All four parts spread the rest of their element's props, so `className`, `id`, `ref` and
 `aria-*` pass through — with the handler caveat in [Gotchas](#gotchas). The root `Omit`s
@@ -57,8 +59,11 @@ the accordion's own identifier. `Item` also sets `data-state="open" | "closed"` 
 
 ## One at a time, or many
 
-`mode` only decides what happens **on toggle**: in `single`, opening an item replaces the
-open set; in `multiple`, it is added to it. Both modes accept a string or an array.
+`mode` is a property of the whole open set, not just of the toggle. On toggle: in `single`,
+opening an item replaces the open set; in `multiple`, it is added to it. And at the seed:
+a `single` accordion given an array `defaultValue` or `value` keeps only the **first**
+entry — the rest are dropped, so two panels never render open in `single` mode. Both modes
+accept a string or an array.
 
 <!-- example:MultipleOpen -->
 ```tsx
@@ -149,34 +154,33 @@ to clicks, and leaves the tab order entirely.
 
 ## Heading semantics
 
-`Accordion.Item` renders a `<div>`, not a heading, and there is no `headingLevel` prop — so
-out of the box a screen-reader user cannot jump between sections with heading navigation.
-Wrap the trigger in whatever level your page outline calls for.
+Every trigger renders inside a real heading element, so screen-reader users can jump
+between sections with heading navigation out of the box. The level defaults to `<h3>`;
+set `headingLevel` on the root (`1`–`6`) to match your page outline — it applies to every
+trigger in the set.
 
-**This is not quite layout-neutral, so check it in your theme.** `.accordion-trigger` starts
-from `all: unset` and then re-sets its own `font-size`, `font-weight`, `line-height` and
-`color` — but not `font-family`, `letter-spacing` or `text-transform`. Those three are
-inherited properties, and `response-ui-css` sets all three on `h1`–`h6`, so the trigger
-picks up the heading face, tracking and casing from whatever level you wrap it in. In the
-shipped themes that means Playfair Display (`events`), Space Grotesk (`tech`), and Cinzel
-**uppercase** with wide tracking (`grimdark`). Heading margins are zeroed by the reset, so
-spacing is unaffected.
+The wrapper is presentation-neutral by design, but not perfectly: `.accordion-heading`
+zeroes the margin and sets `font: inherit`, which strips the theme's heading face, size and
+weight — the trigger keeps its own `--BodyText-2` type. `letter-spacing` and
+`text-transform` are *not* part of the `font` shorthand, though, and `response-ui-css` sets
+both on `h1`–`h6`, so those two still reach the trigger. In the shipped themes only
+`grimdark` sets them to anything visible: triggers render **uppercase** with wide tracking
+there (in the body face, not Cinzel). Check it in your theme.
+
+Do not wrap the trigger in a heading of your own — that now nests a heading inside a
+heading, which is invalid HTML. Set `headingLevel` instead:
 
 <!-- example:WithHeadings -->
 ```tsx
-<Accordion mode="multiple">
+<Accordion mode="multiple" headingLevel={2}>
   <Accordion.Item value="shipping">
-    <h3>
-      <Accordion.Trigger>When will my order ship?</Accordion.Trigger>
-    </h3>
+    <Accordion.Trigger>When will my order ship?</Accordion.Trigger>
     <Accordion.Content>
       <p>Orders placed before 2pm ship the same working day.</p>
     </Accordion.Content>
   </Accordion.Item>
   <Accordion.Item value="returns">
-    <h3>
-      <Accordion.Trigger>How do I return an item?</Accordion.Trigger>
-    </h3>
+    <Accordion.Trigger>How do I return an item?</Accordion.Trigger>
     <Accordion.Content>
       <p>Start a return from your order history within 30 days of delivery.</p>
     </Accordion.Content>
@@ -251,16 +255,14 @@ onto whatever surface it is dropped onto.
   written against `.accordion-content-inner > *`, so a bare string child
   (`<Accordion.Content>Ships today</Accordion.Content>`) gets none of them and sits flush
   against the item edge, while two sibling elements each get the full padding block.
-- **`mode` is not enforced on the value you pass in.** It is applied in the toggle handler
-  only, so `mode="single"` with `defaultValue={["billing", "security"]}` renders both open
-  until the first click; a controlled `value` array keeps them open indefinitely.
+- **`mode="single"` truncates an array seed to its first entry.** `defaultValue={["billing",
+  "security"]}` opens only `"billing"`, and a controlled `value` array is normalised the same
+  way on every render — the extra entries are dropped silently, not kept until the first
+  click. (Before this was fixed, `mode` was applied only in the toggle handler and a
+  two-item seed rendered both open.)
 - **A `defaultValue` naming no item is kept, silently.** Nothing opens and nothing warns. In
   `multiple` mode that phantom string stays in the open set and is re-emitted in every
   `onValueChange` array.
-- **`value` is interpolated straight into DOM ids** (`${baseId}-trigger-${value}`). A value
-  containing a space — `"shipping info"` — produces an id with a space in it, which turns
-  the `aria-controls`/`aria-labelledby` pair into multi-id references that resolve to
-  nothing. Keep values slug-shaped.
 - **Every item draws a bottom border, including the last**, so the set closes with a rule
   under it. There is no `:last-child` suppression, so override the border on the last
   `Item` if you don't want the trailing rule.
@@ -280,10 +282,10 @@ generated from a `useId` base, so nothing to wire.
   previous trigger and wrap around, Home and End jump to the first and last, and all four
   call `preventDefault` so the page does not scroll underneath. Disabled triggers are
   skipped. Enter and Space toggle, as they do for any button.
-- **No heading wrapper.** The pattern asks for the trigger button to sit inside an element
-  with `role="heading"` at the right level; `Accordion.Item` is a bare `<div>`, so heading
-  navigation skips the whole component. See [Heading semantics](#heading-semantics) for the
-  workaround, which is the only fix available without changing the component.
+- **Headings are built in.** Each trigger sits inside a real heading element — `<h3>` by
+  default, `headingLevel` on the root picks the rank — as the WAI-ARIA pattern asks, so
+  heading navigation reaches every section. See
+  [Heading semantics](#heading-semantics) for the styling caveats.
 - **Every panel is a landmark, open or closed.** `role="region"` is applied unconditionally,
   so a twelve-section FAQ contributes twelve regions to the landmark list. That is more
   proliferation than the pattern recommends past roughly six panels — `role` passes through

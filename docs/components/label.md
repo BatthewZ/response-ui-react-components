@@ -107,11 +107,13 @@ its own, so an un-associated label is decorative text as far as assistive tech i
 concerned.
 
 Association is necessary but **not** sufficient, and two of this package's own controls
-prove it. `aria-label` and `aria-labelledby` both outrank `<label for>` in the
+show why. `aria-label` and `aria-labelledby` both outrank `<label for>` in the
 name computation, so a control that sets one of its own wins:
-[SearchInput](search-input.md) hard-codes `aria-label="Search"`, and
+[SearchInput](search-input.md) ships a default `aria-label="Search"`, but stands it
+aside whenever you name the field yourself — an explicit `aria-label`,
+`aria-labelledby`, or an `id` for a label to point at — so
 `<Label htmlFor="q">Search orders</Label>` beside `<SearchInput id="q" …/>` computes an
-accessible name of `"Search"` (measured). And `htmlFor` only reaches a *labelable*
+accessible name of `"Search orders"`. And `htmlFor` only reaches a *labelable*
 element — `<button>`, `<input>`, `<select>`, `<textarea>`, `<meter>`, `<output>`,
 `<progress>`. [OTPInput](otpinput.md)'s root is a
 `<div role="group">`, so `htmlFor`/`id` associates nothing at all there; point

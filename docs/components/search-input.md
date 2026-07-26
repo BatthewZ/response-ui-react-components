@@ -22,13 +22,14 @@ hands you the **string**, not the event.
 | `onClear`     | `() => void`                                                         | —             |
 | `size`        | `"sm" \| "md"`                                                       | `"md"`        |
 | `placeholder` | `string`                                                             | `"Search..."` |
+| `clearLabel`  | `string` — accessible name for the clear button                      | `"Clear search"` |
 | `className`   | `string` — lands on the wrapper `<div>`, **not** the `<input>`       | —             |
 | `ref`         | `Ref<HTMLInputElement>`                                              | —             |
 | …rest         | props of `<input>` minus `value`, `onChange`, `type`, `size`          | —             |
 
 Rest props are spread onto the `<input>` **last**, so `id`, `style`, `data-*`, `aria-*`,
-`disabled`, `name` and friends all reach it — and `aria-label` and `role` override the ones
-the component sets. `onKeyDown` is the exception: it is pulled out of the rest and called
+`disabled`, `name` and friends all reach it — and your `aria-label` replaces the built-in
+default name. `onKeyDown` is the exception: it is pulled out of the rest and called
 *after* SearchInput's own Escape handling, never instead of it. `type` is omitted from the
 props, so the input is always `type="search"`.
 
@@ -69,10 +70,12 @@ Supply any of those and the default stands aside, so a visible [Label](label.md)
 ```
 <!-- /example -->
 
-`sm` does three things: it steps the type down one scale step, narrows the icon gutters
-from `2.25rem` to `2rem` on both sides, and shrinks both glyphs from 16px to 14px. It does
-**not** change the control's height — the vertical padding and the line-height are the same
-at both sizes, so `sm` and `md` sit at the same height in a row of inputs.
+`sm` does four things: it steps the type down one scale step — font size **and**
+line-height — tightens the vertical padding to `--R-SIZE-6`, narrows the icon gutters
+from `2.25rem` to `2rem` on both sides, and shrinks both glyphs from 16px to 14px. The
+first two are what make `sm` genuinely shorter than `md`: a font-size-only override would
+have left the `py-r5` and `text-body-2` line box of the base recipe intact and both sizes
+the same height.
 
 ## Width
 
@@ -176,7 +179,8 @@ renders, styled entirely with Tailwind utilities.
 | Clear button corners               | `--RADIUS-SM`                                    |
 | Clear button focus outline         | `--C-BORDER-FOCUS`                               |
 | Clear button transition            | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER` |
-| Type at `size="sm"`                | `--BodyText-3`                                   |
+| Type at `size="sm"`                | `--BodyText-3` · `--BodyText-3-line-height`      |
+| Vertical padding at `size="sm"`    | `--R-SIZE-6`                                     |
 
 **The field — utilities inherited from [Input](input.md):**
 
@@ -199,10 +203,10 @@ it with literal `2.25rem` gutters (`2rem` at `size="sm"`) to make room for the i
 the clear button. Tailwind's utilities compile into `@layer utilities` while the component
 CSS is unlayered, so the literals win regardless of import order. The consequence:
 overriding `--R-SIZE-4` re-pads a plain [Input](input.md) and steps it up at the 40rem
-breakpoint, but leaves a SearchInput's gutters fixed at every viewport. The `sm` type step
-is partial in the same way — `--BodyText-3` replaces the font size, but the line box still
-comes from `--BodyText-2-line-height` via the untouched `text-body-2`, which is why the
-two sizes are the same height.
+breakpoint, but leaves a SearchInput's gutters fixed at every viewport. The `sm` step is
+complete, by contrast: `SearchInput.css` overrides font size, line-height and vertical
+padding together (`--BodyText-3`, `--BodyText-3-line-height`, `--R-SIZE-6`), which is
+what makes `sm` genuinely shorter than `md`.
 
 Every colour, radius and timing above is a variable, so overriding one re-tints the
 component at runtime with no rebuild. The geometry is not on the contract, though: the
@@ -251,10 +255,6 @@ ever visible.
   it is in the tab order after the input, activates on Enter and Space,
   and cannot submit an enclosing form. Its `:focus-visible` state is a 2px `--C-BORDER-FOCUS`
   outline at 1px offset.
-- **…but it drops focus when used.** See [Gotchas](#gotchas): the button unmounts on
-  activation and focus resets to the document body, which is a WCAG 2.4.3 focus-order
-  problem for keyboard users. Move focus back to the input yourself with a `ref` if that
-  matters.
 - **The X glyph now clears the graphical-contrast floor.** At rest it is `--C-TEXT-MUTED` on
   the field's `--C-SURFACE-0` fill, which measures 4.95:1 in the default theme, 4.85:1 in
   `events`, 5.23:1 in `grimdark` and 4.87:1 in `tech` — clearing the 3:1 WCAG 1.4.11

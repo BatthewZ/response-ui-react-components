@@ -348,8 +348,8 @@ everywhere else too:
   fills `--C-SURFACE-1`, and a selected row an 8% `--C-ACCENT` wash plus a 3px `--C-ACCENT`
   bar down its leading edge (the wash alone measures 1.07–1.13:1 — see
   [Table](table.md#accessibility)). A sortable header hovers to
-  `--C-SURFACE-2`, presses to `--C-SURFACE-3`, focuses with a 2px inset `--C-BORDER-FOCUS`
-  outline over `--MOTION-DURATION-SHIFT`/`--MOTION-EASE-SHIFT` (dropped under
+  `--C-SURFACE-2`, presses to `--C-SURFACE-3`, and focuses with a 2px `--C-BORDER-FOCUS`
+  outline around its inner sort button, over `--MOTION-DURATION-SHIFT`/`--MOTION-EASE-SHIFT` (dropped under
   `prefers-reduced-motion`), and its sort glyph is `--C-TEXT-MUTED` when inactive,
   `--C-ACCENT` when it is the active sort.
 - **The selection checkboxes** — [Checkbox](checkbox.md)'s own utilities:

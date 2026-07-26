@@ -311,9 +311,10 @@ Every button Repeater renders — Add, Remove, and both Move controls — carrie
 ```
 <!-- /example -->
 
-Repeater's `disabled` reaches its own buttons only. The row fields come from `form.field()`,
-which reads `useForm`'s `disabled` option, so a fully inert repeating group needs both — see
-[Gotchas](#gotchas).
+Repeater's `disabled` disables its own Add/Remove/Move buttons **and** the row fields: each
+row's children render inside a `<fieldset disabled>`, which disables every native control
+within it. Custom row controls that are not native form elements read
+`RepeaterItem.disabled` instead — see [Gotchas](#gotchas).
 
 ## Theme tokens
 
@@ -347,8 +348,9 @@ their own pages; there is nothing here to override. See the
   re-run afterwards. (Before this was fixed the mutations rewrote only the values, and a
   message stayed pinned to whichever row inherited the index.)
 - **Removing a row keeps the keyboard where it was.** The Remove button you just pressed
-  unmounts with its row, so focus moves to the next row's Remove button — or to Add when the
-  last row goes — instead of falling to the document body. That focus move names the *control*
+  unmounts with its row, so focus moves to the Remove button now sitting at that index — or
+  to the previous row's when the last row goes, or to Add when the only row goes — instead
+  of falling to the document body. That focus move names the *control*
   the keyboard landed on; what happened to the row is a separate sentence, written to the live
   region described under [Accessibility](#accessibility).
 - **`disabled` reaches the row fields.** Each row's children are wrapped in a `<fieldset

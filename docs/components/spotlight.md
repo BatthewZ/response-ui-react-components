@@ -47,10 +47,12 @@ the image. See [Gotchas](#gotchas).
 
 ## The alternation is automatic
 
-The flip is pure CSS: above `40rem`, `.spotlight-item:nth-child(even) .spotlight-image`
-takes `order: 2`. Nothing counts items in JavaScript for layout purposes, so you write the
-same markup for every row and the second, fourth and sixth flip themselves — as long as you
-write `Spotlight.Image` **before** `Spotlight.Content`. See [Gotchas](#gotchas).
+The flip is pure CSS: above `40rem` both columns carry an explicit `order`, and
+`.spotlight-item:nth-child(even)` swaps the pair. Nothing counts items in JavaScript for
+layout purposes, so you write the same markup for every row and the second, fourth and
+sixth flip themselves — whichever way round the row is authored, though image-first is
+still the order to prefer: it is what the mobile stack and the accessibility tree follow.
+See [Gotchas](#gotchas).
 
 <!-- example:Alternating -->
 ```tsx
@@ -102,8 +104,8 @@ image-then-copy in DOM order, whatever `reversed` says.
 <!-- /example -->
 
 `reversed` **inverts a row against whatever its position already does**. On row 1 or 3 it
-puts the image on the right. On row 2 or 4 — already flipped by `:nth-child(even)` — it
-sets `order: unset` and puts the image back on the *left*. There is no prop that pins a row
+puts the image on the right. On row 2 or 4 — already flipped by `:nth-child(even)` — a
+dedicated cancelling rule puts the image back on the *left*. There is no prop that pins a row
 to a fixed side — but because the alternation is positional, putting `reversed` on rows 1,
 3 and 5 lands every row image-right. An `order-*` utility will not do it: the component's
 own rules outrank Tailwind's (see [Gotchas](#gotchas)).
@@ -304,8 +306,10 @@ prop to change the root's tag.
   hidden state under `prefers-reduced-motion: reduce`, so the copy renders visible and static
   from the first paint, and [Parallax](parallax.md) attaches no scroll listener at all. A
   reduced-motion reader gets a more reliable page than the default one.
-- **Don't put essential content behind the default reveal.** As above, `animate` defaults to
-  `true` and there is no non-JS fallback for the hidden state.
+- **Don't put essential content behind the default reveal.** As above, `animate` defaults
+  to `true`, and while a missing `IntersectionObserver` and scripting-off both resolve to
+  visible copy now, a page whose bundle never executes still shows the pictures and none of
+  the words.
 
 ## Related
 

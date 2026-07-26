@@ -41,6 +41,9 @@ stacking are the platform's job rather than yours. You supply the commands and t
 | `filter`       | `(item: CommandItem, query: string) => boolean`   | case-insensitive substring over `label` + `keywords` |
 | `placeholder`  | `string`                                          | `"Type a command or search…"`      |
 | `emptyMessage` | `ReactNode`                                       | `"No results"`                     |
+| `searchLabel`  | `string` — accessible name of the search input    | `"Search commands"`                |
+| `listLabel`    | `string` — accessible name of the listbox         | `"Commands"`                       |
+| `statusMessage`| `(count: number) => string` — announced when the result count changes | `"N commands"` / `"1 command"` |
 | `className`    | `string`                                          | —                                  |
 | `ref`          | `Ref<HTMLDialogElement>`                          | —                                  |
 | …rest          | `dialog` props, less `open`                       | —                                  |
@@ -96,8 +99,9 @@ reset runs on the way in, so a reopened palette is always blank.
 
 ## Grouping and keywords
 
-`group` is presentational banding — a `<li role="group">` with a header, in the order the
-groups are first seen while scanning `items`. `keywords` are matched by the default filter but
+`group` renders a `<div role="group">` labelled by its header (`aria-labelledby`), in the
+order the groups are first seen while scanning `items`. `keywords` are matched by the default
+filter but
 never rendered, which is how "theme" or "dark mode" can find a command labelled "Appearance".
 
 <!-- example:Grouped -->
@@ -142,9 +146,9 @@ never rendered, which is how "theme" or "dark mode" can find a command labelled 
 ```
 <!-- /example -->
 
-Keep every member of a group **contiguous in the `items` array**. The rendered order is
-grouped, but arrow keys walk the array's own order, and the two diverge the moment they
-disagree — see [Gotchas](#gotchas).
+Group members need not be contiguous in `items`: rendering gathers them under the first
+appearance of their group, and the arrow keys walk the **rendered** order, so the keyboard
+and the screen always agree.
 
 ## Icons and shortcuts
 
@@ -278,8 +282,9 @@ the default does `query.trim().toLowerCase()` itself before comparing, and a rep
 forgets to will not match anything after a space. Nothing special-cases the opening frame
 either: a filter that returns `false` for `""` opens the palette straight onto its empty state.
 
-Give the function a stable identity — module scope, or `useCallback` — or the highlight snaps
-back to the first row on every parent render. Same for `items`. See [Gotchas](#gotchas).
+The snap to the first row is keyed on the query itself, so an unstable `filter` or `items`
+identity — an inline arrow or array literal remade on every parent render — does not reset
+the highlight; wherever the user arrowed to survives unrelated re-renders.
 
 ## The empty state
 
@@ -314,7 +319,7 @@ back to the first row on every parent render. Same for `items`. See [Gotchas](#g
 ```
 <!-- /example -->
 
-The empty message replaces the option list entirely, rendering as an `<li role="presentation">`
+The empty message replaces the option list entirely, rendering as a `<div role="presentation">`
 inside the listbox. Anything interactive you put in it stays outside the palette's own key
 handling — the search input keeps DOM focus and the arrow keys only move between options — so a
 link in there is reachable by pointer, or by pressing Tab once from the input.
@@ -420,17 +425,11 @@ palette's colour, spacing and timing but not its shape.
   3:1 floor in every theme. It read 2.52 and 2.55 in `events` and `grimdark` before that
   release retuned `--C-BORDER-FOCUS`, which also carries the search input's own ring, so a
   custom theme retuning that token moves both at once.
-- **Arrow keys walk the array, not the screen.** Grouping is a rendering pass over the same
-  flat filtered list, but `activeIndex` moves through that flat list by ±1. With
-  `[File-A, Edit-A, File-B]` the palette *renders* File-A, File-B, Edit-A — and ArrowDown from
-  File-A highlights **Edit-A**, the third row on screen; ArrowDown again jumps back up to
-  File-B. (Measured.) Keep each group's members adjacent in `items`.
-- **The highlight resets when `items` or `filter` changes identity.** An effect keyed on the
-  memoised filtered list snaps `activeIndex` back to the first selectable row. Both `items` and
-  `filter` are dependencies of that memo, so an inline array literal or an inline arrow makes a
-  new one on every render of the *parent* — arrow down twice, let the parent re-render for any
-  unrelated reason, and you are back at row one. Hoist both to module scope, `useMemo` the
-  array and `useCallback` the filter.
+- **Arrow keys walk the rendered order, and the highlight tracks position, not id.**
+  `activeIndex` moves ±1 through the grouped order the screen shows, so keyboard and screen
+  agree; but the index is positional, so if `items` itself changes while the palette is open,
+  the highlight stays on the same *row*, whatever command now occupies it. (It snaps back to
+  the first selectable row whenever the query changes.)
 - **`className` utilities lose to `CommandPalette.css`.** Unlayered component CSS outranks
   Tailwind's layered utilities — see [Sizing the panel](#sizing-the-panel).
 - **Nothing dismisses it but Escape and your own state.** There is no light dismiss, no
@@ -445,20 +444,22 @@ palette's colour, spacing and timing but not its shape.
   if you need the real `close`.
 - **Every command is mounted while the palette is closed.** The `<dialog>` and the whole option
   list render on the very first pass, filter included; the browser just hides them with
-  `dialog:not([open]) { display: none }`. So a 1000-command array is 1000 `<li>`s in the DOM and
-  in the server-rendered HTML of a page nobody ever opens the palette on. Gate `items` on `open`
-  yourself if that shows up in a profile. The same UA rule is why a `display` utility in
-  `className` would unhide the closed panel.
+  `dialog:not([open]) { display: none }`. So a 1000-command array is 1000 option `<div>`s in the
+  DOM and in the server-rendered HTML of a page nobody ever opens the palette on. Gate `items`
+  on `open` yourself if that shows up in a profile. The same UA rule is why a `display` utility
+  in `className` would unhide the closed panel.
 - **Pointer movement steals the highlight.** Each option handles `onMouseMove`, so if the cursor
   happens to be resting over the list, the first pixel of movement after you arrow somewhere
   yanks the highlight to whatever is under the pointer.
-- **The page behind still scrolls.** [Dialog](dialog.md) opts into the library's
-  `no-body-scroll` class; this component does not, and the list sets no `overscroll-behavior`,
-  so a wheel gesture past the end of the results scrolls the document underneath the scrim.
+- **Body scroll is locked the same way [Dialog](dialog.md)'s is.** The panel carries the
+  `no-body-scroll` class, which pairs with the `body:has(…)` rule in
+  `@batthewz/response-ui-css`'s base layer, and the list sets `overscroll-behavior: contain`
+  so a wheel past the end of the results stays off the page. Ship without that base import
+  and the page scrolls behind the scrim again.
 - **`item.id` is a React key and nothing else.** It never reaches the DOM — option ids are
   generated from `useId()` plus the item's index, and selection tracks that index. Two items in
   the same `group` sharing an `id` produce React's duplicate-key warning; across groups the
-  collision is invisible, because each group renders its own list.
+  collision is invisible, because each group keys its own children.
 - **It's a client component.** The file carries `"use client"`. It server-renders as a closed
   `<dialog>` with the whole list inside it, and `showModal()` only runs in an effect — so a
   palette mounted with `open` already `true` appears one paint after hydration.
@@ -481,23 +482,22 @@ needed, and closing returns focus to whatever was focused before — both native
   See [Gotchas](#gotchas). The highlight is also gated on
   the same predicate as `aria-activedescendant`, so a palette whose rows are all disabled shows
   no cursor at all rather than one pointing at a row Enter would not act on.
-- **You cannot give the search input an accessible name.** Rest props are spread on the
-  `<dialog>`, not the input, so an `aria-label` you pass renames the *dialog*. The input carries
-  no `aria-label`, no `aria-labelledby` and no `<label>`, which leaves it with only the
-  browser's `placeholder` fallback for a name — and with nothing at all if you pass
-  `placeholder=""`.
-- **The dialog's name is overridable, the listbox's is not.** `aria-label="Command palette"` is
-  written before the rest spread, so your own `aria-label` wins on the `<dialog>`. The
-  listbox's `aria-label="Commands"` is hard-coded English with no prop reaching it — it will not
-  localise.
-- **No result count is announced.** Filtering swaps the DOM silently: there is no live region,
-  so a screen-reader user who types four characters and reduces 50 commands to zero hears
-  nothing at all, because the "No results" node is not announced either. Render your own
-  `aria-live="polite"` counter alongside the palette if that matters.
-- **Group nesting is not the shape ARIA specifies.** Options sit inside a plain `<ul>` (implicit
-  `role="list"`) inside the `<li role="group">`, so the listbox does not directly own its
-  options; support for position reporting varies. Ungrouped items get a `role="group"` wrapper
-  too, with no accessible name.
+- **The search input is named by `searchLabel`.** It carries `aria-label="Search commands"`
+  by default; pass the prop to rename or localise it. An `aria-label` in the rest props
+  renames the *dialog* instead — rest props land on the `<dialog>`, not the input — so the
+  prop is the only route. `placeholder` is back to being a hint, not the accessible name.
+- **The dialog and the listbox are both nameable.** `aria-label="Command palette"` on the
+  `<dialog>` is written before the rest spread, so your own `aria-label` wins there; the
+  listbox's name comes from `listLabel` (default `"Commands"`). Both defaults are English, so
+  pass both when you localise.
+- **The result count is announced.** A visually-hidden `role="status"` `aria-live="polite"`
+  region is mounted for the palette's whole life and re-renders `statusMessage(count)` on
+  every change — "3 commands", then "No results" territory as "0 commands". Pass
+  `statusMessage` to rephrase or localise it; it is empty while the palette is closed.
+- **Group nesting is the shape ARIA specifies.** Options are direct children of the listbox,
+  or of a `role="group"` that is itself a direct child, each group labelled by its header via
+  `aria-labelledby`. Ungrouped items get no wrapper at all, so nothing unnamed sits between
+  the listbox and its options.
 - **Icons are hidden, shortcuts are not.** The `icon` slot is `aria-hidden="true"` — even an
   `aria-label` on your own glyph is suppressed — so anything meaning-bearing has to go in the
   `label`. The `shortcut` chip *is* part of the option's name, and with no separator between the
@@ -505,8 +505,7 @@ needed, and closing returns focus to whatever was focused before — both native
   of `"New project⌘N"`. Glyph strings like that read unpredictably, so prefer plain words
   (`"Ctrl N"`) if your audience uses a screen reader.
 - **Reduced motion is respected.** A `@media (prefers-reduced-motion: reduce)` block drops the
-  panel animation, the backdrop fade and the option transition — unlike [Dialog](dialog.md),
-  whose fade plays regardless.
+  panel animation, the backdrop fade and the option transition.
 
 ## Related
 

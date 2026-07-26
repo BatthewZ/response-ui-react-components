@@ -156,8 +156,9 @@ box you can theme, add `appearance-none` and draw the check yourself.
   `@batthewz/response-ui-css` are still required — the utilities above resolve to its
   tokens.
 - **Client component.** Reading [Field](field.md) context is a hook, so Checkbox carries
-  `"use client"` like the other wired controls and needs a client boundary in an RSC tree.
-  It was server-renderable before it read the field.
+  `"use client"` like the other wired controls — the directive draws the boundary itself,
+  so importing it straight from a Server Component works. It was server-renderable before
+  it read the field.
 
 ## Accessibility
 

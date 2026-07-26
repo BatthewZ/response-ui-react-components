@@ -55,7 +55,9 @@ re-declares them.
 ## Height and vertical placement
 
 `size` writes a `min-height` in viewport heights: `sm` 40vh, `md` 60vh, `lg` 80vh, `full`
-100vh. It is a *minimum*, so content taller than that pushes the section past it.
+100dvh (with a `100vh` fallback for browsers without the dynamic unit — see
+[Gotchas](#gotchas)). It is a *minimum*, so content taller than that pushes the section
+past it.
 
 <!-- example:Sizes -->
 ```tsx

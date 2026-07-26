@@ -289,8 +289,8 @@ actually see on focus.
 - **No per-component CSS.** There is no `Radio.css`. The CSS imports from
   `@batthewz/response-ui-css` are still required — `accent-accent` resolves to its tokens.
 - **Client component.** Reading [Field](field.md) context is a hook, so Radio carries
-  `"use client"` and needs a client boundary in an RSC tree. It was server-renderable
-  before it read the field.
+  `"use client"` — the directive draws the boundary itself, so importing it straight from
+  a Server Component works. It was server-renderable before it read the field.
 
 ## Accessibility
 

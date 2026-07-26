@@ -4,10 +4,9 @@ A transient status message that slides into the bottom-right corner, stacks with
 siblings, and removes itself after five seconds. You fire it imperatively from any handler,
 so a save deep in the tree can report success without threading state back up to a banner.
 
-**Read [Server rendering](#server-rendering) before you mount it in a server-rendered app.**
-The stack renders through [Portal](portal.md), which emits nothing on the server, so the
-client's first pass portals into HTML that isn't there — a hydration mismatch that costs you
-the page's server HTML.
+The stack renders through [Portal](portal.md), which renders nothing until after mount — so
+it is absent from server HTML, hydrates cleanly, and appears in the first client commit. See
+[Server rendering](#server-rendering).
 
 <!-- example:Minimal -->
 ```tsx
@@ -68,10 +67,11 @@ components can call `useToast()`.
 
 ## Server rendering
 
-`ToastProvider` renders its stack through [Portal](portal.md), which returns `null` while
-`document` is undefined. Server-rendering the provider therefore emits your children and
-nothing else — `renderToStaticMarkup(<ToastProvider><p>app tree</p></ToastProvider>)` is
-exactly `<p>app tree</p>`, verified. The `"use client"` directive at the top of the module is
+`ToastProvider` renders its stack through [Portal](portal.md), which renders `null` until a
+mount effect has run — on the server and on the client's hydration pass alike.
+Server-rendering the provider therefore emits your children and nothing else —
+`renderToStaticMarkup(<ToastProvider><p>app tree</p></ToastProvider>)` is exactly
+`<p>app tree</p>`, verified. The `"use client"` directive at the top of the module is
 not what does that: it marks the module client-*capable*, and the server still renders it to
 produce the initial HTML.
 
@@ -79,24 +79,12 @@ That guard is load-bearing. React's own server renderer refuses portals ("Portal
 currently supported by the server renderer"), but only once a portal is actually created — so
 returning `null` before `createPortal` is what keeps the server pass from throwing.
 
-What it leaves behind is the hydration mismatch [Portal](portal.md#gotchas) documents. The
-server emits nothing where the stack goes, `document` *is* defined on the client's first pass,
-and React discards the whole hydration root rather than reconcile the difference. The provider
-portals the stack unconditionally — toasts or none — so an empty stack does not spare you
-either.
-
-Two ways to avoid that, and both amount to keeping the provider off the server pass:
-
-- Import it with `next/dynamic` and `ssr: false`, so the module is only ever evaluated in the
-  browser.
-- Mount it below a boundary that never server-renders — inside a component whose subtree is
-  gated on a `mounted` flag you set in an effect. That renders `null` on both passes and only
-  then portals.
-
-Both cost you the server HTML for everything *inside* the provider, which the provider would
-otherwise have rendered fine. So wrap it around the part of the tree that calls `useToast()`
-rather than the root layout — or accept the mismatch on a page whose first paint you don't
-need.
+Hydration is clean for the same reason: the client's first pass renders the same nothing the
+server sent, and the stack portals into `<body>` in the commit after mount — before any toast
+can exist, so nothing is visibly late. No `next/dynamic`, no `ssr: false`, no `mounted` flag
+of your own. (Portal used to gate on `typeof document` instead, which is defined during
+hydration — that version portalled into HTML that wasn't there and cost the page its
+hydration root.)
 
 ## Variants
 
@@ -126,8 +114,8 @@ padding, radius, width, and layout are identical across all four.
 ```
 <!-- /example -->
 
-Neither role names the variant, so what a screen-reader user actually hears is your message
-text and nothing else; see [Accessibility](#accessibility).
+Neither role names the variant; the visually-hidden `statusLabel` word ahead of the title is
+what announces severity — see [Accessibility](#accessibility).
 
 ## Titles
 
@@ -152,7 +140,8 @@ HTML `title` attribute — `ToastProps` omits the native one, so there is no too
 ## Timing, stacking, and dismissal
 
 A toast lives for `duration` milliseconds (5000 by default), then animates out and is removed
-from the DOM 300 ms later. Pass `duration: 0` — or any non-positive number — and no timer is
+from the DOM after the theme's `--MOTION-DURATION-EXIT` (300 ms when no token layer is
+present). Pass `duration: 0` — or any non-positive number — and no timer is
 scheduled at all, so the toast stays until you dismiss it:
 
 <!-- example:Persistent -->
@@ -191,15 +180,15 @@ Five things about the queue are worth knowing, because none of them are configur
 - **Newest first.** A new toast is prepended, and the column is anchored to the bottom of the
   viewport, so it appears above the existing ones and nothing already on screen moves.
 - **The limit is five.** A sixth toast pushes the oldest into its exit animation — so six are
-  briefly on screen together, settling back to five after 300 ms.
-- **Hovering does not pause anything.** There is no pointer or focus handling; the timer runs
-  to completion whether or not the user is reading it, or has the dismiss button focused.
+  briefly on screen together, settling back to five once the exit duration has run.
+- **Hovering does not pause anything.** Nothing pauses or extends the timer — not hover, not
+  focus on the dismiss button; it runs to completion whether or not the user is reading it.
 - **The stack does not block the page.** The portal container is `pointer-events-none` and
   each toast re-enables `pointer-events-auto`, so clicks land on your UI everywhere except on
   a toast itself.
-- **Timers are cleaned up on unmount, mostly.** The provider clears every timer it tracks in a
-  `useEffect` cleanup, but two are never tracked: the sweep `dismissAll()` schedules, and the
-  eviction of the oldest toast when the sixth arrives. See [Gotchas](#gotchas).
+- **Timers are cleaned up on unmount.** Every auto-dismiss and removal timer is derived from
+  state into one tracked map and cleared when the provider unmounts — nothing fires against a
+  dead component.
 
 ## Rendering a Toast yourself
 
@@ -229,8 +218,9 @@ You own placement, the exit animation flag, and removal.
 <!-- /example -->
 
 `dismissing` only swaps the animation class — it does not schedule anything. Removing the
-element after the exit finishes is your job, and the provider's own 300 ms is the number to
-match if you want it to look the same.
+element after the exit finishes is your job; the provider waits out the theme's
+`--MOTION-DURATION-EXIT` (300 ms with no token layer), which is the number to match if you
+want it to look the same.
 
 ## Toast or Alert?
 
@@ -283,50 +273,39 @@ phone it is wider than the viewport.
 (`--R-SIZE-4` again) place the column, `gap-r5` (`--R-SIZE-5`) separates the toasts, and
 `z-50` is a Tailwind literal — the contract defines no z-index scale.
 
-**Motion is themeable but unguarded.** `animate-slide-in-right` and `animate-slide-out-right`
+**Motion is themeable, and guarded.** `animate-slide-in-right` and `animate-slide-out-right`
 are `@theme` animations from `@batthewz/response-ui-css`, built from
 `--MOTION-DURATION-ENTER`/`--MOTION-EASE-ENTER` and `--MOTION-DURATION-EXIT`/
-`--MOTION-EASE-EXIT`. The `prefers-reduced-motion` block that ships beside them only covers
-the `.fade-*` classes, so these two slide regardless of the user's motion setting. The exit
-duration is also already out of step: the provider's removal delay is a hard-coded `300`, and
-while the base token is `200ms`, the shipped `grimdark` theme sets
-`--MOTION-DURATION-EXIT: 350ms` — so on `grimdark` every toast is removed from the DOM at
-300 ms, 50 ms before its slide-out finishes. `events` (`220ms`) and `tech` (`120ms`) are
-clear; any theme of yours over 300 ms truncates the same way.
+`--MOTION-EASE-EXIT`. The CSS package's `prefers-reduced-motion` block covers the `.fade-*`/
+`.slide-*` *classes*, not the `animate-*` utilities — so the component carries
+`motion-reduce:animate-none` itself, and both slides are suppressed for users who ask for
+less motion. The provider's removal delay is read from `--MOTION-DURATION-EXIT` at dismiss
+time rather than hard-coded, so a theme with a longer exit — the shipped `grimdark` sets
+`350ms` — gets its full slide-out instead of being cut off.
 
 The dismiss button is an [IconButton](icon-button.md); its own colour, radius, padding, and
 focus tokens are documented there.
 
 ## Gotchas
 
-- **The stack is absent from server-rendered HTML.** The provider portals it unconditionally,
-  so the client's first pass mounts a portal the server HTML doesn't have and React throws away
-  the page's hydration root — see [Server rendering](#server-rendering).
-- **`dismissAll()` also wipes toasts created in the next 300 ms.** It schedules an
-  unconditional "clear everything" for after the exit animation, and that timer does not check
-  what arrived in the meantime. `dismissAll(); toast("Saved")` shows the new toast for 300 ms
-  and then deletes it — verified. Wait out the animation before queueing the next one.
-- **`crypto.randomUUID()` is secure-context only.** Ids come from it, unguarded, so
-  `toast()` throws a `TypeError` on a page served over plain `http` to anything but
-  `localhost` — the usual case being a phone testing against a dev server on a LAN IP.
+- **The stack is absent from server-rendered HTML.** [Portal](portal.md) renders nothing
+  until after mount, so the server emits no stack and the hydration pass matches — the
+  container simply doesn't exist until the first client commit. See
+  [Server rendering](#server-rendering).
+- **`dismissAll()` touches only what is on screen when you call it.** It marks the current
+  toasts as dismissing and nothing more, so `dismissAll(); toast("Saved")` shows the new
+  toast for its full life. Ids come from `crypto.randomUUID()` where it exists and fall back
+  to a counter on plain `http`, where that API is undefined — so `toast()` works in insecure
+  contexts too.
 - **`message` is a string.** No links, no `<strong>`, no line breaks. Rich content means
   rendering `Toast` yourself, and even then `children` land inside a `<p>`, so a `<div>` or a
   list nests invalidly and the browser will split the paragraph around it.
-- **Two timers escape the unmount cleanup.** The provider tracks auto-dismiss and removal
-  timers in a ref and clears them on unmount, but the `dismissAll()` sweep and the eviction of
-  the oldest toast past the limit of five are bare `setTimeout`s. If the provider unmounts
-  inside their window, they fire against a dead component. React 19 makes that a no-op rather
-  than a warning, so nothing surfaces.
-- **The timer map grows for the life of the provider.** Removal timers are stored under
-  `` `${id}-remove` `` but deleted under `id`, so every dismissed toast leaves one dead entry
-  behind. Only unmounting — or `dismissAll()`, which clears the map wholesale — reclaims it.
 - **`role` and `aria-live` are overridable on `Toast`,** because the variant's pair is spread
   before `…rest`. You cannot reach them through `toast()`, though; the provider passes no
   extra props to the toasts it renders. `className` is merged with `cn()`, not replaced.
-- **`useToast()`'s three functions are stable; the object holding them is not.** Each is a
-  `useCallback` with stable deps, but the returned object is rebuilt on every provider render
-  — and the provider re-renders whenever a toast appears or leaves. Destructure it before you
-  put anything in a dependency array.
+- **`useToast()`'s return is stable.** The three functions are `useCallback`s with stable
+  deps and the object holding them is memoised on exactly those, so neither changes identity
+  for the provider's life — safe in a dependency array, destructured or not.
 - **Client-only in practice.** `ToastContext.tsx` carries `"use client"`. `Toast.tsx` has no
   directive and uses no hooks, so it compiles into an RSC tree — but `onDismiss` is required
   and event handlers cannot cross the server boundary, so a Server Component still cannot

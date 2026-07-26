@@ -82,9 +82,9 @@ text where it has to be *read*:
 ```
 <!-- /example -->
 
-`<Badge variant="error">3</Badge>` and `<Badge variant="success">3</Badge>` now announce
-differently, but they are still the same *chip* to a sighted reader who can't see the
-colour. `"3 checks failed"` isn't.
+`<Badge variant="error">3</Badge>` and `<Badge variant="success">3</Badge>` announce
+differently and carry different glyphs — but a shape still has to be decoded, where
+`"3 checks failed"` just reads.
 
 ## Composing content
 

@@ -2,7 +2,7 @@
 
 A short description that appears beside a control on hover or keyboard focus, anchored by
 Floating UI so it flips and shifts to stay on screen. It **describes** the trigger — it never
-names it, and nothing inside it can be clicked.
+names it, and it should hold nothing interactive.
 
 <!-- example:Minimal -->
 ```tsx
@@ -21,11 +21,14 @@ names it, and nothing inside it can be clicked.
 | `placement` | `Placement`              | `"top"`   |
 | `delay`     | `number` (ms)            | `300`     |
 | `offset`    | `number` (px)            | `8`       |
+| `container` | `HTMLElement \| null`    | `<body>`  |
 
 That is the entire surface. There is no `open`/`onOpenChange` (the component owns its own
-state), no `className`, no `id`, no `disabled`, and no way to redirect its portal.
-`TooltipProps` is internal, so a wrapper of your own re-declares the five props; `Placement`
-**is** exported from the package barrel, so a variable holding one can be typed.
+state), no `className`, no `id`, and no `disabled`. `container` redirects the portal — the
+prop to reach for inside a [Dialog](dialog.md) or [Drawer](drawer.md); see
+[Gotchas](#gotchas). `TooltipProps` is internal, so a wrapper of your own re-declares the six
+props; `Placement` **is** exported from the package barrel, so a variable holding one can be
+typed.
 
 `children` is cloned, not wrapped — Tooltip renders no element of its own around the trigger,
 so it never disturbs your layout. The clone is also where its sharpest edge lives; see
@@ -108,8 +111,9 @@ the `flip` and `shift` middleware move the bubble when the viewport is tight, an
 **One `delay` governs both directions.** Hover the trigger and the bubble appears after
 `delay` ms; leave it and the bubble disappears after another `delay` ms. You cannot set the
 two independently — the prop is a plain `number`, not Floating UI's `{ open, close }` object.
-The default 300 ms is what stops a bubble flashing at every pointer that crosses the control,
-and the matching close delay is the only grace period you get on the way out.
+The default 300 ms is what stops a bubble flashing at every pointer that crosses the control;
+on the way out you get the matching close delay, plus a safe-polygon corridor that keeps the
+bubble open while the pointer travels onto it.
 
 Keyboard focus is different: it opens the bubble **immediately**, with no delay, and only when
 the browser treats the focus as visible (`:focus-visible`). Clicking the trigger with a mouse
@@ -140,10 +144,11 @@ buttons waits the full `delay` at every one.
 ```
 <!-- /example -->
 
-**Nothing interactive.** The bubble is `pointer-events: none`, so a link or button inside it
-can never be clicked; and because the bubble is portalled to the end of `<body>`, anything
-focusable in it becomes a tab stop at the end of the document rather than after the trigger.
-A user who tabs off the trigger lands there with no idea where "there" is. When you need
+**Keep it non-interactive anyway.** The pointer can reach the bubble — `safePolygon()` keeps
+it open across the gap — so a link inside it is technically clickable with a mouse. But the
+bubble is portalled to the end of `<body>` by default, so anything focusable in it becomes a
+tab stop at the end of the document rather than after the trigger. A user who tabs off the
+trigger lands there with no idea where "there" is. When you need
 content the user can act on — a link, a button, a form — reach for [Popover](popover.md), which is built
 to be entered.
 
@@ -193,11 +198,10 @@ breakpoint. Each shipped theme pins the line-height at `:root[data-theme=…]`, 
 the breakpoint rule, and `tech` pins the size as well — so the step only happens in the
 default theme.
 
-Five values are hard literals rather than contract variables: the padding (`0.25rem 0.625rem`),
+Four values are hard literals rather than contract variables: the padding (`0.25rem 0.625rem`),
 the wrap width (`17.5rem`, with long words broken rather than overflowing), the stack level
-(50), the suppressed pointer events, and the 150 ms fade, which is set inline from JavaScript
-rather than in the stylesheet. None are themeable, and two of them have consequences worth
-knowing — see [Gotchas](#gotchas).
+(50), and the 150 ms fade, which is set inline from JavaScript rather than in the stylesheet.
+None are themeable, and two of them have consequences worth knowing — see [Gotchas](#gotchas).
 
 ## Gotchas
 
@@ -216,18 +220,14 @@ knowing — see [Gotchas](#gotchas).
   warning, no error. `children` is typed `ReactElement`, which does not catch this. Use a host
   element, or a component that forwards both props and `ref` (as
   [Button](button.md) and [IconButton](icon-button.md) do).
-- **You cannot move the pointer into the bubble.** `.tooltip` sets `pointer-events: none`, so
-  the bubble never receives a `mouseenter`; leaving the trigger starts the close timer and
-  nothing cancels it. This keeps the bubble from ever swallowing a click, at the cost of WCAG
-  1.4.13 — see [Accessibility](#accessibility).
 - **Escape dismisses it, but not durably.** Press Escape and the bubble closes; move the
   pointer even slightly *without leaving the trigger* and it comes back after `delay` ms. To
   make it stay away you have to move off the trigger.
-- **Inside a [Dialog](dialog.md) or [Drawer](drawer.md) it will be painted underneath.** Both
-  use a native `<dialog>` with `showModal()`, which promotes them to the browser's top layer;
-  the tooltip portals to a `<div>` at the end of `<body>`, which is not in the top layer, and
-  no `z-index` can climb into it. Tooltip exposes no portal target, so there is no prop-level
-  fix — don't rely on tooltips inside modals.
+- **Inside a [Dialog](dialog.md) or [Drawer](drawer.md) it paints underneath — unless you pass
+  `container`.** Both use a native `<dialog>` with `showModal()`, which promotes them to the
+  browser's top layer; by default the tooltip portals to a `<div>` at the end of `<body>`,
+  which is not in the top layer, and no `z-index` can climb into it. Pass the dialog element
+  (or any node inside it) as `container` and the bubble portals into the top layer with it.
 - **It is a client component.** `Tooltip.tsx` carries `"use client"`, so importing it opts its
   module into the client bundle. Unlike [Button](button.md) it is not itself usable as a server
   component — it is a client boundary, and both the bubble and the cloned trigger are painted
@@ -238,19 +238,16 @@ knowing — see [Gotchas](#gotchas).
 
 ## Accessibility
 
-Tooltip gets the two hard parts right — it opens on keyboard focus, not just hover, and the
+Tooltip gets the hard parts right — it opens on keyboard focus, not just hover, and the
 open/close timers are cleared on unmount, so a trigger that disappears mid-delay leaves nothing
-pending — and then fails one of the three requirements of **WCAG 1.4.13, Content on Hover or
-Focus**:
+pending — and it meets all three requirements of **WCAG 1.4.13, Content on Hover or Focus**:
 
 - **Dismissible — yes, with a caveat.** Escape closes the bubble from anywhere, without moving
   the pointer or focus. It re-opens on the next pointer movement over the trigger; see
   [Gotchas](#gotchas).
-- **Hoverable — no.** The success criterion requires that the pointer can be moved over the
-  additional content without it disappearing. `pointer-events: none` makes that impossible: the
-  bubble cannot be hovered at all, and it closes `delay` ms after the pointer leaves the
-  trigger regardless of where the pointer has gone. Content a user might need to read slowly,
-  select, or magnify does not belong here.
+- **Hoverable — yes.** `safePolygon()` keeps the bubble open while the pointer crosses the gap
+  from trigger to bubble, and the bubble itself can be hovered — so content can be read
+  slowly, selected, or magnified. It closes `delay` ms after the pointer leaves both.
 - **Persistent — yes.** There is no auto-hide timer. The bubble stays for as long as the
   trigger is hovered or focused, and closes only on unhover, blur, Escape, or a pointer-down
   outside it.

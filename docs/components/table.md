@@ -350,7 +350,7 @@ rebuild.
 The transition is dropped entirely under `prefers-reduced-motion: reduce`; nothing else in
 the component animates.
 
-Three things are **not** on the contract, and are worth knowing before you theme:
+Two things are **not** on the contract, and are worth knowing before you theme:
 
 - **Cell padding is hard literals**, not the responsive `r`-scale that most components use.
   The type steps *are* responsive — `--BodyText-1` goes `0.875rem` → `1rem` at the 40rem

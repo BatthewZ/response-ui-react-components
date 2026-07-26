@@ -129,8 +129,10 @@ detections, and neither can see a page that hydrates in principle and fails to i
 ```
 <!-- /example -->
 
-`as` changes the tag that wraps your content, but it does **not** let you add
-attributes to it — see the passthrough gotcha below.
+`as` changes the tag that wraps your content, and the tag's whole prop set comes with
+it — an `as="section"` can be given `aria-label`, `id`, or anything else the element
+accepts. Four props merge with the component's own instead of replacing them — see the
+passthrough gotcha below.
 
 ## Theme tokens
 

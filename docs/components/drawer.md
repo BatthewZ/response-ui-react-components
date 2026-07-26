@@ -27,9 +27,10 @@ a portal, or a focus trap of your own.
 | `ref`       | `Ref<HTMLDialogElement>`                   | —              |
 | …rest       | any other `<dialog>` prop                  | —              |
 
-The props are `Omit<ComponentPropsWithRef<"dialog">, "open">` plus the three above: the native
-`open` attribute is replaced by the controlled boolean, so there is no non-modal mode — a
-Drawer is always a `showModal()` dialog. Neither `DrawerProps` nor the `side` union is
+The props are `Omit<ComponentPropsWithRef<"dialog">, "open" | "onClose">` plus the three
+above: the native `open` attribute is replaced by the controlled boolean, so there is no
+non-modal mode — a Drawer is always a `showModal()` dialog — and the native `onClose` slot is
+replaced by the component's own callback. Neither `DrawerProps` nor the `side` union is
 exported; a wrapper of your own re-declares them.
 
 ## Controlled, and only controlled
@@ -38,10 +39,13 @@ One effect watches `open`: it calls `showModal()` when you ask for open and the 
 and `close()` when you ask for closed and it is. There is no `defaultOpen` and no internal
 state — the panel is exactly as open as your state says.
 
-`onClose` is not the DOM `close` event. It is fired from the native `cancel` event, which the
-component **prevents** before calling you. Escape therefore does not close the panel itself;
-it asks your state to. If your handler doesn't set `open` to `false`, Escape does nothing at
-all, and nothing else in the component will close it either — see [Gotchas](#gotchas).
+`onClose` replaces the DOM `close` handler rather than sitting alongside it, and it fires on
+two paths. The native `cancel` event — Escape — is **prevented** before calling you, so
+Escape does not close the panel itself; it asks your state to. And a native `close` — a
+`<form method="dialog">` submit, a `close()` through the `ref` — that lands while your `open`
+is still `true` is mirrored into `onClose`, so the element and your state cannot desync. If
+your handler doesn't set `open` to `false`, Escape does nothing at all — see
+[Gotchas](#gotchas).
 
 ## Drawer or Dialog?
 
@@ -55,7 +59,7 @@ theming reach:
 | Size         | 24rem across, capped at 90% of the viewport, filling the other axis | `w-full` up to `max-w-[40rem]`, height fits content |
 | Corners      | rounded on the two corners facing the page interior  | rounded on all four                       |
 | Enter/exit   | slides in and back out on `transform` + `opacity`    | a fade-in keyframe on open; no exit       |
-| Scrim        | themeable — `--OVERLAY-SCRIM-COLOR`                  | a literal 50% black                       |
+| Scrim        | themeable — `--OVERLAY-SCRIM-COLOR`, in `Drawer.css` | the same token, via a Tailwind arbitrary value |
 
 Reach for a Drawer when the content is secondary to the page and the page should stay
 visible: filters, a navigation menu, a record's detail panel, a mobile share sheet. Reach for
@@ -172,23 +176,10 @@ the panel's own padding ring, closing the drawer when a user clicks the margin a
 content.
 
 The other way a native dialog closes is a `<form method="dialog">` submit, which fires `close`
-and **not** `cancel` — so `onClose` never runs and your `open` stays `true` while the panel is
-gone. Nothing in the component listens for `close`, so hold a `ref` and mirror the native event
-back into your own state:
-
-```tsx
-const drawerRef = useRef<HTMLDialogElement>(null);
-
-useEffect(() => {
-  const dialog = drawerRef.current;
-  if (!dialog) return;
-  const sync = () => setOpen(false);
-  dialog.addEventListener("close", sync);
-  return () => dialog.removeEventListener("close", sync);
-}, []);
-```
-
-Then hand that ref to the panel, and every close path lands back in your state:
+and **not** `cancel`. The component listens for both: a `close` that arrives while your `open`
+is still `true` is mirrored into `onClose`, so a native form submit lands back in your state
+with no extra wiring. (The `ref` below is not part of that — hold one only when you want the
+DOM event yourself.)
 
 <!-- example:CloseFromNativeForm -->
 ```tsx
@@ -254,12 +245,12 @@ of the sheet.
   `style={{ width: "32rem" }}`, an `!important` utility, or your own rule at `.drawer`
   specificity or higher. Utilities for properties `Drawer.css` never sets still apply
   normally, as do all utilities on children.
-- **Only Escape reaches `onClose`.** The component listens for `cancel` and nothing else. A
-  `<form method="dialog">` submit inside the panel, or a `close()` through the forwarded `ref`,
-  closes the element without telling you — your `open` stays `true`, and because the open
-  effect only reacts to a *change* in `open`, clicking the trigger again sets the same value
-  and re-runs nothing. The panel stays shut until you toggle the boolean off and on again.
-  Mirror the native `close` event as shown in [Dismissal](#dismissal).
+- **Every native close path reaches `onClose`.** The component listens for `cancel` (Escape,
+  prevented so your state decides) and for `close` (`<form method="dialog">`, `ref.close()`,
+  mirrored into `onClose` while your `open` is still `true`). The remaining trap is an
+  `onClose` that ignores the callback: the element then ends up closed with `open` `true`,
+  and because the open effect only reacts to a *change* in `open`, the panel stays shut until
+  you toggle the boolean off and on again.
 - **The native `onClose` handler slot is taken.** `onClose` is destructured out of the props
   and never forwarded, so `<Drawer onClose={…}>` is the component's callback, not React's
   `<dialog>` close handler. The `ref` is the only way to reach the DOM event.

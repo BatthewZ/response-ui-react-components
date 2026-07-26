@@ -114,7 +114,9 @@ it nowhere.
 `accept` does double duty: it is joined with commas onto the file input's `accept`
 attribute *and* used as the allow-list for the post-selection check. The attribute is only
 a hint — a user can still choose "All files" in most OS dialogs — so the second check is
-the one that holds, and it is a plain `Array.includes` on `file.type`. List concrete types.
+the one that holds, and it speaks the attribute's own grammar: exact MIME types, `image/*`
+wildcards and the `*/*` catch-all matched case-insensitively against `file.type`, plus
+`.png`-style extensions matched against the end of the file name.
 Passing `[]` skips the check entirely and puts an empty `accept` attribute on the input.
 
 `maxSize` is a byte count. The failure message formats the actual and permitted sizes for
@@ -122,10 +124,11 @@ you (`B` below 1 KB, then `KB` or `MB` to one decimal), so you don't have to wri
 
 ## Reporting the result
 
-The component renders its own error text, but only inside the button; nothing announces
-success, and nothing announces failure reliably (see [Accessibility](#accessibility)). Route
-both callbacks into a live region you own — here a `role="status"` [Text](text.md) fed by
-`const [status, setStatus] = useState("")`:
+The component announces failures itself — the tooltip is the visible half, and a
+visually-hidden `role="alert"` sibling rendered outside the button carries the same message
+to assistive tech — but nothing announces success (see
+[Accessibility](#accessibility)). Route the callbacks into a live region you own — here a
+`role="status"` [Text](text.md) fed by `const [status, setStatus] = useState("")`:
 
 <!-- example:Callbacks -->
 ```tsx
@@ -232,11 +235,11 @@ responsive and steps up at the 40rem breakpoint.
   `preventDefault()` in yours and the component reads it as handled and does not open the
   dialog. (`aria-label`, `role` and `tabIndex` are plain attributes, still spread *after*
   the component's own, so those do override — there the last-writer-wins order is useful.)
-- **A URL that fails to load is remembered forever.** The nested Avatar latches an internal
-  load error and never resets it, so once a URL 404s, expires or times out, the circle shows
-  initials and ignores every later image — including the fallback to `src` after a failed
-  upload. The optimistic preview is a live object URL and is safe; the URL your `onUpload`
-  returns is not. See [Avatar's gotchas](avatar.md#gotchas).
+- **A URL that fails to load is retried only when the URL changes.** The nested Avatar
+  remembers the exact URL that failed and shows initials for as long as that same URL is the
+  one displayed; a *different* URL — a fresh upload result, the fallback to `src` after a
+  failed upload — gets a clean attempt. Re-showing the very same URL after a transient
+  failure needs a remount (`key`). See [Avatar's gotchas](avatar.md#gotchas).
 - **`src` is ignored once the component holds a preview.** The internal URL takes precedence
   for the instance's lifetime — it is cleared only by a *failed* upload — so a re-render with
   a server-authoritative `src` will not be shown. Remount with a `key` to force it.
@@ -276,7 +279,7 @@ in the tab order or the accessibility tree. The default label is generic — pas
 spread last, so it overrides cleanly. (`onClick` and `onKeyDown` are the exception: they
 compose with the component's own — see [Gotchas](#gotchas).)
 
-Two gaps are worth planning around:
+One gap is worth planning around, and one mechanism is worth knowing:
 
 - **Nothing *announces* the upload, though the state is exposed.** The busy spinner lives
   inside an `aria-hidden` span, but the root does carry `aria-busy="true"` and
@@ -285,12 +288,13 @@ Two gaps are worth planning around:
   keypresses in that window are still dropped. That is why the
   [Callbacks](#reporting-the-result) example routes state changes into a `role="status"`
   region of its own.
-- **The built-in error tooltip is a `role="alert"` nested inside a `role="button"`.** ARIA
-  makes a button's descendants presentational, so that alert is not a reliable live region —
-  and because `aria-label` wins over content for the name computation, the message doesn't
-  reach the accessible name either. The text renders and is visible; treat it as visual
-  feedback only, and surface failures through `onUploadError` into your own live region or
-  a [Toast](toast.md).
+- **The error message is announced from outside the button.** The visible tooltip is
+  `aria-hidden` — it lives inside a `role="button"`, whose descendants ARIA makes
+  presentational, and `aria-label` would keep its text out of the name computation anyway —
+  so the announcement comes from a visually-hidden `role="alert"` sibling rendered after
+  the button, carrying the same message. For richer feedback or a dismiss affordance,
+  surface failures through `onUploadError` into your own live region or a
+  [Toast](toast.md).
 
 The tooltip always carries the reason as text on its error fill, so a failure is never
 signalled by colour alone.

@@ -18,9 +18,8 @@ description link — from context, with no extra props.
 | `ref`       | `Ref<HTMLTextAreaElement>`    | —                           |
 | …rest       | props of `<textarea>`         | —                           |
 
-`error` is the only prop Textarea adds; everything else is a passthrough `<textarea>`. It
-has two sharp edges worth knowing — the label is **not** auto-associated, and Textarea is
-not server-renderable the way [Button](button.md) is. See [Gotchas](#gotchas).
+`error` is the only prop Textarea adds; everything else is a passthrough `<textarea>`. One
+sharp edge worth knowing — the label is **not** auto-associated. See [Gotchas](#gotchas).
 
 ## In a Field
 
@@ -109,15 +108,15 @@ taller or shorter floor.
   `aria-describedby`) through context, but nothing links a [Label](label.md) to the textarea. Set
   `Label htmlFor="x"` and `Textarea id="x"` yourself, or clicking the label won't focus the
   textarea and screen readers won't announce it as the field's name.
-- **Not server-renderable.** Unlike [Button](button.md), Textarea calls the `useFieldError` hook (it
-  reads context), so it must run inside a Client Component. It ships **no** `"use client"`
-  of its own, so rendering it directly from a Server Component with no client ancestor
-  throws. In a normal client-side form tree this never comes up.
+- **Client Component, self-declared.** Textarea calls the `useFieldError` hook (it reads
+  context), so it runs on the client — but it ships its own `"use client"`, so importing
+  it straight from a Server Component works; React draws the boundary for you.
 - **`error` overrides the field.** Resolution is `error ?? field.invalid`, so `error={false}`
   forces the textarea valid even inside an errored [Field](field.md). Omit it to inherit.
 - **`aria-describedby` needs a rendered [FieldError](field-error.md).** Inside an errored [Field](field.md), Textarea
-  points `aria-describedby` at the field's error id; if you don't render [FieldError](field-error.md) (or
-  give the error no content), that id resolves to nothing.
+  points `aria-describedby` at the error element a [FieldError](field-error.md) actually mounted; if you
+  don't render one (or the error has no content), the attribute is simply omitted — no
+  dangling id, but no announced message either.
 - **No per-component CSS.** There is no `Textarea.css`. Both CSS imports are still required —
   the utilities above resolve to tokens from `@batthewz/response-ui-css`.
 

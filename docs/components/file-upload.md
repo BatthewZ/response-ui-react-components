@@ -56,8 +56,9 @@ Drop and browse run the same path:
 3. Every file that failed is collected with the reason it failed. If there are any,
    `onFilesRejected` fires with the list and the dropzone shows an internal message naming the
    file — which the `error` prop overrides, and which the next clean selection clears.
-4. Otherwise `onFilesSelected` fires with the survivors when `multiple`, or with a
-   one-element array holding the first survivor when not.
+4. `onFilesSelected` fires with the survivors when `multiple`, or with a one-element array
+   holding the first survivor when not — on the same selection as any rejections, so a
+   mixed drop reports both.
 5. On the browse path the input's `value` is reset to `""`, so picking the same file twice in
    a row starts a fresh selection rather than doing nothing.
 
@@ -102,17 +103,21 @@ lets the user select in the first place.
 
 `accept` does double duty: joined with commas it becomes the input's `accept` attribute, and
 as an array it is the post-selection allow-list. The attribute is only a hint to the OS
-dialog and does nothing at all on the drop path — the array check is what actually holds, and
-it is a plain `Array.includes` on `file.type`. So `["image/*"]` and `[".pdf"]` filter the
-dialog nicely and then reject every file that comes back. Enumerate concrete types.
+dialog and does nothing at all on the drop path — the array check is what actually holds,
+and it speaks the attribute's own grammar: exact MIME types, `image/*`-style wildcards and
+the `*/*` catch-all matched case-insensitively against `file.type`, plus `.pdf`-style
+entries matched against the end of the file name. So `["image/*"]` and `[".pdf"]` accept on
+the drop path exactly what they offer in the dialog.
 
 `maxSize` is a byte count, and with no `hint` of your own it also writes the hint line
 (`Max file size: 5.0 MB` — `B` under 1 KB, then `KB` or `MB` to one decimal).
 
-Neither check tells anyone why a file disappeared. To report a rejection you have to do the
-validation yourself, which means **not** handing `accept`/`maxSize` to the component — a file
-it filters never reaches `onFilesSelected`. The message below is a second piece of your own
-state, `const [error, setError] = useState<string | null>(null)`:
+A file either check turns away never reaches `onFilesSelected`, but it is not silent: the
+dropzone shows an internal message naming it, and `onFilesRejected` hands you the list with
+each file's reason. To word the report yourself, do the validation in your own handler
+instead and feed the string back through `error` — it overrides the internal message for as
+long as it is set. The message below is a second piece of your own state,
+`const [error, setError] = useState<string | null>(null)`:
 
 <!-- example:ReportingRejections -->
 ```tsx

@@ -64,7 +64,8 @@ elements and behave differently as a result:
 
 Switch does accept `name` and `value`, which makes it *look* form-ready. Read
 [Submitting with a form](#submitting-with-a-form) before you rely on that — the hidden input
-is a workaround, not native participation, and it has two sharp edges.
+is a workaround, not native participation, though its payload follows native checkbox
+semantics.
 
 ## Controlled and uncontrolled
 
@@ -150,8 +151,8 @@ invalid state outside a Field, or to override an inherited one.
 
 ## Submitting with a form
 
-With a `name`, Switch renders a sibling `<input type="hidden">` carrying `value` when on and
-`""` when off:
+With a `name`, Switch renders a sibling `<input type="hidden">` carrying `value` — but only
+while the switch is on:
 
 <!-- example:SubmittedWithAForm -->
 ```tsx
@@ -165,10 +166,8 @@ With a `name`, Switch renders a sibling `<input type="hidden">` carrying `value`
 ```
 <!-- /example -->
 
-That is genuinely useful for a plain HTML form post or a server action, but it is not what a
-native checkbox does, in two ways that will bite:
-
-The payload follows native checkbox semantics:
+That is genuinely useful for a plain HTML form post or a server action, and the payload
+follows native checkbox semantics:
 
 - **Off omits the field.** No hidden input is rendered while the Switch is off, so
   `FormData.has("weeklyDigest")` is `false` — a presence check answers the question it looks
@@ -270,9 +269,10 @@ the page. See [Accessibility](#accessibility) — that has measurable consequenc
   and a checked state it is a `<button>` *and* an `<input type="hidden">`. Browsers hide the
   latter, but a parent using `:last-child`, `:nth-child`, or a child count will see two
   elements.
-- **Client component.** `"use client"`, for `useControllableState` and the Field context — it
-  needs a client boundary in an RSC tree. So does [Checkbox](checkbox.md), which became one
-  when it started consuming the Field's error state.
+- **Client component.** `"use client"`, for `useControllableState` and the Field context —
+  the directive draws the boundary itself, so importing it straight from a Server Component
+  works. The same goes for [Checkbox](checkbox.md), which became a client component when it
+  started consuming the Field's error state.
 
 ## Accessibility
 

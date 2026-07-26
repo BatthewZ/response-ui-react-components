@@ -128,10 +128,12 @@ with a severity glyph; ProgressBar cannot, and the reason is geometric. See
 
 ## Variant
 
-`default` is a flat fill. `striped` layers a fixed 45° white-at-15% texture *over*
-whatever `color` painted, so the two compose. `gradient` does not compose: it uses the
-`background` shorthand and is declared after the colour rules, so it wipes the colour and
-always ramps `--C-ACCENT` → `--C-ACCENT-HOVER`.
+`default` is a flat fill. Both style variants draw with `background-image` *over* the
+colour's `background-color`, so each composes with `color`. `striped` scrolls a 45°
+texture inked in `--C-TEXT-ON-ACCENT` at 15% — the fill's own on-colour partner, so it
+stays visible on light-fill themes. `gradient` ramps from the colour's fill to a paired
+end stop: `--C-ACCENT` → `--C-ACCENT-HOVER` for `accent`, and each status colour → a 75%
+mix of itself with `--C-CANVAS`.
 
 <!-- example:Variants -->
 ```tsx
@@ -156,9 +158,11 @@ always ramps `--C-ACCENT` → `--C-ACCENT-HOVER`.
 ## Motion
 
 The fill transitions its `width` over `--MOTION-DURATION-SHIFT`/`--MOTION-EASE-SHIFT`
-whenever `value` changes. `animate={false}` adds a `progress-bar__fill--no-animate` class
-that zeroes that transition, so the fill snaps — useful when you are stepping a bar
-programmatically and don't want the eased tail.
+whenever `value` changes, and the `striped` texture scrolls on an infinite
+`progress-bar-stripes` keyframe over the same duration token. `animate={false}` adds a
+`progress-bar__fill--no-animate` class that zeroes the transition *and* halts the stripe
+scroll, so the fill snaps and the texture holds still — useful when you are stepping a
+bar programmatically and don't want the eased tail.
 
 <!-- example:NoAnimation -->
 ```tsx
@@ -168,8 +172,9 @@ programmatically and don't want the eased tail.
 
 Reduced motion is handled twice over, belt-and-braces: the component reads
 `usePrefersReducedMotion()` and applies the same `--no-animate` class, *and*
-`ProgressBar.css` drops the transition inside a `@media (prefers-reduced-motion: reduce)`
-block. Either path alone would do it; neither depends on the other.
+`ProgressBar.css` drops the transition and the stripe animation inside a
+`@media (prefers-reduced-motion: reduce)` block. Either path alone would do it; neither
+depends on the other.
 
 ## Carrying status to assistive tech
 
@@ -207,8 +212,9 @@ one and every bar in the app re-tints at runtime, no rebuild.
 | Fill — `success`                   | `.progress-bar__fill--success`   | `--C-STATUS-SUCCESS`                            |
 | Fill — `warning`                   | `.progress-bar__fill--warning`   | `--C-STATUS-WARNING`                            |
 | Fill — `error`                     | `.progress-bar__fill--error`     | `--C-STATUS-ERROR`                              |
-| Fill — `gradient` ramp             | `.progress-bar__fill--gradient`  | `--C-ACCENT` → `--C-ACCENT-HOVER`               |
-| Width transition                   | `.progress-bar__fill`            | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+| Fill — `gradient` ramp end (`accent`) | `.progress-bar__fill--gradient` | `--C-ACCENT-HOVER` (status colours mix into `--C-CANVAS`) |
+| Stripe ink — `striped`             | `.progress-bar__fill--striped`   | `--C-TEXT-ON-ACCENT` (at 15%)                   |
+| Width transition · stripe scroll   | `.progress-bar__fill`            | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
 | Label ink · weight                 | `.progress-bar__label`           | `--C-TEXT-SECONDARY` · `--Semibold-Weight`      |
 | Value ink · weight                 | `.progress-bar__value`           | `--C-TEXT-PRIMARY` · `--Bold-Weight`            |
 | Label / value type                 | `.progress-bar__label` `.progress-bar__value` | `--BodyText-2` · `--BodyText-2-line-height`     |
@@ -222,9 +228,9 @@ worth knowing: `md` above 40rem is exactly as tall as `lg` below it. `--BodyText
 both weight tokens step up at the same breakpoint, so the label and value get slightly
 larger and heavier on wide screens.
 
-The striped texture is the one mark that is **not** themeable — its stripes are a
-hard-coded `oklch(1 0 0 / 0.15)` in the stylesheet, not a variable, so they are always
-white at 15% over your fill and there is no token to change them.
+The striped texture is themeable, but only through `--C-TEXT-ON-ACCENT`: the stripes are
+a `color-mix` of that token at 15% over transparent, so they re-tint with the theme's
+on-accent ink. The 15% weight itself is fixed in the stylesheet.
 
 ## Gotchas
 
@@ -253,15 +259,13 @@ white at 15% over your fill and there is no token to change them.
   [Meter](meter.md), which has the room. Note that ARIA would not have objected: children
   of `role="progressbar"` are presentational, so a decorative glyph inside would have been
   harmless — it simply could not be seen.
-- **`variant="gradient"` silently discards `color`.** The gradient rule sets the
-  `background` shorthand — which resets `background-color` — and sits after the four
-  colour rules at equal specificity, so it always wins.
-  `<ProgressBar variant="gradient" color="error" />` renders the accent ramp, not red —
-  though `aria-valuetext` still announces "Error", so the two channels disagree. Use
-  `striped` (or `default`) when the colour is load-bearing.
-- **`striped` stripes do not move.** There is no `@keyframes` anywhere in the package for
-  them, and `animate` governs only the width transition. `background-size: 200% 100%` is
-  set on the fill but nothing animates `background-position`, so the texture is static.
+- **`variant="gradient"` keeps `color`.** The gradient is a `background-image` drawn over
+  the colour's own fill variable, so `<ProgressBar variant="gradient" color="error" />`
+  ramps from the error red to its canvas-mixed end stop — the visual and `aria-valuetext`
+  channels agree.
+- **`striped` stripes move.** The texture scrolls on an infinite `progress-bar-stripes`
+  keyframe timed by `--MOTION-DURATION-SHIFT`; `animate={false}` (and reduced motion)
+  stops it along with the width transition.
 - **`value={NaN}` renders an *empty* bar.** A non-finite `value` is floored to `0` before
   it reaches the style, because `width: NaN%` is rejected by the CSSOM and leaves the
   fill at `width: auto` — the whole track. So a `loaded / total` computation with

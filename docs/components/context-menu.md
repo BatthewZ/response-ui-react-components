@@ -275,10 +275,12 @@ nothing in the package styles it. See the [theme contract](../theme-contract.md)
 
 ## Gotchas
 
-- **`index` is hand-numbered and unchecked.** The numbers, not the DOM, are the arrow-key and
-  typeahead order, and nothing validates them. Two items sharing an index overwrite each other in
-  the navigation list, and the loser becomes unreachable by keyboard while still rendering and
-  still clicking. Numbering out of visual order makes the arrows jump around the menu. Gaps are
+- **`index` is hand-numbered, and a duplicate is warned about, not fixed.** The numbers, not
+  the DOM, are the arrow-key and typeahead order. Two items sharing an index overwrite each
+  other in the navigation list, and the loser becomes unreachable by keyboard while still
+  rendering and still clicking — a `console.warn` names both items when it happens, but the
+  menu ships broken all the same. Numbering out of visual order makes the arrows jump around
+  the menu. Gaps are
   the harmless case — a missing index is treated like a disabled item and skipped. Renumber
   whenever you insert an item, and for generated items use the array index.
 - **A `disabled` item is still clickable, and the click does nothing.** `aria-disabled` keeps
@@ -297,10 +299,11 @@ nothing in the package styles it. See the [theme contract](../theme-contract.md)
   aimed at an `input`, `textarea`, `select` or `contenteditable`. The trade is the other
   direction: with the caret in such a control, the arrow keys and typeahead do **not** drive the
   open menu — move focus to the trigger itself (a right-click does this for you) to navigate it.
-- **Nested triggers open both menus.** The handler prevents the default but never stops
-  propagation, so a right-click on an inner `Trigger` bubbles to an outer one and both panels
-  mount. Worse, each one's focus manager marks the other `aria-hidden`, so a screen reader is
-  offered neither. Don't nest them.
+- **Nested triggers open only the innermost menu.** The `contextmenu` handler stops
+  propagation as well as preventing the default, so a right-click on an inner `Trigger` never
+  reaches an outer one. (Before this was fixed both panels mounted, each one's focus manager
+  marking the other `aria-hidden`.) Nesting still buys you nothing — prefer one trigger per
+  object.
 - **Right-clicking the open menu shows the browser's menu.** `Content` does no
   `preventDefault()` of its own, so the native menu appears on top of yours; the custom menu
   stays open behind it.

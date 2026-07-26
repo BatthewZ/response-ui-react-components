@@ -250,8 +250,9 @@ The chip's own fill, ink, weight and padding are **not** in that table, because 
 does not draw them: the chip is a default-variant [Badge](badge.md), so `--C-SURFACE-2`,
 `--C-TEXT-SECONDARY`, `--Semibold-Weight`, `--RADIUS-SM` and `--BodyText-3` reach it
 through Badge's own utilities. Override those variables and every Badge in the app moves
-with the chips; see [Badge's theme tokens](badge.md#theme-tokens). The one class TagInput
-adds to the chip is `gap-r6`, to space the label from its remove button.
+with the chips; see [Badge's theme tokens](badge.md#theme-tokens). TagInput adds no class
+of its own to the chip — even the `gap-r6` spacing the label from its remove button is
+part of Badge's base recipe.
 
 Two of the spacing tokens step up at the 40rem breakpoint along the responsive `r`-scale —
 the field's horizontal padding (`--R-SIZE-4`, `0.75rem` → `1.25rem`) and its vertical

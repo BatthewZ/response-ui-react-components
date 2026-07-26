@@ -73,11 +73,11 @@ keys in makes no difference.
 
 | Key    | Applies from | Counts with a CSS rule |
 | ------ | ------------ | ---------------------- |
-| `base` | always       | 2 · 3 · 4              |
-| `sm`   | `40rem`      | 2 · 3 · 4              |
-| `md`   | `48rem`      | 2 · 3 · 4              |
-| `lg`   | `64rem`      | 2 · 3 · 4              |
-| `xl`   | `80rem`      | 2 · 3 · 4              |
+| `base` | always       | 1 · 2 · 3 · 4          |
+| `sm`   | `40rem`      | 1 · 2 · 3 · 4          |
+| `md`   | `48rem`      | 1 · 2 · 3 · 4          |
+| `lg`   | `64rem`      | 1 · 2 · 3 · 4          |
+| `xl`   | `80rem`      | 1 · 2 · 3 · 4          |
 
 <!-- example:ResponsiveColumns -->
 ```tsx
@@ -101,9 +101,9 @@ keys in makes no difference.
 ```
 <!-- /example -->
 
-**Only 2, 3 and 4 exist.** A count of `1` is skipped on purpose — one column is the CSS
-default — and any count above `4` emits a class (`masonry-grid--base-5`) that `MasonryGrid.css`
-never defines, so it silently falls back to one column. Both edges are covered under
+**Every count from `1` to `4` has a real rule at every breakpoint**, so a key can narrow the
+grid back to a single column as well as widen it. Counts above `4` are a compile error — the
+prop is typed `1 | 2 | 3 | 4` — not a silent one-column fallback. Both edges are covered under
 [Gotchas](#gotchas).
 
 ## Gap
@@ -157,8 +157,8 @@ Because the visual flow of a multi-column box runs **down** each column before m
 the cascade reads as a column-by-column wave rather than a left-to-right one.
 
 Set `animate={false}` for a grid that is present from the first paint — the right choice for
-anything above the fold, anything that must survive a page with no JavaScript, and anything
-whose items need their own attributes:
+anything above the fold and anything that must stay readable when the bundle never runs.
+Item attributes like `id` and `data-*` land on either path:
 
 <!-- example:NoAnimation -->
 ```tsx
@@ -202,8 +202,9 @@ lands:
 ```
 <!-- /example -->
 
-The `role="listitem"` on each item only survives because this grid sets `animate={false}`.
-See the first gotcha.
+The `role="listitem"` on each item lands too, on either path — with `animate` on, the item's
+rest props are spread onto the reveal's rendered element. See the first gotcha for how
+`className`, `style` and `ref` merge there.
 
 ## Theme tokens
 
@@ -292,10 +293,10 @@ reach it — so `role`, `aria-label` and friends are yours to add, as the labell
   media-query hook short-circuits the observer *and* the shared CSS resolves `.scroll-reveal-hidden`
   to `opacity: 1`, so those readers see a static, fully visible grid even without JavaScript.
   Nothing in `MasonryGrid.css` animates at all.
-- **Roles and labels on an item need `animate={false}`.** This is the passthrough gotcha with
-  teeth: `aria-label`, `aria-describedby`, `role` and `tabIndex` on a `MasonryGrid.Item` compile
-  and then vanish, so an animating grid cannot be given item-level semantics from the outside.
-  Put them on your own element inside the item, or turn animation off.
+- **Roles and labels on an item reach the DOM on both paths.** `aria-label`,
+  `aria-describedby`, `role` and `tabIndex` on a `MasonryGrid.Item` land on the rendered
+  element whether the grid animates or not — [ScrollReveal](scroll-reveal.md) spreads its rest
+  props onto the element it renders. Item-level semantics do not require `animate={false}`.
 - **Visual order follows DOM order.** A multi-column box fills down one column before starting
   the next, so the reading order a screen reader and the Tab key follow is the same order the
   eye follows. That is *not* left-to-right across a row — if your content is ranked ("newest

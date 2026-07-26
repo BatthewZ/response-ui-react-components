@@ -96,22 +96,18 @@ export function DisabledItem() {
   );
 }
 
-/** Wrap the trigger in a heading yourself so screen-reader users can jump between sections. */
+/** Triggers already render inside a heading; `headingLevel` picks the rank. */
 export function WithHeadings() {
   return (
-    <Accordion mode="multiple">
+    <Accordion mode="multiple" headingLevel={2}>
       <Accordion.Item value="shipping">
-        <h3>
-          <Accordion.Trigger>When will my order ship?</Accordion.Trigger>
-        </h3>
+        <Accordion.Trigger>When will my order ship?</Accordion.Trigger>
         <Accordion.Content>
           <p>Orders placed before 2pm ship the same working day.</p>
         </Accordion.Content>
       </Accordion.Item>
       <Accordion.Item value="returns">
-        <h3>
-          <Accordion.Trigger>How do I return an item?</Accordion.Trigger>
-        </h3>
+        <Accordion.Trigger>How do I return an item?</Accordion.Trigger>
         <Accordion.Content>
           <p>Start a return from your order history within 30 days of delivery.</p>
         </Accordion.Content>

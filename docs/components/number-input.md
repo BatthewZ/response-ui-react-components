@@ -40,13 +40,14 @@ when the field is cleared, so `field<number>()` is the wrong declaration.
 
 ## The draft, and when it commits
 
-Typing only updates the draft string. Two things commit it — **blur** and **Enter** — and a
+Typing only updates the draft string. **Blur** and **Enter** commit it, and a
 commit runs `parse → clamp → round`, writes the canonical text back into the box, and calls
 `onValueChange`. That is why typing `1.` emits nothing at all, and why a value you typed can
 be rewritten under you the moment you tab away: `99` in a field with `max={10}` becomes `10`.
 
-The steppers also emit, but they do **not** commit the draft — they step from the last
-committed value and overwrite whatever you had typed. See [Gotchas](#gotchas).
+The steppers commit too: a press (or ArrowUp/ArrowDown) parses the text in the box —
+committed or not — steps it, clamps, and writes the canonical result back. A commit that
+changes nothing is silent: at `max`, further presses of ▲ emit no `onValueChange` at all.
 
 Clearing the field commits `null`, and so does any text `Number()` cannot read — `12abc`
 blurs to an empty box and `onValueChange(null)`.
@@ -80,10 +81,10 @@ be able to hold it or the user cannot empty the box.
 ```
 <!-- /example -->
 
-`step` moves the value by a fixed amount from whatever is currently committed, then clamps.
-From an *empty* field the base is `min ?? 0`, so with `min={16}` the first press of ▲ lands
-on `16.5`, not `16` — while ▼ lands on `16`, because the decrement is clamped back up to the
-floor.
+`step` moves the value by a fixed amount from the text currently in the box — committed or
+not — then clamps. From an *empty* field the base is `0` and the clamp carries the result to
+the bound, so with `min={16}` the first press of either ▲ or ▼ lands on `16` itself, as a
+native spinner does.
 
 ## Decimals
 
@@ -198,31 +199,25 @@ render underneath the chevrons.
 The two buttons round their outer corners with `rounded-tr-md` / `rounded-br-md`, which read
 `--RADIUS-MD` like the box they sit in.
 
-The reserved right padding is `--R-SIZE-2` (`1.25rem`, `2rem` at ≥40rem), while the stepper
-column measures its 14px chevron plus `--R-SIZE-5` of padding on each side — 30px, and 38px
-at the breakpoint. **The column is wider than the gap reserved for it at both sizes**, so the
-tail of a long number renders under the chevrons. Keep the field wider than the digits you
-expect, or pass a bigger right padding — `className="pr-10"` (2.5rem) clears the column at
-both breakpoints.
-
 ## Gotchas
 
-- **A stepper press throws away text you have typed.** Pressing ▲/▼ (or clicking a button)
-  steps from the last *committed* value, and the buttons `preventDefault` on pointer-down so
-  the input never blurs and never commits first. Type `99` in a field committed at `1`, click
-  ▲, and you get `2` — the `99` is gone.
-- **Controlled, but not enforced.** The visible text is internal state. If your handler
-  rejects or transforms what it is given — `onValueChange={(v) => setValue(Math.min(v ?? 0, 5))}`
-  with no `max` on the field — the box keeps showing the value you refused, and the
-  reconciliation only re-syncs when the `value` prop *changes*. Measured: `value={5}` with a
-  no-op handler, one press of ▲, and the field reads `6` while `aria-valuenow` stays `5`,
-  permanently. Mirror your clamping into `min`/`max` so the component reaches the same answer.
+- **A stepper press commits.** Pressing ▲/▼ (or clicking a button) parses the text in the
+  box — even text you have not committed — steps it, clamps, and writes the result back.
+  Unreadable text seeds the step at `0` and the clamp takes it from there. The buttons
+  `preventDefault` on pointer-down, so the input never blurs first; the step itself is the
+  commit.
+- **A rejected value snaps back on commit.** The visible text is internal state, but every
+  commit re-derives it from whichever value is then effective — even when the `value` prop
+  itself never changed. So a controlled handler that refuses a commit sees the box snap
+  back to the value it kept, with `aria-valuenow` in agreement. Still, mirror your clamping
+  into `min`/`max` so the component reaches the same answer in the first place.
 - **`readOnly` stops every route in.** Typing, the steppers, the arrow keys and the
   commit-on-blur are all inert, and the field reports `aria-readonly="true"`. Use `disabled`
   instead when the control should also leave the tab order.
-- **`Number()` accepts more than decimals.** `0x1f` commits as `31` and `Infinity` commits as
-  `Infinity` (and lands in `aria-valuenow`); surrounding whitespace is trimmed. `inputMode`
-  only hints the mobile keyboard — set `min`/`max` if you need a bounded result.
+- **Parsing is strict decimal.** Only an optionally signed decimal — optional fraction,
+  optional exponent (`1e3` works) — is read; `0x1f`, `Infinity` and `12abc` all commit as
+  `null` and blur to an empty box. Surrounding whitespace is trimmed. `inputMode` only hints
+  the mobile keyboard — set `min`/`max` if you need a bounded result.
 - **The submitted value is the raw text.** With a `name`, this is a `type="text"` input, so a
   form posts whatever is in the box. Focus normally moves before submit and commits it, but a
   programmatic `form.submit()` — or reading `new FormData(form)` while the field is still
@@ -230,12 +225,11 @@ both breakpoints.
 - **`min` / `max` / `step` never reach the DOM.** They are destructured away, so there is no
   native constraint validation, no `:invalid`, and no browser stepping — only
   `aria-valuemin` / `aria-valuemax` and the component's own clamp.
-- **`onValueChange` fires even when nothing changes.** At `max`, every further ▲ re-emits the
-  same number. Compare before you mark a form dirty.
 - **`className` styles the input, not the wrapper.** Width utilities in particular misplace the
   stepper column — see [Width](#width).
-- **Client component.** It ships `"use client"` and holds state, so unlike a bare
-  [Input](input.md) it can be imported directly into an RSC tree.
+- **Client Component, self-declared.** It ships `"use client"` and holds state; importing
+  it straight from a Server Component works — the same is true of the [Input](input.md) it
+  renders.
 
 ## Accessibility
 

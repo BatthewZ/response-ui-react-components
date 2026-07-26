@@ -28,6 +28,9 @@ peel off the last chip. Reach for it when `<select multiple>` is the wrong shape
 | `onValueChange` | `(value: string[]) => void`                                 | —                           |
 | `onChange`      | `(value: string[]) => void`                                 | —                           |
 | `placeholder`   | `string`                                                    | `"Select…"`                 |
+| `open`          | `boolean`                                                   | — (uncontrolled)            |
+| `defaultOpen`   | `boolean`                                                   | `false`                     |
+| `onOpenChange`  | `(open: boolean) => void`                                   | —                           |
 | `searchable`    | `boolean`                                                   | `true`                      |
 | `maxItems`      | `number`                                                    | — (no cap)                  |
 | `error`         | `boolean`                                                   | `Field` state, else `false` |
@@ -42,13 +45,13 @@ An option is `{ value: string; label: string; disabled?: boolean }` — exported
 `MultiSelectOption`. There is no sub-component and no render prop: `children` is omitted
 from the prop type, so the list is data, never JSX.
 
-Two of those rows have sharp edges. The rest props are `<div>` props and the spread lands on
-the **outer wrapper `<div>`**, not on the text input — so `id` and `aria-labelledby` compile,
-land on the wrapper, and never reach the control, leaving `aria-label` as the only prop that
-names it. `name` is not a `<div>` prop, so it does not compile at all. And there is no
-`open` / `onOpenChange`: the menu's open state is internal. See [Gotchas](#gotchas).
+One of those rows has a sharp edge. The rest props are `<div>` props and the spread lands on
+the **outer wrapper `<div>`**, not on the text input — but `id`, `aria-label` and
+`aria-labelledby` are destructured out and placed on the combobox input, so all three name
+or address the control. `name` is not a `<div>` prop, so it does not compile at all. See
+[Gotchas](#gotchas).
 
-`onChange` is the one prop that escapes the wrapper spread: it carries the selected
+`onChange` also escapes the wrapper spread: it carries the selected
 `string[]`, the same payload as `onValueChange` rather than a `ChangeEvent`, and is
 destructured out before the spread, so `{...form.field<string[]>("skills")}` writes the
 array into the store instead of the inner search input's query text. The `aria-invalid` and
@@ -199,11 +202,10 @@ Inside an invalid [Field](field.md), MultiSelect picks up `aria-invalid="true"` 
 `aria-describedby` pointing at the [FieldError](field-error.md) — the same context wiring
 [Input](input.md) and [Select](select.md) use, applied to the inner input.
 
-The visible [Label](label.md) is where this component differs from every other control in
-the library: `htmlFor` cannot reach the input, because the `id` you pass lands on the outer
-wrapper `<div>` instead. `aria-labelledby` lands there too, and a `<div>` with no role
-ignores it. **`aria-label` is the only way to name this control** — so pass it, and keep its
-text in sync with the visible label. Without it the combobox has no accessible name at all.
+The visible [Label](label.md) can be wired the usual way: the `id` you pass is placed on the
+combobox input, so `<Label htmlFor>` reaches it — and `aria-labelledby` and `aria-label` land
+on the input too. Use one of the three, and keep its text in sync with the visible label;
+omit all three and the combobox has no accessible name at all.
 
 ## Error state
 

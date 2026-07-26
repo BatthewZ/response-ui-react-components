@@ -3,8 +3,9 @@
 A rich preview that opens when the pointer rests on something — the profile card behind a
 username, the summary behind a commit hash. It anchors itself to the trigger, portals out of
 any clipping ancestor, and waits out both the arrival and the departure so the card doesn't
-flicker on a passing cursor. Hover-only by design, so nothing inside it can be information a
-touch or keyboard user needs.
+flicker on a passing cursor. Hover-first by design — keyboard focus opens it too, but touch
+never does and focus cannot move *into* it — so nothing inside it can be information only it
+holds.
 
 <!-- example:Minimal -->
 ```tsx
@@ -21,9 +22,10 @@ touch or keyboard user needs.
 
 ## Everything in here must exist somewhere else
 
-A HoverCard opens on hover and on nothing else. Touch users never open it; a mouse click
-never opens it; keyboard users get it only if you pass `asChild` a focusable element, and even
-then they cannot move focus **into** the card — see [Accessibility](#accessibility). So the
+A HoverCard opens on hover and on keyboard focus, and on nothing else. Touch users never open
+it; a mouse click never opens it; keyboard users can open it — the default trigger is a real
+`<button>` — but they cannot move focus **into** the card — see
+[Accessibility](#accessibility). So the
 card is an accelerator, never a location: every fact inside it has to be reachable another
 way, usually the page the trigger already links to. If something is only in the hover card, a
 large share of your users will never see it.
@@ -33,7 +35,7 @@ That is also the line between the three floating primitives:
 | Reach for      | When                                                             |
 | -------------- | ---------------------------------------------------------------- |
 | `Tooltip`      | A short string naming or clarifying a control. No interaction.    |
-| **HoverCard**  | A **hover-only, optional** preview — a few lines, an avatar, a stat.  |
+| **HoverCard**  | A **hover/focus, optional** preview — a few lines, an avatar, a stat.  |
 | `Popover`      | Anything a user must be able to open on purpose, or interact with. |
 
 **Anatomy.** `HoverCard` is state and context only — it renders no DOM of its own, so
@@ -46,7 +48,7 @@ gives you, with the positioning included. It is not in the DOM at all while clos
 | Part                | Renders                                              | Props                                                                              |
 | ------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `HoverCard`         | nothing — a context provider                          | `open?` · `defaultOpen?` · `onOpenChange?` · `openDelay?` · `closeDelay?` · `placement?` · `children` |
-| `HoverCard.Trigger` | `<span>`, or its own child when `asChild`             | `asChild?` (+ all `span` props)                                                    |
+| `HoverCard.Trigger` | `<button type="button">`, or its own child when `asChild` | `asChild?` (+ all `button` props)                                              |
 | `HoverCard.Content` | `<div role="dialog">`, portalled into `<body>`        | all `div` props                                                                    |
 
 | Root prop      | Type                      | Default    |
@@ -94,7 +96,8 @@ person — see [Avatar](avatar.md) on why it would otherwise announce twice.
 ## The trigger
 
 With `asChild`, the trigger props are cloned onto **your** element and no wrapper is rendered.
-Without it you get a `<span class="inline-flex w-fit">` around the children.
+Without it you get a `<button type="button" class="inline-flex w-fit text-left">` around the
+children.
 
 <!-- example:TextTrigger -->
 ```tsx
@@ -108,10 +111,12 @@ Without it you get a `<span class="inline-flex w-fit">` around the children.
 ```
 <!-- /example -->
 
-Prefer `asChild` with a link or a button. That `<span>` has no `tabIndex`, so it can never be
-focused, which makes the card strictly mouse-only and leaves the `aria-expanded` it carries
-sitting on an element with no role. `asChild` also needs exactly one **element**: a bare string
-or more than one child falls back to the `<span>` wrapper silently, and a fragment is worse —
+The default `<button>` is focusable, so keyboard focus opens the card and the
+`aria-expanded` it carries sits on a real control. Reach for `asChild` when the trigger
+should be a link — the usual case, since a hover card previews a destination — or an existing
+[Button](button.md), rather than a plain unstyled one. `asChild` needs exactly one
+**element**: a bare string
+or more than one child falls back to the `<button>` wrapper silently, and a fragment is worse —
 it is a valid element, so the props are cloned onto the fragment, React logs *"Invalid prop
 supplied to React.Fragment"*, and nothing is registered as the anchor, so hover never opens the
 card at all. `asChild` merges the trigger wiring into the child rather than overwriting it —
@@ -127,7 +132,7 @@ pointer travels the 8px gap from the trigger to the card. Alongside it, a safe-p
 handler tracks the pointer across that gap, so a diagonal move toward the card counts as
 staying — and once the pointer is **over** the card, the close timer is cancelled outright, so
 the card stays open as long as you're in it and starts closing `closeDelay` after you leave
-it. Both delays apply only to hover; focus, when it works at all, opens immediately.
+it. Both delays apply only to hover; focus opens immediately.
 
 <!-- example:Delays -->
 ```tsx
@@ -207,7 +212,7 @@ utility resolving through the token layer, so it re-tints with a theme change at
 | Padding        | `p-r4`                  | `--R-SIZE-4`         |
 
 The padding is the only responsive value: `--R-SIZE-4` steps `0.75rem → 1.25rem` at the 40rem
-breakpoint. The trigger's own `inline-flex w-fit` reads no tokens at all.
+breakpoint. The trigger's own `inline-flex w-fit text-left` reads no tokens at all.
 
 One value sits **outside** the contract: the `w-72` width is a fixed 18rem. The open/close
 fade is on it — an inline `opacity` transition whose duration comes from
@@ -242,38 +247,37 @@ colour on the card itself with `className`. See the [theme contract](../theme-co
 - **The card is absent, then it lingers.** Nothing is rendered while closed — you cannot query
   the content, and search-in-page never finds it. After closing it stays mounted for the exit
   fade (`--MOTION-DURATION-EXIT`, 150ms with no token layer), so with default delays the DOM
-  node outlives your `unhover` by about 300ms. Tests
-  should wait for it to go, not assert immediately.
+  node outlives your `unhover` by `closeDelay` plus the exit duration — about 300ms with no
+  token layer. Tests should wait for it to go, not assert immediately.
 - **Client component.** The file carries `"use client"`; importing HoverCard opens a client
   boundary. The content inside it is rendered on the client, so nothing in the card is in the
   server HTML or visible to a crawler.
 
 ## Accessibility
 
-Assume the card is invisible to most assistive technology and design so that nothing is lost.
-What the code actually emits:
+Design so that nothing is lost if the card is never seen. What the code actually emits:
 
-- **The trigger** gets `aria-expanded`, `aria-haspopup="dialog"`, and — while open —
-  `aria-controls` pointing at the card's generated id.
-- **The card** is a `<div role="dialog" tabindex="-1">` with no accessible name of its own.
+- **The trigger** — a real `<button>` by default — carries an `id`, `aria-expanded`,
+  `aria-haspopup="dialog"`, and — while open — `aria-controls` plus an `aria-describedby`
+  pointing at the card, appended to any description it already had.
+- **The card** is a `<div role="dialog" tabindex="-1">`, named by default via
+  `aria-labelledby` pointing back at the trigger; an `aria-label` or `aria-labelledby` you
+  pass wins over that default.
 
-Four consequences, in the order they'll bite you:
+Three consequences, in the order they'll bite you:
 
-- **Nothing is announced when it opens.** The trigger is not `aria-describedby` the card, and
-  the card is neither focused nor live. A keyboard user who focuses an `asChild` trigger is
-  told a dialog exists — `aria-haspopup="dialog"` — and then never hears a word of it. If the
+- **Opening announces nothing.** The card is neither focused nor live, so the moment it opens
+  is silent. Its contents are not lost — while open the card is the trigger's accessible
+  *description*, so a screen reader re-reading the focused trigger gets the card's text — but
+  descriptions are announced late, at reduced verbosity, or only on request. If the
   information matters, it belongs in the page, not the card.
 - **Focus cannot get into it.** The card is portalled to the end of `<body>` with no focus
   management and no tab guards, so Tab from the trigger goes to the next control on the page —
   and that blur closes the card. Interactive content inside a HoverCard (a "Follow" button, a
   link) is unreachable by keyboard. Put those actions on the page instead.
-- **Name the card yourself.** `role="dialog"` without an accessible name is an automated-check
-  failure and announces as an unnamed dialog. Rest props reach the element, so pass
-  `aria-label` — every example on this page does.
-- **The default trigger is a bare `<span>`.** It is not focusable, so the focus path is dead
-  and the component is mouse-only; and `aria-expanded` is not a global ARIA attribute, so on a
-  span with no role it is invalid markup that expresses nothing. Use `asChild` with a real
-  link or button.
+- **The default name is the whole trigger.** `aria-labelledby` pointing at the trigger means
+  the card announces under the trigger's full text — fine for a short name, noisy for a long
+  one. Pass `aria-label` for a better name, as every example on this page does.
 
 Both entry points are narrower than they look. Focus opens the card only when the browser
 reports `:focus-visible` on the trigger — a keyboard tab, not a click or a tap — and the hover
