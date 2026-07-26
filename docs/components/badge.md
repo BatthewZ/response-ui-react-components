@@ -13,6 +13,7 @@ re-tints from your theme's status tokens for free.
 | Prop        | Type                                                          | Default     |
 | ----------- | ------------------------------------------------------------- | ----------- |
 | `variant`   | `"default" \| "success" \| "warning" \| "error" \| "info"`    | `"default"` |
+| `statusLabel` | `string`                                                    | the word for `variant` |
 | `children`  | `ReactNode`                                                   | —           |
 | `className` | `string`                                                      | —           |
 | `ref`       | `Ref<HTMLSpanElement>`                                        | —           |
@@ -49,9 +50,14 @@ across all five, so a row of mixed badges stays on one baseline.
 
 ## Don't lean on colour alone
 
-Nothing but the tint separates the five — no icon, no label, no `aria` hint ships with the
-variant. A greyscale or colour-blind reader sees identical chips, and a screen reader hears
-only the children. Put the state in the text:
+The four status variants ship a visually-hidden word — "Success", "Warning", "Error",
+"Information" — read before the children, so a screen reader hears "Error, 3" rather than
+"3". `statusLabel` replaces it (`statusLabel="Échec"`), `statusLabel=""` removes it, and
+passing one to a `default` badge names a state the variant has no word for. `default`
+is silent otherwise: it carries no state.
+
+On screen nothing changed — a greyscale or colour-blind reader still sees five identical
+chips. Put the state in the text where it has to be *seen*:
 
 <!-- example:LabelledNotJustTinted -->
 ```tsx
@@ -62,8 +68,9 @@ only the children. Put the state in the text:
 ```
 <!-- /example -->
 
-`<Badge variant="error">3</Badge>` and `<Badge variant="success">3</Badge>` are the same
-badge to everyone who can't see the colour. `"3 checks failed"` isn't.
+`<Badge variant="error">3</Badge>` and `<Badge variant="success">3</Badge>` now announce
+differently, but they are still the same *chip* to a sighted reader who can't see the
+colour. `"3 checks failed"` isn't.
 
 ## Composing content
 
@@ -158,10 +165,14 @@ tracking the rest of the type system.
 
 ## Gotchas
 
-- **Variant is colour-only.** The variant map swaps a `bg-*` and a `text-*` class and nothing
-  else — no icon, label, `role`, or `aria-*` encodes the state. Two badges with the same
-  children and different variants are indistinguishable in greyscale and identical to a
-  screen reader. Say the state in the label.
+- **Variant is still colour-only on screen.** The variant map swaps a `bg-*` and a `text-*`
+  class and nothing else — the visually-hidden word reaches a screen reader, but two badges
+  with the same children and different variants remain indistinguishable in greyscale. Say
+  the state in the visible label.
+- **The hidden word is part of the badge's text.** It renders as the span's first child, so
+  `textContent`, `innerText` and `getByText`-style queries see it. Pass `statusLabel=""`
+  where that is a problem — and note that a chip whose visible label repeats the word
+  ("Failed") will otherwise be read as "Error, Failed".
 - **No status semantics.** It is a plain `<span>`. Nothing is announced when its text changes,
   and it contributes no role to the accessibility tree. Pass `role="status"` (or wrap it in
   your own live region) when the chip reports something that updates.
@@ -192,13 +203,13 @@ tracking the rest of the type system.
 
 ## Accessibility
 
-Badge adds nothing to the accessibility tree: it is an unlabelled `<span>` whose children are
-read in place, in document order, as ordinary inline text. That is usually right for metadata
-— but it means everything the badge *means* has to be in its children.
+Badge contributes no role: it is a `<span>` whose children are read in place, in document
+order, as ordinary inline text — preceded by the variant's visually-hidden word.
 
-- **Status is conveyed by colour alone** (WCAG 1.4.1). The tint is the only variant signal, so
-  a badge whose label doesn't name the state ("3", "v2", an environment name) carries no
-  meaning to colour-blind or non-visual users. Write self-describing labels.
+- **The status is announced, and still only tinted on screen** (WCAG 1.4.1). `statusLabel`
+  puts "Error" in front of a badge reading "3", which fixes the non-visual half. Nothing
+  visible distinguishes the variants, so a colour-blind reader gains nothing — write
+  self-describing labels where the state has to be seen.
 - **Name or hide composed icons.** An icon you pass as a child renders as-is with no
   accessible name. Mark it `aria-hidden` when the label already says it; give it a label of
   its own when it doesn't.

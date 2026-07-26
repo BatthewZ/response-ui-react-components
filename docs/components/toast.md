@@ -40,6 +40,7 @@ Three exports, and they are the whole API.
 | ---------- | --------------------------------------------- | -------- |
 | `variant`  | `"success" \| "warning" \| "error" \| "info"` | `"info"` |
 | `title`    | `string`                                      | —        |
+| `statusLabel` | `string` — visually-hidden severity word    | the word for `variant` |
 | `duration` | `number` (ms; `0` disables auto-dismiss)      | `5000`   |
 
 `ToastProvider` takes **`children` and nothing else**. Corner, stack limit, gap, width, and
@@ -207,6 +208,7 @@ You own placement, the exit animation flag, and removal.
 | `onDismiss`  | `() => void` — **required**                          | —        |
 | `variant`    | `"success" \| "warning" \| "error" \| "info"`        | `"info"` |
 | `title`      | `string`                                             | —        |
+| `statusLabel` | `string` — visually-hidden severity word            | the word for `variant` |
 | `dismissing` | `boolean` — swaps the slide-in animation for slide-out | `false`  |
 | `className`  | `string`                                             | —        |
 | `ref`        | `Ref<HTMLDivElement>`                                | —        |
@@ -326,24 +328,29 @@ focus tokens are documented there.
 
 ## Accessibility
 
-Each toast is its own live region: `role="status"` + `aria-live="polite"`, or `role="alert"` +
-`aria-live="assertive"` for `error`. The stack container carries no live region at all.
+A hand-rendered `<Toast>` is its own live region: `role="status"` + `aria-live="polite"`, or
+`role="alert"` + `aria-live="assertive"` for `error`. Through `ToastProvider` the wiring
+moves outward — the always-mounted stack container carries `aria-live="polite"` and the
+toast's own region is stripped, so a message arrives as a *change inside* an existing region
+rather than as a region that appears pre-filled. `error` keeps `role="alert"`, the one
+insertion case screen readers do special-case, because it is the variant that must interrupt.
 
-- **The region is created with its message already inside it.** That is the announcement
-  pattern screen readers handle least consistently — live regions are dependable for content
-  that *changes* while the region is already in the accessibility tree. The portal container
-  is mounted for the provider's whole lifetime and would be the natural place for `aria-live`,
-  but it has none, so every announcement rides on a freshly inserted node. The same caveat
-  applies to [Spinner](spinner.md) and [Skeleton](skeleton.md).
-- **Severity is carried by colour, plus interruption.** No icon, label, or `aria` text names
-  the variant. `error` at least interrupts, but the words a user hears are your message and
-  nothing else — success and error read identically. Lead with the meaning
-  (`toast("Payment failed. Your card was declined.", { variant: "error" })`), or put it in
-  `title`. This is the library's standard failure on status surfaces — see
-  [Alert](alert.md#gotchas) and [Badge](badge.md).
-- **Dismissing drops focus.** The dismiss button removes the element it lives in, so focus
-  falls back to `<body>` — verified. A keyboard user who tabs to a toast and closes it loses
-  their place in the page and starts over from the top.
+- **A hand-rendered toast still announces on insertion.** Outside the provider there is no
+  persistent container, so the region and its text arrive in the same update — the pattern
+  screen readers handle least consistently. Mount your own `aria-live` wrapper first if you
+  are running your own queue.
+- **Severity is announced, and still only tinted on screen.** Each variant renders a
+  visually-hidden word — "Success", "Warning", "Error", "Information" — ahead of the title
+  and the message, so success and error no longer read identically. `statusLabel` overrides
+  it from either entry point: `toast(msg, { variant: "error", statusLabel: "Fehler" })` or
+  the prop on a hand-rendered `<Toast>`; `""` drops it when your message already says it.
+  Visually nothing changed, so a colour-blind reader still sees one tinted card — lead with
+  the meaning (`toast("Payment failed. Your card was declined.", { variant: "error" })`) or
+  put it in `title`. Same treatment on [Alert](alert.md#gotchas) and [Badge](badge.md).
+- **Dismissing returns focus to where it came from.** The toast records what was focused
+  before focus entered it and restores that element *before* the unmount, so a keyboard user
+  who tabs into a toast and closes it lands back where they were rather than on `<body>`.
+  If that element has itself gone away, the browser's fallback applies.
 - **Nothing pauses.** The five-second default runs regardless of hover, focus, or reading
   speed, and there is no prop to extend it. That is a WCAG 2.2.1 (Timing Adjustable) problem
   for anything a user is expected to act on. `duration: 0` is the only escape, and it makes

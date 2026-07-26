@@ -64,7 +64,8 @@ export function NoAnimation() {
   return <ProgressBar value={82} animate={false} aria-label="Rendering frames" />;
 }
 
-/** Colour carries no meaning to assistive tech — `aria-valuetext` overrides the bare number. */
+/** A status `color` announces itself as `"96%, Error"`; your own `aria-valuetext` replaces
+ *  that wholesale when a phrase reads better than the word. */
 export function AnnouncedStatus() {
   return (
     <ProgressBar

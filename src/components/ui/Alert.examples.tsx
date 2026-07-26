@@ -33,20 +33,21 @@ export function WithTitle() {
   );
 }
 
-/** Variant is conveyed by colour alone — no icon or label ships. Prefix a text label
- *  (or an icon with an accessible name) so the severity survives greyscale and is read
- *  out to screen readers. */
+/** The hidden `statusLabel` reaches screen readers, but on screen the variant is still
+ *  tint alone. Prefix a visible label (or an icon with an accessible name) so the
+ *  severity survives greyscale — and drop the hidden word once the text repeats it,
+ *  or it is announced twice. */
 export function LabelledForColorBlindness() {
   return (
-    <Alert variant="error">
+    <Alert variant="error" statusLabel="">
       <strong>Error:</strong> The uploaded file exceeds the 25 MB limit.
     </Alert>
   );
 }
 
-/** The default announcement is `polite`, which queues behind current speech even for
- *  errors. Pass `aria-live="assertive"` to interrupt for a genuinely urgent failure;
- *  props spread after the defaults, so this wins. Children can include an action. */
+/** `error` already announces `assertive`; the attribute is written before the rest
+ *  spread, so an explicit one still wins — that is how another variant is promoted to
+ *  the same urgency, or this one demoted. Children can include an action. */
 export function UrgentError() {
   return (
     <Alert variant="error" aria-live="assertive">

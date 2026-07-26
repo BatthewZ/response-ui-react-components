@@ -20,8 +20,9 @@ export function Variants() {
   );
 }
 
-/** The tint is the only difference between variants, so the label has to carry the meaning:
- *  bare counts would read as two identical chips in greyscale and to a screen reader. */
+/** A screen reader hears the variant's hidden word, but on screen the tint is still the
+ *  only difference — so the visible label has to carry the meaning: bare counts would read
+ *  as two identical chips in greyscale. */
 export function LabelledNotJustTinted() {
   return (
     <div className="flex flex-wrap gap-r6">
