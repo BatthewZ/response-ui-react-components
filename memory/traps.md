@@ -81,3 +81,16 @@ with the identical defect and two whose tests covered only one direction. Both w
 - **The fix a finding prescribes may not be the fix that shipped, and may be wrong.** That row
   led with "spread the rest object first" — which mirrors the bug onto the caller. What actually
   landed was a per-key merge. Read the code that fixed it, not the plan that proposed it.
+
+## D · From the pass that hoisted the shared focus recipe
+
+- **Hoisting a constant out of a component's directory breaks tooling that resolves by relative
+  path.** Collapsing eight hand-rolled focus-ring recipes into `src/util/focus.ts` turned the
+  component-docs guard red on 16 rows that had nothing wrong with them: it follows `./` imports
+  only, by design, so `../../util/focus` was invisible. A refactor's blast radius includes every
+  script that reads source *textually* — check those before concluding the docs drifted.
+- **A constant that a textual guard resolves must stay one flat string literal.** Each recipe in
+  `src/util/focus.ts` is a single unbroken string on purpose: the focus-affordance guard resolves
+  `const NAME = "…"` by text, and a `${…}`-composed constant would resolve to nothing — blinding
+  the guard at every consumer at once, silently, in the same commit that tidied the file. The
+  neater authoring is sometimes the one that costs you the check.

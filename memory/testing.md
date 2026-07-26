@@ -18,6 +18,28 @@ exists to prevent.
   `false`, making the reduced-motion and compact-layout paths unreachable rather than green. For
   the same reason, `matchMedia` is deliberately *not* stubbed globally — a global stub would hide
   a regression in the guard that reads it, as one already did. Stub per test, opt-in.
+- **No test in this package can read a CSS file.** `vitest.config.ts` leaves `css` at its default
+  `false`, which replaces every CSS request with an empty string — `import.meta.glob("./X.css",
+  { query: "?raw" })` resolves the path and hands back `""` (measured, not inferred). `node:fs`
+  is not an escape either: `@types/node` is not installed and `tsconfig`'s `types` is an
+  allowlist. An assertion over a stylesheet therefore asserts over nothing. CSS invariants can
+  only be gated from `scripts/verify-*.mjs`, and a comment claiming "a test asserts this
+  stylesheet" is false wherever you find it.
+- **`userEvent` moves focus, and focus commits.** A test that drives an "unrelated re-render"
+  with `userEvent.click` blurs the field first — committing the draft and hiding exactly the bug
+  the test was written for. Re-render through an explicit `act(() => bump())` on a wrapper's own
+  state instead.
+- **A comparison test can pass because both sides are empty.** "Renders an identical header in
+  all three states" means nothing until the reference side is asserted *rich* — four cells,
+  `aria-sort: ascending`, one sort icon — before the other two are compared against it.
+- **To decide whether a safeguard is needed, probe rather than argue.** Install a comparator that
+  *throws* wherever it would have acted and run the whole suite: a proposed equality gate for
+  Accordion's array value fired 0 times across 28 tests and was dropped. It costs one run and
+  produces a number instead of a plausible story.
+- **Hostile inputs that found real bugs here**, worth reaching for on any controlled value: a
+  no-op blur (expect exactly 0 emits); an inline `value={new Date(…)}` rebuilt on every parent
+  render; a partially typed draft (`"06/1"`) surviving an unrelated re-render; and a genuine edit
+  still emitting exactly 1.
 - **A bare positive spy assertion hides re-fire bugs.** Asserting a handler "was called" cannot
   see it called twice; one component re-fired its change handler under exactly such an assertion.
   Assert exact counts.

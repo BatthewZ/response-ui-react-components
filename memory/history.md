@@ -18,6 +18,8 @@ eight of them before a line was written — the single highest-leverage thing th
 | "A trap across 121 usages, worth a sweep"   | The convention was documented four times as deliberate. **Two lines** were wrong |
 | "Eight duplicate pairs confirmed"           | Zero. Merging any of them would have destroyed a commit reference |
 | "This CSS rule removes the focus affordance" | The replacement sits in the same declaration, one line over    |
+| "Four floating surfaces own private portal/focus-manager copies" | Nine surfaces, and all nine already share `use-floating.ts` |
+| "The shared state hook is bypassed wherever the value is not a plain scalar" | Inverted — every non-scalar consumer called it; the real bypasses were all scalars |
 
 **The document written to correct it was not clean either.** Adversarial verification refuted
 four of its own eight staked checks, and two of those were real unfixed defects rather than
@@ -34,7 +36,15 @@ The generalisable lessons:
   causes named elsewhere in its own document, and the pass that followed it inherited the gap.
 - **An audit that lives outside the repo is an audit you will redo.** One pass's per-row verdicts
   were never written into the tracked record; only a summary survived, in a file no repository
-  contained. All of it was re-done from scratch.
+  contained. All of it was re-done from scratch. The handover and brief documents for this
+  package still sit in the workspace root, outside every git repository — unversioned, unowned,
+  and no more reliable than the ones above.
+- **A wrong claim is not always a mis-sized one.** Re-counting catches an inflated number; it
+  cannot catch a claim pointing the opposite way. One brief asserted the shared state hook was
+  bypassed "wherever the value is not a plain scalar" — the opposite was true in every case, and
+  a pass that sized its work from the sentence would have rewritten correct code and missed the
+  bypasses that existed. **Restate a qualitative claim as a query and run it, exactly as you
+  would re-count a number.**
 - **Falsifying a claim early is cheaper than any fix.** Refuting is a full outcome — provided you
   write it where the next reader will look.
 - **The quantities are the first thing to distrust.** Counts, percentages and "N files affected"

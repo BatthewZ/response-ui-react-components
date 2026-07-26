@@ -10,7 +10,8 @@ to understand.
 
 | Spoke                      | The lesson                                                  |
 | -------------------------- | ------------------------------------------------------------ |
-| [traps.md](./traps.md)     | What two fix passes got wrong. Read before planning.         |
+| [traps.md](./traps.md)     | What three fix passes got wrong. Read before planning.       |
+| [state.md](./state.md)     | Where one fact ends up stored twice, and which copies are deliberate. |
 | [gates.md](./gates.md)     | What a green gate does *not* mean.                           |
 | [ledger.md](./ledger.md)   | How a written record goes wrong, and which errors are worst. |
 | [testing.md](./testing.md) | Ways a test here passes for the wrong reason.                |
@@ -19,10 +20,13 @@ to understand.
 ## The short version
 
 1. **Brief from source, never from a summary — including this one.** Every quantified claim in
-   the first handover was inflated; the document written to correct it still staked four claims
-   that adversarial verification refuted.
+   the first handover was inflated, one of a later brief's qualitative claims was *inverted*, and
+   the document written to correct the first still staked four claims that adversarial
+   verification refuted.
 2. **No patch lands without a check observed failing first**, and re-break it once after green.
-3. **Measure, don't reason.** One refutation collapsed on a stale comment in this repo's own CSS.
+3. **Measure, don't reason** — including measuring whether a change is even *reachable*. One
+   refutation collapsed on a stale comment in this repo's own CSS; one proposed safeguard was
+   dropped after a probe showed it could never fire.
 4. **Refuting a finding is a full outcome** — but write it into the record, not the commit body.
 5. **A claim that counts instances instead of naming them cannot be audited.**
 6. **Scope is this package only** — not the CSS package, not the tailwind-merge package, *not

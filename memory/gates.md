@@ -7,7 +7,15 @@ good. These are the ways they have still let defects through.
 - **A gate can be structurally incapable of failing.** The findings-ledger guard printed `FAIL`
   and exited `0` for its entire life, because the flag that makes it assert was never passed. It
   was caught while auditing a pass's own staked checks, not by anyone reading its output.
-  **Once per pass, make a gate fail on purpose and watch it go red.**
+  **Once per pass, make a gate fail on purpose and watch it go red.** The same applies whenever
+  you widen a guard's vision: after teaching the component-docs guard to see a class recipe
+  hoisted into a shared util, a doc for a component that does *not* import it was falsified and
+  watched go red. "The gate is green" and "the gate can still fail" are two separate
+  observations, and only the second one is evidence.
+- **Split a red gate's failures before fixing any of them.** One run came back red on 47 rows:
+  16 were the script losing sight of a file it follows by relative path only, and 31 were real
+  documentation drift. Conflating the two produces a script loosened until it hides the drift.
+  Partition the list first, then fix each half on its own terms.
 - **A new gate's exemptions are where the next bug lives.** A focus-affordance guard documented
   honestly that it inspects stylesheets only. A high-severity defect sat in exactly that blind
   spot — the same reset written as a utility class in a component file. Read a script's stated
@@ -16,9 +24,15 @@ good. These are the ways they have still let defects through.
 - **Guards check structure, never truth.** Token *tables* are verified against source; the prose
   beside them is not. A falsified sentence always passes, and a token that changes **role** — an
   accent moving from ink to edge — passes silently while the page keeps describing the old
-  behaviour. After mechanical green, re-read the source assuming the doc is wrong.
+  behaviour. After mechanical green, re-read the source assuming the doc is wrong. Every
+  falsehood that has cost real time here was in a *sentence*, not a row, and a refactor that
+  changes a utility's keying or value but not its name passes on every row it touches. **Grep
+  the docs for the old literal as well as the new one.**
 - **Drift is usually only checked in one direction.** The export/doc guard fails when an export
   is missing from the docs, and passes when the docs name an export that no longer exists.
+- **A doc can be too weak as well as wrong, and no gate sees that either.** When an unsupported
+  prop was declared `onChange?: never`, every existing sentence stayed true — but the page now
+  under-promised: passing it is a compile error, not a prop that quietly does nothing.
 - **A gate run against stale dependencies tells you nothing.** Skipping the install step before a
   publish runs the whole suite against the *previous* version still on disk: everything passes
   and the change you are shipping was never loaded. Loud failure is a gift — silent success on
@@ -28,13 +42,22 @@ good. These are the ways they have still let defects through.
   delivers the very `onChange` the props type removed, and neither the compiler nor the linter
   says anything. Every key omitted here is a legitimate DOM attribute, so React warns nothing
   either: the damage is behavioural — a dead handler, a clobbered value — and never a console
-  message.
+  message. What `tsc` *does* catch, measured: the same key as a direct JSX attribute (`TS2322`),
+  and a wrong type on a **declared** key even through a spread (`TS2345`). It is silent only on
+  excess keys. The one shape that closes the hole is declaring the key `?: never` and
+  destructuring it out — a plain `Omit` makes the destructure itself an error (`TS2339`), while
+  `?: never` permits it *and* turns the silent spread into a compile error.
+- **A guard's own AST walk has blind spots that the source will find.** `interface X extends
+  Omit<…>` parses as an `ExpressionWithTypeArguments`, not a `TypeReferenceNode`, so a walk
+  handling only the latter drops those declarations without a word (`menu-internals.tsx:199`).
+  Enumerate what your visitor *did* see and compare it against a grep before trusting a zero.
 - **A defect class no gate can see recurs until someone builds the gate.** That one outlived two
   passes which each re-typed the symptom, until a purpose-built guard encoded the invariant.
   **Prefer building the guard over another round of instances.**
 - **A minimal repro can give a false green.** For the case above, a spread bag of exactly one key
-  *is* caught by the compiler, so a one-key probe "proves" the hole is closed while the real
-  binding — always several keys — slips straight through. Reproduce with the shape the caller
+  *is* caught — by the degenerate `TS2559` "has no properties in common", which evaporates the
+  moment you add a second key. So a one-key probe "proves" the hole is closed while the real
+  binding, always several keys, slips straight through. Reproduce with the shape the caller
   actually uses, not the smallest shape you can write.
 - **Prose about a gate drifts exactly like prose about a component.** A maintainer doc described
   the publish chain as five steps when it ran nine; the script itself is the only trustworthy
