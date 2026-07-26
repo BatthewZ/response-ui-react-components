@@ -2,16 +2,25 @@
   display: inline-block;
   background: var(--C-SURFACE-2);
   border-radius: var(--RADIUS-MD);
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  /* Every variant needs a height, not just `--text`: without one the other
+     three measure 0px unless the caller passes an explicit `height`. */
+  height: 1em;
+  /* Tracks the theme's tempo rather than freezing one: --MOTION-DURATION-SHIFT
+     is 400ms in the token layer and 250-600ms across the shipped themes, and a
+     pulse is a slow multiple of that same beat. 400ms x 4 = 1.6s, the 1.5s this
+     always was. */
+  animation: skeleton-pulse calc(var(--MOTION-DURATION-SHIFT, 400ms) * 4) ease-in-out infinite;
 }
 
 .skeleton--text {
-  height: 1em;
   border-radius: var(--RADIUS-SM);
 }
 
 .skeleton--circular {
   border-radius: 50%;
+  /* Derive the height from the width so a circle stays circular. */
+  aspect-ratio: 1;
+  height: auto;
 }
 
 .skeleton--rounded {

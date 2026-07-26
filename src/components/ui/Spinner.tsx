@@ -4,7 +4,11 @@ import { cn } from "../../util/style";
 
 type Size = "sm" | "md" | "lg";
 
-const baseClasses = "animate-spin rounded-full border-2 border-current border-t-transparent";
+// `motion-reduce:animate-none` is carried here because the CSS package guards
+// animation *classes*, not the `animate-*` utilities — this was the library's
+// only unguarded continuous animation.
+const baseClasses =
+  "animate-spin motion-reduce:animate-none rounded-full border-2 border-current border-t-transparent";
 
 const sizeClassMap: Record<Size, string> = {
   sm: "size-4",
@@ -14,20 +18,33 @@ const sizeClassMap: Record<Size, string> = {
 
 type SpinnerProps = {
   size?: Size;
-} & Omit<ComponentPropsWithRef<"div">, "size" | "children">;
+} & Omit<ComponentPropsWithRef<"div">, "size">;
 
+/**
+ * Decoration by default: `aria-hidden`, no role. N spinners on a page would
+ * otherwise be N `role="status"` live regions, each already holding the word
+ * "Loading" when it is inserted — the one shape screen readers do not announce,
+ * and untranslatable besides.
+ *
+ * Pass `children` to make this spinner the status for what it is waiting on, in
+ * the caller's own language:
+ *
+ *   <Spinner>Envoi en cours…</Spinner>
+ */
 export const Spinner = forwardRef<HTMLDivElement, SpinnerProps>(function Spinner(
-  { size = "md", className, ...props },
+  { size = "md", className, children, ...props },
   ref
 ) {
+  const announces = children != null;
   return (
     <div
       ref={ref}
-      role="status"
+      role={announces ? "status" : undefined}
+      aria-hidden={announces ? undefined : true}
       className={cn(baseClasses, sizeClassMap[size], className)}
       {...props}
     >
-      <span className="sr-only">Loading</span>
+      {announces && <span className="sr-only">{children}</span>}
     </div>
   );
 });

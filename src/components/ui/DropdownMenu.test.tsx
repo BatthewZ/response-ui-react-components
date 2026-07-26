@@ -146,4 +146,20 @@ describe("DropdownMenu", () => {
     expect(childClick).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole("menuitem", { name: "Rename" })).toBeInTheDocument();
   });
+
+  it("closes when Tab moves focus past a mouse-opened menu", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    await screen.findByRole("menu");
+
+    await user.tab();
+
+    // A mouse-opened menu holds no tabbable item, so Tab walks straight past it
+    // and would otherwise leave it open with focus somewhere else.
+    await waitFor(() =>
+      expect(screen.queryByRole("menu", { hidden: true })).not.toBeInTheDocument(),
+    );
+  });
 });

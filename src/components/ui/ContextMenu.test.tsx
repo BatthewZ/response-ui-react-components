@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -230,5 +230,95 @@ describe("ContextMenu", () => {
     await waitFor(() => {
       expect(screen.getByRole("menuitem", { name: "Duplicate" })).toHaveFocus();
     });
+  });
+
+  it("opens only the innermost menu when triggers nest", async () => {
+    render(
+      <ContextMenu>
+        <ContextMenu.Trigger>
+          <span>outer area</span>
+          <ContextMenu>
+            <ContextMenu.Trigger>inner area</ContextMenu.Trigger>
+            <ContextMenu.Content>
+              <ContextMenu.Item index={0}>Inner action</ContextMenu.Item>
+            </ContextMenu.Content>
+          </ContextMenu>
+        </ContextMenu.Trigger>
+        <ContextMenu.Content>
+          <ContextMenu.Item index={0}>Outer action</ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu>,
+    );
+
+    fireEvent.contextMenu(screen.getByText("inner area"));
+    await screen.findByText("Inner action");
+
+    // Two open menus `aria-hidden` each other; only the innermost describes
+    // what was actually right-clicked.
+    expect(screen.getAllByRole("menu", { hidden: true })).toHaveLength(1);
+    expect(screen.queryByText("Outer action")).not.toBeInTheDocument();
+  });
+
+  it("leaves arrow keys to a text control inside the trigger", () => {
+    render(
+      <ContextMenu>
+        <ContextMenu.Trigger>
+          <textarea defaultValue={"one\ntwo"} aria-label="Notes" />
+        </ContextMenu.Trigger>
+        <ContextMenu.Content>
+          <ContextMenu.Item index={0}>Edit</ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu>,
+    );
+
+    const textarea = screen.getByLabelText<HTMLTextAreaElement>("Notes");
+    textarea.focus();
+    textarea.setSelectionRange(0, 0);
+
+    const event = createEvent.keyDown(textarea, { key: "ArrowDown" });
+    fireEvent(textarea, event);
+
+    // `useListNavigation` sits on the reference element, where the key bubbles
+    // to; preventing the default freezes the caret.
+    expect(event.defaultPrevented).toBe(false);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("closes when Tab moves focus out of an open menu", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+
+    const trigger = screen.getByText("Right-click area");
+    fireEvent.contextMenu(trigger);
+    await screen.findByRole("menu");
+
+    await user.tab();
+
+    // A mouse-opened menu holds no tabbable item, so Tab walks straight past it.
+    await waitFor(() =>
+      expect(screen.queryByRole("menu", { hidden: true })).not.toBeInTheDocument(),
+    );
+  });
+
+  it("warns when two items claim the same index", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      render(
+        <ContextMenu>
+          <ContextMenu.Trigger>Right-click area</ContextMenu.Trigger>
+          <ContextMenu.Content>
+            <ContextMenu.Item index={0}>First</ContextMenu.Item>
+            <ContextMenu.Item index={0}>Second</ContextMenu.Item>
+          </ContextMenu.Content>
+        </ContextMenu>,
+      );
+
+      fireEvent.contextMenu(screen.getByText("Right-click area"));
+      await screen.findByRole("menu");
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("duplicate index 0"));
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

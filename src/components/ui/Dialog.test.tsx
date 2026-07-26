@@ -1,4 +1,6 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useRef, useState } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Dialog } from "./Dialog";
@@ -13,6 +15,9 @@ beforeAll(() => {
   if (!HTMLDialogElement.prototype.close) {
     HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
       this.removeAttribute("open");
+      // Per spec, closing fires `close`. The component listens for it, so the
+      // polyfill has to emit it or the test would be checking nothing.
+      this.dispatchEvent(new Event("close"));
     };
   }
 });
@@ -113,6 +118,69 @@ describe("Dialog", () => {
     expect(screen.getByRole("heading", { name: "My Title" })).toBeInTheDocument();
     expect(screen.getByText("Some description")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
+  });
+
+  it("reports a close the element performed itself, and can then reopen", async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      const ref = useRef<HTMLDialogElement>(null);
+      return (
+        <>
+          <button onClick={() => ref.current?.close()}>Close natively</button>
+          <button onClick={() => setOpen(true)}>Reopen</button>
+          <Dialog ref={ref} open={open} onClose={() => setOpen(false)}>
+            <p>Body</p>
+          </Dialog>
+        </>
+      );
+    }
+
+    render(<Harness />);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("open");
+
+    // `ref.close()` stands in for `<form method="dialog">`: the element closes
+    // itself without the `open` prop being told.
+    await user.click(screen.getByRole("button", { name: "Close natively" }));
+    expect(dialog).not.toHaveAttribute("open");
+
+    await user.click(screen.getByRole("button", { name: "Reopen" }));
+    expect(dialog).toHaveAttribute("open");
+  });
+
+  it("does not call onClose for a close it performed itself", () => {
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <Dialog open={true} onClose={onClose}>
+        <p>Content</p>
+      </Dialog>,
+    );
+
+    rerender(
+      <Dialog open={false} onClose={onClose}>
+        <p>Content</p>
+      </Dialog>,
+    );
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("reads the scrim from --OVERLAY-SCRIM-COLOR, as Drawer.css does", () => {
+    renderDialog({ open: true });
+
+    expect(screen.getByRole("dialog").className).toContain(
+      "backdrop:bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]",
+    );
+  });
+
+  it("guards its entrance animation for prefers-reduced-motion", () => {
+    renderDialog({ open: true });
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.className).toContain("animate-fade-in");
+    expect(dialog.className).toContain("motion-reduce:animate-none");
   });
 
   it("prevents default on cancel event so browser does not close dialog", () => {

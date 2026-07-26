@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { CommandPalette, type CommandItem } from "./CommandPalette";
@@ -304,5 +305,138 @@ describe("CommandPalette", () => {
     expect(
       screen.getAllByRole("option").filter((option) => option.hasAttribute("data-active")),
     ).toHaveLength(0);
+  });
+
+  it("arrows in rendered order when a group's members are not contiguous", async () => {
+    const user = userEvent.setup();
+    const items: CommandItem[] = [
+      { id: "new", label: "New document", group: "File", onSelect: vi.fn() },
+      { id: "copy", label: "Copy", group: "Edit", onSelect: vi.fn() },
+      { id: "save", label: "Save", group: "File", onSelect: vi.fn() },
+    ];
+    renderPalette({ open: true, items });
+
+    const rendered = screen.getAllByRole("option").map((o) => o.textContent);
+    expect(rendered).toEqual(["New document", "Save", "Copy"]);
+
+    const input = screen.getByRole("combobox");
+    const activeLabel = () =>
+      document.getElementById(input.getAttribute("aria-activedescendant")!)?.textContent;
+
+    input.focus();
+    expect(activeLabel()).toBe("New document");
+    await user.keyboard("{ArrowDown}");
+    expect(activeLabel()).toBe("Save");
+    await user.keyboard("{ArrowDown}");
+    expect(activeLabel()).toBe("Copy");
+  });
+
+  it("keeps the highlight when the parent re-renders with fresh prop identities", async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [, force] = useState(0);
+      return (
+        <>
+          <button onClick={() => force((n) => n + 1)}>Re-render</button>
+          <CommandPalette
+            open
+            onClose={vi.fn()}
+            // Fresh identity on every render — the common consumer shape.
+            items={[
+              { id: "a", label: "Alpha", onSelect: vi.fn() },
+              { id: "b", label: "Beta", onSelect: vi.fn() },
+              { id: "c", label: "Gamma", onSelect: vi.fn() },
+            ]}
+            filter={(item, q) => item.label.toLowerCase().includes(q.trim().toLowerCase())}
+          />
+        </>
+      );
+    }
+
+    render(<Harness />);
+    const input = screen.getByRole("combobox");
+    const activeLabel = () =>
+      document.getElementById(input.getAttribute("aria-activedescendant")!)?.textContent;
+
+    input.focus();
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(activeLabel()).toBe("Gamma");
+
+    await user.click(screen.getByRole("button", { name: "Re-render" }));
+
+    expect(activeLabel()).toBe("Gamma");
+  });
+
+  it("lets the caller name the search field and the listbox", () => {
+    renderPalette({
+      open: true,
+      searchLabel: "Befehl suchen",
+      listLabel: "Befehle",
+    });
+
+    expect(screen.getByRole("combobox")).toHaveAccessibleName("Befehl suchen");
+    expect(screen.getByRole("listbox")).toHaveAccessibleName("Befehle");
+  });
+
+  it("names the search field by default", () => {
+    renderPalette({ open: true });
+    expect(screen.getByRole("combobox")).toHaveAccessibleName("Search commands");
+  });
+
+  it("announces the result count as filtering changes it", async () => {
+    const user = userEvent.setup();
+    renderPalette({ open: true });
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveTextContent("4 commands");
+
+    await user.type(screen.getByRole("combobox"), "copy");
+    expect(status).toHaveTextContent("1 command");
+
+    await user.clear(screen.getByRole("combobox"));
+    await user.type(screen.getByRole("combobox"), "zzz");
+    expect(status).toHaveTextContent("0 commands");
+  });
+
+  it("lets the caller replace the announced status text", async () => {
+    const user = userEvent.setup();
+    renderPalette({ open: true, statusMessage: (n) => `${n} Treffer` });
+
+    await user.type(screen.getByRole("combobox"), "copy");
+    expect(screen.getByRole("status")).toHaveTextContent("1 Treffer");
+  });
+
+  it("has the listbox own its options directly or through a group", () => {
+    renderPalette({ open: true });
+
+    const listbox = screen.getByRole("listbox");
+    for (const option of screen.getAllByRole("option")) {
+      const owner = option.parentElement!;
+      expect(owner === listbox || owner.getAttribute("role") === "group").toBe(true);
+      if (owner !== listbox) expect(owner.parentElement).toBe(listbox);
+    }
+  });
+
+  it("does not wrap ungrouped items in a nameless group", () => {
+    renderPalette({
+      open: true,
+      items: [
+        { id: "a", label: "Alpha", onSelect: vi.fn() },
+        { id: "b", label: "Beta", onSelect: vi.fn() },
+      ],
+    });
+
+    expect(screen.queryAllByRole("group")).toHaveLength(0);
+    for (const option of screen.getAllByRole("option")) {
+      expect(option.parentElement).toBe(screen.getByRole("listbox"));
+    }
+  });
+
+  it("blocks the page scroll behind the scrim", () => {
+    renderPalette({ open: true });
+    // Same hook Dialog uses; response-ui-css keys `body:has(dialog[open].no-body-scroll)` off it.
+    expect(screen.getByRole("dialog")).toHaveClass("no-body-scroll");
   });
 });

@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -82,6 +83,36 @@ export interface UseMenuRootOptions {
   enableClick?: boolean;
 }
 
+/** Keys a text-entry control moves its own caret with. */
+const CARET_KEYS = new Set([
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+]);
+
+/**
+ * True when the key belongs to a form control the browser already binds it on.
+ * `ContextMenu.Trigger` wraps arbitrary content, so a `<textarea>` inside one
+ * bubbles its arrow keys to the reference element, where `useListNavigation`
+ * `preventDefault`s them and freezes the caret.
+ */
+function keyBelongsToTextEntry(event: React.KeyboardEvent<Element>): boolean {
+  if (!CARET_KEYS.has(event.key)) return false;
+  const target = event.target as HTMLElement | null;
+  if (!target) return false;
+  return (
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT" ||
+    target.isContentEditable
+  );
+}
+
 /**
  * Encapsulates the Floating UI + interactions wiring shared by every menu
  * surface: positioning, controllable open state, dismiss, role="menu", list
@@ -132,12 +163,50 @@ export function useMenuRoot(options: UseMenuRootOptions = {}) {
     onMatch: setActiveIndex,
   });
 
+  // Only Floating UI's own reference handler is skipped, never the caller's:
+  // `useInteractions` still composes anything the trigger passes in.
+  const guardedListNavigation = useMemo(() => {
+    const reference = listNavigation.reference;
+    const onKeyDown = reference?.onKeyDown;
+    if (typeof onKeyDown !== "function") return listNavigation;
+    return {
+      ...listNavigation,
+      reference: {
+        ...reference,
+        onKeyDown(event: React.KeyboardEvent<Element>) {
+          if (keyBelongsToTextEntry(event)) return;
+          onKeyDown(event);
+        },
+      },
+    };
+  }, [listNavigation]);
+
+  // Tab must not leave an open menu behind. A mouse-opened menu holds no
+  // tabbable item, so the browser moves focus straight past it and the menu
+  // stays open with focus somewhere else entirely.
+  const tabDismiss = useMemo(
+    () => ({
+      reference: {
+        onKeyDown(event: React.KeyboardEvent<Element>) {
+          if (event.key === "Tab") setOpen(false);
+        },
+      },
+      floating: {
+        onKeyDown(event: React.KeyboardEvent<Element>) {
+          if (event.key === "Tab") setOpen(false);
+        },
+      },
+    }),
+    [setOpen]
+  );
+
   const { getReferenceProps, getFloatingProps, getItemProps } = useInteractions([
     click,
     dismiss,
     role,
-    listNavigation,
+    guardedListNavigation,
     typeahead,
+    tabDismiss,
   ]);
 
   return {
@@ -215,6 +284,18 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
 
     const itemRef = useCallback(
       (node: HTMLButtonElement | null) => {
+        const previous = listRef.current[index];
+        if (node && previous && previous !== node && previous.isConnected) {
+          // `index` is caller-assigned, so nothing stops two items claiming the
+          // same slot. The later one wins the slot and the earlier becomes
+          // permanently unreachable by arrow key and by typeahead — say so,
+          // because the menu still looks and clicks correctly.
+          console.warn(
+            `MenuItem: duplicate index ${index}. "${previous.textContent ?? ""}" and ` +
+              `"${node.textContent ?? ""}" claim the same list slot, so the first is ` +
+              `unreachable from the keyboard. Item indices must be unique and contiguous.`
+          );
+        }
         listRef.current[index] = node;
         listContentRef.current[index] = node?.textContent ?? null;
       },

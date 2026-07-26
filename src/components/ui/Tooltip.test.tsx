@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import tooltipCss from "./Tooltip.css?raw";
 import { Tooltip } from "./Tooltip";
 
 describe("Tooltip", () => {
@@ -153,5 +154,33 @@ describe("Tooltip", () => {
       expect(described).toContain("hint");
       expect(described.split(/\s+/)).toContain(tip.id);
     });
+  });
+
+  it("leaves the bubble reachable by pointer (WCAG 1.4.13 Hoverable)", () => {
+    // jsdom applies no stylesheet and synthesises no pointer path, so the rule
+    // itself is the only thing that can be asserted here: `pointer-events: none`
+    // makes the bubble unhoverable no matter what the hover logic does.
+    expect(tooltipCss).not.toMatch(/pointer-events:\s*none/);
+  });
+
+  it("portals into a caller-supplied container", async () => {
+    const user = userEvent.setup();
+    const host = document.createElement("div");
+    host.id = "tooltip-host";
+    document.body.appendChild(host);
+
+    render(
+      <Tooltip content="Tip" delay={0} container={host}>
+        <button>Help</button>
+      </Tooltip>,
+    );
+
+    await user.hover(screen.getByRole("button", { name: "Help" }));
+    const tip = await screen.findByRole("tooltip");
+
+    // Defaulting to <body> paints the bubble under a native <dialog>'s top layer.
+    expect(host.contains(tip)).toBe(true);
+
+    host.remove();
   });
 });

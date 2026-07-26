@@ -5,42 +5,62 @@ import { describe, expect, it } from "vitest";
 import { Spinner } from "./Spinner";
 
 describe("Spinner", () => {
-  it("renders with role='status'", () => {
-    render(<Spinner />);
-    expect(screen.getByRole("status")).toBeInTheDocument();
+  it("is decoration by default — no role, nothing to announce", () => {
+    render(<Spinner data-testid="spinner" />);
+    const el = screen.getByTestId("spinner");
+    expect(el).not.toHaveAttribute("role");
+    expect(el).toHaveAttribute("aria-hidden", "true");
+    expect(el).toBeEmptyDOMElement();
   });
 
-  it("has an accessible 'Loading' label via sr-only text", () => {
-    render(<Spinner />);
-    expect(screen.getByText("Loading")).toBeInTheDocument();
-    expect(screen.getByText("Loading").className).toContain("sr-only");
+  it("mounts one live region per page, not one per spinner", () => {
+    render(
+      <div>
+        <Spinner>Loading results</Spinner>
+        <Spinner />
+        <Spinner />
+      </div>,
+    );
+
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
+  it("announces the caller's own words, in the caller's own language", () => {
+    render(<Spinner>Envoi en cours…</Spinner>);
+
+    const el = screen.getByRole("status");
+    expect(el).toHaveTextContent("Envoi en cours…");
+    expect(screen.getByText("Envoi en cours…").className).toContain("sr-only");
+    expect(screen.queryByText("Loading")).not.toBeInTheDocument();
   });
 
   it("applies the default md size class", () => {
-    render(<Spinner />);
-    expect(screen.getByRole("status").className).toContain("size-6");
+    render(<Spinner data-testid="spinner" />);
+    expect(screen.getByTestId("spinner").className).toContain("size-6");
   });
 
   it("applies the sm size class", () => {
-    render(<Spinner size="sm" />);
-    expect(screen.getByRole("status").className).toContain("size-4");
+    render(<Spinner size="sm" data-testid="spinner" />);
+    expect(screen.getByTestId("spinner").className).toContain("size-4");
   });
 
   it("applies the lg size class", () => {
-    render(<Spinner size="lg" />);
-    expect(screen.getByRole("status").className).toContain("size-8");
+    render(<Spinner size="lg" data-testid="spinner" />);
+    expect(screen.getByTestId("spinner").className).toContain("size-8");
   });
 
-  it("applies base animation classes", () => {
-    render(<Spinner />);
-    const el = screen.getByRole("status");
+  it("applies base animation classes, guarded for reduced motion", () => {
+    render(<Spinner data-testid="spinner" />);
+    const el = screen.getByTestId("spinner");
     expect(el.className).toContain("animate-spin");
     expect(el.className).toContain("rounded-full");
+    // The CSS package guards animation classes, not the `animate-*` utilities.
+    expect(el.className).toContain("motion-reduce:animate-none");
   });
 
   it("merges custom className", () => {
-    render(<Spinner className="my-spinner" />);
-    const el = screen.getByRole("status");
+    render(<Spinner className="my-spinner" data-testid="spinner" />);
+    const el = screen.getByTestId("spinner");
     expect(el.className).toContain("my-spinner");
     expect(el.className).toContain("animate-spin");
   });
@@ -49,7 +69,6 @@ describe("Spinner", () => {
     const ref = createRef<HTMLDivElement>();
     render(<Spinner ref={ref} />);
     expect(ref.current).toBeInstanceOf(HTMLDivElement);
-    expect(ref.current?.getAttribute("role")).toBe("status");
   });
 
   it("passes through additional HTML attributes", () => {

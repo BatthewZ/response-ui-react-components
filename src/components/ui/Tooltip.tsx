@@ -12,6 +12,7 @@ import {
 import {
   FloatingPortal,
   type Placement,
+  safePolygon,
   useDismiss,
   useFloating,
   useFocus,
@@ -27,6 +28,12 @@ interface TooltipProps {
   placement?: Placement;
   delay?: number;
   offset?: number;
+  /**
+   * Where the bubble is portalled. Defaults to `<body>`, which paints *under* a
+   * native `<dialog>`'s top layer — pass the dialog element (or any node inside
+   * it) for a tooltip used inside `Dialog`/`Drawer`/`CommandPalette`.
+   */
+  container?: HTMLElement | null;
   children: ReactElement;
 }
 
@@ -35,6 +42,7 @@ export function Tooltip({
   placement = "top",
   delay = 300,
   offset: offsetPx = 8,
+  container,
   children,
 }: TooltipProps) {
   const [open, setOpen] = useState(false);
@@ -47,7 +55,11 @@ export function Tooltip({
     onOpenChange: setOpen,
   });
 
-  const hover = useHover(context, { delay });
+  // WCAG 1.4.13 "Hoverable": the pointer has to be able to move onto the bubble
+  // without dismissing it — to read an overflowing tip, or to reach a link in
+  // it. `safePolygon` keeps it open across the gap, and `.tooltip` drops the
+  // `pointer-events: none` that made the bubble unreachable regardless.
+  const hover = useHover(context, { delay, handleClose: safePolygon() });
   const focus = useFocus(context);
   const dismiss = useDismiss(context);
   const role = useRole(context, { role: "tooltip" });
@@ -98,7 +110,7 @@ export function Tooltip({
           "aria-describedby": describedBy,
         } as Record<string, unknown>)}
       {isMounted && (
-        <FloatingPortal>
+        <FloatingPortal root={container}>
           <div
             ref={refs.setFloating}
             className="tooltip"

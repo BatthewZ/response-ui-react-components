@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { hydrateRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 
 import { Portal } from "./Portal";
@@ -88,5 +89,43 @@ describe("Portal", () => {
 
     expect(screen.getByTestId("fallback-child")).toBeInTheDocument();
     expect(screen.getByTestId("fallback-child").closest("body")).toBe(document.body);
+  });
+
+  it("hydrates without discarding the tree", async () => {
+    // What a real node server emits: nothing for the portal at all.
+    const container = document.createElement("div");
+    container.innerHTML = "<div><p>app</p></div>";
+    document.body.appendChild(container);
+
+    function App() {
+      return (
+        <div>
+          <p>app</p>
+          <Portal>
+            <span>portalled</span>
+          </Portal>
+        </div>
+      );
+    }
+
+    const recoverable: string[] = [];
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    await act(async () => {
+      root = hydrateRoot(container, <App />, {
+        onRecoverableError: (error) => {
+          recoverable.push(String(error));
+        },
+      });
+    });
+
+    // A portal with no server counterpart is a hydration mismatch: React throws
+    // the whole tree away and re-renders it from scratch.
+    expect(recoverable).toEqual([]);
+    expect(screen.getByText("portalled")).toBeInTheDocument();
+
+    await act(async () => {
+      root?.unmount();
+    });
+    container.remove();
   });
 });

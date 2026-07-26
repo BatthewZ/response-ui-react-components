@@ -13,6 +13,22 @@ const variantClassMap: Record<Variant, string> = {
   info: "bg-status-info-bg text-status-info border border-status-info/20",
 };
 
+/**
+ * `role="alert"` carries an implicit `aria-live="assertive"`, so pairing it
+ * with `polite` was a contradiction the browser resolved in favour of the
+ * explicit attribute — every variant, including `error`, announced politely.
+ * Politeness follows severity instead, on the same table `Toast` uses.
+ */
+const ariaMap: Record<
+  Variant,
+  { role: "status" | "alert"; "aria-live": "polite" | "assertive" }
+> = {
+  success: { role: "status", "aria-live": "polite" },
+  warning: { role: "status", "aria-live": "polite" },
+  info: { role: "status", "aria-live": "polite" },
+  error: { role: "alert", "aria-live": "assertive" },
+};
+
 type AlertProps = {
   variant?: Variant;
 } & ComponentPropsWithRef<"div">;
@@ -24,9 +40,8 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
   return (
     <div
       ref={ref}
-      role="alert"
-      aria-live="polite"
       className={cn(baseClasses, variantClassMap[variant], className)}
+      {...ariaMap[variant]}
       {...props}
     />
   );

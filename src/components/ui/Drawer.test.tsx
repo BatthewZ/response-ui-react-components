@@ -1,4 +1,6 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useRef, useState } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Drawer } from "./Drawer";
@@ -13,6 +15,9 @@ beforeAll(() => {
   if (!HTMLDialogElement.prototype.close) {
     HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
       this.removeAttribute("open");
+      // Per spec, closing fires `close`. The component listens for it, so the
+      // polyfill has to emit it or the test would be checking nothing.
+      this.dispatchEvent(new Event("close"));
     };
   }
 });
@@ -119,5 +124,52 @@ describe("Drawer", () => {
     renderDrawer({ open: true, className: "custom-drawer" });
 
     expect(screen.getByRole("dialog")).toHaveClass("custom-drawer");
+  });
+
+  it("reports a close the element performed itself, and can then reopen", async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      const ref = useRef<HTMLDialogElement>(null);
+      return (
+        <>
+          <button onClick={() => ref.current?.close()}>Close natively</button>
+          <button onClick={() => setOpen(true)}>Reopen</button>
+          <Drawer ref={ref} open={open} onClose={() => setOpen(false)}>
+            <p>Body</p>
+          </Drawer>
+        </>
+      );
+    }
+
+    render(<Harness />);
+    const drawer = screen.getByRole("dialog");
+    expect(drawer).toHaveAttribute("open");
+
+    // `ref.close()` stands in for `<form method="dialog">`: the element closes
+    // itself without the `open` prop being told.
+    await user.click(screen.getByRole("button", { name: "Close natively" }));
+    expect(drawer).not.toHaveAttribute("open");
+
+    await user.click(screen.getByRole("button", { name: "Reopen" }));
+    expect(drawer).toHaveAttribute("open");
+  });
+
+  it("does not call onClose for a close it performed itself", () => {
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <Drawer open={true} onClose={onClose}>
+        <p>Content</p>
+      </Drawer>,
+    );
+
+    rerender(
+      <Drawer open={false} onClose={onClose}>
+        <p>Content</p>
+      </Drawer>,
+    );
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

@@ -15,22 +15,36 @@ type SkeletonProps = {
   variant?: Variant;
   width?: string | number;
   height?: string | number;
-} & Omit<ComponentPropsWithRef<"span">, "children">;
+} & ComponentPropsWithRef<"span">;
 
+/**
+ * A skeleton is decoration by default: `aria-hidden`, no role, nothing to
+ * announce. A card of four skeletons would otherwise mount four `role="status"`
+ * live regions, each already full of the word "Loading" at the moment it is
+ * inserted — which is the one shape screen readers do not announce.
+ *
+ * Pass `children` to make one skeleton the status for its group, in the
+ * caller's own language:
+ *
+ *   <Skeleton>Chargement du profil…</Skeleton>
+ *   <Skeleton />
+ *   <Skeleton />
+ */
 export const Skeleton = forwardRef<HTMLSpanElement, SkeletonProps>(function Skeleton(
-  { variant = "text", width = "100%", height, className, style, ...props },
+  { variant = "text", width = "100%", height, className, style, children, ...props },
   ref
 ) {
+  const announces = children != null;
   return (
     <span
       ref={ref}
-      role="status"
-      aria-label="Loading"
+      role={announces ? "status" : undefined}
+      aria-hidden={announces ? undefined : true}
       className={cn("skeleton", variantClassMap[variant], className)}
       style={{ width, height, ...style }}
       {...props}
     >
-      <span className="sr-only">Loading</span>
+      {announces && <span className="sr-only">{children}</span>}
     </span>
   );
 });

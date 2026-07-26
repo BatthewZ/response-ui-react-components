@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Toast } from "./Toast";
@@ -122,6 +123,49 @@ describe("Toast", () => {
       </Toast>,
     );
     expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("guards its slide animation for prefers-reduced-motion", () => {
+    // The CSS package's reduced-motion block covers the `.fade-*`/`.slide-*`
+    // classes, not the `animate-*` utilities this component uses.
+    const { rerender } = render(<Toast onDismiss={vi.fn()}>In</Toast>);
+    expect(screen.getByRole("status").className).toContain("animate-slide-in-right");
+    expect(screen.getByRole("status").className).toContain("motion-reduce:animate-none");
+
+    rerender(
+      <Toast onDismiss={vi.fn()} dismissing>
+        Out
+      </Toast>,
+    );
+    expect(screen.getByRole("status").className).toContain("animate-slide-out-right");
+    expect(screen.getByRole("status").className).toContain("motion-reduce:animate-none");
+  });
+
+  it("returns focus to where it was before dismissing", async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [shown, setShown] = useState(true);
+      return (
+        <>
+          <button>Before</button>
+          {shown && <Toast onDismiss={() => setShown(false)}>Message</Toast>}
+        </>
+      );
+    }
+
+    render(<Harness />);
+    const before = screen.getByRole("button", { name: "Before" });
+    before.focus();
+
+    await user.tab();
+    const dismiss = screen.getByRole("button", { name: "Dismiss" });
+    expect(dismiss).toHaveFocus();
+
+    await user.click(dismiss);
+
+    // Without restoration the browser drops focus on <body>.
+    expect(before).toHaveFocus();
   });
 
   it("defaults to info variant", () => {

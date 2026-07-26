@@ -1,11 +1,15 @@
 "use client";
-import { Component } from "react";
+import { Component, type ReactNode } from "react";
 
-import { focusOutlineResetButton, focusRingButtonFilled } from "../../util/focus";
-import { cn } from "../../util/style";
+import { Button } from "./Button";
 
 interface Props {
-  children: React.ReactNode;
+  children: ReactNode;
+  /**
+   * Replaces the built-in fallback. Given the reset callback, so a custom
+   * fallback keeps the retry the default one offers.
+   */
+  fallback?: ReactNode | ((reset: () => void) => ReactNode);
 }
 
 interface State {
@@ -22,29 +26,31 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true };
   }
 
+  private reset = () => {
+    this.setState({ hasError: false });
+  };
+
   render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex items-center justify-center min-h-screen bg-surface-1">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
-            <p className="text-fg-secondary mb-6">An unexpected error occurred.</p>
-            <button
-              type="button"
-              onClick={() => this.setState({ hasError: false })}
-              className={cn(
-                "px-4 py-2 bg-primary text-fg-on-primary rounded-md hover:bg-primary-hover",
-                focusOutlineResetButton,
-                focusRingButtonFilled
-              )}
-            >
-              Try again
-            </button>
-          </div>
-        </div>
-      );
+    if (!this.state.hasError) {
+      return this.props.children;
     }
 
-    return this.props.children;
+    const { fallback } = this.props;
+    if (fallback !== undefined) {
+      return typeof fallback === "function" ? fallback(this.reset) : fallback;
+    }
+
+    // Sized by its own content, not by the viewport: a boundary around a card
+    // or a table cell is the common case, and `min-h-screen` made the fallback
+    // taller than the thing that failed.
+    return (
+      <div className="flex items-center justify-center bg-surface-1 p-r2">
+        <div className="text-center">
+          <h1 className="text-h3 font-bold mb-r5">Something went wrong</h1>
+          <p className="text-fg-secondary mb-r3">An unexpected error occurred.</p>
+          <Button onClick={this.reset}>Try again</Button>
+        </div>
+      </div>
+    );
   }
 }

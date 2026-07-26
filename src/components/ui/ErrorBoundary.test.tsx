@@ -138,4 +138,99 @@ describe("ErrorBoundary", () => {
 
     restore();
   });
+
+  it("renders a caller-supplied fallback instead of the built-in one", () => {
+    const restore = suppressConsoleError();
+
+    render(
+      <ErrorBoundary fallback={<p>Inline failure</p>}>
+        <ThrowingComponent shouldThrow />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText("Inline failure")).toBeInTheDocument();
+    expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
+
+    restore();
+  });
+
+  it("hands the reset callback to a function fallback", async () => {
+    const restore = suppressConsoleError();
+    const user = userEvent.setup();
+
+    function Harness() {
+      return (
+        <ErrorBoundary
+          fallback={(reset) => (
+            <button onClick={reset}>Retry inline</button>
+          )}
+        >
+          <ThrowingComponent shouldThrow={false} />
+        </ErrorBoundary>
+      );
+    }
+
+    const { rerender } = render(
+      <ErrorBoundary fallback={(reset) => <button onClick={reset}>Retry inline</button>}>
+        <ThrowingComponent shouldThrow />
+      </ErrorBoundary>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Retry inline" }));
+    rerender(<Harness />);
+
+    expect(screen.getByText("Normal content")).toBeInTheDocument();
+
+    restore();
+  });
+
+  it("does not force the fallback to fill the viewport", () => {
+    const restore = suppressConsoleError();
+
+    const { container } = render(
+      <ErrorBoundary>
+        <ThrowingComponent shouldThrow />
+      </ErrorBoundary>
+    );
+
+    // A boundary around a card or a table cell is the common case.
+    expect(container.querySelector(".min-h-screen")).toBeNull();
+
+    restore();
+  });
+
+  it("uses design tokens, not raw Tailwind defaults, in the fallback", () => {
+    const restore = suppressConsoleError();
+
+    render(
+      <ErrorBoundary>
+        <ThrowingComponent shouldThrow />
+      </ErrorBoundary>
+    );
+
+    const heading = screen.getByRole("heading", { name: "Something went wrong" });
+    expect(heading.className).toContain("text-h3");
+    expect(heading.className).toContain("mb-r5");
+    expect(heading.className).not.toContain("text-2xl");
+
+    restore();
+  });
+
+  it("composes Button for the retry rather than re-implementing it", () => {
+    const restore = suppressConsoleError();
+
+    render(
+      <ErrorBoundary>
+        <ThrowingComponent shouldThrow />
+      </ErrorBoundary>
+    );
+
+    const retry = screen.getByRole("button", { name: "Try again" });
+    // Button's own recipe: the filled focus ring and the size-md padding scale.
+    expect(retry.className).toContain("focus-visible:ring-border-focus");
+    expect(retry.className).toContain("gap-[var(--BUTTON-GAP-MD)]");
+    expect(retry.className).not.toContain("px-4 py-2");
+
+    restore();
+  });
 });

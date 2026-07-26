@@ -136,4 +136,53 @@ describe("HoverCard", () => {
 
     expect(childEnter).toHaveBeenCalledTimes(1);
   });
+
+  it("names the card by its trigger and describes the trigger by the card", async () => {
+    const user = userEvent.setup();
+    render(
+      <HoverCard openDelay={0}>
+        <HoverCard.Trigger>@octocat</HoverCard.Trigger>
+        <HoverCard.Content>Card body</HoverCard.Content>
+      </HoverCard>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "@octocat" });
+    await user.hover(trigger);
+
+    const card = await screen.findByRole("dialog");
+    // An unnamed dialog is announced as "dialog" and its contents never read.
+    expect(card).toHaveAccessibleName("@octocat");
+    expect(trigger.getAttribute("aria-describedby")).toBe(card.id);
+  });
+
+  it("does not override a name the caller gave the card", async () => {
+    const user = userEvent.setup();
+    render(
+      <HoverCard openDelay={0}>
+        <HoverCard.Trigger>@octocat</HoverCard.Trigger>
+        <HoverCard.Content aria-label="About octocat">Card body</HoverCard.Content>
+      </HoverCard>,
+    );
+
+    await user.hover(screen.getByRole("button", { name: "@octocat" }));
+
+    expect(await screen.findByRole("dialog")).toHaveAccessibleName("About octocat");
+  });
+
+  it("gives the default trigger something that can hold focus", async () => {
+    const user = userEvent.setup();
+    render(
+      <HoverCard openDelay={0}>
+        <HoverCard.Trigger>@octocat</HoverCard.Trigger>
+        <HoverCard.Content>Card body</HoverCard.Content>
+      </HoverCard>,
+    );
+
+    // `aria-expanded` is invalid on a role-less span, and `useFocus` is dead
+    // on an element that never takes focus.
+    await user.tab();
+    const trigger = screen.getByRole("button", { name: "@octocat" });
+    expect(trigger).toHaveFocus();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
 });

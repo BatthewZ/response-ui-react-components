@@ -87,6 +87,10 @@ const ContextMenuTrigger = forwardRef<HTMLDivElement, ContextMenuTriggerProps>(
           ...props,
           onContextMenu(event: React.MouseEvent<HTMLDivElement>) {
             event.preventDefault();
+            // Triggers nest. Without this the event keeps bubbling and every
+            // ancestor trigger opens its own menu too, each one `aria-hidden`ing
+            // the others; only the innermost menu describes what was clicked.
+            event.stopPropagation();
             onContextMenu?.(event);
             // `MenuContent` mounts with `initialFocus={-1}`, so nothing moves
             // focus into the menu. Pointing it at the trigger keeps the

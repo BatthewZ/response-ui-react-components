@@ -2,6 +2,7 @@
 import {
   type ComponentPropsWithRef,
   forwardRef,
+  Fragment,
   type ReactNode,
   useCallback,
   useEffect,
@@ -35,6 +36,15 @@ type CommandPaletteProps = {
   filter?: (item: CommandItem, query: string) => boolean;
   placeholder?: string;
   emptyMessage?: ReactNode;
+  /**
+   * Accessible name for the search field. Rest props land on the `<dialog>`, so
+   * without this nothing a caller passes can name the input.
+   */
+  searchLabel?: string;
+  /** Accessible name for the results listbox. */
+  listLabel?: string;
+  /** Announced whenever the result count changes. */
+  statusMessage?: (count: number) => string;
 } & Omit<ComponentPropsWithRef<"dialog">, "open">;
 
 /**
@@ -46,6 +56,10 @@ function defaultFilter(item: CommandItem, query: string): boolean {
   if (q === "") return true;
   if (item.label.toLowerCase().includes(q)) return true;
   return (item.keywords ?? []).some((kw) => kw.toLowerCase().includes(q));
+}
+
+function defaultStatusMessage(count: number): string {
+  return count === 1 ? "1 command" : `${count} commands`;
 }
 
 /**
@@ -66,8 +80,9 @@ function defaultFilter(item: CommandItem, query: string): boolean {
  *   }, []);
  *
  * Virtual focus: DOM focus stays on the search input at all times. The active
- * option is tracked via `activeIndex` over the flattened filtered list and
- * surfaced through `aria-activedescendant`. Disabled items are skipped.
+ * option is tracked via `activeIndex` over the *rendered* order — filtered,
+ * then grouped — and surfaced through `aria-activedescendant`. Disabled items
+ * are skipped.
  */
 export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>(
   function CommandPalette(
@@ -78,6 +93,9 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
       filter = defaultFilter,
       placeholder = "Type a command or search…",
       emptyMessage = "No results",
+      searchLabel = "Search commands",
+      listLabel = "Commands",
+      statusMessage = defaultStatusMessage,
       className,
       ...props
     },
@@ -85,7 +103,7 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
   ) {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const listRef = useRef<HTMLUListElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
     const mergedRef = useMemo(
       () => mergeRefs(forwardedRef, dialogRef),
       [forwardedRef]
@@ -97,46 +115,59 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
 
     const [query, setQuery] = useState("");
     const [activeIndex, setActiveIndex] = useState(0);
+    const snappedQueryRef = useRef<string | null>(null);
 
-    // Flattened, filtered list (preserves item order; grouping is presentational).
     const filtered = useMemo(
       () => items.filter((item) => filter(item, query)),
       [items, filter, query]
     );
 
-    // Ordered, grouped view for rendering. Groups appear in first-seen order;
-    // ungrouped items render under an undefined-keyed group with no header.
-    const groups = useMemo(() => {
+    // Grouping is what the user sees, so it is also what the keyboard walks:
+    // `ordered` is the render order, and every index below indexes into it.
+    // Indexing the pre-grouping list instead moves the highlight out of visual
+    // order the moment one group's members are not contiguous in `items`.
+    // Groups appear in first-seen order; ungrouped items render on their own.
+    const { groups, ordered } = useMemo(() => {
       const order: (string | undefined)[] = [];
-      const map = new Map<string | undefined, { item: CommandItem; index: number }[]>();
-      filtered.forEach((item, index) => {
+      const map = new Map<string | undefined, CommandItem[]>();
+      for (const item of filtered) {
         const key = item.group;
         if (!map.has(key)) {
           map.set(key, []);
           order.push(key);
         }
-        map.get(key)!.push({ item, index });
+        map.get(key)!.push(item);
+      }
+
+      const flat: CommandItem[] = [];
+      const built = order.map((key) => {
+        const entries = map.get(key)!.map((item) => {
+          const index = flat.length;
+          flat.push(item);
+          return { item, index };
+        });
+        return { group: key, entries };
       });
-      return order.map((key) => ({ group: key, entries: map.get(key)! }));
+      return { groups: built, ordered: flat };
     }, [filtered]);
 
     const isSelectable = useCallback(
       (index: number) => {
-        const item = filtered[index];
+        const item = ordered[index];
         return item != null && !item.disabled;
       },
-      [filtered]
+      [ordered]
     );
 
     // First selectable index at/after `from`, walking `dir`. Returns -1 if none.
     const findSelectable = useCallback(
       (from: number, dir: 1 | -1): number => {
-        for (let i = from; i >= 0 && i < filtered.length; i += dir) {
+        for (let i = from; i >= 0 && i < ordered.length; i += dir) {
           if (isSelectable(i)) return i;
         }
         return -1;
       },
-      [filtered.length, isSelectable]
+      [ordered.length, isSelectable]
     );
 
     // Open/close the native dialog imperatively, mirroring Dialog.tsx.
@@ -167,13 +198,20 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
       if (!open) return;
       setQuery("");
       setActiveIndex(0);
+      snappedQueryRef.current = null;
       // Focus after the dialog has been shown.
       const id = requestAnimationFrame(() => inputRef.current?.focus());
       return () => cancelAnimationFrame(id);
     }, [open]);
 
     // Whenever the query changes, snap active to the first selectable option.
+    // Keyed on the query itself, not on the effect re-running: `findSelectable`
+    // is derived from the `items`/`filter` props, so an inline array literal or
+    // inline arrow gives it a new identity on every parent re-render, and
+    // re-snapping there throws away wherever the user had arrowed to.
     useEffect(() => {
+      if (snappedQueryRef.current === query) return;
+      snappedQueryRef.current = query;
       const first = findSelectable(0, 1);
       setActiveIndex(first === -1 ? 0 : first);
     }, [query, findSelectable]);
@@ -189,26 +227,26 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
 
     const moveActive = useCallback(
       (dir: 1 | -1) => {
-        if (filtered.length === 0) return;
+        if (ordered.length === 0) return;
         const next = findSelectable(activeIndex + dir, dir);
         if (next !== -1) {
           setActiveIndex(next);
           return;
         }
         // Wrap to the far end.
-        const wrapFrom = dir === 1 ? 0 : filtered.length - 1;
+        const wrapFrom = dir === 1 ? 0 : ordered.length - 1;
         const wrapped = findSelectable(wrapFrom, dir);
         if (wrapped !== -1) setActiveIndex(wrapped);
       },
-      [activeIndex, filtered.length, findSelectable]
+      [activeIndex, ordered.length, findSelectable]
     );
 
     const selectActive = useCallback(() => {
-      const item = filtered[activeIndex];
+      const item = ordered[activeIndex];
       if (!item || item.disabled) return;
       item.onSelect();
       onClose();
-    }, [filtered, activeIndex, onClose]);
+    }, [ordered, activeIndex, onClose]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -231,7 +269,7 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
           case "End":
             e.preventDefault();
             setActiveIndex((prev) => {
-              const last = findSelectable(filtered.length - 1, -1);
+              const last = findSelectable(ordered.length - 1, -1);
               return last === -1 ? prev : last;
             });
             break;
@@ -243,16 +281,58 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
             break;
         }
       },
-      [moveActive, findSelectable, filtered.length, selectActive]
+      [moveActive, findSelectable, ordered.length, selectActive]
     );
 
-    const hasResults = filtered.length > 0;
+    const hasResults = ordered.length > 0;
     const activeId = hasResults && isSelectable(activeIndex) ? optionId(activeIndex) : undefined;
+
+    // A listbox owns its options directly, or through a `role="group"` that is
+    // itself a direct child. An intervening list element breaks that ownership,
+    // so the structure is built from roles rather than from `<ul>`/`<li>`.
+    const renderOption = ({ item, index }: { item: CommandItem; index: number }) => {
+      // Same predicate as `activeId`: when nothing is selectable `activeIndex`
+      // still points at 0, and painting a highlight there would show a cursor no
+      // screen reader can follow and that Enter will not act on.
+      const active = index === activeIndex && isSelectable(index);
+      return (
+        <div
+          key={item.id}
+          id={optionId(index)}
+          role="option"
+          aria-selected={active}
+          aria-disabled={item.disabled || undefined}
+          data-active={active || undefined}
+          data-disabled={item.disabled || undefined}
+          className="command-palette-option"
+          onMouseMove={() => {
+            if (!item.disabled) setActiveIndex(index);
+          }}
+          onClick={() => {
+            if (item.disabled) return;
+            item.onSelect();
+            onClose();
+          }}
+        >
+          {item.icon != null && (
+            <span className="command-palette-option-icon" aria-hidden="true">
+              {item.icon}
+            </span>
+          )}
+          <span className="command-palette-option-label">{item.label}</span>
+          {item.shortcut != null && (
+            <Kbd className="command-palette-option-shortcut">{item.shortcut}</Kbd>
+          )}
+        </div>
+      );
+    };
 
     return (
       <dialog
         ref={mergedRef}
-        className={cn("command-palette", className)}
+        // `no-body-scroll` for the same reason Dialog carries it: the scrim is
+        // not a scroll blocker, so without it the page scrolls behind the panel.
+        className={cn("command-palette no-body-scroll", className)}
         aria-label="Command palette"
         {...props}
       >
@@ -263,6 +343,7 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
             role="combobox"
             className="command-palette-input"
             placeholder={placeholder}
+            aria-label={searchLabel}
             value={query}
             autoComplete="off"
             spellCheck={false}
@@ -275,76 +356,49 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
           />
         </div>
 
-        <ul
+        {/* Mounted whether or not there are results, so a changed count arrives
+            as a change *inside* an existing region. Filtering otherwise swaps
+            the option list and the empty message with no announcement at all. */}
+        <div className="sr-only" role="status" aria-live="polite">
+          {open ? statusMessage(ordered.length) : ""}
+        </div>
+
+        <div
           ref={listRef}
           id={listboxId}
           role="listbox"
-          aria-label="Commands"
+          aria-label={listLabel}
           className="command-palette-list"
         >
           {hasResults ? (
             groups.map(({ group, entries }, groupIndex) => {
-              const headerId = group != null ? `${baseId}-group-${groupIndex}` : undefined;
+              // An ungrouped item belongs to the listbox itself. Wrapping it in
+              // a `role="group"` with no name invents a structure with nothing
+              // to announce.
+              if (group == null) {
+                return <Fragment key="__ungrouped__">{entries.map(renderOption)}</Fragment>;
+              }
+              const headerId = `${baseId}-group-${groupIndex}`;
               return (
-              <li
-                key={group ?? "__ungrouped__"}
-                role="group"
-                aria-labelledby={headerId}
-                className="command-palette-group"
-              >
-                {group != null && (
+                <div
+                  key={group}
+                  role="group"
+                  aria-labelledby={headerId}
+                  className="command-palette-group"
+                >
                   <div id={headerId} className="command-palette-group-header">
                     {group}
                   </div>
-                )}
-                <ul className="command-palette-group-items">
-                  {entries.map(({ item, index }) => {
-                    // Same predicate as `activeId`: when nothing is
-                    // selectable `activeIndex` still points at 0, and painting
-                    // a highlight there would show a cursor no screen reader
-                    // can follow and that Enter will not act on.
-                    const active = index === activeIndex && isSelectable(index);
-                    return (
-                      <li
-                        key={item.id}
-                        id={optionId(index)}
-                        role="option"
-                        aria-selected={active}
-                        aria-disabled={item.disabled || undefined}
-                        data-active={active || undefined}
-                        data-disabled={item.disabled || undefined}
-                        className="command-palette-option"
-                        onMouseMove={() => {
-                          if (!item.disabled) setActiveIndex(index);
-                        }}
-                        onClick={() => {
-                          if (item.disabled) return;
-                          item.onSelect();
-                          onClose();
-                        }}
-                      >
-                        {item.icon != null && (
-                          <span className="command-palette-option-icon" aria-hidden="true">
-                            {item.icon}
-                          </span>
-                        )}
-                        <span className="command-palette-option-label">{item.label}</span>
-                        {item.shortcut != null && (
-                          <Kbd className="command-palette-option-shortcut">{item.shortcut}</Kbd>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </li>
+                  {entries.map(renderOption)}
+                </div>
               );
             })
           ) : (
-            <li role="presentation" className="command-palette-empty">
+            <div role="presentation" className="command-palette-empty">
               {emptyMessage}
-            </li>
+            </div>
           )}
-        </ul>
+        </div>
       </dialog>
     );
   }
