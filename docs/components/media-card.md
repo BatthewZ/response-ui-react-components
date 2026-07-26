@@ -102,8 +102,9 @@ real images or darken the gradient in your theme.
 `--C-TEXT-SECONDARY`, `--C-TEXT-MUTED`, `--C-TEXT-INVERSE`, `--C-TEXT-ON-PRIMARY`,
 `--C-TEXT-ON-ACCENT` — to white (or white at reduced alpha) in every theme, because the
 scrim is dark in every theme. Anything inside that *reads* one of those variables therefore
-inks white: a [Text](text.md), or a raw `text-fg-primary` utility. Content sets no `color` of
-its own, so a bare `<h3>` with no class keeps the ambient page ink — see [Gotchas](#gotchas).
+inks white: a [Text](text.md), or a raw `text-fg-primary` utility. Content also sets
+`color: var(--C-TEXT-PRIMARY)` on itself, so a bare `<h3>` with no class inherits the white it
+re-declares rather than the ambient page ink.
 
 ## Corner chip and centred control
 
@@ -209,18 +210,18 @@ change survives and the scale and lift do not.
 
 ## Gotchas
 
-- **`Action` swallows every click beneath it.** It renders `absolute inset-0 z-10` with
-  pointer events left on, so the transparent layer covers the whole card. A link or button
-  inside `Content` is still focusable by keyboard but cannot be clicked while an `Action` is
-  present. Use `Action` as the card's single click target, or don't render it. (A
+- **`Action` covers the card but is transparent to the pointer.** It renders
+  `absolute inset-0 z-10` with `pointer-events: none` on itself and `auto` on its direct
+  children, so the layer centres its contents without intercepting anything. A link or button
+  inside `Content` stays clickable with an `Action` present. Anything you want to catch clicks
+  has to be a descendant of the `Action` — the layer itself no longer does. (A
   `MediaCard.Badge` rendered *after* it still takes its own corner — same `z-10`, later in
   the DOM.)
-- **`Content` has no `z-index`; `MediaCard.Badge` and `Action` do.** `Overlay` and `Content`
-  are both `z-index: auto`, so DOM order decides which paints on top. Render `Overlay`
-  **before** `Content` — reverse them and the scrim paints over your caption.
-- **`Content` re-points the ink variables but sets no `color`.** A child that reads
-  `--C-TEXT-*` (a [Text](text.md), a `text-fg-*` utility) turns white; a bare `<h3>` or `<p>`
-  inherits whatever the surrounding page inks and can end up dark text on a dark scrim.
+- **`Content`, `Badge` and `Action` all sit at `z-10`; `Overlay` does not.** The scrim is
+  `z-index: auto`, so it paints under all three whichever order you render them in.
+- **`Content` re-points the ink variables *and* sets `color`.** A child that reads `--C-TEXT-*`
+  (a [Text](text.md), a `text-fg-*` utility) turns white, and so does a bare `<h3>` or `<p>`
+  that inherits.
 - **The card is only as tall as the image.** `Content` is absolutely positioned and adds no
   height, and the root is `overflow: hidden` — a caption longer than the picture is clipped,
   not scrolled. Keep captions short, or set your own `min-height` on the card.
@@ -231,8 +232,9 @@ change survives and the scale and lift do not.
 - **`Image` outside a `MediaCard` silently uses `portrait`.** The orientation context has a
   default rather than a guard, so no part of MediaCard throws when rendered outside the root —
   you just get the poster ratio and no card frame.
-- **The hover lift is mouse-only.** `.media-card:hover` has no `:focus-within` counterpart, so
-  tabbing into a control inside the card produces no card-level feedback.
+- **The lift answers focus as well as hover.** `.media-card:focus-within` carries the same
+  scale, travel and elevation as `:hover`, so tabbing into a control inside the card raises it
+  the same way. Both are dropped under `prefers-reduced-motion: reduce`.
 - **Client component.** `MediaCard.tsx` opens with `"use client"` — `orientation` is passed
   through a React context — so importing any part opts that module into the client bundle.
 

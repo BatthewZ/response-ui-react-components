@@ -54,7 +54,7 @@ boxes you can wrap freely.
 | `AppShell.Brand`          | `<div>`                                       | — (all `div` props)                                                               |
 | `AppShell.NavbarActions`  | `<div>` with `margin-left: auto`              | — (all `div` props)                                                               |
 | `AppShell.Toggle`         | `<button type="button">`                      | — (all `button` props **except `type`**)                                          |
-| `AppShell.Sidebar`        | `<aside role="navigation" aria-label="Main navigation">` | — (all `aside` props **except `role`**)                                |
+| `AppShell.Sidebar`        | `<aside role="navigation" aria-label="Main navigation">`, wrapped on mobile in `<div role="dialog" aria-modal="true">` | — (all `aside` props **except `role`**) |
 | `AppShell.SidebarSection` | `<div>`, with a `<div>` title above its children | `title?: string` (+ all `div` props)                                           |
 | `AppShell.SidebarLink`    | the router adapter's `Link` — a plain `<a href>` by default | `to: string` · `icon?: LucideIcon` · `children` required (+ all `a` props **except `children`**; `href` is a compile error — see [Gotchas](#gotchas)) |
 | `AppShell.Main`           | `<main>` — the page's main landmark; see [The main landmark](#the-main-landmark) | — (all `main` props)                |
@@ -252,7 +252,7 @@ take `to`/`replace`; `useAppPathname` is your router's location hook. **Both hal
 With no provider the adapter falls back to a plain `<a href>` and to
 `window.location.pathname`, which is read at render time and never notifies anyone it
 changed — so in an SPA nothing re-renders on navigation, `aria-current` goes stale, and the
-render-phase auto-close never fires.
+auto-close on route change never fires.
 
 Matching is prefix-based: `to="/"` matches only the exact path `/`; anything else matches
 when `pathname === to` **or** `pathname.startsWith(to + "/")`. So `/settings` stays active on
@@ -385,10 +385,10 @@ one and you must change the other by hand.
   is ignored, so your state and the chrome drift apart in silence. Pass each prop from the
   first render or not at all; `open={x ?? undefined}` keeps whatever that render decided
   rather than flipping mid-life the way it used to.
-- **A controlled `AppShell` logs a React warning when you navigate.** The auto-close on route
-  change is a render-phase state adjustment, and the setter it uses also calls your
-  `onOpenChange` — so React reports *"Cannot update a component while rendering a different
-  component"* when the drawer is open at navigation time. Uncontrolled shells are unaffected.
+- **The auto-close on navigation runs in an effect, one commit after the route change.** It no
+  longer calls your `onOpenChange` during render — so no *"Cannot update a component while
+  rendering a different component"* — at the cost of the drawer being open for one commit after
+  the new route paints.
 - **`open` and `collapsed` are each inert on the other side of 640px.** `defaultOpen` does
   nothing on desktop and `defaultCollapsed` does nothing on mobile; the toggle only ever
   writes to whichever one matches the current `isMobile`. Neither is reset when the viewport
@@ -396,8 +396,8 @@ one and you must change the other by hand.
   width, where it is ignored, and it springs back open the moment the viewport narrows again.
 - **Closing the mobile drawer unmounts it.** `AppShell.Sidebar` returns `null` when
   `isMobile && !open`, so nothing in the sidebar stays mounted: scroll position, an expanded
-  submenu, a focused field inside it are all lost per open, and the toggle's `aria-controls`
-  points at an id that is not in the document.
+  submenu, a focused field inside it are all lost per open. The toggle drops its
+  `aria-controls` while nothing carries that id, rather than pointing at a missing element.
 - **Every part is placed explicitly in the grid.** Rendering a provider, a toast portal or a
   stray `<div>` as a direct child of `<AppShell>` doesn't overlap anything — it is auto-placed
   outside the three slots, which is rarely what you meant. Wrap the shell instead.
@@ -413,7 +413,8 @@ one and you must change the other by hand.
 
 The landmark and state wiring on the chrome itself is solid: `<header role="banner">`, an
 `<aside role="navigation" aria-label="Main navigation">` whose `id` the toggle names in
-`aria-controls`, `aria-expanded` tracking the right flag per breakpoint, and a state-aware
+`aria-controls` whenever that element is on screen, `aria-expanded` tracking the right flag per
+breakpoint, and a state-aware
 `aria-label` on the toggle. The mobile drawer traps focus (measured: opening it moves focus
 to the first link inside, `Escape` closes it and returns focus to the toggle) and the Lucide
 icons render `aria-hidden="true"`, so nothing announces the glyphs.
@@ -428,9 +429,10 @@ while open. A `SidebarLink` with no `children` still has no name.
 
 Two gaps you have to close yourself:
 
-- **`aria-modal` on the drawer does nothing.** The mobile `<aside>` carries
-  `aria-modal="true"`, but that attribute is only defined for `dialog` and `alertdialog`
-  roles, and this element is `role="navigation"`. Nothing marks the rest of the page `inert`
+- **The drawer is a `dialog` wrapping the `navigation`.** On mobile the portal renders
+  `<div role="dialog" aria-modal="true" aria-label="Main navigation">` around the
+  `<aside role="navigation">` that carries the sidebar's id and your props, so `aria-modal`
+  sits on a role that defines it. Nothing marks the rest of the page `inert`
   or `aria-hidden`, so a screen-reader user can still browse the content behind the scrim
   while the DOM focus trap pulls Tab focus back — the two disagree. If you need a true modal
   drawer, reach for [Drawer](drawer.md).
