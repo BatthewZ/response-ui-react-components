@@ -33,6 +33,14 @@ validator over it. These are the ways the record itself has failed, independent 
 - **Cite a quoted phrase, not a line number, for anything the validator does not check.**
   References into prose files are validated by nothing; one such citation now lands on unrelated
   code several sections away from what it claimed.
+- **One severity word cannot carry two questions.** A findings table needs to answer *what kind of
+  defect is this* (accessibility, behaviour, API contract, design-token contract, environment,
+  repo health) and *how badly does it hurt whom* (blocking everyone, losing content, excluding a
+  subset, breaking only a second theme, invisible to every user alive). This ledger's `Sev`
+  blended them, so a row that hides text and a row that names the wrong surface token both read
+  `med` for hundreds of rows. Classify on both axes or accept that priority order is guesswork.
+  A third axis — what shape the fix takes — is what groups rows into work; it is not the same
+  question either, and a single fix shape routinely spans several kinds.
 - **The fix a finding prescribes may be wrong.** One detail block leads with a reordering that
   would mirror the bug onto the caller; what actually shipped was a per-key merge. Read the code
   that fixed it, not the plan that proposed it.

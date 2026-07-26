@@ -280,7 +280,10 @@ describes. Fixing it needs a `mounted`-in-effect flag. Still open, deliberately.
 ## 5 · Clusters not yet investigated
 
 Sizes are the **regex floor** from playbook §3, not a taxonomy — 38 rows match more than one
-lens, so an investigator assigns final membership by reading (G1). Each still needs its own
+lens, so an investigator assigns final membership by reading (G1). Clusters are the *mechanism*
+axis: what shape the fix takes and what shares it. What a finding **is** (kind) and who it hurts
+(harm) are separate axes and live in [`TAXONOMY.md`](./TAXONOMY.md); one cluster routinely spans
+several kinds, and a kind routinely spans several clusters. Each still needs its own
 sweep command and verification tool before it can be worked; the narrative that produced these
 groupings is preserved in git history for this file at `6e56136`.
 
