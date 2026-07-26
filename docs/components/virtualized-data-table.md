@@ -72,7 +72,8 @@ workaround while `SortState` was missing.)
 | `header`   | `ReactNode`                              | Required. The `<th>` contents.                                                    |
 | `render`   | `(row: T, index: number) => ReactNode`   | Takes over the cell entirely. `index` is the row's position in the sorted data.   |
 | `sortable` | `boolean`                                | Makes the header clickable and gives it `aria-sort`.                              |
-| `width`    | `string \| number`                       | Written to the `<th>`'s inline `width`. Body cells get no width.                  |
+| `sortLabel`| `string`                                 | Words read before the header in the sort button's name. Default `"Sort by"`; `""` drops them. Ignored without `sortable`. |
+| `width`    | `string \| number`                       | Written to the `<th>`'s inline `width`, and **authoritative** here: this table is `table-layout: fixed`, so the `<th>` decides the column and the body cells follow. A column with no `width` takes an equal share of what is left. |
 | `align`    | `"left" \| "center" \| "right"`          | Inline `text-align` on the header **and** every body cell in that column.         |
 
 Without `render`, a cell is stringified: strings pass through, numbers and booleans go through
@@ -116,9 +117,17 @@ out as an empty string.** Nested data needs a `render`.
 `rowHeight` is not a hint. The scroll offset is divided by it to pick the window, and the
 spacer rows above and below the window are sized as `startIndex * rowHeight` and
 `(count - endIndex) * rowHeight` — so the whole illusion rests on every row actually being that
-tall. `height` on a `<tr>` is a *minimum* in CSS table layout, and nothing truncates your cell
-content, so a row whose content does not fit simply grows and the arithmetic stops matching the
-pixels (see [Gotchas](#gotchas)).
+tall. `height` on a `<tr>` is a *minimum* in CSS table layout, so the component holds the
+number for you: cells in a virtualised table are `overflow: hidden`, `white-space: nowrap` and
+`text-overflow: ellipsis`, so a value that does not fit is **truncated with an ellipsis rather
+than wrapped**. Measured in Firefox 146 in a 360px-wide scroller at `rowHeight={40}`, one
+wrapping sentence used to render a 93px row and make four rows occupy 213px where the
+virtualiser had reserved 160; truncated, the same four rows are 40/40/40/40 = 160.
+
+That is a real difference from [DataTable](data-table.md), whose cells wrap. If a column
+genuinely needs to wrap, a `render` can set `white-space: normal` on its own element — but
+its row will be taller than `rowHeight` again, and the arithmetic will drift again (see
+[Gotchas](#gotchas)).
 
 Budget for the density you picked. Cell padding is `0.25rem` top and bottom at `dense`,
 `0.625rem` at `comfortable`, `1rem` at `spacious` — double that, add a line of text, and round
@@ -336,7 +345,9 @@ everywhere else too:
   2px `--C-BORDER-DEFAULT` rule and, when sticky, casts `--SHADOW-SM` from each header cell.
   Header and body text ink `--C-TEXT-PRIMARY`, and cell type is `--BodyText-2` at `dense`,
   `--BodyText-1` otherwise. Rows are separated by 1px of `--C-BORDER-DEFAULT`; a striped row
-  fills `--C-SURFACE-1` and a selected row an 8% `--C-ACCENT` wash. A sortable header hovers to
+  fills `--C-SURFACE-1`, and a selected row an 8% `--C-ACCENT` wash plus a 3px `--C-ACCENT`
+  bar down its leading edge (the wash alone measures 1.07–1.13:1 — see
+  [Table](table.md#accessibility)). A sortable header hovers to
   `--C-SURFACE-2`, presses to `--C-SURFACE-3`, focuses with a 2px inset `--C-BORDER-FOCUS`
   outline over `--MOTION-DURATION-SHIFT`/`--MOTION-EASE-SHIFT` (dropped under
   `prefers-reduced-motion`), and its sort glyph is `--C-TEXT-MUTED` when inactive,
@@ -360,11 +371,15 @@ virtualization maths has to agree with them exactly. See the
   carry no band and shift nobody else's. This used to be `nth-child(even)` counted inside the
   `<tbody>`, where the top spacer was child 1 whenever the window had scrolled off the top —
   measured on a 1,000-row table, the entire zebra inverted on every row scrolled.
-- **Nothing enforces `rowHeight`.** No cell truncation, no `overflow: hidden`, no dev warning. A
-  row whose content exceeds the number renders taller, but the spacers are still computed from
-  the number — so the scroll height and the real content height diverge, the scrollbar drifts,
-  and rows enter or leave the window at the wrong offset. Clamp your own cell content, or raise
-  `rowHeight` until the tallest cell fits.
+- **`rowHeight` is enforced by truncation, not by clipping.** Virtualised cells are
+  `overflow: hidden` + `white-space: nowrap` + `text-overflow: ellipsis`, which stops the
+  common cause of an over-tall row — text wrapping — and is what the fixed-height contract
+  always promised. It is not a hard clamp: a `render` that returns a block with its own
+  height, or one that opts back into wrapping, still grows its row, and the spacers are still
+  computed from `rowHeight` — so the scroll height and the real content height diverge, the
+  scrollbar drifts, and rows enter or leave the window at the wrong offset. There is **no dev
+  warning** for that case; if your cells can be tall, raise `rowHeight` until the tallest
+  fits.
 - **`rowKey` is called for every row in `data`, even when `selectable` is `false`.** The
   select-all state is derived from a map over the whole dataset that nothing gates on selection.
   Measured: rendering 100,000 rows with `selectable={false}` invoked `rowKey` 100,068 times. It
@@ -392,11 +407,16 @@ virtualization maths has to agree with them exactly. See the
   `height` when it is a number; a `"60vh"` or `"100%"` seeds the 400px default instead, and the
   browser corrects it on the first measurement. A viewport much taller than 400px still renders
   short server-side, and a much shorter one over-renders. Pass a number when you can.
-- **Column widths are negotiated from the mounted rows only.** The table has no
-  `table-layout: fixed`, and `width` from a `ColumnDef` reaches the `<th>` but not the body
-  cells, so an unusually wide value scrolling into the window can re-measure the columns
-  mid-scroll. Setting `width` on every column pins the preferred widths and is the closest this
-  gets to stable — content wider than the value can still push a column out.
+- **Column widths are fixed, and that is a trade.** This table sets `table-layout: fixed`, so
+  the columns are decided by the header row alone and never re-measure while you scroll.
+  Without it they were negotiated from whatever slice happened to be mounted: measured in
+  Firefox 146, scrolling a 56-character unbreakable token into a four-row window moved two
+  columns from 640/606px to 1129/117px — and it did so **even with a `width` on the `<th>`**
+  (152/1094 → 679/567), because under `table-layout: auto` a column `width` is a suggestion
+  the cells can outvote. The trade is the other half of the same rule: a column with **no**
+  `width` now takes an equal share of the table rather than sizing to its content, so give
+  the columns that matter an explicit `width`. Only this table is affected — [Table](table.md)
+  and [DataTable](data-table.md) still size to content.
 - **The loading header is fully live, and select-all there acts on stale rows.** All three
   branches now share one header, so the sort affordances and the select-all checkbox no longer
   vanish while `loading` is true — but they are operable, not decorative. Select-all is derived
@@ -417,6 +437,12 @@ It is a real `<table>` with a real `<thead>`/`<tbody>`, and the spacer rows carr
 so nothing fake leaks into the accessibility tree. What is missing is the part that tells
 assistive tech the table is windowed at all.
 
+- **Selection is on the row as well as the checkbox.** With `selectable` on, every rendered
+  `<tr>` carries `aria-selected` — valid here, because a `<tr>` in a `<table>` maps to role
+  `row` and ARIA 1.2 supports that state on `row` in exactly that context — plus
+  `data-selected="true"` while selected. Without `selectable` the rows say nothing at all,
+  rather than reporting a selection model that does not exist. The table keeps its native
+  `table` role either way.
 - **The row count is the dataset's, not the window's.** The `<table>` carries `aria-rowcount`
   (rows + the header row) and every rendered `<tr>` its `aria-rowindex` in the full dataset, so
   a screen reader can say "row 4,201 of 50,000" even though only a slice is mounted. The table
@@ -432,10 +458,13 @@ assistive tech the table is windowed at all.
   language.
   The select-all box is labelled `"Select all rows"` and sets the native `indeterminate` property
   imperatively, so the mixed state is announced correctly.
-- **Sortable headers are operable but not announced as controls.** The `<th>` gets `tabIndex={0}`,
-  `aria-sort`, a click handler and Enter/Space handling, but no `role="button"` and no inner
-  button — so it reaches keyboard users and reports its sort state, while the fact that it *can*
-  be activated is conveyed only by the arrow glyph and the cursor.
+- **Sortable headers are announced as controls.** The header's label sits in a real
+  `<button type="button">` inside the `<th>`, so it reports the `button` role, holds the tab
+  stop and activates on Enter and Space; `aria-sort` stays on the `<th>`, which is the only
+  element ARIA supports it on. The button is named "Sort by " plus the column — override that
+  prefix per column with `ColumnDef.sortLabel`, or drop it with `sortLabel: ""`. *Before
+  v0.10.0 the `<th>` itself carried `tabIndex={0}` and its own key handling, so it was
+  operable without ever announcing that it was.*
 - **Nothing in the viewport is focusable by default.** With no `sortable` column and
   `selectable` off, the scroll container holds no tab stop and gets no `tabIndex` of its own,
   so whether a keyboard user can scroll it at all comes down to the browser's

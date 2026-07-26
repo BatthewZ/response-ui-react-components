@@ -8,20 +8,13 @@
   --_timeline-line-offset: var(--R-SIZE-5);
   --_timeline-dot-size: 0.875rem;
   --_timeline-line-width: 2px;
+  /* Where the rail sits inside an ITEM. Items start at the root's content edge,
+     so the root-relative offset has the gutter taken back off. Declared once
+     because the rail and the node both have to land on it (#344). */
+  --_timeline-rail-x: calc(var(--_timeline-line-offset) - var(--_timeline-gutter));
 
   position: relative;
   padding-left: var(--_timeline-gutter);
-}
-
-/* Vertical connecting line */
-.timeline::before {
-  content: "";
-  position: absolute;
-  left: var(--_timeline-line-offset);
-  top: 0;
-  bottom: 0;
-  width: var(--_timeline-line-width);
-  background-color: var(--C-BORDER-DEFAULT);
 }
 
 /* ------------------------------------------------------------------ */
@@ -37,16 +30,40 @@
   padding-bottom: 0;
 }
 
+/* #345. The rail used to be one `.timeline::before` pinned `top: 0; bottom: 0`
+   on the root while every dot sits at `top: 0` of its own item, so it ran on
+   past the final dot for the whole height of the last card. Per-item and
+   suppressed on the last one — ActivityFeed's shape — it ends exactly where the
+   last dot begins, however tall that card is. The trade is that a child which is
+   not a `.timeline-item` draws no segment, so it leaves a gap in the rail; the
+   old root rail ran behind it. Documented on the component's page. */
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: var(--_timeline-rail-x);
+  top: 0;
+  bottom: 0;
+  width: var(--_timeline-line-width);
+  background-color: var(--C-BORDER-DEFAULT);
+}
+
+.timeline-item:last-child::before {
+  display: none;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Node (dot on the line)                                             */
 /* ------------------------------------------------------------------ */
 
+/* #344. The offset used to subtract half of `--_timeline-dot-size`, which
+   centres the DEFAULT dot on the rail and nothing else — a custom `icon` of any
+   other size sat off-centre by half the difference. Centring on the rail's own
+   midpoint with a translate is size-agnostic, and is what the 40rem+ rule below
+   already did. */
 .timeline-node {
   position: absolute;
-  left: calc(
-    var(--_timeline-line-offset) - var(--_timeline-gutter) + var(--_timeline-line-width) / 2 -
-      var(--_timeline-dot-size) / 2
-  );
+  left: calc(var(--_timeline-rail-x) + var(--_timeline-line-width) / 2);
+  transform: translateX(-50%);
   top: 0;
   z-index: 1;
 }
@@ -116,7 +133,7 @@
     padding-left: 0;
   }
 
-  .timeline::before {
+  .timeline-item::before {
     left: 50%;
     transform: translateX(-50%);
   }
@@ -150,5 +167,15 @@
   .timeline-item:nth-child(even) .timeline-card {
     width: calc(50% - var(--_timeline-gutter));
     margin-left: auto;
+  }
+
+  /* #342. The card's side and its entrance direction are now decided by the
+     same selector. `Timeline.Item` always ships `fade-right` (from
+     `ScrollReveal`, which is what supplies the duration and easing through the
+     `animation` shorthand); this replaces only the name list, so a right-hand
+     card slides in from the right. Keyed to the class the reveal adds, so it
+     applies exactly while the entrance is playing and goes away with it. */
+  .timeline-item:nth-child(even).fade-right {
+    animation-name: slide-left, fade;
   }
 }

@@ -283,6 +283,83 @@ describe("Table", () => {
     expect(bodyRows[1]).not.toHaveClass("table-row--selected");
   });
 
+  /* ------------------------------------------------------------------ */
+  /*  #351 · selection reaches assistive tech, and only when asked       */
+  /* ------------------------------------------------------------------ */
+
+  it("Row carries aria-selected and data-selected once `selected` is passed", () => {
+    render(
+      <Table>
+        <Table.Head>
+          <Table.Row>
+            <Table.HeaderCell>Header</Table.HeaderCell>
+          </Table.Row>
+        </Table.Head>
+        <Table.Body>
+          <Table.Row selected>
+            <Table.Cell>Selected Row</Table.Cell>
+          </Table.Row>
+          <Table.Row selected={false}>
+            <Table.Cell>Selectable but unselected</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>,
+    );
+
+    const bodyRows = screen
+      .getAllByRole("row")
+      .filter((row) => row.closest("tbody"));
+    expect(bodyRows[0]).toHaveAttribute("aria-selected", "true");
+    expect(bodyRows[0]).toHaveAttribute("data-selected", "true");
+    expect(bodyRows[1]).toHaveAttribute("aria-selected", "false");
+    expect(bodyRows[1]).not.toHaveAttribute("data-selected");
+  });
+
+  it("a row in a table with no selection says nothing about being selected", () => {
+    render(
+      <Table>
+        <Table.Head>
+          <Table.Row>
+            <Table.HeaderCell>Header</Table.HeaderCell>
+          </Table.Row>
+        </Table.Head>
+        <Table.Body>
+          <Table.Row>
+            <Table.Cell>Plain</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>,
+    );
+
+    const bodyRow = screen
+      .getAllByRole("row")
+      .filter((row) => row.closest("tbody"))[0];
+    expect(bodyRow).not.toHaveAttribute("aria-selected");
+    expect(bodyRow).not.toHaveAttribute("data-selected");
+  });
+
+  it("a caller's own aria-selected still wins", () => {
+    render(
+      <Table>
+        <Table.Head>
+          <Table.Row>
+            <Table.HeaderCell>Header</Table.HeaderCell>
+          </Table.Row>
+        </Table.Head>
+        <Table.Body>
+          <Table.Row selected aria-selected={false}>
+            <Table.Cell>Caller decides</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>,
+    );
+
+    const bodyRow = screen
+      .getAllByRole("row")
+      .filter((row) => row.closest("tbody"))[0];
+    expect(bodyRow).toHaveAttribute("aria-selected", "false");
+  });
+
   it("forwards className on root wrapper", () => {
     const { container } = render(
       <Table className="custom-class">

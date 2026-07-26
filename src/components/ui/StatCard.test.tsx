@@ -18,6 +18,18 @@ afterEach(() => {
 });
 
 /**
+ * While the count-up is mid-run the element holds two nodes (#6): the ticking
+ * figure, `aria-hidden`, and an `sr-only` twin carrying the real value. Once it
+ * settles there is one text node again, so both helpers fall back to the root.
+ */
+function visibleText(el: HTMLElement): string {
+  return (el.querySelector('[aria-hidden="true"]') ?? el).textContent ?? "";
+}
+function accessibleText(el: HTMLElement): string {
+  return (el.querySelector(".sr-only") ?? el).textContent ?? "";
+}
+
+/**
  * The count-up runs off IntersectionObserver + requestAnimationFrame, neither of
  * which jsdom drives. Stub both so the sequence is stepped by hand:
  * `scrollIntoView()` reports the observed node visible, `runFrame(at)` runs
@@ -169,8 +181,10 @@ describe("StatCard", () => {
       );
       const el = screen.getByTestId("value");
 
-      // Observed, but nothing moves until the element is actually seen.
-      expect(el.textContent).toBe("0");
+      // Observed, but nothing moves until the element is actually seen. The
+      // figure shown is the `from` placeholder; the announced one is not (#6).
+      expect(visibleText(el)).toBe("0");
+      expect(accessibleText(el)).toBe("500");
       expect(env.observed).toHaveLength(1);
       expect(env.frames).toHaveLength(0);
 
@@ -183,7 +197,7 @@ describe("StatCard", () => {
       // Mid-run. The component reads its own start timestamp, so the bounds are
       // what can be pinned down here, not the exact figure.
       env.runFrame(startedAt + 500);
-      const midway = Number(el.textContent);
+      const midway = Number(visibleText(el));
       expect(midway).toBeGreaterThan(0);
       expect(midway).toBeLessThan(500);
       expect(env.frames).toHaveLength(1);
@@ -192,6 +206,8 @@ describe("StatCard", () => {
       env.runFrame(startedAt + 10_000);
       expect(el.textContent).toBe("500");
       expect(env.frames).toHaveLength(0);
+      // Settled: one text node again, so nothing is announced twice.
+      expect(el.querySelectorAll("span")).toHaveLength(0);
     });
 
     it("formats every animated tick with the custom format function", () => {
@@ -210,11 +226,12 @@ describe("StatCard", () => {
         />
       );
       const el = screen.getByTestId("value");
-      expect(el.textContent).toBe("$0");
+      expect(visibleText(el)).toBe("$0");
+      expect(accessibleText(el)).toBe("$100");
 
       env.scrollIntoView();
       env.runFrame(startedAt + 500);
-      expect(el.textContent).toMatch(/^\$\d+$/);
+      expect(visibleText(el)).toMatch(/^\$\d+$/);
 
       env.runFrame(startedAt + 10_000);
       expect(el.textContent).toBe("$100");
@@ -231,7 +248,7 @@ describe("StatCard", () => {
       slow.scrollIntoView();
       slow.runFrame(startedAt + 1000);
       // 1s into a 100s run — nowhere near done, and still asking for frames.
-      expect(Number(screen.getByTestId("slow").textContent)).toBeLessThan(500);
+      expect(Number(visibleText(screen.getByTestId("slow")))).toBeLessThan(500);
       expect(slow.frames).toHaveLength(1);
       long.unmount();
 
@@ -273,7 +290,7 @@ describe("StatCard", () => {
       // A run is queued, and it starts from the figure on screen, not from `from`.
       expect(env.frames).toHaveLength(1);
       env.runFrame(secondRunAt + 400);
-      const midway = Number(el.textContent);
+      const midway = Number(visibleText(el));
       expect(midway).toBeGreaterThan(500);
       expect(midway).toBeLessThan(900);
 

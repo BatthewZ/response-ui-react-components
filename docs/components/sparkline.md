@@ -19,7 +19,7 @@ single text-colour utility tints it to match the surrounding text.
 | `strokeWidth` | `number`                      | `2`                      |
 | `min`         | `number`                      | `Math.min(...values)`    |
 | `max`         | `number`                      | `Math.max(...values)`    |
-| `aria-label`  | `string`                      | `"Sparkline of N values"`|
+| `aria-label`  | `string`                      | a description of the series (below) |
 | `ref`         | `Ref<SVGSVGElement>`          | —                        |
 | …rest         | `svg` props (minus `children`, `values`) | —             |
 
@@ -140,16 +140,25 @@ falls back to `currentColor`.
 
 - **It's an `img` by default.** The `<svg>` is `role="img"` with an `aria-label`, so it is
   exposed to assistive tech as a single labelled graphic — its internal paths and bars are
-  not. The role is a default a consumer can override (see the decorative note below).
-- **The default label counts, it doesn't describe.** With no `aria-label` the name is
-  `"Sparkline of N values"`, which tells a screen-reader user nothing about the trend.
-  **Pass an `aria-label` that states what the data shows** (`"Revenue, last 7 days"`), as
-  every example here does.
-- **Purely decorative? Silence it.** A sparkline sitting beside a visible number (as in
-  [[StatCard](stat-card.md)](./stat-card.md)) is redundant to assistive tech. There's no built-in
-  decorative mode, but `role` spreads through, so pass `role="presentation"` (or
-  `aria-hidden`) to drop it from the tree — note `aria-label` is consumed by the component
-  and can't be cleared that way.
+  not. An explicit `role` of your own still wins, and `aria-hidden` removes both (below).
+- **The default label describes the series.** With no `aria-label` the name is built from the
+  data: `"Sparkline: 4 values, 12 to 28, rising, low 12, high 28"` — where the series starts
+  and ends, which way it went, and its extremes. `rising`/`falling`/`level` is read off the
+  **ends**, not the extremes, so a series that peaks in the middle and closes down is
+  `falling`. Degenerate inputs still name themselves: `"Sparkline: no data"` for `values={[]}`
+  and `"Sparkline: one value, 7"` for a single datum. It is a fallback, and English: it says
+  what the numbers *do*, never what they *mean*, so **pass an `aria-label` that states what
+  the data shows** (`"Revenue, last 7 days"`), as every example here does. (Before 0.10.1 the
+  default was `"Sparkline of N values"`, which told a screen-reader user nothing at all.)
+- **`aria-labelledby` replaces it.** Point it at a visible caption and no generated
+  `aria-label` is emitted alongside — the element is named by yours and nothing competes with
+  it in the tree.
+- **Purely decorative? `aria-hidden` is the mode.** A sparkline sitting beside a visible
+  number (as in [[StatCard](stat-card.md)](./stat-card.md)) is redundant to assistive tech.
+  Pass `aria-hidden` and the `<svg>` renders with **no `role` and no `aria-label`** — nothing
+  left in the accessibility tree to announce. `role="presentation"` also works, because an
+  explicit `role` rides the rest spread and wins, but it leaves the generated `aria-label` on
+  the element; `aria-hidden` is the clean one.
 - **Motion is gated twice.** The draw-in is skipped both in JS (`usePrefersReducedMotion`)
   and in CSS (`@media (prefers-reduced-motion: reduce)`) when the user asks for reduced
   motion; the final chart shows immediately.

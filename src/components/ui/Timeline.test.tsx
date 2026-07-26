@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { Timeline } from "./Timeline";
 
@@ -127,6 +127,75 @@ describe("Timeline", () => {
 
     const titles = [...container.querySelectorAll(".timeline-title")].map((n) => n.textContent);
     expect(titles).toEqual(["A", "B"]);
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  #342 · one source for the side and the entrance direction          */
+  /* ------------------------------------------------------------------ */
+
+  it("gives every item the same entrance class, fragment children included", () => {
+    // jsdom ships no IntersectionObserver, and ScrollReveal now reveals
+    // statically without one — with no entrance class at all. Stub one that can
+    // be told the elements are visible, so the class is reachable here.
+    const reveal: (() => void)[] = [];
+    class StubIO {
+      constructor(private cb: IntersectionObserverCallback) {}
+      observe(node: Element) {
+        reveal.push(() =>
+          this.cb(
+            [{ isIntersecting: true, target: node } as unknown as IntersectionObserverEntry],
+            this as unknown as IntersectionObserver,
+          ),
+        );
+      }
+      unobserve() {}
+      disconnect() {}
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+    }
+    vi.stubGlobal("IntersectionObserver", StubIO);
+
+    const { container } = render(
+      <Timeline>
+        <Timeline.Item title="A" />
+        <>
+          <Timeline.Item title="B" />
+          <Timeline.Item title="C" />
+        </>
+        <Timeline.Item title="D" />
+      </Timeline>,
+    );
+    act(() => {
+      for (const fire of reveal) fire();
+    });
+
+    const items = [...container.querySelectorAll(".timeline-item")];
+    // Four items in the DOM — `Children.toArray` used to see three, which is
+    // exactly how the index and the `:nth-child` layout came apart.
+    expect(items).toHaveLength(4);
+    for (const item of items) {
+      expect(item).toHaveClass("fade-right");
+      expect(item).not.toHaveClass("fade-left");
+    }
+    vi.unstubAllGlobals();
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  #343 · the title is a node, and its level is the caller's          */
+  /* ------------------------------------------------------------------ */
+
+  it("titleAs sets the heading level and title takes a node", () => {
+    render(
+      <Timeline animate={false}>
+        <Timeline.Item titleAs="h4" title={<span data-testid="node">Shipped</span>} />
+      </Timeline>,
+    );
+
+    const heading = screen.getByRole("heading", { level: 4 });
+    expect(heading).toHaveClass("timeline-title");
+    expect(screen.getByTestId("node")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3 })).toBeNull();
   });
 
   // #340 — with `animate` at its default the item renders through ScrollReveal,

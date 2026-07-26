@@ -81,8 +81,11 @@ raw number is rendered as currency.
 The animation is **one-shot and view-triggered** (an `IntersectionObserver` fires it
 once at 10% visibility). It reads its default duration from `--MOTION-DURATION-SHIFT`
 unless you pass `duration` in ms, and is skipped entirely under `prefers-reduced-motion`
-— the final value shows immediately. See [Gotchas](#gotchas) for the sharp edges of this
-prop.
+— the final value shows immediately. While the count is still running — and before it
+starts, which is most of the page's life for a card below the fold — the ticking figure is
+`aria-hidden` and a visually-hidden twin carries `format(to)`, so a screen reader gets the
+real number rather than the `from` placeholder. See [Gotchas](#gotchas) for the sharp edges
+of this prop.
 
 ## Trend
 
@@ -180,10 +183,14 @@ badge will *not* follow; it stays on status. Override both if you want them in s
   screen-reader user hears "Monthly revenue 48,120 +12.5%" as three loose strings. If a
   tile needs to read as a unit, wire it yourself — e.g. an `aria-label` on the root, or
   an `id` on the label referenced by `aria-labelledby`.
-- **`animateValue` announces `0` until it runs.** Before the card scrolls into view the
-  value renders as `format(from)` — usually `0` — so assistive tech reading off-screen
-  or above-the-fold content gets the placeholder, not the real figure. The reduced-motion
-  path avoids this (it shows `to` outright); the animated path does not.
+- **`animateValue` announces the real figure, not the placeholder.** While the count-up is
+  unsettled — which includes the whole time before the card scrolls into view — the value
+  element holds two nodes: the ticking figure, marked `aria-hidden`, and a visually-hidden
+  twin carrying `format(to)`. So assistive tech reading off-screen content gets the figure,
+  never `format(from)`, and it hears it once rather than on every frame. The moment the run
+  lands on `to` the twin goes away and the element is a single text node again, so
+  `textContent` and `getByText` see exactly what they saw before. The reduced-motion path
+  never needed either node: it shows `to` outright.
 - **The trend arrow is decorative.** It is `aria-hidden`, and the direction is conveyed
   by the `+`/`-` sign in the text, so meaning survives without the glyph.
 

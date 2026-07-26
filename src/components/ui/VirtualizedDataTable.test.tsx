@@ -406,6 +406,82 @@ describe("VirtualizedDataTable", () => {
     ).toHaveLength(6); // 5 rows + the header box
   });
 
+  /* ---------------------------------------------------------------- */
+  /*  #482 · ColumnDef.sortLabel reaches Table.HeaderCell               */
+  /* ---------------------------------------------------------------- */
+
+  it("ColumnDef.sortLabel names the sort button, and '' leaves the column alone", () => {
+    const { unmount } = render(
+      <VirtualizedDataTable
+        data={makeData(3)}
+        columns={[{ key: "name", header: "Name", sortable: true, sortLabel: "Trier par" }]}
+        rowKey={rowKey}
+        rowHeight={40}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Trier par Name" })).toBeInTheDocument();
+    unmount();
+
+    render(
+      <VirtualizedDataTable
+        data={makeData(3)}
+        columns={[{ key: "name", header: "Name", sortable: true, sortLabel: "" }]}
+        rowKey={rowKey}
+        rowHeight={40}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Name" })).toBeInTheDocument();
+  });
+
+  it("a column with no sortLabel keeps the English default", () => {
+    render(
+      <VirtualizedDataTable
+        data={makeData(3)}
+        columns={sortableColumns}
+        rowKey={rowKey}
+        rowHeight={40}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Sort by Value" })).toBeInTheDocument();
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  #351 · selection reaches assistive tech on the row itself         */
+  /* ---------------------------------------------------------------- */
+
+  it("publishes aria-selected on selectable rows and nothing on unselectable ones", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <VirtualizedDataTable
+        data={makeData(5)}
+        columns={columns}
+        rowKey={rowKey}
+        rowHeight={40}
+        selectable
+      />
+    );
+
+    const bodyRow = () =>
+      screen.getAllByRole("row").filter((r) => r.closest("tbody"))[0];
+
+    expect(bodyRow()).toHaveAttribute("aria-selected", "false");
+    expect(bodyRow()).not.toHaveAttribute("data-selected");
+
+    await user.click(screen.getByLabelText("Select row 0"));
+    expect(bodyRow()).toHaveAttribute("aria-selected", "true");
+    expect(bodyRow()).toHaveAttribute("data-selected", "true");
+
+    rerender(
+      <VirtualizedDataTable
+        data={makeData(5)}
+        columns={columns}
+        rowKey={rowKey}
+        rowHeight={40}
+      />
+    );
+    expect(bodyRow()).not.toHaveAttribute("aria-selected");
+  });
+
   // #373: the default name reads the raw row key aloud, in English, with no
   // way to override it.
   it("rowLabel names a row's checkbox", () => {

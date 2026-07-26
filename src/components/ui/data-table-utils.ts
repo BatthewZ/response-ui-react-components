@@ -12,6 +12,16 @@ export interface ColumnDef<T> {
   header: ReactNode;
   render?: (row: T, index: number) => ReactNode;
   sortable?: boolean;
+  /**
+   * Words read *before* this column's header in the sort button's accessible
+   * name, so it announces as an action ("Sort by Customer") rather than as a
+   * second copy of the column label. Defaults to `"Sort by"` — English, which
+   * is why this exists: both data tables build their header cells for you, so
+   * without it there is no route to `Table.HeaderCell`'s own `sortLabel`
+   * (#482). `""` drops the words and leaves the button named by the column
+   * alone. Ignored on a column that is not `sortable`: there is no button.
+   */
+  sortLabel?: string;
   width?: string | number;
   align?: "left" | "center" | "right";
 }

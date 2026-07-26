@@ -49,7 +49,7 @@ const densityClassMap: Record<Density, string> = {
 /*  Table (root)                                                       */
 /* ------------------------------------------------------------------ */
 
-type TableProps = {
+export type TableProps = {
   density?: Density;
   striped?: boolean;
   stickyHeader?: boolean;
@@ -155,6 +155,11 @@ const TableBody = forwardRef<HTMLTableSectionElement, TableBodyProps>(
 /* ------------------------------------------------------------------ */
 
 type TableRowProps = {
+  /**
+   * Whether this row is selected. Leave it off entirely in a table that has no
+   * selection: passing it — `false` included — publishes `aria-selected` on the
+   * row, which tells assistive tech the table's rows *are* selectable (#351).
+   */
   selected?: boolean;
   /**
    * Position of this row **in the data**, from 0 — which band `striped` paints.
@@ -166,8 +171,22 @@ type TableRowProps = {
 } & ComponentPropsWithRef<"tr">;
 
 const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
-  function TableRow({ selected = false, index, className, ...props }, ref) {
+  function TableRow({ selected, index, className, ...props }, ref) {
     const { striped } = useTableContext();
+    // #351. A `<tr>` inside a `<table>` maps to role `row`, and `aria-selected`
+    // is a supported state of that role in exactly that context — checked
+    // offline against `aria-query`'s role table
+    // (`roles.get("row").props` lists `aria-selected`;
+    // `requiredContext` is `grid | rowgroup | table | treegrid`). No role
+    // change is needed and none is made: `role="grid"` would promise the
+    // cell-level arrow-key navigation this component does not implement.
+    //
+    // Emitted only when the caller has an opinion, because `aria-selected`
+    // is itself a claim that this table has a selection model — a plain
+    // report table publishing `aria-selected="false"` on every row is worse
+    // than publishing nothing. `data-selected` is the styling twin, and is
+    // present only when true so `[data-selected]` alone is a usable selector.
+    // Both sit before the rest spread, so a caller's own value still wins.
     return (
       <tr
         ref={ref}
@@ -177,6 +196,8 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
           striped && index !== undefined && index % 2 === 1 && "table-row--striped",
           className
         )}
+        aria-selected={selected}
+        data-selected={selected ? "true" : undefined}
         {...props}
       />
     );

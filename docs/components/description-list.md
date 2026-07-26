@@ -147,6 +147,19 @@ issue that affects a styled `<ul>`), though the per-item `term`/`definition` rol
 `<dt>`/`<dd>` are preserved. If the *grouping* announcement matters for your audience,
 verify it in VoiceOver.
 
+**`role="list"` is not the fix here, and there is no drop-in that is.** On a styled `<ul>`
+the remedy is `role="list"` on the container, because `<li>` maps to `listitem` and the
+tree stays valid. It does not transfer: ARIA requires a `list` to own `listitem` children,
+and `<dt>`/`<dd>` map to `term` and `definition` — so `role="list"` on this `<dl>` would
+produce a list with **no list items**, which is a worse tree than the one the bug leaves.
+Nor is there a correct role to reach for instead: ARIA 1.2 defines none for the `<dl>`
+container at all (the `associationlist` family that would is a 1.3 proposal, unshipped), so
+there is nothing to restore. Adding `role="group"` and a name would be valid but changes
+what the element *is* in every browser, including the ones that get this right today. Until
+that decision is made, the honest position is the one above: the pairs are announced, the
+grouping may not be, and you can wrap the list in your own named region if the grouping
+matters.
+
 ## Related
 
 [StatCard](stat-card.md) · [DataTable](data-table.md) · [Card](card.md) ·

@@ -26,7 +26,7 @@ and a plain `<span>` if you pass neither.
 | ----------------------- | -------------------------- | -------------------------------------------------------------------------------------- |
 | `Breadcrumbs`           | `<nav>` around an `<ol>`   | `separator?: ReactNode` = `"/"` · `maxItems?: number` · `itemsBeforeCollapse?: number` = `1` · `itemsAfterCollapse?: number` = `1` · **required** `children` (+ all `nav` props) |
 | `Breadcrumbs.Item`      | `<li>`                     | `href?: string` · `current?: boolean` (+ all `li` props)                                |
-| `Breadcrumbs.Separator` | `<li role="presentation">` | — (all `li` props). Interleaved for you; see [Gotchas](#gotchas) before rendering it yourself. |
+| `Breadcrumbs.Separator` | `<li role="presentation">` | — (all `li` props). Interleaved for you; render one yourself only to override a single gap — see [Gotchas](#gotchas). |
 
 `className`, `id`, `aria-*` and `ref` pass through on all three — the root's `ref` is an
 `HTMLElement` on the `<nav>`, the parts' an `HTMLLIElement` on the `<li>`. The `<ol>` and
@@ -182,16 +182,24 @@ letter-spacing are `em`-relative literals rather than contract variables, tracki
   children there is nothing left to hide, so the full trail renders with no ellipsis rather
   than repeating the middle crumb on both sides of one. `maxItems={2} itemsBeforeCollapse={2}
   itemsAfterCollapse={2}` over three crumbs renders `A / B / C`.
-- **Expanding is one-way, and it sticks.** The ellipsis sets an internal `expanded` flag to
-  `true` and there is no path back — no `expanded`/`onExpandedChange` prop, and no reset
-  when `children` change. Keep one `Breadcrumbs` mounted across navigations and the first
-  expansion leaves every later trail expanded too. `key={pathname}` on the root restores
-  collapsing per page.
-- **Don't render `Breadcrumbs.Separator` yourself.** The root already interleaves one
-  between every child *and counts yours as a child*, so a hand-placed separator comes out
-  as three separators in a row (`/ › /`) and pushes the trail closer to `maxItems`. It is
-  on the public object because the root renders it internally; there is no composition that
-  uses it correctly. Change the glyph with the root's `separator` prop.
+- **Expanding is one-way *for the trail it was made on*, and resets for the next.** The
+  ellipsis records **which** trail was expanded — the current pathname plus the crumbs' own
+  React keys — rather than a boolean, so navigating to a different route collapses the trail
+  again with no `key={pathname}` on your side and no remount. There is still no
+  `expanded`/`onExpandedChange` prop and no way to re-collapse the *same* trail. Two edges
+  worth knowing: the pathname comes from the [router adapter](../extending.md), which without
+  a provider reads `window.location.pathname` at render — so a hash router that never changes
+  the pathname is seen only through the crumb keys; and a trail whose crumbs carry no `key` of
+  their own falls back to positional keys (`.0`, `.1`, …), which two same-length trails share.
+  Key your crumbs and both cases are covered.
+- **Rendering `Breadcrumbs.Separator` yourself overrides one gap.** The root interleaves its
+  own separator between every pair of crumbs, and a `Breadcrumbs.Separator` you place is used
+  *instead of* the automatic one for that gap rather than in addition to it — it is not
+  counted as a crumb, so it does not push the trail toward `maxItems`, and it does not come
+  out as three separators in a row. A separator with no crumb after it has no gap to sit in
+  and is dropped; one that ends up next to the collapsed ellipsis loses to the root's, because
+  the gap it was written for is hidden. To change *every* glyph, use the root's `separator`
+  prop — this is for the one-off.
 - **The `<ol>` and the inner elements are unreachable.** Everything you pass lands on the
   `<nav>` or on an `<li>`; nothing you can pass reaches the list itself or the `<a>`/`<span>`
   inside a crumb. So there is no `role`, `className` or `data-*` on the `<ol>` (see

@@ -47,6 +47,27 @@ function buildPoints(
 
 const round = (v: number) => Math.round(v * 100) / 100;
 
+/**
+ * Fallback accessible name (#29). The old default counted the series —
+ * "Sparkline of 7 values" — which tells a screen-reader user nothing a sighted
+ * one can see. This states the shape instead: where the series starts and ends,
+ * which way it went, and the extremes it reached. Still English and still a
+ * fallback: `aria-label` overrides it, `aria-labelledby` replaces it, and
+ * `aria-hidden` removes the graphic from the tree entirely. A caller who knows
+ * what the numbers *mean* should always say so themselves.
+ */
+function describeSeries(values: number[]): string {
+  const n = values.length;
+  if (n === 0) return "Sparkline: no data";
+  if (n === 1) return `Sparkline: one value, ${values[0]}`;
+  const first = values[0];
+  const last = values[n - 1];
+  const direction = last > first ? "rising" : last < first ? "falling" : "level";
+  return `Sparkline: ${n} values, ${first} to ${last}, ${direction}, low ${Math.min(
+    ...values
+  )}, high ${Math.max(...values)}`;
+}
+
 export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(function Sparkline(
   {
     values,
@@ -66,7 +87,19 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(function Spar
   const shouldAnimate = !reducedMotion;
 
   const n = values.length;
-  const label = ariaLabel ?? `Sparkline of ${n} values`;
+
+  // #29. `role="img"` used to be unconditional, so the one thing a caller
+  // actually wants for a chart that repeats a number printed beside it — to get
+  // it out of the accessibility tree — took `role="presentation"` *and* still
+  // left a stray `aria-label` on the element. `aria-hidden` is now the
+  // decorative mode: no role, no name, nothing to announce. An explicit `role`
+  // still wins outright, because it rides the rest spread below.
+  const decorative =
+    props["aria-hidden"] === true || String(props["aria-hidden"]) === "true";
+  // A caller naming it from another element does not also want a generated name
+  // sitting under it; `aria-labelledby` would win the computation anyway.
+  const labelled = props["aria-labelledby"] != null;
+  const label = decorative || labelled ? undefined : (ariaLabel ?? describeSeries(values));
 
   let content: ReactNode = null;
 
@@ -133,7 +166,7 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(function Spar
   return (
     <svg
       ref={ref}
-      role="img"
+      role={decorative ? undefined : "img"}
       aria-label={label}
       width={width}
       height={height}

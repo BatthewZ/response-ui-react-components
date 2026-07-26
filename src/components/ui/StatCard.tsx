@@ -3,6 +3,7 @@ import {
   type ComponentProps,
   type ComponentPropsWithRef,
   forwardRef,
+  type ReactNode,
   useCallback,
   useEffect,
   useRef,
@@ -125,11 +126,35 @@ const StatCardValue = forwardRef<HTMLSpanElement, StatCardValueProps>(function S
     return () => observer.disconnect();
   }, [animateValue, from, to, duration, reducedMotion, formatValue]);
 
+  // #6. Until the observer fires, the counter shows `format(from)` — usually
+  // "0" — and that placeholder used to be the ONLY text in the element, so
+  // anything reading the page without scrolling it (a screen reader walking
+  // off-screen content, a page summary) got 0 instead of the figure. The
+  // count-up is a visual effect, so it is `aria-hidden` and the real value sits
+  // beside it in an `sr-only` twin. The twin only exists while the two
+  // disagree: once the run settles the element is a single text node again,
+  // which is what it was before this and what `getByText` sees.
+  const animating = animateValue && to !== undefined;
+  const shown = animating ? (reducedMotionValue ?? displayValue ?? formatValue(from)) : null;
+  const settled = animating && shown === formatValue(to);
+
+  let content: ReactNode;
+  if (!animating) {
+    content = children;
+  } else if (settled) {
+    content = shown;
+  } else {
+    content = (
+      <>
+        <span aria-hidden="true">{shown}</span>
+        <span className="sr-only">{formatValue(to)}</span>
+      </>
+    );
+  }
+
   return (
     <span ref={mergeRefs(ref, innerRef)} className={cn("stat-card__value", className)} {...props}>
-      {animateValue && to !== undefined
-        ? (reducedMotionValue ?? displayValue ?? formatValue(from))
-        : children}
+      {content}
     </span>
   );
 });

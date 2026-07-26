@@ -51,7 +51,7 @@ header cell is where sorting lives.
 | `Table`            | `<div>` › `<table>` | `density?: "dense" \| "comfortable" \| "spacious"` (default `"comfortable"`) · `striped?: boolean` · `stickyHeader?: boolean` · `maxHeight?: number \| string` (caps the wrapper — what `stickyHeader` pins against; a number is px) · `tableProps?: ComponentPropsWithRef<"table">` (the only route to the inner `<table>`) |
 | `Table.Head`       | `<thead>` | —                                                                                     |
 | `Table.Body`       | `<tbody>` | —                                                                                     |
-| `Table.Row`        | `<tr>`    | `selected?: boolean` · `index?: number` (data position; decides the zebra band — `Table.Body` supplies it for its own children) |
+| `Table.Row`        | `<tr>`    | `selected?: boolean` (emits `aria-selected` + `data-selected`; **omit it entirely** on a table with no selection) · `index?: number` (data position; decides the zebra band — `Table.Body` supplies it for its own children) |
 | `Table.HeaderCell` | `<th>`    | `sortDirection?: "asc" \| "desc" \| false` · `onSort?: () => void` · `sortLabel?: string` (words read before the column in the sort button's name; default `"Sort by"`, `""` drops them) |
 | `Table.Cell`       | `<td>`    | —                                                                                     |
 
@@ -228,9 +228,14 @@ inline-level and does not fill it. Only the tab stop and the focus ring moved.
 ```
 <!-- /example -->
 
-`selected` adds one class and one background tint. It emits no `aria-selected` and no
-`data-*` attribute, and the tint is thin — see [Accessibility](#accessibility) for the
-measured numbers and why the example also puts the state into the row's text.
+`selected` paints the row and states it: the `<tr>` gets `aria-selected` and, when true,
+`data-selected="true"`, plus a 3px `--C-ACCENT` marker down its leading edge. The tint alone
+is thin — see [Accessibility](#accessibility) for the measured numbers.
+
+**Pass `selected` only where selection exists.** `selected={false}` is not the same as
+leaving it off: it publishes `aria-selected="false"`, which tells assistive tech that this
+table's rows *are* selectable. A plain report table should pass nothing. Your own
+`aria-selected` still wins over the component's if you set one.
 
 ## Sticky header
 
@@ -335,7 +340,8 @@ rebuild.
 | Sort arrow                     | `--C-TEXT-MUTED` unsorted · `--C-ACCENT` sorted           |
 | Row divider                    | `--C-BORDER-DEFAULT`                                      |
 | Striped row                    | `--C-SURFACE-1`                                           |
-| Selected row                   | `--C-ACCENT`, mixed to 8% in oklch                        |
+| Selected row wash              | `--C-ACCENT`, mixed to 8% in oklch                        |
+| Selected row marker            | `--C-ACCENT` at full strength · width `--_table-selected-marker-width` (3px, private) |
 | Cell ink                       | `--C-TEXT-PRIMARY`                                        |
 | Cell type step                 | `--BodyText-2` (dense) · `--BodyText-1` (comfortable, spacious) |
 | Sticky header shadow           | `--SHADOW-SM`                                             |
@@ -390,8 +396,13 @@ Three things are **not** on the contract, and are worth knowing before you theme
   not get is the button, the tab stop or the sortable hover/active styling: it is a statement
   about the data, not a control. `sortDirection={false}` with no `onSort` renders and
   announces nothing.
-- **`selected` is a tint and nothing else.** No `aria-selected`, no `data-selected`, no
-  focus or click behaviour. Selection is entirely yours to wire up and to announce.
+- **`selected` states the row, but does not select it.** It emits `aria-selected`, adds
+  `data-selected="true"` while true, tints the row and draws the leading marker — and that
+  is all. There is no focus behaviour, no click handling and no selection model: wiring the
+  click, holding the set and rendering the checkbox are yours (or use
+  [DataTable](data-table.md), which does all three). Note the attribute is emitted whenever
+  the prop is *present*, `false` included, so leaving it off is how you say "these rows are
+  not selectable".
 - **Sub-parts throw outside `<Table>`.** All five call the context hook, so a stray
   `Table.Cell` raises `"Table compound components must be used within <Table>"`. Wrapping
   them in your own components is fine; rendering them outside the root is not.
@@ -434,11 +445,27 @@ from the component.
   `events`, 2.06:1 in `tech` — all under the 3:1 that WCAG 1.4.11 asks of a non-text
   control. Sorted, it is `--C-ACCENT`: 4.95:1 in the default theme and 14.56:1 in `tech`,
   but 2.63:1 in `events` and 2.77:1 in `grimdark`.
-- **`selected` is colour alone.** The row is `--C-ACCENT` mixed to 8%, which measures
-  1.12:1 against an unselected row in the default theme, 1.08:1 in `events`, 1.13:1 in
-  `tech` and 1.03:1 in `grimdark` — and no attribute carries the state. Put "selected" into
-  the row's content, as the example above does, or drive selection with a real
-  [Checkbox](checkbox.md) in a leading cell.
+- **`selected` reaches assistive tech.** A `<tr>` inside a `<table>` maps to role `row`,
+  and ARIA 1.2 lists `aria-selected` among that role's supported states in exactly that
+  context — no `role="grid"` is needed, and none is set, because `grid` would promise
+  cell-level arrow-key navigation this component does not implement. `data-selected="true"`
+  rides along for styling. Both are emitted only when you pass `selected`.
+- **The tint is reinforcement; the marker is the signal.** Measured from rendered pixels in
+  Firefox 146 against `@batthewz/response-ui-css` v0.10.0, the 8% `--C-ACCENT` wash reads
+  **1.11:1** against an unselected row in the default theme, **1.12:1** in `events`,
+  **1.13:1** in `tech` and **1.07:1** in `grimdark` — and against a *striped* neighbour
+  **1.06 / 1.08 / 1.11 / 1.00**, so in `grimdark` a selected row and an ordinary banded row
+  are the same luminance to the pixel. That is why a selected row also paints a 3px
+  `--C-ACCENT` bar down its inline-start edge: present-or-absent rather than a hue shift, and
+  measured at **4.65 / 4.38 / 13.08 / 5.30** against the washed row, clearing the 3:1 WCAG
+  1.4.11 asks of a non-text indicator in all four themes. The bar is a `background-image`, so
+  it costs no layout and selecting a row reflows nothing. Under `dir="rtl"` it moves to the
+  other edge.
+- **A visible cue is still worth adding for a table you drive yourself.** The marker and
+  `aria-selected` say *that* a row is selected; they do not say how to change it. Drive
+  selection with a real [Checkbox](checkbox.md) in a leading cell — which is what
+  [DataTable](data-table.md) does — or put the word into the row's content, as the example
+  above does.
 - **Name the table.** Either a `<caption>` child or `tableProps={{ "aria-label": … }}`. The
   bare `aria-label` you would reach for first lands on the wrapper, which has no role.
 - **Label the scroller if the table is wide.** The wrapper scrolls horizontally but

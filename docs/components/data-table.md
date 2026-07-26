@@ -59,9 +59,11 @@ spread** — `maxHeight` is the one thing you can set on the wrapper, because
 `stickyHeader` is inert without it. See [Gotchas](#gotchas), which is also where a
 controlled `sort` turns out to have sharp edges.
 
-`ColumnDef` and `SortState` are both exported from the package root, so a controlled sort
-annotates as `useState<SortState | null>(null)` with an ordinary top-level import. (`SortState`
-was missing from the barrel until 0.9.0, which is why older code reaches for the deep
+`ColumnDef`, `SortState` **and `DataTableProps`** are all exported from the package root, so
+a controlled sort annotates as `useState<SortState | null>(null)` with an ordinary top-level
+import, and a wrapper component can type its own props against `DataTableProps<Order>`
+instead of restating them. (`SortState` was missing from the barrel until 0.9.0, and
+`DataTableProps` until 0.10.1 — which is why older code reaches for the deep
 `…/components/ui/DataTable` path; that path still resolves and means the same type.)
 
 ## Columns
@@ -76,6 +78,7 @@ property read off each row.
 | `header`   | `ReactNode`                              | Required. Header cell content.                                        |
 | `render`   | `(row: T, index: number) => ReactNode`   | Replaces the cell body. Ignores `key` for lookup.                     |
 | `sortable` | `boolean`                                | Makes the header activatable and gives it an `aria-sort`.             |
+| `sortLabel`| `string`                                 | Words read before the header in the sort button's name. Default `"Sort by"`; `""` drops them. Ignored without `sortable`. |
 | `width`    | `string \| number`                       | Set as an inline width on the `<th>` only, not the body cells.        |
 | `align`    | `"left" \| "center" \| "right"`          | Inline `text-align` on the header and every body cell in the column.  |
 
@@ -121,6 +124,14 @@ clicking a different column restarts at `asc`. `onSortChange` fires on every ste
 receives `null` on the step that clears the sort. `sort` and `defaultSort` are both typed
 `SortState | null`, so that `null` goes straight back into the prop — a controlled table
 stays controlled through the clear.
+
+Each sortable header is a real `<button>` named "Sort by " plus the column — the action
+first, so it announces as something to press rather than as a second copy of the column
+label. That prefix is English, and `sortLabel` on the column is how you change it:
+`sortLabel: "Trier par"` for a French app, `sortLabel: ""` to drop the words and leave the
+button named by the column alone. It is per column, so one table can mix "Sort by" with
+"Order by" where that reads better. (Before 0.10.1 the prop existed only on
+`Table.HeaderCell`, which this component builds for you — so there was no way in.)
 
 Left uncontrolled, the table sorts the **entire `data` array** before it slices a page, so
 sorting a paged table reshuffles across pages rather than within the visible one. The
@@ -444,9 +455,11 @@ utilities in `DataTable.tsx`. Change the variable and it re-tints at runtime, no
 `--R-SIZE-6` is on the same scale but holds at `0.25rem` on both sides of that breakpoint,
 so the expander's hit area is identical at every width.
 
-The selected-row highlight is an 8% `--C-ACCENT` wash over the row background. That is a
-very small luminance change on any theme, so treat it as reinforcement for the checkbox,
-not as the signal itself.
+The selected-row highlight is an 8% `--C-ACCENT` wash over the row background *plus* a 3px
+`--C-ACCENT` bar down the row's leading edge. The wash is a very small luminance change on
+any theme (1.07–1.13:1, measured — see [Table](table.md#accessibility)); the bar is what
+carries the state visually, and it is drawn as a background layer so selecting a row costs
+no layout.
 
 ## Gotchas
 
@@ -535,10 +548,17 @@ cells.
   Pass `rowLabel={(row) => …}` to name them from the row's own data, in your own language.
   The header box is labelled "Select all rows" — still hard-coded — and gets its
   `indeterminate` DOM property set imperatively when only some visible rows are selected.
-- **Selection is announced by the checkbox alone.** The selected `<tr>` gets a colour wash
-  and nothing else — no `aria-selected` (which would not be valid on a `table` row anyway).
-  Anyone not seeing the tint relies entirely on the checkbox state, so keep the checkbox
-  column visible.
+- **Selection is announced twice, on purpose.** The row's checkbox reports `checked`, and
+  the `<tr>` itself carries `aria-selected` — which *is* valid here: a `<tr>` in a `<table>`
+  maps to role `row`, and ARIA 1.2 lists `aria-selected` among that role's supported states
+  in exactly that context. (An earlier version of this page said the opposite. It was
+  wrong.) The row also gets `data-selected="true"` for styling. All of it appears **only**
+  when `selectable` is on — a table with no checkbox column publishes nothing, rather than
+  telling assistive tech that rows it cannot select are all unselected.
+- **The selected row is marked, not just tinted.** [Table](table.md) draws a 3px
+  `--C-ACCENT` bar down the leading edge of a selected row, because the 8% wash alone
+  measures 1.07–1.13:1 against an unselected row across the four shipped themes. See
+  [Table's accessibility notes](table.md#accessibility) for the full measurements.
 - **The loading state announces itself once, on the table.** The skeleton cells are
   `aria-hidden` — one `role="status"` per cell was `rows × columns` polite live regions all
   saying "Loading" — and the `<table>` carries `aria-busy="true"` while `loading` is set.

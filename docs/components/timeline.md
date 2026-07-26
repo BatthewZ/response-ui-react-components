@@ -22,20 +22,22 @@ into view.
 ```
 <!-- /example -->
 
-**Anatomy.** `Timeline` is the `<div class="timeline">` that draws the rail as a `::before`
-pseudo-element. It runs its children through `Children.toArray` and wraps each one in a
-context provider carrying two values — that child's **index**, and the root's `animate`
-setting. `Timeline.Item` reads them: the index decides which direction it enters from
-(even → `fade-right`, odd → `fade-left`), and `animate` decides whether it renders through
-a [ScrollReveal](scroll-reveal.md) or a plain `<div>`. Every item then renders the same two
-boxes — a `timeline-node` holding the dot or your `icon`, absolutely positioned onto the
-rail, and a `timeline-card` holding the optional date, the title and the optional body.
+**Anatomy.** `Timeline` is the `<div class="timeline">`, and each `.timeline-item` draws its
+own segment of the rail as a `::before` — suppressed on the last one, so the line ends where
+the final dot begins however tall that card is. The root wraps its children in a single
+context provider carrying one value, the root's `animate` setting; `Timeline.Item` reads it
+to decide whether it renders through a [ScrollReveal](scroll-reveal.md) or a plain `<div>`.
+Every item then renders the same two boxes — a `timeline-node` holding the dot or your
+`icon`, absolutely positioned onto the rail, and a `timeline-card` holding the optional date,
+the title and the optional body.
 
-The provider itself emits no element, so `.timeline-item` stays a **direct child** of
-`.timeline` — which matters, because the left/right alternation is pure CSS
-`:nth-child(odd)`/`:nth-child(even)` and nothing else. Note that the direction is chosen from
-the index at every width, so below `40rem` — where every card is on the left — entries still
-alternate between entering from the left and entering from the right.
+The provider emits no element, so `.timeline-item` stays a **direct child** of `.timeline` —
+which matters, because everything positional is pure CSS `:nth-child(odd)`/`:nth-child(even)`
+and nothing else. **Both** the side a card lands on and the direction it enters from come off
+that one selector: at `40rem` and up an odd item's card sits left and enters from the left, an
+even item's sits right and enters from the right. Below `40rem` every card is on the left, so
+every entrance is uniform. Nothing is counted in React, which is why a fragment, a `.map` or a
+component rendering two items can no longer split the two apart.
 
 | Part            | Renders                                                              | Props                                                            |
 | --------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -55,7 +57,8 @@ alternate between entering from the left and entering from the right.
 
 | Prop        | Type                                                                | Default |
 | ----------- | ------------------------------------------------------------------- | ------- |
-| `title`     | `string` — **required**, rendered inside a hard-coded `<h3>`          | —       |
+| `title`     | `ReactNode` — **required**, rendered inside the `titleAs` element     | —       |
+| `titleAs`   | `"h1" … "h6"` — the element `title` renders in                        | `"h3"`  |
 | `date`      | `string` — a `<span>` above the title, omitted entirely when falsy     | —       |
 | `icon`      | `ReactNode` — replaces the default dot inside the node                | —       |
 | `children`  | `ReactNode` — the body block under the title; omitted when falsy      | —       |
@@ -63,20 +66,20 @@ alternate between entering from the left and entering from the right.
 | `ref`       | `Ref<HTMLDivElement>` — reaches the rendered element on both paths    | —       |
 | …rest       | `div` props **minus `title`** — dropped unless `animate={false}`       | —       |
 
-`title` is `string`, not `ReactNode`, and the item's div props are
-`Omit<…, "title">` — so the prop always means the heading text and the native `title`
-tooltip attribute is unavailable. There is no prop for the reveal's `threshold`, `delay`,
+`title` is `ReactNode`, and the item's div props are `Omit<…, "title">` — so the prop always
+means the heading content and the native `title` tooltip attribute is unavailable. `titleAs`
+picks the heading level; the `"h3"` default is only correct under an `<h2>`, so set it to
+match the page (see [Accessibility](#accessibility)). There is no prop for the reveal's `threshold`, `delay`,
 `once` or `rootMargin`: every item reveals once, at 10% visibility, with no stagger between
 them, so a screenful of events animates together rather than in sequence.
 
 ## Icons on the rail
 
-`icon` replaces the dot inside the node. Below `40rem` the node's horizontal offset is
-computed from the default dot's `0.875rem` width, so an icon of any other size sits
-off-centre on the rail by half the difference — a 24px glyph lands 5px to the right of the
-line. At `40rem` and up the node is centred with `left: 50%; translateX(-50%)`, which is
-size-agnostic, so the mismatch is a mobile-only artefact. Sizing the glyph to 14px avoids
-it on both:
+`icon` replaces the dot inside the node, at any size: the node is centred on the rail with a
+`translateX(-50%)` at every width, so a 32px glyph and the 14px default dot both land on the
+line. (Until 0.10.1 the mobile offset subtracted half of `--_timeline-dot-size`, which centred
+the *default* dot and nothing else — measured in Firefox at 375px, a 32px icon sat 9px to the
+right of the rail, exactly half the difference.)
 
 <!-- example:CustomIcons -->
 ```tsx
@@ -152,7 +155,7 @@ contract variables directly, the way Tabs and ActivityFeed do.
 
 | Where                                       | Override                                     |
 | ------------------------------------------- | -------------------------------------------- |
-| Rail, and the card's 1px border             | `--C-BORDER-DEFAULT`                         |
+| Rail (per item, `::before`), and the card's 1px border | `--C-BORDER-DEFAULT`              |
 | Default dot fill                            | `--C-ACCENT`                                 |
 | Dot corners                                 | `--RADIUS-FULL`                              |
 | Card surface                                | `--C-SURFACE-1`                              |
@@ -168,14 +171,16 @@ contract variables directly, the way Tabs and ActivityFeed do.
 | Body ink                                    | `--C-TEXT-SECONDARY`                         |
 | Title and body type                         | `--BodyText-2` · `--BodyText-2-line-height`  |
 
-Four values are **component-local, not contract tokens**, and are spelled with a leading
+Five values are **component-local, not contract tokens**, and are spelled with a leading
 underscore to say so: `--_timeline-gutter` and `--_timeline-line-offset` alias the two
-`--R-SIZE-*` steps above, while `--_timeline-dot-size` (`0.875rem`) and
-`--_timeline-line-width` (`2px`) are literals. All four are declared on `.timeline` and the
-node's offset is a `calc()` over all four, so they are interdependent by construction —
-that `calc()` is what puts the dot's centre exactly on the rail's centre below `40rem`.
-Because they are declared on the root element you can still reach them through `style`, but
-they are outside the contract and free to change.
+`--R-SIZE-*` steps above, `--_timeline-dot-size` (`0.875rem`) and `--_timeline-line-width`
+(`2px`) are literals, and `--_timeline-rail-x` is derived
+(`line-offset - gutter`) — the rail's x-position *inside an item*, which the segment and the
+node both read so they cannot drift apart. All five are declared on `.timeline`. The node is
+then centred with `translateX(-50%)` rather than by subtracting half a dot, so the dot's
+centre lands on the rail's centre whatever size the `icon` is. Because they are declared on
+the root element you can still reach them through `style`, but they are outside the contract
+and free to change.
 
 Most of the spacing is on the responsive `r`-scale, where a **lower** number is a **larger**
 value and every step except `--R-SIZE-6` grows at the `40rem` breakpoint: `--R-SIZE-2`
@@ -198,9 +203,11 @@ the same roles.
 The card sits on `--C-SURFACE-1`, so inside an ancestor already painted `--C-SURFACE-1` it
 has nothing but its `--C-BORDER-DEFAULT` hairline to separate it. The date is deliberately
 `--C-TEXT-MUTED`, which is hint-level contrast — treat it as supplementary. Nothing in
-`Timeline.css` animates; the entrance comes from the shared `fade-left`/`fade-right` classes
-in `@batthewz/response-ui-css`, which read the shared `--MOTION-DURATION-ENTER` and
-`--MOTION-EASE-ENTER`, so retiming those retimes every entrance in the system.
+`Timeline.css` declares an animation; the entrance comes from the shared `fade-right` class in
+`@batthewz/response-ui-css`, which reads the shared `--MOTION-DURATION-ENTER` and
+`--MOTION-EASE-ENTER`, so retiming those retimes every entrance in the system. `Timeline.css`
+does re-point that class's `animation-name` to `slide-left, fade` on even items at `40rem` and
+up, which is how the entrance direction stays welded to the card's side.
 
 ## Gotchas
 
@@ -211,26 +218,30 @@ in `@batthewz/response-ui-css`, which read the shared `--MOTION-DURATION-ENTER` 
   `onAnimationEnd` are merged or composed with the reveal's own rather than replacing them — see
   [ScrollReveal's gotchas](scroll-reveal.md#gotchas). `Timeline.Item` passes no `delay`, so the
   reveal contributes no `style` of its own and yours lands as written.
-- **A fragment desynchronises the entrance from the layout.** The side a card lands on is CSS
-  `:nth-child`, counted over the DOM; the direction it enters from is the React index, counted
-  over `Children.toArray`, which does not flatten fragments. Wrap two items in a `<>…</>` and
-  they share one index. Measured on `Item · <>Item Item</> · Item`, the emitted classes are
-  `fade-right · fade-left · fade-left · fade-right`, so entries three and four each slide in
-  from the wrong side, across the rail. Return an array of items, not a fragment of them.
-- **Items must be direct children of the root.** The alternation selector is
+- **Fragments are safe now.** Side and entrance direction used to come from two different
+  counts — CSS `:nth-child` over the DOM, and the React index over `Children.toArray`, which
+  does not descend into fragments — so `Item · <>Item Item</> · Item` emitted
+  `fade-right · fade-left · fade-left · fade-right` against a `left · right · left · right`
+  layout and two entries slid in across the rail. Both now come off the same `:nth-child`
+  rule, so a fragment, a `.map`, or a component that renders two items cannot separate them.
+- **Items must still be direct children of the root.** Everything positional is
   `.timeline-item:nth-child(odd|even)`, which counts inside whatever element actually contains
-  the items. Give each item its own wrapper and every one is `nth-child(1)` — all odd, so every
-  card lands on the left while the entrance direction keeps alternating from the React index.
-  Share one wrapper between several and they alternate inside it, again out of step with that
-  index. The rail is drawn on the root, so it stays put either way.
-- **A non-`Item` child is rendered as-is.** The root wraps any child in a provider and hands it
-  through. A bare `<div>` between two items gets no `.timeline-item` class, no node and no dot —
-  but it still occupies an index *and* an `nth-child` slot, so index and slot stay in step and
-  the alternation of the real items continues correctly around it.
-- **The rail overshoots the last dot.** `.timeline::before` is pinned `top: 0; bottom: 0` on the
-  root while `.timeline-node` sits at `top: 0` of its item, so the line runs from the top edge of
-  the first card down to the bottom edge of the last one — a tail as tall as the final card hangs
-  below the final dot.
+  the items. Give each item its own wrapper and every one is `nth-child(1)` — all on the left,
+  all entering the same way. Share one wrapper between several and they alternate inside it,
+  against a rail drawn per item inside that wrapper. Since side and direction now move
+  together, a wrapper makes the layout wrong but never *inconsistent*.
+- **A non-`Item` child is rendered as-is, and now breaks the rail.** The root hands any child
+  straight through. A bare `<div>` between two items gets no `.timeline-item` class, no node
+  and no dot — and, since the rail is drawn per item, **no rail segment either**, so the line
+  has a gap the height of that child. (The old single root-level rail ran behind it; that is
+  the one thing the per-item rail gave up to stop overshooting the last dot.) It also occupies
+  an `nth-child` slot, so it flips the alternation of every item after it. Keep non-items out
+  of the root, or accept the break.
+- **The rail ends at the last dot.** Each item draws its own segment as a `::before` spanning
+  its full height, and `:last-child::before` is suppressed — so the line stops exactly where
+  the final node sits, whatever that card's height. (Before 0.10.1 a single `.timeline::before`
+  was pinned `top: 0; bottom: 0` on the root: measured in Firefox at 1280px, the rail ran
+  **270px** past the final dot — the full height of the last card — and 214px at 375px.)
 - **Left-hand cards are right-aligned on desktop.** At `40rem` and up,
   `.timeline-item:nth-child(odd) .timeline-card` sets `text-align: right`, which applies to the
   date, the title *and* your body content. Alternate entries therefore read ragged-left. There is
@@ -242,14 +253,15 @@ in `@batthewz/response-ui-css`, which read the shared `--MOTION-DURATION-ENTER` 
   layer ends at byte 30370, `.timeline-item` sits at 100794. So `className="pb-r3"` on an item
   loses to `.timeline-item`'s `padding-bottom`; the important form `pb-r3!` wins, because for
   important declarations the layer order is reversed.
-- **Key your children.** The root keys each item's provider by the child's own key, so a
-  keyed list survives a prepend or a reorder: the entries move rather than unmounting, keeping
-  component state and not replaying the entrance. Children with no `key` of their own fall
-  back to position, where a prepend still remounts the tail.
+- **Key your children.** Items are rendered straight into the root with no wrapper of their
+  own, so React reconciles them against your keys: a keyed list survives a prepend or a
+  reorder, the entries move rather than unmounting, and component state and the entrance
+  animation are kept. Children with no `key` of their own fall back to position, where a
+  prepend still remounts the tail.
 - **`Timeline.Item` never throws outside `<Timeline>`.** With no provider it falls back to
-  index `0` and `animate: true`, so it renders a lone animated card — but the
-  `--_timeline-*` locals it positions the node against are declared on `.timeline`, so an
-  orphaned item has no rail to sit on and no resolvable offset to sit at.
+  `animate: true`, so it renders a lone animated card — but the `--_timeline-*` locals it
+  positions the node against are declared on `.timeline`, so an orphaned item has no rail to
+  sit on and no resolvable offset to sit at.
 - **Always a client boundary.** `Timeline.tsx` carries `"use client"`, so a server component can
   import it but it always ships JavaScript.
 
@@ -270,10 +282,13 @@ as the list example shows.
 - **Reduced motion is honoured on both paths.** Under `prefers-reduced-motion: reduce` the
   hook short-circuits the observer *and* the shared CSS resolves `.scroll-reveal-hidden` to
   `opacity: 1`, so those readers get a static, fully visible timeline even without JavaScript.
-- **Every title is a hard-coded `<h3>`.** There is no `as` or `level` prop, and `title` is typed
-  `string`, so you cannot supply your own element either. A timeline under an `<h1>` skips a
-  level, and one under an existing `<h3>` flattens against it. Anyone navigating by heading gets
-  one stop per event, whether or not that is the outline you wanted.
+- **The heading level is yours, and the default is a guess.** `titleAs` picks the element —
+  `"h3"` by default, which is right under an `<h2>` and wrong everywhere else: a timeline under
+  an `<h1>` wants `"h2"`, one under an `<h3>` wants `"h4"`. `title` is `ReactNode`, so the
+  content can be a link or an emphasised fragment. What you cannot do is make an entry *not* a
+  heading: the element is always one of `h1`–`h6`, so anyone navigating by heading gets one
+  stop per event. If that is the wrong outline, render the events yourself rather than reaching
+  for a non-heading `titleAs`.
 - **`date` is a `<span>`, not a `<time>`.** No `dateTime` attribute is emitted, so assistive tech
   reads whatever string you pass, verbatim and unparsed. Write dates you would be happy to hear
   read aloud, or pass a full date and let the card be wordy.

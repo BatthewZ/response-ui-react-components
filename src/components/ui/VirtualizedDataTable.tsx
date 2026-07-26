@@ -259,6 +259,7 @@ export function VirtualizedDataTable<T>({
                   : undefined
               }
               onSort={col.sortable ? () => handleSort(col.key) : undefined}
+              sortLabel={col.sortLabel}
             >
               {col.header}
             </Table.HeaderCell>
@@ -352,7 +353,10 @@ export function VirtualizedDataTable<T>({
               key={key}
               index={index}
               aria-rowindex={index + 2}
-              selected={selection.has(key)}
+              // `selected` only where there IS a selection model: passing it
+              // publishes `aria-selected` on the row, and a table with no
+              // checkbox column must not claim its rows are selectable (#351).
+              selected={selectable ? selection.has(key) : undefined}
               style={{ height: rowHeight }}
             >
               {selectable && (

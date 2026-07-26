@@ -1,8 +1,25 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { forwardRef, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Breadcrumbs } from "./Breadcrumbs";
+import {
+  RouterAdapterProvider,
+  type RouterLinkComponent,
+} from "../router/router-adapter";
+
+// Minimal stand-in for the adapter's own default Link, so the pathname test
+// below only varies the pathname.
+const DefaultAdapterLink = forwardRef<HTMLAnchorElement, { to: string; children?: ReactNode }>(
+  function TestLink({ to, children, ...rest }, ref) {
+    return (
+      <a ref={ref} href={to} {...rest}>
+        {children}
+      </a>
+    );
+  },
+) as RouterLinkComponent;
 
 // Breadcrumbs.Item uses useLink() from the router adapter, defaulting to a
 // plain <a>, so no router wrapping is required for these tests.
@@ -132,6 +149,131 @@ describe("Breadcrumbs", () => {
     expect(
       screen.queryByRole("button", { name: "Show more breadcrumbs" }),
     ).not.toBeInTheDocument();
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  #139 · expansion is remembered against the trail, not forever    */
+  /* ---------------------------------------------------------------- */
+
+  describe("expansion resets when the trail changes", () => {
+    function Trail({ crumbs }: { crumbs: string[] }) {
+      return (
+        <Breadcrumbs maxItems={2}>
+          {crumbs.map((c) => (
+            <Breadcrumbs.Item key={c} href={`/${c}`}>
+              {c}
+            </Breadcrumbs.Item>
+          ))}
+        </Breadcrumbs>
+      );
+    }
+
+    it("a re-keyed trail on the same instance starts collapsed again", async () => {
+      const user = userEvent.setup();
+      const { rerender } = renderWithRouter(<Trail crumbs={["A", "B", "C", "D"]} />);
+
+      await user.click(screen.getByRole("button", { name: "Show more breadcrumbs" }));
+      expect(screen.getByText("B")).toBeInTheDocument();
+
+      // Same instance, same crumb count, different crumbs — a navigation.
+      rerender(<Trail crumbs={["W", "X", "Y", "Z"]} />);
+
+      expect(
+        screen.getByRole("button", { name: "Show more breadcrumbs" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("X")).not.toBeInTheDocument();
+    });
+
+    // The crumbs a router-driven trail renders are often positional, so
+    // `Children.toArray` hands them the same `.0`/`.1` keys on every route and
+    // the keys alone cannot see the navigation. The pathname can.
+    it("a pathname change resets an identically-keyed trail", async () => {
+      const user = userEvent.setup();
+      let path = "/a/b/c/d";
+      const Adapter = ({ children }: { children: React.ReactNode }) => (
+        <RouterAdapterProvider value={{ Link: DefaultAdapterLink, usePathname: () => path }}>
+          {children}
+        </RouterAdapterProvider>
+      );
+      const Positional = () => (
+        <Breadcrumbs maxItems={2}>
+          <Breadcrumbs.Item href="/1">One</Breadcrumbs.Item>
+          <Breadcrumbs.Item href="/2">Two</Breadcrumbs.Item>
+          <Breadcrumbs.Item href="/3">Three</Breadcrumbs.Item>
+          <Breadcrumbs.Item current>Four</Breadcrumbs.Item>
+        </Breadcrumbs>
+      );
+
+      const { rerender } = render(
+        <Adapter>
+          <Positional />
+        </Adapter>,
+      );
+      await user.click(screen.getByRole("button", { name: "Show more breadcrumbs" }));
+      expect(screen.getByText("Two")).toBeInTheDocument();
+
+      path = "/x/y/z/w";
+      rerender(
+        <Adapter>
+          <Positional />
+        </Adapter>,
+      );
+
+      expect(
+        screen.getByRole("button", { name: "Show more breadcrumbs" }),
+      ).toBeInTheDocument();
+    });
+
+    it("an unrelated re-render of the same trail stays expanded", async () => {
+      const user = userEvent.setup();
+      const { rerender } = renderWithRouter(<Trail crumbs={["A", "B", "C", "D"]} />);
+
+      await user.click(screen.getByRole("button", { name: "Show more breadcrumbs" }));
+      rerender(<Trail crumbs={["A", "B", "C", "D"]} />);
+
+      expect(screen.getByText("B")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Show more breadcrumbs" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  #146 · a caller-rendered Separator replaces the auto one         */
+  /* ---------------------------------------------------------------- */
+
+  describe("Breadcrumbs.Separator rendered by the caller", () => {
+    it("replaces the auto separator for that gap instead of tripling it", () => {
+      const { container } = renderWithRouter(
+        <Breadcrumbs>
+          <Breadcrumbs.Item href="/a">A</Breadcrumbs.Item>
+          <Breadcrumbs.Separator>&rsaquo;</Breadcrumbs.Separator>
+          <Breadcrumbs.Item current>B</Breadcrumbs.Item>
+        </Breadcrumbs>,
+      );
+
+      const separators = container.querySelectorAll(".breadcrumbs__separator");
+      expect(separators).toHaveLength(1);
+      expect(separators[0]).toHaveTextContent("›");
+    });
+
+    it("is not counted as a crumb by the collapse arithmetic", () => {
+      renderWithRouter(
+        <Breadcrumbs maxItems={3}>
+          <Breadcrumbs.Item href="/a">A</Breadcrumbs.Item>
+          <Breadcrumbs.Separator>&rsaquo;</Breadcrumbs.Separator>
+          <Breadcrumbs.Item href="/b">B</Breadcrumbs.Item>
+          <Breadcrumbs.Item current>C</Breadcrumbs.Item>
+        </Breadcrumbs>,
+      );
+
+      // Three crumbs against maxItems={3} — nothing to collapse. Counting the
+      // caller's separator as a fourth child used to fold the trail.
+      expect(
+        screen.queryByRole("button", { name: "Show more breadcrumbs" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("B")).toBeInTheDocument();
+    });
   });
 
   /* ---------------------------------------------------------------- */

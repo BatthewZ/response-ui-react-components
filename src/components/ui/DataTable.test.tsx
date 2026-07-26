@@ -160,6 +160,66 @@ describe("DataTable", () => {
     expect(row1).not.toBeChecked();
   });
 
+  /* ---------------------------------------------------------------- */
+  /*  #482 · ColumnDef.sortLabel reaches Table.HeaderCell               */
+  /* ---------------------------------------------------------------- */
+
+  it("ColumnDef.sortLabel names the sort button, and '' leaves the column alone", () => {
+    const { unmount } = render(
+      <DataTable
+        data={data}
+        columns={[{ key: "name", header: "Name", sortable: true, sortLabel: "Trier par" }]}
+        rowKey={rowKey}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Trier par Name" })).toBeInTheDocument();
+    unmount();
+
+    render(
+      <DataTable
+        data={data}
+        columns={[{ key: "name", header: "Name", sortable: true, sortLabel: "" }]}
+        rowKey={rowKey}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Name" })).toBeInTheDocument();
+  });
+
+  it("a column with no sortLabel keeps the English default", () => {
+    render(
+      <DataTable
+        data={data}
+        columns={[{ key: "name", header: "Name", sortable: true }]}
+        rowKey={rowKey}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Sort by Name" })).toBeInTheDocument();
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  #351 · selection reaches assistive tech on the row itself         */
+  /* ---------------------------------------------------------------- */
+
+  it("publishes aria-selected on selectable rows and nothing on unselectable ones", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <DataTable data={data} columns={columns} rowKey={rowKey} selectable />,
+    );
+
+    const bodyRow = () =>
+      screen.getAllByRole("row").filter((r) => r.closest("tbody"))[0];
+
+    expect(bodyRow()).toHaveAttribute("aria-selected", "false");
+    expect(bodyRow()).not.toHaveAttribute("data-selected");
+
+    await user.click(screen.getByRole("checkbox", { name: /select row 1/i }));
+    expect(bodyRow()).toHaveAttribute("aria-selected", "true");
+    expect(bodyRow()).toHaveAttribute("data-selected", "true");
+
+    rerender(<DataTable data={data} columns={columns} rowKey={rowKey} />);
+    expect(bodyRow()).not.toHaveAttribute("aria-selected");
+  });
+
   it("select-all works uncontrolled and reports through onSelectionChange", async () => {
     const user = userEvent.setup();
     const onSelectionChange = vi.fn();

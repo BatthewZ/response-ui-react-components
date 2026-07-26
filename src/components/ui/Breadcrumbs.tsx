@@ -4,6 +4,7 @@ import {
   type ComponentPropsWithRef,
   createContext,
   forwardRef,
+  isValidElement,
   type ReactNode,
   useContext,
   useState,
@@ -11,7 +12,7 @@ import {
 
 import { cn } from "../../util/style";
 
-import { useLink } from "../router/router-adapter";
+import { useLink, usePathname } from "../router/router-adapter";
 
 // Context
 type BreadcrumbsContextValue = { separator: ReactNode };
@@ -46,56 +47,93 @@ const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
     },
     ref,
   ) {
-    const [expanded, setExpanded] = useState(false);
-
+    const pathname = usePathname();
     const childArray = Children.toArray(children);
+
+    // #146: a caller-rendered `Breadcrumbs.Separator` is a per-gap override of
+    // the root's own, not another crumb. Pairing it with the crumb it precedes
+    // is what makes the exported sub-part usable: the root no longer wraps it
+    // in two more separators (`/ › /`), and the collapse arithmetic below
+    // counts crumbs — which is what `maxItems` means — rather than list items.
+    // A separator with no crumb after it has no gap to sit in and is dropped.
+    const crumbs: { node: ReactNode; separator?: ReactNode }[] = [];
+    let pendingSeparator: ReactNode | undefined;
+    for (const child of childArray) {
+      if (isValidElement(child) && child.type === BreadcrumbsSeparator) {
+        pendingSeparator = child;
+        continue;
+      }
+      crumbs.push({ node: child, separator: pendingSeparator });
+      pendingSeparator = undefined;
+    }
+
+    // #139: remember WHICH trail was expanded, not that one was. A boolean is
+    // set once and nothing ever unsets it, so a single <Breadcrumbs> kept
+    // mounted across navigations stayed expanded for the life of the page.
+    // Keyed to the quantity that changes: the current pathname plus the crumbs'
+    // own React keys (`Children.toArray` gives every element one, derived from
+    // the caller's where there is one). A new route, or a re-keyed trail on the
+    // same route, is a different trail and starts collapsed — with no effect,
+    // no remount and no `key={pathname}` on the caller's side.
+    const trailId = JSON.stringify([
+      pathname,
+      ...crumbs.map(({ node }) => (isValidElement(node) ? node.key : null)),
+    ]);
+    const [expandedTrail, setExpandedTrail] = useState<string | null>(null);
+    const expanded = expandedTrail === trailId;
 
     // Head and tail are clamped so they cannot overlap: `itemsBeforeCollapse=2`
     // + `itemsAfterCollapse=2` over three crumbs used to slice the middle one
     // into both halves, rendering it twice under a duplicate React key. If the
     // two halves cover everything, there is nothing behind the ellipsis and the
     // full trail renders instead (#138).
-    const headCount = Math.max(0, Math.min(itemsBeforeCollapse, childArray.length));
-    const tailStart = Math.max(headCount, childArray.length - Math.max(0, itemsAfterCollapse));
+    const headCount = Math.max(0, Math.min(itemsBeforeCollapse, crumbs.length));
+    const tailStart = Math.max(headCount, crumbs.length - Math.max(0, itemsAfterCollapse));
     const shouldCollapse =
       maxItems !== undefined &&
       !expanded &&
-      childArray.length > maxItems &&
+      crumbs.length > maxItems &&
       tailStart > headCount;
 
-    let displayedItems: ReactNode[];
+    let displayedItems: { node: ReactNode; separator?: ReactNode }[];
     if (shouldCollapse) {
-      const before = childArray.slice(0, headCount);
-      const after = childArray.slice(tailStart);
       displayedItems = [
-        ...before,
-        <li key="__ellipsis" className="breadcrumbs__item">
-          <button
-            type="button"
-            className="breadcrumbs__ellipsis"
-            aria-label="Show more breadcrumbs"
-            onClick={() => setExpanded(true)}
-          >
-            &hellip;
-          </button>
-        </li>,
-        ...after,
+        ...crumbs.slice(0, headCount),
+        {
+          node: (
+            <li key="__ellipsis" className="breadcrumbs__item">
+              <button
+                type="button"
+                className="breadcrumbs__ellipsis"
+                aria-label="Show more breadcrumbs"
+                onClick={() => setExpandedTrail(trailId)}
+              >
+                &hellip;
+              </button>
+            </li>
+          ),
+        },
+        // The first crumb after the ellipsis takes the root's separator: the
+        // caller wrote theirs against a gap that is now hidden.
+        ...crumbs.slice(tailStart).map((c, i) => (i === 0 ? { node: c.node } : c)),
       ];
     } else {
-      displayedItems = childArray;
+      displayedItems = crumbs;
     }
 
     // Interleave separators between items
     const withSeparators: ReactNode[] = [];
-    displayedItems.forEach((child, i) => {
+    displayedItems.forEach(({ node, separator: own }, i) => {
       if (i > 0) {
         withSeparators.push(
-          <BreadcrumbsSeparator key={`sep-${i}`}>
-            {separator}
-          </BreadcrumbsSeparator>,
+          own ?? (
+            <BreadcrumbsSeparator key={`sep-${i}`}>
+              {separator}
+            </BreadcrumbsSeparator>
+          ),
         );
       }
-      withSeparators.push(child);
+      withSeparators.push(node);
     });
 
     return (

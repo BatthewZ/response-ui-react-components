@@ -21,9 +21,62 @@ describe("Sparkline", () => {
     expect(screen.getByRole("img")).toBeInTheDocument();
   });
 
-  it("provides a default aria-label describing the value count", () => {
-    render(<Sparkline values={[1, 2, 3, 4]} />);
-    expect(screen.getByRole("img")).toHaveAttribute("aria-label", "Sparkline of 4 values");
+  /* ------------------------------------------------------------------ */
+  /*  #29 · the default name describes the data, and img is opt-out      */
+  /* ------------------------------------------------------------------ */
+
+  it("the default aria-label describes the series, not its length", () => {
+    render(<Sparkline values={[12, 18, 15, 28]} />);
+    expect(screen.getByRole("img")).toHaveAttribute(
+      "aria-label",
+      "Sparkline: 4 values, 12 to 28, rising, low 12, high 28",
+    );
+  });
+
+  it("names the direction from the ends, not the extremes", () => {
+    render(<Sparkline values={[28, 40, 12]} />);
+    expect(screen.getByRole("img")).toHaveAttribute(
+      "aria-label",
+      "Sparkline: 3 values, 28 to 12, falling, low 12, high 40",
+    );
+  });
+
+  it("degenerate series still name themselves", () => {
+    const { unmount } = render(<Sparkline values={[]} />);
+    expect(screen.getByRole("img")).toHaveAttribute("aria-label", "Sparkline: no data");
+    unmount();
+
+    const single = render(<Sparkline values={[7]} />);
+    expect(screen.getByRole("img")).toHaveAttribute("aria-label", "Sparkline: one value, 7");
+    single.unmount();
+
+    render(<Sparkline values={[5, 5, 5]} />);
+    expect(screen.getByRole("img")).toHaveAttribute(
+      "aria-label",
+      "Sparkline: 3 values, 5 to 5, level, low 5, high 5",
+    );
+  });
+
+  it("aria-hidden is a real decorative mode: no role, no name", () => {
+    const { container } = render(<Sparkline values={[1, 2, 3]} aria-hidden />);
+    const svg = container.querySelector("svg")!;
+    expect(svg).not.toHaveAttribute("role");
+    expect(svg).not.toHaveAttribute("aria-label");
+    expect(svg).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  it("aria-labelledby names it instead, with no competing aria-label", () => {
+    const { container } = render(
+      <>
+        <span id="cap">Revenue, last 7 days</span>
+        <Sparkline values={[1, 2, 3]} aria-labelledby="cap" />
+      </>,
+    );
+    const svg = container.querySelector("svg")!;
+    expect(svg).toHaveAttribute("role", "img");
+    expect(svg).not.toHaveAttribute("aria-label");
+    expect(screen.getByRole("img", { name: "Revenue, last 7 days" })).toBeInTheDocument();
   });
 
   it("allows the aria-label to be overridden", () => {

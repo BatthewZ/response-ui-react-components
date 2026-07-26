@@ -30,11 +30,11 @@ Top-level barrel exports everything. The grouping below mirrors the source layou
 Accordion, Alert, AppShell, Avatar, AvatarGroup, AvatarUpload + types
 AvatarUploadProps/AvatarUploadResult, Badge, Breadcrumbs,
 Button, Calendar, RangeCalendar + type DateRange, Card, Carousel, CodeBlock, Collapsible, CommandPalette + type
-CommandItem, ContextMenu, CopyButton, DataTable + type ColumnDef + type SortState, Dialog, Drawer,
+CommandItem, ContextMenu, CopyButton, DataTable + type DataTableProps + type ColumnDef + type SortState, Dialog, Drawer,
 DropdownMenu, EmptyState + EmptyState{Title,Description,Icon,Actions}, ErrorBoundary,
 FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination,
 Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper,
-Swimlane, Table, Tabs, Text, ThemeSwitcher, Timeline, Toast + type ToastVariant,
+Swimlane, Table + type TableProps, Tabs, Text, ThemeSwitcher, Timeline, Toast + type ToastVariant,
 ToastProvider, useToast, Tooltip, VirtualizedDataTable + type
 VirtualizedDataTableProps, Wizard + useWizard + types
 WizardProps/WizardStep/UseWizardOptions/UseWizardReturn

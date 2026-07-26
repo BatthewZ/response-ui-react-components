@@ -10,6 +10,12 @@
 }
 
 .table {
+  /* Width of the leading marker a selected row paints (#351). A component
+     dimension rather than page spacing, so a literal — same call as
+     Timeline's dot size. */
+  --_table-selected-marker-width: 3px;
+  --_table-selected-marker-side: to right;
+
   width: 100%;
   border-collapse: collapse;
   background: var(--C-SURFACE-0);
@@ -100,10 +106,6 @@
   border-bottom: none;
 }
 
-.table-row--selected {
-  background: color-mix(in oklch, var(--C-ACCENT) 8%, transparent);
-}
-
 /* The class is emitted only on the rows that are actually banded — parity is
    decided from the data index in Table.tsx, not from DOM position, so a detail
    row or a virtualiser spacer between two data rows cannot flip the bands below
@@ -112,8 +114,40 @@
   background: var(--C-SURFACE-1);
 }
 
-.table-row--selected.table-row--striped {
-  background: color-mix(in oklch, var(--C-ACCENT) 8%, transparent);
+/* #351. The 8% wash is not a signal: measured from rendered pixels in Firefox
+   146 against @batthewz/response-ui-css v0.10.0, a selected row reads
+   1.11 / 1.12 / 1.13 / 1.07 against an unselected one (default / events / tech /
+   grimdark) and 1.06 / 1.08 / 1.11 / 1.00 against a striped one — in grimdark a
+   selected row and an ordinary banded row are literally the same luminance.
+   The leading marker is what carries the state visually; the wash is
+   reinforcement. --C-ACCENT painted over the washed row measures
+   4.65 / 4.38 / 13.08 / 5.30 in the same run, clearing the 3:1 WCAG 1.4.11 asks
+   of a non-text indicator in all four themes.
+
+   Painted as a background-image, not a border: in the collapsed border model a
+   `border-inline-start` on a `<tr>` joins border-conflict resolution and moves
+   the row's content, so selecting a row would reflow it. A background layer
+   costs no layout.
+
+   Declared AFTER .table-row--striped so a selected banded row takes the wash at
+   equal specificity — that is what the separate
+   `.table-row--selected.table-row--striped` rule used to do, and one rule
+   cannot drift from the other. */
+.table-row--selected {
+  background-color: color-mix(in oklch, var(--C-ACCENT) 8%, transparent);
+  background-image: linear-gradient(
+    var(--_table-selected-marker-side),
+    var(--C-ACCENT) 0 var(--_table-selected-marker-width),
+    transparent var(--_table-selected-marker-width)
+  );
+  background-repeat: no-repeat;
+}
+
+/* A gradient has no logical direction, so the inline-start edge is chosen here
+   rather than baked into the gradient — same call Carousel.css makes with
+   `inset-inline-start` for its arrows. */
+.table-row--selected:dir(rtl) {
+  --_table-selected-marker-side: to left;
 }
 
 /* Cell */

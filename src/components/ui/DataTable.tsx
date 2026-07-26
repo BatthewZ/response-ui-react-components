@@ -29,7 +29,7 @@ export type { ColumnDef, SortState } from "./data-table-utils";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type DataTableProps<T> = {
+export type DataTableProps<T> = {
   // Data
   data: T[];
   columns: ColumnDef<T>[];
@@ -360,6 +360,7 @@ export function DataTable<T>({
                   : undefined
               }
               onSort={col.sortable ? () => handleSort(col.key) : undefined}
+              sortLabel={col.sortLabel}
             >
               {col.header}
             </Table.HeaderCell>
@@ -413,7 +414,10 @@ export function DataTable<T>({
       const isExpanded = expandable && expanded.has(key);
       return (
         <Fragment key={key}>
-          <Table.Row index={i} selected={selection.has(key)}>
+          {/* `selected` only where there IS a selection model: passing it
+              publishes `aria-selected` on the row, and a table with no
+              checkbox column must not claim its rows are selectable (#351). */}
+          <Table.Row index={i} selected={selectable ? selection.has(key) : undefined}>
             {expandable && (
               <Table.Cell>
                 <button
