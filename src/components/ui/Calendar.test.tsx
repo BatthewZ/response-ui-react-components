@@ -599,3 +599,100 @@ describe("Calendar", () => {
     });
   });
 });
+
+/**
+ * #310 / #311 — which of `month` and the selection owns the visible window.
+ *
+ * The rule: a *change* in the selection moves an uncontrolled view; a controlled
+ * `month` always wins and is asked instead, via `onMonthChange`. It has to be
+ * edge-triggered on the change — a view that re-asserts to the selection on
+ * every render cannot be paged away from. Avoiding that is why the seed was
+ * mount-only, and why the selection could previously never move the view at all:
+ * re-rendering `value` from June to September left the grid on June with **no
+ * day marked selected anywhere**.
+ */
+describe("#310 · the view follows a change of selection", () => {
+  const JUNE_10 = new Date(2026, 5, 10);
+  const SEPT_3 = new Date(2026, 8, 3);
+  const label = (d: Date) => getMonthLabel(d, "en-US");
+
+  it("an uncontrolled month follows the selection to another month", () => {
+    const { rerender } = render(<Calendar value={JUNE_10} locale="en-US" />);
+    expect(screen.getByRole("grid")).toHaveAccessibleName(label(new Date(2026, 5, 1)));
+
+    rerender(<Calendar value={SEPT_3} locale="en-US" />);
+
+    expect(screen.getByRole("grid")).toHaveAccessibleName(label(new Date(2026, 8, 1)));
+    expect(dayButton("3")).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("notifies the parent that the view moved", () => {
+    const onMonthChange = vi.fn();
+    const { rerender } = render(
+      <Calendar value={JUNE_10} onMonthChange={onMonthChange} locale="en-US" />,
+    );
+    onMonthChange.mockClear();
+
+    rerender(<Calendar value={SEPT_3} onMonthChange={onMonthChange} locale="en-US" />);
+
+    expect(onMonthChange).toHaveBeenCalledTimes(1);
+    expect((onMonthChange.mock.calls[0][0] as Date).getMonth()).toBe(8);
+  });
+
+  it("does not re-assert, so a user can page away from the selection and stay", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<Calendar value={JUNE_10} locale="en-US" />);
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    expect(screen.getByRole("grid")).toHaveAccessibleName(label(new Date(2026, 6, 1)));
+
+    // An unrelated re-render with the SAME selection must not yank the view back.
+    rerender(<Calendar value={new Date(2026, 5, 10)} locale="en-US" />);
+
+    expect(screen.getByRole("grid")).toHaveAccessibleName(label(new Date(2026, 6, 1)));
+  });
+
+  it("a selection change inside the visible window leaves the view alone", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<Calendar value={JUNE_10} locale="en-US" />);
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    expect(screen.getByRole("grid")).toHaveAccessibleName(label(new Date(2026, 6, 1)));
+
+    rerender(<Calendar value={new Date(2026, 6, 20)} locale="en-US" />);
+
+    expect(screen.getByRole("grid")).toHaveAccessibleName(label(new Date(2026, 6, 1)));
+  });
+
+  it("a controlled month wins; the move is a request, not a fact", () => {
+    const onMonthChange = vi.fn();
+    const JUNE_1 = new Date(2026, 5, 1);
+    const { rerender } = render(
+      <Calendar value={JUNE_10} month={JUNE_1} onMonthChange={onMonthChange} locale="en-US" />,
+    );
+    onMonthChange.mockClear();
+
+    rerender(
+      <Calendar value={SEPT_3} month={JUNE_1} onMonthChange={onMonthChange} locale="en-US" />,
+    );
+
+    expect(screen.getByRole("grid")).toHaveAccessibleName(label(JUNE_1));
+    expect(onMonthChange).toHaveBeenCalledTimes(1);
+    expect((onMonthChange.mock.calls[0][0] as Date).getMonth()).toBe(8);
+  });
+});
+
+describe("#311 · an explicit defaultMonth beats a seeded selection", () => {
+  it("mounts on defaultMonth when a value is given too", () => {
+    render(
+      <Calendar
+        value={new Date(2026, 5, 10)}
+        defaultMonth={new Date(2026, 0, 1)}
+        locale="en-US"
+      />,
+    );
+
+    expect(screen.getByRole("grid")).toHaveAccessibleName(
+      getMonthLabel(new Date(2026, 0, 1), "en-US"),
+    );
+  });
+});

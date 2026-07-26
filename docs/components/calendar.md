@@ -45,8 +45,8 @@ Selection and displayed month are two independent controlled/uncontrolled pairs.
 `value` (even `null`) and you own the selection; pass `month` and you own what is on
 screen. `onValueChange` and `onMonthChange` fire in **both** modes. Rest props land on the
 root `<div>` — `id`, `role`, `aria-label`, `data-*`, `style` and handlers all arrive
-intact. The two pairs interact in ways that will surprise you: `defaultMonth` loses to
-`value`, and a controlled `value` will not move the calendar. See [Gotchas](#gotchas).
+intact. The two pairs interact: the view **follows a change of selection** when you don't
+own it, and `month` always wins when you do. See [Gotchas](#gotchas).
 
 ## Restricting what can be picked
 
@@ -220,15 +220,20 @@ you can override it, and you almost certainly should not.
 
 ## Gotchas
 
-- **`defaultMonth` loses to `value`/`defaultValue`.** The displayed month is seeded from
-  the selected date first and only falls back to `defaultMonth`. Measured:
-  `<Calendar defaultMonth={new Date(2026, 5, 1)} defaultValue={new Date(2026, 0, 20)} />`
-  opens on **January 2026**, not June. Pass one or the other.
-- **A controlled `value` never moves the calendar after mount.** Measured: re-rendering
-  from `value={June 10}` to `value={September 3}` leaves the grid on June, with **no day
-  marked selected at all** and the roving tab stop still on June 10. If anything outside
-  the grid can change the date — a text field, a "next available slot" button, a URL param
-  — you must drive `month` alongside it.
+- **The view follows a *change* of selection, not the selection itself.** Re-render `value`
+  from June 10 to September 3 and the grid moves to September with the 3rd marked — and
+  `onMonthChange` fires so you know it moved. But it is edge-triggered on the change, so
+  paging away from the selection *stays*: navigate to July with the selection still on June
+  10, and no amount of unrelated re-rendering drags you back. A selection change that lands
+  inside the months already on screen moves nothing.
+- **A controlled `month` always wins — the follow becomes a request.** When you own `month`,
+  a selection change that lands off-screen does not move the grid; it calls `onMonthChange`
+  with the month that *would* show it, exactly as the ‹ › buttons do. Honour it or ignore
+  it. One code path for both, so a controlled caller never needs to special-case this.
+- **`defaultMonth` beats a seeded selection.** `<Calendar defaultMonth={June 2026}
+  defaultValue={20 Jan 2026} />` opens on **June** — the month you named explicitly, not the
+  one inferred from the selection. Pass `defaultMonth` when you want to open somewhere the
+  selection isn't; omit it and the selection seeds the view.
 - **`showToday` emits a different kind of `Date`.** A day cell emits local midnight; the
   Today button emits `new Date()`, the current wall-clock instant. Measured on the same
   render: `00:00:00.000` from the grid, `02:18:01.670` from the button. Two picks of the

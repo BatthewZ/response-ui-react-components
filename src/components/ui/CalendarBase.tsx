@@ -146,7 +146,11 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
     return isDateDisabled?.(d) ?? false;
   }
 
-  const seedMonth = startOfMonth(focusAnchor ?? defaultMonth ?? today);
+  // `defaultMonth` first: it is the caller saying which month to open on, where
+  // the anchor is only inferred from the selection. The opposite precedence let
+  // any seeded selection silently override an explicit `defaultMonth` (#311),
+  // and inverted `Calendar.tsx`'s own `defaultMonth ?? value`.
+  const seedMonth = startOfMonth(defaultMonth ?? focusAnchor ?? today);
   const [displayedMonth, setDisplayedMonth] = useControllableState<Date>({
     value: month ? startOfMonth(month) : undefined,
     defaultValue: seedMonth,
@@ -159,6 +163,30 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
   function isMonthVisible(d: Date): boolean {
     const o = monthOrdinal(d);
     return o >= firstOrdinal && o <= lastOrdinal;
+  }
+
+  // The window follows the selection — but only when the selection *changes*.
+  // Edge-triggered against the previous anchor, not re-derived each render:
+  // level-triggering would drag the view back every time anything re-rendered,
+  // and a user who paged away from the selection could never stay there. This is
+  // React's documented adjust-state-during-render pattern, the same shape
+  // `AppShell` uses to close its drawer on navigation.
+  //
+  // `setDisplayedMonth` is a *request*, not a fact. Uncontrolled, it moves the
+  // view. With a controlled `month` the prop wins and the parent is asked via
+  // `onMonthChange` — identical to what the ‹ › buttons already do, so a
+  // controlled caller handles both through one path.
+  //
+  // Without this, re-rendering `value` from June to September left the grid on
+  // June with no day marked selected anywhere: the seed is read once by
+  // `useState`, so nothing connected a selection change to the visible window.
+  const anchorKey = focusAnchor ? dayKey(focusAnchor) : null;
+  const [prevAnchorKey, setPrevAnchorKey] = useState(anchorKey);
+  if (prevAnchorKey !== anchorKey) {
+    setPrevAnchorKey(anchorKey);
+    if (focusAnchor && !isMonthVisible(focusAnchor)) {
+      setDisplayedMonth(startOfMonth(focusAnchor));
+    }
   }
 
   const rootRef = useRef<HTMLDivElement>(null);

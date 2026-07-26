@@ -257,15 +257,16 @@ that component, not from `Calendar.css`.
 - **Blocked days can sit inside a committed range.** `min`, `max`, and `isDateDisabled`
   reject *endpoints* only. Measured: with weekends disabled, Friday → Monday commits and
   the Saturday between them carries both `aria-disabled="true"` and `data-in-range`.
-- **The view does not follow `value`.** The displayed month is seeded on the first render
-  and never re-derived. Measured: a controlled calendar showing June, handed a range of
-  1–7 October by a preset button, stays on June and renders **no endpoint at all** — the
-  selection is silently off-screen. Drive `month` + `onMonthChange` as well, or remount the
-  calendar (which is what [DateRangePicker](date-range-picker.md) does by mounting it inside its popover).
-- **`defaultMonth` loses to an existing selection.** The seed is
-  `range.start ?? range.end ?? defaultMonth ?? today`, in that order. Measured:
-  `defaultMonth={new Date(2026, 2, 1)}` with a `defaultValue` starting 5 January opens on
-  **January 2026**, not March.
+- **The view follows a *change* of range, not the range itself.** Hand a calendar showing
+  June a range of 1–7 October from a preset button and it moves to October, firing
+  `onMonthChange`. The anchor is `start ?? end`. Because it is edge-triggered, paging away
+  from the range stays put — an unrelated re-render will not drag you back — and a range
+  change landing inside the visible window moves nothing. If you own `month`, the prop wins
+  and the move arrives as an `onMonthChange` request instead.
+- **`defaultMonth` beats an existing selection.** The seed is
+  `defaultMonth ?? range.start ?? range.end ?? today`, in that order, so the month you name
+  explicitly opens even when a range is already set: `defaultMonth={March 2026}` with a
+  `defaultValue` starting 5 January opens on **March**.
 - **`showToday` never selects in a range calendar.** The footer button navigates to today
   and focuses it; measured, no endpoint is set. [Calendar](calendar.md) wires the same button to select,
   and the underlying `onTodayClick` callback is not part of this component's prop type, so

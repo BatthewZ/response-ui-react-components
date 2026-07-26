@@ -141,10 +141,10 @@ Below the design system's 40rem breakpoint the calendar collapses to **one** pag
 whatever `numberOfMonths` says — stacked grids overflow a phone-width popover. In either
 layout the ‹ › header buttons shift the whole visible window by exactly one month.
 
-`defaultMonth` only decides the opening month while the range is still empty. Once `start`
-(or `end`) is set, the calendar anchors on it instead: with `defaultMonth` at January 2026
-and a `defaultValue` starting in September, the popover opens on September/October. Reopening
-always re-anchors, because the popover unmounts when closed.
+`defaultMonth` decides the opening month whether or not the range is set — it is the month
+you named, so it beats the one inferred from `start`/`end`. Omit it and the calendar opens on
+the range instead. Either way reopening re-anchors, because the popover unmounts when closed;
+and while it is open, a range change from outside the calendar moves the view to follow it.
 
 ## Locale and display format
 

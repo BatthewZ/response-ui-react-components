@@ -15,6 +15,18 @@ distinction with no consumer on the other side of it. The date goes in when it s
 
 ### Breaking
 
+- **The calendar's visible month now follows a change of selection, and `defaultMonth` now beats a seeded selection (#310, #311).** Two halves of one decision about which of `month` and the selection owns the visible window.
+
+  **What it fixes.** The displayed month was seeded once, by `useState`, so nothing connected a selection change to the view. Measured: re-rendering `<Calendar>` from `value={June 10}` to `value={September 3}` left the grid on **June, with no day marked selected anywhere** and the roving tab stop still on June 10 — and `onMonthChange` never fired, so a parent could not even detect it. Any date arriving from outside the grid hit this: a text field, a "next available slot" preset, a URL param. `RangeCalendar` had the same defect against `start ?? end`.
+
+  The view now moves when the selection *changes* to a month that is off-screen, and fires `onMonthChange`. It is deliberately **edge-triggered**: a view that re-derived from the selection every render could never be paged away from. Navigate to July with the selection on June 10 and you stay in July.
+
+  **A controlled `month` still wins.** The move becomes a *request* — `onMonthChange` is called with the month that would show the selection, exactly as the ‹ › buttons do — so a controlled caller handles user paging and selection-driven paging through one path.
+
+  **What it breaks.** (1) If you drove `month` yourself purely to work around the old behaviour, you will now get an extra `onMonthChange` call for a move you were already making; it resolves to the same month, so honouring it is idempotent. (2) `defaultMonth` now wins over a seeded selection instead of losing to it — `<Calendar defaultMonth={June} defaultValue={20 Jan} />` opens on **June**, where it used to open on January. That inverts `CalendarBase`'s seed to `defaultMonth ?? focusAnchor ?? today`, which is what `Calendar.tsx` already advertised. Pass only one if you do not want the precedence.
+
+  **Migration:** delete any `month`/`onMonthChange` pair you added *only* to keep the view on the selection. **Revert:** drop the `prevAnchorKey` block in [`CalendarBase.tsx`](./src/components/ui/CalendarBase.tsx) and restore the seed to `focusAnchor ?? defaultMonth ?? today`.
+
 - **`DataTable`'s `rowKey`, `column.render` and `renderExpanded` now receive the index within the sorted dataset, not within the current page slice (#360).** Previously every page restarted at `0`, so a `render: (_, i) => i + 1` numbering column printed `1…10` on every page, and an index-based `rowKey` collided across pages — row 0 of page 2 showed as selected because row 0 of page 1 was.
 
   **This only changes client-paged tables** — the ones where you pass `pageSize` and let `DataTable` do the slicing. In server mode (`page` + `totalPages` + `onPageChange`, no `pageSize`) you hand over one page and never say how large a page is, so no offset is derivable and the index still restarts at `0`. The index counts the **sorted** order, which is the order on screen, not the original array position.
