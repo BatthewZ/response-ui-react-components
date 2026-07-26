@@ -865,3 +865,84 @@ describe("#365 · an expanded detail row does not invert the zebra below it", ()
     expect(bands(container)).toEqual([false, true, false, true]);
   });
 });
+
+/**
+ * `rowKey`, `column.render` and `renderExpanded` used to receive the index
+ * within the current page slice, so page 2 restarted at 0 and an index-based
+ * key collided across pages. They now receive the position in the sorted
+ * dataset — except in server mode, where this component is handed one page and
+ * never told the page size, so no offset is derivable.
+ */
+describe("#360 · the index argument counts the dataset", () => {
+  const ten: Item[] = Array.from({ length: 10 }, (_, i) => ({
+    id: i + 1,
+    name: `Person ${i + 1}`,
+    age: 20 + i,
+  }));
+
+  const numbered: ColumnDef<Item>[] = [
+    { key: "name", header: "Name" },
+    { key: "num", header: "#", render: (_row, i) => `row-${i}` },
+  ];
+
+  it("continues numbering onto page 2 when this component paginates", async () => {
+    const user = userEvent.setup();
+    render(
+      <DataTable data={ten} columns={numbered} rowKey={rowKey} pageSize={4} />,
+    );
+
+    expect(screen.getByText("row-0")).toBeInTheDocument();
+    expect(screen.getByText("row-3")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    expect(screen.getByText("row-4")).toBeInTheDocument();
+    expect(screen.getByText("row-7")).toBeInTheDocument();
+    expect(screen.queryByText("row-0")).not.toBeInTheDocument();
+  });
+
+  it("passes the dataset index to rowKey, so keys do not collide across pages", async () => {
+    const user = userEvent.setup();
+    const seen: number[] = [];
+    render(
+      <DataTable
+        data={ten}
+        columns={columns}
+        rowKey={(_row, i) => {
+          seen.push(i);
+          return i;
+        }}
+        pageSize={4}
+      />,
+    );
+    seen.length = 0;
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    expect(Math.min(...seen)).toBe(4);
+    expect(seen).not.toContain(0);
+  });
+
+  it("restarts per page in server mode, where no offset is knowable", async () => {
+    const user = userEvent.setup();
+    function Server() {
+      const [page, setPage] = useState(1);
+      const slice = ten.slice((page - 1) * 4, page * 4);
+      return (
+        <DataTable
+          data={slice}
+          columns={numbered}
+          rowKey={rowKey}
+          page={page}
+          totalPages={3}
+          onPageChange={setPage}
+        />
+      );
+    }
+    render(<Server />);
+
+    expect(screen.getByText("row-0")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    expect(screen.getByText("row-0")).toBeInTheDocument();
+  });
+});

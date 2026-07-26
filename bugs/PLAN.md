@@ -147,7 +147,20 @@ allowed", and it now also reads as the opt-out.
 
 ---
 
-## 3 · An `Omit`ted prop is still delivered by a JSX spread — **DEFERRED, owner decision**
+## 3 · An `Omit`ted prop is still delivered by a JSX spread — **FIXED** (option (b), all nine)
+
+> **This section's "deferred" framing is history, not status — read the ledger, not this
+> heading.** The owner chose **option (b)**: un-`Omit` and honour the value. All nine rows are
+> `fixed` — #245/#246 by `5f76b47`, #426/#429/#430/#431/#432/#433/#439 by `236e6a0`. Every one
+> of the nine components now declares its own typed `onChange` (`TagInput` →
+> `(tags: string[]) => void`, `Slider` → `(value: number) => void`, and so on), keeps the *DOM*
+> `onChange` in its `Omit` union, and destructures it out so it never reaches the element. The
+> regression checks described below as "commented out" are **live** — see
+> `TagInput.test.tsx`'s `form.field() binding (#245) and native submission (#246)` block.
+>
+> The costed options and the measurement table below are kept because they are the record of
+> *why* (b) was chosen over the defensive option (a) — which was measured to leave `TagInput`
+> inert, rendering zero chips, rather than fixed.
 
 **Root cause, and why it is not §2.** Six components `Omit` `onChange` (and sometimes `value`)
 from their public type to signal "do not pass this". **A JSX spread does not perform
@@ -222,10 +235,8 @@ shape of the binding, from `src/components/form/use-form.tsx:25-37` and `:209-21
   key be destructured out (or `{...props}` spread *first*) library-wide, as a structural rule?
   That closes all six at once.
 
-**Status.** `deferred · owner decision`. Both #245 and #246 confirmed **measured**. Regression
-checks for the fixed behaviour are written and sit commented out in
-`src/components/form/TagInput.test.tsx` behind a `// #245 / #246 (deferred, see bugs/PLAN.md)`
-marker, with the un-comment instruction in the header.
+**Status.** `fixed`, option (b), all nine — see the note under this section's heading. The
+regression checks are live in `src/components/form/TagInput.test.tsx`.
 
 **Adjacent, found here, not fixed:** `field()`'s `"aria-invalid": undefined` is spread *after*
 `fieldErrorProps`, so it overrides the computed value — measured, a visible "too short" message

@@ -15,6 +15,12 @@ distinction with no consumer on the other side of it. The date goes in when it s
 
 ### Breaking
 
+- **`DataTable`'s `rowKey`, `column.render` and `renderExpanded` now receive the index within the sorted dataset, not within the current page slice (#360).** Previously every page restarted at `0`, so a `render: (_, i) => i + 1` numbering column printed `1…10` on every page, and an index-based `rowKey` collided across pages — row 0 of page 2 showed as selected because row 0 of page 1 was.
+
+  **This only changes client-paged tables** — the ones where you pass `pageSize` and let `DataTable` do the slicing. In server mode (`page` + `totalPages` + `onPageChange`, no `pageSize`) you hand over one page and never say how large a page is, so no offset is derivable and the index still restarts at `0`. The index counts the **sorted** order, which is the order on screen, not the original array position.
+
+  **Migration:** if you compensated for the old behaviour by writing `i + (page - 1) * pageSize` in a callback, delete that arithmetic — it now double-counts. If you key off a real identifier, which the docs have always recommended, nothing changes. **Revert:** set `rowOffset` to `0` unconditionally in [`DataTable.tsx`](./src/components/ui/DataTable.tsx).
+
 - **`Button`, `IconButton`, `DropdownMenu.Trigger`, `Popover.Trigger`, menu `Item`s and `ErrorBoundary`'s retry now default to `type="button"` — so a form whose Save button is a bare `<Button>Save</Button>` has no submitter at all.** This is the likeliest upgrade break in the release and, for most consumers, the only migration step.
 
   **What it fixes.** A bare `<button>` is `type="submit"`, so `<Button>Cancel</Button>` in a form footer submitted the form — and, sitting before the real submit, became the form's **default submitter**, the one Enter fires from inside a text field. Seven sites, six components, none of which set a type. `Button` only sets it when it actually renders a `<button>`; `as="a"` is unaffected. It goes before the rest spread, so `type="submit"` still wins from the call site. ([`Button.tsx`](./src/components/ui/Button.tsx), [`IconButton.tsx`](./src/components/ui/IconButton.tsx))

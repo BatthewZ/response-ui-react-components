@@ -223,11 +223,19 @@ export function DataTable<T>({
     return sortedData.slice(start, start + pageSize);
   }, [sortedData, clientPaged, currentPage, pageSize]);
 
+  // Index of the current page's first row within `sortedData` — what turns a
+  // slice-relative position into the dataset index the callbacks promise.
+  //
+  // Zero unless we are the ones slicing: in server mode the consumer hands us
+  // one page and never tells us `pageSize`, so the offset is unknowable here
+  // and `i` is already the only index we can honestly report.
+  const rowOffset = clientPaged ? (currentPage - 1) * pageSize : 0;
+
   // Selection helpers operate on the CURRENT PAGE slice. Select-all selects the
   // visible page only.
   const visibleKeys = useMemo(
-    () => pageData.map((row, i) => rowKey(row, i)),
-    [pageData, rowKey]
+    () => pageData.map((row, i) => rowKey(row, rowOffset + i)),
+    [pageData, rowKey, rowOffset]
   );
   const allSelected = selectedKeys != null && areAllSelected(visibleKeys, selectedKeys);
   const someSelected = selectedKeys != null && isSomeSelected(visibleKeys, selectedKeys);
@@ -367,7 +375,8 @@ export function DataTable<T>({
   }
 
   function renderRows() {
-    return pageData.map((row, i) => {
+    return pageData.map((row, slot) => {
+      const i = rowOffset + slot;
       const key = rowKey(row, i);
       const isExpanded = expandable && expanded.has(key);
       return (

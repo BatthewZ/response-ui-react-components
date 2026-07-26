@@ -475,11 +475,15 @@ not as the signal itself.
   `<th>`, or asserted no `nav[aria-label="Pagination"]` on an empty table, or asserted a
   stripped header, now fails — loudly, which is the good case. Striping is still forced off
   in both.
-- **The `index` argument is page-relative.** `rowKey`, `render` and `renderExpanded` all
-  receive the index within the current page slice, not within `data`. A `render: (_, i) => i`
-  column prints `0, 1` on page 1 and `0, 1` again on page 2, and an index-based `rowKey`
-  therefore collides across pages — row 0 of page 2 shows as selected because row 0 of
-  page 1 was. Key off a real identifier.
+- **The `index` argument counts the dataset, not the page — but only when this component
+  is the one paginating.** `rowKey`, `render` and `renderExpanded` all receive the position
+  within the sorted dataset, so `render: (_, i) => i + 1` numbers rows `1…10` on page 1 and
+  `11…20` on page 2, and an index-based `rowKey` no longer collides across pages. **In server
+  mode it cannot**: when you pass `page` + `totalPages` + `onPageChange` and no `pageSize`,
+  you hand over one page and never say how large a page is, so the offset is unknowable here
+  and the index restarts at `0` per page. Key off a real identifier in that mode — and
+  preferably in both. Note the index counts the **sorted** order, which is the order on
+  screen, not the original array position.
 - **`striped` and `renderExpanded` compose.** The zebra is decided from each row's data index
   rather than its DOM position, so an open detail row — a real `<tr>` in the same `<tbody>` —
   no longer flips the band on every row beneath it, and takes no band of its own.
