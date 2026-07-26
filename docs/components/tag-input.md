@@ -362,10 +362,14 @@ worth knowing before you allow twenty.
   `<p aria-live="polite">` with its own `id`, appended to any surrounding [Field](field.md)'s
   error id, so it is both spoken when it appears and reachable from the field afterwards. Keep
   it short enough to survive a single announcement all the same.
-
-One gap remains: **a chip's remove button drops focus when it unmounts.** Removing any chip
-leaves focus on `<body>` (measured), unlike [Repeater](repeater.md), which moves focus to the
-successor control. The removal is announced either way.
+- **Removing a chip keeps the keyboard where it was.** The remove button you just pressed
+  unmounts with its chip, so focus moves to the chip that took its place — or to the previous
+  chip when the last one goes, or to the text field when the only one goes. It never falls to
+  the document body. This is the same successor rule [Repeater](repeater.md) follows, with the
+  text field standing where Repeater's Add button stands: the control that puts entries back.
+  Backspace is deliberately exempt — nothing the keyboard was pointing at unmounted there, so
+  the caret stays in the field. Restoring focus commits nothing: focus moving *into* the field
+  fires no blur, so the [blur commit](#how-a-tag-is-committed) is not on that path.
 
 Visually the error state is border-and-ring colour only, so always pair it with the
 message text. Focus is a `focus-within` ring on the wrapper, not `focus-visible`, so it

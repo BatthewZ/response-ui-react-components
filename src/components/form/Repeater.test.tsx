@@ -289,4 +289,146 @@ describe("Repeater", () => {
       expect(region()).toHaveTextContent("");
     });
   });
+
+  // Checked by `tsc --noEmit`, which gates the package: each constant fails to
+  // compile if the relation flips, in either direction. No suppression involved.
+  // The paths are read off the component's own signature rather than off an
+  // exported helper, so this stays true however the types are spelled.
+  describe("name and defaultItem are typed against the form's values (#260)", () => {
+    type Shape = {
+      title: string;
+      links: { url: string }[];
+      sections: { rows: { label: string }[] }[];
+    };
+    type Name = Parameters<typeof Repeater<Shape>>[0]["name"];
+    type Item = ReturnType<Parameters<typeof Repeater<Shape, "links">>[0]["defaultItem"]>;
+
+    it("accepts an array path and rejects a typo or a non-array one", () => {
+      const arrayPathAccepted: "links" extends Name ? true : false = true;
+      const nestedArrayPathAccepted: "sections.0.rows" extends Name ? true : false = true;
+      // The whole harm the row names: `name="lnks"` used to compile and write a
+      // second array into the submitted values.
+      const typoRejected: "lnks" extends Name ? false : true = true;
+      const nonArrayPathRejected: "title" extends Name ? false : true = true;
+
+      expect([
+        arrayPathAccepted,
+        nestedArrayPathAccepted,
+        typoRejected,
+        nonArrayPathRejected,
+      ]).toEqual([true, true, true, true]);
+    });
+
+    it("derives the row type from the path", () => {
+      const itemIsTheRowType: Item extends { url: string } ? true : false = true;
+      const itemIsNoLongerUnknown: unknown extends Item ? false : true = true;
+
+      expect([itemIsTheRowType, itemIsNoLongerUnknown]).toEqual([true, true]);
+    });
+  });
+
+  // The control names are positional, so the moment a row moves every remaining
+  // Move/Remove button is renamed. The default sentence names BOTH ends of the
+  // move for exactly that reason: it is the bridge between the numbering the
+  // user was just reading and the numbering they are about to read.
+  describe("reorder announcements (#481)", () => {
+    const region = () => screen.getByRole("status");
+
+    it("announces a move up, naming the old and the new position", async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={[{ url: "a" }, { url: "b" }]} reorderable />);
+
+      await user.click(screen.getByRole("button", { name: "Move item 2 up" }));
+
+      expect(region()).toHaveTextContent("Moved item 2 to position 1 of 2.");
+    });
+
+    it("announces a move down", async () => {
+      const user = userEvent.setup();
+      render(
+        <Harness initial={[{ url: "a" }, { url: "b" }, { url: "c" }]} reorderable />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Move item 1 down" }));
+
+      expect(region()).toHaveTextContent("Moved item 1 to position 2 of 3.");
+    });
+
+    it("announces a move driven from the render prop's own controls", async () => {
+      const user = userEvent.setup();
+      function Probe() {
+        const form = useForm<Values>({
+          defaultValues: { links: [{ url: "a" }, { url: "b" }] },
+        });
+        return (
+          <Repeater form={form} name="links" defaultItem={() => ({ url: "" })}>
+            {({ index, moveUp }) => (
+              <button type="button" onClick={moveUp}>
+                Raise row {index + 1}
+              </button>
+            )}
+          </Repeater>
+        );
+      }
+      render(<Probe />);
+
+      await user.click(screen.getByRole("button", { name: "Raise row 2" }));
+
+      expect(region()).toHaveTextContent("Moved item 2 to position 1 of 2.");
+    });
+
+    it("says nothing when the move is a no-op at the end of the list", async () => {
+      const user = userEvent.setup();
+      function Probe() {
+        const form = useForm<Values>({
+          defaultValues: { links: [{ url: "a" }, { url: "b" }] },
+        });
+        return (
+          <Repeater form={form} name="links" defaultItem={() => ({ url: "" })}>
+            {({ index, moveUp }) => (
+              <button type="button" onClick={moveUp}>
+                Raise row {index + 1}
+              </button>
+            )}
+          </Repeater>
+        );
+      }
+      render(<Probe />);
+
+      await user.click(screen.getByRole("button", { name: "Raise row 1" }));
+
+      expect(region()).toHaveTextContent("");
+    });
+
+    it("routes the sentence through a prop, and '' removes it", async () => {
+      const user = userEvent.setup();
+      function Probe({ silent }: { silent?: boolean }) {
+        const form = useForm<Values>({
+          defaultValues: { links: [{ url: "a" }, { url: "b" }] },
+        });
+        return (
+          <Repeater
+            form={form}
+            name="links"
+            defaultItem={() => ({ url: "" })}
+            reorderable
+            moveAnnouncement={
+              silent ? () => "" : (from, to, count) => `${from + 1}→${to + 1} sur ${count}`
+            }
+          >
+            {() => null}
+          </Repeater>
+        );
+      }
+      const { unmount } = render(<Probe />);
+
+      await user.click(screen.getByRole("button", { name: "Move item 2 up" }));
+      expect(region()).toHaveTextContent("2→1 sur 2");
+
+      unmount();
+      render(<Probe silent />);
+      await user.click(screen.getByRole("button", { name: "Move item 2 up" }));
+      expect(region()).toHaveTextContent("");
+    });
+  });
 });

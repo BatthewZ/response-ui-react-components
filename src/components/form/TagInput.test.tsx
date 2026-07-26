@@ -597,6 +597,73 @@ describe("TagInput", () => {
     });
   });
 
+  // Same pattern and same successor rule as Repeater's #257 block: the control
+  // at the vacated index, else the one before it, else the container-level
+  // control that puts entries back — Add there, the text input here.
+  describe("focus after removing a chip (#480)", () => {
+    it("moves to the chip that took the removed one's place", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["a", "b", "c"]} />);
+
+      await user.click(screen.getByRole("button", { name: "Remove a" }));
+
+      expect(document.activeElement).not.toBe(document.body);
+      expect(screen.getByRole("button", { name: "Remove b" })).toHaveFocus();
+    });
+
+    it("moves to the previous chip when the last one goes", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["a", "b", "c"]} />);
+
+      await user.click(screen.getByRole("button", { name: "Remove c" }));
+
+      expect(screen.getByRole("button", { name: "Remove b" })).toHaveFocus();
+    });
+
+    it("falls back to the text input when the only chip goes", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["a"]} />);
+
+      await user.click(screen.getByRole("button", { name: "Remove a" }));
+
+      expect(screen.getByRole("textbox", { name: "Tags" })).toHaveFocus();
+    });
+
+    it("leaves the caret alone when Backspace removes a chip", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["a", "b"]} />);
+      const input = screen.getByRole("textbox", { name: "Tags" });
+
+      input.focus();
+      await user.keyboard("{Backspace}");
+
+      // Nothing the keyboard user was pointing at unmounted, so nothing may
+      // move: chasing the chip here would throw them out of the field mid-type.
+      expect(input).toHaveFocus();
+    });
+
+    it("restores focus without committing or clearing the draft (traps §H)", async () => {
+      const user = userEvent.setup();
+      render(
+        <TagInput
+          aria-label="Tags"
+          defaultValue={["a"]}
+          validateTag={() => false}
+        />
+      );
+      const input = screen.getByRole("textbox", { name: "Tags" }) as HTMLInputElement;
+
+      await user.type(input, "xyz");
+      await user.click(screen.getByRole("button", { name: "Remove a" }));
+
+      expect(input).toHaveFocus();
+      // The blur-commit refused it, so the typing stays; the focus restore adds
+      // no second commit path of its own.
+      expect(input.value).toBe("xyz");
+      expect(screen.queryAllByRole("button", { name: /^Remove/ })).toHaveLength(0);
+    });
+  });
+
   describe("chip styling (#50)", () => {
     // Asserted against what Badge actually renders, not a copy of its class
     // string: restyle Badge and this stays true only while the chip follows.

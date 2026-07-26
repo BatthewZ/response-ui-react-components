@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import {
   type ComponentPropsWithRef,
   forwardRef,
+  useEffect,
   useId,
   useMemo,
   useRef,
@@ -126,6 +127,13 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
     const [announcement, setAnnouncement] = useState("");
     const messageId = useId();
     const inputRef = useRef<HTMLInputElement>(null);
+    const removeRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    // Set when a chip removes itself: its remove button is about to unmount, so
+    // the successor has to be named before React drops it, or focus falls to
+    // <body>. Backspace deliberately leaves it null — nothing the keyboard was
+    // pointing at went away there, and chasing the chip would throw the user
+    // out of the field mid-type.
+    const pendingFocus = useRef<number | null>(null);
 
     // `RegExp.prototype.test` advances `lastIndex` on a `g`/`y` regex, so
     // testing the caller's own object would leave it half-consumed and make the
@@ -285,6 +293,21 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
       setAnnouncement(removeAnnouncement(tag, next.length));
     }
 
+    // The same successor rule Repeater settled on (#257): the control now
+    // sitting at the vacated index, else the one before it, else the
+    // container-level control that puts entries back — Add there, the text
+    // input here. Focus moving *in* fires no blur, so the commit-on-blur path
+    // is not on this route and the draft is untouched.
+    useEffect(() => {
+      const index = pendingFocus.current;
+      if (index == null) return;
+      pendingFocus.current = null;
+      const buttons = removeRefs.current;
+      const successor = buttons[index] ?? buttons[index - 1];
+      const target = successor && !successor.disabled ? successor : inputRef.current;
+      target?.focus();
+    }, [tags]);
+
     function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
       const raw = e.target.value;
       if (!splitter.test(raw)) {
@@ -387,9 +410,15 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
                   {tag}
                   <button
                     type="button"
+                    ref={(node) => {
+                      removeRefs.current[index] = node;
+                    }}
                     aria-label={`Remove ${tag}`}
                     disabled={disabled}
-                    onClick={() => removeTag(index)}
+                    onClick={() => {
+                      pendingFocus.current = index;
+                      removeTag(index);
+                    }}
                     className="inline-flex items-center justify-center rounded-sm text-fg-muted hover:text-fg-primary disabled:cursor-not-allowed cursor-pointer"
                   >
                     <X size={12} />

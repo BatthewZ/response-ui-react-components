@@ -149,6 +149,142 @@ describe("Stepper", () => {
   });
 });
 
+// NOTE for this whole block: jsdom applies no stylesheet (`css: false`), so it
+// cannot tell a `.stepper-status` span from a visible one. Every assertion below
+// is the DOM precondition — the text that reaches the accessibility tree — and
+// that the word is visually hidden is a CSS claim verified in a browser instead.
+describe("Stepper · completed status without a button (#474)", () => {
+  const step = (container: HTMLElement, status: string) =>
+    container.querySelector<HTMLElement>(`.stepper-step[data-status="${status}"]`);
+
+  it("gives a completed step a status word in place of the numeral it lost", () => {
+    const { container } = renderStepper(1);
+
+    const indicator = step(container, "done")?.querySelector(".stepper-indicator");
+    // The check glyph is aria-hidden and there is no numeral, so without this a
+    // done step and an upcoming one differ only by the digit being absent.
+    expect(indicator?.textContent).toBe("completed");
+  });
+
+  it("says nothing extra on the current step, which aria-current already carries", () => {
+    const { container } = renderStepper(1);
+
+    const active = step(container, "active");
+    expect(active).toHaveAttribute("aria-current", "step");
+    // A hidden word beside aria-current announces the state twice (traps §J).
+    expect(active?.querySelector(".stepper-indicator")?.textContent).toBe("2");
+    expect(active?.textContent).not.toContain("current step");
+  });
+
+  it("leaves an upcoming step reading its numeral alone", () => {
+    const { container } = renderStepper(1);
+
+    expect(step(container, "upcoming")?.querySelector(".stepper-indicator")?.textContent).toBe(
+      "3",
+    );
+  });
+
+  it("still writes the word when a custom icon replaces the check", () => {
+    const { container } = render(
+      <Stepper activeStep={1}>
+        <Stepper.Step title="Order placed" icon={<span aria-hidden="true">★</span>} />
+        <Stepper.Step title="In transit" />
+      </Stepper>,
+    );
+
+    expect(
+      container.querySelector('.stepper-step[data-status="done"] .stepper-indicator')
+        ?.textContent,
+    ).toBe("★completed");
+  });
+});
+
+describe("Stepper · statusLabels (#475)", () => {
+  it("translates the word the default path writes", () => {
+    const { container } = render(
+      <Stepper activeStep={1} statusLabels={{ done: "abgeschlossen" }}>
+        <Stepper.Step title="Konto" />
+        <Stepper.Step title="Tarif" />
+      </Stepper>,
+    );
+
+    expect(
+      container.querySelector('.stepper-step[data-status="done"] .stepper-indicator')
+        ?.textContent,
+    ).toBe("abgeschlossen");
+  });
+
+  it("translates the same word in the clickable indicator's name", () => {
+    render(
+      <Stepper
+        activeStep={1}
+        onStepClick={vi.fn()}
+        statusLabels={{ done: "abgeschlossen", active: "aktueller Schritt" }}
+      >
+        <Stepper.Step title="Konto" />
+        <Stepper.Step title="Tarif" />
+      </Stepper>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Konto, abgeschlossen" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Tarif, aktueller Schritt" }),
+    ).toBeInTheDocument();
+  });
+
+  it("'' drops the word from both paths, leaving the bare title", () => {
+    const { container, rerender } = render(
+      <Stepper activeStep={1} statusLabels={{ done: "" }}>
+        <Stepper.Step title="Account" />
+        <Stepper.Step title="Plan" />
+      </Stepper>,
+    );
+    expect(
+      container.querySelector('.stepper-step[data-status="done"] .stepper-indicator')
+        ?.textContent,
+    ).toBe("");
+
+    rerender(
+      <Stepper activeStep={1} onStepClick={vi.fn()} statusLabels={{ done: "" }}>
+        <Stepper.Step title="Account" />
+        <Stepper.Step title="Plan" />
+      </Stepper>,
+    );
+    expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument();
+  });
+
+  it("merges over the defaults rather than replacing them", () => {
+    render(
+      <Stepper activeStep={1} onStepClick={vi.fn()} statusLabels={{ done: "fertig" }}>
+        <Stepper.Step title="Account" />
+        <Stepper.Step title="Plan" />
+      </Stepper>,
+    );
+
+    expect(screen.getByRole("button", { name: "Account, fertig" })).toBeInTheDocument();
+    // `active` was not overridden, so its default survives.
+    expect(
+      screen.getByRole("button", { name: "Plan, current step" }),
+    ).toBeInTheDocument();
+  });
+
+  it("writes an upcoming word only when one is supplied", () => {
+    const { container } = render(
+      <Stepper activeStep={0} statusLabels={{ upcoming: "not started" }}>
+        <Stepper.Step title="Account" />
+        <Stepper.Step title="Plan" />
+      </Stepper>,
+    );
+
+    expect(
+      container.querySelector('.stepper-step[data-status="upcoming"] .stepper-indicator')
+        ?.textContent,
+    ).toBe("2not started");
+  });
+});
+
 describe("Stepper · isStepClickable", () => {
   // #140
   it("only the steps the handler acts on become buttons", () => {

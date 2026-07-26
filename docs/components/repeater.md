@@ -34,23 +34,24 @@ store, so a repeating group validates, submits and resets exactly like any other
 [Field](field.md) and [FieldError](field-error.md) resolve a row's error from the surrounding
 `FormProvider`. Drop the provider and the rows still work, but no row error will ever render.
 
-| Prop          | Type                                | Default |
-| ------------- | ----------------------------------- | ------- |
-| `form`        | `FormApi<T>`                        | —       |
-| `name`        | `string`                            | —       |
-| `children`    | `(item: RepeaterItem) => ReactNode` | —       |
-| `defaultItem` | `() => unknown`                     | —       |
-| `addLabel`    | `string`                            | `"Add"` |
-| `min`         | `number`                            | `0`     |
-| `max`         | `number`                            | —       |
-| `reorderable` | `boolean`                           | `false` |
-| `disabled`    | `boolean`                           | `false` |
-| `className`   | `string`                            | —       |
+| Prop          | Type                                    | Default |
+| ------------- | --------------------------------------- | ------- |
+| `form`        | `FormApi<T>`                            | —       |
+| `name`        | the array paths of `T` — see below      | —       |
+| `children`    | `(item: RepeaterItem) => ReactNode`     | —       |
+| `defaultItem` | `() => ` the row type `name` addresses  | —       |
+| `addLabel`    | `string`                                | `"Add"` |
+| `min`         | `number`                                | `0`     |
+| `max`         | `number`                                | —       |
+| `reorderable` | `boolean`                               | `false` |
+| `disabled`    | `boolean`                               | `false` |
+| `className`   | `string`                                | —       |
 
-Five further props are functions that produce the component's own English — `removeLabel`,
+Six further props are functions that produce the component's own English — `removeLabel`,
 `moveUpLabel` and `moveDownLabel` name the row controls, and `addAnnouncement` /
-`removeAnnouncement` write its live region. All five are documented together under
-[Accessibility](#accessibility), because what they are *for* is the point of them.
+`removeAnnouncement` / `moveAnnouncement` write its live region. All six are documented
+together under [Accessibility](#accessibility), because what they are *for* is the point of
+them.
 
 The first four are required. There is no rest spread and no `ref`: the prop type is a closed
 object rather than an intersection with `div` props, so `<Repeater id="links">` is a compile
@@ -113,8 +114,9 @@ move of the keyed row — so the focused control travels with the row it belongs
 <!-- /example -->
 
 Because it is a pair of ordinary buttons rather than drag-and-drop, reordering is fully
-keyboard-operable with no extra work from you — see [Accessibility](#accessibility) for what
-those buttons do and don't announce.
+keyboard-operable with no extra work from you — and every move is announced. See
+[Accessibility](#accessibility) for what those buttons say, and why the sentence names the
+row's old position as well as its new one.
 
 ## Bounds
 
@@ -352,10 +354,17 @@ their own pages; there is nothing here to override. See the
 - **`disabled` reaches the row fields.** Each row's children are wrapped in a `<fieldset
   disabled>`, which disables every native control inside it, and `RepeaterItem` carries
   `disabled` so custom row controls that are not form elements can honour it too.
-- **`name` and `defaultItem` are not typed against your form's values.** `name` is a bare
-  `string` and `defaultItem` returns `unknown`, so a typo compiles: `name="lnks"` renders zero
-  rows, and pressing Add then writes a brand-new `lnks` array into the submitted values
-  alongside the real, still-empty `links`. Nothing warns.
+- **`name` and `defaultItem` are typed against your form's values.** `name` accepts only the
+  dotted paths of `T` that land on an array — `"links"`, and `"sections.0.rows"` for an array
+  nested inside one — so `name="lnks"` is a compile error, with TypeScript offering `"links"`
+  as the correction. It used to compile, render zero rows, and write a brand-new `lnks` array
+  into the submitted values alongside the real, still-empty `links`, with nothing warning.
+  `defaultItem`'s return type is then derived from that path, so a row built with the wrong
+  shape is caught too. Two limits worth knowing: the paths are enumerated three segments deep,
+  and a form typed as a bare `Record<string, unknown>` falls back to plain `string` — which is
+  also what a generic wrapper component around `Repeater` gets, and it is not enough to satisfy
+  the constraint, so wrap `useFieldArray` instead of `Repeater` when the value type is a type
+  parameter.
 - **`min` blocks removal on both paths, `max` only guards the button.** `remove()` from the
   render prop respects `min` (it no-ops), but there is no `append` on `RepeaterItem`, so `max`
   only ever has the Add button to disable.
@@ -376,11 +385,12 @@ one's lucide glyph is `aria-hidden="true"`, so every button announces exactly on
   [Label](label.md) and builds its `htmlFor`/`id` pair off the row's `name`.
 - **The rows are a `role="list"` of `role="listitem"`s**, so a screen reader can say how many
   there are and which one it is in.
-- **Adding and removing a row are announced.** Both write one sentence into a single polite,
-  visually-hidden live region (`role="status" aria-live="polite"`) that the component keeps
-  mounted for its whole life — N rows are never N live regions. The defaults are
-  `"Added item 3. 3 items."` and `"Removed item 2. 2 items."`, with the count as it stands
-  *after* the change, and both come from a prop so they can be translated or silenced:
+- **Adding, removing and reordering a row are announced.** All three write one sentence into a
+  single polite, visually-hidden live region (`role="status" aria-live="polite"`) that the
+  component keeps mounted for its whole life — N rows are never N live regions. The defaults are
+  `"Added item 3. 3 items."`, `"Removed item 2. 2 items."` and
+  `"Moved item 2 to position 1 of 3."`, with the count as it stands *after* the change, and all
+  three come from a prop so they can be translated or silenced:
 
   ```tsx
   <Repeater
@@ -389,17 +399,27 @@ one's lucide glyph is `aria-hidden="true"`, so every button announces exactly on
     defaultItem={() => ({ url: "" })}
     addAnnouncement={(index, count) => `Ligne ${index + 1} ajoutée. ${count} lignes.`}
     removeAnnouncement={(index, count) => `Ligne ${index + 1} supprimée. ${count} lignes.`}
+    moveAnnouncement={(from, to, count) =>
+      `Ligne ${from + 1} déplacée en position ${to + 1} sur ${count}.`
+    }
   >
     {({ name }) => <Input {...form.field(`${name}.url`)} />}
   </Repeater>
   ```
 
-  Return `""` from either to say nothing. The same shape — a function that takes what needs
+  Return `""` from any of them to say nothing. The same shape — a function that takes what needs
   interpolating and returns the sentence — is what `removeLabel` and its siblings use above,
-  and what [TagInput](tag-input.md) uses for its own add/remove announcements.
-  **Reordering is not announced.** Move up / Move down change the order without writing to the
-  region, and the focused button keeps its position-based name, so a row that has moved is
-  reported only by whatever the user reads next.
+  and what [TagInput](tag-input.md) uses for its own add/remove announcements. All three fire
+  from the render prop's own `remove` / `moveUp` / `moveDown` too, so custom row controls
+  announce exactly as the built-in ones do, and a move that would run off either end of the list
+  announces nothing because it does nothing.
+- **The reorder sentence names both ends of the move on purpose.** The control names are
+  positional, so the instant a row moves every remaining Move and Remove button is renamed:
+  "Move item 2 up" now points at a different row. `"Moved item 2 to position 1 of 3."` is the
+  bridge between the numbering the user was reading and the numbering they are about to hear —
+  a sentence carrying only one end would read as contradicting the names. If you name your rows
+  by their content instead (via `removeLabel` and friends), replace `moveAnnouncement` to match,
+  or the two channels will describe the same row differently.
 - **A blocked bound is a disabled button with no reason attached.** At `max` the Add button is
   `disabled`, which removes it from the tab order entirely — a keyboard user tabs straight past
   it and is told nothing. Render a visible "5 recipients maximum" line next to it.

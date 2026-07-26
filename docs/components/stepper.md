@@ -30,15 +30,18 @@ in CSS to reach the *next* step. It is `aria-hidden` and hidden on the last chil
 fills with the progress ink only when its own step is `done` — so the filled track always
 stops at the step you are on and never runs ahead of it.
 
-| Part            | Renders | Props                                                            |
-| --------------- | ------- | ---------------------------------------------------------------- |
-| `Stepper`       | `<ol>`  | `activeStep` · `orientation?` · `onStepClick?` (+ all `ol` props) |
-| `Stepper.Step`  | `<li>`  | `title` · `description?` · `icon?` (+ all `li` props but `title`) |
+| Part            | Renders | Props                                                                                 |
+| --------------- | ------- | ------------------------------------------------------------------------------------- |
+| `Stepper`       | `<ol>`  | `activeStep` · `orientation?` · `onStepClick?` · `isStepClickable?` · `statusLabels?` (+ all `ol` props) |
+| `Stepper.Step`  | `<li>`  | `title` · `description?` · `icon?` (+ all `li` props but `title`)                      |
 
 `activeStep` is a required `number`. `orientation` is `"horizontal" | "vertical"`,
-defaulting to `"horizontal"`. `onStepClick` is `(index: number) => void`. On a step,
-`title` is a required `string`, `description` an optional `string`, and `icon` a
-`ReactNode`. `className`, `id`, `ref`, and `aria-*` pass through on both parts.
+defaulting to `"horizontal"`. `onStepClick` is `(index: number) => void` and
+`isStepClickable` is `(index: number) => boolean`. `statusLabels` is
+`Partial<Record<"done" | "active" | "upcoming", string>>` — the words each status announces,
+covered under [Accessibility](#accessibility). On a step, `title` is a required `string`,
+`description` an optional `string`, and `icon` a `ReactNode`. `className`, `id`, `ref`, and
+`aria-*` pass through on both parts.
 
 ## Orientation
 
@@ -66,8 +69,10 @@ focusable. Supply the handler and each marker renders as a `<button>` that calls
 its own index — and one that sets `type="button"` explicitly, so it will not submit an
 enclosing form the way a bare `<button>` would.
 
-Nothing is gated for you: **every** step becomes a button, including ones ahead of the
-current position. Decide what a click may do inside the handler.
+By default **every** step becomes a button, including ones ahead of the current position.
+Pass `isStepClickable` to narrow that — only the indices it returns `true` for render as
+buttons, so a handler that ignores half its indices no longer leaves the other half as
+focusable, do-nothing tab stops. Decide what a click may *do* inside the handler.
 
 <!-- example:Clickable -->
 ```tsx
@@ -216,9 +221,10 @@ treat what is still ahead as supplementary rather than load-bearing text.
   you have also put a non-`<li>` inside the `<ol>`. A falsy child from
   `{canSkip && <Stepper.Step … />}` is dropped by `Children.toArray` and consumes no index,
   so conditional steps renumber cleanly.
-- **`onStepClick` is all-or-nothing.** There is no per-step `disabled` or `clickable` prop:
-  the handler turns *every* marker into a focusable button, so a five-step flow on step one
-  has five tab stops and four of them do nothing unless your handler acts on them.
+- **`onStepClick` is all-or-nothing until you narrow it.** There is no per-step `disabled` or
+  `clickable` prop; the gate is `isStepClickable` on the root. Leave it off and the handler
+  turns *every* marker into a focusable button, so a five-step flow on step one has five tab
+  stops and four of them do nothing unless your handler acts on them.
 - **`title` shadows the HTML attribute.** `Stepper.Step` omits the native `title` from its
   `li` props, so the prop always means the step label and you cannot set a native tooltip.
 - **Last-step rail suppression is `:last-child`.** The connector is hidden only when the
@@ -243,15 +249,36 @@ either.
 There is no roving focus or arrow-key model as in [Tabs](tabs.md) — in clickable mode the
 markers are ordinary tab stops in DOM order.
 
-- **The clickable marker is named, in English only.** In clickable mode the indicator carries
-  an `aria-label` built from the step's own `title` plus its status — `"Profile, completed"`,
-  `"Confirm, current step"`, or the bare `"Confirm"` for one still ahead. That is what keeps a
-  completed marker, whose only child is an `aria-hidden` check glyph, from announcing as an
-  unnamed button, and it holds whatever you pass as `icon` because the label beats the content.
-  The two status phrases are hard-coded, and rest props on `Stepper.Step` land on the `<li>`
-  rather than on the button, so neither the wording nor its language can be changed from
-  outside. Note also that an upcoming step announces no status of its own; `aria-current="step"`
-  on the `<li>` is what marks the current row.
+- **Every status that is not already announced has a word, and every word is a prop.** The two
+  status phrases used to be hard-coded English built inside the component, with rest props on
+  `Stepper.Step` landing on the `<li>` rather than on the marker, so neither the wording nor its
+  language could be reached from outside. `statusLabels` on the **root** is that override — it
+  sits there rather than on a step because they are the same words for the whole track, and
+  because a step's rest props never reach its marker. It merges over the defaults
+  (`{ done: "completed", active: "current step" }`), so `{ done: "abgeschlossen" }` translates
+  one, `{ upcoming: "not started" }` adds a word to a status that has none, and `{ done: "" }`
+  drops one:
+
+  ```tsx
+  <Stepper activeStep={1} statusLabels={{ done: "abgeschlossen", active: "aktueller Schritt" }}>
+  ```
+
+- **One word, two carriers, chosen by what the marker is.** In clickable mode the indicator is a
+  `<button>` and the word joins its `aria-label`, after the step's own `title` —
+  `"Profile, completed"`, `"Confirm, current step"`, or the bare `"Confirm"` for one still
+  ahead. That is what keeps a completed marker, whose only child is an `aria-hidden` check
+  glyph, from announcing as an unnamed button, and it holds whatever you pass as `icon` because
+  the label beats the content. In the **default** (non-clickable) mode there is no control to
+  name, so the same word is written as visually-hidden text inside the marker instead — which is
+  what stops a completed step reaching assistive tech as nothing at all, where an upcoming one
+  at least reads its numeral. The word is hidden with a `.stepper-status` rule in the component's
+  own stylesheet rather than a utility class, so the "no Tailwind utilities" rule below still
+  holds; measured in Firefox 146, it occupies `1 x 1px` and leaves every marker `32 x 32`.
+- **`statusLabels.active` reaches the clickable marker only.** The default marker's `<li>`
+  already carries `aria-current="step"`, so a hidden "current step" beside it would announce the
+  state twice — which is worse than not announcing it. The word is therefore withheld from the
+  current step's hidden channel and from nowhere else; `done` and `upcoming` are written in both
+  modes.
 - **Every status reads without colour.** A completed step changes shape — filled chip,
   check glyph. The current step keeps the hollow ring but draws it at **double weight**
   (`--_stepper-active-line-width`), which is what separates it from an upcoming step for a

@@ -32,15 +32,61 @@ export interface RepeaterItem {
   moveDown: () => void;
 }
 
-type RepeaterProps<T extends Record<string, unknown>> = {
+/** One step of depth. `ArrayPath` recurses on `Prev[D]` to terminate. */
+type Prev = [never, 0, 1, 2, 3];
+
+/**
+ * The dotted paths into `T` that land on an array — `links`, and `sections.0.rows`
+ * for an array nested inside one.
+ *
+ * Depth-bounded at three segments, which is not a limit on the form store (it
+ * takes any dotted path) but on what this type will enumerate. Widening it later
+ * is not a breaking change; narrowing would be. A value typed `unknown` — a form
+ * declared as bare `Record<string, unknown>` — yields `string`, so a generic
+ * wrapper around `Repeater` still compiles.
+ */
+type ArrayPath<T, D extends 0 | 1 | 2 | 3 = 3> = D extends 0
+  ? never
+  : {
+      [K in keyof T & string]: unknown extends T[K]
+        ? K
+        : T[K] extends readonly (infer E)[]
+          ? K | `${K}.${number}.${ArrayPath<E, Prev[D]>}`
+          : T[K] extends object
+            ? `${K}.${ArrayPath<T[K], Prev[D]>}`
+            : never;
+    }[keyof T & string];
+
+/** The value `P` addresses in `T`. Numeric segments walk into an array. */
+type PathValue<T, P extends string> = P extends `${infer K}.${infer Rest}`
+  ? K extends keyof T
+    ? PathValue<T[K], Rest>
+    : T extends readonly (infer E)[]
+      ? PathValue<E, Rest>
+      : never
+  : P extends keyof T
+    ? T[P]
+    : T extends readonly (infer E)[]
+      ? E
+      : never;
+
+/** What one row of the array at `P` holds — the type `defaultItem` must produce. */
+type ArrayItem<T, P extends string> =
+  PathValue<T, P> extends readonly (infer E)[] ? E : unknown;
+
+type RepeaterProps<T extends Record<string, unknown>, P extends ArrayPath<T> & string> = {
   /** The form whose array field this drives. */
   form: FormApi<T>;
-  /** Dotted path to the array field, e.g. `links`. */
-  name: string;
+  /**
+   * Dotted path to the array field, e.g. `links`. Checked against `T`, so a
+   * typo is a compile error rather than a second array quietly appearing in the
+   * submitted values.
+   */
+  name: P;
   /** Renders the editable fields for one row. */
   children: (item: RepeaterItem) => ReactNode;
-  /** Factory for a new row's value when "Add" is pressed. */
-  defaultItem: () => unknown;
+  /** Factory for a new row's value when "Add" is pressed, typed from `name`. */
+  defaultItem: () => ArrayItem<T, P>;
   addLabel?: string;
   /**
    * Accessible name for a row's Remove control. Per row, so the buttons do not
@@ -61,6 +107,15 @@ type RepeaterProps<T extends Record<string, unknown>> = {
   addAnnouncement?: (index: number, count: number) => string;
   /** @default (index, count) => `Removed item 2. 2 items.` */
   removeAnnouncement?: (index: number, count: number) => string;
+  /**
+   * Announced when a row is reordered. Names **both** ends of the move on
+   * purpose: the control names are positional, so the instant a row moves every
+   * remaining Move/Remove button is renamed, and a sentence carrying only one
+   * end would read as contradicting the names the user is about to hear. `count`
+   * is the row count, which a move does not change.
+   * @default (from, to, count) => `Moved item 2 to position 1 of 3.`
+   */
+  moveAnnouncement?: (from: number, to: number, count: number) => string;
   /** Minimum rows — removal is blocked at this count. @default 0 */
   min?: number;
   /** Maximum rows — adding is blocked at this count. */
@@ -92,7 +147,10 @@ type RepeaterProps<T extends Record<string, unknown>> = {
  *   </form>
  * </FormProvider>
  */
-export function Repeater<T extends Record<string, unknown>>({
+export function Repeater<
+  T extends Record<string, unknown>,
+  P extends ArrayPath<T> & string = ArrayPath<T> & string,
+>({
   form,
   name,
   children,
@@ -105,12 +163,14 @@ export function Repeater<T extends Record<string, unknown>>({
     `Added item ${index + 1}. ${count} ${count === 1 ? "item" : "items"}.`,
   removeAnnouncement = (index, count) =>
     `Removed item ${index + 1}. ${count} ${count === 1 ? "item" : "items"}.`,
+  moveAnnouncement = (from, to, count) =>
+    `Moved item ${from + 1} to position ${to + 1} of ${count}.`,
   min = 0,
   max,
   reorderable = false,
   disabled = false,
   className,
-}: RepeaterProps<T>) {
+}: RepeaterProps<T, P>) {
   const array = useFieldArray({ form, name });
   const count = array.fields.length;
   const canRemove = count > min;
@@ -148,6 +208,15 @@ export function Repeater<T extends Record<string, unknown>>({
     array.append(defaultItem());
   }
 
+  // Every reorder path routes through here, including the render prop's own
+  // moveUp/moveDown, so a custom row control announces too — the same rule
+  // `remove()` follows. Nothing about focus: the reorder is a real DOM move of
+  // the keyed row, so the pressed button travels with it and keeps the tab stop.
+  function moveRow(from: number, to: number) {
+    setAnnouncement(moveAnnouncement(from, to, count));
+    array.move(from, to);
+  }
+
   return (
     <div className={cn("flex flex-col gap-r4", className)}>
       {/* The rows are a list: without the semantics a screen reader hears a run
@@ -176,10 +245,10 @@ export function Repeater<T extends Record<string, unknown>>({
                     if (canRemove) removeRow(index);
                   },
                   moveUp: () => {
-                    if (!isFirst) array.move(index, index - 1);
+                    if (!isFirst) moveRow(index, index - 1);
                   },
                   moveDown: () => {
-                    if (!isLast) array.move(index, index + 1);
+                    if (!isLast) moveRow(index, index + 1);
                   },
                 })}
               </fieldset>
@@ -190,7 +259,7 @@ export function Repeater<T extends Record<string, unknown>>({
                       type="button"
                       aria-label={moveUpLabel(index, count)}
                       disabled={disabled || isFirst}
-                      onClick={() => array.move(index, index - 1)}
+                      onClick={() => moveRow(index, index - 1)}
                     >
                       <ChevronUp size={16} aria-hidden="true" />
                     </IconButton>
@@ -198,7 +267,7 @@ export function Repeater<T extends Record<string, unknown>>({
                       type="button"
                       aria-label={moveDownLabel(index, count)}
                       disabled={disabled || isLast}
-                      onClick={() => array.move(index, index + 1)}
+                      onClick={() => moveRow(index, index + 1)}
                     >
                       <ChevronDown size={16} aria-hidden="true" />
                     </IconButton>
