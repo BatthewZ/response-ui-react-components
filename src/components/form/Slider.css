@@ -64,7 +64,11 @@
 /*  Thumb — Firefox                                                    */
 /* ------------------------------------------------------------------ */
 
+/* Preflight's `*, ::before, ::after` reset does not reach UA pseudo-elements, so
+   without this the 2px border is added outside the 1.25rem box and Firefox paints
+   a 24px thumb against WebKit's 20px. */
 .slider::-moz-range-thumb {
+  box-sizing: border-box;
   width: 1.25rem;
   height: 1.25rem;
   border: 2px solid var(--C-SURFACE-0);

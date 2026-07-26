@@ -96,6 +96,9 @@
 
 /* Firefox thumb */
 .range-slider__input::-moz-range-thumb {
+  /* See Slider.css — Preflight's reset misses UA pseudo-elements, so without
+     this the 2px border makes Firefox paint 24px against WebKit's 20px. */
+  box-sizing: border-box;
   pointer-events: auto;
   width: 1.25rem;
   height: 1.25rem;
@@ -113,7 +116,7 @@
   box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
 }
 
-/* Firefox paints a default track — keep it invisible so our rail shows. */
-.range-slider__input::-moz-range-track {
-  background: transparent;
-}
+/* No `::-moz-range-track` rule here on purpose. The input is already
+   `appearance: none` above, under which Firefox 146 paints no track box at all —
+   measured, including a positive control that painted the pseudo-element red to
+   prove the selector matches. The rule this replaces claimed the opposite. */
