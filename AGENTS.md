@@ -27,9 +27,10 @@ Top-level barrel exports everything. The grouping below mirrors the source layou
 ### components/ui (50)
 
 ```
-Accordion, Alert, AppShell, Avatar, AvatarGroup, AvatarUpload, Badge, Breadcrumbs,
+Accordion, Alert, AppShell, Avatar, AvatarGroup, AvatarUpload + types
+AvatarUploadProps/AvatarUploadResult, Badge, Breadcrumbs,
 Button, Calendar, RangeCalendar + type DateRange, Card, Carousel, CodeBlock, Collapsible, CommandPalette + type
-CommandItem, ContextMenu, CopyButton, DataTable + type ColumnDef, Dialog, Drawer,
+CommandItem, ContextMenu, CopyButton, DataTable + type ColumnDef + type SortState, Dialog, Drawer,
 DropdownMenu, EmptyState + EmptyState{Title,Description,Icon,Actions}, ErrorBoundary,
 FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination,
 Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper,
@@ -114,8 +115,8 @@ useVirtualRows + type UseVirtualRowsParams + type UseVirtualRowsReturn
 cn, createCn, mergeExtension, twMerge, tailwindMergeExtension, mergeRefs,
 mergeProps, composeEventHandlers, formatBytes,
 date helpers: addDays, addMonths, buildMonthGrid, clampDate, formatDate,
-getDateFieldOrder, getMonthLabel, getWeekdayNames, isAfter, isBefore, isSameDay,
-parseDateInput, startOfDay, startOfMonth
+getDateFieldOrder, getMonthLabel, getMonthNames, getWeekdayNames, isAfter, isBefore,
+isSameDay, parseDateInput, startOfDay, startOfMonth, toISODate
 ```
 
 `mergeProps` / `composeEventHandlers` are the house answer to "a caller passed
@@ -138,6 +139,41 @@ const className = cn(
   isActive && "bg-primary",
 );
 ```
+
+### Controlled vs uncontrolled — the mode locks on the FIRST render
+
+Every controllable component in this package (`useControllableState` and the components that
+wrap it — `Accordion`, `Tabs`, `Popover`, `AppShell`'s `open`/`collapsed`, `DataTable`'s
+`sort`/`page`, the pickers, `Wizard`, …) decides controlled-ness **once, on mount**, and never
+revisits it. Two rules follow, and both failures are silent:
+
+- **Never write `value={x ?? undefined}`.** On a component that mounted controlled, a later
+  `undefined` is read as *empty* (`[]` / `false` / `defaultValue` / `null`), not as a handover
+  to internal state — so the value collapses instead of falling back. Write `x ?? []`,
+  `x ?? false`, `x ?? null` — whatever "empty" means for that prop.
+- **Decide at mount.** If a component mounts without the prop (an async value that has not
+  arrived yet), it is uncontrolled for its whole life and the prop you start passing later is
+  **ignored**. Pass a defined initial value from the first render, or remount with a changing
+  `key` when the source arrives.
+- **Controlled means you must wire the handler.** A controlled component writes no state of its
+  own, so a missing or no-op `on*Change` leaves the control inert — the trigger clicks and
+  nothing happens, with nothing thrown or logged.
+
+`useControllableState` also refuses to notify when the resolved value equals the current one.
+Equality is `Object.is` by default, so `onChange` counts changes, not interactions — do not use
+one as a proxy for the other. Pass `isEqual` when the value is rebuilt on every commit (a
+`Date`, a range, a tuple), where reference equality would let an unchanged value re-emit.
+
+### `Omit`ted props are declared `never` — and that is load-bearing
+
+Where this package removes a prop from a component's type, it declares it `?: never` and
+destructures it out, rather than relying on `Omit` alone. `Omit` is erased at runtime and a JSX
+spread performs **no excess-property check**, so `{...bag}` used to deliver the very key the
+type omitted with `tsc` silent. Do not "fix" a resulting compile error by casting or by
+spreading through `any` — delete the key, or destructure it out before spreading. Current
+`never` props: `Switch.onChange`, `Rating.onChange`, `Calendar`/`RangeCalendar`/`CalendarBase`
+`.onChange`, `DateRangePicker.color`, `AppShell.SidebarLink.href` (the destination is `to`).
+`verify:omit-discipline` is the gate that keeps this true.
 
 ### Custom utilities — extending the merge config
 

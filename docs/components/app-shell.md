@@ -56,7 +56,7 @@ boxes you can wrap freely.
 | `AppShell.Toggle`         | `<button type="button">`                      | — (all `button` props **except `type`**)                                          |
 | `AppShell.Sidebar`        | `<aside role="navigation" aria-label="Main navigation">` | — (all `aside` props **except `role`**)                                |
 | `AppShell.SidebarSection` | `<div>`, with a `<div>` title above its children | `title?: string` (+ all `div` props)                                           |
-| `AppShell.SidebarLink`    | the router adapter's `Link` — a plain `<a href>` by default | `to: string` · `icon?: LucideIcon` · `children` required (+ all `a` props **except `href`** and `children`) |
+| `AppShell.SidebarLink`    | the router adapter's `Link` — a plain `<a href>` by default | `to: string` · `icon?: LucideIcon` · `children` required (+ all `a` props **except `children`**; `href` is a compile error — see [Gotchas](#gotchas)) |
 | `AppShell.Main`           | `<main>` — the page's main landmark; see [The main landmark](#the-main-landmark) | — (all `main` props)                |
 
 `className`, `id`, `ref`, `data-*` and `aria-*` pass through on every part, and each merges
@@ -206,9 +206,13 @@ content. In the fence below `navOpen` is a `useState<boolean>` in the surroundin
 ```
 <!-- /example -->
 
-The root keeps writing its own internal state even while controlled, but reads
-`open ?? internal` — so the prop always wins on the next render and a parent that ignores
-`onOpenChange` genuinely pins the drawer shut.
+**A controlled root writes no internal state at all**, and the mode is decided on the first
+render and never revisited. `open` defined on that render makes the drawer controlled for
+the shell's life — a later `undefined` reads as *closed*, not as a handover, so
+`open={navOpen ?? undefined}` stays controlled — and a parent that ignores `onOpenChange`
+genuinely pins the drawer shut. `open` `undefined` on the first render makes the drawer
+uncontrolled for the shell's life, and an `open` supplied afterwards is ignored. `collapsed`
+locks independently and by the same rule. See [Gotchas](#gotchas).
 
 ## Routing
 
@@ -256,9 +260,11 @@ when `pathname === to` **or** `pathname.startsWith(to + "/")`. So `/settings` st
 ## The main landmark
 
 `AppShell.Main` renders a real `<main>`, so a shell built from the parts above exposes
-`banner`, `navigation` and `main` landmarks. Landmark navigation reaches the content and a
-skip link has something to target — give it an `id` and a `tabIndex={-1}` so the link can
-move focus there:
+`banner`, `navigation` and `main` landmarks with nothing asked of you. Landmark navigation
+reaches the content and a skip link has something to target — give it an `id` and a
+`tabIndex={-1}` so the link can move focus there. (The `role="main"` in the example below is
+redundant on a real `<main>` and only restates the element's own role; `id` and `tabIndex`
+are the two that do work.)
 
 <!-- example:MainLandmark -->
 ```tsx
@@ -309,17 +315,27 @@ rebuild.
 The width transition and both drawer animations are dropped under
 `prefers-reduced-motion: reduce`; the hover colour transitions are not.
 
-**What is not on the contract.** The whole geometry is literals: the navbar height
-(`3.5rem`, written three times — the navbar's own `height`, the sidebar's sticky `top`, and
-its `calc(100vh - 3.5rem)`), the sidebar widths (`16.25rem` expanded, `4rem` collapsed,
-`17.5rem` for the drawer), the corner radius (`0.375rem`, not `--RADIUS-*`), the
-section-title type size (`0.6875rem` — a literal rather than `--BodyText-3`, which it happens
-to equal in the `tech` theme and in no other), and the stacking
-order (`10` navbar, `49` scrim, `50` drawer —
-the drawer ties with [Tooltip](tooltip.md)'s layer). The `639px` breakpoint is written
-twice, once in `AppShell.tsx`'s `matchMedia` and once in the stylesheet's `@media` block.
-Restyle the navbar's height in your own CSS and the sidebar's `top` and `height` do **not**
-follow.
+**What is not on the contract.** The whole geometry is literals: the sidebar widths
+(`16.25rem` expanded, `4rem` collapsed, `17.5rem` for the drawer), the corner radius
+(`0.375rem`, not `--RADIUS-*`), the section-title type size (`0.6875rem` — a literal rather
+than `--BodyText-3`, which it happens to equal in the `tech` theme and in no other), and the
+stacking order (`10` navbar, `49` scrim, `50` drawer — the drawer ties with
+[Tooltip](tooltip.md)'s layer).
+
+The navbar height is the one geometry value with a handle on it. `.app-shell` declares
+`--app-shell-navbar-height: 3.5rem`, and the navbar's own `height`, the sidebar's sticky
+`top` and its `calc(100vh - …)` all read it — so **overriding that one property on
+`.app-shell` moves all three together**. It is a component-internal local (lowercase, like
+[ColorPicker](color-picker.md)'s `--hue`), not a contract variable, so it is not themed and no
+other component reads it.
+
+The `639px` breakpoint is genuinely written twice, and cannot be otherwise: once as
+`MOBILE_VIEWPORT_QUERY` in `AppShell.tsx` and once as the stylesheet's `@media` block. A
+media query cannot read a custom property, this package has no CSS build step, and neither
+copy is removable — the stylesheet's block is what keeps the pre-hydration render from
+showing the inline sidebar on a phone. No test can gate the match either, because vitest runs
+with `css: false`, which stubs every CSS request including `?raw`. Both files say so; change
+one and you must change the other by hand.
 
 **Measured contrast**, across the four shipped themes (`default`, `events`, `tech`,
 `grimdark`):
@@ -351,6 +367,20 @@ follow.
   analytics belong straight on the button — while `e.preventDefault()` is the deliberate
   escape hatch when you want the click without the state change. Only `type` is `Omit`ted
   from its props, so every other `<button>` prop is yours.
+- **`SidebarLink`'s `href` is a compile error, not just an omission.** It is declared
+  `href?: never`, so passing one — including through a spread object — fails to build. The
+  destination is `to`, and the router adapter turns it into the `href`. `Omit` alone was not
+  enough: a JSX spread performs no excess-property check, and `{...props}` lands *after* `to`
+  on the adapter's `Link`, which renders `<a href={to} {...rest}>` — so a spread `href` used
+  to win the destination outright and send the link somewhere else with `tsc` silent. It is
+  also destructured out now, so it cannot reach the anchor from an untyped caller either.
+- **The drawer's and the rail's modes each lock on the first render.** `open` and `collapsed`
+  are decided independently at mount and never revisited. Controlled with no working
+  `on*Change` means the toggle does nothing at all — there is no internal state left to fall
+  back on, and nothing is thrown or logged. Uncontrolled at mount means a prop supplied later
+  is ignored, so your state and the chrome drift apart in silence. Pass each prop from the
+  first render or not at all; `open={x ?? undefined}` keeps whatever that render decided
+  rather than flipping mid-life the way it used to.
 - **A controlled `AppShell` logs a React warning when you navigate.** The auto-close on route
   change is a render-phase state adjustment, and the setter it uses also calls your
   `onOpenChange` — so React reports *"Cannot update a component while rendering a different
@@ -384,7 +414,7 @@ The landmark and state wiring on the chrome itself is solid: `<header role="bann
 to the first link inside, `Escape` closes it and returns focus to the toggle) and the Lucide
 icons render `aria-hidden="true"`, so nothing announces the glyphs.
 
-Four gaps you have to close yourself:
+Three gaps you have to close yourself:
 
 - **A collapsed rail is a list of unnamed links.** The label is a `<span>` the collapsed rule
   sets to `display: none`, and the icon is `aria-hidden` — so the link has **no accessible
@@ -392,9 +422,6 @@ Four gaps you have to close yourself:
   `"Dashboard"`; collapsed, it is `""`. The [Tooltip](tooltip.md) wrapper does not fix this —
   it contributes `aria-describedby`, a *description*, and only while the tooltip is open. If
   you ship the rail, put an `aria-label` on each `SidebarLink` (rest props reach the anchor).
-- **There is no `main` landmark.** See [The main landmark](#the-main-landmark) — the fix is
-  `role="main"` on `AppShell.Main`, plus an `id` and `tabIndex={-1}` if you want a skip link
-  to land there.
 - **`aria-modal` on the drawer does nothing.** The mobile `<aside>` carries
   `aria-modal="true"`, but that attribute is only defined for `dialog` and `alertdialog`
   roles, and this element is `role="navigation"`. Nothing marks the rest of the page `inert`

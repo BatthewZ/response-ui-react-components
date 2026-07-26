@@ -60,33 +60,43 @@ the very first render: `defaultValue="#ABC"` displays as `#aabbcc`.
 ```
 <!-- /example -->
 
-Controlled works the way it does everywhere else in this library, with one wrinkle that is
-specific to a picker. `value` makes the committed hex yours to own, and the mode is locked
-on the first render. But the panel's HSV state is *internal* and moves regardless — so if
-your handler ignores a change, the trigger keeps showing the old hex while the square's
-thumb and the hex field show the new one, permanently. Wire `onValueChange` back into the
-same state you pass to `value` — the `brandColor` / `setBrandColor` pair in the first
-example is plain `useState`, and every controlled example below has the same shape.
+Controlled works the way it does everywhere else in this library. `value` makes the committed
+hex yours to own, the mode is locked on the first render, and **the panel cannot outrun it**:
+the square, the hue rail and the hex field are all derived from the committed hex, so a
+handler that ignores a change leaves the whole control — trigger included — showing the value
+you are still passing. Wire `onValueChange` back into the same state you pass to `value` — the
+`brandColor` / `setBrandColor` pair in the first example is plain `useState`, and every
+controlled example below has the same shape.
 
-## Why HSV lives inside
+## How HSV and hex stay in step
 
-The panel edits in HSV and commits in hex, and it keeps the HSV as its own source of truth
-rather than re-deriving it from the committed hex on every change. That is deliberate:
-hue is unrecoverable from `#000000` or `#ffffff`, so a round-trip through hex at the
-greyscale extremes would reset the hue rail to red and make the square unusable near the
-edges. Two behaviours fall out of it:
+The panel edits in HSV and commits in hex, and **the committed hex is the only source of
+truth.** The HSV the panel shows is derived from it — with one memory: the last HSV you edited
+is kept, and believed *only while it still round-trips to the committed hex*. The moment the
+hex moves for any other reason — a controlled prop, a preset click, a parent refusing a commit
+— the memory stops matching and the panel re-derives from the hex instead.
 
-- **Everything commits immediately.** A drag across the square fires `onValueChange` once
-  per pointer move; each arrow key fires once (2% of a full axis per press). There is no
-  commit-on-release, so debounce anything expensive.
-- **At brightness 0 the hue rail looks broken.** Every hue at `v = 0` is `#000000`, so
-  moving it changes the internal hue (it is remembered) while committing the identical
-  hex — `onValueChange` fires with a value equal to the previous one. Since `#000000` is
-  also the fallback for an unparseable input, that is a state you can land in by accident.
-  Raise brightness first.
+That one rule buys both things a naive design has to choose between. Hue is unrecoverable from
+`#000000` or `#ffffff`, and the memory is what keeps the rail and the square usable at the
+greyscale extremes where a plain round-trip through hex would snap the hue back to red. And
+because the memory is never trusted past a hex it does not describe, the panel can never
+desynchronise from the value you are actually holding.
 
-The hex field commits on **Enter or blur**, not per keystroke; an unparseable entry is
-reverted to the current value rather than reported.
+Two behaviours fall out of it:
+
+- **Everything commits immediately.** A drag across the square fires `onValueChange` once per
+  pointer move that lands on a different hex; each arrow key moves 2% of a full axis and fires
+  if that changes the hex. There is no commit-on-release, so debounce anything expensive.
+- **At brightness 0 the hue rail moves without committing anything.** Every hue at `v = 0` is
+  `#000000`, so dragging the rail there updates the remembered hue — the thumb tracks your
+  finger — while the hex it resolves to never changes, and `onValueChange` therefore **does not
+  fire** (it used to fire repeatedly with a value equal to the previous one). Since `#000000` is
+  also the fallback for an unparseable input, that is a state you can land in by accident: the
+  rail responds, the swatch does not. Raise brightness and the remembered hue is still there.
+
+The hex field commits on **Enter or blur**, not per keystroke; its text derives from the
+committed hex with your typing as a transient override, so an unparseable entry simply reverts
+when the override is dropped — quietly, rather than being reported.
 
 ## Presets
 
@@ -314,25 +324,30 @@ there does not reach this component.
 - **An unparseable value becomes black, silently.** `defaultValue="rebeccapurple"`,
   `value="rgb(51 102 204)"` and `#ff000080` all render as `#000000` with no warning and no
   callback. Normalise at your own boundary if the source is user data or an API.
-- **A controlled picker whose handler ignores the change desynchronises the panel.** With
-  `value="#3366cc"` and no write-back, two presses of Right Arrow leave the trigger reading
-  `#3366cc` while the hex field reads `#2b61cc` and the thumb has moved. The effect that
-  re-seeds the panel only runs when the committed hex *changes*, so nothing ever corrects
-  it. Always drive `value` from the state your `onValueChange` writes.
-- **`onValueChange` fires continuously, and sometimes with an unchanged value.** Every
-  pointer move during a drag commits, and moving the hue rail at brightness 0 commits the
-  same `#000000` again — enough to mark a form dirty when nothing changed.
+- **A controlled picker whose handler ignores the change now looks frozen, rather than lying.**
+  With `value="#3366cc"` and no write-back, pressing Right Arrow fires `onValueChange` and then
+  nothing visible happens: the trigger, the hex field and the square's thumb all derive from
+  the committed hex, so they stay where your `value` says. That is the honest failure and it is
+  easy to spot. (Before this was fixed the panel kept its own HSV, so the trigger read
+  `#3366cc` while the hex field read `#2b61cc` and the thumb had moved — permanently, because
+  the effect that re-seeded the panel only ran when the committed hex *changed*.) Always drive
+  `value` from the state your `onValueChange` writes.
+- **`onValueChange` still fires continuously during a drag.** Every pointer move that lands on
+  a different hex commits, so an expensive handler wants debouncing. It no longer fires with an
+  *unchanged* value, though: a pointer move inside one rounded hex, and the hue rail at
+  brightness 0, both resolve to the hex already held and emit nothing.
 - **A non-hex preset renders but cannot be selected.** `presets={["rebeccapurple"]}` paints
   a purple swatch labelled `rebeccapurple`; clicking it fires no callback and changes
   nothing, because the commit path rejects it. Presets must be hex.
 - **The preset grid is always eight columns.** Three presets are three eighth-width
   swatches with five empty cells, not three wide ones.
-- **The invalid border survives focus.** `.colorpicker-trigger:focus-visible` adds a
-  pseudo-class to `.colorpicker-trigger--error`'s single class, so it used to win on
-  specificity regardless of order and repaint a focused invalid trigger with the focus
-  colour. A dedicated `.colorpicker-trigger--error:focus-visible` rule now out-ranks it, so
-  focus and invalid are both legible at once — the ring reports focus, the colour reports
-  invalid.
+- **The invalid border survives focus.** `.colorpicker-trigger:focus-visible` is `(0,2,0)`
+  against `.colorpicker-trigger--error`'s `(0,1,0)`, so it used to out-rank the error rule
+  regardless of order and repaint a focused invalid trigger with the focus colour. A dedicated
+  `.colorpicker-trigger--error:focus-visible` rule fixes it — **not** by out-ranking, but by
+  tying: it is `(0,2,0)` too, and is declared after, so source order settles it. Focus and
+  invalid are now both legible at once — the ring reports focus, the colour reports invalid.
+  If you re-declare either rule in your own CSS, order is what you have to get right.
 - **`disabled` guards the trigger, not an already-open panel.** Setting `disabled`
   programmatically while the panel is open (from a save that starts in flight, say) leaves
   it open: the hex field and hue rail go disabled, but the square still responds to arrow

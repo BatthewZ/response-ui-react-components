@@ -55,8 +55,10 @@ with an element's props, so there is **no `className`, `style`, `id`, `ref` or r
 spread** — you cannot reach the wrapper. See [Gotchas](#gotchas), which is also where
 `stickyHeader` and a controlled `sort` turn out to have sharp edges.
 
-`ColumnDef` is exported from the package root; `SortState` is not — import it from
-`@batthewz/response-ui-react-components/components/ui/DataTable`.
+`ColumnDef` and `SortState` are both exported from the package root, so a controlled sort
+annotates as `useState<SortState | null>(null)` with an ordinary top-level import. (`SortState`
+was missing from the barrel until 0.9.0, which is why older code reaches for the deep
+`…/components/ui/DataTable` path; that path still resolves and means the same type.)
 
 ## Columns
 
@@ -147,8 +149,10 @@ directions. Replace it wholesale with `sortComparator`.
 `totalPages = max(1, ceil(data.length / pageSize))`, slices the sorted array down to the
 current page, and clamps the page so shrinking `data` can never strand you past the end.
 Changing an **uncontrolled** sort also resets an **uncontrolled** page back to 1 — a
-controlled `sort` or a controlled `page` opts out of that reset, so you own it. When
-`pageSize` is set, any `totalPages` you pass is ignored.
+controlled `sort` or a controlled `page` opts out of that reset, so you own it. That reset
+goes through the same setter as every other page move, so it **calls `onPageChange(1)`** if
+you passed one; it fires only when the page actually moves, so sorting while already on page
+1 emits nothing. When `pageSize` is set, any `totalPages` you pass is ignored.
 
 The pager itself is a [Pagination](pagination.md), centred beneath the table. In client
 mode it appears as soon as the derived page count exceeds 1 — no `onPageChange` needed.
@@ -281,7 +285,9 @@ calls a handler that isn't there.
 
 `loading` is checked first and short-circuits the body — whatever is in `data` is ignored
 and `loadingRowCount` rows of [Skeleton](skeleton.md) placeholders render instead, one per
-column, with the header kept in place so the table doesn't collapse mid-refetch.
+column. Only the body is replaced: the header, the `footer` slot and the pager are rendered
+outside the three body branches, so they are **identical** in the loading, empty and loaded
+states. That is a change in 0.9.0 and it cuts both ways — see [Gotchas](#gotchas).
 
 <!-- example:LoadingSkeleton -->
 ```tsx
@@ -333,8 +339,10 @@ lightest place to do it.
 ```
 <!-- /example -->
 
-Both states are separate early returns, and they render less than the loaded table does.
-See [Gotchas](#gotchas) before you rely on either in a server-paged screen.
+Neither state is a separate render any more. There is one return, one `renderHeader()`, and
+one `<Table.Body>` choosing between the skeleton rows, the real rows and the empty row — so a
+server-paged table whose current page comes back empty keeps its pager and the user keeps a
+way back to page 2. See [Gotchas](#gotchas) for what that costs.
 
 ## Density and stripes
 
@@ -437,6 +445,13 @@ not as the signal itself.
   `Alice, Bob, Charlie`, click two `Charlie, Bob, Alice`, and the third — the clear —
   returns them to source order, all while your state was tracking every emission. Pass
   `sort={sort}` from the first render, or remount with a `key` to re-decide.
+- **`page` locks on the first render too, and independently of `sort`.** Mount with `page`
+  defined and the table never writes its own page again — so a server-paged table whose
+  parent ignores `onPageChange` genuinely stays put, where it used to flip uncontrolled on
+  any `undefined` frame and move its own slice anyway (measured: a table whose parent refused
+  the requested page still went from `["A","B"]` to `["E"]`). Mount with `page` `undefined`
+  and a `page` you start passing later is **ignored**, silently. `page={p ?? undefined}` keeps
+  whatever the first render decided; `page={p ?? 1}` is what you want if you mean controlled.
 - **`selectable` on its own renders dead checkboxes.** `selectedKeys` and
   `onSelectionChange` are both optional in the type, but the select handlers bail out
   unless both are present. `<DataTable … selectable />` renders the select-all box and one
@@ -446,15 +461,20 @@ not as the signal itself.
   exposes no `className`, `style` or `ref` with which to give it a height — so the wrapper
   never scrolls vertically and the header never sticks, however you scroll the page. Reach
   for [Table](table.md) directly, or [VirtualizedDataTable](virtualized-data-table.md), if you need a pinned header.
-- **The loading and empty states are separate, thinner renders.** Both return before
-  `footer` and the pager, and both rebuild the header row without `onSort`, without
-  `aria-sort`, without the sort icons, and without the column `align`. A server-paged table
-  whose current page comes back empty loses its pagination entirely — measured with
-  `data={[]} page={3} totalPages={5}`: no pagination nav, no footer, and no way for the
-  user to get back to page 2.
-- **An empty table plus `renderExpanded` mismatches its own column count.** The empty
-  branch omits the expander header cell but still spans the body cell across it — measured
-  two `<th>` against `colspan="3"`.
+- **The loading header's select-all checkbox is live, and it acts on stale rows.** The
+  loading and empty states now share the one real header, so the select-all box and every
+  sort affordance are active in states where they used to be inert markup. Select-all
+  operates on the current page slice of whatever is in `data` — so if you leave the previous
+  page mounted while refetching, clicking it during the load selects the keys of the rows the
+  user can no longer see. Clear `data` alongside `loading` if that matters, or hide your own
+  selection UI while a fetch is in flight. Sorting from a loading header is the same shape:
+  it fires `onSortChange` against a dataset that is about to be replaced.
+- **The loading and empty states are no longer thinner renders**, which is worth knowing if
+  you have tests. Both keep the full header (sort handlers, `aria-sort`, sort icons, column
+  `align`, the select-all cell) and both keep `footer` and the pager. A test that counted
+  `<th>`, or asserted no `nav[aria-label="Pagination"]` on an empty table, or asserted a
+  stripped header, now fails — loudly, which is the good case. Striping is still forced off
+  in both.
 - **The `index` argument is page-relative.** `rowKey`, `render` and `renderExpanded` all
   receive the index within the current page slice, not within `data`. A `render: (_, i) => i`
   column prints `0, 1` on page 1 and `0, 1` again on page 2, and an index-based `rowKey`
@@ -503,6 +523,10 @@ cells.
   [Skeleton](skeleton.md) is `role="status"` named "Loading" — measured 10 of them for
   `loadingRowCount={5}` across two columns. On a wide table that is a lot of simultaneous
   polite announcements; consider your own single status region instead.
+- **The header is the same in every state**, so a screen reader keeps the column names, the
+  `aria-sort` values and the select-all checkbox while the table is loading or empty, rather
+  than having them appear and disappear around a refetch. The flip side is that those
+  controls are *operable* then too — see [Gotchas](#gotchas).
 - **The pager is a labelled landmark.** [Pagination](pagination.md) renders
   `<nav aria-label="Pagination">` with per-page buttons named "Page N" and `aria-current`
   on the current one.

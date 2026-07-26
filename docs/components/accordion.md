@@ -113,9 +113,15 @@ outside the accordion has to move it, like a "collapse all" [Button](button.md).
 ```
 <!-- /example -->
 
-There is no `defaultValue`-plus-`value` requirement: passing `value` (anything other than
-`undefined`) is what switches the root into controlled mode, and `defaultValue` is then
-ignored. In `single` mode a collapse reports the **empty string**, not `undefined`.
+There is no `defaultValue`-plus-`value` requirement — but **the first render decides the
+mode, and nothing revisits it.** If `value` is anything other than `undefined` on that
+render, the root is controlled for the rest of its life and `defaultValue` is ignored;
+if it is `undefined`, the root is uncontrolled for the rest of its life and a `value`
+that arrives later is ignored. On a controlled root a later `undefined` reads as *nothing
+open*, not as a handover to internal state, so `value={v ?? undefined}` stays controlled
+throughout. See [Gotchas](#gotchas) for why that matters more than it sounds.
+
+In `single` mode a collapse reports the **empty string**, not `undefined`.
 
 ## Disabled items
 
@@ -215,6 +221,16 @@ onto whatever surface it is dropped onto.
 
 ## Gotchas
 
+- **The controlled/uncontrolled mode locks on the first render, and both directions bite
+  silently.** A root that mounts with `value` set is controlled forever: if you pass no
+  `onValueChange`, or your handler ignores the emission, **clicking a trigger does
+  nothing** — no state to fall back on, and nothing thrown or logged to say so. A root that
+  mounts with `value` `undefined` is uncontrolled forever: a `value` that arrives later
+  (from a fetch, say) is **ignored**, so your state and the open set drift apart in silence.
+  Decide at mount — pass `value={v ?? []}` rather than `v ?? undefined` if you mean
+  controlled — or remount with a changing `key` to re-decide. (Before this was fixed, the
+  mode was recomputed every render, so an `undefined` frame handed the accordion back to
+  internal state the parent could not see.)
 - **Your `onClick` on a `Trigger` composes with the toggle.** `Accordion.Trigger` runs your
   handler first and then its own, so `<Accordion.Trigger onClick={…}>` fires *and* the section
   still opens; `onKeyDown` composes the same way, leaving arrow-key navigation intact. Call

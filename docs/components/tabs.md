@@ -53,6 +53,13 @@ the rest. To drive it yourself, add `value` and `onValueChange`:
 some libraries — the root always needs it, and controlling the component adds `value`
 on top rather than replacing it.
 
+**The mode is settled on the first render and never revisited.** `value` defined on that
+render makes the tabs controlled for the instance's life; `value` `undefined` on it makes
+them uncontrolled for the instance's life. A later `undefined` on a controlled root falls
+back to `defaultValue` rather than switching mode, so `value={tab ?? undefined}` stays
+controlled — and a `value` that first appears after mount is ignored. See
+[Gotchas](#gotchas).
+
 ## Variants
 
 `underline` (default), `pill`, and `enclosed` change the strip's look. The indicator
@@ -118,6 +125,18 @@ Same contract either way: override these and Tabs re-tints with the rest of the 
   appears. The `value` strings are the contract; nothing type-checks that they pair up.
 - **`Tabs` omits the native `defaultValue`** from its `div` props, so the prop always
   means the tab value.
+- **Selecting the tab you are already on calls nothing.** `onValueChange` reports *changes*
+  of selection, not presses: click the active tab, or arrow back onto it, and the handler
+  does not fire. If you were using it as a "the user pressed a tab" signal — a refetch, an
+  analytics event, a scroll-to-top — that call is gone, with nothing to mark its absence.
+  Put the side effect on the tab's own `onClick`, which composes with the selection rather
+  than replacing it.
+- **The controlled/uncontrolled mode is fixed at mount, and both directions fail quietly.**
+  A `<Tabs value={tab}>` with no `onValueChange`, or a handler that ignores the value, is
+  frozen — clicking a tab selects nothing, because there is no internal state to fall back
+  on. A `<Tabs>` that mounts without `value` ignores one supplied later, so a tab driven
+  from an async source never takes. Pass `value` from the first render or not at all;
+  `value={tab ?? undefined}` keeps whatever the first render decided.
 - **Panels do not mount eagerly.** A `Tabs.Panel` renders only while it is active or animating
   out; otherwise it returns `null`. So panel state is discarded when you switch away — hoist
   anything that must survive a tab change, and expect a panel's effects to re-run on return.

@@ -90,10 +90,32 @@ src/
     use-theme.ts, use-virtual-rows.ts, index.ts
   util/
     style.ts (cn, twMerge, tailwindMergeExtension)
-    merge-refs.ts, format.ts, index.ts
-scripts/
-  verify-directives.mjs   verify-docs.mjs   (repo-only; not published)
+    merge-props.ts (mergeProps, composeEventHandlers), merge-refs.ts
+    focus.ts (the one Tailwind focus recipe — internal, see below)
+    date.ts, format.ts, index.ts
+scripts/                    (repo-only; none of these are published)
+  gen-docs.mjs              verify-component-docs.mjs   verify-directives.mjs
+  verify-docs.mjs           verify-focus-affordance.mjs verify-omit-discipline.mjs
+  bugs-ledger.mjs
 ```
+
+## The focus ring lives in one place
+
+[`src/util/focus.ts`](./src/util/focus.ts) holds the library's Tailwind focus recipe as six
+constants (`focusRing`, `focusRingControl`, `focusRingControlError`, `focusRingWithin`,
+`focusRingWithinError`, `focusRingGroup`). A component that carries no stylesheet of its own
+composes one of those; a component that has a `.css` writes the `:focus-visible` rule there.
+**Do not hand-write a new recipe** — eight of them had accumulated across 13 sites before they
+were collapsed, and the divergence they had drifted into (`focus:` vs `focus-visible:`,
+`ring-offset-2` vs none) was the defect, not the intent. Two constraints on that file:
+
+- **`focus-visible`, never `focus`.** Not one rule in the component stylesheets is keyed on
+  plain `:focus`; `:focus-visible` already matches a mouse-clicked text field and not a clicked
+  button, so one keying is the right answer for every control type.
+- **Each constant must stay one flat string literal.**
+  [`verify-focus-affordance.mjs`](./scripts/verify-focus-affordance.mjs) resolves hoisted class
+  constants *textually*, so a `${…}`-composed one would not resolve and would blind the guard
+  to every site that consumes it.
 
 ## Testing
 
@@ -167,6 +189,15 @@ build → verify-directives → verify-docs → gen-docs --check → verify-comp
 So a broken RSC directive, an undocumented export, a stale doc fence, a bad token table or
 dead link, an unrepaid `outline` reset, a compile-time-only `Omit`, a lint error, a type
 error, or a failing test each block publish.
+
+**Know what the gates cannot see.** `verify:component-docs` reads token *tables* — a token that
+changes role passes silently, and falsified prose always passes. `verify:docs` checks that
+every **value** export appears in README and AGENTS; type-only exports are optional to it, and
+the `date`/`color` helper modules are summarised rather than enumerated, so a new export in
+either class can go missing with every gate green (`SortState`, `toISODate` and `getMonthNames`
+all did). `verify:omit-discipline` proves an omitted key is destructured out, not that omitting
+it was right. Nothing anywhere reads a doc paragraph. Every promise left standing next to a
+change is a claim its author now owns — re-verify it by hand or flag it.
 
 Every guard in that chain checks a **shipped** artifact. `verify:bugs` is deliberately
 excluded for that reason (see [Known-defect ledger](#known-defect-ledger)) — `bugs/` is not

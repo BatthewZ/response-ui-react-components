@@ -63,10 +63,13 @@ label on hover or focus, and put no control in one: a hover target is unreachabl
 and by touch. [HoverCard](hover-card.md), [DropdownMenu](dropdown-menu.md) and [ContextMenu](context-menu.md) are the same family with different
 open gestures and, for the menus, a different keyboard model.
 
-One caveat before you file Popover under "non-modal": nothing on screen dims, the page keeps
-scrolling, and the panel paints at an ordinary `z-index` — but its **focus management is
-modal**, and that is not something the API lets you turn off. See
-[Accessibility](#accessibility).
+Popover is non-modal all the way down: nothing on screen dims, the page keeps scrolling, the
+panel paints at an ordinary `z-index`, and its **focus management is non-modal too** —
+`FloatingFocusManager` runs with `modal={false}`, so Tab leaves the panel, nothing outside it
+is marked `aria-hidden` or `inert`, and the trigger stays readable while the panel is open.
+Focus still *moves* into the panel on open and comes back on close. See
+[Accessibility](#accessibility). (Until 0.9.0 the manager ran with its `modal` default of
+`true` — a full trap on a surface with no scrim to justify one.)
 
 ## Placement and viewport edges
 
@@ -107,9 +110,15 @@ content its own `max-height` and `overflow-y: auto`.
 ## Controlled
 
 Uncontrolled is the default: `defaultOpen` sets the initial state and the component tracks the
-rest. Pass `open` to take over — and pass `onOpenChange` with it, because the component stops
-writing its own state the moment `open` is defined. A `<Popover open={false}>` with no
-`onOpenChange` can never be opened by any interaction.
+rest. Pass `open` to take over — and pass `onOpenChange` with it, because a controlled Popover
+writes no state of its own. A `<Popover open={false}>` with no `onOpenChange` can never be
+opened by any interaction.
+
+**The mode is decided on the first render and never revisited.** `open` defined on that render
+makes the Popover controlled for its whole life, and a later `undefined` reads as *closed*
+rather than as a handover — so `open={o ?? undefined}` stays controlled. `open` `undefined` on
+the first render makes it uncontrolled for its whole life, and an `open` supplied later is
+ignored. See [Gotchas](#gotchas).
 
 <!-- example:Controlled -->
 ```tsx
@@ -247,7 +256,10 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   none`, `padding: 0`, `font: inherit`) and lays it out `inline-flex`. It reads no token, which
   is why `asChild` with a [Button](button.md) looks like a Button and the default trigger looks
   like text.
-- **`.popover-content` sets `outline: none`** — which matters, because the panel is focused. See
+- **`.popover-content` sets `outline: none` and then paints the ring back** under
+  `:focus-visible` — a `2px solid var(--C-BORDER-FOCUS)` outline at `outline-offset: 2px`,
+  the house recipe. That rule is load-bearing rather than decorative: the panel is the
+  element that actually takes focus when its content holds no tab stop. See
   [Accessibility](#accessibility).
 
 ## Gotchas
@@ -266,8 +278,17 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   with the rest of the document inert — so the panel paints under the dialog and takes no
   clicks. Nest a popover in a [Drawer](drawer.md) or a [Dialog](dialog.md) and it will look
   broken. Inline the content instead.
-- **`open` without `onOpenChange` freezes it.** Defining `open` switches the component to fully
-  controlled: it stops writing its own state, so with no handler the popover never moves.
+- **`open` without `onOpenChange` freezes it — and the mode is fixed at mount.** A first render
+  with `open` defined makes the component fully controlled for its life: it writes no state of
+  its own, so with no handler (or a handler that ignores the value) the trigger clicks and
+  nothing opens. Nothing throws and nothing logs. The mirror is just as quiet: mount without
+  `open` and the component is uncontrolled forever, so an `open` you start passing later — after
+  a fetch resolves, say — is **ignored** while your state says otherwise. Pass `open` from the
+  first render or not at all; `open={o ?? undefined}` keeps whatever that render decided.
+- **Tabbing out of the panel closes it.** With non-modal focus management, moving focus to an
+  element unrelated to the popover dismisses it (`closeOnFocusOut` is on by default), so a
+  panel is not a place to park focus. Escape and an outside click do the same thing more
+  obviously.
 - **The panel outlives `open` by 150ms.** `useTransitionStyles` keeps it mounted for the exit
   fade, so a test that asserts the content is gone immediately after a close will still find it.
   It is unmounted for good once the transition finishes.
@@ -300,27 +321,32 @@ on this page does. See [Naming the panel](#naming-the-panel).
 itself when there is none. Escape and a second click on the trigger both return focus to the
 trigger; dismissing by clicking elsewhere leaves focus on whatever you clicked.
 
-**It is modal to the keyboard and to assistive technology, though nothing on screen says so.**
-`FloatingFocusManager` is rendered with its defaults, and its `modal` default is `true`. Two
-consequences while the popover is open: **Tab cycles inside the panel** and cannot reach the
-rest of the page, and **every other element under `<body>` is given `aria-hidden="true"`** —
-the trigger included, so a screen-reader user cannot re-read its `aria-expanded` while the panel
-is open, and cannot browse the page it is anchored to. Live regions (`[aria-live]`,
-`[role="status"]`, `<output>`) are exempt, so a [Toast](toast.md) still announces. Nothing about the
-component's appearance — no scrim, no scroll lock — tells a sighted user this is happening, and
-[Dialog](dialog.md) is the component in this library that is *meant* to be modal. Floating UI's
-`modal={false}` is the fix and `Popover` does not expose it.
+**It is not modal, to the keyboard or to assistive technology — and that matches what it looks
+like.** `FloatingFocusManager` is rendered with `modal={false}`, so while the popover is open
+**Tab walks out of the panel** and carries on into the page, and **nothing outside the portal is
+marked `aria-hidden` or `inert`** — the trigger stays readable, `aria-expanded` and all, and a
+screen-reader user can still browse the page the panel is anchored to. That is deliberate:
+nothing about the component's appearance — no scrim, no scroll lock — would tell a sighted user
+a trap was in force, and [Dialog](dialog.md) is the component in this library that is *meant*
+to be modal. (This shipped wrong until 0.9.0: the manager ran with its `modal` default of
+`true`, so opening a popover put the entire rest of the document behind `aria-hidden` +
+`inert` — the trigger included — and a screen-reader user could not reach even the control
+that had opened it. Live regions were exempt, so a [Toast](toast.md) still announced.)
 
-**Dismissal is click-outside and Escape — not focus-out.** `useDismiss` runs with its defaults:
-an outside `pointerdown` closes, and Escape closes from a `keydown` listener on `document`, so
-it fires wherever focus happens to be. Focus-out does *not* close the popover: that path is
-disabled whenever the focus manager is modal, on the assumption that the trap makes it
-unreachable. Ancestor scrolling never dismisses either — the panel just follows the trigger.
+**Dismissal is click-outside, Escape, and focus-out.** `useDismiss` runs with its defaults: an
+outside `pointerdown` closes, and Escape closes from a `keydown` listener on `document`, so it
+fires wherever focus happens to be. `closeOnFocusOut` is on by default and is live now that the
+manager is non-modal, so **moving focus to an unrelated element also closes the panel** — which
+is what tabbing past its last control does. Ancestor scrolling never dismisses — the panel just
+follows the trigger.
 
-**The panel's focus ring is removed.** `.popover-content` sets `outline: none`. Open a popover
-whose content has nothing tabbable — a plain paragraph — from the keyboard, and focus lands on
-the panel with nothing drawn to show where it went. Pass a `className` with a focus style, or
-put a focusable control in the panel.
+**The panel is focusable, and it draws a ring.** `.popover-content` sets `outline: none`, and
+`.popover-content:focus-visible` puts the house `2px solid var(--C-BORDER-FOCUS)` outline back
+at `outline-offset: 2px`. That rule matters because of the `tabIndex` behaviour above: open a
+popover whose content has nothing tabbable — a plain paragraph — and the focus manager gives the
+panel `tabindex="0"` and focuses it, so the panel *is* where the keyboard is. Without the
+replacement rule there would be nothing drawn to show it, which is exactly what shipped before
+`verify:focus-affordance` learned to model this case.
 
 ## Related
 

@@ -101,10 +101,13 @@ cleared.
 ```
 <!-- /example -->
 
-Hold one `Date` **instance** in state and pass it through unchanged. The field decides whether
-to re-seed the visible text by comparing the committed value by reference, so a parent that
-computes `value={new Date(row.dueDate)}` inline re-seeds on every render it does — and wipes
-whatever the user was half-way through typing.
+The `Date` **instance** no longer has to be stable. The field's text is *derived* from the
+committed value, and the draft you are typing is a transient override on top of it that only a
+commit clears — so a parent computing `value={new Date(row.dueDate)}` inline, and re-rendering
+for some unrelated reason, no longer wipes what you were half-way through typing. The change
+gate that decides whether to fire `onValueChange` is day-granular for the same reason: every
+producer in this family is (`parseDateInput` yields midnight, the calendar yields a grid day,
+`toISODate` submits a day), so two `Date`s naming the same day are the same value.
 
 ## Bounds and disabled days
 
@@ -260,15 +263,14 @@ documented there, not here. Overriding a variable in the table above will not re
   `<div>`. That is usually what you want — the input is `w-full`, so `className="w-64"` sizes
   the whole control — but a class you meant for the input itself (padding, border, font) will
   land on the wrapper and appear to do nothing.
-- **Every blur commits, and every commit calls `onValueChange`.** Focus the field and tab away
-  without touching it and the callback fires with a brand-new `Date` for the value that was
-  already there; do it twice and it fires twice. Blurring an empty, untouched picker calls
-  `onValueChange(null)`. A controlled parent that re-renders on each call will do so on every
-  blur, and any "is this form dirty?" tracking will see a change that never happened.
-- **A controlled `value` must be a stable instance.** The re-seed check is a reference
-  comparison on the `Date`, so `value={new Date(iso)}` computed inline is a new object every
-  render. Type `12/25/20` into such a field, let the parent re-render for an unrelated reason,
-  and the box resets to the committed date mid-keystroke.
+- **Every blur runs the commit pipeline, but a blur that changes nothing now emits nothing.**
+  Focus the field and tab away without touching it and the parse/clamp still runs — it just
+  resolves to the day already held, and the change gate drops it: measured **0** calls, where
+  it used to fire one `onValueChange` per blur with a brand-new `Date` for the value that was
+  already there. Blurring an empty, untouched picker is the same: `null` against `null` is no
+  change. "Is this form dirty?" tracking no longer sees a change that never happened. What
+  still emits is a blur that genuinely moves the day — including one that only clamps it into
+  `[min, max]`.
 - **Out-of-range dates are silently clamped; rejected ones silently revert.** With
   `max={new Date(2026, 11, 31)}`, typing `01/01/2030` and pressing Enter commits
   `2026-12-31` — no message, no `aria-invalid`. A date your `isDateDisabled` refuses, or text
@@ -277,11 +279,12 @@ documented there, not here. Overriding a variable in the table above will not re
 - **The time of day is dropped.** Pass `defaultValue={new Date(2026, 5, 10, 14, 30)}` and the
   first blur re-parses the display string and commits midnight. This is a date-only control;
   keep the time component somewhere else.
-- **Changing `locale` at runtime does not reformat the field — and the next blur can change
-  the date.** The field is only re-seeded when the committed value changes, so after switching
-  `en-US` → `en-GB` the text still reads `5/6/2026`. Blur it and the day-first parser reads
-  that same text as 5 June, commits it, and calls `onValueChange` with a date the user never
-  chose. Remount the picker (a changing `key`) when you switch locales.
+- **Changing `locale` at runtime reformats the field, and does not move the date.** The text is
+  derived from the committed `Date`, so switching `en-US` → `en-GB` on a 5 June value
+  immediately redisplays `05/06/2026`, and a subsequent focus/blur re-parses that text back to
+  5 June and emits **0**. This used to be a real corruption: the field kept the `en-US` string
+  `6/5/2026`, the day-first `en-GB` parser read it back as **6 May**, and the next blur
+  committed a date the user never chose. Remounting on a locale change is no longer necessary.
 - **The calendar is fixed to one Sunday-first month with no Today button.** [Calendar](calendar.md)'s
   `weekStartsOn`, `numberOfMonths` and `showToday` are not part of DatePicker's props and are
   not forwarded, so `locale="fr-FR"` gives you French month and weekday names in a grid that

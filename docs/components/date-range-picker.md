@@ -90,10 +90,13 @@ for its whole life — the mode is locked on first render.
 `{ start: <first day>, end: null }` when the first endpoint lands, then again with both. Any
 handler that persists or validates on change has to tolerate that intermediate shape.
 
-**Hold the `DateRange` in state, don't build it inline.** The text drafts are re-seeded from
-`value` by a *reference* comparison, so a fresh object literal — `value={{ start, end }}`
-rebuilt on every parent render — resets whatever the user was typing the moment anything
-else in the parent re-renders. `value={stateVariable}` is stable and does not.
+**The `DateRange` object no longer has to be stable.** Each field's text is *derived* from the
+committed range, and the draft you are typing is a transient override on top of it that only a
+commit clears — so a fresh literal `value={{ start, end }}` rebuilt on every parent render no
+longer resets what you were typing. Measured: a half-typed `"06/1"` survives an unrelated
+parent re-render, where it used to become `""`. The gate deciding whether `onValueChange` fires
+compares both endpoints **day-granularly** for the same reason, so two ranges naming the same
+two days are the same value.
 
 ## Bounds and blackout days
 
@@ -281,19 +284,23 @@ relationship has to survive without sight of the dash.
   an `isDateDisabled` day *clears* the endpoint outright, and unparseable text reverts — so
   the most plausible mistake of the three is the one that destroys a committed date. See
   [Bounds and blackout days](#bounds-and-blackout-days).
-- **Reordering happens on commit, not on render.** Type or click the endpoints in either
-  order and the earlier one lands in the start field. A reversed `value`/`defaultValue`
-  renders exactly as given — but a commit is unconditional, so simply focusing a field and
-  tabbing away reorders it without an edit. Measured:
-  `{ start: 20 June, end: 10 June }` renders `6/20/2026` / `6/10/2026`, and one no-edit blur
-  rewrites the fields to `6/10/2026` / `6/20/2026` and fires `onValueChange`.
+- **Reordering happens on commit, not on render — and a reversed range is the one case where
+  a no-edit blur still fires.** Type or click the endpoints in either order and the earlier one
+  lands in the start field. A reversed `value`/`defaultValue` renders exactly as given, but the
+  commit pipeline runs on every blur, so simply focusing a field and tabbing away reorders it
+  without an edit. Measured: `{ start: 20 June, end: 10 June }` renders `6/20/2026` /
+  `6/10/2026`, and one no-edit blur rewrites the fields to `6/10/2026` / `6/20/2026` and fires
+  `onValueChange`. A blur on an already-ordered range emits **0** — the pipeline still runs, it
+  just resolves to the range already held and the change gate drops it (it used to fire one
+  callback per blur regardless).
 - **The popover does not close when a range completes.** Picking both endpoints leaves it
   open — reasonable, since adjusting an endpoint is common — so closing is the user's job:
   `Escape`, a click outside, or the calendar button again. There is no `open` prop and no
   `onOpenChange`, so you cannot open or close it from your own code either.
-- **`onValueChange` emits a half-range** on the first calendar click, and an inline
-  `value={{ … }}` object wipes whatever the user is typing. Both are the same trap from
-  different ends — see [Controlled](#controlled).
+- **`onValueChange` emits a half-range** on the first calendar click — `{ start, end: null }`
+  before the pair completes. Any handler that persists or validates on change has to tolerate
+  that shape. (An inline `value={{ … }}` object no longer wipes what the user is typing; see
+  [Controlled](#controlled).)
 - **`formatOptions` that hides a field makes the displayed text uneditable.** The parser
   needs three numbers in the locale's field order, or a month name plus a day and a year.
   Give it `{ month: "2-digit", day: "2-digit" }` and a field renders as `06/10`, which parses

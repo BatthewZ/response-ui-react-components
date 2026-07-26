@@ -55,9 +55,10 @@ That is the **whole** surface. `VirtualizedDataTableProps<T>` is a plain object 
 `ref`, no `id` and no `data-*` — none of them compile, and none of them would land anywhere if
 they did. `SortState` is `{ key: string; direction: "asc" | "desc" }` — an *active* sort, never
 nullable itself; the two sort props widen it to `SortState | null` because "sorted by nothing"
-is `null`. It is not exported under that name from the package barrel, so annotate your own
-state with `VirtualizedDataTableProps<Invoice>["sort"]`, which is exactly what you can pass
-back.
+is `null`. It is exported under that name from the package barrel as of 0.9.0, so annotate
+your own state `useState<SortState | null>(null)` with an ordinary top-level import.
+(`VirtualizedDataTableProps<Invoice>["sort"]` is the same type and still works — it was the
+workaround while `SortState` was missing.)
 
 `stickyHeader` defaults to **`true`** here (the [Table](table.md) primitive underneath defaults it to
 `false`) — a header that scrolls away is not much use on a list this long.
@@ -263,8 +264,13 @@ itself.
 Both replace the body wholesale and are **not** virtualized. The scroll viewport is dropped —
 neither branch passes `height` or the `overflow-y` class to [Table](table.md), so the wrapper falls back
 to content height and `stickyHeader` (still `true`) has nothing to pin against. `striped` is
-forced off, and the header is re-rendered in a reduced form: no sort affordances, no column
-`align`, and an empty cell where the select-all checkbox was.
+forced off.
+
+The **header is the same one the loaded table draws** — one `renderHeader()` serves all three
+branches as of 0.9.0, so the sort affordances, the column `align` and a live select-all
+checkbox are all present while loading or empty, where the second, sort-less copy they used to
+get dropped every one of them. See [Gotchas](#gotchas): live means operable, and select-all
+in the loading branch acts on whatever is still in `data`.
 
 <!-- example:Loading -->
 ```tsx
@@ -373,8 +379,12 @@ virtualization maths has to agree with them exactly. See the
   clear the sort. The mode is decided on the first render and then locked, so a later
   `undefined` no longer flips a controlled table to uncontrolled — the legacy
   `sort={sort ?? undefined}` idiom stays controlled too. What still matters is the *first*
-  render: mount with `sort={undefined}` and the table is uncontrolled for its whole life, and
-  the table controlled for the whole cycle and the rows never move.
+  render, and it matters in both directions. Mount with `sort` defined — `null` counts — and
+  the table is display-only for its whole life: it never reorders rows, so a server that
+  ignores `onSortChange` leaves the order exactly as given. Mount with `sort={undefined}` and
+  the table is uncontrolled for its whole life, sorting the dataset itself however the prop
+  arrives afterwards. Pass `sort={sort}` from the first render, or remount with a `key` to
+  re-decide.
 - **`onEndReached` can fire before the user scrolls.** It fires whenever the *rendered* window
   reaches the threshold, which on mount it already does if the dataset is short or the viewport
   is tall — the component's own test asserts this for 20 rows. It also fires from the `loading`
@@ -390,9 +400,14 @@ virtualization maths has to agree with them exactly. See the
   cells, so an unusually wide value scrolling into the window can re-measure the columns
   mid-scroll. Setting `width` on every column pins the preferred widths and is the closest this
   gets to stable — content wider than the value can still push a column out.
-- **The loading and empty headers are a different render.** They come from an internal static
-  header with no sort handlers and no `align` — so the sort arrows and any centred or
-  right-aligned headings disappear while `loading` is true and come back when it clears.
+- **The loading header is fully live, and select-all there acts on stale rows.** All three
+  branches now share one header, so the sort affordances and the select-all checkbox no longer
+  vanish while `loading` is true — but they are operable, not decorative. Select-all is derived
+  from a map over the whole of `data` (this table has no pages), so clicking it mid-refetch,
+  while the old array is still in `data`, selects every key the user is about to stop seeing.
+  Clear `data` alongside `loading`, or hide your selection UI while a fetch is in flight —
+  and note `onEndReached` fires from the loading branch too. A test asserting the old
+  stripped header (no `aria-sort`, no `textAlign`, an empty select-all cell) now fails.
 - **No escape hatch on the root.** No `className`, `style`, `id`, `ref`, `aria-*` or `data-*`
   prop exists, so a test hook or an accessible name has to go on a wrapper element of your own.
 - **It's a client component.** `"use client"`, and so is the `useVirtualRows` hook behind it —
