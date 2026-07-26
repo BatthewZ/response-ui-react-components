@@ -1,54 +1,25 @@
-# Gates — what each one checks, and what it cannot see
+# What a green gate does not mean
 
-Every guard here passes today. **A guard's exemptions are where the next bug lives** — a `high`
-row sat inside `verify:focus-affordance`'s documented blind spot from the day it shipped.
-
-## Commands
-
-```bash
-bun run test              # vitest run (jsdom)
-bun run typecheck         # tsc --noEmit  — MANDATORY after any code change
-bun run lint              # eslint . --max-warnings 0
-bun run build             # required before verify:directives (it reads dist/)
-bun run verify:directives # RSC "use client" mirroring + secret-free
-bun run verify:docs       # every public value export named in README.md AND AGENTS.md
-bun run verify:examples   # gen-docs.mjs --check (doc fences stale?)
-bun run verify:component-docs   # spoke H1s, link integrity, theme-token tables
-bun run verify:focus-affordance # outline resets must be repaid with a focus ring
-bun run verify:bugs       # ledger oracle — NOT in prepublishOnly, by design
-bun run dev               # dev gallery, port 5179 (for real-browser checks)
-```
-
-`prepublishOnly` (`package.json:52`) chains: `build` → `verify:directives` → `verify:docs` →
-`gen-docs --check` → `verify:component-docs` → `verify:focus-affordance` → `lint` →
-`typecheck` → `test`. `verify:bugs` is deliberately absent — every publish guard checks a
-*shipped* artifact and `bugs/` is not in `package.json` `files` (`scripts/bugs-ledger.mjs:9-13`).
-Run it at the land gate instead: **fixing a bug shifts every line below it, and nothing else
-would notice.**
-
-## Blind spots, per guard
-
-| Guard                     | Cannot see                                                                                                                                                                                                                             |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `verify:directives`       | Whether a module *should* carry the directive. Skips `*.test.*`, `*.d.ts`, every `index.ts`. Needs `dist/` — no build, no signal.                                                                                                       |
-| `verify:docs`             | **Reverse drift**: a doc naming a deleted export passes. Match is a bare word-boundary regex — a mention anywhere counts. `type`-only exports exempt; header counts ("UI (50)") advisory.                                                |
-| `verify:component-docs`   | All prose. Gotchas, accessibility notes and every sentence on the page are unchecked — **falsified prose always passes**. Token *tables* are checked; a token that changes **role** (accent moving from ink to edge) passes silently. Follows `./` sibling imports only, not `../`. |
-| `verify:focus-affordance` | **Presence only** — a focus rule out-specified by a competing rule passes (#84/#291 class). Contrast unmeasured (#242). Reads `src/components/**/*.css` **only**, so a Tailwind `focus:outline-none` in a `.tsx` is invisible — 10 such occurrences exist today (#73). |
-| `gen-docs --check`        | Only fence *contents* are machine-owned. Prose, token tables, gotchas, a11y are hand-written and unverified. Parsing depends on `export function Name()` on one line, closed by a column-0 `}`.                                          |
-| `verify:bugs`             | **That an anchor still points at the code its row describes.** It bounds-checks that the line *exists*, nothing more — that gap let 157 anchors rot. Also blind to summary accuracy and whether a `fixed · <sha>` is a real commit.      |
-| `tsc` + `eslint`          | **An unknown prop delivered through a JSX spread.** Measured directly, both are silent. No guard in this repo inspects a prop type — so the next `Omit<>` reproduces the whole RC-1 class.                                               |
-
-## eslint is narrow on purpose
-
-Two rules only — `react/jsx-key`, `react-hooks/rules-of-hooks` (`eslint.config.js:5-41`), scoped
-to `src/`. `noInlineConfig: true` makes "never suppress, only fix" mechanical: a disable comment
-cannot silence anything and is itself reported. `exhaustive-deps` is deliberately off — its two
-findings here are false positives whose "fix" introduces a bug. **Mass ESLint adoption is a
-closed door**; keep any addition narrow and high-signal.
-
-## Adding a gate
-
-The two added in pass 2 both caught live defects on their first run — `verify:focus-affordance`
-found `.command-palette-input` with no focus rule at all. Worth doing. But write the non-goals
-into the script's own docblock (both of these do), because **that docblock is the only place the
-next agent learns what the green tick excludes**.
+- **A gate can be structurally incapable of failing.** `verify:bugs` printed `FAIL` and exited
+  `0` for its entire life — `--check` was never passed. It was found while auditing a pass's own
+  staked checks, not by anyone reading the output. **Once per pass, make a gate fail on purpose.**
+- **A new gate's exemptions are where the next bug lives.** `verify:focus-affordance` documents
+  honestly that it reads CSS only — and a `high` row sat in exactly that blind spot from the day
+  it shipped. Read the non-goals in a script's docblock before resting on its tick; that docblock
+  is the only place they are written down.
+- **Guards check structure, never truth.** Token *tables* are verified; the prose beside them is
+  not, so a falsified sentence always passes, and a token that changes **role** (accent moving
+  from ink to edge) passes silently. After mechanical green, re-read the source assuming the doc
+  is wrong.
+- **Drift is only checked in one direction.** `verify:docs` fails when an export is missing from
+  the docs, and passes when the docs name an export that no longer exists.
+- **A gate run against stale dependencies tells you nothing.** Skipping `bun install` before a
+  publish runs the whole suite against the *previous* version still in `node_modules`; everything
+  passes and the thing you changed was never loaded. Loud failure is a gift — silent success on
+  the wrong inputs is the expensive case.
+- **`tsc` and `eslint` are both silent on a prop delivered through a JSX spread** — measured
+  directly. No guard in this repo inspects a prop type, so the type layer is not a runtime
+  guarantee and an `Omit<>` reproduces the class every time.
+- **Prose about a gate drifts exactly like prose about a component.** `CONTRIBUTING.md`'s
+  description of the publish chain was four gates out of date; the chain in `package.json` is the
+  only source worth reading.

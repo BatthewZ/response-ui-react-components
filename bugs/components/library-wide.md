@@ -201,3 +201,48 @@ error is on screen and absent from the accessibility tree. Same ordering in
 **Fix:** spread rest *before* the computed error props, or merge explicitly rather than
 letting a present-but-`undefined` key win. This is independent of the §3 door — it needs no
 type change — but it lives in the same lines, so land it with whatever §3 decides.
+
+> **Landed as the second option only.** `236e6a0` used `mergeProps`, not the reordering this
+> row suggests first. Do not take the first clause literally when fixing #455: spreading rest
+> *before* the computed props mirrors the bug onto the caller — it erases an
+> `aria-invalid` the caller passed deliberately. Both directions are asserted on five
+> components (#456 names the two where only one direction is).
+
+### 455 · Input · Select · Textarea — the same `field()` spread erases `aria-invalid` here too (med)
+
+#434 closed on three components (TagInput, Slider, RangeSlider — named in its detail block,
+not in its row). Three more carry the identical ordering and were never enumerated:
+
+| Component | computed ARIA | caller spread |
+| --- | --- | --- |
+| `Input.tsx` | `:19` `{...ariaProps}` | `:31` `{...props}` |
+| `Select.tsx` | `:19` | `:32` |
+| `Textarea.tsx` | `:19` | `:31` |
+
+All three call `useFieldError(error)` (Field.tsx:41), which emits `"aria-invalid": "true"` only
+when invalid and `undefined` otherwise. `form.field()` emits the **key** on every render,
+valued `undefined` when the field is valid (use-form.tsx:215), so the later spread deletes the
+computed `"true"`.
+
+**Measured**, scratch render, `fieldLike = { "aria-invalid": undefined }`:
+
+```
+<Input error {...fieldLike} />         aria-invalid -> null   (expected "true")
+<Select error {...fieldLike}>…         aria-invalid -> null
+<Textarea error {...fieldLike} />      aria-invalid -> null
+<RangeSlider error {...fieldLike} />   aria-invalid -> "true"  (mergeProps control)
+```
+
+Consequence: a control showing a visible validation message reports itself **valid** to a
+screen reader — the error is on screen and absent from the accessibility tree.
+
+Why their own suites stay green: `Input.test.tsx:29`, `Select.test.tsx:51` and
+`Textarea.test.tsx:36` pass `error` **without** a spread, so the erasing path is never
+exercised.
+
+**Fix:** `{...mergeProps(props, ariaProps)}` (src/util/merge-props.ts:71), matching the five
+components already converted. Its `:92` guard — `b` wins only when `b` is not `undefined` — is
+what makes both directions correct. Add both directions to each new test; see
+`RangeSlider.test.tsx:186` and `:217` for the pair.
+
+**Related:** #75 (`Radio` never consumes `useFieldError` at all).
