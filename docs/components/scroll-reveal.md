@@ -20,14 +20,15 @@ approach. It watches the element with an `IntersectionObserver`, honours
 | `delay`      | `number` — milliseconds to offset the start                           | `0`       |
 | `once`       | `boolean` — reveal once, or replay on every re-entry                   | `true`    |
 | `rootMargin` | `string` — `IntersectionObserver` root margin                         | `"0px"`   |
+| `animate`    | `boolean` — run the reveal at all; `false` renders visible content      | `true`    |
 | `as`         | `ElementType`                                                         | `"div"`   |
 | `className`  | `string`                                                              | —         |
 | `children`   | `ReactNode`                                                           | —         |
 | `ref`        | `Ref<HTMLElement>`                                                    | —         |
 
-The `as` generic **types** the rendered element's props onto the component, but only
-the props above actually reach the DOM — anything else (`id`, `style`, `onClick`,
-`aria-*`, `data-*`) compiles and is then silently dropped. See [Gotchas](#gotchas).
+The `as` generic types the rendered element's whole prop set onto the component, and those
+props reach the DOM: `id`, `style`, `onClick`, `aria-*` and `data-*` all land. Four are
+merged with the component's own rather than replacing them — see [Gotchas](#gotchas).
 
 ## Animations
 
@@ -87,6 +88,27 @@ the fold.
 ```
 <!-- /example -->
 
+## Opting out of the reveal
+
+The reveal's first paint is `opacity: 0`, cleared only once an `IntersectionObserver`
+fires. That is what stops a flash of un-animated content, and it is also why a page whose
+JS never runs — a crawler, a failed bundle, a browser without the observer — shows
+nothing at all. `animate={false}` removes the reveal wrapper's whole mechanism: no hidden
+class, no observer, no animation class, content visible from the first paint. It is the
+same opt-out [Swimlane](swimlane.md) exposes, for the same reason.
+
+<!-- example:WithoutReveal -->
+```tsx
+<ScrollReveal animate={false}>
+  <h2>Refund policy</h2>
+</ScrollReveal>
+```
+<!-- /example -->
+
+Reach for it whenever the content must always be readable, and keep the default for
+decoration. The flag is a static choice, not a runtime fallback: with `animate` left at
+`true` there is still no visible state for a page that never hydrates.
+
 ## Render as another element
 
 <!-- example:AsSection -->
@@ -132,17 +154,20 @@ governs when the reveal fires.
   contributes `animationDelay` and `animationFillMode` to the merged `style` *only* while
   the element is mid-animation with `delay` greater than `0` and reduced motion off — and
   `delay` defaults to `0`. So with the default, before the reveal fires, after the
-  animation ends, or under `prefers-reduced-motion`, the component contributes nothing and
-  your `style` lands exactly as written, `animationDelay` included. In the one window where
+  animation ends, under `prefers-reduced-motion`, or with `animate={false}`, the component
+  contributes nothing and your `style` lands exactly as written, `animationDelay` included. In the one window where
   both exist the component's two properties win, which is why `delay` is the prop to reach
   for rather than hand-writing `animationDelay`.
 - **No IntersectionObserver, no reveal.** If `IntersectionObserver` is undefined (an old
   browser, or a server-rendered page whose JS never runs) and reduced motion is *not*
   requested, the element keeps `scroll-reveal-hidden` — `opacity: 0` — and never appears.
-  There is no visible fallback for the no-JS path. Don't gate essential content behind it.
+  The opt-out is [`animate={false}`](#opting-out-of-the-reveal), a decision you make when
+  you author the page; there is still no automatic fallback on the no-JS path, so don't
+  gate essential content behind the default.
 - **The initial state is invisible.** Before the reveal fires, the element is
   `opacity: 0`. That is what prevents a flash of un-animated content, but it also means
-  anything you wrap starts hidden until it scrolls into view (or reduced motion is on).
+  anything you wrap starts hidden until it scrolls into view (or reduced motion is on, or
+  `animate` is `false`).
 - **`delay` offsets, it doesn't orchestrate.** Staggering a group means hand-assigning an
   increasing `delay` per sibling. For an index-driven cascade, use [Stagger](stagger.md).
 - **Client-only.** ScrollReveal is a `"use client"` component (it uses effects and an
@@ -158,15 +183,14 @@ static from the first paint — no motion, no delayed appearance. The animation 
 carry the same reduced-motion guard in CSS, so the content is legible even if the
 observer does run.
 
-ScrollReveal is a purely visual wrapper — it adds no role, label, or focus behaviour.
-Keep the real semantics on the content inside it. And because attributes on the wrapper
-are dropped (see Gotchas), you **cannot** label an `as="section"` or `as="nav"` region
-by passing `aria-label` to ScrollReveal; put the landmark and its label on your own
-element instead.
+ScrollReveal is a purely visual wrapper — it adds no role, label, or focus behaviour of
+its own. Keep the real semantics on the content inside it, or put them on the wrapper:
+`aria-*` reaches the rendered element, so an `as="section"` or `as="nav"` region can be
+labelled by passing `aria-label` to ScrollReveal directly.
 
 Outside reduced-motion, remember the no-JS case above: content hidden by ScrollReveal
-is invisible to a reader whose page never hydrates, so never wrap content that must
-always be present.
+is invisible to a reader whose page never hydrates. Wrap that content in
+`animate={false}`, or don't wrap it at all.
 
 ## Related
 

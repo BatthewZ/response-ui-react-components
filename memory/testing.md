@@ -78,3 +78,21 @@ exists to prevent.
   an accessible name and `aria-valuetext` can each be asserted exactly, and *that* is what a
   test in this package proves. Whether a screen reader reads them in a useful order is not
   settleable in jsdom — say so rather than letting the attribute assertion imply it.
+- **jsdom's `getBoundingClientRect` returns zeros *and* ignores transforms, so a scroll-geometry
+  test asserts against a degenerate box in both directions.** A component that measures its own
+  layout position by subtracting the transform it applied last frame has that entire step
+  exercised against `0 - 0`, and the expected values in the test become arithmetic on
+  `innerHeight` that nobody can relate to a real page. Stub a fixed layout box that *adds the
+  element's current inline `translate`* the way a real rect does: the expected offset then reads
+  as the formula the component documents, and the subtract-the-transform step is actually
+  covered.
+- **A viewport is settable and a scroll is not.** `innerHeight` can be stubbed and a `resize`
+  event dispatched, which is enough to prove a listener recomputes; what a *real* stale offset
+  costs in pixels is only measurable in a browser, and stating the measured number ("96px of
+  drift at 720→400") is worth more in the record than "does not recompute".
+- **jsdom computes no animation properties, so any fix keyed on them is invisible by
+  default.** `animation-name` always resolves to `none` and `animation-duration` to `auto`,
+  which means a fallback timer sized from the element's own animation always measures zero
+  and a "no animation declared" branch is the *only* branch a test can reach. Stub the
+  computed style to a real duration and the sizing becomes assertable; without that stub the
+  test proves the timer exists, not that it reads anything.

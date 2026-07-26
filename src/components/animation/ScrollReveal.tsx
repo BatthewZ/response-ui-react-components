@@ -31,6 +31,13 @@ type ScrollRevealProps = {
   delay?: number;
   once?: boolean;
   rootMargin?: string;
+  /**
+   * Run the scroll-triggered reveal at all. The reveal's server-rendered markup
+   * is `opacity: 0` until an `IntersectionObserver` fires, so content that must
+   * be readable without JS needs `animate={false}` — the same opt-out
+   * `Swimlane` exposes.
+   */
+  animate?: boolean;
   className?: string;
   children?: ReactNode;
   as?: ElementType;
@@ -46,6 +53,7 @@ export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealImplProps>(funct
     delay = 0,
     once = true,
     rootMargin = "0px",
+    animate = true,
     className,
     children,
     as: Tag = "div",
@@ -63,7 +71,7 @@ export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealImplProps>(funct
 
   useEffect(() => {
     const node = innerRef.current;
-    if (!node || reducedMotion || typeof IntersectionObserver === "undefined") return;
+    if (!node || !animate || reducedMotion || typeof IntersectionObserver === "undefined") return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -83,7 +91,7 @@ export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealImplProps>(funct
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [threshold, rootMargin, once, reducedMotion]);
+  }, [threshold, rootMargin, once, reducedMotion, animate]);
 
   const handleAnimationEnd = useCallback(
     (e: AnimationEvent<HTMLDivElement>) => {
@@ -96,9 +104,10 @@ export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealImplProps>(funct
     [onAnimationEnd]
   );
 
-  const isHidden = !reducedMotion && !revealed;
+  const isHidden = animate && !reducedMotion && !revealed;
+  const isAnimating = animate && animating;
   const delayStyle =
-    animating && delay > 0 && !reducedMotion
+    isAnimating && delay > 0 && !reducedMotion
       ? { animationDelay: `${delay}ms`, animationFillMode: "backwards" as const }
       : undefined;
 
@@ -108,7 +117,7 @@ export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealImplProps>(funct
       ref={setRefs}
       className={cn(
         isHidden && "scroll-reveal-hidden",
-        animating && animationClassMap[animation],
+        isAnimating && animationClassMap[animation],
         className
       )}
       style={delayStyle || style ? { ...style, ...delayStyle } : undefined}

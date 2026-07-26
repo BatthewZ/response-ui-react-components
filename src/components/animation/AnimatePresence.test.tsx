@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // Defaults to full motion — the reduced-motion path is opt-in per test via
@@ -122,6 +122,100 @@ describe("AnimatePresence", () => {
     // the wrapper's own animation still unmounts it
     fireAnimationEnd(el);
     expect(screen.queryByTestId("animate")).not.toBeInTheDocument();
+  });
+
+  // #15 — the unmount is driven by the wrapper's own `animationend`, so an `exitClass`
+  // that runs no animation left the element mounted forever.
+  describe("#15 · the exit has a fallback when no animationend arrives", () => {
+    it("unmounts on the fallback timer", () => {
+      vi.useFakeTimers();
+      try {
+        const { rerender } = render(
+          <AnimatePresence show={true} exitClass="not-an-animation" data-testid="animate">
+            Content
+          </AnimatePresence>
+        );
+        rerender(
+          <AnimatePresence show={false} exitClass="not-an-animation" data-testid="animate">
+            Content
+          </AnimatePresence>
+        );
+        // Still on screen: the exit is in progress, nothing has ended it.
+        expect(screen.getByTestId("animate")).toBeInTheDocument();
+
+        act(() => {
+          vi.advanceTimersByTime(200);
+        });
+        expect(screen.queryByTestId("animate")).not.toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    // jsdom computes no animation properties at all (`animation-name: none`,
+    // `animation-duration: auto`), so the fallback above always uses the zero
+    // baseline. Stubbing the computed style is the only way to show the wait is
+    // sized from the element's own animation rather than from a constant.
+    it("waits out a declared exit animation before falling back", () => {
+      vi.useFakeTimers();
+      const computed = vi.spyOn(window, "getComputedStyle").mockReturnValue({
+        animationName: "fade-out",
+        animationDuration: "300ms",
+        animationDelay: "0s",
+      } as unknown as CSSStyleDeclaration);
+      try {
+        const { rerender } = render(
+          <AnimatePresence show={true} data-testid="animate">
+            Content
+          </AnimatePresence>
+        );
+        rerender(
+          <AnimatePresence show={false} data-testid="animate">
+            Content
+          </AnimatePresence>
+        );
+
+        act(() => {
+          vi.advanceTimersByTime(200);
+        });
+        expect(screen.getByTestId("animate")).toBeInTheDocument();
+
+        act(() => {
+          vi.advanceTimersByTime(250);
+        });
+        expect(screen.queryByTestId("animate")).not.toBeInTheDocument();
+      } finally {
+        computed.mockRestore();
+        vi.useRealTimers();
+      }
+    });
+
+    it("lets a real animationend unmount first, and does not fire twice", () => {
+      vi.useFakeTimers();
+      try {
+        const { rerender } = render(
+          <AnimatePresence show={true} data-testid="animate">
+            Content
+          </AnimatePresence>
+        );
+        rerender(
+          <AnimatePresence show={false} data-testid="animate">
+            Content
+          </AnimatePresence>
+        );
+
+        fireAnimationEnd(screen.getByTestId("animate"));
+        expect(screen.queryByTestId("animate")).not.toBeInTheDocument();
+
+        // The fallback was cleared on unmount; running it out changes nothing.
+        act(() => {
+          vi.advanceTimersByTime(1000);
+        });
+        expect(screen.queryByTestId("animate")).not.toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   it("carries no enter/exit animation class under reduced motion", () => {

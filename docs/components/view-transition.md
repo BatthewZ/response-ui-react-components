@@ -51,8 +51,9 @@ stable id whenever you render more than one:
 
 Tagging an element does nothing on its own — a transition only happens when the DOM
 changes inside `document.startViewTransition()`. `useViewTransition` wraps any navigate
-function so the change it causes runs there, falling back to a plain call on browsers
-without View Transitions support:
+function so the change it causes runs there — awaiting whatever `navigate` returns, and
+falling back to a plain call on browsers without View Transitions support and for anyone
+who has asked for reduced motion:
 
 <!-- example:TriggerNavigation -->
 ```tsx
@@ -82,27 +83,35 @@ the effect matches the rest of the app. See the
   animates). In a list, key the name off a stable id, never a shared literal.
 - **`name` always wins over `style`.** It is spread after `style`, so a
   `viewTransitionName` you pass through `style` is silently overridden. Use the prop.
-- **`useViewTransition` doesn't await async navigation.** The callback handed to
-  `startViewTransition` is `() => void navigate(...)` — it discards whatever `navigate`
-  returns instead of returning it, and nothing flushes React synchronously. For a typical
-  async SPA router the browser snapshots the *pre*-navigation DOM as the "new" state and
-  you get no visible transition. It works reliably only when the navigation mutates the
-  DOM synchronously inside the callback.
+- **`useViewTransition` awaits async navigation, but does not flush React.** The callback
+  handed to `startViewTransition` returns whatever `navigate` returns, so an async router's
+  promise is awaited and the browser snapshots the "new" state only once the navigation has
+  settled. What the hook cannot do is force React to commit: if your `navigate` resolves
+  *before* the state update it queued has rendered, the snapshot is still early. Routers
+  that mutate the DOM synchronously, or whose promise resolves after the commit, are the
+  reliable cases; anything else wants a `flushSync` of your own inside `navigate`.
 - **The component does not feature-detect; the hook does.** `ViewTransition` always writes
   `view-transition-name`; on a browser without View Transitions it is an unknown property
   and is ignored, so content still renders. `useViewTransition` guards on
   `document.startViewTransition` and just calls `navigate` where it is missing.
-- **It's a client module.** The file carries `"use client"` (the hook needs it), so
-  importing `ViewTransition` opts its module into the client bundle even though its render
-  is pure — unlike [Button](button.md), it is not usable as a server component.
+- **The component is server-renderable; the hook is not.** `ViewTransition` holds no state
+  and reads no browser API, so — like [Button](button.md) — its module carries no
+  `"use client"` and it renders fine inside an RSC tree. `useViewTransition` lives in its
+  own module, which does carry the directive; importing the hook is what pulls a client
+  boundary in, and it is re-exported from `ViewTransition` so the import path is unchanged.
 
 ## Accessibility
 
-- **No reduced-motion gate.** Neither `ViewTransition` nor `useViewTransition` consults
-  `prefers-reduced-motion`, so a reduced-motion user still gets the default cross-fade and
-  any `::view-transition-*` animation you add. Gate it yourself: skip the wrapped
-  navigation under `matchMedia("(prefers-reduced-motion: reduce)")`, or wrap your
-  view-transition keyframes in `@media (prefers-reduced-motion: no-preference)`.
+- **`useViewTransition` honours reduced motion; a transition you start yourself does
+  not.** Under `prefers-reduced-motion: reduce` the hook calls `navigate` directly and
+  never enters `document.startViewTransition()`, so there is no cross-fade and no morph of
+  any `ViewTransition` group — the component needs no gate of its own, because a
+  `view-transition-name` animates nothing outside a transition. If you call
+  `document.startViewTransition()` yourself, that gate is yours to add: check
+  `matchMedia("(prefers-reduced-motion: reduce)")` before starting it, or wrap your
+  `::view-transition-*` keyframes in `@media (prefers-reduced-motion: no-preference)`.
+  `@batthewz/response-ui-css` already zeroes the *root* cross-fade's duration under the
+  reduce query; that rule does not reach a named group.
 - **Semantically transparent.** The wrapper is a bare `<div>` with no role or label. Keep
   the real semantics — headings, `alt` text, landmarks — on the content inside it, and
   don't let the extra `<div>` break a layout that expects a direct parent/child (e.g. a

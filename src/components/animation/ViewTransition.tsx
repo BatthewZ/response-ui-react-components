@@ -1,11 +1,13 @@
-"use client";
 import {
   type ComponentPropsWithRef,
   type CSSProperties,
   forwardRef,
   type ReactNode,
-  useCallback,
 } from "react";
+
+// The hook carries the "use client" directive in its own module; this component
+// holds no state and reads no browser API, so it stays server-renderable.
+export { useViewTransition } from "./use-view-transition";
 
 type ViewTransitionProps = {
   name: string;
@@ -26,30 +28,3 @@ export const ViewTransition = forwardRef<HTMLDivElement, ViewTransitionProps>(
     );
   }
 );
-
-/**
- * `useViewTransition(navigate)` wraps any navigation function so that the
- * navigation runs inside `document.startViewTransition()` when the browser
- * supports it. Pass your router's navigate function (e.g. `useNavigate()`
- * from react-router-dom):
- *
- *     const navigate = useNavigate();
- *     const transition = useViewTransition(navigate);
- *     transition("/dashboard");
- */
-export function useViewTransition<TArgs extends unknown[]>(
-  navigate: (...args: TArgs) => unknown,
-): (...args: TArgs) => void {
-  return useCallback(
-    (...args: TArgs) => {
-      if (typeof document.startViewTransition === "function") {
-        document.startViewTransition(() => {
-          void navigate(...args);
-        });
-      } else {
-        void navigate(...args);
-      }
-    },
-    [navigate],
-  );
-}

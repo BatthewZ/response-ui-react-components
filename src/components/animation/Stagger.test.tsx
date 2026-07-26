@@ -42,14 +42,47 @@ describe("Stagger", () => {
     expect((items[1] as HTMLElement).style.getPropertyValue("--stagger-index")).toBe("1");
   });
 
-  it("applies stagger-delay CSS variable when prop is set", () => {
-    const { container } = render(
-      <Stagger staggerDelay="100ms">
-        <span>A</span>
-      </Stagger>
-    );
-    const el = container.firstElementChild as HTMLElement;
-    expect(el.style.getPropertyValue("--stagger-delay")).toBe("100ms");
+  // #17 — the variable used to be written on the container, where it can never
+  // reach the animation: `.stagger-item` in @batthewz/response-ui-css re-declares
+  // `--stagger-delay: var(--MOTION-STAGGER-DELAY)` on the item itself, so the
+  // inherited value is shadowed. Measured in Firefox 146 with the shipped rule:
+  // container-set `300ms` resolved to `50ms` on the item (animation-delay 0.1s at
+  // index 2); item-set `300ms` resolved to `300ms` (animation-delay 0.6s).
+  describe("#17 · staggerDelay reaches the element that consumes it", () => {
+    it("writes --stagger-delay on every item wrapper", () => {
+      const { container } = render(
+        <Stagger staggerDelay="100ms">
+          <span>A</span>
+          <span>B</span>
+        </Stagger>
+      );
+      const delays = Array.from(
+        container.querySelectorAll<HTMLElement>(".stagger-item"),
+        (item) => item.style.getPropertyValue("--stagger-delay")
+      );
+      expect(delays).toEqual(["100ms", "100ms"]);
+    });
+
+    it("does not leave the variable on the container, where it is shadowed", () => {
+      const { container } = render(
+        <Stagger staggerDelay="100ms">
+          <span>A</span>
+        </Stagger>
+      );
+      const el = container.firstElementChild as HTMLElement;
+      expect(el.style.getPropertyValue("--stagger-delay")).toBe("");
+    });
+
+    it("writes no delay variable at all when the prop is omitted", () => {
+      const { container } = render(
+        <Stagger>
+          <span>A</span>
+        </Stagger>
+      );
+      const item = container.querySelector<HTMLElement>(".stagger-item")!;
+      expect(item.style.getPropertyValue("--stagger-delay")).toBe("");
+      expect(item.style.getPropertyValue("--stagger-index")).toBe("0");
+    });
   });
 
   it("merges custom className", () => {
@@ -97,15 +130,16 @@ describe("Stagger", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("merges a caller `style` with its own stagger delay", () => {
+  it("leaves a caller `style` on the container untouched by the delay", () => {
     const { container } = render(
       <Stagger staggerDelay="100ms" style={{ marginTop: "8px" }}>
         <span>A</span>
       </Stagger>
     );
     const el = container.firstElementChild as HTMLElement;
-    expect(el.style.getPropertyValue("--stagger-delay")).toBe("100ms");
     expect(el.style.marginTop).toBe("8px");
+    const item = container.querySelector<HTMLElement>(".stagger-item")!;
+    expect(item.style.getPropertyValue("--stagger-delay")).toBe("100ms");
   });
 
   it("collapses every stagger index to 0 under reduced motion", () => {

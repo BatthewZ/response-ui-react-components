@@ -42,6 +42,18 @@ export function Layout() {
   );
 }
 
+/** `staggerDelay` sets the step between items, overriding `--MOTION-STAGGER-DELAY` for
+ *  this group only. It lands on each item wrapper, which is where `.stagger-item` reads it. */
+export function CustomDelay() {
+  return (
+    <Stagger staggerDelay="150ms">
+      <p>First.</p>
+      <p>Then this, 150ms later.</p>
+      <p>Then this, 300ms in.</p>
+    </Stagger>
+  );
+}
+
 /** `as` swaps only the outer wrapper; every item is still a `<div class="stagger-item">`. */
 export function AsElement() {
   return (

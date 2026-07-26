@@ -24,17 +24,18 @@ and they animate out, then unmount when that animation ends.
 | `ref`        | `Ref<HTMLDivElement>`   | —            |
 | …rest        | props of `div`          | —            |
 
-The exit half has a sharp edge: unmounting is driven by the wrapper's own `animationend`,
-so `exitClass` **must** name a class that actually runs a CSS animation, or the element
-never unmounts. See [Gotchas](#gotchas).
+Unmounting is driven by the wrapper's own `animationend`, so `exitClass` should name a
+class that actually runs a CSS animation; when it doesn't, a fallback timer unmounts the
+element instead of leaving it on screen. See [Gotchas](#gotchas).
 
 ## Custom enter and exit animations
 
 `enterClass` and `exitClass` are just class names — pass any animation class and the
 component toggles it on the wrapper at the right moment. The bundled `fade-*` classes
 (`fade-in`, `fade-up`, `fade-down`, `fade-left`, `fade-right`, `fade-out`) ship in
-`@batthewz/response-ui-css`; a project class works just as well, as long as the exit one
-defines an animation so `onAnimationEnd` can fire.
+`@batthewz/response-ui-css`; a project class works just as well. Give the exit one a real
+animation if you want the exit to be seen — without one there is nothing for
+`onAnimationEnd` to report and the fallback timer simply removes the element.
 
 <!-- example:CustomAnimation -->
 ```tsx
@@ -76,10 +77,15 @@ different `enterClass` / `exitClass` instead.
 
 ## Gotchas
 
-- **`exitClass` must run a CSS animation.** The unmount fires from the wrapper's
-  `onAnimationEnd`. Pass an exit class with no `animation` rule and that event never
-  arrives, so the element stays mounted forever after `show` flips to `false` — visibly
-  stuck on screen. The default `fade-out` animates; a plain utility class does not.
+- **`exitClass` should run a CSS animation; if it doesn't, a timer unmounts anyway.** The
+  unmount normally fires from the wrapper's `onAnimationEnd`. An exit class with no
+  `animation` rule never produces that event, so a fallback timer covers it: on entering the
+  exit phase the component reads the element's own computed `animation-duration` and
+  `animation-delay` and unmounts that long afterwards, plus a 100 ms grace period. With no
+  animation declared the wait is just the grace period, so the element leaves promptly
+  instead of sticking on screen forever. A real `animationend` still wins whenever it
+  arrives, and cancels the timer. The default `fade-out` animates; a plain utility class
+  does not.
 - **Your own `onAnimationEnd` runs first, then the unmount — and cannot stop it.** A handler
   you pass is composed with the component's rather than replacing it: yours is called, then
   the exit-phase check unmounts. There is no `preventDefault()` opt-out here, because

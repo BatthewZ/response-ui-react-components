@@ -51,6 +51,16 @@ export function TriggerTuning() {
   );
 }
 
+/** `animate={false}` drops the reveal entirely: no hidden state, no observer, content
+ *  readable from the first paint — the opt-out for anything that must survive without JS. */
+export function WithoutReveal() {
+  return (
+    <ScrollReveal animate={false}>
+      <h2>Refund policy</h2>
+    </ScrollReveal>
+  );
+}
+
 /** `as` swaps the rendered element — a `<section>` here instead of the default `<div>`. */
 export function AsSection() {
   return (

@@ -138,6 +138,75 @@ describe("ScrollReveal", () => {
     expect(el.className).not.toContain("fade-up");
   });
 
+  // #16 — the reveal's first paint is `opacity: 0` and only an IntersectionObserver
+  // clears it, so with no JS, no observer, or during SSR the content never appears.
+  // `animate={false}` is the opt-out, matching the one Swimlane gained for the same
+  // defect (ee5d181).
+  describe("#16 · animate={false} renders visible content", () => {
+    it("applies neither the hidden class nor an animation class", () => {
+      stubIntersectingObserver();
+      const { container } = render(<ScrollReveal animate={false}>Content</ScrollReveal>);
+      const el = container.firstElementChild as HTMLElement;
+      expect(el.className).not.toContain("scroll-reveal-hidden");
+      expect(el.className).not.toContain("fade-up");
+      expect(screen.getByText("Content")).toBeVisible();
+    });
+
+    it("never constructs an observer", () => {
+      const constructed = vi.fn();
+      const observed = vi.fn();
+      vi.stubGlobal(
+        "IntersectionObserver",
+        class {
+          constructor() {
+            constructed();
+          }
+          observe = observed;
+          unobserve() {}
+          disconnect() {}
+          takeRecords() {
+            return [];
+          }
+        }
+      );
+
+      render(<ScrollReveal animate={false}>Content</ScrollReveal>);
+      expect(constructed).toHaveBeenCalledTimes(0);
+      expect(observed).toHaveBeenCalledTimes(0);
+    });
+
+    it("contributes no animation delay", () => {
+      stubIntersectingObserver();
+      const { container } = render(
+        <ScrollReveal animate={false} delay={200} style={{ marginTop: "8px" }}>
+          Content
+        </ScrollReveal>
+      );
+      const el = container.firstElementChild as HTMLElement;
+      expect(el.style.animationDelay).toBe("");
+      expect(el.style.marginTop).toBe("8px");
+    });
+
+    it("still forwards className, rest props and the `as` tag", () => {
+      const { container } = render(
+        <ScrollReveal animate={false} as="section" className="custom-class" id="lane">
+          Content
+        </ScrollReveal>
+      );
+      const el = container.firstElementChild as HTMLElement;
+      expect(el.tagName).toBe("SECTION");
+      expect(el.className).toContain("custom-class");
+      expect(el.id).toBe("lane");
+    });
+
+    it("still hides behind the reveal by default", () => {
+      const { container } = render(<ScrollReveal>Content</ScrollReveal>);
+      expect((container.firstElementChild as HTMLElement).className).toContain(
+        "scroll-reveal-hidden"
+      );
+    });
+  });
+
   it("never observes and renders already-revealed under reduced motion", () => {
     motion.reduced = true;
     const constructed = vi.fn();

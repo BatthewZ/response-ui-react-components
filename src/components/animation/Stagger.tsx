@@ -10,6 +10,11 @@ import {
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 
 type StaggerProps = {
+  /**
+   * Delay step between items, e.g. `"100ms"`. Written on each item wrapper, not
+   * on the container: `.stagger-item` re-declares `--stagger-delay` on itself,
+   * so an inherited value never reaches the `animation-delay` that reads it.
+   */
   staggerDelay?: string;
   className?: string;
   children?: ReactNode;
@@ -32,11 +37,7 @@ export const Stagger = forwardRef<HTMLElement, StaggerImplProps>(function Stagge
       {...rest}
       ref={ref}
       className={className}
-      style={
-        staggerDelay || style
-          ? ({ ...style, ...(staggerDelay && { "--stagger-delay": staggerDelay }) } as React.CSSProperties)
-          : undefined
-      }
+      style={style}
     >
       {items.map((child, index) => (
         <div
@@ -45,6 +46,7 @@ export const Stagger = forwardRef<HTMLElement, StaggerImplProps>(function Stagge
           style={
             {
               "--stagger-index": reducedMotion ? 0 : index,
+              ...(staggerDelay && { "--stagger-delay": staggerDelay }),
             } as React.CSSProperties
           }
         >
