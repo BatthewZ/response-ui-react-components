@@ -186,8 +186,8 @@ the field at runtime with the rest of the app.
 | Placeholder         | `placeholder:text-fg-muted`                           | `--C-TEXT-MUTED`                  |
 | Fill, border, corners | `bg-surface-0` `border-border-strong` `rounded-md`  | `--C-SURFACE-0` `--C-BORDER-STRONG` `--RADIUS-MD` |
 | Disabled fill       | `disabled:bg-surface-3`                               | `--C-SURFACE-3`                   |
-| Focus ring & border | `focus-visible:ring-border-focus` `focus-visible:border-border-focus` | `--C-BORDER-FOCUS` |
-| Error border & ring | `border-status-error` `focus-visible:ring-status-error` | `--C-STATUS-ERROR`              |
+| Focus ring & border | `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
+| Error border & ring | `border-status-error` `focus:ring-status-error` | `--C-STATUS-ERROR`              |
 | Field padding       | `px-r4` `py-r5`                                       | `--R-SIZE-4` `--R-SIZE-5`         |
 
 The two buttons round their outer corners with `rounded-tr-md` / `rounded-br-md`, which read

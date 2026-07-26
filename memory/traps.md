@@ -94,3 +94,33 @@ with the identical defect and two whose tests covered only one direction. Both w
   `const NAME = "…"` by text, and a `${…}`-composed constant would resolve to nothing — blinding
   the guard at every consumer at once, silently, in the same commit that tidied the file. The
   neater authoring is sometimes the one that costs you the check.
+
+## E · From the pass that had to undo §D's other half
+
+That pass declared a documented decision "drift" and unified it away. The decision was a clean
+partition by element category, the documentation said so on eight pages in seven files, and the
+follow-up commit **deleted all eight sentences** as part of reconciling the docs with the new
+code. The gates stayed green throughout. The owner reversed it.
+
+- **"Nothing states an intent" is a claim about your search, not about the codebase.** The
+  sentences stating the intent existed, in the component docs, in the exact words the refactor
+  said were missing. Before calling a divergence accidental, grep the *docs* for the thing you
+  are about to change, not only the source.
+- **A clean partition is evidence of intent; drift is ragged.** If the split falls exactly along
+  a category boundary — every element of one kind on one side, every element of another kind on
+  the other — that is a decision someone made. Drift produces a scatter, not a boundary. Check
+  the shape of the divergence before you name it.
+- **Deleting the documentation that contradicts your change is how a wrong change becomes
+  permanent.** Doc text that argues *against* the diff in front of you is the cheapest refutation
+  you will ever be handed. Treat it as a finding to answer, never as staleness to reconcile — and
+  if you truly believe it is stale, say so in the commit and quote what you removed.
+- **Encode the contested decision in the names and in a literal test table.** A recipe called
+  `focusRing` invited the reading that any keying would do. `focusRingButton` / `focusRingControl`
+  plus a test asserting each recipe's variant against a hard-coded literal makes the next
+  unification fail a test instead of passing review.
+- **Refactors smuggle unannounced behaviour changes alongside the announced one.** The same commit
+  added `focus-visible:outline-none` to four components that had never reset the UA outline. It
+  was in no claim, no changelog entry and no docblock — it arrived because the author folded a
+  per-component decision into a shared constant. **When you hoist, diff what each call site had
+  against what the constant gives it, line by line, and keep whatever the constant would silently
+  add out of the constant.**

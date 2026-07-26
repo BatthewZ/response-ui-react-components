@@ -229,8 +229,8 @@ its popover re-tint at runtime with the rest of the app.
 | Field and popover fill   | `bg-surface-0`                                        | `--C-SURFACE-0`                   |
 | Disabled fill            | `disabled:bg-surface-3`                               | `--C-SURFACE-3`                   |
 | Field border             | `border-border-strong`                                | `--C-BORDER-STRONG`               |
-| Focus ring and border    | `focus-visible:ring-border-focus` `focus-visible:border-border-focus` | `--C-BORDER-FOCUS` |
-| Error border and ring    | `border-status-error` `focus-visible:ring-status-error` | `--C-STATUS-ERROR`              |
+| Focus ring and border    | `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
+| Error border and ring    | `border-status-error` `focus:ring-status-error` | `--C-STATUS-ERROR`              |
 | Popover border           | `border-border-default`                               | `--C-BORDER-DEFAULT`              |
 | Popover shadow           | `shadow-md`                                           | `--SHADOW-MD`                     |
 | Corners, field + popover | `rounded-md`                                          | `--RADIUS-MD`                     |
@@ -329,10 +329,10 @@ border and focus ring red. Colour is the only visual signal, so always render a
 invalid when *the picker itself* rejects input — an unparseable string, a clamped date, a day
 your `isDateDisabled` refuses — those revert with no announcement at all.
 
-The focus style comes from [Input](input.md): a 2px `focus-visible:` ring. The field is a
-text input, which browsers treat as always warranting a focus indicator, so it rings on
-click as well as on keyboard focus. The two icon buttons draw the same recipe but are
-buttons, so they ring only for keyboard users.
+The focus style comes from [Input](input.md): a 2px `focus:` ring, so it shows on click as
+well as on keyboard focus. The two icon buttons use `focus-visible:` instead, so they ring
+only for keyboard users. That difference is the library's split by element category, not an
+inconsistency: form controls ring under the mouse, buttons do not.
 
 DatePicker ships its own `"use client"`, so it can be imported directly from a Server
 Component; it just renders on the client.

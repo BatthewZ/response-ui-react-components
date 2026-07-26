@@ -198,13 +198,15 @@ in the `.tsx`:
 | Where             | Utility                           | Override           |
 | ----------------- | --------------------------------- | ------------------ |
 | Selected dot fill | `accent-accent`                   | `--C-ACCENT`       |
-| Focus ring        | `focus-visible:ring-border-focus` | `--C-BORDER-FOCUS` |
+| Focus ring        | `focus:ring-border-focus`         | `--C-BORDER-FOCUS` |
 
 `accent-accent` sets the CSS `accent-color` property, which every current engine honours on
 a native radio, so the selected dot follows `--C-ACCENT` in every theme. The ring is the
-library's shared focus recipe, the same one [Checkbox](checkbox.md), [Input](input.md) and
-[Select](select.md) draw: `focus-visible:outline-none` drops the UA outline and a 2px
-`--C-BORDER-FOCUS` ring at `ring-offset-0` stands in its place, flush against the circle.
+library's form-control focus recipe, the same one [Checkbox](checkbox.md), [Input](input.md)
+and [Select](select.md) draw: a 2px `--C-BORDER-FOCUS` ring at `ring-offset-0`, flush against
+the circle, keyed on `focus:` so it shows on a mouse click and not only on Tab. Radio also
+adds `focus:outline-none`, so that ring stands in place of the UA outline rather than beside
+it — [Checkbox](checkbox.md) makes the opposite call and keeps both.
 
 The box is a fixed `size-4` (1rem) — a Tailwind spacing value, not a contract token, so
 resize it with `className="size-…"` rather than a theme variable. The ring's 2px width and
@@ -214,9 +216,9 @@ Note what is *absent*: unlike [Checkbox](checkbox.md), Radio ships no resting `b
 `rounded-*` utility. That is the honest call rather than an omission — there is no
 `appearance-none` here either, so the circle is the browser's own control, and current
 engines widely ignore an author border or corner radius drawn on one. The recipe's
-`focus-visible:border-border-focus` is in the same position: reachable, but on a
-default-appearance radio widely a no-op, which is why the ring and not the border is what
-you actually see on focus.
+`focus:border-border-focus` is in the same position: reachable, but on a default-appearance
+radio widely a no-op, which is why the ring and not the border is what you actually see on
+focus.
 
 ## Gotchas
 
@@ -227,9 +229,10 @@ you actually see on focus.
 - **There is no `RadioGroup`.** The package exports `Radio` alone — no group component, no
   `options` prop, no set-level `value`/`onChange`, no roving-tabindex helper. Every group on
   this page is hand-built, and that is the supported path.
-- **The focus ring replaces the UA outline rather than joining it.**
-  `focus-visible:outline-none` removes the browser's own indicator and the 2px
-  `--C-BORDER-FOCUS` ring stands in for it — the trade every control in the library makes.
+- **The focus ring replaces the UA outline rather than joining it.** `focus:outline-none`
+  removes the browser's own indicator and the 2px `--C-BORDER-FOCUS` ring stands in for it —
+  the trade [Input](input.md), [Select](select.md), [Textarea](textarea.md) and
+  [OTPInput](otpinput.md) make too, and the one [Checkbox](checkbox.md) does not.
   The ring is a `box-shadow`, which forced-colours mode forces to `none`, and Tailwind v4's
   `outline-none` compiles to `outline-style: none` rather than the transparent outline
   `outline-hidden` keeps. So in forced colours neither indicator survives: add
@@ -281,11 +284,11 @@ Name the group as well as the options. A `<fieldset>`/`<legend>`, or `role="radi
 without one they hear "Daily summary, radio button, 2 of 3" with no idea it concerns the email
 digest.
 
-**Focus is visible, and themed.** `focus-visible:outline-none` removes the browser's
-indicator and a 2px `--C-BORDER-FOCUS` ring replaces it, satisfying WCAG 2.4.7 (Focus
-Visible) on every theme. Being `focus-visible:`, it paints on keyboard focus and not on a
-pointer click — the browser's own rule for a control that is not text entry. One mode is
-still uncovered; see [Gotchas](#gotchas).
+**Focus is visible, and themed.** `focus:outline-none` removes the browser's indicator and a
+2px `--C-BORDER-FOCUS` ring replaces it, satisfying WCAG 2.4.7 (Focus Visible) on every
+theme. Being `focus:` rather than `focus-visible:`, it paints on a pointer click as well as
+on keyboard focus — unlike [Button](button.md) and [IconButton](icon-button.md), which are
+focus-visible only. One mode is still uncovered; see [Gotchas](#gotchas).
 
 Marking a group invalid is manual, and so is describing it — Radio reads no field context —
 and the two do not go in the same place. `aria-describedby` is global, so it can sit on the

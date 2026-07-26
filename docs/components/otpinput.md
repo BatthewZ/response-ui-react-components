@@ -177,8 +177,8 @@ behind them, so a themed OTPInput changes colour but never changes size.
 | Character type scale   | `text-h5`                                               | `--H5`              |
 | Corner radius          | `rounded-md`                                            | `--RADIUS-MD`       |
 | Gap between boxes      | `gap-r6`                                                | `--R-SIZE-6`        |
-| Focus ring and border  | `focus-visible:ring-border-focus` `focus-visible:border-border-focus` | `--C-BORDER-FOCUS` |
-| Invalid border and ring | `border-status-error` `focus-visible:ring-status-error` | `--C-STATUS-ERROR` |
+| Focus ring and border  | `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
+| Invalid border and ring | `border-status-error` `focus:ring-status-error` | `--C-STATUS-ERROR` |
 | Disabled fill          | `disabled:bg-surface-3`                                 | `--C-SURFACE-3`     |
 | Colour transition      | `duration-fast`                                         | `--DURATION-FAST`   |
 
@@ -259,9 +259,9 @@ wins over the built-in `aria-label` default.
   `aria-invalid="true"` on every box, and inside a [Field](field.md) every box also gets the same
   `aria-describedby`, so the error text is repeated once per box as the user arrows across.
   The group itself receives neither.
-- **Focus is `focus-visible:`, not `focus:`.** Each box is a text field, and browsers treat
-  those as always warranting a focus indicator, so the ring still appears on a mouse click as
-  well as on keyboard focus. `focus-visible:outline-none` removes the UA outline, leaving the
+- **Focus is `focus:`, not `focus-visible:`,** so the ring appears on mouse clicks as well as
+  keyboard focus — the keying every native form control in the library uses, and the opposite
+  of [Button](button.md)'s. `focus:outline-none` removes the UA outline, leaving the
   token-coloured ring as the only indicator — which is why the `events` and `grimdark` ratios
   in [Theme tokens](#theme-tokens) matter.
 

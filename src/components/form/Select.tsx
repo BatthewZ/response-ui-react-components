@@ -1,6 +1,10 @@
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
-import { focusRingControl, focusRingControlError } from "../../util/focus";
+import {
+  focusOutlineResetControl,
+  focusRingControl,
+  focusRingControlError,
+} from "../../util/focus";
 import { cn } from "../../util/style";
 
 import { useFieldError } from "./Field";
@@ -23,6 +27,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         "bg-surface-0 border border-border-strong rounded-md",
         "placeholder:text-fg-muted",
         "duration-fast",
+        focusOutlineResetControl,
         focusRingControl,
         "disabled:bg-surface-3 disabled:cursor-not-allowed",
         "appearance-none bg-no-repeat bg-position-[right_0.5rem_center] bg-size-[1.5em_1.5em] pr-10",

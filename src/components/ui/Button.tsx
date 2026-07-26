@@ -1,6 +1,6 @@
 import { type ComponentPropsWithRef, type ElementType, forwardRef } from "react";
 
-import { focusRing } from "../../util/focus";
+import { focusRingButton } from "../../util/focus";
 import { cn } from "../../util/style";
 
 type Variant = "primary" | "secondary" | "ghost" | "ghost-inverse" | "danger" | "link";
@@ -44,7 +44,7 @@ export const Button = forwardRef<HTMLElement, ButtonProps>(function Button(
       {...(Tag === "button" ? { type: "button" as const } : {})}
       className={cn(
         baseClasses,
-        focusRing,
+        focusRingButton,
         variantClassMap[variant],
         sizeClassMap[size],
         className

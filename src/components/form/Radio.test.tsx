@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { focusRingControl } from "../../util/focus";
+import { focusOutlineResetControl, focusRingControl } from "../../util/focus";
 
 import { Radio } from "./Radio";
 
@@ -101,7 +101,10 @@ describe("focus affordance (#73)", () => {
     const cls = screen.getByRole("radio").className;
 
     expect(cls).toContain(focusRingControl);
-    expect(cls).toContain("focus-visible:outline-none");
-    expect(cls).toContain("focus-visible:ring-border-focus");
+    expect(cls).toContain(focusOutlineResetControl);
+    // Spelled out as well as referenced: the reset and the ring have to answer
+    // to the same variant, and `focus:` is the form-control half of the split.
+    expect(cls).toContain("focus:outline-none");
+    expect(cls).toContain("focus:ring-border-focus");
   });
 });

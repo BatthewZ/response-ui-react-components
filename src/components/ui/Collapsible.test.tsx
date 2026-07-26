@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { focusRing } from "../../util/focus";
+import { focusRingButton } from "../../util/focus";
 
 import { Collapsible } from "./Collapsible";
 
@@ -189,7 +189,7 @@ describe("Collapsible", () => {
       renderCollapsible();
       const cls = screen.getByRole("button", { name: "Toggle" }).className;
 
-      expect(cls).toContain(focusRing);
+      expect(cls).toContain(focusRingButton);
     });
 
     it("keeps the ring when the caller adds classes of their own", () => {
@@ -203,6 +203,17 @@ describe("Collapsible", () => {
 
       expect(cls).toContain("focus-visible:ring-border-focus");
       expect(cls).toContain("w-full");
+    });
+
+    it("keeps the UA outline rather than replacing it", () => {
+      // The trigger is a `<button>`, so it sits on the `focus-visible:` half of
+      // the split with Button and IconButton — and, like them, adds no outline
+      // reset: the UA outline stays as the contrast-adaptive second indicator.
+      renderCollapsible();
+
+      expect(screen.getByRole("button", { name: "Toggle" }).className).not.toContain(
+        "outline-none"
+      );
     });
   });
 });

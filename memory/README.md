@@ -10,7 +10,7 @@ to understand.
 
 | Spoke                      | The lesson                                                  |
 | -------------------------- | ------------------------------------------------------------ |
-| [traps.md](./traps.md)     | What three fix passes got wrong. Read before planning.       |
+| [traps.md](./traps.md)     | What four fix passes got wrong. Read before planning.        |
 | [state.md](./state.md)     | Where one fact ends up stored twice, and which copies are deliberate. |
 | [gates.md](./gates.md)     | What a green gate does *not* mean.                           |
 | [ledger.md](./ledger.md)   | How a written record goes wrong, and which errors are worst. |
@@ -31,6 +31,10 @@ to understand.
 5. **A claim that counts instances instead of naming them cannot be audited.**
 6. **Scope is this package only** — not the CSS package, not the tailwind-merge package, *not
    even to add a script*. That boundary was crossed once and reverted in full.
+7. **Documentation that contradicts your diff is a refutation, not staleness.** One pass called a
+   documented decision "drift", changed it, and deleted the eight sentences that said otherwise;
+   the gates stayed green and the owner reversed the whole thing. Answer the prose or leave it
+   standing.
 
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

@@ -249,8 +249,8 @@ variable below and both re-tint at runtime, with no rebuild.
 | Disabled field fill         | `disabled:bg-surface-3`                                | `--C-SURFACE-3`                   |
 | Field border                | `border-border-strong`                                 | `--C-BORDER-STRONG`               |
 | Popover border              | `border-border-default`                                | `--C-BORDER-DEFAULT`              |
-| Focus ring and border       | `focus-visible:ring-border-focus` `focus-visible:border-border-focus` | `--C-BORDER-FOCUS` |
-| Error border and ring       | `border-status-error` `focus-visible:ring-status-error` | `--C-STATUS-ERROR`               |
+| Focus ring and border       | `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
+| Error border and ring       | `border-status-error` `focus:ring-status-error` | `--C-STATUS-ERROR`               |
 | Field padding               | `px-r4` `py-r5`                                        | `--R-SIZE-4` `--R-SIZE-5`         |
 | Popover padding             | `p-r5`                                                 | `--R-SIZE-5`                      |
 | Corner radius               | `rounded-md`                                           | `--RADIUS-MD`                     |

@@ -1,6 +1,6 @@
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
-import { focusRing } from "../../util/focus";
+import { focusRingButton } from "../../util/focus";
 import { cn } from "../../util/style";
 
 type IconButtonProps = {
@@ -18,6 +18,6 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
   // bare <button> defaults to type="submit" and every icon button inside a
   // form submits it.
   return (
-    <button ref={ref} type="button" className={cn(baseClasses, focusRing, className)} {...props} />
+    <button ref={ref} type="button" className={cn(baseClasses, focusRingButton, className)} {...props} />
   );
 });

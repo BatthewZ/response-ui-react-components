@@ -8,7 +8,11 @@ import {
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
-import { focusRingControl, focusRingControlError } from "../../util/focus";
+import {
+  focusOutlineResetControl,
+  focusRingControl,
+  focusRingControlError,
+} from "../../util/focus";
 import { cn } from "../../util/style";
 
 import { useFieldError } from "./Field";
@@ -214,6 +218,7 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
               "size-12 text-center text-h5 text-fg-primary",
               "bg-surface-0 border border-border-strong rounded-md",
               "duration-fast",
+              focusOutlineResetControl,
               focusRingControl,
               "disabled:bg-surface-3 disabled:cursor-not-allowed",
               invalid && focusRingControlError

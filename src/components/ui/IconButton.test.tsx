@@ -94,4 +94,14 @@ describe("IconButton", () => {
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(onSubmit).toHaveBeenCalledTimes(0);
   });
+
+  describe("focus affordance", () => {
+    it("rings on `focus-visible` only, and keeps the UA outline beside it", () => {
+      render(<IconButton aria-label="Search"><SearchIcon /></IconButton>);
+      const cls = screen.getByRole("button", { name: "Search" }).className;
+
+      expect(cls).toContain("focus-visible:ring-border-focus");
+      expect(cls).not.toContain("outline-none");
+    });
+  });
 });

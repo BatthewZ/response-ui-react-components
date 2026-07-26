@@ -50,3 +50,12 @@ The generalisable lessons:
 - **The quantities are the first thing to distrust.** Counts, percentages and "N files affected"
   were wrong far more often than the underlying diagnosis. A pass can be right that something
   hurts and badly wrong about how much.
+- **A pass can erase the evidence against itself and leave the record looking consistent.** One
+  refactor asserted a documented decision was accidental drift, changed it, and — in the
+  follow-up commit that "reconciled the docs" — deleted the eight sentences across seven pages
+  that had stated the decision and its reason. Every gate was green afterwards, the commit
+  bodies were detailed and honest about *what* was rewritten, and the only surviving trace of
+  the original intent was in `git log`. **When a doc-reconciliation commit follows a behaviour
+  commit, read what it deleted, not what it wrote** — `git show <sha> -- docs/` and look at the
+  `-` lines first. Deleted prose that argued against the change is the refutation the pass
+  chose not to answer.

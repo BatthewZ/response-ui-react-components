@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  focusRing,
+  focusOutlineResetButton,
+  focusOutlineResetControl,
+  focusRingButton,
   focusRingControl,
   focusRingControlError,
   focusRingGroup,
@@ -10,7 +12,7 @@ import {
 } from "./focus";
 
 const RECIPES = {
-  focusRing,
+  focusRingButton,
   focusRingControl,
   focusRingControlError,
   focusRingGroup,
@@ -18,45 +20,63 @@ const RECIPES = {
   focusRingWithinError,
 };
 
+const RESETS = { focusOutlineResetButton, focusOutlineResetControl };
+
 /**
  * Every expectation below compares against a **literal**, never against a value
  * derived from the recipe under test. An earlier version of this file asserted
  * `offsets` equalled `offsets.map(() => "ring-offset-0")` — true for `[]`, so
  * deleting every `ring-offset-0` kept the suite green.
+ *
+ * `variant` encodes the partition the library keys its focus affordance on:
+ * buttons on `focus-visible`, native form controls on plain `focus`. It is a
+ * deliberate split, not drift — a pass that read it as drift unified everything
+ * onto `focus-visible` and deleted the docs that said otherwise. Changing a
+ * value here is changing that contract, which is the point of spelling each one
+ * out rather than deriving it.
  */
 const EXPECTED = {
-  focusRing: { variant: "focus-visible", ring: true, reset: true, border: false },
-  focusRingControl: { variant: "focus-visible", ring: true, reset: true, border: true },
-  focusRingControlError: { variant: "focus-visible", ring: false, reset: false, border: true },
-  focusRingWithin: { variant: "focus-within", ring: true, reset: false, border: true },
-  focusRingWithinError: { variant: "focus-within", ring: false, reset: false, border: true },
-  focusRingGroup: { variant: "group-focus-visible", ring: true, reset: false, border: false },
+  focusRingButton: { variant: "focus-visible", ring: true, border: false },
+  focusRingControl: { variant: "focus", ring: true, border: true },
+  focusRingControlError: { variant: "focus", ring: false, border: true },
+  focusRingWithin: { variant: "focus-within", ring: true, border: true },
+  focusRingWithinError: { variant: "focus-within", ring: false, border: true },
+  focusRingGroup: { variant: "group-focus-visible", ring: true, border: false },
+} as const;
+
+/** The reset that belongs with each recipe, spelled out rather than derived. */
+const EXPECTED_RESETS = {
+  focusOutlineResetButton: { literal: "focus-visible:outline-none", pairs: "focusRingButton" },
+  focusOutlineResetControl: { literal: "focus:outline-none", pairs: "focusRingControl" },
 } as const;
 
 /** Variant segments of a Tailwind class — everything before the final `:`. */
 const variantsOf = (cls: string): string[] => cls.split(":").slice(0, -1);
 
 describe("focus recipes", () => {
-  it("covers every exported recipe, and none is empty", () => {
+  it("covers every exported recipe and reset, and none is empty", () => {
     // Guards the whole file: a recipe of "" makes `toContain(recipe)` in the
     // component tests forced-true, so an empty constant must fail loudly here.
     expect(Object.keys(RECIPES).sort()).toEqual(Object.keys(EXPECTED).sort());
-    for (const [name, recipe] of Object.entries(RECIPES)) {
-      expect([name, recipe.length > 0]).toEqual([name, true]);
+    expect(Object.keys(RESETS).sort()).toEqual(Object.keys(EXPECTED_RESETS).sort());
+    for (const [name, value] of Object.entries({ ...RECIPES, ...RESETS })) {
+      expect([name, value.length > 0]).toEqual([name, true]);
     }
   });
 
-  it("never keys an affordance on plain `focus`", () => {
-    // Not one rule in the 43 component stylesheets uses plain `:focus`. Matched
-    // per variant segment, so `group-focus:` and `peer-focus:` are caught too —
-    // a `/(?:^|\s)focus:/` regex silently misses both.
-    for (const [name, recipe] of Object.entries(RECIPES)) {
-      const plain = recipe
-        .split(/\s+/)
-        .flatMap(variantsOf)
-        .filter((v) => v === "focus" || v.endsWith("-focus"));
-      expect([name, plain]).toEqual([name, []]);
-    }
+  it("keys the button half on `focus-visible` and the form-control half on `focus`", () => {
+    // The partition, asserted as two literal lists. A recipe moving from one
+    // list to the other fails here before it can reach a component.
+    const byVariant = (want: string) =>
+      Object.entries(RECIPES)
+        .filter(([, recipe]) => recipe.split(/\s+/).flatMap(variantsOf).includes(want))
+        .map(([name]) => name)
+        .sort();
+
+    expect(byVariant("focus-visible")).toEqual(["focusRingButton"]);
+    expect(byVariant("focus")).toEqual(["focusRingControl", "focusRingControlError"]);
+    expect(byVariant("focus-within")).toEqual(["focusRingWithin", "focusRingWithinError"]);
+    expect(byVariant("group-focus-visible")).toEqual(["focusRingGroup"]);
   });
 
   it("keys every recipe on the one variant it is declared for", () => {
@@ -77,14 +97,35 @@ describe("focus recipes", () => {
     }
   });
 
-  it("pairs an outline reset with a ring, and declares which recipes reset", () => {
-    // Table-driven rather than `if (!reset) continue` — a skip would silently
-    // stop checking a recipe the moment someone dropped its reset.
+  it("leaves the outline reset out of every recipe", () => {
+    // The reset is a per-component call — `Checkbox`, `Button`, `IconButton` and
+    // `Collapsible.Trigger` keep the UA outline alongside the ring — so a recipe
+    // that carried one would silently impose it on every consumer.
+    for (const [name, recipe] of Object.entries(RECIPES)) {
+      expect([name, recipe.includes("outline")]).toEqual([name, false]);
+    }
+  });
+
+  it("gives each reset the exact spelling of the recipe it pairs with", () => {
+    for (const [name, reset] of Object.entries(RESETS)) {
+      const want = EXPECTED_RESETS[name as keyof typeof EXPECTED_RESETS];
+      expect([name, reset]).toEqual([name, want.literal]);
+      // The reset must answer to the same variant as its recipe, or the outline
+      // goes on one interaction and the ring arrives on another.
+      expect([name, variantsOf(reset)]).toEqual([
+        name,
+        [EXPECTED[want.pairs].variant],
+      ]);
+    }
+  });
+
+  it("declares a ring and a border swap per the table", () => {
+    // Table-driven rather than `if (!x) continue` — a skip would silently stop
+    // checking a recipe the moment someone dropped half of it.
     const actual = Object.fromEntries(
       Object.entries(RECIPES).map(([name, recipe]) => [
         name,
         {
-          reset: recipe.includes("outline-none"),
           ring: /(?:^|\s)[\w-]*:ring-(?:border-focus|status-error)\b/.test(recipe),
           border: /(?:^|\s)[\w-]*:border-(?:border-focus|status-error)\b/.test(recipe),
         },
@@ -92,7 +133,7 @@ describe("focus recipes", () => {
     );
     for (const [name, shape] of Object.entries(actual)) {
       const want = EXPECTED[name as keyof typeof EXPECTED];
-      expect([name, shape]).toEqual([name, { reset: want.reset, ring: true, border: want.border }]);
+      expect([name, shape]).toEqual([name, { ring: true, border: want.border }]);
     }
   });
 
@@ -105,11 +146,9 @@ describe("focus recipes", () => {
         .split(/\s+/)
         .map((cls) => cls.split(":").at(-1) ?? "")
         .flatMap((util) => /^(?:ring|border|outline)-(.+)$/.exec(util)?.slice(1) ?? [])
-        // Widths (`ring-2`), the offset (`ring-offset-0`) and the reset keyword
-        // (`outline-none`) are not colour positions; each is asserted above.
-        .filter(
-          (token) => !/^\d+$/.test(token) && !token.startsWith("offset-") && token !== "none"
-        );
+        // Widths (`ring-2`) and the offset (`ring-offset-0`) are not colour
+        // positions; each is asserted above.
+        .filter((token) => !/^\d+$/.test(token) && !token.startsWith("offset-"));
       expect([name, colours.filter((c) => !ALLOWED.has(c))]).toEqual([name, []]);
     }
   });
@@ -141,6 +180,17 @@ describe("focus recipes are the only copy", () => {
       // is the point; `.test.tsx` asserts against the rendered string.
       .filter(([path]) => !/\.(?:test|examples)\.tsx$/.test(path))
       .filter(([, source]) => HAND_WRITTEN.test(source))
+      .map(([path]) => path.replace("../components/", ""));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("owns the outline reset spelling too", () => {
+    // A hand-written `focus:outline-none` would drift from the recipe it sits
+    // beside; the reset constants exist so the variant cannot disagree.
+    const offenders = Object.entries(sources)
+      .filter(([path]) => !/\.(?:test|examples)\.tsx$/.test(path))
+      .filter(([, source]) => /(?:focus|focus-visible):outline-none/.test(source))
       .map(([path]) => path.replace("../components/", ""));
 
     expect(offenders).toEqual([]);

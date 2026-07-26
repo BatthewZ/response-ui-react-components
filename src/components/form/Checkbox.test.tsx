@@ -78,4 +78,24 @@ describe("Checkbox", () => {
     const checkbox = screen.getByRole("checkbox", { name: "Agree" });
     expect(checkbox.className).toContain("rounded-sm");
   });
+
+  describe("focus affordance", () => {
+    it("rings on plain `focus`, so a mouse click shows the ring too", () => {
+      render(<Checkbox aria-label="Agree" />);
+      const cls = screen.getByRole("checkbox", { name: "Agree" }).className;
+
+      expect(cls).toContain("focus:ring-border-focus");
+      expect(cls).not.toContain("focus-visible:");
+    });
+
+    it("keeps the UA outline rather than replacing it", () => {
+      // The browser's outline is contrast-adaptive and survives forced-colours
+      // mode, which the box-shadow ring does not; Checkbox has never reset it.
+      render(<Checkbox aria-label="Agree" />);
+
+      expect(screen.getByRole("checkbox", { name: "Agree" }).className).not.toContain(
+        "outline-none"
+      );
+    });
+  });
 });

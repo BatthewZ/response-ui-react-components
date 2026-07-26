@@ -3,14 +3,17 @@
  * counterpart to the `:focus-visible` rules in `src/components/**\/*.css`, for
  * the components that carry no stylesheet of their own.
  *
- * Two decisions are settled here rather than re-argued per component:
+ * Three decisions are settled here rather than re-argued per component:
  *
- * - **`focus-visible`, never `focus`.** Not one rule in the 43 component
- *   stylesheets is keyed on plain `:focus`, including the CSS-authored text
- *   inputs (`.combobox-input`, `.colorpicker-hex`) and toggles (`.switch`).
- *   `:focus-visible` already gives each control type the right answer: browsers
- *   match it on a mouse-clicked text field and not on a clicked button or
- *   checkbox, so one keying covers both.
+ * - **The keying is a partition by element category, and it is deliberate.**
+ *   Buttons ring on `focus-visible:`; native form controls ring on `focus:`.
+ *   A browser matches `:focus-visible` on a clicked *text* field but not on a
+ *   clicked checkbox, radio, button or (in some engines) `<select>` — so
+ *   `:focus-visible` alone cannot say "every form control rings under the
+ *   mouse, no button does", which is the rule this library wants. `:focus` on
+ *   the control half says it outright. The two names below carry the category
+ *   so the split cannot be re-read as drift and unified away: it was, once,
+ *   and the eight doc sentences that recorded the intent were deleted with it.
  * - **`ring-offset-0`.** Tailwind's ring offset paints a solid band of
  *   `--tw-ring-offset-color` — themed to `--C-SURFACE-0` by
  *   `response-ui-css/src/base.css:41-48` — so a non-zero offset is correct only
@@ -19,6 +22,14 @@
  *   (`box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS)`) and its outline rings use
  *   `outline-offset`, which is transparent. Offset 0 asks nothing of the offset
  *   colour at all.
+ * - **No recipe resets the UA outline.** Whether a control replaces the
+ *   browser's outline or keeps it alongside the ring is a per-component call and
+ *   has never been uniform — `Input`, `Select`, `Textarea`, `OTPInput`, `Radio`
+ *   and `ErrorBoundary`'s retry replace it; `Checkbox`, `Button`, `IconButton`
+ *   and `Collapsible.Trigger` keep the UA outline, which is contrast-adaptive
+ *   and survives forced-colours mode. A site that resets pairs the matching
+ *   `focusOutlineReset*` below with its recipe, so the reset and the ring always
+ *   answer to the same variant.
  *
  * The rest ring is declared transparent so the colour transitions rather than
  * appearing instantly — which is why every consumer also carries `duration-fast`.
@@ -29,16 +40,22 @@
  */
 
 /** Buttons and other elements that take focus themselves and draw no border. */
-export const focusRing =
-  "ring-2 ring-transparent focus-visible:outline-none focus-visible:ring-border-focus focus-visible:ring-offset-0";
+export const focusRingButton =
+  "ring-2 ring-transparent focus-visible:ring-border-focus focus-visible:ring-offset-0";
 
-/** Form controls: `focusRing` plus the swap of the border they draw. */
+/** Outline reset for a `focusRingButton` site, keyed to match it. */
+export const focusOutlineResetButton = "focus-visible:outline-none";
+
+/** Native form controls: the ring plus the swap of the border they draw. */
 export const focusRingControl =
-  "ring-2 ring-transparent focus-visible:outline-none focus-visible:ring-border-focus focus-visible:ring-offset-0 focus-visible:border-border-focus";
+  "ring-2 ring-transparent focus:ring-border-focus focus:ring-offset-0 focus:border-border-focus";
+
+/** Outline reset for a `focusRingControl` site, keyed to match it. */
+export const focusOutlineResetControl = "focus:outline-none";
 
 /** Invalid state for `focusRingControl` — recolours border and ring together. */
 export const focusRingControlError =
-  "border-status-error focus-visible:ring-status-error focus-visible:border-status-error";
+  "border-status-error focus:ring-status-error focus:border-status-error";
 
 /**
  * Wrapper boxes that own the border and ring for an input nested inside them.

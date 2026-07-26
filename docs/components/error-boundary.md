@@ -169,9 +169,10 @@ follow a theme.**
   it re-scales with the theme or steps at the 40rem breakpoint the way the rest of the
   library does.
 - **The focus ring is the one thing on this screen that is fully on contract.** It is the
-  library's shared recipe — a 2px `--C-BORDER-FOCUS` ring at `ring-offset-0`, flush against
-  the button — so the retry control rings exactly like [Button](button.md) does even though
-  everything around it does not.
+  library's button recipe — a 2px `--C-BORDER-FOCUS` ring at `ring-offset-0`, flush against
+  the button and keyed on `focus-visible:` — so the retry control rings on the same token and
+  the same interaction as [Button](button.md) even though everything around it does not. It
+  goes one step further and drops the UA outline, which [Button](button.md) keeps.
 - **`min-h-screen` is a hard `100vh`,** not a token, so the fallback's height is the one
   layout decision a theme cannot touch.
 
@@ -217,10 +218,13 @@ focuses the heading on mount.
   injects a second `<h1>` into a page that already has one and breaks the heading outline.
 - **The retry control is a real `<button>` with a visible text label,** so it is reachable
   and named without any `aria-*`.
-- **Its ring is `focus-visible:`,** the same as [Button](button.md) and
-  [IconButton](icon-button.md): keyboard focus paints it, a mouse click does not.
-  `focus-visible:outline-none` removes the native outline, so that ring is the only focus
-  indicator the button has.
+- **Its ring is `focus-visible:`, not `focus:`,** so a mouse click does not paint it —
+  the same as [Button](button.md) and [IconButton](icon-button.md), and unlike the form
+  controls ([Input](input.md), [Checkbox](checkbox.md), [Radio](radio.md)), which ring on
+  click too. The library keys the ring by element category, and the retry control is a
+  `<button>`. `focus-visible:outline-none` removes the native outline, so that ring is the
+  only focus indicator the button has — the one thing it does *not* share with
+  [Button](button.md), which keeps the UA outline alongside its ring.
 - **The copy is hard-coded English.** In a localized app, the screen a user sees at the
   worst possible moment is the one screen still in English.
 

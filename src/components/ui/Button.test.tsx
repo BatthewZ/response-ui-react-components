@@ -111,4 +111,14 @@ describe("Button", () => {
     render(<Button as="a" href="/x">Link</Button>);
     expect(screen.getByRole("link", { name: "Link" })).not.toHaveAttribute("type");
   });
+
+  describe("focus affordance", () => {
+    it("rings on `focus-visible` only, and keeps the UA outline beside it", () => {
+      render(<Button>Save</Button>);
+      const cls = screen.getByRole("button", { name: "Save" }).className;
+
+      expect(cls).toContain("focus-visible:ring-border-focus");
+      expect(cls).not.toContain("outline-none");
+    });
+  });
 });

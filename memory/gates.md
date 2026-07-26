@@ -30,6 +30,14 @@ good. These are the ways they have still let defects through.
   the docs for the old literal as well as the new one.**
 - **Drift is usually only checked in one direction.** The export/doc guard fails when an export
   is missing from the docs, and passes when the docs name an export that no longer exists.
+- **Pooling a shared file into a component's "source" makes every variant of a class in that
+  file look reachable from that component.** Once the component-docs guard was taught to attach
+  the shared focus recipe to the components that import it, it stopped being able to tell which
+  recipe a component uses: the file holds both keyings, so a token table can name either one and
+  pass. Measured — flipping a doc row from the right keying to the wrong one left the gate green.
+  A guard that resolves reachability at *file* granularity verifies that a utility exists
+  somewhere in the pool, not that this component draws it. Where the distinction carries meaning,
+  pin it with a render test that asserts the class string, not with the doc gate.
 - **A doc can be too weak as well as wrong, and no gate sees that either.** When an unsupported
   prop was declared `onChange?: never`, every existing sentence stayed true — but the page now
   under-promised: passing it is a compile error, not a prop that quietly does nothing.

@@ -89,7 +89,7 @@ rest of the app.
 | Tick fill (checked) | `accent-accent`         | `--C-ACCENT`        |
 | Box border         | `border-border-strong`   | `--C-BORDER-STRONG` |
 | Corner radius      | `rounded-sm`             | `--RADIUS-SM`       |
-| Focus ring         | `focus-visible:ring-border-focus` | `--C-BORDER-FOCUS`  |
+| Focus ring         | `focus:ring-border-focus` | `--C-BORDER-FOCUS`  |
 
 The box is a fixed `size-4` (1rem) — a Tailwind spacing value, not a contract token, so
 resize it with `className="size-…"` rather than a theme variable.
@@ -115,10 +115,14 @@ See [Gotchas](#gotchas).
   a gap with a `ring-offset-*` utility and you inherit that variable, which
   `@batthewz/response-ui-css` themes to `--C-SURFACE-0` — correct where the checkbox sits on
   surface-0, and a visible band of the wrong colour anywhere else.
-- **The ring is `focus-visible:`, not `focus:`.** Like [Button](button.md), and unlike the
-  text controls ([Input](./input.md), [Textarea](textarea.md)), a mouse click focuses the box
-  without painting the ring — keyboard focus paints it. That is the browser's own
-  `:focus-visible` rule, which grants a text field an indicator on click but not a checkbox.
+- **The ring is `focus:`, not `focus-visible:`.** Like [Input](./input.md) — and unlike
+  [Button](button.md) — it appears on pointer clicks as well as keyboard focus. That is the
+  point of the split: the browser's own `:focus-visible` rule grants a *text field* an
+  indicator on click but not a checkbox, so keying the form controls on plain `:focus` is
+  the only way to make a clicked checkbox ring like a clicked input.
+- **The UA outline stays.** Checkbox adds no `outline-none`, so the browser's own focus
+  outline is drawn alongside the ring. That is deliberate: the outline is contrast-adaptive
+  and survives forced-colours mode, where a `box-shadow` ring does not.
 - **`indeterminate` is not a prop.** Set it via the `ref` after mount (see above); passing
   it as a prop does nothing, because it is a DOM property with no HTML attribute.
 - **No built-in label.** Checkbox renders a bare `<input>` — give it an accessible name
@@ -141,9 +145,10 @@ toggles with `Space`, and exposes its checked / unchecked / mixed state to assis
 For a tri-state box, setting `.indeterminate` also reports `aria-checked="mixed"` for free
 — no extra ARIA needed.
 
-The focus ring is `focus-visible:`, so it paints on keyboard focus and not on a pointer
-click — the browser's rule for a control that is not text entry. Its colour is
-`--C-BORDER-FOCUS` and it is drawn flush against the box.
+Because the focus ring is `focus:` rather than `focus-visible:`, it shows on click as well
+as keyboard focus. Its colour is `--C-BORDER-FOCUS` and it is drawn flush against the box
+at `ring-offset-0`, so nothing paints in a gap. The browser's own outline is not removed,
+so keyboard users get both indicators.
 
 ## Related
 
