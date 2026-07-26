@@ -48,9 +48,9 @@ correctly whether it is spoken or seen.
 
 ## Key widths
 
-A cap is `inline-flex` with centred content, a `1.5em` min-width floor, and horizontal
-padding only. The floor is what stops a narrow glyph from producing a visibly thinner
-cap than its neighbours, while word-length keys simply grow:
+A cap is `inline-flex` with centred content, a `1.5em` min-width floor, and one padding
+rung on all four sides. The floor is what stops a narrow glyph from producing a visibly
+thinner cap than its neighbours, while word-length keys simply grow:
 
 <!-- example:KeyWidths -->
 ```tsx
@@ -92,7 +92,7 @@ reads as a single label and stays compact in a dense list.
 
 `className` is merged with `cn` (tailwind-merge), so a utility that conflicts with one of
 Kbd's defaults **replaces** it rather than racing it in the cascade — no `!important`, no
-specificity games:
+specificity games. The one exception is the typeface: see [Gotchas](#gotchas).
 
 <!-- example:Restyled -->
 ```tsx
@@ -109,26 +109,36 @@ restyles the whole app, not just the keys. If you want a second keycap look, wra
 
 ## Theme tokens
 
-Kbd has no stylesheet — there is no `Kbd.css`. Every rule is a Tailwind utility on the
-single `<kbd>` element, and each one below resolves to a contract variable, so overriding
-the variable re-tints every keycap in the app at runtime with no rebuild.
+Kbd has no stylesheet — there is no `Kbd.css`. Every rule is a class on the single `<kbd>`
+element: Tailwind utilities, plus one plain class from the css package for the typeface.
+Each one below resolves to a contract variable, so overriding the variable re-tints every
+keycap in the app at runtime with no rebuild.
 
-| Where              | Utility                 | Override             |
-| ------------------ | ----------------------- | -------------------- |
-| Cap fill           | `bg-surface-2`          | `--C-SURFACE-2`      |
-| Cap edge           | `border-border-default` | `--C-BORDER-DEFAULT` |
-| Label ink          | `text-fg-secondary`     | `--C-TEXT-SECONDARY` |
-| Label type scale   | `text-body-3`           | `--BodyText-3`       |
-| Corners            | `rounded-sm`            | `--RADIUS-SM`        |
-| Horizontal padding | `px-r6`                 | `--R-SIZE-6`         |
+| Where            | Utility                 | Override             |
+| ---------------- | ----------------------- | -------------------- |
+| Cap fill         | `bg-surface-2`          | `--C-SURFACE-2`      |
+| Cap edge         | `border-border-default` | `--C-BORDER-DEFAULT` |
+| Label ink        | `text-fg-secondary`     | `--C-TEXT-SECONDARY` |
+| Label type scale | `text-body-3`           | `--BodyText-3`       |
+| Label weight     | `font-semibold`         | `--Semibold-Weight`  |
+| Corners          | `rounded-sm`            | `--RADIUS-SM`        |
+| Padding          | `p-r6`                  | `--R-SIZE-6`         |
+
+The keycap's typeface is on the contract too, by a route the table cannot show: `mono-font`
+is a plain class `@batthewz/response-ui-css` ships, not a Tailwind utility, and it sets
+`font-family: var(--DEFAULT-MONO-FONT)` — the same variable [CodeBlock](code-block.md)
+reads, and the one each shipped theme redefines. It is there because Tailwind's Preflight
+styles bare `kbd` with its *own* default mono stack, which a themed keycap has to beat; see
+[Gotchas](#gotchas) for the one thing that costs you.
 
 Three of Kbd's other utilities sit **off** the contract:
 
-- **`font-medium`** is Tailwind's built-in weight 500, not a theme variable. The contract's
-  weights are `--Semibold-Weight` and `--Bold-Weight` (reachable as `font-semibold` /
-  `font-bold`), and Kbd reads neither — so a theme that re-weights its type does not move
-  the keycap label. It is also the only `font-medium` in the package; every other weight in
-  the library is `font-semibold` or `font-bold`, both of which are on the contract.
+- **`leading-none`** names no variable because its job is to stop one applying.
+  `text-body-3` emits `--BodyText-3` *and* `--BodyText-3-line-height`, and the second half
+  is a paragraph leading rather than a cap height — themes set it anywhere from `1.125rem`
+  (`tech`) to `1.75rem` (the default scale), which made the same keycap 30px tall in one
+  theme and 18px in another. With it reset, the cap is the glyph plus `p-r6` plus the 1px
+  border, in every theme.
 - **`min-w-[1.5em]`** names no variable because it does not need one: `em` resolves against
   the cap's own font size, so the floor already tracks `--BodyText-3` through the theme.
 - **`border`** is a plain 1px Tailwind width utility; only the border's *colour* is on the
@@ -136,26 +146,26 @@ Three of Kbd's other utilities sit **off** the contract:
   `r`-scale, which is correct for a hairline edge.
 
 `--R-SIZE-6` is the one rung of the responsive `r`-scale that holds at `0.25rem` on both
-sides of the 40rem breakpoint, so the cap's horizontal padding is the same on mobile and
-desktop even though the rest of the scale steps up. `--BodyText-3` does step up
-(`0.75rem` → `0.8125rem`), and it carries `--BodyText-3-line-height` with it — which,
-because Kbd sets no vertical padding, is what sets the cap's height. See
-[Gotchas](#gotchas).
+sides of the 40rem breakpoint, so the cap's padding is the same on mobile and desktop even
+though the rest of the scale steps up. `--BodyText-3` does step up
+(`0.75rem` → `0.8125rem`), so the cap grows with its label and nothing else.
+
+`font-semibold` does not mean 600 here: it reads `--Semibold-Weight`, which the default
+scale sets to **500** below 40rem and **600** at and above it, and which each theme pins
+outright (`tech` 500, `events` 600, `grimdark` 700).
 
 ## Gotchas
 
-- **The cap's height is a line-height, not padding.** `px-r6` is horizontal-only, so the
-  box height is whatever `--BodyText-3-line-height` resolves to, plus the 1px border on
-  each edge. Themes move that number a long way — the default scale sets `1.75rem` against
-  a `0.75rem` font, `tech` sets `1.125rem` — so the same keycap is noticeably taller in one
-  theme than another. If you need a fixed cap, pin it yourself with a `leading-*` or `h-*`
-  utility in `className`.
-- **Not the theme's monospace font.** Tailwind's Preflight styles bare `kbd` with its own
-  default `--font-mono` stack, and Kbd sets no font-family of its own, so the contract's
-  `--DEFAULT-MONO-FONT` — the variable [CodeBlock](code-block.md) reads, and the one each shipped theme
-  redefines — never reaches a keycap. Switching themes restyles your code blocks but not
-  your keys. Opt in with `<Kbd className="mono-font">`; `.mono-font` is the unlayered class
-  `@batthewz/response-ui-css` ships for exactly this, and it beats Preflight.
+- **The cap's height is its padding, not the theme's leading.** `leading-none` holds the
+  line box to the glyph, so the cap is the label plus `p-r6` plus the 1px border on each
+  edge — the same proportion in every theme. If you need a fixed cap, pin it with an `h-*`
+  utility in `className`; for a looser one, your own `leading-*` replaces this one.
+- **`mono-font` is the one default a `className` cannot beat.** `.mono-font` is *unlayered*
+  CSS from `@batthewz/response-ui-css`, and unlayered author rules outrank every Tailwind
+  utility whatever the merge does — so `<Kbd className="font-sans">` keeps the mono face
+  (measured), while every other utility in `className` replaces its default as documented in
+  [Restyling](#restyling). To change the keycap's family, retheme `--DEFAULT-MONO-FONT`, or
+  set `font-family` in a style attribute or your own rule.
 - **No props of its own, by design.** No `variant`, `size`, or `as`. If you want a second
   look, wrap it — see [Extending components](../extending.md) — rather than waiting for a
   prop.

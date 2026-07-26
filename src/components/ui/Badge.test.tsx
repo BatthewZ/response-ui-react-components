@@ -106,3 +106,14 @@ describe("Badge · variant has a text channel", () => {
     expect(screen.getByText("Draft state").className).toContain("sr-only");
   });
 });
+
+// #45 — `text-body-3` carries `--BodyText-3-line-height`, which the default scale
+// sets to 1.75rem against a 0.75rem font, so the chip stood 2.25rem tall (measured
+// in Firefox: 36px, = 28px leading + 2 x 4px `py-r6`). Vitest runs with `css: false`,
+// so this asserts the class that resets it, not the resulting height.
+describe("Badge · the chip is sized by its padding, not its leading", () => {
+  it("resets the leading the type step brings with it", () => {
+    render(<Badge>New</Badge>);
+    expect(screen.getByText("New").className).toContain("leading-none");
+  });
+});

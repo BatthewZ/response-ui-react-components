@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef } from "react";
+import { type ComponentProps, createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { IconButton } from "./IconButton";
@@ -93,6 +93,56 @@ describe("IconButton", () => {
 
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(onSubmit).toHaveBeenCalledTimes(0);
+  });
+
+  // #42 — the accessible name was a required `aria-label: string`, which `""`
+  // satisfies, and `aria-labelledby` could not stand in for it.
+  describe("accessible name", () => {
+    // Checked by `tsc --noEmit`, which gates the package: each constant fails to
+    // compile if the relation flips, in either direction. No suppression involved.
+    it("requires one of the two ARIA name sources, and accepts either", () => {
+      type Props = ComponentProps<typeof IconButton>;
+      const labelIsEnough: { "aria-label": string } extends Props ? true : false = true;
+      const labelledbyIsEnough: { "aria-labelledby": string } extends Props ? true : false = true;
+      const neitherIsNot: { type: "button" } extends Props ? false : true = true;
+
+      expect([labelIsEnough, labelledbyIsEnough, neitherIsNot]).toEqual([true, true, true]);
+    });
+
+    it("accepts aria-labelledby on its own", () => {
+      render(
+        <>
+          <h2 id="filters-heading">Filters</h2>
+          <IconButton aria-labelledby="filters-heading">
+            <SearchIcon />
+          </IconButton>
+        </>,
+      );
+      expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
+    });
+
+    it("warns when neither name source can produce one", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      render(<IconButton aria-label="  "><SearchIcon /></IconButton>);
+      expect(warn).toHaveBeenCalledOnce();
+      expect(warn.mock.calls[0]?.[0]).toContain("no accessible name");
+      warn.mockRestore();
+    });
+
+    it("stays quiet when either source is usable", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      render(<IconButton aria-label="Search"><SearchIcon /></IconButton>);
+      render(<IconButton aria-labelledby="somewhere-else"><SearchIcon /></IconButton>);
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+  });
+
+  // #43 — WCAG 2.3.3. `css: false` here, so this asserts the guard utility, not a
+  // measured transform; the neutralisation was checked in Firefox — see the report.
+  it("neutralises the press animation under prefers-reduced-motion", () => {
+    render(<IconButton aria-label="Action"><SearchIcon /></IconButton>);
+    expect(screen.getByRole("button").className).toContain("motion-reduce:active:scale-100");
   });
 
   describe("focus affordance", () => {

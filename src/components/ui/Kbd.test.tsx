@@ -25,3 +25,30 @@ describe("Kbd", () => {
     expect(ref.current).toBe(screen.getByText("Ref"));
   });
 });
+
+// #48/#49. Vitest runs with `css: false`, so no test here can read a stylesheet:
+// these assert the class the fix carries, not the computed style it produces.
+// The rendered effect was measured in Firefox instead — see the report.
+describe("Kbd · the keycap is on the contract", () => {
+  const classes = () => {
+    render(<Kbd>Esc</Kbd>);
+    return screen.getByText("Esc").className;
+  };
+
+  it("names the theme's monospace family rather than falling through to Preflight", () => {
+    // `.mono-font` is the css package's unlayered `font-family: var(--DEFAULT-MONO-FONT)`.
+    expect(classes()).toContain("mono-font");
+  });
+
+  it("uses a contract weight", () => {
+    const cls = classes();
+    expect(cls).toContain("font-semibold");
+    expect(cls).not.toContain("font-medium");
+  });
+
+  it("resets the leading and pays for the cap height in padding", () => {
+    const cls = classes();
+    expect(cls).toContain("leading-none");
+    expect(cls).toContain("p-r6");
+  });
+});

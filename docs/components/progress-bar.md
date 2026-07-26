@@ -257,8 +257,12 @@ white at 15% over your fill and there is no token to change them.
   `aria-valuemax` are all omitted — ARIA's indeterminate progressbar. A status
   `statusLabel` is then announced on its own, without a percentage. Keep `max` positive
   if you want a number announced.
+- **Inside a [Card](card.md) the empty track is not merely faint — it is gone.** The track
+  is `--C-SURFACE-1` and a Card is now `--C-SURFACE-1` too, so the pairing is exactly
+  **1.00:1**. Give the track its own value there (see the override below) until the two
+  tokens stop colliding.
 - **The empty part of the track is close to invisible in every shipped theme.** It is
-  `--C-SURFACE-1`, measured against `--C-SURFACE-0` (the [Card](card.md) surface) at
+  `--C-SURFACE-1`, measured against `--C-SURFACE-0` at
   **1.05:1 default · 1.03:1 `events` · 1.02:1 `tech` · 1.07:1 `grimdark`**, and against the
   page canvas at 1.05 / 1.03 / 1.08 / 1.17:1 — so a bar at low `value` reads as a stub
   floating on nothing, and the total it is measured against cannot be seen. Override

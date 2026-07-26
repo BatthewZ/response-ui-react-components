@@ -207,7 +207,11 @@ as a role, not a number.
   *only* difference is the weight. In `tech` (Space Grotesk), `events` (Playfair Display)
   and `grimdark` (Cinzel, uppercase, wide tracking) the gap is unmissable. The reverse
   also holds: `<Text variant="body-1" as="h3">` gets the heading face and weight `700` at
-  body size.
+  body size. This is the split working as designed — `as` buys you the type step without
+  the heading's voice. When you want both on a non-heading element, `@batthewz/response-ui-css`
+  ships `.h1`–`.h6` class twins of those element selectors: `<Text variant="h3" as="p"
+  className="h3">` takes its size from the utility and its face, tracking and weight from
+  the class (measured: 48px/700 on a `<p>`, against 48px/400 without it).
 - **`weight` on a heading replaces the heading's own weight, in whichever direction the
   theme points.** Utilities sit in a later cascade layer than the base stylesheet, so
   `weight` overrides the built-in `700` (`600` on `h6`). On the default scale below 40rem

@@ -9,7 +9,11 @@ describe("Card", () => {
     render(<Card data-testid="card">Content</Card>);
     const card = screen.getByTestId("card");
     expect(card.tagName).toBe("DIV");
-    expect(card.className).toContain("bg-surface-0");
+    // #4 — the theme contract designates `--C-SURFACE-1` for cards; Card sat on
+    // `--C-SURFACE-0`, the most-elevated step, which in the default theme is also
+    // the canvas colour.
+    expect(card.className).toContain("bg-surface-1");
+    expect(card.className).not.toContain("bg-surface-0");
     expect(card.className).toContain("rounded-lg");
   });
 

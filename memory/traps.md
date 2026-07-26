@@ -282,3 +282,124 @@ code. The gates stayed green throughout. The owner reversed it.
   English with none is a logged defect.** Default the word, name the prop for what it labels,
   and let `""` remove it — a caller whose visible text already says "Failed" should not be
   made to hear "Error, Failed".
+
+## K · From the pass that tightened a type instead of adding a prop
+
+- **A prop is forever; a type constraint can be relaxed.** Asked to close "the component can
+  ship with no accessible name", the two candidate shapes were a new `label` prop and a
+  required-name constraint on the props type. Removing a public prop later is breaking;
+  *widening* a type later is not — so where both shapes buy the same thing, the constraint is
+  the reversible one. It also adds no runtime behaviour to get wrong, and invents no English
+  default for a name only the caller knows.
+- **Copy the sibling's answer, but not past the point where the siblings differ.** The sibling
+  component required `aria-label` outright, which would have been wrong here: this one ships a
+  label sub-part the docs point `aria-labelledby` at, so a single-key requirement would have
+  broken the very pattern its own primary example teaches. The precedent to follow was
+  "require a name", not "require that key".
+- **When a requirement is a union of arms, arm order is the error message.** TypeScript reports
+  the *last* member of a union as the missing one, so the arm most callers want belongs last.
+  The same union written label-first tells a confused caller they are missing `aria-hidden`.
+- **Tightening a type breaks the repo's own call sites, and one of them is not in `src/`.** The
+  dev gallery and every existing test render the component the old way, and a `--noEmit` run is
+  the only thing that finds them. Budget for that before deciding the change is small.
+- **A type-level assertion is a real test and needs no `@ts-expect-error`.** `const x: A extends
+  B ? false : true = true` fails the typecheck if the relation flips, in either direction, and
+  it is checked by the same command that gates the package.
+
+## L · From the typography-and-token pass
+
+- **Moving one component onto its contracted token silently falsifies every *measured*
+  claim made against the token it left.** A container primitive corrected from the
+  most-elevated surface step to the one the contract names for it put a sibling's
+  recessed-track colour at 1.00:1 — the sibling's doc carried a four-theme contrast table
+  written against the old backdrop, and nothing in the container's own scope could see it.
+  Before changing a surface *role*, grep the docs for the token you are leaving as well as
+  the one you are taking: a ratio is only true against a named background.
+- **A type step is a size *and* a leading, and the leading is a paragraph's, not a chip's.**
+  Any `inline-flex` control that takes a `text-*` step and pays for its height in padding is
+  actually sized by the theme's line-height — which themes move by a third — so the same
+  chip or keycap is a different height in every theme for a reason no caller can see. Reset
+  the leading and let the padding rung own the height. The escape hatch is documented and
+  costs nothing: the `text-*` step emits `line-height: var(--tw-leading, …)`, which is
+  exactly the variable a `leading-*` utility sets.
+- **The css package's unlayered classes outrank every Tailwind utility, whatever the merge
+  does.** Reaching for one inside a component's base classes is the supported way to read a
+  token no utility exposes — and it silently makes that one property un-overridable from
+  `className`, in a component whose docs promise the opposite. Take the class, then write
+  the exception down.
+- **"Documented" and "documented as intentional" are different findings.** A page can
+  describe a defect in detail without endorsing it; a page can also devote a *section* to a
+  behaviour, name the use case it serves, and spell out the reverse direction. The first is
+  a paragraph to rewrite in the same commit as the fix. The second is a refutation. The tell
+  is whether the prose names something the behaviour is *for*.
+- **TypeScript cannot say "non-empty string" about a value it only knows as `string`.** A
+  required-prop guarantee is structural, never semantic. When the prop is an accessible
+  name, a render-time check catches both the empty literal and the variable that is empty on
+  some renders, which no type-level trick can. And when a required prop has a legitimate
+  alternative — an ARIA name has two sources — an intersected union requires *one of* them
+  without an `Omit` that would strip the value from the DOM.
+
+## M · From the Field/Checkbox/Radio pass
+
+- **An IDREF is a claim about the DOM, so the element that owns the id has to be the one
+  that publishes it.** A wrapper that mints an id and hands it out on context is guessing:
+  the message element may render `null`, may not be in the tree, or may have taken the
+  caller's own `id`. Three separate findings were one bug — *the id a control points at is
+  computed from what the wrapper intends rather than from what rendered*. Registration (child
+  reports the id it used, parent stores it, consumers read the stored one) collapses all
+  three, and it is the only shape where "no message" and "no reference" cannot disagree. The
+  cost is that it lands in an effect, so it is absent from server HTML until hydration —
+  worth saying out loud in the doc rather than discovering later.
+- **"Every other component does X, so this one should too" is a design claim, not a bug
+  report, and ARIA sometimes settles it against you.** Two rows named as the same root in two
+  components genuinely were — except that half the prescribed fix is invalid on one of them:
+  ARIA 1.2 permits `aria-invalid` on `checkbox` and not on `radio` (nor on `group`, which is
+  what a `<fieldset>` maps to). The component's own doc page had argued this in two places
+  before the row was written. **Check role support before wiring a state onto a control**;
+  `aria-query`'s `roles` map answers it offline in one line, and a partition grounded in the
+  spec is worth encoding in a test with the reason spelled out, or the next unification pass
+  flattens it.
+- **A "dead styling" row is a browser question, and this package's tests cannot ask it.**
+  `css: false` means no unit test can tell you whether a declaration paints. Screenshot the
+  *same element* at a *fixed position* with only the declaration changing, and compare the
+  bytes — one shot per variant plus an `appearance:none` control that proves the declaration
+  is reachable at all. Comparing two different elements side by side does not work: they land
+  on different sub-pixel offsets and rasterise differently for reasons that have nothing to
+  do with the rule under test, which is how a first run produced a contradiction.
+- **Wiring a control into a shared context turns it into a client component.** A previous row
+  established that consuming the field-error hook needs the module's own `"use client"`;
+  every component newly consuming it inherits that, and each one has a "Server-renderable"
+  line in its doc that is now false — as does any *sibling's* doc that contrasted itself
+  against it. Grep the docs for the component's name, not just its own page.
+- **Assert the merge contract the package already ships, not the one that sounds right.** A
+  test staking "the caller's explicit `aria-invalid` wins" failed, and the code was right:
+  `mergeProps(props, ariaProps)` means the component wins wherever it computed an opinion and
+  the caller wins wherever it did not, with `error={false}` as the documented opt-out. Three
+  sibling components already asserted exactly that. Read a sibling's test before writing a
+  new component's.
+
+## K · From the animation-primitives pass
+
+- **A custom property re-declared on the element that consumes it cannot be overridden from
+  any ancestor.** The CSS package's animation rules set their own tuning variables on the
+  same selector that reads them, so a component writing the variable on a parent — or a
+  consumer writing it in their own CSS — is silently shadowed and the prop is dead. The
+  in-package fix is to write the variable inline on the element carrying the class; an
+  inline declaration outranks the rule. Measure this in a browser before and after: the
+  computed `animation-delay` states the answer in one number and takes minutes.
+- **Two rows on the same file can prescribe opposite fixes.** One asked a wrapper to honour
+  reduced motion, another asked it to stop being a client component — and the obvious answer
+  to the first (call the media-query hook in the component) makes the second impossible.
+  Look for the gate that belongs to the *trigger* rather than to the wrapper: a hook that
+  starts the effect can hold the preference check, leaving the pure component pure and
+  closing both. Read every row on a file before fixing the first one.
+- **An accessibility opt-out already has a house name here; find it before inventing one.**
+  Every component that wraps the scroll-reveal primitive already shipped the same boolean
+  prop for exactly this — the primitive itself was the only member of the family missing it.
+  A grep across the family answers "what should I call this" and "what shape should it take"
+  at once.
+- **A default-behaviour change to a shared primitive is fenced in by its consumers' tests.**
+  Auto-revealing when the observer API is absent is right in a browser and breaks a sibling's
+  test that relies on jsdom lacking that API. When the fix is one line and the fallout is in
+  another lane's file, say so in the record and leave it: an unannounced default change is
+  worse than an open row.

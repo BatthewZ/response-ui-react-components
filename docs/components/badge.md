@@ -152,9 +152,14 @@ fill, so it never needs an `on-*` ink token. The `default` variant is `--C-TEXT-
 
 Of the two padding rungs, only the horizontal one is responsive: `--R-SIZE-5` steps
 `0.5rem → 0.75rem` at the 40rem breakpoint, while `--R-SIZE-6` holds at `0.25rem` on both
-sides of it. The type moves too — `--BodyText-3` steps `0.75rem → 0.8125rem` — but its paired
-line-height stays `1.75rem`, so on desktop a badge gets wider and its label bigger without
-the chip getting taller.
+sides of it. The type moves too — `--BodyText-3` steps `0.75rem → 0.8125rem`.
+
+**One utility is off the contract, deliberately.** `leading-none` names no variable because
+its job is to *stop* one applying: `text-body-3` emits `--BodyText-3` **and**
+`--BodyText-3-line-height`, and that second half is a paragraph leading, not a chip height —
+`1.75rem` against a `0.75rem` font on the default scale, which stood every badge at
+`2.25rem`. With the leading reset the chip is its label plus `py-r6`, in every theme. To
+loosen it again, pass your own `leading-*` through `className`; `cn()` will replace this one.
 
 One surprise if you know Tailwind's defaults: `font-semibold` does not mean 600 here. It
 reads `--Semibold-Weight`, which the default scale sets to **500** below 40rem and **600** at
@@ -176,13 +181,12 @@ tracking the rest of the type system.
 - **No status semantics.** It is a plain `<span>`. Nothing is announced when its text changes,
   and it contributes no role to the accessibility tree. Pass `role="status"` (or wrap it in
   your own live region) when the chip reports something that updates.
-- **Taller than the label suggests.** The chip's height comes from the line box, not from
-  `py-r6`: `--BodyText-3-line-height` plus `0.25rem` of padding on each edge, regardless of
-  how short the label is. Themes move that number a long way — the default scale pairs a
-  `0.75rem` font with a `1.75rem` line-height for a ~`2.25rem` chip, `grimdark` sets
-  `1.25rem` (~`1.75rem`), `tech` sets `1.125rem` (~`1.625rem`) — so the same badge is
-  noticeably shorter in one theme than another. Inline in a paragraph it expands that line's
-  box. Pass a `leading-*` utility through `className` for a tighter chip.
+- **The chip's height is its padding, not its theme's leading.** `leading-none` holds the
+  line box to the font size, so the chip is the label plus `0.25rem` on each edge — the same
+  proportion in every theme. Without it the height was `--BodyText-3-line-height`, which the
+  default scale sets to `1.75rem` against a `0.75rem` font (a `2.25rem` chip, measured) while
+  `tech` sets `1.125rem` — the same badge, two thirds the height, for no reason a caller
+  could see. A taller chip is a `leading-*` or `py-*` utility through `className`.
 - **The default variant vanishes on `surface-2`.** Its fill *is* `bg-surface-2`, so on a
   container painted with the same token there is no visible chip — only the ink shift.
   Use a status variant there, or restyle the fill.

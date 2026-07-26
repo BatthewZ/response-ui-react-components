@@ -1,8 +1,9 @@
 # IconButton
 
 A transparent-backed `<button>` sized for a single glyph — toolbars, dismiss affordances,
-row actions. Unlike a bare `<button>`, it **cannot compile without an `aria-label`** — though
-an empty one still satisfies the type, so the guarantee is structural rather than semantic.
+row actions. Unlike a bare `<button>`, it **cannot compile without a name** — `aria-label`
+or `aria-labelledby`, your choice. An empty one still satisfies the type, so the compiler's
+guarantee is structural; a dev-time warning covers the rest.
 
 <!-- example:Minimal -->
 ```tsx
@@ -12,13 +13,30 @@ an empty one still satisfies the type, so the guarantee is structural rather tha
 ```
 <!-- /example -->
 
-| Prop         | Type                                | Default |
-| ------------ | ----------------------------------- | ------- |
-| `aria-label` | `string` — **required**             | —       |
-| `children`   | `ReactNode` (your icon)             | —       |
-| `className`  | `string`                            | —       |
-| `ref`        | `Ref<HTMLButtonElement>`            | —       |
-| …rest        | every `<button>` prop               | —       |
+| Prop              | Type                                            | Default |
+| ----------------- | ----------------------------------------------- | ------- |
+| `aria-label`      | `string` — **required unless `aria-labelledby`** | —       |
+| `aria-labelledby` | `string` — **required unless `aria-label`**      | —       |
+| `children`        | `ReactNode` (your icon)                         | —       |
+| `className`       | `string`                                        | —       |
+| `ref`             | `Ref<HTMLButtonElement>`                        | —       |
+| …rest             | every other `<button>` prop                     | —       |
+
+## Naming the button
+
+An icon carries no name, so the type demands one of the two ARIA name sources and accepts
+either. Reach for `aria-labelledby` when the words already exist on the page — a section
+heading a toolbar belongs to, a row's own cell — rather than restating them:
+
+```tsx
+<h2 id="filters-heading">Filters</h2>
+<IconButton aria-labelledby="filters-heading">
+  <SlidersHorizontal size={16} aria-hidden="true" />
+</IconButton>
+```
+
+Pass both and `aria-labelledby` wins the accessible-name computation, so the `aria-label`
+becomes the string nobody hears — keep them in sync or pass one.
 
 ## What it owns, and what it forwards
 
@@ -151,14 +169,12 @@ ring's *offset* is `ring-offset-0`, so it draws flush against the button and nev
 - **Defaults to `type="button"`.** Dropping an IconButton into a form for a non-submitting
   job — clear a field, remove a row, dismiss a banner — no longer submits the form. Pass
   `type="submit"` explicitly when you do want it to.
-- **`aria-label=""` compiles.** The type requires the *prop*, not a meaningful *value*. An
-  empty string, or a variable typed `string` that happens to be empty at runtime, passes the
-  compiler and leaves the button with no accessible name. The guarantee is structural, not
-  semantic.
-- **`aria-labelledby` is not an alternative.** `<IconButton aria-labelledby="filters-heading">`
-  does not compile — `aria-label` is still demanded. And if you satisfy the type and pass both,
-  `aria-labelledby` wins the accessible-name computation, so the `aria-label` you were forced
-  to write is the one string nobody hears. Keep them in sync or don't use both.
+- **`aria-label=""` compiles, and warns.** The type requires the *prop*, not a meaningful
+  *value*, and TypeScript cannot say "non-empty string" about a value it only knows as
+  `string` — so an empty literal, and a variable that is empty on some renders, both pass the
+  compiler. IconButton checks at render instead: with no `aria-labelledby` and an
+  `aria-label` that is empty or whitespace, it `console.warn`s that the button has no
+  accessible name. That is a diagnostic, not a guard — the button still renders, unnamed.
 - **One size only.** The component sets no `min-width` or `min-height`, so the hit area is
   purely your icon's box plus `p-r5`. A 16px icon yields a 32px target below the 40rem
   breakpoint and 40px above it. Size the target deliberately for touch — see
@@ -171,19 +187,24 @@ ring's *offset* is `ring-offset-0`, so it draws flush against the button and nev
   is not sitting on surface-0. [Button](button.md), [Checkbox](checkbox.md),
   [ErrorBoundary](error-boundary.md) and [AvatarUpload](avatar-upload.md) share the same
   recipe.
-- **The press animation ignores `prefers-reduced-motion`.** `active:scale-95` shrinks the
-  button on pointer-down unconditionally; there is no `motion-reduce` guard.
+- **The press animation is guarded.** `active:scale-95` shrinks the button on pointer-down,
+  and `motion-reduce:active:scale-100` holds it still for anyone who asked for less motion
+  (WCAG 2.3.3). Both utilities have the same specificity, so the guard wins on source order —
+  Tailwind emits the `scale-100` rule after the `scale-95` one, and Firefox was measured
+  pressing to `0.96` normally and to `1` under the reduced-motion query.
 - **Server-renderable.** No `"use client"` directive and no hooks, so it drops straight into
   an RSC tree — including inside a server-rendered form.
 
 ## Accessibility
 
-**The accessible name is enforced by the type, and only by the type.** `IconButtonProps` is
-`{ "aria-label": string }` intersected with `ComponentPropsWithRef<"button">`. A property is
-optional in an intersection only when it is optional in *every* member, so the optional
-`aria-label` inherited from React's `AriaAttributes` is narrowed to required — omitting it,
-or passing `undefined`, is a compile error. Nothing checks it at runtime, and nothing checks
-that the string is non-empty; see [Gotchas](#gotchas) for both holes.
+**The type enforces that a name source exists; a render-time check enforces that it says
+something.** `IconButtonProps` is a two-member union — `aria-label` required, or
+`aria-labelledby` required — intersected with `ComponentPropsWithRef<"button">`. A property
+is optional in an intersection only when it is optional in *every* member, so the required
+half of whichever member you match wins over the optional version React's `AriaAttributes`
+contributes: passing neither, or `undefined`, is a compile error. What the compiler cannot
+see is an empty *value*, so IconButton warns at render when it would have no name; see
+[Gotchas](#gotchas).
 
 - **Hide your icon.** IconButton renders `children` untouched and adds no `aria-hidden`. Icon
   sets that expose a `<title>` or `role="img"` will be announced on top of your label, so mark

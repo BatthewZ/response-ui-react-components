@@ -4,7 +4,11 @@ import { cn } from "../../util/style";
 
 type Variant = "default" | "success" | "warning" | "error" | "info";
 
-const baseClasses = "inline-flex items-center rounded-sm px-r5 py-r6 text-body-3 font-semibold";
+// `leading-none` because `text-body-3` also emits `--BodyText-3-line-height` (1.75rem
+// on the default scale, against a 0.75rem font), which made the chip 2.25rem tall. The
+// height is `py-r6` now.
+const baseClasses =
+  "inline-flex items-center rounded-sm px-r5 py-r6 text-body-3 leading-none font-semibold";
 
 const variantClassMap: Record<Variant, string> = {
   default: "bg-surface-2 text-fg-secondary",
