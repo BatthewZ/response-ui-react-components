@@ -26,7 +26,12 @@ onPageChange={fn} footer={<LoadMore/>} />` renders **0** `nav[aria-label="Pagina
 footer nodes, while the same props with non-empty `data` render 1 of each. A user on a server-paged
 screen whose page 3 comes back empty has no control left with which to get back to page 2 —
 the state that most needs the pager is the one that removes it.
-**Fix:** render `{footer}` and `renderPaginationBlock()` in all three branches.
+**Fix, as applied** (`7f651a6`) — stronger than the prescription, which would have left three places
+to keep in sync. The early returns are gone: `DataTable` has a **single** return (`:419-433`) with one
+`renderHeader()`, one `<Table.Body>` choosing between `renderLoadingRows`/`renderRows`/`renderEmptyRow`,
+and `{footer}` (`:428`) + `renderPaginationBlock()` (`:430`) outside all three, so no future state can
+drop them again. Deliberate side effect: the loading state gains the outer `<div>` the other two
+already had.
 
 ### 359 · DataTable — `selectable` alone renders permanently dead checkboxes (med)
 
@@ -47,6 +52,14 @@ prints `0, 1` and page 2 prints `0, 1` again. An index-based `rowKey` therefore 
 for row 0 of every page, so selecting row 0 on page 1 shows row 0 of page 2 as selected, and React
 sees the same keys across a page change.
 **Fix:** pass `start + i` in the paged path.
+
+**Re-verified after `7f651a6` and deliberately not applied.** The paging migration onto
+`useControllableState` changed *who owns* the page, not which index is passed —
+`pageData.map((row, i) => …)` still hands the slice index to `column.render` (`:397`) and
+`renderExpanded` (`:407`). Handed back to the owner because `rowKey`, `column.render` and
+`renderExpanded` are three **public callbacks**: any consumer who noticed the current behaviour may
+already compensate for it, so `start + i` is a silent breaking change to their code, not a fix they
+would see. Needs an owner decision (change it, or document the slice index as the contract).
 
 ### 361 · DataTable — `stickyHeader` is unreachable, not merely inert (med)
 

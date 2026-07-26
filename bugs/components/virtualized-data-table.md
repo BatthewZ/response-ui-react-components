@@ -14,6 +14,18 @@ of the window is always the striped one.
 **Fix:** stripe from the absolute row index (a per-row class computed from `startIndex + i`) rather
 than `:nth-child(even)`.
 
+**Re-verified after `7f651a6` and deliberately declined — this is a cross-package door.** The spacer
+`<tr className="table-virtual-spacer">` is still emitted as a `<tbody>` child
+(`VirtualizedDataTable.tsx:294-297`), so the measurement above still holds. The blocker is the fix,
+not the diagnosis: `.table-row--striped:nth-child(even)` is a **public CSS selector**. Consumers can
+and do target it, so deleting it in favour of a per-row class is a breaking change to the styling
+surface of `response-ui-css`, and there is no deprecation path that keeps both without shipping the
+double-paint the selector causes. The owner has not walked that door.
+
+Sibling: #365 is the same root in `DataTable` (an open detail row shifts parity instead of a spacer).
+Per the ledger preamble they are **not** duplicates and must not be merged — different components,
+different anchors, different severities.
+
 ### 369 · VirtualizedDataTable — the select-all key list walks the whole dataset on every render (med)
 
 `const allKeys = useMemo(() => sortedData.map((row, i) => rowKey(row, i)), [sortedData, rowKey])`

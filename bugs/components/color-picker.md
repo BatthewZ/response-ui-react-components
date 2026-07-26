@@ -57,5 +57,11 @@ that re-seeds it is keyed on `[hex]`, which by definition never changes when the
 `onValueChange`. Measured with `<ColorPicker value="#3366cc"/>` and no write-back, two ArrowRights
 on the square: the trigger still reads `#3366cc` while the hex field reads `#2b61cc` and the thumb
 has moved. Nothing ever reconciles the two, for the life of the component.
-**Fix:** reconcile during render against the committed hex rather than only in an effect that
-fires on prop change.
+**Fix, as applied** (`5295190`, on the gate `d859a02` provided): the effect and `lastHexRef` are
+deleted, and three representations became one committed value plus two derivations. The hex field
+derives from the committed hex (`hexText = draft ?? hex`, `ColorPicker.tsx:107`); HSV derives from it
+too, believing the last edit **only while it still round-trips to that hex** —
+`const hsv = hsvToHex(hsvMemory) === hex ? hsvMemory : (hexToHsv(hex) ?? …)` at `:103`. That keeps hue
+and saturation alive at the greyscale extremes (where hex cannot carry them) while a hex that moves
+for *any* other reason — a controlled prop, a preset, a parent refusing a commit — wins outright, so
+the desync this row measured cannot form.

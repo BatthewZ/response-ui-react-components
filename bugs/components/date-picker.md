@@ -11,8 +11,16 @@ are read inside `display()` but are not part of that condition. Measured: render
 `onValueChange` fires with **Fri Jun 05 2026**. A language switcher therefore mutates every date
 field on the page the next time the user touches one, with no warning and no way to tell from the
 screen that it happened.
-**Fix:** include `locale`/`formatOptions` in the reseed condition, reformatting the draft when
-either changes.
+~~**Fix:** include `locale`/`formatOptions` in the reseed condition, reformatting the draft when
+either changes.~~
+
+**This prescription is moot — there is no reseed condition any more.** `5295190` deleted the reseed
+and `lastFormattedRef` outright rather than repairing them: `DatePicker.tsx:108` now derives the field
+text on every render (`const text = draft ?? display(selected, locale, formatOptions)`), so `locale`
+is read unconditionally and cannot be left out of a condition that no longer exists. The draft is a
+transient `string | null` override that every commit path clears. Re-measured on the `en-US` → `en-GB`
+switch: the field reformats to `06/05/2026` and a subsequent focus/blur emits **0**, where it
+previously committed Jun 5. Closed as a side effect of #324/#325 — see the ledger for status.
 
 ### 324 · DatePicker — every blur commits, even with no edit (med)
 
@@ -23,7 +31,14 @@ with two distinct `Date` objects for a value that never changed. An untouched *e
 `onValueChange(null)` on its first blur. Consequences: a controlled parent re-renders on every blur,
 dirty-tracking ("has this form changed?") reports a change that did not happen, autosave fires, and
 audit logs record an edit.
-**Fix:** only call `setSelected` when the parsed result differs from the current committed day.
+**Fix, as applied** (`d859a02` + `5295190`, both needed): rather than guarding the call site,
+`useControllableState`'s change gate took an injectable `isEqual` (defaulting to `Object.is`, so all
+24 existing call sites were untouched), and `DatePicker.tsx:101` opted in with
+`isEqual: isSameDateValue` — day-granular, because every producer in this family is
+(`parseDateInput` yields midnight, the calendar yields a grid day, `toISODate` submits a day).
+`handleBlur` still commits unconditionally; the fresh `Date` from `clampDate` now simply compares
+equal to the committed day, so a no-edit blur emits **0** (was 1). Note the same gate is *not* opted
+in on `Calendar`/`RangeCalendar` — that is #462.
 
 ### 325 · DatePicker — the controlled re-seed compares `Date`s by identity (med)
 
@@ -33,7 +48,13 @@ draft each time. Measured: parent renders `<DatePicker value={new Date(2026,0,15
 `12/25/20`; an unrelated parent state change re-renders → the input snaps back to `1/15/2026`
 mid-keystroke. `value={stateVariable}` is unaffected, which is why this survives casual testing —
 but the inline form is the most natural-looking controlled usage and it destroys typing.
-**Fix:** compare by calendar day (`getTime()`/`isSameDay`) rather than object identity.
+~~**Fix:** compare by calendar day (`getTime()`/`isSameDay`) rather than object identity.~~
+
+**Superseded by a stronger fix — the comparison was removed, not corrected.** `5295190` deleted the
+reseed and `lastFormattedRef` and made the draft a transient override over text derived from the
+committed `Date` (`DatePicker.tsx:107-108`), so no `Date` identity comparison remains to get wrong.
+An inline `value={new Date(…)}` on an unrelated parent re-render no longer touches in-progress
+typing. Same treatment applied to #335 one component over.
 
 ### 326 · DatePicker — opening the calendar focuses the wrong control (med)
 

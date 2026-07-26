@@ -246,3 +246,106 @@ what makes both directions correct. Add both directions to each new test; see
 `RangeSlider.test.tsx:186` and `:217` for the pair.
 
 **Related:** #75 (`Radio` never consumes `useFieldError` at all).
+
+### 457 · Library-wide — the controlled-mode bypass, as a class (high · **fixed** `da9f457` `7f651a6`)
+
+Filed after the fact so the *class* is inheritable, not just the six instances. Every one of these
+recomputed the controlled/uncontrolled decision on every render:
+
+```ts
+const controlled = valueProp !== undefined;   // re-evaluated each render
+```
+
+`undefined` is the one value a caller reaches for by accident. `value={x ?? undefined}` is the
+idiomatic way to feed an optional value, and every one of these components read it as *"the caller
+has stopped controlling me"* — mid-life, with no warning and no type error.
+
+Measured before each fix, by rerendering with the prop `undefined` and then driving one interaction:
+
+| Component | Props | Observed on the bypass |
+| --- | --- | --- |
+| `Accordion` | `value` / `defaultValue` | the clicked section **expanded** from internal state the parent never saw |
+| `Tabs` | `value` / `defaultValue` | the clicked tab selected itself and swapped the panel |
+| `Popover` | `open` / `defaultOpen` | the trigger opened the popover itself |
+| `AppShell` drawer | `open` / `defaultOpen` | the mobile drawer opened itself |
+| `AppShell` sidebar | `collapsed` / `defaultCollapsed` | the rail collapsed itself |
+| `DataTable` paging | `page` / `onPageChange` | a server-paged table whose parent ignored the requested page still moved its slice `["A","B"]` → `["E"]` |
+
+The mirror direction was just as live: an uncontrolled component handed a `value` later flipped
+*controlled* and discarded what the user had already done.
+
+**Fix, as applied** (precedent `236e6a0`, #357/#370): `useControllableState` locks the mode in its own
+ref, and a local ref at each call site keeps feeding it a defined value once controlled, so a later
+`undefined` reads as *empty* — `Accordion` `[]`, `Popover`/`AppShell` `false`, `Tabs` `defaultValue`,
+`DataTable` `1`/`null` — instead of switching mode.
+
+**Two measured negatives worth keeping.** `Accordion` needs **no** `isEqual`: its value *is* an array,
+so `Object.is` can never call two of them equal and the gate is inert — a probe that threw whenever a
+shallow comparator would have blocked an emit fired **0** times across all 28 tests, and the only
+setter is a toggle, which adds or removes exactly one member. And `#391` is **not** closed by any of
+this: see `app-shell.md`.
+
+**Behaviour deltas, both deliberate:** a controlled `AppShell` no longer writes internal state at all
+(it was already dead — `open ?? internal` could never reach it), and re-selecting the already-active
+tab is now a no-op rather than an echo, pinned by a test.
+
+### 461 · Combobox · MultiSelect — focus repaints the invalid border (med)
+
+`Switch.css:45-49` already states the rule this violates: *"Focus must not erase the invalid state."*
+Two CSS-authored controls still do.
+
+| Site | Focus rule sets | Error-focus rule sets | Result on focus |
+| --- | --- | --- | --- |
+| `Combobox.css:24-26` / `:38-40` | `border-color: --C-BORDER-FOCUS` + ring | **ring only** | border repaints focus-blue |
+| `MultiSelect.css:25-27` / `:34-36` | `border-color: --C-BORDER-FOCUS` + ring | **ring only** | border repaints focus-blue |
+| `ColorPicker.css:23-26` / `:32-34` | `border-color: --C-BORDER-FOCUS` + ring | border **and** ring, both `--C-STATUS-ERROR` | correct — border stays red |
+
+Both pairs are equal (0,2,0) specificity and the error rule is written second, so it wins for the
+property it declares and declares nothing for `border-color` — the focus rule's value survives. The
+error signal therefore disappears at exactly the moment the user is acting on the field.
+
+**Re-verified against current source, and the row is narrower than it was first written.** The claim
+covered `Select.tsx`, `Textarea.tsx` and `TagInput.tsx` as well, against `Input.tsx` as the correct
+one. That split **no longer exists**: `aafb9f8` moved all four onto the shared constants, and
+`focusRingControlError` (`src/util/focus.ts:40-41`) is
+`border-status-error focus-visible:ring-status-error focus-visible:border-status-error` — it recolours
+border *and* ring together, so every Tailwind-side control now behaves like `ColorPicker.css`. Only
+the two hand-written CSS controls above are still wrong.
+
+**Fix:** add `border-color: var(--C-STATUS-ERROR)` to `.combobox-input-error:focus-visible` and
+`.multiselect-control--error:focus-within`, copying `ColorPicker.css:32-34`. Related: #284 and #293
+are the standing rows for these being hand-written at all.
+
+### 464 · Library-wide — `verify:component-docs` cannot see falsified prose (med)
+
+The gate checks three things (`scripts/verify-component-docs.mjs:9-25`): H1 titles are real exports,
+relative links and anchors resolve, and every variable named in the `## Theme tokens` table is
+reachable from the component's source. It splits the doc on `## ` and reads only the `Theme tokens`
+section (`:264-265`). Everything else on the page — the prose that tells a reader *what the component
+does and why* — is unchecked.
+
+The blind spot is not "prose is unchecked" in the abstract; it is that a refactor which changes a
+utility's **keying** or **value** but not its **name** passes every check the gate makes while turning
+the prose around it false. `aafb9f8` did exactly that: `focus:` → `focus-visible:`, `ring-offset-2` →
+`ring-offset-0`. Token names unchanged, so the tables stayed green.
+
+Ten pages were carrying falsified prose when `d14c7be` went looking by hand:
+
+- `radio.md` — said Radio resets its outline, puts no ring back, and fails WCAG 2.4.7. Stale since
+  `ee59e65`. This is the doc-side twin of ledger **#73**, which sat `confirmed · high` for the same
+  reason and for the same length of time.
+- `collapsible.md` — said the trigger has no focus styling at all, and its table said the component
+  paints nothing. `#95` gave it the ring.
+- `icon-button.md`, `checkbox.md`, `error-boundary.md`, `copy-button.md` — all four described the
+  `ring-offset-2` gap and its themed fill, now `ring-offset-0`.
+- `error-boundary.md` — said its ring was the odd `focus:` one, unlike Button. Now the same recipe.
+- `date-picker.md` and the five text-control spokes — said `focus:` was chosen so the ring shows on
+  click, which `:focus-visible` already does for a text field.
+
+Same shape as the oracle gap this ledger's own preamble records for anchors: the guard proves the
+*reference* still resolves, never that it still says what the claim says. A content fingerprint —
+hash the prose span a doc claim depends on, store it beside the claim — would catch both.
+
+**Fix direction:** extend the gate beyond `## Theme tokens` to at least the `## Gotchas` section
+(90/90 spokes ship one, and `scripts/bugs-ledger.mjs:182-196` already flags them for re-reading when a
+row closes), keying on the utility strings resolved from source rather than on prose matching.

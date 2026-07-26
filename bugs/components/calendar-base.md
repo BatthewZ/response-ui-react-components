@@ -15,6 +15,20 @@ URL-param sync therefore writes a selection the user cannot see, with nothing re
 **Fix:** re-anchor `displayedMonth`/`focusDate` when `focusAnchor` changes to a month outside the
 visible window — `revealMonth` already does exactly this for keyboard focus.
 
+**Assessed alongside #324/#325/#335/#289 and deliberately declined. Re-verified true at
+`CalendarBase.tsx:174`; recorded here so the next agent does not re-litigate it.** Two reasons:
+
+1. **It is not the duplicate-representation class those four belonged to.** `displayedMonth` is
+   *independently public* — `month`, `defaultMonth` and `onMonthChange` are real props
+   (`CalendarBase.tsx:150-153`) — and a user may page away from the selection on purpose. "The view
+   follows the selection" is therefore a product decision about precedence between two legitimate
+   public inputs, not a bug where one value is stored twice. Judged RC-4 (visual state), not RC-3.
+2. **Every available fix reintroduces exactly what `5295190` deleted** — a hand-rolled reconciliation
+   between a prop and a piece of derived state, watched by a ref or an effect. Doing that here while
+   removing it four files over would leave the codebase arguing with itself.
+
+Reopen with an owner decision on `month`-vs-`value` precedence, which also settles #311.
+
 ### 311 · CalendarBase — the two layers encode opposite `defaultMonth` precedence (med)
 
 `Calendar.tsx:47` computes `defaultMonth ?? value ?? defaultValue` (prefer `defaultMonth`) and hands

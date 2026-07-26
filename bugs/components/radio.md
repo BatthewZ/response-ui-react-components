@@ -19,9 +19,16 @@ changes. They cannot see which option has focus, and therefore cannot predict wh
 will do — while arrow keys in a radio group also *change the selection*. WCAG 2.4.7 (AA) failure,
 and it also fails in forced-colours mode: `outline-none` emits no forced-colors fallback, unlike
 `outline-hidden`, which carries `@media (forced-colors: active){outline:2px solid transparent}`.
-**Fix:** drop `focus:outline-none` and add `focus-visible:ring-2 focus-visible:ring-border-focus`
-— verified to render (144/188 px change) and matching the `:focus-visible` pattern already used by
-Slider, Switch, ColorPicker, Rating and eight more.
+**Fix, as applied — and a warning about this block.** `ee59e65` did exactly what the prescription
+says; `aafb9f8` then replaced the hand-written recipe with the shared `focusRingControl` constant
+(`src/util/focus.ts:36-37`), which also drops the `ring-offset-2` halo of #35. `Radio.tsx:16` today
+reads `cn("size-4 accent-accent", focusRingControl, className)` — the class list quoted at the top of
+this block has not been in the file since 2026-07-26.
+
+**Everything above the fix line is a historical record of a closed finding, not current source.** The
+ledger row sat at `confirmed · high` for the whole interval anyway, and `docs/components/radio.md`
+independently repeated the same dead claim until `d14c7be` — three copies of one falsehood, none of
+which any gate could see. That failure mode is filed as #464.
 
 ### 75 · Radio — never consumes the Field context (med)
 

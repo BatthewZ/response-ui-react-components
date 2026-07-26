@@ -37,7 +37,14 @@ reseeds both drafts. Measured: parent renders
 end field; any unrelated parent re-render makes the check true and the draft goes `"06/1"` → `""`.
 `value={stateVariable}` is stable and unaffected, but `value={{ start, end }}` inline is the shape
 most callers reach for first. Same defect as #325 one component over.
-**Fix:** compare endpoint timestamps (`start?.getTime()` / `end?.getTime()`) instead of identity.
+~~**Fix:** compare endpoint timestamps (`start?.getTime()` / `end?.getTime()`) instead of identity.~~
+
+**Superseded — the comparison was removed, not corrected** (`d859a02` + `5295190`, both needed).
+`lastRangeRef` and the reseed are deleted; both endpoint drafts became transient overrides over text
+derived from the committed range, and the change gate took `isEqual: isSameDateRange`
+(`DateRangePicker.tsx:118`) so a rebuilt-but-equal range no longer emits. Measured: draft `"06/1"`
+survives an unrelated parent re-render (was `""`), and a no-edit blur emits **0** (was 1). Same
+treatment as #325 one component over.
 
 ### 336 · DateRangePicker — both fields are named in hard-coded English and take no `id` (med)
 

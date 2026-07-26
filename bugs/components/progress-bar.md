@@ -72,3 +72,30 @@ theme files — the same guard #51, #163 and #173 all want.
 
 Ratios computed with an OKLCH→sRGB converter validated to exact hex against `#ff0000`/`#00ff00`/
 `#0000ff`, using WCAG relative luminance; not sampled from a rendered page.
+
+### 459 · ProgressBar — the "spread `children` displaces the fill" claim is **false** (med · refuted)
+
+The claim: `ProgressBarRoot`'s props are `Omit<ComponentPropsWithRef<"div">, "children">`
+(`ProgressBar.tsx:18`) and `children` is not destructured out, so `{...bag}` at `:68` delivers it to
+the root `<div>` and it replaces the fill — the same shape as #417 (`FileUpload`) and #56 (`Avatar`).
+
+It provably cannot happen, and the difference from #417 is the whole point. **JSX element children
+are emitted after the spread** in the object the JSX runtime builds:
+
+```js
+jsx("div", { ...props, children: /* the fill */ })   // ProgressBar — component wins
+jsx("div", { children: ownKids, ...props })          // #417's shape — caller wins
+```
+
+`ProgressBar` writes its fill as JSX children of the element that carries the spread, so the runtime
+appends it last and a spread `children` is overwritten, not the other way round.
+
+**Measured**, with `{children:"HIJACKED", id:"bar"}`: root `textContent` is `""`, `id` is `"bar"`
+(so the spread genuinely arrived), and the fill still carries `.progress-bar__fill`. Pinned by a
+characterisation test in `ProgressBar.test.tsx` (`2006872`) so the property cannot silently regress
+if anyone reorders the JSX.
+
+**No fix is needed.** The `Omit` is honest about intent and needs no runtime guard here. Do not
+"harden" this by declaring `children?: never` — that would be churn against a measured non-defect.
+Contrast #417, where the rest spread genuinely precedes the component's own children and the drop is
+real. Sibling: #460, the same claim against `StatCard.Trend`.

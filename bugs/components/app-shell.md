@@ -52,6 +52,18 @@ is no external setter in the path.
 **Fix:** keep the render-time adjustment to internal state only, and notify `onOpenChange` from an
 effect.
 
+**Survived the `da9f457` controlled-mode migration and was re-measured open after it — do not close
+this from #457's cascade.** The mode lock changed *which* state `setOpen` writes, not *when* it is
+called. `AppShell.tsx:121`'s `if (isMobile && open) setOpen(false)` still sits inside the
+`prevPathname !== pathname` render-phase block (`:119-122`), and `setOpen` is still wired straight to
+`onOpenChange` (`:95`). Re-measured after the migration: a route change with a controlled open drawer
+logs `console.error` *"Cannot update a component while rendering a different component"*, **1
+occurrence** — unchanged. The prescription above is still the fix, and still unapplied.
+
+One thing the migration *did* change here, worth not misreading as progress: a controlled `AppShell`
+no longer writes internal state at all. That write was already dead (`open ?? internal` could never
+reach it), so it removed nothing this row depends on.
+
 ### 392 · AppShell — `aria-modal` on a `role="navigation"` drawer does nothing (med)
 
 The mobile drawer's `<aside>` carries `aria-modal="true"` on `role="navigation"`, where the attribute
@@ -74,3 +86,22 @@ defect is sighted-only. (Contrast pipeline validated against breadcrumbs' `--C-T
 #242's focus ratios.)
 **Fix:** add a non-colour cue (weight, rail marker) or tint the active state from a pair measured
 against `--C-SURFACE-0`.
+
+### 458 · AppShell — a spread `href` silently steals `SidebarLink`'s destination (med · **fixed** `da9f457`)
+
+`SidebarLink` takes the destination as `to` and hands it to the router adapter, which renders
+`<a href={to} {...rest}>`. `{...props}` landed *after* `to`, so a caller's `href` won outright.
+
+**Measured:** `<AppShell.SidebarLink to="/dashboard" {...{href:"/somewhere-else"}}/>` rendered
+`href="/somewhere-else"`. The link reads as pointing at the dashboard everywhere a developer would
+look — the JSX, the props table, the router config — and navigates elsewhere.
+
+`tsc` was **silent**. The props type already carried `Omit<…, "href">`, but `Omit` is erased at
+runtime and TypeScript performs no excess-property check on a spread of a variable, so the omission
+was documentation, not protection. `href` is also a legitimate `<a>` attribute, so React emitted no
+warning either. Nothing in the toolchain could see it; `scripts/verify-omit-discipline.mjs`
+(`00f6b03`) is what surfaced it, and this was the last of the 7 unprotected keys that guard found.
+
+**Fix, as applied** (per `2006872`): declare `href?: never` (`AppShell.tsx:300`) and destructure it out
+of the rest spread (`:305`). That closes both halves — the spread is now a compile error, and the key
+cannot reach the element even from an untyped caller. Guard exits 0: 102 protected, 0 unprotected.
