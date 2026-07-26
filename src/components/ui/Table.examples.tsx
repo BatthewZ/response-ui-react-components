@@ -160,11 +160,11 @@ export function SelectedRow() {
 
 /**
  * `stickyHeader` pins `<thead>` to the top of the wrapper, so the wrapper needs a height
- * for anything to scroll past it — that is what the `max-h-*` class is doing here.
+ * for anything to scroll past it — that is what `maxHeight` is for.
  */
 export function StickyHeader() {
   return (
-    <Table stickyHeader className="max-h-[9rem]">
+    <Table stickyHeader maxHeight="9rem">
       <Table.Head>
         <Table.Row>
           <Table.HeaderCell>Commit</Table.HeaderCell>

@@ -1053,3 +1053,146 @@ describe("#360 · the index argument counts the dataset", () => {
     expect(screen.getByText("row-0")).toBeInTheDocument();
   });
 });
+
+/**
+ * `stickyHeader` pins `<thead>` against the wrapper `<div>` Table renders —
+ * `overflow-x: auto` there makes the wrapper's `overflow-y` compute to `auto`,
+ * so it, not the viewport, is the header's scrollport. Content-height, it never
+ * scrolls, and the header never moves. `maxHeight` is the bound; DataTable had
+ * no prop of any kind that reached the wrapper.
+ */
+describe("#361 · maxHeight reaches the scrollport the header pins to", () => {
+  // jsdom performs no layout, so no test here can observe the header pinning.
+  // These assert the DOM precondition only: the bound lands on the element
+  // that is the scrollport.
+  it("puts the bound on the wrapper alongside the sticky class", () => {
+    const { container } = render(
+      <DataTable
+        data={data}
+        columns={columns}
+        rowKey={rowKey}
+        stickyHeader
+        maxHeight="20rem"
+      />,
+    );
+
+    const wrapper = container.querySelector(".table-wrapper");
+    expect(wrapper).toHaveStyle({ maxHeight: "20rem" });
+    expect(screen.getByRole("table")).toHaveClass("table--sticky-header");
+  });
+
+  it("takes a number as pixels", () => {
+    const { container } = render(
+      <DataTable data={data} columns={columns} rowKey={rowKey} maxHeight={320} />,
+    );
+
+    expect(container.querySelector(".table-wrapper")).toHaveStyle({
+      maxHeight: "320px",
+    });
+  });
+
+  it("sets nothing when it is omitted", () => {
+    const { container } = render(
+      <DataTable data={data} columns={columns} rowKey={rowKey} stickyHeader />,
+    );
+
+    const wrapper = container.querySelector(".table-wrapper") as HTMLElement;
+    expect(wrapper.style.maxHeight).toBe("");
+  });
+});
+
+/**
+ * `defaultSort` seeds an uncontrolled sort; `page` had no twin, so opening on
+ * page 3 meant taking full control of `page` + `onPageChange` and
+ * re-implementing the paging this component already does.
+ */
+describe("#463 · defaultPage seeds the uncontrolled page", () => {
+  const five: Item[] = [
+    { id: 1, name: "A", age: 1 },
+    { id: 2, name: "B", age: 2 },
+    { id: 3, name: "C", age: 3 },
+    { id: 4, name: "D", age: 4 },
+    { id: 5, name: "E", age: 5 },
+  ];
+
+  function firstCells(): string[] {
+    const rowgroups = screen.getAllByRole("rowgroup");
+    const body = rowgroups[rowgroups.length - 1];
+    return within(body)
+      .getAllByRole("row")
+      .map((r) => within(r).getAllByRole("cell")[0].textContent ?? "");
+  }
+
+  it("mounts on the seeded page and then keeps managing itself", async () => {
+    const user = userEvent.setup();
+    render(
+      <DataTable
+        data={five}
+        columns={columns}
+        rowKey={rowKey}
+        pageSize={2}
+        defaultPage={3}
+      />,
+    );
+
+    expect(firstCells()).toEqual(["E"]);
+
+    await user.click(screen.getByRole("button", { name: /^page 1$/i }));
+    expect(firstCells()).toEqual(["A", "B"]);
+  });
+
+  it("still reports through onPageChange without being controlled", async () => {
+    const user = userEvent.setup();
+    const onPageChange = vi.fn();
+    render(
+      <DataTable
+        data={five}
+        columns={columns}
+        rowKey={rowKey}
+        pageSize={2}
+        defaultPage={2}
+        onPageChange={onPageChange}
+      />,
+    );
+
+    expect(firstCells()).toEqual(["C", "D"]);
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    expect(onPageChange).toHaveBeenCalledTimes(1);
+    expect(onPageChange).toHaveBeenCalledWith(3);
+    expect(firstCells()).toEqual(["E"]);
+  });
+
+  it("is ignored when page is controlled, exactly as defaultSort is", () => {
+    render(
+      <DataTable
+        data={five}
+        columns={columns}
+        rowKey={rowKey}
+        pageSize={2}
+        page={1}
+        defaultPage={3}
+        onPageChange={vi.fn()}
+      />,
+    );
+
+    expect(firstCells()).toEqual(["A", "B"]);
+  });
+
+  it("seeds a server-paged table too, where this component slices nothing", () => {
+    render(
+      <DataTable
+        data={data}
+        columns={columns}
+        rowKey={rowKey}
+        totalPages={5}
+        defaultPage={4}
+        onPageChange={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /^page 4$/i }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+});

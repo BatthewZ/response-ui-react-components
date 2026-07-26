@@ -85,6 +85,8 @@ type DataTableProps<T> = {
   pageSize?: number;
   /** Current page (1-based). Controlled when provided alongside `onPageChange`. */
   page?: number;
+  /** Seeds the uncontrolled page on mount. Ignored when `page` is controlled. */
+  defaultPage?: number;
   /** Total page count for pure server-side display pagination (ignored when `pageSize` is set). */
   totalPages?: number;
   onPageChange?: (page: number) => void;
@@ -93,6 +95,15 @@ type DataTableProps<T> = {
   density?: "dense" | "comfortable" | "spacious";
   striped?: boolean;
   stickyHeader?: boolean;
+  /**
+   * Caps the height of the scrolling area, in px for a number. `stickyHeader`
+   * pins `<thead>` against that area rather than the page, and it is
+   * content-height by default — so in ordinary block flow there is nothing to
+   * scroll past the header until this is set. (A height-bounded flex or grid
+   * parent bounds it too, since a scroll container's automatic minimum size is
+   * zero; this is the route that does not depend on the layout around it.)
+   */
+  maxHeight?: number | string;
 
   // Loading
   loading?: boolean;
@@ -157,11 +168,13 @@ export function DataTable<T>({
   onExpandedChange,
   pageSize,
   page: pageProp,
+  defaultPage,
   totalPages: totalPagesProp,
   onPageChange,
   density = "comfortable",
   striped = false,
   stickyHeader = false,
+  maxHeight,
   loading = false,
   loadingRowCount = 5,
   emptyContent,
@@ -194,7 +207,7 @@ export function DataTable<T>({
   const isControlledPage = isControlledPageRef.current;
   const [rawPage, setPage] = useControllableState<number>({
     value: isControlledPage ? (pageProp ?? 1) : undefined,
-    defaultValue: 1,
+    defaultValue: defaultPage ?? 1,
     onChange: onPageChange,
   });
 
@@ -460,6 +473,7 @@ export function DataTable<T>({
         density={density}
         striped={hasRows && striped}
         stickyHeader={stickyHeader}
+        maxHeight={maxHeight}
         tableProps={{ "aria-busy": loading || undefined }}
       >
         {renderHeader()}

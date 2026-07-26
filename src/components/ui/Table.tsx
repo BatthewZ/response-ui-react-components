@@ -53,6 +53,14 @@ type TableProps = {
   striped?: boolean;
   stickyHeader?: boolean;
   /**
+   * Caps the wrapper's height, in px for a number. The wrapper is the header's
+   * scrollport (`overflow-x: auto` makes its `overflow-y` compute to `auto`)
+   * and is content-height by default, so without a bound there is nothing for
+   * `stickyHeader` to pin against — the page scrolls the whole table away
+   * instead. An explicit `style` still wins on the same key.
+   */
+  maxHeight?: number | string;
+  /**
    * Props for the inner `<table>`. Every other prop lands on the wrapper
    * `<div>` (which is the scrollport, and wants them), so this is the only
    * route to the table element itself — an `aria-label`, an `aria-rowcount`,
@@ -66,8 +74,10 @@ const TableRoot = forwardRef<HTMLDivElement, TableProps>(function Table(
     density = "comfortable",
     striped = false,
     stickyHeader = false,
+    maxHeight,
     tableProps,
     className,
+    style,
     children,
     ...props
   },
@@ -77,7 +87,12 @@ const TableRoot = forwardRef<HTMLDivElement, TableProps>(function Table(
 
   return (
     <TableContext.Provider value={{ density, striped }}>
-      <div ref={ref} className={cn("table-wrapper", className)} {...props}>
+      <div
+        ref={ref}
+        className={cn("table-wrapper", className)}
+        style={maxHeight !== undefined ? { maxHeight, ...style } : style}
+        {...props}
+      >
         <table
           className={cn("table", stickyHeader && "table--sticky-header", tableClassName)}
           {...restTableProps}

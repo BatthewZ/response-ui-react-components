@@ -355,6 +355,78 @@ describe("Table", () => {
   });
 
   /* ---------------------------------------------------------------- */
+  /*  #352 · stickyHeader needs a bounded scrollport                   */
+  /* ---------------------------------------------------------------- */
+
+  describe("maxHeight bounds the wrapper the sticky header pins to", () => {
+    function renderWith(props: ComponentPropsWithoutRef<typeof Table>) {
+      return render(
+        <Table {...props}>
+          <Table.Head>
+            <Table.Row>
+              <Table.HeaderCell>Header</Table.HeaderCell>
+            </Table.Row>
+          </Table.Head>
+          <Table.Body>
+            <Table.Row>
+              <Table.Cell>Cell</Table.Cell>
+            </Table.Row>
+          </Table.Body>
+        </Table>,
+      );
+    }
+
+    // jsdom performs no layout, so nothing here can observe the header
+    // actually pinning. What is asserted is the DOM precondition the pin
+    // needs: the bound lands on the wrapper — which `overflow-x: auto` makes
+    // the header's scrollport — and not on the <table>.
+    it("puts the bound on the wrapper, not the table", () => {
+      const { container } = renderWith({ maxHeight: "9rem", stickyHeader: true });
+
+      const wrapper = container.firstElementChild;
+      expect(wrapper).toHaveClass("table-wrapper");
+      expect(wrapper).toHaveStyle({ maxHeight: "9rem" });
+      expect(screen.getByRole("table")).toHaveClass("table--sticky-header");
+      expect(screen.getByRole("table")).not.toHaveStyle({ maxHeight: "9rem" });
+    });
+
+    it("takes a number as pixels", () => {
+      const { container } = renderWith({ maxHeight: 320 });
+
+      expect(container.firstElementChild).toHaveStyle({ maxHeight: "320px" });
+    });
+
+    it("sets nothing when it is omitted", () => {
+      const { container } = renderWith({ stickyHeader: true });
+
+      expect(container.firstElementChild).not.toHaveStyle({ maxHeight: "9rem" });
+      expect((container.firstElementChild as HTMLElement).style.maxHeight).toBe("");
+    });
+
+    it("keeps the rest of an explicit style, and lets that style win on the same key", () => {
+      const { container } = renderWith({
+        maxHeight: "9rem",
+        style: { maxHeight: "12rem", overflowY: "scroll" },
+      });
+
+      const wrapper = container.firstElementChild;
+      expect(wrapper).toHaveStyle({ maxHeight: "12rem", overflowY: "scroll" });
+    });
+
+    it("survives a style that says nothing about height", () => {
+      const { container } = renderWith({
+        maxHeight: "9rem",
+        style: { overflowY: "scroll" },
+      });
+
+      expect(container.firstElementChild).toHaveStyle({
+        maxHeight: "9rem",
+        overflowY: "scroll",
+      });
+    });
+  });
+
+  /* ---------------------------------------------------------------- */
   /*  #355 · a direction announced is a direction shown                */
   /* ---------------------------------------------------------------- */
 

@@ -41,11 +41,13 @@ row or a cell yourself.
 | `onExpandedChange`  | `(keys: Set<string \| number>) => void`                                  | —                    |
 | `pageSize`          | `number`                                                                 | —                    |
 | `page`              | `number`                                                                 | —                    |
+| `defaultPage`       | `number`                                                                 | `1`                  |
 | `totalPages`        | `number`                                                                 | —                    |
 | `onPageChange`      | `(page: number) => void`                                                 | —                    |
 | `density`           | `"dense" \| "comfortable" \| "spacious"`                                 | `"comfortable"`      |
 | `striped`           | `boolean`                                                                | `false`              |
 | `stickyHeader`      | `boolean`                                                                | `false`              |
+| `maxHeight`         | `number \| string`                                                       | —                    |
 | `loading`           | `boolean`                                                                | `false`              |
 | `loadingRowCount`   | `number`                                                                 | `5`                  |
 | `emptyContent`      | `ReactNode`                                                              | a "No data" panel    |
@@ -53,8 +55,9 @@ row or a cell yourself.
 
 That is the whole surface. `DataTableProps` is a plain object type, not an intersection
 with an element's props, so there is **no `className`, `style`, `id`, `ref` or rest
-spread** — you cannot reach the wrapper. See [Gotchas](#gotchas), which is also where
-`stickyHeader` and a controlled `sort` turn out to have sharp edges.
+spread** — `maxHeight` is the one thing you can set on the wrapper, because
+`stickyHeader` is inert without it. See [Gotchas](#gotchas), which is also where a
+controlled `sort` turns out to have sharp edges.
 
 `ColumnDef` and `SortState` are both exported from the package root, so a controlled sort
 annotates as `useState<SortState | null>(null)` with an ordinary top-level import. (`SortState`
@@ -158,6 +161,14 @@ you passed one; it fires only when the page actually moves, so sorting while alr
 The pager itself is a [Pagination](pagination.md), centred beneath the table. In client
 mode it appears as soon as the derived page count exceeds 1 — no `onPageChange` needed.
 
+`defaultPage` opens the table on a page other than the first and then leaves it alone —
+the page twin of `defaultSort`. It seeds the uncontrolled page on mount and is ignored
+once, exactly like `defaultSort`: a later change to it does nothing, and a controlled
+`page` overrides it. Deep-linking is what it is for — read the page out of the URL,
+`defaultPage={pageFromUrl}`, and the table goes on paging itself and reporting through
+`onPageChange`. Reach for controlled `page` only when something outside the table has to
+be able to *move* it.
+
 <!-- example:ClientPagination -->
 ```tsx
 <DataTable
@@ -212,8 +223,11 @@ Below, `sort` and `setSort` are a
 ```
 <!-- /example -->
 
-Server pagination is rendered only when all three of `page`, `totalPages` and
-`onPageChange` are present.
+Server pagination is rendered when `totalPages` and `onPageChange` are both present and
+`pageSize` is not. `page` is not part of that test — a server-paged table can leave the page
+uncontrolled (seeded with `defaultPage` or starting at 1) and still get its pager, which is
+what keeps a parent that supplies `page` only after its first fetch from losing the pager
+entirely.
 
 The `sort={sort ?? undefined}` above is the shape older versions forced, and it is now
 redundant: `sort={sort}` says the same thing, because the prop accepts `null`. Either way the
@@ -454,11 +468,15 @@ not as the signal itself.
   the requested page still went from `["A","B"]` to `["E"]`). Mount with `page` `undefined`
   and a `page` you start passing later is **ignored**, silently. `page={p ?? undefined}` keeps
   whatever the first render decided; `page={p ?? 1}` is what you want if you mean controlled.
-- **`stickyHeader` has nothing to stick to.** [Table](table.md)'s wrapper sets `overflow-x: auto`,
-  which makes that wrapper the nearest scroll container for the header, and DataTable
-  exposes no `className`, `style` or `ref` with which to give it a height — so the wrapper
-  never scrolls vertically and the header never sticks, however you scroll the page. Reach
-  for [Table](table.md) directly, or [VirtualizedDataTable](virtualized-data-table.md), if you need a pinned header.
+- **`stickyHeader` on its own has nothing to stick to — pair it with `maxHeight`.**
+  [Table](table.md)'s wrapper sets `overflow-x: auto`, which makes that wrapper (not the
+  page) the nearest scroll container for the header. It is content-height by default, so in
+  ordinary block flow it never scrolls vertically and the header never moves, however far
+  you scroll the page. `maxHeight` bounds it: `<DataTable stickyHeader maxHeight={320} …>`.
+  A height-bounded flex or grid **parent** works too, with no prop — a scroll container's
+  automatic minimum size is `0`, so the wrapper shrinks to the track — as does your own CSS
+  on the public `.table-wrapper` class. Earlier releases of this page said the header could
+  never pin here at all; that was too strong, and the missing piece was only the prop.
 - **The loading header's select-all checkbox is live, and it acts on stale rows.** The
   loading and empty states now share the one real header, so the select-all box and every
   sort affordance are active in states where they used to be inert markup. Select-all

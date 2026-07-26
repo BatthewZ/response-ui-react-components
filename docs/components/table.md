@@ -48,7 +48,7 @@ header cell is where sorting lives.
 
 | Part               | Renders   | Own props                                                                             |
 | ------------------ | --------- | ------------------------------------------------------------------------------------- |
-| `Table`            | `<div>` › `<table>` | `density?: "dense" \| "comfortable" \| "spacious"` (default `"comfortable"`) · `striped?: boolean` · `stickyHeader?: boolean` · `tableProps?: ComponentPropsWithRef<"table">` (the only route to the inner `<table>`) |
+| `Table`            | `<div>` › `<table>` | `density?: "dense" \| "comfortable" \| "spacious"` (default `"comfortable"`) · `striped?: boolean` · `stickyHeader?: boolean` · `maxHeight?: number \| string` (caps the wrapper — what `stickyHeader` pins against; a number is px) · `tableProps?: ComponentPropsWithRef<"table">` (the only route to the inner `<table>`) |
 | `Table.Head`       | `<thead>` | —                                                                                     |
 | `Table.Body`       | `<tbody>` | —                                                                                     |
 | `Table.Row`        | `<tr>`    | `selected?: boolean` · `index?: number` (data position; decides the zebra band — `Table.Body` supplies it for its own children) |
@@ -217,7 +217,7 @@ measured numbers and why the example also puts the state into the row's text.
 
 <!-- example:StickyHeader -->
 ```tsx
-<Table stickyHeader className="max-h-[9rem]">
+<Table stickyHeader maxHeight="9rem">
   <Table.Head>
     <Table.Row>
       <Table.HeaderCell>Commit</Table.HeaderCell>
@@ -256,7 +256,15 @@ resolves against the **wrapper**: `overflow-x: auto` makes the wrapper's `overfl
 compute to `auto` too, so the wrapper — not the viewport — is the header's scrollport, and
 the wrapper is where the height has to come from. Leave its height to content, as every
 other example here does, and there is nothing to scroll past the header: the page scrolls
-the whole table away instead. That is what the `max-h-*` class above is for.
+the whole table away instead. `maxHeight` is that bound — `maxHeight={320}` for pixels, any
+CSS length as a string. It lands as an inline `max-height` on the wrapper, so a
+`className` (`max-h-*`) or an explicit `style` does the same job, and an explicit
+`style={{ maxHeight }}` wins over the prop.
+
+A **height-bounded flex or grid parent** bounds it too, with no prop at all: the wrapper is
+a scroll container, so its automatic minimum size is `0` and it shrinks to the track rather
+than pushing past it. `maxHeight` is the route that does not depend on the layout around
+the table.
 
 ## Naming the table, and its rows
 
@@ -339,7 +347,8 @@ Three things are **not** on the contract, and are worth knowing before you theme
   There is no handle on the `<table>` node.
 - **`stickyHeader` does nothing until the wrapper has a height.** The sticky offset is
   measured against the wrapper's own scrollport, and the wrapper is content-height by
-  default. Pass a `max-h-*` or a `style={{ maxHeight: … }}` alongside it.
+  default. Pass `maxHeight` alongside it (or a `max-h-*`, or your own
+  `style={{ maxHeight: … }}`, or put the table in a height-bounded flex/grid parent).
 - **An `onClick` on `Table.HeaderCell` composes with the sort click.** Your handler runs
   first, then `onSort` — on the pointer path and the Enter/Space path alike, which previously
   diverged (your handler replaced `onSort` for clicks while keys still sorted). `onKeyDown`
