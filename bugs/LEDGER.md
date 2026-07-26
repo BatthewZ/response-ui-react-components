@@ -3,7 +3,7 @@
 Open defects in this package's shipped code, one row per finding. **This file is the work
 list**: everything in it is believed true at source and unfixed. Closed rows live in
 [`ARCHIVE.md`](./ARCHIVE.md); findings about the audit itself — gates, tests, the record —
-live in [`AUDIT.md`](./AUDIT.md).
+live in [`AUDIT.md`](./AUDIT.md). Arriving cold? Start with [`HANDOVER.md`](./HANDOVER.md).
 
 - **What a row *is*** — its kind and its harm — is defined in [`TAXONOMY.md`](./TAXONOMY.md).
   Work order is **harm first**: blocking, then content-loss, then exclusionary, then
