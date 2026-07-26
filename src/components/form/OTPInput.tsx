@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
+import { focusRingControl, focusRingControlError } from "../../util/focus";
 import { cn } from "../../util/style";
 
 import { useFieldError } from "./Field";
@@ -213,9 +214,9 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
               "size-12 text-center text-h5 text-fg-primary",
               "bg-surface-0 border border-border-strong rounded-md",
               "duration-fast",
-              "focus:outline-none focus:ring-2 focus:ring-border-focus focus:border-border-focus",
+              focusRingControl,
               "disabled:bg-surface-3 disabled:cursor-not-allowed",
-              invalid && "border-status-error focus:ring-status-error"
+              invalid && focusRingControlError
             )}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}

@@ -1,5 +1,6 @@
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
+import { focusRingControl, focusRingControlError } from "../../util/focus";
 import { cn } from "../../util/style";
 
 import { useFieldError } from "./Field";
@@ -22,10 +23,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
         "bg-surface-0 border border-border-strong rounded-md",
         "placeholder:text-fg-muted",
         "duration-fast",
-        "focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-0 focus:border-border-focus",
+        focusRingControl,
         "disabled:bg-surface-3 disabled:cursor-not-allowed",
         "min-h-[6.25rem] resize-y",
-        invalid && "border-status-error focus:ring-status-error",
+        invalid && focusRingControlError,
         className
       )}
       {...props}

@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { focusRingControl } from "../../util/focus";
+
 import { Radio } from "./Radio";
 
 describe("Radio", () => {
@@ -92,15 +94,14 @@ describe("Radio", () => {
 });
 
 describe("focus affordance (#73)", () => {
-  // The verify:focus-affordance gate reads src/components/**/*.css only, so a
-  // Tailwind `focus:outline-none` written in a .tsx is invisible to it. This is
-  // the check that covers that gap for Radio.
+  // The verify:focus-affordance gate grew a .tsx reader, but this stays: it is the
+  // check that the reset and its replacement arrive together, from one recipe.
   it("pairs its outline reset with a visible replacement ring", () => {
     render(<Radio aria-label="Choice" value="a" name="g" />);
     const cls = screen.getByRole("radio").className;
 
-    expect(cls).toContain("focus:outline-none");
-    expect(cls).toMatch(/focus:ring-\d/);
-    expect(cls).toContain("focus:ring-border-focus");
+    expect(cls).toContain(focusRingControl);
+    expect(cls).toContain("focus-visible:outline-none");
+    expect(cls).toContain("focus-visible:ring-border-focus");
   });
 });

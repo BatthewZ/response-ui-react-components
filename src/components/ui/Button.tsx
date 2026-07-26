@@ -1,12 +1,13 @@
 import { type ComponentPropsWithRef, type ElementType, forwardRef } from "react";
 
+import { focusRing } from "../../util/focus";
 import { cn } from "../../util/style";
 
 type Variant = "primary" | "secondary" | "ghost" | "ghost-inverse" | "danger" | "link";
 type Size = "sm" | "md" | "lg";
 
 const baseClasses =
-  "inline-flex items-center justify-center font-semibold whitespace-nowrap duration-fast cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ring-2 ring-transparent focus-visible:ring-border-focus focus-visible:ring-offset-2";
+  "inline-flex items-center justify-center font-semibold whitespace-nowrap duration-fast cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 
 const variantClassMap: Record<Variant, string> = {
   primary: "bg-primary text-fg-on-primary hover:bg-primary-hover active:bg-primary-active",
@@ -41,7 +42,13 @@ export const Button = forwardRef<HTMLElement, ButtonProps>(function Button(
       // we actually render a <button>, and before the spread so a caller can
       // still ask for "submit".
       {...(Tag === "button" ? { type: "button" as const } : {})}
-      className={cn(baseClasses, variantClassMap[variant], sizeClassMap[size], className)}
+      className={cn(
+        baseClasses,
+        focusRing,
+        variantClassMap[variant],
+        sizeClassMap[size],
+        className
+      )}
       {...props}
     />
   );

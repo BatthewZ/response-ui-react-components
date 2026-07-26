@@ -1,6 +1,9 @@
 "use client";
 import { Component } from "react";
 
+import { focusRing } from "../../util/focus";
+import { cn } from "../../util/style";
+
 interface Props {
   children: React.ReactNode;
 }
@@ -29,7 +32,10 @@ export class ErrorBoundary extends Component<Props, State> {
             <button
               type="button"
               onClick={() => this.setState({ hasError: false })}
-              className="px-4 py-2 bg-primary text-fg-on-primary rounded-md hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-2"
+              className={cn(
+                "px-4 py-2 bg-primary text-fg-on-primary rounded-md hover:bg-primary-hover",
+                focusRing
+              )}
             >
               Try again
             </button>

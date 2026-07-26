@@ -6,6 +6,7 @@ export {
   formatDate,
   getDateFieldOrder,
   getMonthLabel,
+  getMonthNames,
   getWeekdayNames,
   isAfter,
   isBefore,
@@ -13,6 +14,7 @@ export {
   parseDateInput,
   startOfDay,
   startOfMonth,
+  toISODate,
 } from "./date";
 export { formatBytes } from "./format";
 export { composeEventHandlers, mergeProps } from "./merge-props";

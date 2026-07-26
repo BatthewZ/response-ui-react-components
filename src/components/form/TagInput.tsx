@@ -7,8 +7,10 @@ import {
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
+import { focusRingWithin, focusRingWithinError } from "../../util/focus";
 import { mergeProps } from "../../util/merge-props";
 import { cn } from "../../util/style";
+import { Badge } from "../ui/Badge";
 
 import { useFieldError } from "./Field";
 
@@ -178,18 +180,14 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
             "flex flex-wrap items-center gap-r6",
             "w-full px-r4 py-r5 bg-surface-0 border rounded-md",
             "border-border-strong duration-fast",
-            "focus-within:ring-2 focus-within:ring-border-focus focus-within:border-border-focus",
-            hasError &&
-              "border-status-error focus-within:ring-status-error",
+            focusRingWithin,
+            hasError && focusRingWithinError,
             disabled && "bg-surface-3 cursor-not-allowed",
             className
           )}
         >
           {tags.map((tag, index) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-r6 rounded-sm px-r5 py-r6 text-body-3 font-semibold bg-surface-2 text-fg-secondary"
-            >
+            <Badge key={tag} className="gap-r6">
               {tag}
               <button
                 type="button"
@@ -200,7 +198,7 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
               >
                 <X size={12} />
               </button>
-            </span>
+            </Badge>
           ))}
           <input
             ref={ref}

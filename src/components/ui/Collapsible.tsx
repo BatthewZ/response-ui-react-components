@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
+import { focusRing } from "../../util/focus";
 import { cn } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
@@ -90,7 +91,9 @@ const CollapsibleTrigger = forwardRef<HTMLButtonElement, CollapsibleTriggerProps
         aria-controls={contentId}
         disabled={disabled}
         data-state={open ? "open" : "closed"}
-        className={cn("collapsible-trigger", className)}
+        // `.collapsible-trigger` is a styling hook with no rule behind it, so the
+        // ring has to be a utility or a keyboard user gets the UA outline only (#95).
+        className={cn("collapsible-trigger", focusRing, className)}
         onClick={(e) => {
           onClick?.(e);
           if (!e.defaultPrevented) toggle();

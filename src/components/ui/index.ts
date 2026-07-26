@@ -2,7 +2,11 @@ export { Accordion } from "./Accordion";
 export { Alert } from "./Alert";
 export { AppShell } from "./AppShell";
 export { Avatar, AvatarGroup } from "./Avatar";
-export { AvatarUpload } from "./AvatarUpload";
+export {
+  AvatarUpload,
+  type AvatarUploadProps,
+  type AvatarUploadResult,
+} from "./AvatarUpload";
 export { Badge } from "./Badge";
 export { Breadcrumbs } from "./Breadcrumbs";
 export { Button } from "./Button";
@@ -11,7 +15,7 @@ export { Card } from "./Card";
 export { CodeBlock } from "./CodeBlock";
 export { Carousel } from "./Carousel";
 export { Collapsible } from "./Collapsible";
-export { type ColumnDef,DataTable } from "./DataTable";
+export { type ColumnDef, DataTable, type SortState } from "./DataTable";
 export { CommandPalette, type CommandItem } from "./CommandPalette";
 export { ContextMenu } from "./ContextMenu";
 export { CopyButton } from "./CopyButton";

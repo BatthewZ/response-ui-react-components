@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { focusRing } from "../../util/focus";
+
 import { Collapsible } from "./Collapsible";
 
 function renderCollapsible(
@@ -176,6 +178,31 @@ describe("Collapsible", () => {
 
       await user.click(screen.getByRole("button", { name: "Details" }));
       expect(panel()).toHaveAttribute("inert");
+    });
+  });
+
+  describe("focus affordance (#95)", () => {
+    // The trigger carries `.collapsible-trigger`, which Collapsible.css styles
+    // not at all, so the ring has to arrive as a utility. verify:focus-affordance
+    // reads stylesheets, so this is the check that covers the gap here.
+    it("gives the trigger a ring in the house focus token", () => {
+      renderCollapsible();
+      const cls = screen.getByRole("button", { name: "Toggle" }).className;
+
+      expect(cls).toContain(focusRing);
+    });
+
+    it("keeps the ring when the caller adds classes of their own", () => {
+      render(
+        <Collapsible>
+          <Collapsible.Trigger className="w-full">Toggle</Collapsible.Trigger>
+          <Collapsible.Content>Panel content</Collapsible.Content>
+        </Collapsible>
+      );
+      const cls = screen.getByRole("button", { name: "Toggle" }).className;
+
+      expect(cls).toContain("focus-visible:ring-border-focus");
+      expect(cls).toContain("w-full");
     });
   });
 });

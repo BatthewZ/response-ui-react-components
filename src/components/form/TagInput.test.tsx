@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { Badge } from "../ui/Badge";
+
 import { Field } from "./Field";
 import { TagInput } from "./TagInput";
 import { useForm } from "./use-form";
@@ -232,6 +234,20 @@ describe("TagInput", () => {
         "aria-invalid",
         "true"
       );
+    });
+  });
+
+  describe("chip styling (#50)", () => {
+    // Asserted against what Badge actually renders, not a copy of its class
+    // string: restyle Badge and this stays true only while the chip follows.
+    it("renders each chip with exactly Badge's own classes", () => {
+      const { unmount } = render(<Badge className="gap-r6">apple</Badge>);
+      const badgeClass = screen.getByText("apple").className;
+      unmount();
+
+      render(<TagInput aria-label="Tags" defaultValue={["apple"]} />);
+
+      expect(screen.getByText("apple").className).toBe(badgeClass);
     });
   });
 });

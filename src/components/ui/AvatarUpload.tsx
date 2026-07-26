@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { matchesAccept } from "../../util/accept";
+import { focusRingGroup } from "../../util/focus";
 import { cn } from "../../util/style";
 
 import { Avatar } from "./Avatar";
@@ -241,10 +242,7 @@ export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(functi
 
       {/* Focus ring */}
       <span
-        className={cn(
-          "pointer-events-none absolute inset-0 rounded-full ring-2 ring-transparent",
-          "group-focus-visible:ring-border-focus group-focus-visible:ring-offset-2",
-        )}
+        className={cn("pointer-events-none absolute inset-0 rounded-full", focusRingGroup)}
         aria-hidden="true"
       />
 

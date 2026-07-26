@@ -1,5 +1,6 @@
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
+import { focusRingControl } from "../../util/focus";
 import { cn } from "../../util/style";
 
 type CheckboxProps = Omit<ComponentPropsWithRef<"input">, "type">;
@@ -14,7 +15,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
       type="checkbox"
       className={cn(
         "size-4 rounded-sm border border-border-strong accent-accent",
-        "focus:ring-2 focus:ring-border-focus focus:ring-offset-2",
+        focusRingControl,
         className
       )}
       {...props}
