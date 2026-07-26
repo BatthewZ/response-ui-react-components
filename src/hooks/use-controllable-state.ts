@@ -13,10 +13,14 @@ export interface UseControllableStateParams<T> {
    */
   onChange?: (next: T) => void;
   /**
-   * Equality used by that gate. Defaults to `Object.is`, which is reference
-   * equality — correct for scalars, but a no-op for values rebuilt on each
-   * commit (`Date`, ranges, sort tuples), where an unchanged value is a fresh
-   * object and re-emits. Pass a comparator at those call sites.
+   * Equality used by that gate. Defaults to `Object.is`, i.e. reference
+   * equality, which cannot see two equal-but-rebuilt values as the same.
+   *
+   * Pass a comparator when some reachable setter call can resolve to the value
+   * already held — not merely because the value is an object. A `Date` blurred
+   * without an edit needs one; a sort tuple cycled `none→asc→desc` and a
+   * toggled array never resolve to their own current value, so a comparator
+   * there is inert. Measure reachability before adding one.
    */
   isEqual?: (a: T, b: T) => boolean;
 }
