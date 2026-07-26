@@ -206,8 +206,9 @@ which reveals the whole block the first time it intersects the viewport. `animat
 the entrance — `"fade-up"` (the default, a slide plus a fade), `"fade-in"` or `"scale"`,
 three of ScrollReveal's five. Those two props are the entire surface: ScrollReveal's
 `threshold`, `rootMargin`, `delay` and `once` are not reachable through Hero, so the reveal
-is always once-only at a 10% intersection ratio. The Stagger layer does **not** produce a
-cascade here, and it changes your DOM shape; both are in [Gotchas](#gotchas).
+is always once-only at a 10% intersection ratio. The block carries the entrance you picked;
+the Stagger layer then fades your children in one after another, one
+`--MOTION-STAGGER-DELAY` apart. It also changes your DOM shape — see [Gotchas](#gotchas).
 
 <!-- example:AnimatedContent -->
 ```tsx
@@ -218,7 +219,7 @@ cascade here, and it changes your DOM shape; both are in [Gotchas](#gotchas).
       Built for teams that ship
     </Text>
     <Text variant="body-1" color="on-primary">
-      The whole block enters together — see Gotchas before you expect a cascade.
+      The block fades in, then each line follows one stagger step behind the last.
     </Text>
     <Button type="button" variant="ghost-inverse">
       Start a trial
@@ -281,10 +282,14 @@ whatever ink the surrounding page established, which is why the section above ma
 | --------------- | ------------------------------------------------------------------------ |
 | Overlay scrim   | `--OVERLAY-SCRIM-COLOR`                                                   |
 | Content padding | `--R-SIZE-3` below `40rem` · `--R-SIZE-2` from `40rem` · `--R-SIZE-1` from `64rem` |
+| Stagger entrance | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER`                        |
 
-`Hero.css` reads all four of those variables directly. The component's only Tailwind
+`Hero.css` reads all of those variables directly. The component's only Tailwind
 utilities are the `size-full` / `object-cover` pair on the background `<img>`, and neither
-resolves to a token.
+resolves to a token. The two motion variables are shared enter tokens, so retiming them
+retimes every entrance in the system — there is no Hero-only duration. The *gap* between
+the staggered items is not Hero's at all: it comes from `.stagger-item`, so retime it with
+[Stagger](stagger.md)'s three sources.
 
 The padding ramp is responsive twice over. `Hero.css` swaps *which* `r`-token it reads at
 `40rem` and again at `64rem`, and the `r`-scale itself steps up at `40rem`. Net effect:
@@ -311,17 +316,25 @@ to 50% black rather than vanishing.
 - **`alt` without `src` does nothing.** No `<img>` is rendered at all unless `src` is set, so
   `alt` is silently dropped. `parallax` without `src` is now an honest no-op: with no image to
   drift, neither the client Parallax wrapper nor the 200%-height layer is mounted.
-- **`animate` adds three wrappers and no cascade.** Your children end up inside
-  `ScrollReveal > Stagger > div.stagger-item`. The entrance class lands on the ScrollReveal
-  element, while `.stagger-item` sets `animation-delay` with **no `animation-name`** — so the
-  per-item delay applies to nothing and the block enters as one. What you keep is the extra
-  depth: any `flex`, `grid` or `gap` class you put on `Hero.Content` now lays out a single
-  `<div>`, not your elements. See [Stagger](stagger.md).
+- **`animate` adds three wrappers, and lays out the first one.** Your children end up inside
+  `ScrollReveal > Stagger > div.stagger-item`, so any `flex`, `grid` or `gap` class you put
+  on `Hero.Content` now lays out a single `<div>`, not your elements. See
+  [Stagger](stagger.md).
+- **The cascade is Hero's, not Stagger's.** [Stagger](stagger.md) ships delays and no
+  `animation-name` by design — the caller supplies the entrance. Hero supplies one in
+  `Hero.css`, scoped to `.hero__content .stagger-item`: a plain `fade` over
+  `--MOTION-DURATION-ENTER`, held off until the reveal drops its hidden class. Two
+  consequences. Any Stagger *you* nest inside `Hero.Content` picks up the same fade. And
+  `animation-name` on `.hero__content .stagger-item` is not overridable from a
+  `className` — the rule is unlayered component CSS, which outranks every Tailwind
+  utility; write your own unlayered rule after this package's stylesheet instead.
 - **`animate` hides the content until an observer fires.** ScrollReveal starts at
-  `opacity: 0` and clears it on intersection. With JavaScript disabled, or where
-  `IntersectionObserver` is undefined, the copy never appears — and a hero is usually the
-  page's `<h1>`. Under `prefers-reduced-motion` the hidden state is skipped entirely, so that
-  path is safe.
+  `opacity: 0` and clears it on intersection — and a hero is usually the page's `<h1>`.
+  Three environments never get an intersection, and only two are covered: no
+  `IntersectionObserver` reveals on mount, scripting switched off reveals in CSS, but a
+  page whose bundle simply never executes still shows nothing. Under
+  `prefers-reduced-motion` the hidden state is skipped entirely and no item animates, so
+  that path is safe. See [ScrollReveal](scroll-reveal.md#opting-out-of-the-reveal).
 - **`overflow: hidden` crops anything that overhangs** — a decorative shape bleeding past the
   edge, a `position: sticky` child, a menu that expands downward. Overlays that render through
   a [Portal](portal.md) escape it.
@@ -357,7 +370,10 @@ to 50% black rather than vanishing.
   comes first.
 - **Motion is reduced-motion safe.** Under `prefers-reduced-motion: reduce`, Parallax attaches
   no listener and applies no transform, ScrollReveal skips both the observer and the hidden
-  state so the content is simply present, and Stagger zeroes every index.
+  state so the content is simply present, Stagger zeroes every index, and the item fade
+  Hero adds is inside a `prefers-reduced-motion: no-preference` block — so it is not
+  merely instant, it never starts. A browser too old to understand the query gets no
+  cascade rather than an unguarded one.
 - **Contrast over an image is on you.** Hero applies no text colour and cannot know what your image
   looks like — see [Contrast over an image](#contrast-over-an-image).
 

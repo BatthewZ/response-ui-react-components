@@ -1,0 +1,16 @@
+/* `.scroll-reveal-hidden` is `opacity: 0` and comes from
+   `@batthewz/response-ui-css`; only an IntersectionObserver clears it, and only
+   from JavaScript. With scripting off nothing ever will, so the reveal's markup
+   would hide its content permanently — including the page's `<h1>` when the
+   reveal wraps a Hero.
+
+   Unlayered author CSS at equal specificity, imported after the css package, so
+   this wins on source order. It does not reach a page whose scripting is
+   *enabled* but whose bundle never executes: the browser reports
+   `scripting: enabled` either way. `animate={false}` is still the only cover for
+   that case. */
+@media (scripting: none) {
+  .scroll-reveal-hidden {
+    opacity: 1;
+  }
+}

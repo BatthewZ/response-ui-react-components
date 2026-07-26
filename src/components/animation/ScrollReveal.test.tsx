@@ -38,6 +38,26 @@ function stubIntersectingObserver() {
 }
 
 /**
+ * An observer that observes and never reports an intersection — the state a
+ * real browser is in before the element scrolls into view. jsdom ships no
+ * `IntersectionObserver` at all, and that is now its own behaviour (#16), so
+ * every assertion about the *waiting* state has to supply one.
+ */
+function stubIdleObserver() {
+  vi.stubGlobal(
+    "IntersectionObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return [];
+      }
+    }
+  );
+}
+
+/**
  * React resolves the animation-event name through vendor-prefix detection, and in
  * this jsdom it registers `webkitAnimationEnd` rather than `animationend` — so
  * `fireEvent.animationEnd` reaches React not at all (and jsdom has no
@@ -62,6 +82,7 @@ describe("ScrollReveal", () => {
   });
 
   it("applies initial hidden state", () => {
+    stubIdleObserver();
     const { container } = render(<ScrollReveal>Content</ScrollReveal>);
     const el = container.firstElementChild as HTMLElement;
     expect(el.className).toContain("scroll-reveal-hidden");
@@ -200,10 +221,55 @@ describe("ScrollReveal", () => {
     });
 
     it("still hides behind the reveal by default", () => {
+      stubIdleObserver();
       const { container } = render(<ScrollReveal>Content</ScrollReveal>);
       expect((container.firstElementChild as HTMLElement).className).toContain(
         "scroll-reveal-hidden"
       );
+    });
+  });
+
+  // #16 — the hidden class is cleared by an IntersectionObserver, so where the
+  // API does not exist nothing ever clears it and the content stays at
+  // `opacity: 0` for the life of the page. Revealing is the only safe reading of
+  // "no trigger will ever arrive".
+  describe("#16 · no IntersectionObserver reveals instead of hiding", () => {
+    it("drops the hidden class when the observer API is absent", () => {
+      // jsdom implements none; asserted so the premise cannot silently change.
+      expect(typeof IntersectionObserver).toBe("undefined");
+
+      const { container } = render(<ScrollReveal>Content</ScrollReveal>);
+      const el = container.firstElementChild as HTMLElement;
+
+      expect(el.className).not.toContain("scroll-reveal-hidden");
+      expect(screen.getByText("Content")).toBeVisible();
+    });
+
+    it("reveals statically — no entrance animation and no delay", () => {
+      const { container } = render(<ScrollReveal delay={200}>Content</ScrollReveal>);
+      const el = container.firstElementChild as HTMLElement;
+
+      // There was never a trigger, so there is nothing to animate *from*.
+      expect(el.className).not.toContain("fade-up");
+      expect(el.style.animationDelay).toBe("");
+    });
+
+    // The other half of #16 — a visitor with scripting switched off — is CSS
+    // only (`@media (scripting: none)` in ScrollReveal.css) and unreachable from
+    // here: vitest runs `css: false`, so no test in this package reads a
+    // stylesheet. Verified in Firefox 146 by screenshotting the same element at
+    // the same position with `javaScriptEnabled` true then false: the hidden box
+    // painted only in the second, alongside an always-visible control box.
+    it("still honours animate={false} with no observer available", () => {
+      const { container } = render(
+        <ScrollReveal animate={false} className="custom-class">
+          Content
+        </ScrollReveal>
+      );
+      const el = container.firstElementChild as HTMLElement;
+
+      expect(el.className).not.toContain("scroll-reveal-hidden");
+      expect(el.className).toContain("custom-class");
     });
   });
 

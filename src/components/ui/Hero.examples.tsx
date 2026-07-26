@@ -146,7 +146,7 @@ export function AnimatedContent() {
           Built for teams that ship
         </Text>
         <Text variant="body-1" color="on-primary">
-          The whole block enters together — see Gotchas before you expect a cascade.
+          The block fades in, then each line follows one stagger step behind the last.
         </Text>
         <Button type="button" variant="ghost-inverse">
           Start a trial

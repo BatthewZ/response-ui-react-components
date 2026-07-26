@@ -260,11 +260,13 @@ The root is a plain `<div>` — no role, no list semantics, no label — and eve
 on it are yours to add at any time; `role="listitem"` on the entries needs the entrance off,
 as the list example shows.
 
-- **The default renders the whole timeline at `opacity: 0`.** Every animating item ships with
-  `scroll-reveal-hidden` and only clears it once an `IntersectionObserver` fires. Server-rendered
-  HTML therefore contains an invisible timeline, and if the page never hydrates — or the browser
-  has no `IntersectionObserver` — it stays invisible with no fallback. `animate={false}` is a real
-  opt-out and the only one.
+- **The default renders the whole timeline at `opacity: 0` until the bundle executes.** Every
+  animating item ships with `scroll-reveal-hidden`, cleared from an effect. A browser with **no
+  `IntersectionObserver`** now reveals the timeline statically, and with **scripting switched
+  off** a `@media (scripting: none)` rule resolves the class to `opacity: 1`. Still uncovered:
+  scripting enabled but the bundle never executing — a hydration error, a blocked script — where
+  the effect never runs and the timeline stays invisible, and no media query can catch it because
+  the browser reports `scripting: enabled`. `animate={false}` is the only cover for that.
 - **Reduced motion is honoured on both paths.** Under `prefers-reduced-motion: reduce` the
   hook short-circuits the observer *and* the shared CSS resolves `.scroll-reveal-hidden` to
   `opacity: 1`, so those readers get a static, fully visible timeline even without JavaScript.

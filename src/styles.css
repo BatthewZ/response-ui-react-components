@@ -10,6 +10,10 @@
    per-component CSS below reads `var(--…)`. */
 @import "./tokens.css";
 
+/* animation */
+@import "./components/animation/ScrollReveal.css";
+@import "./components/animation/Stagger.css";
+
 /* ui */
 @import "./components/ui/Accordion.css";
 @import "./components/ui/AppShell.css";

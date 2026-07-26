@@ -211,10 +211,15 @@ the spacing inside your scroller is entirely yours to pick.
 - **It does not scroll.** Nothing in `Swimlane.css` sets `overflow`, `scroll-snap-type` or
   `scroll-behavior` — despite the name and despite a test called "renders a scrollable
   container". Bring your own scroller (see [above](#the-body-is-yours)).
-- **Server-rendered output is `opacity: 0` unless you opt out.** The reveal's initial markup
-  carries `scroll-reveal-hidden`, and it is only cleared once an `IntersectionObserver` fires.
-  If JS never runs, or `IntersectionObserver` is undefined, the entire lane — heading, subtitle
-  and link included — stays invisible. `animate={false}` drops the reveal wrapper entirely and
+- **Server-rendered output is `opacity: 0` until the bundle executes.** The reveal's initial
+  markup carries `scroll-reveal-hidden`. Two of the three ways that used to strand it are now
+  covered: a browser with **no `IntersectionObserver`** reveals the lane statically, and with
+  **scripting switched off** a `@media (scripting: none)` rule resolves the class to
+  `opacity: 1`. What is *not* covered is scripting enabled but your bundle never executing — a
+  hydration error, a blocked or failed script — because the browser reports
+  `scripting: enabled` either way, and the reveal clears from an effect that never runs. In
+  that case the entire lane, heading and subtitle and link included, stays invisible.
+  `animate={false}` drops the reveal wrapper entirely and
   renders a plain `<section>` that is readable from the first paint. Only users who have *not* asked for
   reduced motion are affected: under `prefers-reduced-motion: reduce` the same class resolves
   to `opacity: 1`, so those readers see the lane either way. Don't put content behind a

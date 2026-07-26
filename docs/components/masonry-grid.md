@@ -279,12 +279,15 @@ which is applied inline and is not themeable.
 The root is a plain `<div>` with no role, no label and no list semantics, and rest props do
 reach it — so `role`, `aria-label` and friends are yours to add, as the labelling example does.
 
-- **The default renders the whole grid at `opacity: 0`.** Every animating item ships with
-  `scroll-reveal-hidden` and only clears it once an `IntersectionObserver` fires. Server-rendered
-  HTML therefore contains an invisible grid, and if the page never hydrates — or the browser has
-  no `IntersectionObserver` — it stays invisible with no fallback. Unlike some other revealing
-  components, MasonryGrid gives you a real opt-out: `animate={false}` renders plain `<div>`s that
-  are visible immediately. Use it for anything that must always be readable.
+- **The default renders the whole grid at `opacity: 0` until the bundle executes.** Every
+  animating item ships with `scroll-reveal-hidden`, cleared from an effect. A browser with **no
+  `IntersectionObserver`** now reveals the grid statically, and with **scripting switched off** a
+  `@media (scripting: none)` rule resolves the class to `opacity: 1`. The case still uncovered is
+  scripting enabled but the bundle never executing — a hydration error, a blocked script — where
+  the effect never runs and the grid stays invisible; the browser reports `scripting: enabled`
+  there, so no media query can catch it. MasonryGrid gives you a real opt-out: `animate={false}`
+  renders plain `<div>`s that are visible immediately. Use it for anything that must always be
+  readable.
 - **Reduced motion is honoured on both paths.** Under `prefers-reduced-motion: reduce` the
   media-query hook short-circuits the observer *and* the shared CSS resolves `.scroll-reveal-hidden`
   to `opacity: 1`, so those readers see a static, fully visible grid even without JavaScript.

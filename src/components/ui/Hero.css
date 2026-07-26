@@ -73,3 +73,28 @@
     padding: var(--R-SIZE-1);
   }
 }
+
+/* `Hero.Content animate` composes ScrollReveal > Stagger. Stagger sequences
+   delays and ships no `animation-name` on purpose — the caller supplies the
+   entrance (docs/components/stagger.md). Hero is that caller, so it supplies one
+   for its own items here: the block carries the directional entrance, the items
+   carry a plain fade one after another.
+
+   Keyed off the *absence* of the reveal's hidden class rather than the presence
+   of its entrance class, because ScrollReveal drops the entrance class on
+   `animationend` — which would cut a later item's animation off mid-flight —
+   while the hidden class is removed once and stays removed.
+
+   This is the whole of Hero's stagger: any Stagger you nest yourself inside
+   `Hero.Content` picks up the same fade. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero__content .stagger-item {
+    animation-name: fade;
+    animation-duration: var(--MOTION-DURATION-ENTER);
+    animation-timing-function: var(--MOTION-EASE-ENTER);
+  }
+
+  .hero__content .scroll-reveal-hidden .stagger-item {
+    animation-name: none;
+  }
+}

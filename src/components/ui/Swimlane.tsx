@@ -21,8 +21,10 @@ type SwimlaneProps = {
   once?: boolean;
   /**
    * Wrap the lane in a scroll-triggered reveal. The reveal's server-rendered
-   * markup is `opacity: 0` until an `IntersectionObserver` fires, so a lane that
-   * must be readable without JS needs `animate={false}`.
+   * markup is `opacity: 0` until the bundle executes. A missing
+   * `IntersectionObserver` and scripting-off both reveal it now; a bundle that
+   * never executes does not, so a lane that must be readable regardless still
+   * needs `animate={false}`.
    */
   animate?: boolean;
 } & Omit<ComponentPropsWithRef<"section">, "title">;

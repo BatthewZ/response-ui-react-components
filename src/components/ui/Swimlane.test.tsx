@@ -153,6 +153,22 @@ describe("Swimlane", () => {
     });
 
     it("still hides behind the reveal by default", () => {
+      // #16 — this used to pass on jsdom's *absence* of IntersectionObserver,
+      // which is now its own behaviour: with no observer ScrollReveal reveals
+      // rather than hiding forever. The waiting state needs an observer that
+      // observes and reports nothing, as a real browser does before the lane
+      // scrolls into view.
+      vi.stubGlobal(
+        "IntersectionObserver",
+        class {
+          observe() {}
+          unobserve() {}
+          disconnect() {}
+          takeRecords() {
+            return [];
+          }
+        },
+      );
       const { container } = render(
         <Swimlane title="Revealed">
           <div>Content</div>

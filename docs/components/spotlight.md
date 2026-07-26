@@ -227,9 +227,14 @@ borrows read `--MOTION-DURATION-ENTER` and `--MOTION-EASE-ENTER` from
 - **The copy starts invisible, and by default stays that way without JS.** With `animate`
   at its default, the server-rendered HTML is
   `<div class="scroll-reveal-hidden"><div class="spotlight-content">…` — `opacity: 0`. It
-  becomes visible only when the `IntersectionObserver` fires after hydration. Images are
-  *not* wrapped, so a page whose JavaScript never runs, or a browser with no
-  `IntersectionObserver`, renders the pictures and none of the words. Pass `animate={false}`
+  becomes visible when the `IntersectionObserver` fires after hydration. Images are *not*
+  wrapped, so this asymmetry — pictures visible, words not — is the failure mode to watch.
+  Two of the three ways it used to strand are now covered: a browser with **no
+  `IntersectionObserver`** reveals the copy statically, and with **scripting switched off** a
+  `@media (scripting: none)` rule resolves the class to `opacity: 1`. Still uncovered:
+  scripting enabled but the bundle never executing — a hydration error, a blocked script —
+  where the effect never runs and you get the pictures and none of the words. The browser
+  reports `scripting: enabled` there, so no media query can reach it. Pass `animate={false}`
   wherever the text is the point. (Readers with `prefers-reduced-motion: reduce` are safe —
   the hidden state is skipped for them entirely.)
 - **Authoring order no longer decides the layout.** Both columns carry an explicit `order`:

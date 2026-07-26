@@ -90,12 +90,22 @@ the fold.
 
 ## Opting out of the reveal
 
-The reveal's first paint is `opacity: 0`, cleared only once an `IntersectionObserver`
-fires. That is what stops a flash of un-animated content, and it is also why a page whose
-JS never runs — a crawler, a failed bundle, a browser without the observer — shows
-nothing at all. `animate={false}` removes the reveal wrapper's whole mechanism: no hidden
-class, no observer, no animation class, content visible from the first paint. It is the
-same opt-out [Swimlane](swimlane.md) exposes, for the same reason.
+The reveal's first paint is `opacity: 0`, cleared once an `IntersectionObserver` fires.
+That is what stops a flash of un-animated content. Two environments never get that far,
+and both are handled without you asking:
+
+- **No `IntersectionObserver`** (an older browser, a non-DOM runtime). Nothing would ever
+  clear the hidden state, so the component reveals on mount instead — statically, with no
+  entrance animation, exactly as it does under `prefers-reduced-motion`.
+- **Scripting switched off.** `@media (scripting: none)` in this package's stylesheet
+  restores `opacity: 1` on the hidden class, so the content is legible with no JS at all.
+
+What remains is the case the browser cannot report: scripting is *enabled* but your bundle
+never executes — a failed deploy, a chunk 404, a crawler that stops at HTML. The
+server-rendered markup still carries the hidden class there, and nothing clears it.
+`animate={false}` is the cover for that: it removes the reveal wrapper's whole mechanism —
+no hidden class, no observer, no animation class, content visible from the first paint. It
+is the same opt-out [Swimlane](swimlane.md) exposes, for the same reason.
 
 <!-- example:WithoutReveal -->
 ```tsx
@@ -106,8 +116,8 @@ same opt-out [Swimlane](swimlane.md) exposes, for the same reason.
 <!-- /example -->
 
 Reach for it whenever the content must always be readable, and keep the default for
-decoration. The flag is a static choice, not a runtime fallback: with `animate` left at
-`true` there is still no visible state for a page that never hydrates.
+decoration. The flag is the only *authored* guarantee: the two fallbacks above are runtime
+detections, and neither can see a page that hydrates in principle and fails to in practice.
 
 ## Render as another element
 
@@ -124,7 +134,7 @@ attributes to it — see the passthrough gotcha below.
 
 ## Theme tokens
 
-ScrollReveal hard-codes no colour and owns no CSS file. It works entirely by toggling
+ScrollReveal hard-codes no colour and reads no token of its own. It works by toggling
 animation classes from `@batthewz/response-ui-css` onto its element: the transient
 `fade-up` / `fade-in` / `fade-left` / `fade-right` / `scale-in` class while it plays,
 and `scroll-reveal-hidden` (a bare `opacity: 0`, no token) while it waits to be revealed.
@@ -140,6 +150,12 @@ flashes before a delayed start), not a token.
 
 `threshold` and `rootMargin` are `IntersectionObserver` options, not CSS — no token
 governs when the reveal fires.
+
+`ScrollReveal.css` in this package holds exactly one rule and no token: a
+`@media (scripting: none)` block that returns `scroll-reveal-hidden` to `opacity: 1`. It
+is unlayered and imported after the css package, so it wins on source order. If you
+override `.scroll-reveal-hidden` yourself, order your rule after
+`@batthewz/response-ui-react-components/styles`, not just after the foundation.
 
 ## Gotchas
 
@@ -158,12 +174,13 @@ governs when the reveal fires.
   contributes nothing and your `style` lands exactly as written, `animationDelay` included. In the one window where
   both exist the component's two properties win, which is why `delay` is the prop to reach
   for rather than hand-writing `animationDelay`.
-- **No IntersectionObserver, no reveal.** If `IntersectionObserver` is undefined (an old
-  browser, or a server-rendered page whose JS never runs) and reduced motion is *not*
-  requested, the element keeps `scroll-reveal-hidden` — `opacity: 0` — and never appears.
-  The opt-out is [`animate={false}`](#opting-out-of-the-reveal), a decision you make when
-  you author the page; there is still no automatic fallback on the no-JS path, so don't
-  gate essential content behind the default.
+- **No IntersectionObserver means reveal, not hide.** Where the observer API is undefined
+  the component reveals on mount rather than waiting for a trigger that can never arrive —
+  visible, static, no entrance animation. The same goes for a visitor with scripting
+  switched off, via CSS. One case is still uncovered and cannot be detected: markup that
+  reaches a browser with scripting *enabled* whose bundle never executes keeps
+  `scroll-reveal-hidden` and never appears. See
+  [Opting out](#opting-out-of-the-reveal); don't gate essential content behind the default.
 - **The initial state is invisible.** Before the reveal fires, the element is
   `opacity: 0`. That is what prevents a flash of un-animated content, but it also means
   anything you wrap starts hidden until it scrolls into view (or reduced motion is on, or
@@ -188,8 +205,9 @@ its own. Keep the real semantics on the content inside it, or put them on the wr
 `aria-*` reaches the rendered element, so an `as="section"` or `as="nav"` region can be
 labelled by passing `aria-label` to ScrollReveal directly.
 
-Outside reduced-motion, remember the no-JS case above: content hidden by ScrollReveal
-is invisible to a reader whose page never hydrates. Wrap that content in
+Outside reduced-motion, remember the residual case above: a missing observer and a visitor
+with scripting off both resolve to visible content, but a page that *should* hydrate and
+does not still shows nothing. Wrap content that must always be readable in
 `animate={false}`, or don't wrap it at all.
 
 ## Related

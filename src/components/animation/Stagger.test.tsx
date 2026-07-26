@@ -48,6 +48,14 @@ describe("Stagger", () => {
   // inherited value is shadowed. Measured in Firefox 146 with the shipped rule:
   // container-set `300ms` resolved to `50ms` on the item (animation-delay 0.1s at
   // index 2); item-set `300ms` resolved to `300ms` (animation-delay 0.6s).
+  //
+  // The rest of #17 — a *consumer* setting `--stagger-delay` on an ancestor — is
+  // closed by `Stagger.css` in this package (`--stagger-delay: inherit` plus an
+  // `animation-delay` that reads the token as a fallback). Nothing below can
+  // assert it: vitest runs `css: false`, so no test here reads a stylesheet at
+  // all. Measured in Firefox 146 against the real components: an ancestor set to
+  // `300ms` moved items 1 and 2 from 0.05s/0.1s to 0.3s/0.6s, while the
+  // `staggerDelay` prop and the bare-token default were unchanged.
   describe("#17 · staggerDelay reaches the element that consumes it", () => {
     it("writes --stagger-delay on every item wrapper", () => {
       const { container } = render(

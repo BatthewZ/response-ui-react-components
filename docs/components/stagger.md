@@ -62,8 +62,8 @@ that in mind.
 ## Changing the delay step
 
 `staggerDelay` is the gap between one item's entrance and the next. It overrides the
-`--MOTION-STAGGER-DELAY` token for this group only, and it lands on the item wrappers —
-the one place the `.stagger-item` rule will read it from.
+`--MOTION-STAGGER-DELAY` token for this group only, and it lands on the item wrappers,
+inline, where nothing in either stylesheet can shadow it.
 
 <!-- example:CustomDelay -->
 ```tsx
@@ -92,24 +92,30 @@ is for the container tag, not for changing what each item is.
 ## Theme tokens
 
 Stagger sets no colour and uses no Tailwind utility. It stamps each child with the
-`.stagger-item` class from `@batthewz/response-ui-css` and writes two **local** custom
-properties that the class reads — both on the item wrapper, because that is the element
-the `.stagger-item` rule resolves them on:
+`.stagger-item` class from `@batthewz/response-ui-css` and writes two custom properties
+that the class reads — both on the item wrapper, because that is the element the
+`.stagger-item` rule resolves them on:
 
 | Where             | Property           | Purpose                                                                                                  |
 | ----------------- | ------------------ | -------------------------------------------------------------------------------------------------------- |
-| Each item wrapper | `--stagger-delay`  | the per-item delay step — written only when you pass `staggerDelay`, otherwise the token's value stands   |
+| Each item wrapper | `--stagger-delay`  | the per-item delay step — written only when you pass `staggerDelay`, otherwise inherited or the token     |
 | Each item wrapper | `--stagger-index`  | the item's ordinal, multiplied by the delay step to space entrances; forced to `0` under reduced motion   |
 
-With no `staggerDelay`, the delay step is the contract token `--MOTION-STAGGER-DELAY`
-(default `50ms`), which the `.stagger-item` rule reads directly. Override that one variable
-to retime every staggered group in the app; pass `staggerDelay` to retime a single group.
-The token lives in the CSS foundation, not this package.
+There are three places the delay step can come from, in the order they win:
 
-One consequence of where the rule declares it: `--stagger-delay` cannot be set from an
-**ancestor**. `.stagger-item` re-declares it on the item itself, so a value inherited from
-any parent — including one you write in your own CSS — is shadowed. `staggerDelay` works
-because it lands on the item, and that is the only place a per-group override can go.
+1. **The `staggerDelay` prop**, written inline on each item — one group only.
+2. **`--stagger-delay` on any ancestor**, in your own CSS or a `style` — a subtree.
+3. **`--MOTION-STAGGER-DELAY`** (default `50ms`), the contract token in the CSS
+   foundation — every staggered group in the app.
+
+The middle one only works because `Stagger.css` in *this* package resets
+`--stagger-delay` to `inherit` on `.stagger-item` and re-reads it as
+`var(--stagger-delay, var(--MOTION-STAGGER-DELAY))`. The foundation's own
+`animations/stagger.css` re-declares the variable on the item — the element that consumes
+it — where no ancestor value can reach it. That duplicate rule is deliberate and
+temporary: it is unlayered and imported after the foundation, so it wins on source order,
+and it should be deleted here once the foundation reads the fallback itself. Until then a
+change to the foundation's `animation-delay` on `.stagger-item` will not take effect.
 
 ## Gotchas
 
@@ -118,14 +124,14 @@ because it lands on the item, and that is the only place a per-group override ca
   nothing moves until you give `.stagger-item` an `animation` (or `animation-name`) in
   your own CSS — for example a keyframe from `@batthewz/response-ui-css` such as
   `fade` or `slide-up`. Because the wrapper's class is fixed and there is no per-item
-  hook, that rule has to target the global `.stagger-item` class.
-- **`staggerDelay` writes to the items, not the container.** The `.stagger-item` rule
-  re-declares `--stagger-delay: var(--MOTION-STAGGER-DELAY)` on the item itself, so a value
-  inherited from the container is shadowed and never reaches the `animation-delay` that
-  reads it. The prop therefore stamps each item wrapper directly, where an inline
-  declaration outranks the rule. Setting `--stagger-delay` in your own CSS on any ancestor
-  hits the same wall the container did — override `--MOTION-STAGGER-DELAY` instead, or
-  target `.stagger-item` itself.
+  hook, that rule has to target the global `.stagger-item` class. [Hero](hero.md) is a
+  worked example: it scopes an `animation-name: fade` to `.hero__content .stagger-item`
+  in its own CSS, which is why `Hero.Content animate` cascades and a bare Stagger does not.
+- **`staggerDelay` writes to the items, not the container.** The prop stamps each item
+  wrapper inline, where nothing in either stylesheet can shadow it. A `--stagger-delay`
+  you set from your own CSS on an ancestor now reaches the items too — but only with
+  *this* package's stylesheet loaded; the foundation alone shadows it on `.stagger-item`.
+  See [Theme tokens](#theme-tokens) for the three sources and their order.
 - **Every child gains an extra wrapper `<div>`.** A `.stagger-item` block element is
   inserted between the container and each child. That means `as="ul"`/`as="ol"` produce
   invalid markup (a `<div>` between the list and its `<li>`s), and any direct-child
@@ -133,8 +139,9 @@ because it lands on the item, and that is the only place a per-group override ca
 - **`style` reaches the container untouched.** Every prop the `as` element accepts (`id`,
   `aria-label`, `onClick`, `data-*`, `style`, …) is spread onto the outer element and
   nothing of the component's own is merged into it; `className` lands as given. A
-  `--stagger-delay` you write into `style` yourself therefore sits on the container, where
-  the `.stagger-item` rule shadows it — use the `staggerDelay` prop.
+  `--stagger-delay` you write into `style` yourself sits on the container and inherits
+  down to the items — the `staggerDelay` prop is the same thing, put where it cannot be
+  shadowed and typed.
 - **Children are keyed by array index.** Re-ordering or inserting mid-list can mis-map an
   in-flight animation to the wrong item; keep the list stable, or it is a non-issue for
   static content.

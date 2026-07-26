@@ -192,6 +192,14 @@ describe("Hero", () => {
       expect(screen.queryByTestId("scroll-reveal")).not.toBeInTheDocument();
     });
 
+    // #161 — the composition is all this suite can see. Whether the stagger
+    // actually *fires* is a stylesheet question, and vitest runs `css: false`,
+    // so no assertion here can reach it: jsdom resolves no `animation-name` and
+    // computes `animation-duration: auto`. Measured instead in Firefox 146
+    // against the real components with both stylesheets loaded — `.stagger-item`
+    // inside `.hero__content` went from `animation-name: none` to
+    // `fade`/0.3s/fill both at delays 0s, 0.05s, 0.1s, and the item opacities
+    // 80ms after the reveal read 0.80 / 0.43 / 0.00. The rule lives in Hero.css.
     it("wraps children in ScrollReveal and Stagger when animate is true", () => {
       render(<Hero.Content animate>Animated content</Hero.Content>);
       expect(screen.getByTestId("scroll-reveal")).toBeInTheDocument();

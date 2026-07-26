@@ -32,10 +32,11 @@ type ScrollRevealProps = {
   once?: boolean;
   rootMargin?: string;
   /**
-   * Run the scroll-triggered reveal at all. The reveal's server-rendered markup
-   * is `opacity: 0` until an `IntersectionObserver` fires, so content that must
-   * be readable without JS needs `animate={false}` — the same opt-out
-   * `Swimlane` exposes.
+   * Run the scroll-triggered reveal at all. A missing `IntersectionObserver`
+   * reveals on mount and scripting-off reveals in CSS, but the server-rendered
+   * markup is still `opacity: 0` for a page that should hydrate and does not, so
+   * content that must always be readable needs `animate={false}` — the same
+   * opt-out `Swimlane` exposes.
    */
   animate?: boolean;
   className?: string;
@@ -71,7 +72,16 @@ export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealImplProps>(funct
 
   useEffect(() => {
     const node = innerRef.current;
-    if (!node || !animate || reducedMotion || typeof IntersectionObserver === "undefined") return;
+    if (!node || !animate || reducedMotion) return;
+
+    // Nothing will ever clear the hidden state where the observer API does not
+    // exist, so the content would stay at `opacity: 0` for the life of the page.
+    // Reveal it instead — statically, because a reveal with no trigger has no
+    // entrance to play. Same shape as the reduced-motion path above.
+    if (typeof IntersectionObserver === "undefined") {
+      setRevealed(true);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
