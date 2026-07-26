@@ -511,6 +511,14 @@ collision, left alone because briefs in flight cite the later one by letter.)
   to vouch for a diff, read it end to end in one pass, and grep it for the words people leave on
   scaffolding — `TEMP`, `TODO`, `XXX`, `BYPASS`, `DEBUG`, `FIXME` — before it becomes a commit
   with your name on it.
+- **Build a commit's file list from `git status`, not from the report.** A coordinator assembled a
+  commit by hand from a lane's prose and left one file behind — the stylesheet holding the
+  `sr-only` rule for the hidden word the same commit added. Without it the word *paints*, which the
+  lane had already measured as its own negative control. Every gate stayed green, because
+  `css: false` means nothing in the suite reads a stylesheet, and the only tell was `git status`
+  not coming back empty afterwards. A report describes the work; only the tree knows the files.
+  **After committing a lane, `git status` must be empty or every remaining path must be one you
+  can name and are deliberately holding.**
 - **Work you did not commission can appear in a shared tree, and adopting it makes it yours.**
   Two changes arrived mid-wave from outside every lane's scope. Keeping them was right — they
   were sound and tested — but they were committed under their own message so no lane's commit
