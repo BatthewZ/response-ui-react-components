@@ -51,10 +51,27 @@ exists to prevent.
   sides: the component's value must survive the caller's, and the caller's must survive when the
   component has no opinion. Whichever direction you do not assert is the one the next
   "simplification" will break.
-- **Some claims are not settleable here.** Nothing in this repo verifies a screen-reader
-  *announcement*, and jsdom cannot settle a browser UA-default divergence — two findings stay
-  open on purpose for that reason. Verify the DOM precondition, then say plainly in the record
-  that the rest is unverified. **Never let a precondition check masquerade as the real one.**
+- **Some claims are not settleable *by a unit test*, and that is not the same as unsettleable.**
+  Nothing here verifies a screen-reader *announcement* — verify the DOM precondition, say
+  plainly in the record that the rest is unverified, and **never let a precondition check
+  masquerade as the real one.** But a rendering, layout, geometry or UA-default claim **is**
+  settleable: see the browser entry below. Two findings sat open for months labelled
+  "needs a real browser" while a real browser was one command away.
+- **There is a real browser, and reaching for it is cheaper than it looks.**
+  `playwright-cli --browser firefox|chrome` (Firefox 146 is already installed, no setup). It has
+  settled, in one pass: a 24px-vs-20px thumb divergence between engines, a dead CSS rule proved
+  dead by a *positive control* that painted the pseudo-element red, 96px of stale parallax
+  offset, a `will-change` layer parked 1326px below the fold, a 36px→21px chip, and a border
+  proved invisible by byte-comparing element screenshots. Three practical notes: Firefox
+  **blocks `file:` URLs** where Chromium allows them, so serve the harness with
+  `python3 -m http.server`; pass `-s=<name>` for an isolated session; and **validate the harness
+  before trusting a measurement** — assert one computed value you can predict from source, or
+  you are measuring your own scaffolding.
+- **A null result needs a positive control.** "Firefox paints no track" and "the border renders
+  nothing" are both claims that a broken harness produces for free. Each was only trustworthy
+  because the same harness was made to show the thing when given a red background, or because a
+  neighbouring control *did* differ. Without that, a null is indistinguishable from a typo in
+  your selector.
 - **Red first.** No patch lands without a check observed failing, and re-break it once after it
   goes green. Fixes have shipped here whose tests never exercised them.
 - **This harness cannot read CSS, and that was probed rather than assumed.**

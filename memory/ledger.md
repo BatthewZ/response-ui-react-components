@@ -50,3 +50,22 @@ validator over it. These are the ways the record itself has failed, independent 
   The same shape recurs wherever a finding names both a non-visual and a visual channel. Say
   which half closed, in the row; a half-closed row filed as fixed reads to the next reader as a
   question already settled.
+- **Evidence density is not correctness, and detail reads as authority.** The single most
+  evidenced row in this file — a detail block with a table of line numbers across three
+  components, asserting a live WCAG 4.1.2 failure — was wrong. It caught the panel side of an id
+  overwrite and was silent about the identical overwrite on the trigger side, so both ends had
+  agreed all along. A false `confirmed` wearing a table is harder to dislodge than a bare one,
+  because the next reader spends their scepticism on the conclusion and none on the workings.
+- **A detail block must be retired with its row.** Five outlived theirs in one pass. A block
+  left in the work list reads as current, which is precisely how the wrong analysis above went
+  on asserting a defect that measurement had already closed.
+- **Read the component's own doc page before filing or fixing — it is the cheapest refutation
+  available.** Five findings were disproved in one pass and *three* of them died on the docs, not
+  the code: a component that "does not scroll", a callback that "fires before any scroll", and a
+  size/semantics split that a whole doc section exists to sell. In each case the behaviour was
+  deliberate, documented, and changing it would have been the breaking change — not the fix.
+- **A brief can carry a false premise, and the agent working from it may be the one to find
+  out.** One lane was told a fix was almost certainly out-of-package, with the reasoning
+  attached. It measured the reasoning, found an in-package route the premise had excluded, said
+  so, and did it anyway. Write briefs so the premise is visible and challengeable, and treat
+  "your instruction was wrong" as a successful outcome rather than a deviation.
