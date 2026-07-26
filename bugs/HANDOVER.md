@@ -156,9 +156,23 @@ accent, not a `var()` reference, so the retune left it behind:
 | `grimdark` | **2.96** (needs 3.0) | 5.69 |
 
 So the focus ring now fails WCAG 1.4.11 *and* no longer matches the accent in two shipped themes.
-**Recommend fixing** — it is a contrast failure in its own right, and leaving it turns a contrast fix
-into a visual inconsistency. Same technique, one value per theme. Consider making it a `var()` so
-the next retune cannot desync it again.
+
+**The failing ratio is the defect; the desync is not necessarily one.** Checked across all four
+themes: `tech` copies its accent exactly, `events` and `grimdark` copy the *old* accent, and the
+**default theme's focus ring is deliberately its own colour** — different lightness, chroma and hue.
+`docs/theme-contract.md` defines `--C-BORDER-FOCUS` as "Focus ring color" and states no relationship
+to the accent. So a blanket `--C-BORDER-FOCUS: var(--C-ACCENT)` would overwrite a deliberate choice
+and encode a rule nobody wrote, and a matching literal is not proof that matching was intended.
+
+Three separable moves, in order of confidence:
+
+1. **Retune the two failing values.** Required whatever else happens; same lightness-only technique.
+2. **Add a contrast gate to `response-ui-css`.** There is *no* contrast tooling in that package —
+   every ratio in this work came from a throwaway script. A gate asserting each theme's
+   `--C-BORDER-FOCUS` clears 3:1 on SURFACE-0..2 catches this for `_theme-template.css` and every
+   future theme, and it catches the harm whether or not the tokens are ever unified.
+3. **`var(--C-ACCENT)` only where the intent is confirmed** — plausibly `events`/`grimdark`/`tech`,
+   **not** default. That is an owner question, not an inference from a literal.
 
 Also unresolved: `--C-CHART-1`/`-2` in _this_ package's `src/tokens.css` hard-code the old accent and
 success values and will not track the retune. Second copy of a value that should be one.
