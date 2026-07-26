@@ -18,6 +18,29 @@ import { Badge } from "../ui/Badge";
 
 import { useFieldError } from "./Field";
 
+/** Why a candidate was refused. `invalid` covers a `validateTag` refusal. */
+type TagRejection = "duplicate" | "max" | "invalid";
+
+/** A refusal paired with the text that was refused, ready to be announced. */
+type Rejection = { reason: TagRejection; tag: string };
+
+const rejectionOf = (
+  reason: TagRejection | null,
+  candidate: string
+): Rejection | null => (reason == null ? null : { reason, tag: candidate.trim() });
+
+const defaultAddAnnouncement = (added: string[], count: number) =>
+  `Added ${added.join(", ")}. ${count} ${count === 1 ? "tag" : "tags"}.`;
+
+const defaultRemoveAnnouncement = (tag: string, count: number) =>
+  `Removed ${tag}. ${count} ${count === 1 ? "tag" : "tags"}.`;
+
+const defaultRejectAnnouncement = (reason: TagRejection, tag: string) => {
+  if (reason === "duplicate") return `${tag} is already in the list.`;
+  if (reason === "max") return `${tag} was not added. Tag limit reached.`;
+  return `${tag} was not added.`;
+};
+
 type TagInputProps = {
   value?: string[];
   defaultValue?: string[];
@@ -35,6 +58,28 @@ type TagInputProps = {
   maxTags?: number;
   validateTag?: (tag: string) => boolean | string;
   delimiter?: RegExp;
+  /**
+   * Sentence announced in the component's one polite live region after tags are
+   * committed. Takes the whole batch because a single paste commits several, and
+   * one region write per commit is one announcement. Return `""` to say nothing.
+   * @default (added, count) => `Added react, redux. 4 tags.`
+   */
+  addAnnouncement?: (added: string[], count: number) => string;
+  /** @default (tag, count) => `Removed react. 3 tags.` */
+  removeAnnouncement?: (tag: string, count: number) => string;
+  /**
+   * Announced when a candidate is refused, so a silent rejection is not also an
+   * invisible one. `count` is the number of tags held, unchanged by the refusal.
+   *
+   * Not called when `validateTag` returned a string: that message renders in its
+   * own live region already, and announcing it twice is worse than once.
+   * @default (reason, tag) => `react is already in the list.`
+   */
+  rejectAnnouncement?: (
+    reason: TagRejection,
+    tag: string,
+    count: number
+  ) => string;
   placeholder?: string;
   error?: boolean;
   disabled?: boolean;
@@ -54,6 +99,9 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
       maxTags,
       validateTag,
       delimiter = /[,\n]/,
+      addAnnouncement = defaultAddAnnouncement,
+      removeAnnouncement = defaultRemoveAnnouncement,
+      rejectAnnouncement = defaultRejectAnnouncement,
       placeholder,
       error,
       disabled,
@@ -75,6 +123,7 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
     });
     const [draft, setDraft] = useState("");
     const [message, setMessage] = useState<string | null>(null);
+    const [announcement, setAnnouncement] = useState("");
     const messageId = useId();
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -103,19 +152,24 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
     function evaluate(
       candidate: string,
       current: string[]
-    ): { tag: string | null; message: string | null } {
+    ): { tag: string | null; message: string | null; reason: TagRejection | null } {
       const tag = candidate.trim();
-      if (tag === "") return { tag: null, message: null };
-      if (current.includes(tag)) return { tag: null, message: null };
+      // Blank is not a rejection: nothing was asked for, so nothing is announced.
+      if (tag === "") return { tag: null, message: null, reason: null };
+      if (current.includes(tag)) {
+        return { tag: null, message: null, reason: "duplicate" };
+      }
       if (maxTags !== undefined && current.length >= maxTags) {
-        return { tag: null, message: null };
+        return { tag: null, message: null, reason: "max" };
       }
       if (validateTag) {
         const result = validateTag(tag);
-        if (result === false) return { tag: null, message: null };
-        if (typeof result === "string") return { tag: null, message: result };
+        if (result === false) return { tag: null, message: null, reason: "invalid" };
+        if (typeof result === "string") {
+          return { tag: null, message: result, reason: "invalid" };
+        }
       }
-      return { tag, message: null };
+      return { tag, message: null, reason: null };
     }
 
     /**
@@ -131,7 +185,12 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
       text: string,
       current: string[],
       commitTail: boolean
-    ): { next: string[]; rest: string; message: string | null } {
+    ): {
+      next: string[];
+      rest: string;
+      message: string | null;
+      rejection: Rejection | null;
+    } {
       // A fresh `g` copy per call: the scan is stateful, so it must not be
       // shared between calls (or with the caller's own RegExp).
       const scanner = new RegExp(
@@ -147,32 +206,68 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
           continue;
         }
         const segment = text.slice(cursor, match.index);
-        const { tag, message: msg } = evaluate(segment, next);
+        const { tag, message: msg, reason } = evaluate(segment, next);
         if (tag != null) {
           next.push(tag);
         } else if (segment.trim() !== "") {
           // Rejected: hand the rest back untouched rather than eating it.
-          return { next, rest: text.slice(cursor), message: msg };
+          return {
+            next,
+            rest: text.slice(cursor),
+            message: msg,
+            rejection: rejectionOf(reason, segment),
+          };
         }
         cursor = match.index + match[0].length;
       }
       const tail = text.slice(cursor);
       if (!commitTail || tail.trim() === "") {
-        return { next, rest: commitTail ? "" : tail, message: null };
+        return {
+          next,
+          rest: commitTail ? "" : tail,
+          message: null,
+          rejection: null,
+        };
       }
-      const { tag, message: msg } = evaluate(tail, next);
+      const { tag, message: msg, reason } = evaluate(tail, next);
       if (tag != null) {
         next.push(tag);
-        return { next, rest: "", message: null };
+        return { next, rest: "", message: null, rejection: null };
       }
-      return { next, rest: tail, message: msg };
+      return { next, rest: tail, message: msg, rejection: rejectionOf(reason, tail) };
+    }
+
+    /**
+     * One announcement per commit, whichever path produced it. An added batch
+     * and a refusal can both come out of the same paste, so they compose into a
+     * single region write rather than racing each other.
+     */
+    function announceCommit(
+      before: string[],
+      next: string[],
+      msg: string | null,
+      rejection: Rejection | null
+    ) {
+      const added = next.slice(before.length);
+      const parts: string[] = [];
+      if (added.length > 0) parts.push(addAnnouncement(added, next.length));
+      // A `validateTag` string is already announced by the message element
+      // below; a second channel for it would only say everything twice.
+      if (rejection != null && msg == null) {
+        parts.push(
+          rejectAnnouncement(rejection.reason, rejection.tag, next.length)
+        );
+      }
+      setAnnouncement(parts.filter(Boolean).join(" "));
     }
 
     function commitDraft() {
-      const { tag, message: msg } = evaluate(draft, tags);
+      const { tag, message: msg, reason } = evaluate(draft, tags);
       setMessage(msg);
+      const next = tag != null ? [...tags, tag] : tags;
+      announceCommit(tags, next, msg, rejectionOf(reason, draft));
       if (tag != null) {
-        setTags([...tags, tag]);
+        setTags(next);
         setDraft("");
         return;
       }
@@ -183,7 +278,11 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
     }
 
     function removeTag(index: number) {
-      setTags(tags.filter((_, i) => i !== index));
+      const tag = tags[index];
+      if (tag === undefined) return;
+      const next = tags.filter((_, i) => i !== index);
+      setTags(next);
+      setAnnouncement(removeAnnouncement(tag, next.length));
     }
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -192,10 +291,11 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
         setDraft(raw);
         return;
       }
-      const { next, rest, message: msg } = consume(raw, tags, false);
+      const { next, rest, message: msg, rejection } = consume(raw, tags, false);
       setMessage(msg);
       if (next.length !== tags.length) setTags(next);
       setDraft(rest);
+      announceCommit(tags, next, msg, rejection);
     }
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -219,10 +319,16 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
       // The pasted text lands after whatever is already half-typed, so the
       // pending draft is part of the first segment rather than something to
       // throw away.
-      const { next, rest, message: msg } = consume(draft + text, tags, true);
+      const {
+        next,
+        rest,
+        message: msg,
+        rejection,
+      } = consume(draft + text, tags, true);
       setMessage(msg);
       if (next.length !== tags.length) setTags(next);
       setDraft(rest);
+      announceCommit(tags, next, msg, rejection);
       onPaste?.(e);
     }
 
@@ -268,20 +374,30 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
             inputRef.current?.focus();
           }}
         >
-          {tags.map((tag, index) => (
-            <Badge key={`${index}:${tag}`} className="gap-r6">
-              {tag}
-              <button
-                type="button"
-                aria-label={`Remove ${tag}`}
-                disabled={disabled}
-                onClick={() => removeTag(index)}
-                className="inline-flex items-center justify-center rounded-sm text-fg-muted hover:text-fg-primary disabled:cursor-not-allowed cursor-pointer"
-              >
-                <X size={12} />
-              </button>
-            </Badge>
-          ))}
+          {/* The chips are a list, so a screen reader can say how many there are
+              and which one it is on — but a `list` owns only `listitem`s, and the
+              text input and hidden inputs are siblings of the chips. `contents`
+              drops the wrapper's own box, so the chips stay flex items of the
+              bordered field exactly as before (measured identical in Firefox 146
+              and Chrome) while the role survives (both engines expose it). */}
+          {tags.length > 0 && (
+            <div role="list" className="contents">
+              {tags.map((tag, index) => (
+                <Badge key={`${index}:${tag}`} role="listitem" className="gap-r6">
+                  {tag}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${tag}`}
+                    disabled={disabled}
+                    onClick={() => removeTag(index)}
+                    className="inline-flex items-center justify-center rounded-sm text-fg-muted hover:text-fg-primary disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    <X size={12} />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
           <input
             ref={mergeRefs(ref, inputRef)}
             type="text"
@@ -319,6 +435,13 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
         >
           {message}
         </p>
+        {/* One region for the whole control, mounted whether or not it holds
+            anything: a region created in the same commit as its first text is
+            not reliably announced. Every add, removal and refusal writes here,
+            so N chips never become N live regions. */}
+        <div className="sr-only" role="status" aria-live="polite">
+          {announcement}
+        </div>
       </div>
     );
   }

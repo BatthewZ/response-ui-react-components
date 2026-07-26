@@ -1,5 +1,5 @@
 "use client";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 
 import { cn } from "../../util/style";
@@ -52,6 +52,15 @@ type RepeaterProps<T extends Record<string, unknown>> = {
   moveUpLabel?: (index: number, count: number) => string;
   /** @default (index) => `Move item ${index + 1} down` */
   moveDownLabel?: (index: number, count: number) => string;
+  /**
+   * Sentence announced in the component's one polite live region when a row is
+   * added. `count` is the row count after the change. Return `""` to say
+   * nothing.
+   * @default (index, count) => `Added item 3. 3 items.`
+   */
+  addAnnouncement?: (index: number, count: number) => string;
+  /** @default (index, count) => `Removed item 2. 2 items.` */
+  removeAnnouncement?: (index: number, count: number) => string;
   /** Minimum rows — removal is blocked at this count. @default 0 */
   min?: number;
   /** Maximum rows — adding is blocked at this count. */
@@ -92,6 +101,10 @@ export function Repeater<T extends Record<string, unknown>>({
   removeLabel = (index) => `Remove item ${index + 1}`,
   moveUpLabel = (index) => `Move item ${index + 1} up`,
   moveDownLabel = (index) => `Move item ${index + 1} down`,
+  addAnnouncement = (index, count) =>
+    `Added item ${index + 1}. ${count} ${count === 1 ? "item" : "items"}.`,
+  removeAnnouncement = (index, count) =>
+    `Removed item ${index + 1}. ${count} ${count === 1 ? "item" : "items"}.`,
   min = 0,
   max,
   reorderable = false,
@@ -109,6 +122,7 @@ export function Repeater<T extends Record<string, unknown>>({
   // the successor has to be named before React drops it, or focus falls to
   // <body> with nothing announced.
   const pendingFocus = useRef<number | null>(null);
+  const [announcement, setAnnouncement] = useState("");
 
   useEffect(() => {
     const index = pendingFocus.current;
@@ -123,7 +137,15 @@ export function Repeater<T extends Record<string, unknown>>({
 
   function removeRow(index: number) {
     pendingFocus.current = index;
+    // The focus move below names the successor control; it never says a row
+    // went. Both counts are the ones after the mutation.
+    setAnnouncement(removeAnnouncement(index, count - 1));
     array.remove(index);
+  }
+
+  function addRow() {
+    setAnnouncement(addAnnouncement(count, count + 1));
+    array.append(defaultItem());
   }
 
   return (
@@ -205,11 +227,17 @@ export function Repeater<T extends Record<string, unknown>>({
           variant="secondary"
           size="sm"
           disabled={disabled || !canAdd}
-          onClick={() => array.append(defaultItem())}
+          onClick={addRow}
         >
           <Plus size={16} aria-hidden="true" />
           {addLabel}
         </Button>
+      </div>
+      {/* One region for the whole repeater, mounted whether or not it holds
+          anything: a region created in the same commit as its first text is not
+          reliably announced. N rows never become N live regions. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {announcement}
       </div>
     </div>
   );

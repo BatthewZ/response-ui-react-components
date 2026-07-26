@@ -11,8 +11,8 @@ export function Minimal() {
   return <TagInput aria-label="Topics" placeholder="Add a topic…" />;
 }
 
-/** `maxTags` caps the set. Past the cap the component refuses new tags silently — no
- *  message, no disabled state — and still clears whatever was typed. */
+/** `maxTags` caps the set. Past the cap the component refuses new tags with nothing on screen
+ *  — no message, no disabled state — but keeps the typing and announces the refusal. */
 export function MaxTags() {
   return (
     <TagInput
@@ -23,8 +23,8 @@ export function MaxTags() {
   );
 }
 
-/** `validateTag` returns `true` to accept, a string to reject *with that message* (the draft
- *  is kept so it can be corrected), or `false` to reject silently (the draft is discarded). */
+/** `validateTag` returns `true` to accept, a string to reject *with that message*, or `false`
+ *  to reject with no visible message. The draft is kept either way, and both are announced. */
 export function ValidateTag() {
   return (
     <TagInput

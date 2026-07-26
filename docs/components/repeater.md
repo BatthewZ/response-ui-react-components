@@ -47,6 +47,11 @@ store, so a repeating group validates, submits and resets exactly like any other
 | `disabled`    | `boolean`                           | `false` |
 | `className`   | `string`                            | —       |
 
+Five further props are functions that produce the component's own English — `removeLabel`,
+`moveUpLabel` and `moveDownLabel` name the row controls, and `addAnnouncement` /
+`removeAnnouncement` write its live region. All five are documented together under
+[Accessibility](#accessibility), because what they are *for* is the point of them.
+
 The first four are required. There is no rest spread and no `ref`: the prop type is a closed
 object rather than an intersection with `div` props, so `<Repeater id="links">` is a compile
 error rather than a prop that silently vanishes. `className` merges onto the outer column
@@ -341,8 +346,9 @@ their own pages; there is nothing here to override. See the
   message stayed pinned to whichever row inherited the index.)
 - **Removing a row keeps the keyboard where it was.** The Remove button you just pressed
   unmounts with its row, so focus moves to the next row's Remove button — or to Add when the
-  last row goes — instead of falling to the document body. Nothing is *announced*, though: if
-  the count is load-bearing, render your own `aria-live` message.
+  last row goes — instead of falling to the document body. That focus move names the *control*
+  the keyboard landed on; what happened to the row is a separate sentence, written to the live
+  region described under [Accessibility](#accessibility).
 - **`disabled` reaches the row fields.** Each row's children are wrapped in a `<fieldset
   disabled>`, which disables every native control inside it, and `RepeaterItem` carries
   `disabled` so custom row controls that are not form elements can honour it too.
@@ -369,9 +375,31 @@ one's lucide glyph is `aria-hidden="true"`, so every button announces exactly on
   distinguishing name too — every example above folds `index + 1` into the row's
   [Label](label.md) and builds its `htmlFor`/`id` pair off the row's `name`.
 - **The rows are a `role="list"` of `role="listitem"`s**, so a screen reader can say how many
-  there are and which one it is in. There is still no live region: adding or removing a row is
-  not announced, only the focus move is handled. Render your own `aria-live` message if the
-  count matters.
+  there are and which one it is in.
+- **Adding and removing a row are announced.** Both write one sentence into a single polite,
+  visually-hidden live region (`role="status" aria-live="polite"`) that the component keeps
+  mounted for its whole life — N rows are never N live regions. The defaults are
+  `"Added item 3. 3 items."` and `"Removed item 2. 2 items."`, with the count as it stands
+  *after* the change, and both come from a prop so they can be translated or silenced:
+
+  ```tsx
+  <Repeater
+    form={form}
+    name="links"
+    defaultItem={() => ({ url: "" })}
+    addAnnouncement={(index, count) => `Ligne ${index + 1} ajoutée. ${count} lignes.`}
+    removeAnnouncement={(index, count) => `Ligne ${index + 1} supprimée. ${count} lignes.`}
+  >
+    {({ name }) => <Input {...form.field(`${name}.url`)} />}
+  </Repeater>
+  ```
+
+  Return `""` from either to say nothing. The same shape — a function that takes what needs
+  interpolating and returns the sentence — is what `removeLabel` and its siblings use above,
+  and what [TagInput](tag-input.md) uses for its own add/remove announcements.
+  **Reordering is not announced.** Move up / Move down change the order without writing to the
+  region, and the focused button keeps its position-based name, so a row that has moved is
+  reported only by whatever the user reads next.
 - **A blocked bound is a disabled button with no reason attached.** At `max` the Add button is
   `disabled`, which removes it from the tab order entirely — a keyboard user tabs straight past
   it and is told nothing. Render a visible "5 recipients maximum" line next to it.

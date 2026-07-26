@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -401,6 +401,199 @@ describe("TagInput", () => {
       await user.click(input.parentElement!);
 
       expect(input).toHaveFocus();
+    });
+  });
+
+  // NOTE for every test below: jsdom announces nothing. What is asserted here is
+  // the DOM precondition for an announcement — a live region with the right
+  // carrier attributes, and the text that lands in it. Whether a screen reader
+  // reads it, in what order relative to the focus move a removal causes, is not
+  // settleable in this environment.
+  describe("add/remove announcements and chip list semantics (#252)", () => {
+    const region = () => screen.getByRole("status");
+
+    it("mounts exactly one polite, visually-hidden region, empty, before anything happens", () => {
+      render(<TagInput aria-label="Tags" defaultValue={["a", "b"]} />);
+
+      const regions = screen.getAllByRole("status");
+      expect(regions).toHaveLength(1);
+      expect(regions[0]).toHaveAttribute("aria-live", "polite");
+      expect(regions[0]).toHaveClass("sr-only");
+      expect(regions[0]).toHaveTextContent("");
+    });
+
+    it("announces a tag committed with Enter", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" />);
+
+      await user.type(screen.getByRole("textbox", { name: "Tags" }), "apple{Enter}");
+
+      expect(region()).toHaveTextContent("Added apple. 1 tag.");
+    });
+
+    it("announces a tag committed by typing a delimiter", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["a"]} />);
+
+      await user.type(screen.getByRole("textbox", { name: "Tags" }), "pear,");
+
+      expect(region()).toHaveTextContent("Added pear. 2 tags.");
+    });
+
+    it("announces a whole pasted batch in one sentence", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" />);
+
+      screen.getByRole("textbox", { name: "Tags" }).focus();
+      await user.paste("a, b, c");
+
+      // One region write per commit: three chips are not three announcements.
+      expect(region()).toHaveTextContent("Added a, b, c. 3 tags.");
+    });
+
+    it("announces the tag Backspace deletes", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["a", "b"]} />);
+
+      screen.getByRole("textbox", { name: "Tags" }).focus();
+      await user.keyboard("{Backspace}");
+
+      expect(region()).toHaveTextContent("Removed b. 1 tag.");
+    });
+
+    it("announces the tag a remove button deletes", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["apple", "pear"]} />);
+
+      await user.click(screen.getByRole("button", { name: "Remove apple" }));
+
+      expect(region()).toHaveTextContent("Removed apple. 1 tag.");
+    });
+
+    it("never announces an add for a duplicate — it announces the refusal", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["apple"]} />);
+
+      await user.type(screen.getByRole("textbox", { name: "Tags" }), "apple{Enter}");
+
+      expect(region()).toHaveTextContent("apple is already in the list.");
+      expect(region()).not.toHaveTextContent("Added");
+    });
+
+    it("announces the maxTags refusal", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" maxTags={1} defaultValue={["a"]} />);
+
+      await user.type(screen.getByRole("textbox", { name: "Tags" }), "beta{Enter}");
+
+      expect(region()).toHaveTextContent("beta was not added. Tag limit reached.");
+    });
+
+    it("announces a validateTag=false refusal, which is otherwise silent", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" validateTag={() => false} />);
+
+      await user.type(screen.getByRole("textbox", { name: "Tags" }), "nope{Enter}");
+
+      expect(region()).toHaveTextContent("nope was not added.");
+    });
+
+    it("leaves a validateTag message to its own region rather than saying it twice", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" validateTag={() => "Too short"} />);
+
+      await user.type(screen.getByRole("textbox", { name: "Tags" }), "x{Enter}");
+
+      expect(screen.getByText("Too short")).toBeInTheDocument();
+      expect(region()).toHaveTextContent("");
+    });
+
+    it("says nothing when Enter is pressed on an empty draft", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["a"]} />);
+
+      await user.type(screen.getByRole("textbox", { name: "Tags" }), "{Enter}");
+
+      expect(region()).toHaveTextContent("");
+    });
+
+    it("announces the added batch and the refusal that ended it, together", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["b"]} />);
+
+      screen.getByRole("textbox", { name: "Tags" }).focus();
+      await user.paste("a, b, c");
+
+      expect(region()).toHaveTextContent("Added a. 2 tags. b is already in the list.");
+    });
+
+    it("routes every announcement through a prop, and '' removes it", async () => {
+      const user = userEvent.setup();
+      const { rerender } = render(
+        <TagInput
+          aria-label="Tags"
+          defaultValue={["apple"]}
+          addAnnouncement={(added, count) => `Ajouté ${added.join(", ")} (${count})`}
+          removeAnnouncement={(tag, count) => `Supprimé ${tag} (${count})`}
+          rejectAnnouncement={(reason, tag) => `Refusé ${tag} : ${reason}`}
+        />
+      );
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      await user.type(input, "pear{Enter}");
+      expect(region()).toHaveTextContent("Ajouté pear (2)");
+
+      await user.type(input, "apple{Enter}");
+      expect(region()).toHaveTextContent("Refusé apple : duplicate");
+
+      await user.click(screen.getByRole("button", { name: "Remove pear" }));
+      expect(region()).toHaveTextContent("Supprimé pear (1)");
+
+      rerender(
+        <TagInput
+          aria-label="Tags"
+          defaultValue={["apple"]}
+          addAnnouncement={() => ""}
+          removeAnnouncement={() => ""}
+          rejectAnnouncement={() => ""}
+        />
+      );
+      await user.type(input, "plum{Enter}");
+      expect(region()).toHaveTextContent("");
+    });
+
+    it("exposes the chips as a list the text input is not part of", () => {
+      render(<TagInput aria-label="Tags" defaultValue={["a", "b"]} />);
+
+      const list = screen.getByRole("list");
+      expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+      expect(within(list).queryByRole("textbox")).not.toBeInTheDocument();
+      // The chips stay flex items of the bordered field: the list wrapper is
+      // `display: contents`, so it has no box of its own. jsdom cannot see that
+      // — Firefox 146 and Chrome were both measured exposing the role and
+      // laying the chips out identically to no wrapper at all.
+      expect(list).toHaveClass("contents");
+    });
+
+    it("renders no empty list when there are no chips", () => {
+      render(<TagInput aria-label="Tags" />);
+
+      expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    });
+
+    it("keeps the chip removal keyboard model: tab to a chip's button, press Enter", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <TagInput aria-label="Tags" defaultValue={["a", "b"]} onValueChange={onValueChange} />
+      );
+
+      await user.tab();
+      expect(screen.getByRole("button", { name: "Remove a" })).toHaveFocus();
+      await user.keyboard("{Enter}");
+
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenLastCalledWith(["b"]);
     });
   });
 
