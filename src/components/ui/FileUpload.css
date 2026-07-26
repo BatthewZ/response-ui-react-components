@@ -38,9 +38,10 @@
   background-color: var(--C-SURFACE-2);
 }
 
-/* Uploading state */
+/* Uploading state — the controls carry `disabled`, which a keyboard also
+   respects; `pointer-events: none` only ever hid the reason from the mouse. */
 .file-upload--uploading {
-  pointer-events: none;
+  cursor: progress;
 }
 
 /* Success state */
@@ -130,20 +131,6 @@
 
 .file-upload--has-files:hover:not(.file-upload--disabled) {
   border-color: var(--C-BORDER-DEFAULT);
-}
-
-/* Hidden file input */
-.file-upload__input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.file-upload--disabled .file-upload__input {
-  cursor: not-allowed;
 }
 
 /* ------------------------------------------------------------------ */
@@ -415,9 +402,20 @@
   color: var(--C-STATUS-ERROR);
 }
 
-/* Error inside preview */
-.file-upload--has-files .file-upload__error {
+/* Messages inside preview */
+.file-upload--has-files .file-upload__error,
+.file-upload--has-files .file-upload__success,
+.file-upload--has-files .file-upload__hint {
   padding: 0 var(--R-SIZE-4) var(--R-SIZE-5);
+}
+
+.file-upload__preview-replace:disabled,
+.file-upload__preview-clear:disabled,
+.file-upload__preview-remove:disabled,
+.file-upload__media-remove:disabled,
+.file-upload__media-grid-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* ------------------------------------------------------------------ */

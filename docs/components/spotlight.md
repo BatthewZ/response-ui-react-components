@@ -37,7 +37,7 @@ copy slides in from, and the root's `animate` flag to decide whether to slide at
 | ------------------- | ------------------------------------ | ------------------------------------------------------- |
 | `Spotlight`         | `<div class="spotlight">`            | `animate?: boolean` — default `true`                    |
 | `Spotlight.Item`    | `<div class="spotlight-item">`       | `reversed?: boolean`                                    |
-| `Spotlight.Image`   | `<div>` wrapping one `<img>`         | `src: string` · `alt?: string` · `parallax?: boolean` — default `false` · `parallaxRate?: number` — Parallax's `rate`, default `0.3` |
+| `Spotlight.Image`   | `<div>` wrapping one `<img>`         | `src: string` · `alt?: string` · `parallax?: boolean` — default `false` · `parallaxRate?: number` — Parallax's `rate`, default `0.3` · `parallaxClamp?: number` — Parallax's `clamp` · `imgProps?` — props for the `<img>` itself |
 | `Spotlight.Content` | `<div class="spotlight-content">`    | —                                                       |
 
 All four take the props of a `<div>` on top of that, so `className`, `id`, `style`, `ref`
@@ -232,36 +232,34 @@ borrows read `--MOTION-DURATION-ENTER` and `--MOTION-EASE-ENTER` from
   `IntersectionObserver`, renders the pictures and none of the words. Pass `animate={false}`
   wherever the text is the point. (Readers with `prefers-reduced-motion: reduce` are safe —
   the hidden state is skipped for them entirely.)
-- **Image-before-content is load-bearing.** The flip works by pushing `.spotlight-image` to
-  `order: 2` and pulling `.spotlight-content` to `order: 1` — both of which are already true
-  of a row authored content-then-image, so nothing moves. Write a row that way and the
-  automatic alternation *and* `reversed` silently stop working: every row renders copy-left,
-  image-right. (The pull on the content is doubly inert while `animate` is on, because the
-  reveal wrapper, not `.spotlight-content`, is the grid item then.)
-- **`reversed` flips the layout but not the reveal.** The slide direction is computed in
-  `Spotlight.Content` from the row's index in the root's children, and knows nothing about
-  `reversed`. Normally the copy slides in *from the image's side*; on a reversed row it
-  still slides from the side the image used to be on, which now reads backwards.
-- **Nothing forwards to the `<img>`.** `Spotlight.Image` builds `<img src alt role>` and
-  spreads every other prop onto the wrapper `<div>`. There is no route to `loading`,
-  `width`/`height`, `srcSet`, `sizes` or `decoding`, so every Spotlight image loads eagerly
-  and reserves no space before it arrives — budget for layout shift on a long page, or
-  give the wrapper a height as shown above. [MediaCard](media-card.md)'s image part does
-  forward `<img>` props and defaults to `loading="lazy"`; this one does not.
+- **Authoring order no longer decides the layout.** Both columns carry an explicit `order`:
+  `.spotlight-item > .spotlight-image` and `.spotlight-item > *:not(.spotlight-image)` are
+  ordered as a pair, so a row authored content-then-image alternates and honours `reversed`
+  exactly as an image-first one does. The non-image selector is deliberately not
+  `.spotlight-content` — with `animate` on, the reveal wrapper is the grid item and
+  `.spotlight-content` is a level below it.
+- **`reversed` flips the reveal with the layout.** The slide direction combines the row's
+  index in the root's children with the row's own `reversed`, so the copy always slides in
+  from the side the image is actually on.
+- **`<img>` props go through `imgProps`, and there is no lazy default.** `Spotlight.Image`
+  spreads its rest props onto the wrapper `<div>`; `loading`, `width`/`height`, `srcSet`,
+  `sizes` and `decoding` reach the `<img>` via `imgProps` instead. Nothing is set for you, so
+  an image with no `imgProps` still loads eagerly and reserves no space — pass
+  `imgProps={{ loading: "lazy", width, height }}`, or give the wrapper a height as shown above.
+  [MediaCard](media-card.md)'s image part defaults to `loading="lazy"`; this one does not.
 - **Parallax has no overscan.** `.spotlight-image` is `overflow: hidden` and the drifting
   layer fills it exactly, so a translate of *n* pixels exposes an *n*-pixel blank band at
   one edge. The offset is the row's distance from the viewport centre times the rate and is
-  **not** clamped — `Spotlight.Image` forwards `parallaxRate` but has no way to pass
-  Parallax's `clamp`. On a 1080px viewport a row entering from the bottom sits ~540px off
+  clamped only if you say so — `Spotlight.Image` forwards `parallaxRate` and `parallaxClamp`,
+  but neither has a bounding default. On a 1080px viewport a row entering from the bottom sits ~540px off
   centre, which at the default rate of `0.3` is a 162px band. [Hero](hero.md) avoids this by
   over-sizing its background layer; `Spotlight.Image` does not.
 - **A row is always two columns wide.** `grid-template-columns: 1fr 1fr` is unconditional
   above `40rem`, so an `Item` holding only a `Spotlight.Content` occupies the left half and
   leaves the right half empty, and a third child wraps onto a second row.
-- **`Spotlight.Content`'s `ref` moves.** With `animate` on it is attached to the
-  [ScrollReveal](scroll-reveal.md) wrapper; with `animate={false}` it lands on the `.spotlight-content` div
-  itself. The element your ref points at is decided by a prop on the **root**, two
-  components up.
+- **`Spotlight.Content`'s `ref` is always the `.spotlight-content` div**, at either setting of
+  the root's `animate`. With `animate` on, the [ScrollReveal](scroll-reveal.md) wrapper around
+  it is not exposed.
 - **`Spotlight.Content` never throws.** Outside a `Spotlight` it finds no context and falls
   back to index `0` and `animate: true` — so it still renders, still hides itself until the
   observer fires, and always reveals in the same direction.

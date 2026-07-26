@@ -1,4 +1,4 @@
-import { fireEvent,render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -305,5 +305,57 @@ describe("AvatarUpload", () => {
 
       expect(clickSpy).not.toHaveBeenCalled();
     });
+  });
+  /* ------------------------------------------------------------------ */
+  /*  #381 / #382                                                        */
+  /* ------------------------------------------------------------------ */
+
+  // #381 — the spinner lives in an aria-hidden span and clicks in that window
+  // are dropped, with nothing on the root to say the control is working.
+  it("#381: marks the root busy and disabled while onUpload is pending", async () => {
+    let resolveUpload: (result: { url: string }) => void = () => {};
+    const onUpload = vi.fn(
+      () =>
+        new Promise<{ url: string }>((resolve) => {
+          resolveUpload = resolve;
+        }),
+    );
+    render(<AvatarUpload onUpload={onUpload} />);
+
+    const root = screen.getByRole("button", { name: "Change avatar" });
+    expect(root).not.toHaveAttribute("aria-busy");
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["x"], "photo.png", { type: "image/png" });
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+
+    expect(root).toHaveAttribute("aria-busy", "true");
+    expect(root).toHaveAttribute("aria-disabled", "true");
+
+    await act(async () => {
+      resolveUpload({ url: "https://example.com/photo.png" });
+    });
+
+    expect(root).not.toHaveAttribute("aria-busy");
+    expect(root).not.toHaveAttribute("aria-disabled");
+  });
+
+  // #382 — a role="alert" inside a role="button" is an unreliable live region:
+  // ARIA makes a button's descendants presentational.
+  it("#382: keeps the alert outside the button", async () => {
+    render(<AvatarUpload accept={["image/png"]} />);
+
+    const input = document.querySelector("input[type='file']") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { files: [new File(["x"], "notes.txt", { type: "text/plain" })] },
+      });
+    });
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("not allowed");
+    expect(alert.closest("[role='button']")).toBeNull();
   });
 });

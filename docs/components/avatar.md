@@ -18,12 +18,13 @@ presence dot, and a companion `AvatarGroup` for stacked rosters.
 | `name`      | `string`                                      | —       |
 | `size`      | `"xs" \| "sm" \| "md" \| "lg" \| "xl"`        | `"md"`  |
 | `status`    | `"online" \| "offline" \| "away"`             | —       |
+| `statusLabel`| `string` — text for `status` in the accessible name | `"Online"` / `"Offline"` / `"Away"` |
 | `className` | `string`                                      | —       |
 | `ref`       | `Ref<HTMLSpanElement>`                        | —       |
-| …rest       | props of `span`                               | —       |
+| …rest       | props of `span` minus `children`              | —       |
 
-Every prop is optional — `<Avatar />` compiles, and renders an empty circle with no
-accessible name. See [Gotchas](#gotchas).
+Every prop is optional — `<Avatar />` compiles, and renders an empty circle with no `role` and
+no accessible name. See [Gotchas](#gotchas).
 
 ## The fallback chain
 
@@ -66,8 +67,8 @@ common CJK are fine (`"josé álvarez"` → `JÁ`, `"李 明"` → `李明`).
 ```
 <!-- /example -->
 
-**A load error is sticky.** `onError` latches into component state and nothing clears it —
-changing `src` afterwards will not bring the photo back. See [Gotchas](#gotchas).
+**A load error is remembered per URL.** The failing `src` is what gets recorded, so pointing
+`src` at a different — or repaired — URL renders the photo again.
 
 ## Size
 
@@ -91,7 +92,8 @@ changing `src` afterwards will not bring the photo back. See [Gotchas](#gotchas)
 
 `sm` is exactly the 2rem marker column of [ActivityFeed](activity-feed.md), which is why an
 avatar lands flush on that component's connector rail. The initials step with the box too:
-`xs` is a fixed `0.625rem`, and `sm` through `xl` climb the body type scale into `text-h3`.
+`xs` and `sm` share `text-body-3`, and `md` through `xl` climb the body type scale into
+`text-h3`.
 
 ## Presence
 
@@ -181,9 +183,8 @@ Geometry is deliberately **not** on the responsive `r`-scale: the box sizes, the
 the group overlap are fixed Tailwind spacing, so an avatar is the same diameter on mobile and
 desktop. Its initials type is not — `--BodyText-*` and `--H3` both step up at the 40rem
 breakpoint, and `--Semibold-Weight` steps `500 → 600` alongside them, so the letters grow *and*
-thicken inside a circle that doesn't. One value is off the contract altogether: the `xs`
-initials size is a hard-coded `0.625rem` rather than a type token, so that size alone neither
-re-scales nor responds to a theme's typography.
+thicken inside a circle that doesn't. Every size reads a type token, `xs` included — it shares
+`text-body-3` with `sm` rather than pinning a literal.
 
 The ring around the presence dot and around each stacked avatar is hard-coded to
 `--C-SURFACE-0`. That is correct on the topmost surface and wrong anywhere else — see
@@ -191,32 +192,35 @@ The ring around the presence dot and around each stacked avatar is hard-coded to
 
 ## Gotchas
 
-- **A failed image is remembered forever.** The error flag is component state set once by the
-  `<img>`'s `onError` and never reset, so a later `src` pointing at a working image renders
-  nothing but the initials. If your URLs expire or get retried, force a remount with
-  `<Avatar key={src} src={src} … />`.
+- **A failed image is remembered until the `src` changes.** The component records *which* URL
+  failed, so the same URL keeps showing initials while a new one is retried. Re-serving the
+  same URL after a fix needs a cache-busting query or a remount.
 - **Initials take the first two words, not the first and last.** Middle names win over
   surnames. Pre-compute the string yourself and pass it as `name` if you need `AL` from
   `"Ada Byron King Lovelace"`.
 - **`alt` overrides `name` for the label but never for the initials.**
   `<Avatar name="Ada Lovelace" alt="Repository owner" />` renders `AL` inside a circle
   announced as "Repository owner".
-- **An avatar reaches an unnamed `role="img"` three ways.** `<Avatar />` with neither `alt` nor
-  `name` is the obvious one. `name="   "` is the second: the trim only feeds `getInitials`, so
-  the label is the raw string and `aria-label="   "` names nothing. `alt=""` is the third — the
-  label is `alt ?? name`, so an empty `alt` beats a real `name` and you get `aria-label=""` on a
-  circle that is still visibly showing initials. Always pass a non-empty `alt` or `name` —
-  including when you pass only a `src`.
-- **`children` compiles and is then thrown away.** `AvatarProps` spreads
-  `ComponentPropsWithRef<"span">` without omitting `children`, so
-  `<Avatar name="Ada Lovelace">anything</Avatar>` typechecks clean and renders `AL`: the
+- **An avatar with nothing to announce drops its `role` instead of keeping an empty one.**
+  `<Avatar />`, `name="   "` and `alt=""` (an empty `alt` still beats a real `name`, the same
+  way it marks an `<img>` decorative) all produce a plain `<span>` with no `role="img"` and no
+  `aria-label`, rather than a nameless image. That is the better failure, not a substitute for
+  a name: pass a non-empty `alt` or `name` whenever the avatar carries meaning.
+- **`children` is a compile error, as it is on Skeleton and Spinner.** `AvatarProps` omits it
+  from `ComponentPropsWithRef<"span">`, so `<Avatar name="Ada Lovelace">anything</Avatar>` no
+  longer typechecks and then silently drops what you passed. [Skeleton](skeleton.md) and the
   wrapper's own JSX children beat the spread. [Skeleton](skeleton.md) and
   [Spinner](spinner.md) do omit it and reject the same code at compile time; Avatar is the odd
   one out. Compose around an Avatar, never inside it.
-- **The presence dot is silent.** `status` changes a colour and nothing else — no label, no
-  `title`, no ARIA. `offline` and `away` are also a grey/amber pair, which is a hard
-  discrimination for some readers. Put the state in text.
-- **`AvatarGroup`'s `size` stops at the group.** Children keep whatever `size` they were
+- **The presence dot is announced through the name, not the dot.** `status` appends its label
+  to the avatar's accessible name (`"Ada Lovelace, Online"`); `statusLabel` replaces the English
+  default. The dot element stays unlabelled — it has to be, because ARIA makes the children of
+  `role="img"` presentational. On screen it is still only a colour, and `offline` and `away` are
+  a grey/amber pair that is a hard discrimination for some readers, so put the state in visible
+  text as well wherever it matters.
+- **`AvatarGroup`'s `size` reaches its Avatar children.** A child with an explicit `size` keeps
+  it; one without inherits the group's. Anything that is not an `Avatar` is left alone. The old
+  behaviour was that children kept whatever `size` they were
   given, so `<AvatarGroup size="lg">` around default `md` avatars produces a `+N` chip that is
   visibly larger than the stack.
 - **The stack ring assumes a `surface-0` background.** The 2px ring that separates overlapping
@@ -240,8 +244,9 @@ presentational, so the label is announced once.
   `decorative` prop, but rest props are spread after the defaults, so
   `<Avatar name="Ada Lovelace" aria-hidden="true" />` (or your own `role`/`aria-label`) wins.
   The presence example above does exactly this.
-- **An unlabelled avatar is worse than a hidden one.** With no `alt` and no `name` the
-  `role="img"` remains, so assistive tech announces an image it cannot describe.
+- **An unnamed avatar is hidden rather than nameless.** With no `alt`, no `name` and no
+  `status` the `role="img"` is dropped, so assistive tech does not announce an image it cannot
+  describe.
 - **`AvatarGroup` has no group semantics.** It is a plain `<div>` — no list role, no label, no
   count. The `+2` chip is real text and does get read, but the names it stands in for are gone
   from the accessibility tree entirely. Add your own `aria-label` to the group, or a

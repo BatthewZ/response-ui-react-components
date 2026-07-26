@@ -32,6 +32,9 @@ interface AppShellContextValue {
   setCollapsed: (collapsed: boolean) => void;
   isMobile: boolean;
   sidebarId: string;
+  /** Whether an element carrying `sidebarId` is currently in the document. */
+  sidebarPresent: boolean;
+  setSidebarPresent: (present: boolean) => void;
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
@@ -103,6 +106,7 @@ const AppShellRoot = forwardRef<HTMLDivElement, AppShellRootProps>(function AppS
   });
 
   const [isMobile, setIsMobile] = useState(false);
+  const [sidebarPresent, setSidebarPresent] = useState(false);
   const sidebarId = `app-shell-sidebar-${useId()}`;
 
   useEffect(() => {
@@ -113,17 +117,29 @@ const AppShellRoot = forwardRef<HTMLDivElement, AppShellRootProps>(function AppS
     return () => mql.removeEventListener("change", handler);
   }, []);
 
-  // Close mobile sidebar on navigation (render-time state adjustment)
+  // Close the mobile drawer on navigation. In an effect, not in render: `setOpen`
+  // reaches the caller's `onOpenChange`, and calling that during render logs
+  // "Cannot update a component while rendering a different component".
   const pathname = usePathname();
-  const [prevPathname, setPrevPathname] = useState(pathname);
-  if (prevPathname !== pathname) {
-    setPrevPathname(pathname);
+  const prevPathnameRef = useRef(pathname);
+  useEffect(() => {
+    if (prevPathnameRef.current === pathname) return;
+    prevPathnameRef.current = pathname;
     if (isMobile && open) setOpen(false);
-  }
+  }, [pathname, isMobile, open, setOpen]);
 
   const ctx = useMemo(
-    () => ({ open, setOpen, collapsed, setCollapsed, isMobile, sidebarId }),
-    [open, setOpen, collapsed, setCollapsed, isMobile, sidebarId]
+    () => ({
+      open,
+      setOpen,
+      collapsed,
+      setCollapsed,
+      isMobile,
+      sidebarId,
+      sidebarPresent,
+      setSidebarPresent,
+    }),
+    [open, setOpen, collapsed, setCollapsed, isMobile, sidebarId, sidebarPresent]
   );
 
   return (
@@ -163,7 +179,8 @@ const AppShellNavbarActions = forwardRef<HTMLDivElement, ComponentPropsWithRef<"
 
 const AppShellToggle = forwardRef<HTMLButtonElement, Omit<ComponentPropsWithRef<"button">, "type">>(
   function AppShellToggle({ className, children, onClick, ...props }, ref) {
-    const { open, setOpen, collapsed, setCollapsed, isMobile, sidebarId } = useAppShell();
+    const { open, setOpen, collapsed, setCollapsed, isMobile, sidebarId, sidebarPresent } =
+      useAppShell();
 
     function handleClick() {
       if (isMobile) {
@@ -185,7 +202,9 @@ const AppShellToggle = forwardRef<HTMLButtonElement, Omit<ComponentPropsWithRef<
           if (!e.defaultPrevented) handleClick();
         }}
         aria-expanded={isMobile ? open : !collapsed}
-        aria-controls={sidebarId}
+        // Only while something actually carries that id: the mobile drawer
+        // returns `null` when closed, and a shell may render no Sidebar at all.
+        aria-controls={sidebarPresent ? sidebarId : undefined}
         aria-label={
           isMobile
             ? open
@@ -209,7 +228,7 @@ type AppShellSidebarProps = Omit<ComponentPropsWithRef<"aside">, "role">;
 
 const AppShellSidebar = forwardRef<HTMLElement, AppShellSidebarProps>(
   function AppShellSidebar({ className, children, ...props }, forwardedRef) {
-    const { open, setOpen, collapsed, isMobile, sidebarId } = useAppShell();
+    const { open, setOpen, collapsed, isMobile, sidebarId, setSidebarPresent } = useAppShell();
     const sidebarRef = useRef<HTMLElement>(null);
     const merged = useMemo(() => mergeRefs(forwardedRef, sidebarRef), [forwardedRef, sidebarRef]);
 
@@ -231,6 +250,14 @@ const AppShellSidebar = forwardRef<HTMLElement, AppShellSidebarProps>(
     );
     useFocusTrap(sidebarRef, isMobile && open);
 
+    // Tell the Toggle whether its `aria-controls` target exists: on mobile the
+    // sidebar renders nothing while closed.
+    const rendered = !isMobile || open;
+    useEffect(() => {
+      setSidebarPresent(rendered);
+      return () => setSidebarPresent(false);
+    }, [rendered, setSidebarPresent]);
+
     useEffect(() => {
       if (!isMobile || !open) return;
       const handleEscape = (e: KeyboardEvent) => {
@@ -246,17 +273,22 @@ const AppShellSidebar = forwardRef<HTMLElement, AppShellSidebarProps>(
       return (
         <Portal>
           <div className="app-shell-scrim" aria-hidden="true" />
-          <aside
-            ref={merged}
-            id={sidebarId}
-            role="navigation"
-            aria-label="Main navigation"
-            aria-modal="true"
-            className={cn("app-shell-sidebar-mobile", className)}
-            {...props}
-          >
-            {children}
-          </aside>
+          {/* `aria-modal` is undefined on `navigation`, so AT ignored it and
+              browsed behind the scrim while the DOM focus trap said otherwise.
+              It belongs on a `dialog`, which the drawer now is — the navigation
+              landmark stays inside it, where the sidebar's id and props live. */}
+          <div role="dialog" aria-modal="true" aria-label="Main navigation">
+            <aside
+              ref={merged}
+              id={sidebarId}
+              role="navigation"
+              aria-label="Main navigation"
+              className={cn("app-shell-sidebar-mobile", className)}
+              {...props}
+            >
+              {children}
+            </aside>
+          </div>
         </Portal>
       );
     }

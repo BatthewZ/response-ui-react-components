@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -709,5 +709,187 @@ describe("#397 · the mobile breakpoint is stated once in AppShell.tsx", () => {
     expect(tsx.match(/\(max-width: 639px\)/g)).toHaveLength(1);
     expect(tsx).toMatch(/const MOBILE_VIEWPORT_QUERY = "\(max-width: 639px\)";/);
     expect(tsx).toContain("window.matchMedia(MOBILE_VIEWPORT_QUERY)");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  #391 — closing on navigation must not notify during render         */
+/* ------------------------------------------------------------------ */
+
+describe("#391 · the navigation close runs in an effect", () => {
+  // A real controlled parent: `onOpenChange` writes the parent's state, which is
+  // what turns a render-phase `setOpen` into React's cross-component warning.
+  function ControlledShell({
+    route,
+    onOpenChange,
+  }: {
+    route: string;
+    onOpenChange: (next: boolean) => void;
+  }) {
+    const [open, setOpen] = useState(true);
+    return (
+      <RouterAdapterProvider value={{ Link: TestLink, usePathname: () => route }}>
+        <AppShell
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            onOpenChange(next);
+          }}
+        >
+          <AppShell.Navbar>
+            <AppShell.Toggle />
+          </AppShell.Navbar>
+          <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+          <AppShell.Main>Main</AppShell.Main>
+        </AppShell>
+      </RouterAdapterProvider>
+    );
+  }
+
+  it("closes a controlled drawer on a route change without a render-phase update", () => {
+    stubMobileMatchMedia();
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const onOpenChange = vi.fn();
+
+    const { rerender } = render(<ControlledShell route="/" onOpenChange={onOpenChange} />);
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+
+    rerender(<ControlledShell route="/settings" onOpenChange={onOpenChange} />);
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument();
+
+    // React's message is a format string: "Cannot update a component (`%s`)
+    // while rendering a different component (`%s`)".
+    const renderPhaseWarnings = errors.mock.calls.filter(([first]) =>
+      String(first).includes("while rendering a different component"),
+    );
+    expect(renderPhaseWarnings).toHaveLength(0);
+    errors.mockRestore();
+  });
+
+  it("leaves a closed drawer alone on a route change", () => {
+    stubMobileMatchMedia();
+    const onOpenChange = vi.fn();
+
+    function Shell({ route }: { route: string }) {
+      return (
+        <RouterAdapterProvider value={{ Link: TestLink, usePathname: () => route }}>
+          <AppShell open={false} onOpenChange={onOpenChange}>
+            <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+            <AppShell.Main>Main</AppShell.Main>
+          </AppShell>
+        </RouterAdapterProvider>
+      );
+    }
+
+    const { rerender } = render(<Shell route="/" />);
+    rerender(<Shell route="/settings" />);
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  #392 — aria-modal belongs on a dialog, not on a navigation         */
+/* ------------------------------------------------------------------ */
+
+describe("#392 · the mobile drawer is a modal dialog", () => {
+  it("puts aria-modal on a dialog that holds the navigation landmark", async () => {
+    stubMobileMatchMedia();
+    const user = userEvent.setup();
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Main navigation" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+
+    const nav = screen.getByRole("navigation", { name: "Main navigation" });
+    expect(nav).not.toHaveAttribute("aria-modal");
+    expect(dialog).toContainElement(nav);
+  });
+
+  it("leaves the desktop sidebar a plain navigation landmark", () => {
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).not.toHaveAttribute(
+      "aria-modal",
+    );
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  #394 — aria-controls must name an element that exists              */
+/* ------------------------------------------------------------------ */
+
+describe("#394 · aria-controls only names a rendered sidebar", () => {
+  function expectResolvable(toggle: HTMLElement) {
+    const id = toggle.getAttribute("aria-controls");
+    expect(id).toBeTruthy();
+    expect(document.getElementById(id!)).not.toBeNull();
+  }
+
+  it("drops aria-controls when the mobile drawer is closed and restores it when open", async () => {
+    stubMobileMatchMedia();
+    const user = userEvent.setup();
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+
+    const toggle = screen.getByRole("button", { name: "Open navigation" });
+    expect(toggle).not.toHaveAttribute("aria-controls");
+
+    await user.click(toggle);
+    expectResolvable(screen.getByRole("button", { name: "Close navigation" }));
+  });
+
+  it("names nothing when the shell renders no Sidebar", () => {
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+
+    expect(screen.getByRole("button", { name: "Collapse sidebar" })).not.toHaveAttribute(
+      "aria-controls",
+    );
+  });
+
+  it("names the inline sidebar on desktop", () => {
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>Sidebar</AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+
+    expectResolvable(screen.getByRole("button", { name: "Collapse sidebar" }));
   });
 });

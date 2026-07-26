@@ -333,4 +333,164 @@ describe("FileUpload", () => {
       expect(onFilesSelected).toHaveBeenCalledWith([file]);
     });
   });
+
+  /* ------------------------------------------------------------------ */
+  /*  #409 — a rejection is reported, not swallowed                      */
+  /* ------------------------------------------------------------------ */
+
+  describe("#409 · rejected files are observable", () => {
+    function pick(ui: React.ReactElement, files: File[]) {
+      render(ui);
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+      Object.defineProperty(inputEl, "files", { value: files, configurable: true });
+      fireEvent.change(inputEl);
+    }
+
+    it("calls onFilesRejected with the file and the reason it failed accept", () => {
+      const onFilesRejected = vi.fn();
+      const txt = new File(["x"], "notes.txt", { type: "text/plain" });
+      pick(<FileUpload accept={["image/*"]} onFilesRejected={onFilesRejected} />, [txt]);
+
+      expect(onFilesRejected).toHaveBeenCalledTimes(1);
+      expect(onFilesRejected).toHaveBeenCalledWith([{ file: txt, reason: "type" }]);
+    });
+
+    it("calls onFilesRejected with reason 'size' when maxSize is what failed", () => {
+      const onFilesRejected = vi.fn();
+      const big = new File(["0123456789"], "big.png", { type: "image/png" });
+      pick(<FileUpload maxSize={4} onFilesRejected={onFilesRejected} />, [big]);
+
+      expect(onFilesRejected).toHaveBeenCalledWith([{ file: big, reason: "size" }]);
+    });
+
+    it("shows an internal message naming the rejected file", () => {
+      pick(<FileUpload accept={["image/*"]} />, [new File(["x"], "notes.txt", { type: "text/plain" })]);
+      expect(screen.getByRole("alert")).toHaveTextContent(/notes\.txt/);
+    });
+
+    it("lets the error prop override the internal rejection message", () => {
+      pick(<FileUpload accept={["image/*"]} error="Server said no" />, [
+        new File(["x"], "notes.txt", { type: "text/plain" }),
+      ]);
+      expect(screen.getByRole("alert")).toHaveTextContent("Server said no");
+      expect(screen.queryByText(/notes\.txt/)).not.toBeInTheDocument();
+    });
+
+    it("clears the internal message once a valid file is chosen", () => {
+      render(<FileUpload accept={["image/*"]} />);
+      const inputEl = document.querySelector("input[type='file']") as HTMLInputElement;
+
+      Object.defineProperty(inputEl, "files", {
+        value: [new File(["x"], "notes.txt", { type: "text/plain" })],
+        configurable: true,
+      });
+      fireEvent.change(inputEl);
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+
+      Object.defineProperty(inputEl, "files", {
+        value: [new File(["x"], "photo.png", { type: "image/png" })],
+        configurable: true,
+      });
+      fireEvent.change(inputEl);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  #411 / #412 / #410 / #418 — the preview state                      */
+  /* ------------------------------------------------------------------ */
+
+  describe("preview state", () => {
+    const a = new File(["a"], "a.txt", { type: "text/plain" });
+    const b = new File(["b"], "b.txt", { type: "text/plain" });
+    const c = new File(["c"], "c.txt", { type: "text/plain" });
+
+    // #411 — removing one file used to fall back to onClear and drop all of them.
+    it("renders no per-file remove control when onRemoveFile is absent", () => {
+      const onClear = vi.fn();
+      render(<FileUpload files={[a, b, c]} onClear={onClear} />);
+
+      expect(screen.queryByRole("button", { name: "Remove b.txt" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Clear all" })).toBeInTheDocument();
+    });
+
+    it("removes only the file whose control was pressed", async () => {
+      const user = userEvent.setup();
+      const onRemoveFile = vi.fn();
+      const onClear = vi.fn();
+      render(<FileUpload files={[a, b, c]} onRemoveFile={onRemoveFile} onClear={onClear} />);
+
+      await user.click(screen.getByRole("button", { name: "Remove b.txt" }));
+      expect(onRemoveFile).toHaveBeenCalledWith(1);
+      expect(onClear).not.toHaveBeenCalled();
+    });
+
+    // #412 — three real buttons inside a role="button" are presentational to ARIA.
+    it("drops the button role from the dropzone once a preview is on screen", () => {
+      render(<FileUpload files={[a]} onClear={vi.fn()} />);
+
+      expect(screen.queryByRole("button", { name: "Upload file" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Replace" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Clear all" })).toBeInTheDocument();
+    });
+
+    // #410 — `uploading` used to leave an inert preview with no explanation.
+    it("marks the root busy and disables the preview actions while uploading", () => {
+      const { container } = render(
+        <FileUpload files={[a]} uploading onClear={vi.fn()} onRemoveFile={vi.fn()} />,
+      );
+
+      expect(container.firstElementChild).toHaveAttribute("aria-busy", "true");
+      expect(screen.getByRole("button", { name: "Replace" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Clear all" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Remove a.txt" })).toBeDisabled();
+      expect(screen.getByRole("status")).toHaveTextContent("Uploading...");
+    });
+
+    // #418 — `success` was gated on the empty state; `error` was not.
+    it("renders the success message with files present", () => {
+      render(<FileUpload files={[a]} success="Saved" />);
+      expect(screen.getByText("Saved")).toBeInTheDocument();
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  #413 — the messages are announced and described                    */
+  /* ------------------------------------------------------------------ */
+
+  describe("#413 · messages reach assistive tech", () => {
+    it("gives the error an alert role and points the dropzone at it", () => {
+      const { container } = render(<FileUpload error="File too large" />);
+      const alert = screen.getByRole("alert");
+
+      expect(alert).toHaveTextContent("File too large");
+      expect(container.firstElementChild).toHaveAttribute("aria-describedby", alert.id);
+    });
+
+    it("gives the success message a status role and describes the dropzone", () => {
+      const { container } = render(<FileUpload success="Upload complete!" />);
+      const status = screen.getByRole("status");
+
+      expect(status).toHaveTextContent("Upload complete!");
+      expect(container.firstElementChild).toHaveAttribute("aria-describedby", status.id);
+    });
+
+    it("never names an id that is not in the document", () => {
+      const { container } = render(
+        <FileUpload files={[new File(["a"], "a.txt", { type: "text/plain" })]} hint="Only PNG" />,
+      );
+      const describedBy = container.firstElementChild!.getAttribute("aria-describedby");
+      for (const id of (describedBy ?? "").split(" ").filter(Boolean)) {
+        expect(document.getElementById(id)).not.toBeNull();
+      }
+    });
+
+    it("describes the dropzone with the hint when there is no message", () => {
+      const { container } = render(<FileUpload hint="Only PNG files" />);
+      const describedBy = container.firstElementChild!.getAttribute("aria-describedby");
+
+      expect(describedBy).toBeTruthy();
+      expect(document.getElementById(describedBy!)).toHaveTextContent("Only PNG files");
+    });
+  });
 });

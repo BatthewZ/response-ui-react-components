@@ -172,4 +172,89 @@ describe("CopyButton", () => {
       expect(writeText).toHaveBeenCalledTimes(1);
     });
   });
+  /* ------------------------------------------------------------------ */
+  /*  #68 / #69 / #70 / #72                                              */
+  /* ------------------------------------------------------------------ */
+
+  // #68 — a failed or unavailable write was completely unobservable.
+  describe("#68 · a failed write is reported", () => {
+    it("calls onCopyError when the Clipboard API is absent", async () => {
+      removeClipboard();
+      const onCopyError = vi.fn();
+      render(<CopyButton value="hello" onCopyError={onCopyError} />);
+
+      await act(async () => {
+        screen.getByRole("button").click();
+      });
+
+      expect(onCopyError).toHaveBeenCalledTimes(1);
+      expect(onCopyError.mock.calls[0][0]).toBeInstanceOf(Error);
+    });
+
+    it("calls onCopyError when writeText rejects", async () => {
+      const writeText = vi.fn().mockRejectedValue(new Error("Denied"));
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+      const onCopyError = vi.fn();
+      render(<CopyButton value="hello" onCopyError={onCopyError} />);
+
+      await act(async () => {
+        screen.getByRole("button").click();
+      });
+
+      expect(onCopyError).toHaveBeenCalledWith(expect.objectContaining({ message: "Denied" }));
+      expect(screen.getByRole("button")).toHaveAccessibleName("Copy");
+    });
+  });
+
+  // #69 — a live region inside a button is never announced: ARIA makes a
+  // button's descendants presentational.
+  it("#69: keeps the live region outside the button", async () => {
+    stubClipboard();
+    const { container } = render(<CopyButton value="hello" />);
+
+    const live = container.querySelector("[aria-live]") as HTMLElement;
+    expect(live).not.toBeNull();
+    expect(live.closest("button")).toBeNull();
+
+    await act(async () => {
+      screen.getByRole("button").click();
+    });
+    expect(live).toHaveTextContent("Copied");
+  });
+
+  // #70 — the await outlives the component; the timer set after it leaked.
+  it("#70: writes no state and leaves no timer when unmounted mid-write", async () => {
+    let resolveWrite: () => void = () => {};
+    const writeText = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveWrite = resolve;
+        }),
+    );
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+
+    const { unmount } = render(<CopyButton value="hello" />);
+    act(() => {
+      screen.getByRole("button").click();
+    });
+
+    unmount();
+    await act(async () => {
+      resolveWrite();
+    });
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  // #72 — copiedLabel="" blanked the name for the whole confirmation window.
+  it("#72: keeps an accessible name when copiedLabel is empty", async () => {
+    stubClipboard();
+    render(<CopyButton value="hello" copiedLabel="" />);
+
+    await act(async () => {
+      screen.getByRole("button").click();
+    });
+
+    expect(screen.getByRole("button")).toHaveAccessibleName("Copy");
+  });
 });

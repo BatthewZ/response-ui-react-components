@@ -5,6 +5,7 @@ import {
   createContext,
   type CSSProperties,
   forwardRef,
+  isValidElement,
   useContext,
 } from "react";
 
@@ -15,12 +16,18 @@ import { cn } from "../../util/style";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The counts `MasonryGrid.css` actually defines a rule for. Typed rather than
+ * `number` because an undefined count silently fell back to a single column.
+ */
+type ColumnCount = 1 | 2 | 3 | 4;
+
 type ColumnBreakpoints = {
-  base?: number;
-  sm?: number;
-  md?: number;
-  lg?: number;
-  xl?: number;
+  base?: ColumnCount;
+  sm?: ColumnCount;
+  md?: ColumnCount;
+  lg?: ColumnCount;
+  xl?: ColumnCount;
 };
 
 type Animation = "fade-up" | "fade-in" | "fade-left" | "fade-right" | "scale";
@@ -48,7 +55,9 @@ function useMasonryContext() {
 function buildResponsiveClasses(columns: ColumnBreakpoints): string[] {
   const classes: string[] = [];
   for (const [bp, count] of Object.entries(columns)) {
-    if (count == null || count === 1) continue;
+    // `1` is a real answer at a breakpoint — skipping it meant a key could widen
+    // the grid but never narrow it back to a single column.
+    if (count == null) continue;
     classes.push(`masonry-grid--${bp}-${count}`);
   }
   return classes;
@@ -59,7 +68,7 @@ function buildResponsiveClasses(columns: ColumnBreakpoints): string[] {
 /* ------------------------------------------------------------------ */
 
 type MasonryGridProps = {
-  columns?: ColumnBreakpoints | number;
+  columns?: ColumnBreakpoints | ColumnCount;
   gap?: string;
   animate?: boolean;
   animation?: Animation;
@@ -84,11 +93,18 @@ const MasonryGridRoot = forwardRef<HTMLDivElement, MasonryGridProps>(function Ma
     <div
       ref={ref}
       className={cn("masonry-grid", ...responsiveClasses, className)}
-      style={{ ...vars, ...style } as CSSProperties}
+      // `vars` last: an explicit `gap` prop outranks a `--masonry-gap` that
+      // happens to be sitting in the caller's `style` bag.
+      style={{ ...style, ...vars } as CSSProperties}
       {...props}
     >
       {items.map((child, index) => (
-        <MasonryContext.Provider key={index} value={{ animate, animation, index }}>
+        // Keyed by the child's own key, not its position — keying by index made
+        // React reconcile by slot and remount every item after an insertion.
+        <MasonryContext.Provider
+          key={isValidElement(child) ? child.key : index}
+          value={{ animate, animation, index }}
+        >
           {child}
         </MasonryContext.Provider>
       ))}

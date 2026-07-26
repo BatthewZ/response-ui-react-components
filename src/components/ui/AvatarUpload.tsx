@@ -210,64 +210,81 @@ export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(functi
   );
 
   return (
-    <div
-      ref={ref}
-      role="button"
-      tabIndex={0}
-      aria-label="Change avatar"
-      className={cn("group relative inline-flex cursor-pointer", containerSizeMap[size], className)}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      {...props}
-    >
-      {/* Avatar display */}
-      <Avatar src={displaySrc} name={name} size={size} className="size-full" />
-
-      {/* Hover overlay */}
-      <span
+    <>
+      <div
+        ref={ref}
+        role="button"
+        tabIndex={0}
+        aria-label="Change avatar"
+        // While `onUpload` is pending every press is dropped on the floor;
+        // without these the control looked idle and simply did nothing.
+        aria-busy={uploading || undefined}
+        aria-disabled={uploading || undefined}
         className={cn(
-          "absolute inset-0 flex items-center justify-center rounded-full",
-          "bg-black/50 text-white opacity-0 transition-opacity duration-fast",
-          "group-hover:opacity-100 group-focus-visible:opacity-100",
-          uploading && "opacity-100",
+          "group relative inline-flex cursor-pointer",
+          containerSizeMap[size],
+          className
         )}
-        aria-hidden="true"
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        {...props}
       >
-        {uploading ? (
-          <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-        ) : (
-          <CameraIcon />
-        )}
-      </span>
+        {/* Avatar display */}
+        <Avatar src={displaySrc} name={name} size={size} className="size-full" />
 
-      {/* Focus ring */}
-      <span
-        className={cn("pointer-events-none absolute inset-0 rounded-full", focusRingGroup)}
-        aria-hidden="true"
-      />
-
-      {/* Error tooltip */}
-      {error && (
+        {/* Hover overlay */}
         <span
-          className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-status-error px-2 py-1 text-body-3 text-fg-inverse"
-          role="alert"
+          className={cn(
+            "absolute inset-0 flex items-center justify-center rounded-full",
+            "bg-black/50 text-white opacity-0 transition-opacity duration-fast",
+            "group-hover:opacity-100 group-focus-visible:opacity-100",
+            uploading && "opacity-100",
+          )}
+          aria-hidden="true"
         >
-          {error}
+          {uploading ? (
+            <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          ) : (
+            <CameraIcon />
+          )}
         </span>
-      )}
 
-      {/* Hidden file input */}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept?.join(",")}
-        // Our own `input.click()` bubbles to the root; stop it re-entering the handlers.
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => void handleFileChange(e)}
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden="true"
-      />
-    </div>
+        {/* Focus ring */}
+        <span
+          className={cn("pointer-events-none absolute inset-0 rounded-full", focusRingGroup)}
+          aria-hidden="true"
+        />
+
+        {/* Error tooltip — the visible half only. ARIA makes a `button`'s
+            descendants presentational, so the live region is a sibling below. */}
+        {error && (
+          <span
+            className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-status-error px-2 py-1 text-body-3 text-fg-inverse"
+            aria-hidden="true"
+          >
+            {error}
+          </span>
+        )}
+
+        {/* Hidden file input */}
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept?.join(",")}
+          // Our own `input.click()` bubbles to the root; stop it re-entering the handlers.
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => void handleFileChange(e)}
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+      </div>
+
+      {/* Outside the role="button": a live region nested in one is never
+          announced, and the root's aria-label wins the name computation. */}
+      <span className="sr-only" role="alert">
+        {error}
+      </span>
+    </>
   );
 });

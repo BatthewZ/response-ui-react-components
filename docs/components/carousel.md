@@ -32,7 +32,7 @@ takes the keyboard: it renders with `tabIndex={0}` and, while that tab stop hold
 
 | Part              | Renders                              | Props                                          |
 | ----------------- | ------------------------------------ | ---------------------------------------------- |
-| `Carousel`        | `<div class="carousel">`             | `title?: ReactNode` (+ all `div` props except the native `title`) |
+| `Carousel`        | `<div class="carousel" role="group">` | `title?: ReactNode` · `prevLabel?: string` — default `"Previous"` · `nextLabel?: string` — default `"Next"` (+ all `div` props except the native `title`) |
 | `Carousel.Track`  | `<div role="region">`                | — (+ all `div` props)                          |
 | `Carousel.Item`   | `<div role="group">`                 | — (+ all `div` props)                          |
 
@@ -163,9 +163,8 @@ navigates. A genuine click still goes through:
 ```
 <!-- /example -->
 
-Text inputs are the exception, and not a happy one: the drag gesture calls `preventDefault()`
-on every left mousedown over the track, which is also what puts a caret in a text field.
-See [Gotchas](#gotchas).
+Text inputs work too: the drag gesture cancels the native image drag in `dragstart` rather
+than on `mousedown`, so the browser's own focus and caret placement survive.
 
 ## Labelling
 
@@ -253,24 +252,21 @@ something a theme should decide for you.
   rail instead of moving the caret.) The flip side: focus has to be on the root for paging to
   work, so from one of the arrow buttons, or from anything else inside, the arrow keys do
   nothing.
-- **Mousedown inside a slide is `preventDefault()`ed** — the drag gesture does it on every
-  left-button press over the track to stop native image dragging. That also suppresses the
-  browser's focus and caret-placement defaults, so clicking into an `<input>` inside a slide
-  does not focus it. Buttons and links are unaffected: they act on `click`, which still fires.
-- **The end-of-rail arrows are invisible, not gone.** `data-hidden` only applies
-  `opacity: 0; pointer-events: none`. The buttons stay enabled, keyboard-focusable and in the
-  accessibility tree, so at the start of a rail a keyboard user tabs onto a "Previous" button
-  they cannot see and that does nothing when activated.
-- **`prefers-reduced-motion` only quietens the arrow fade.** The media query sets
-  `scroll-behavior: auto` on the track, but every programmatic scroll — arrows, arrow keys,
-  and the drag fling — passes `behavior: "smooth"` explicitly, and an explicit `behavior`
-  overrides the element's computed `scroll-behavior`. What the media query does turn off is
-  the arrows' opacity transition and the scrolls the component never asked for, such as the
-  browser easing a newly focused slide into view. The one the user sees most survives.
-- **RTL is not handled.** Availability is computed as `track.scrollLeft > 0` and the arrows are
-  positioned with physical `left: 0` / `right: 0`. Under `dir="rtl"` the browser's `scrollLeft`
-  origin flips, so "Previous" never becomes available, "Next" never hides, and the two buttons
-  sit on the wrong sides of the rail.
+- **A drag still eats the click that ends it.** `onClickCapture` cancels the click after a
+  drag of more than 3px, so a control you dragged across is not activated. A plain press is
+  untouched — the gesture no longer calls `preventDefault()` on `mousedown`, so focus and
+  caret placement inside a slide behave normally.
+- **The end-of-rail arrows are `disabled`, and also faded.** `data-hidden` applies
+  `opacity: 0; pointer-events: none` for the look; `disabled` is what takes them out of the
+  tab order and off the accessibility tree, so a keyboard user no longer lands on an invisible
+  no-op. A `disabled` button also stops firing `mouseenter`, so no tooltip you attach to one
+  will open at the ends of the rail.
+- **`prefers-reduced-motion` is read in JS as well as CSS.** The media query sets
+  `scroll-behavior: auto` on the track, and because an explicit `behavior` argument outranks
+  that, the component reads the same preference through `usePrefersReducedMotion` and passes
+  `behavior: "auto"` for the arrows, the arrow keys and the drag fling. Server-rendered and
+  pre-hydration output reports "no preference", so the very first scroll after hydration is
+  the one that can still animate.
 - **`title` shadows the HTML attribute.** `CarouselProps` omits the native `title`, so there is
   no tooltip escape hatch, and the heading renders as a plain `<div>` — it carries the
   accessible name but is not in the document outline. Pass an element if you want it there:
@@ -287,7 +283,7 @@ something a theme should decide for you.
 ## Accessibility
 
 The arrows are the good news: they are real `<button>`s from
-[IconButton](icon-button.md), permanently labelled `"Previous"` and `"Next"`, with their
+[IconButton](icon-button.md), labelled from `prevLabel` / `nextLabel`, with their
 chevron SVGs marked `aria-hidden`, and they keep IconButton's `focus-visible` ring. They
 render after the slides in the DOM, so the tab order is root → slide content → Previous →
 Next. They are [IconButton](icon-button.md)s, which default to `type="button"`, so a rail
@@ -295,12 +291,11 @@ inside a `<form>` does not submit it.
 
 Everything else needs a decision from you:
 
-- **The root's role is `generic`, and that voids its own ARIA.** It renders as a bare `<div>`
-  with `aria-roledescription="carousel"` and either `aria-labelledby` (from `title`) or
-  `aria-label="Carousel"` — but no `role`. ARIA prohibits both an author-supplied accessible
-  name and `aria-roledescription` on the implicit `generic` role, so a conforming screen
-  reader is entitled to announce neither. `role` passes through: `<Carousel role="group">`
-  makes the name and the "carousel" role description count.
+- **The root is a `group` with a role description.** It renders `role="group"` alongside
+  `aria-roledescription="carousel"` and either `aria-labelledby` (from `title`) or
+  `aria-label="Carousel"`, so the name and the role description both count — ARIA prohibits
+  them only on the implicit `generic` role. `role` still passes through if you want
+  `region` instead.
 - **The root is a tab stop with no focus style of its own.** `Carousel.css` defines nothing
   for `.carousel:focus-visible`, so you get the browser's default outline drawn around the
   whole component, title included.
@@ -320,10 +315,10 @@ Everything else needs a decision from you:
   `aria-label`) if you want that guaranteed.
 - **Nothing is announced when the rail moves.** There is no live region and no
   `aria-live`; scrolling is silent to a screen reader.
-- **The announced strings are hard-coded English.** None of them is drawn on screen;
-  they are all screen-reader-only. `"Carousel"`, `"Carousel items"`,
-  `"carousel"` and `"slide"` can all be overridden through props — the arrow labels
-  `"Previous"` and `"Next"` cannot, because the arrows are internal.
+- **The announced strings default to English, and all of them are reachable.** None is drawn
+  on screen. `"Carousel"`, `"Carousel items"`, `"carousel"` and `"slide"` are overridden
+  through rest props on the part that carries them; the arrow labels come from the root's
+  `prevLabel` and `nextLabel`.
 - Also see the hidden-but-focusable arrows, and the fact that the arrow keys page only while
   the root itself holds focus, in [Gotchas](#gotchas).
 

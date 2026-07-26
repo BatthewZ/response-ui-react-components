@@ -201,7 +201,9 @@
   position: fixed;
   inset: 0;
   z-index: 49;
-  background: var(--OVERLAY-SCRIM-COLOR);
+  /* Fallback matches Drawer.css / CommandPalette.css: without the token layer
+     the scrim would otherwise be transparent rather than 50% black. */
+  background: var(--OVERLAY-SCRIM-COLOR, rgb(0 0 0 / 0.5));
   animation: app-shell-fade-in var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER);
 }
 

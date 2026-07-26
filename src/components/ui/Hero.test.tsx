@@ -71,11 +71,34 @@ describe("Hero", () => {
       expect(screen.getByTestId("hero").className).toContain("hero--align-center");
     });
 
-    it("renders the overlay by default", () => {
-      const { container } = render(<Hero>Content</Hero>);
+    // #162 — the scrim used to paint over a bare Hero, dimming its own copy.
+    it("renders the overlay by default when a Background is present", () => {
+      const { container } = render(
+        <Hero>
+          <Hero.Background src="/hero.jpg" alt="" />
+          Content
+        </Hero>,
+      );
       const overlay = container.querySelector(".hero__overlay");
       expect(overlay).toBeInTheDocument();
       expect(overlay?.getAttribute("aria-hidden")).toBe("true");
+    });
+
+    it("paints no overlay on a Hero with nothing to darken", () => {
+      const { container } = render(<Hero>Content</Hero>);
+      expect(container.querySelector(".hero__overlay")).not.toBeInTheDocument();
+    });
+
+    it("honours an explicit overlay over the Background default", () => {
+      const { container: off } = render(
+        <Hero overlay={false}>
+          <Hero.Background src="/hero.jpg" alt="" />
+        </Hero>,
+      );
+      expect(off.querySelector(".hero__overlay")).not.toBeInTheDocument();
+
+      const { container: on } = render(<Hero overlay>Content</Hero>);
+      expect(on.querySelector(".hero__overlay")).toBeInTheDocument();
     });
 
     it("does not render the overlay when overlay is false", () => {
@@ -129,6 +152,13 @@ describe("Hero", () => {
     it("applies parallax class when parallax is true", () => {
       render(<Hero.Background src="/hero.jpg" parallax data-testid="bg" />);
       expect(screen.getByTestId("bg").className).toContain("hero__background--parallax");
+    });
+
+    // #165 — parallax without a src used to mount the client wrapper over nothing.
+    it("mounts no Parallax wrapper when there is no src to drift", () => {
+      render(<Hero.Background parallax data-testid="bg" />);
+      expect(screen.queryByTestId("parallax")).not.toBeInTheDocument();
+      expect(screen.getByTestId("bg").className).not.toContain("hero__background--parallax");
     });
 
     it("does not apply parallax class when parallax is false", () => {

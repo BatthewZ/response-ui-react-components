@@ -36,11 +36,12 @@ on this page. Nothing appears in the preview until you pass the array back in.
 | `disabled`        | `boolean`                     | `false`  |
 | `className`       | `string`                      | —        |
 | `ref`             | `Ref<HTMLDivElement>`         | —        |
-| …rest             | props of `div`                | —        |
+| `onFilesRejected` | `(rejections: { file: File; reason: "type" \| "size" }[]) => void` | — |
+| …rest             | props of `div` minus `children` | —      |
 
-Two of these have sharp edges: rejected files vanish without a callback, and `success` is
-ignored once `files` is non-empty. `accept` understands exact MIME types, wildcards
-(`image/*`), and filename extensions (`.pdf`). See [Gotchas](#gotchas).
+Rejected files reach you through `onFilesRejected`, and show an internal message that `error`
+overrides. `accept` understands exact MIME types, wildcards (`image/*`), and filename
+extensions (`.pdf`). See [Gotchas](#gotchas).
 
 ## What happens when files arrive
 
@@ -50,8 +51,9 @@ Drop and browse run the same path:
 2. Each file is kept only if `accept` is unset/empty **or** the file matches an entry — by
    exact MIME type, by a wildcard such as `image/*`, or by filename extension — **and**
    `maxSize` is unset **or** `file.size <= maxSize`.
-3. If nothing survived, the sequence stops silently — `onFilesSelected` does not fire and no
-   message appears.
+3. Every file that failed is collected with the reason it failed. If there are any,
+   `onFilesRejected` fires with the list and the dropzone shows an internal message naming the
+   file — which the `error` prop overrides, and which the next clean selection clears.
 4. Otherwise `onFilesSelected` fires with the survivors when `multiple`, or with a
    one-element array holding the first survivor when not.
 5. On the browse path the input's `value` is reset to `""`, so picking the same file twice in
@@ -76,8 +78,8 @@ is yours.
 <!-- /example -->
 
 `onRemoveFile` receives the index of the row's file in the `files` array you passed. Pass it
-whenever `multiple` is on: without it, every per-row remove button falls back to `onClear`
-and deletes the whole list (see [Gotchas](#gotchas)).
+whenever `multiple` is on: without it no per-row remove control renders at all, and the only
+way out is Clear all.
 
 `multiple` also goes onto the hidden `<input type="file">`, so it governs what the OS dialog
 lets the user select in the first place.
@@ -173,12 +175,15 @@ identity and revoked when it changes or the component unmounts — so pass a sta
 ```
 <!-- /example -->
 
-`uploading` swaps the prompt for `Uploading...` and sets `pointer-events: none` on the whole
-zone. `disabled` dims it to 50%, sets `aria-disabled`, moves `tabIndex` to `-1` and disables
-the hidden input. Both also short-circuit the click, key and drop handlers in JS.
+`uploading` swaps the prompt for `Uploading...`, sets `aria-busy` on the root and `disabled`
+on Replace, Clear all and every per-row remove — so the window explains itself to a keyboard
+as well as a mouse. In the preview state it renders its own `Uploading...` status line, since
+the prompt is not on screen there. `disabled` dims the zone to 50%, sets `aria-disabled`, moves
+`tabIndex` to `-1` and disables the hidden input. Both also short-circuit the click, key and
+drop handlers in JS.
 
-`error` and `success` are strings you supply; the component never sets either one itself.
-Only `error` survives into the preview state — see [Gotchas](#gotchas).
+`error` and `success` are strings you supply, and both render in either state. `error` also
+overrides the internal message a rejected file produces.
 
 ## Naming the dropzone
 
@@ -282,10 +287,10 @@ it does not lighten on the dark themes.
 - **A file with no MIME type only matches an extension rule.** Browsers cannot always infer
   `file.type`, and an empty one matches no MIME entry — not even `image/*`. If you need those
   files, include an extension (`".pdf"`) alongside the MIME type, or use `*/*`.
-- **A rejected file is silent.** Nothing fires, nothing renders, no internal error state
-  exists despite the `error` prop being described as overriding one. A user who drops a 6 MB
-  file into a `maxSize={5 * 1024 * 1024}` zone sees precisely nothing happen. Validate in your
-  own `onFilesSelected` if you need to say why.
+- **The internal rejection message is English, and `error` is how you replace it.** A user who
+  drops a 6 MB file into a `maxSize={5 * 1024 * 1024}` zone gets `"…" is too large (6.0 MB).
+  The maximum is 5.0 MB.` in a `role="alert"`. To word it yourself, take `onFilesRejected` and
+  feed your own string back through `error` — it wins for as long as it is set.
 - **`preventDefault()` in your `onClick`, `onKeyDown`, `onDragOver`, `onDragLeave` or
   `onDrop` cancels the component's.** All five compose: your handler runs first, then the
   built-in one, but only `if (!e.defaultPrevented)`. So `<FileUpload onClick={track} />` fires
@@ -297,27 +302,22 @@ it does not lighten on the dark themes.
   reads as the opt-out, so the drag-over class is never applied. The drop still lands (your
   `preventDefault()` already allowed it), but the border and fill never change to say the zone
   is armed. Leave `onDragOver` un-prevented if you only want to observe the drag.
-- **Per-row remove falls back to `onClear`.** The remove button on a row is
-  `onRemoveFile ? () => onRemoveFile(i) : onClear`. With three files and only `onClear` wired,
-  clicking the X on the second one clears all three — measured. Pass `onRemoveFile` whenever
-  `multiple` is on. With neither prop, no remove button renders at all.
-- **`success` is ignored while files are present.** Both the success class and the success
-  paragraph are gated on the empty state, so `<FileUpload files={files} success="Done." />`
-  shows nothing. `error` does render in both states — though `.file-upload--has-files` sits
-  later in the stylesheet than `.file-upload--error` at equal specificity, so its
-  `--C-BORDER-DEFAULT` border wins there and only the fill and the message go red.
-- **`uploading` plus `files` is an inert preview with no indication.** `Uploading...` only
-  renders in the empty state, and no `aria-busy` is set, so all you get is
-  `pointer-events: none` on a preview that still looks fully interactive. Render your own
-  progress next to it — [ProgressBar](progress-bar.md) — and expect Replace, Clear all and the
-  remove buttons to stop responding.
+- **Per-row remove needs `onRemoveFile`.** Without it, no per-row remove control renders —
+  falling back to `onClear` would delete the whole list when the user asked for one file. Pass
+  `onRemoveFile` whenever `multiple` is on.
+- **Both messages render in both states**, though `.file-upload--has-files` sits later in the
+  stylesheet than `.file-upload--error` / `--success` at equal specificity, so its
+  `--C-BORDER-DEFAULT` border wins in the preview and only the fill and the message are tinted.
+- **`uploading` plus `files` disables the preview's controls rather than deadening them.**
+  Replace, Clear all and every remove button carry `disabled`, the root carries `aria-busy`,
+  and an `Uploading...` status line renders in the preview. Add your own
+  [ProgressBar](progress-bar.md) if you have real progress to show.
 - **The hint disappears in the preview state.** `hint` (and the `maxSize` line it generates)
   renders only alongside the prompt, so your size and format limits are off-screen exactly
   when the user is looking at what they picked.
-- **`children` typechecks and is dropped.** The props intersect `ComponentPropsWithRef<"div">`
-  without omitting `children`, and the rest spread sits before the component's own JSX
-  children, so `<FileUpload>Drop invoices here</FileUpload>` compiles and renders the stock
-  prompt. There is no slot for custom content.
+- **`children` is a compile error.** The props omit it from `ComponentPropsWithRef<"div">`, so
+  `<FileUpload>Drop invoices here</FileUpload>` no longer typechecks and then silently renders
+  the stock prompt. There is no slot for custom content.
 - **Pass a stable `files` array.** Object URLs are minted in a `useMemo` keyed on array
   identity, so an inline `files={[file]}` creates and revokes one on every parent render —
   measured 3 creations across two unrelated re-renders — and the `<img src>` changes each time.
@@ -327,7 +327,10 @@ it does not lighten on the dark themes.
 
 ## Accessibility
 
-The root is a `<div role="button" tabIndex={0} aria-label="Upload file">`. Enter and Space both
+In the empty state the root is a `<div role="button" tabIndex={0} aria-label="Upload file">`.
+With files present it is a plain `<div>` — no role, no `tabIndex`, no name — because the
+preview holds real buttons and ARIA makes a `button`'s descendants presentational. Enter and
+Space both
 activate on `keydown` and are `preventDefault`ed, so Space does not scroll the page — a `<div>`
 gets no synthetic click from either key, which is why that handler exists. The real
 `<input type="file">` is `sr-only`, `tabIndex={-1}` and `aria-hidden`, so it is in neither the
@@ -340,24 +343,16 @@ Three gaps are worth planning around:
 - **The default name is generic and it is the only name.** "Upload file" says nothing about
   what file. Rest props are spread last, so pass your own `aria-label` — measured to win over
   the built-in — whenever more than one dropzone shares a page.
-- **Nothing announces the error or the success message.** Both render as a plain `<p>` with no
-  `role="alert"`, no `aria-live`, and no `aria-describedby` from the dropzone — measured
-  `aria-describedby: null`. A keyboard user focused on the zone hears "Upload file, button"
-  and never hears "That file is larger than 5 MB." Route the same string into a live region
-  you own, or an [Alert](alert.md) or [Toast](toast.md).
-- **The preview nests real buttons inside `role="button"`.** With one file present the root is
-  still a focusable button named "Upload file" containing three `<button>`s — Remove, Replace,
-  Clear all. ARIA makes a button's descendants presentational, so those controls are not
-  reliably exposed, and Enter or Space anywhere on the root reopens the file dialog rather
-  than acting on the preview. Pointer clicks inside the preview are safe: it stops click and
-  keydown propagation.
+- **The error and success messages are announced and referenced.** `error` renders in a
+  `role="alert"`, `success` in a `role="status"`, and the dropzone's `aria-describedby` points
+  at whichever of the hint, the error or the success message is on screen.
 
 Neither status is signalled by colour alone — the error and success states always carry the
 string you supplied as text, and the drag-over state is a live pointer interaction rather than
 a state anyone needs announced. Every remove button carries `aria-label="Remove <filename>"`,
 so rows are distinguishable; note that string, `Replace`, `Clear all`, `Uploading...`,
-`Drag & drop or browse` and `Upload file` are all hard-coded English with no prop to reach
-them except `aria-label`.
+`Drag & drop or browse`, `Upload file` and the internal rejection message are all hard-coded
+English, reachable only through `aria-label` and `error` respectively.
 
 ## Related
 

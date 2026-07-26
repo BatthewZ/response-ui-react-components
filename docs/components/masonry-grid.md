@@ -51,12 +51,12 @@ renders through [ScrollReveal](scroll-reveal.md) instead of a bare `<div>`.
 
 | Prop        | Type                                                                          | Default     |
 | ----------- | ----------------------------------------------------------------------------- | ----------- |
-| `columns`   | `number` or `{ base?: number; sm?: number; md?: number; lg?: number; xl?: number }` | `1`     |
+| `columns`   | `1 \| 2 \| 3 \| 4`, or `{ base?, sm?, md?, lg?, xl? }` of the same          | `1`     |
 | `gap`       | `string` — any CSS length; written to the element as `--masonry-gap`           | —           |
 | `animate`   | `boolean` — wrap every item in a scroll reveal                                 | `true`      |
 | `animation` | `"fade-up" \| "fade-in" \| "fade-left" \| "fade-right" \| "scale"`              | `"fade-up"` |
 | `className` | `string` — merged onto the root                                                | —           |
-| `style`     | `CSSProperties` — spread **after** `gap`, so it wins on a clash                | —           |
+| `style`     | `CSSProperties` — spread **before** `gap`, so an explicit `gap` wins           | —           |
 | `ref`       | `Ref<HTMLDivElement>`                                                          | —           |
 | …rest       | `div` props — `id`, `role`, `aria-*`, `data-*`, handlers, all reach the DOM     | —           |
 
@@ -242,22 +242,17 @@ which is applied inline and is not themeable.
   `animationDelay` in your `style` lands unopposed, while a later item's own delay wins for
   as long as it is animating. See
   [ScrollReveal's gotchas](scroll-reveal.md#gotchas).
-- **Column counts above 4 silently collapse to 1.** `columns` is typed `number`, but
-  `MasonryGrid.css` only defines rules for `2`, `3` and `4` at each breakpoint. `columns={6}`
-  compiles, renders `class="masonry-grid masonry-grid--base-6"`, matches no rule, and shows one
-  column. The workaround is to set the local variable directly:
-  `style={{ "--masonry-columns": 6 } as CSSProperties}`.
-- **You cannot narrow back to one column at a larger breakpoint.** The class builder skips any
-  count equal to `1`, so `columns={{ base: 3, md: 1 }}` produces only `masonry-grid--base-3` and
-  stays at three columns forever. Breakpoint keys can widen a grid, never narrow it to a single
-  column. Note that [Grid](grid.md) takes the same-shaped `columns` prop but ships rules for
-  `1`–`6` at every breakpoint, so the two components accept the same object and disagree about
-  what it means.
-- **Your `key`s on the children do nothing.** The root wraps each child in a provider keyed by
-  its **index**, so React reconciles by position. Prepend one item to a six-item grid and every
-  item from that point on unmounts and remounts: uncontrolled input values, video playback,
-  scroll position and component state are all lost. Appending to the end is safe; inserting,
-  removing or reordering is not.
+- **`columns` stops at 4, and the type says so.** `MasonryGrid.css` defines rules for `1`–`4`
+  at each breakpoint and the prop is typed to match, so `columns={6}` is a compile error rather
+  than a grid that silently shows one column. For a wider grid, set the local variable
+  directly: `style={{ "--masonry-columns": 6 } as CSSProperties}`. Note that [Grid](grid.md)
+  takes a same-shaped `columns` prop but ships rules for `1`–`6`, so the two components accept
+  overlapping objects and disagree above 4.
+- **Narrowing back to one column works.** `columns={{ base: 3, md: 1 }}` emits
+  `masonry-grid--base-3 masonry-grid--md-1` and drops to a single column from `48rem` up.
+- **Your `key`s on the children are honoured.** The root wraps each child in a provider keyed
+  by the child's own key, so prepending to a grid mounts only the new item and leaves the rest
+  — uncontrolled input values, video playback, component state — intact.
 - **A child that is not a `MasonryGrid.Item` gets no masonry behaviour.** The root accepts any
   child and only wraps it in a provider — the `break-inside: avoid` and the bottom margin live
   on `.masonry-grid__item`, which only `MasonryGrid.Item` applies. Drop a bare `<Card>` in and
@@ -265,13 +260,12 @@ which is applied inline and is not themeable.
 - **A fragment counts as one child.** `Children.toArray` does not flatten fragments, so two
   items inside a `<>…</>` share a single index and therefore a single stagger step.
   Return an array of items, not a fragment of them.
-- **`style` beats `gap`.** The root spreads your `style` after the variable it derives from
-  `gap`, so `<MasonryGrid gap="2rem" style={{ "--masonry-gap": "0.25rem" }}>` renders at
-  `0.25rem` and the `gap` prop is ignored. Use one or the other.
-- **Every item has a bottom margin, with no `:last-child` reset.** `.masonry-grid__item` sets
-  `margin-bottom` unconditionally, so budget for a gap's worth of trailing space under the
-  last row — exactly how a multicol box treats that final margin is engine-nuanced, but no
-  rule in this package removes it. Clearing it from the call site is the harder half:
+- **`gap` beats a `--masonry-gap` in `style`.** The variable the `gap` prop derives is spread
+  last, so `<MasonryGrid gap="2rem" style={{ "--masonry-gap": "0.25rem" }}>` renders at `2rem`.
+  With no `gap` prop, the one in `style` still applies.
+- **Every item but the last has a bottom margin.** `.masonry-grid__item:last-child` resets it,
+  so there is no trailing gap under the grid — though exactly which item a multicol box treats
+  as last is engine-nuanced. Clearing the margin from the call site is still the harder half:
   `.masonry-grid__item` is unlayered component CSS while Tailwind's utilities compile into
   `@layer utilities` (measured in the compiled bundle: the utilities layer ends at byte
   30370, `.masonry-grid__item` sits at 80888), and unlayered author rules outrank layered

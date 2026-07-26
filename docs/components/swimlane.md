@@ -20,11 +20,15 @@ supply.
 
 | Prop          | Type                                                              | Default     |
 | ------------- | ----------------------------------------------------------------- | ----------- |
-| `title`       | `ReactNode` — **required**, rendered inside an `<h2>`              | —           |
+| `title`       | `ReactNode` — **required**, rendered inside the `titleAs` element  | —           |
+| `titleAs`     | `"h1" \| "h2" \| "h3" \| "h4" \| "h5" \| "h6"`                     | `"h2"`      |
 | `subtitle`    | `ReactNode` — rendered in a `<p>` under the title                  | —           |
-| `viewAllHref` | `string` — renders an `<a href>` labelled "View all"               | —           |
+| `viewAllHref` | `string` — renders an `<a href>` labelled by `viewAllLabel`        | —           |
+| `viewAllLabel`| `ReactNode` — text of the "View all" link                          | `"View all"`|
+| `viewAllProps`| `a` props minus `href`/`children` — merged onto the anchor         | —           |
 | `animation`   | `"fade-up" \| "fade-in" \| "fade-left" \| "fade-right" \| "scale"` | `"fade-up"` |
 | `once`        | `boolean` — reveal once, or replay on every re-entry               | `true`      |
+| `animate`     | `boolean` — wrap in the reveal at all                              | `true`      |
 | `className`   | `string` — merged onto the root `<section>`                        | —           |
 | `children`    | `ReactNode` — the lane body                                        | —           |
 | `ref`         | `Ref<HTMLElement>` — the root `<section>`                          | —           |
@@ -119,8 +123,9 @@ truthy, so a lane with neither is just a heading. Both `title` and `subtitle` ar
 
 ## The reveal
 
-Swimlane always renders a [ScrollReveal](scroll-reveal.md) as its `<section>` and forwards
-exactly two of its knobs, `animation` and `once`. The other ScrollReveal options —
+With `animate` at its default Swimlane renders a [ScrollReveal](scroll-reveal.md) as its
+`<section>` and forwards exactly two of its knobs, `animation` and `once`; `animate={false}`
+renders a plain `<section>` instead. The other ScrollReveal options —
 `threshold`, `delay`, `rootMargin` — are not on Swimlane's prop type and cannot be reached.
 
 <!-- example:RevealAnimations -->
@@ -207,21 +212,23 @@ the spacing inside your scroller is entirely yours to pick.
 - **It does not scroll.** Nothing in `Swimlane.css` sets `overflow`, `scroll-snap-type` or
   `scroll-behavior` — despite the name and despite a test called "renders a scrollable
   container". Bring your own scroller (see [above](#the-body-is-yours)).
-- **Server-rendered output is `opacity: 0`.** The reveal's initial markup carries
-  `scroll-reveal-hidden`, and it is only cleared once an `IntersectionObserver` fires. If JS
-  never runs, or `IntersectionObserver` is undefined, the entire lane — heading, subtitle and
-  link included — stays invisible with no fallback. Only users who have *not* asked for
+- **Server-rendered output is `opacity: 0` unless you opt out.** The reveal's initial markup
+  carries `scroll-reveal-hidden`, and it is only cleared once an `IntersectionObserver` fires.
+  If JS never runs, or `IntersectionObserver` is undefined, the entire lane — heading, subtitle
+  and link included — stays invisible. `animate={false}` drops the reveal wrapper entirely and
+  renders a plain `<section>` that is readable from the first paint. Only users who have *not* asked for
   reduced motion are affected: under `prefers-reduced-motion: reduce` the same class resolves
   to `opacity: 1`, so those readers see the lane either way. Don't put content behind a
   Swimlane that must always be readable.
-- **"View all" is a hard-coded English string.** There is no prop to relabel or translate it,
-  and the anchor receives only `href` and its class — no `aria-label`, no `target`, no `rel`,
-  no router integration. Several lanes on one page therefore expose several links that read
-  identically to a screen reader, and each one triggers a full page navigation in an SPA. If
-  you need any of that, drop `viewAllHref` and render your own link in `children`.
-- **The heading is always an `<h2>`.** No `as` or `level` prop, so a lane nested under an
-  existing `<h2>` skips a level in the document outline. `title` accepts a `ReactNode`, but
-  the element around it is fixed.
+- **"View all" is relabellable, but still not a router link.** `viewAllLabel` replaces the
+  default English string and `viewAllProps` reaches the anchor — `aria-label`, `target`, `rel`,
+  `onClick` and `data-*` all land, and a `className` there merges with `swimlane__view-all`.
+  What it is *not* is a router link: it renders a plain `<a href>`, so in an SPA it still
+  triggers a full page navigation. For that, drop `viewAllHref` and render your own link in
+  `children`.
+- **The heading defaults to `<h2>`.** `titleAs` takes any of `h1`–`h6`, so a lane nested under
+  an existing `<h2>` can be `titleAs="h3"` rather than skipping a level. `title` accepts a
+  `ReactNode`; only the element around it comes from `titleAs`.
 - **The bottom margin is unconditional, and a utility won't clear it.** Every lane, including
   the last on the page, carries `margin-bottom: var(--R-SIZE-2)`. `.swimlane` is unlayered
   component CSS, so it outranks Tailwind's layered utilities no matter the specificity: a

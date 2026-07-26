@@ -1,4 +1,4 @@
-import { type ComponentPropsWithRef, forwardRef } from "react";
+import { Children, type ComponentPropsWithRef, forwardRef, isValidElement } from "react";
 
 import { Parallax } from "../animation/Parallax";
 import { ScrollReveal } from "../animation/ScrollReveal";
@@ -31,14 +31,24 @@ const alignClass: Record<HeroAlign, string> = {
 
 type HeroProps = {
   size?: HeroSize;
+  /**
+   * Paint the darkening scrim. Defaults to whether a `Hero.Background` is among
+   * the children — a hero with no photograph has nothing to darken, and the
+   * scrim would only dim its own copy.
+   */
   overlay?: boolean;
   align?: HeroAlign;
 } & Omit<ComponentPropsWithRef<"section">, "size">;
 
 const HeroRoot = forwardRef<HTMLElement, HeroProps>(function Hero(
-  { size = "md", overlay = true, align = "end", className, children, ...props },
+  { size = "md", overlay, align = "end", className, children, ...props },
   ref
 ) {
+  const hasBackground = Children.toArray(children).some(
+    (child) => isValidElement(child) && child.type === HeroBackground
+  );
+  const showOverlay = overlay ?? hasBackground;
+
   return (
     <section
       ref={ref}
@@ -46,7 +56,7 @@ const HeroRoot = forwardRef<HTMLElement, HeroProps>(function Hero(
       {...props}
     >
       {children}
-      {overlay && <div aria-hidden="true" className="hero__overlay" />}
+      {showOverlay && <div aria-hidden="true" className="hero__overlay" />}
     </section>
   );
 });
@@ -75,7 +85,9 @@ const HeroBackground = forwardRef<HTMLDivElement, HeroBackgroundProps>(function 
     />
   ) : null;
 
-  const inner = parallax ? (
+  // With no `src` there is nothing to drift, so the client Parallax wrapper (an
+  // effect, a scroll listener and a compositor layer) does not get mounted.
+  const inner = image && parallax ? (
     <Parallax rate={parallaxRate} className="size-full">
       {image}
     </Parallax>
@@ -86,7 +98,7 @@ const HeroBackground = forwardRef<HTMLDivElement, HeroBackgroundProps>(function 
   return (
     <div
       ref={ref}
-      className={cn("hero__background", parallax && "hero__background--parallax", className)}
+      className={cn("hero__background", image && parallax && "hero__background--parallax", className)}
       {...props}
     >
       {inner}

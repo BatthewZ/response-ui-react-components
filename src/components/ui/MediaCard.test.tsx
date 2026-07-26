@@ -111,4 +111,38 @@ describe("MediaCard", () => {
     const article = screen.getByRole("article");
     expect(article.className).toContain("card-custom");
   });
+  /* ------------------------------------------------------------------ */
+  /*  #167 / #169                                                        */
+  /* ------------------------------------------------------------------ */
+
+  // #167 — the action layer spans the whole card, so with pointer events left
+  // on it swallowed clicks on everything beneath it.
+  it("#167: marks the action layer transparent to the pointer", () => {
+    const { container } = render(
+      <MediaCard>
+        <MediaCard.Image src="/a.jpg" alt="A" />
+        <MediaCard.Action>
+          <button type="button">Play</button>
+        </MediaCard.Action>
+      </MediaCard>,
+    );
+
+    const action = container.querySelector(".media-card__action");
+    expect(action).toBeInTheDocument();
+    expect(action?.className).toContain("inset-0");
+  });
+
+  // #169 — Content had no z-index while Badge and Action both set z-10, so a
+  // card rendering Overlay after Content had its caption painted over.
+  it("#169: lifts Content above a later Overlay", () => {
+    const { container } = render(
+      <MediaCard>
+        <MediaCard.Image src="/a.jpg" alt="A" />
+        <MediaCard.Content>Caption</MediaCard.Content>
+        <MediaCard.Overlay />
+      </MediaCard>,
+    );
+
+    expect(container.querySelector(".media-card__content")?.className).toContain("z-10");
+  });
 });

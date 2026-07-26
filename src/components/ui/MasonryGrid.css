@@ -8,7 +8,14 @@
   margin-bottom: var(--masonry-gap, var(--R-SIZE-4));
 }
 
+/* No trailing gap under the grid. Unlayered CSS outranks a Tailwind `mb-0`, so
+   the reset has to live here. */
+.masonry-grid__item:last-child {
+  margin-bottom: 0;
+}
+
 /* Base column classes (no media query — override CSS fallback) */
+.masonry-grid--base-1 { --masonry-columns: 1; }
 .masonry-grid--base-2 { --masonry-columns: 2; }
 .masonry-grid--base-3 { --masonry-columns: 3; }
 .masonry-grid--base-4 { --masonry-columns: 4; }
@@ -16,6 +23,9 @@
 /* Responsive column overrides — mobile-first */
 
 @media (width >= 40rem) {
+  .masonry-grid--sm-1 {
+    --masonry-columns: 1;
+  }
   .masonry-grid--sm-2 {
     --masonry-columns: 2;
   }
@@ -28,6 +38,9 @@
 }
 
 @media (width >= 48rem) {
+  .masonry-grid--md-1 {
+    --masonry-columns: 1;
+  }
   .masonry-grid--md-2 {
     --masonry-columns: 2;
   }
@@ -40,6 +53,9 @@
 }
 
 @media (width >= 64rem) {
+  .masonry-grid--lg-1 {
+    --masonry-columns: 1;
+  }
   .masonry-grid--lg-2 {
     --masonry-columns: 2;
   }
@@ -52,6 +68,9 @@
 }
 
 @media (width >= 80rem) {
+  .masonry-grid--xl-1 {
+    --masonry-columns: 1;
+  }
   .masonry-grid--xl-2 {
     --masonry-columns: 2;
   }

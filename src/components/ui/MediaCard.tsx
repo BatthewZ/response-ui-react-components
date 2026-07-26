@@ -90,7 +90,7 @@ const MediaCardContent = forwardRef<HTMLDivElement, MediaCardContentProps>(
     return (
       <div
         ref={ref}
-        className={cn("media-card__content absolute inset-x-0 bottom-0 p-r3", className)}
+        className={cn("media-card__content absolute inset-x-0 bottom-0 z-10 p-r3", className)}
         {...props}
       />
     );
@@ -123,7 +123,10 @@ const MediaCardAction = forwardRef<HTMLDivElement, MediaCardActionProps>(functio
   return (
     <div
       ref={ref}
-      className={cn("absolute inset-0 z-10 flex items-center justify-center", className)}
+      className={cn(
+        "media-card__action absolute inset-0 z-10 flex items-center justify-center",
+        className
+      )}
       {...props}
     />
   );

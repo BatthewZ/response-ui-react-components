@@ -1,23 +1,57 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, createEvent, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Carousel } from "./Carousel";
 
-// jsdom does not provide ResizeObserver; stub it with a class.
+// jsdom does not provide ResizeObserver; stub it with a class that keeps its
+// callback so a test can re-run the carousel's scroll-state measurement.
+const resizeCallbacks: ResizeObserverCallback[] = [];
+
 class ResizeObserverStub {
+  constructor(callback: ResizeObserverCallback) {
+    resizeCallbacks.push(callback);
+  }
   observe = vi.fn();
   unobserve = vi.fn();
   disconnect = vi.fn();
 }
 
 beforeEach(() => {
+  resizeCallbacks.length = 0;
   vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
+
+/**
+ * jsdom lays nothing out, so the rail always measures 0×0 and both arrows read
+ * as end-of-rail. Give the track real dimensions and re-run the measurement.
+ */
+function makeScrollable(track: HTMLElement, scrollLeft = 0) {
+  Object.defineProperty(track, "clientWidth", { value: 300, configurable: true });
+  Object.defineProperty(track, "scrollWidth", { value: 900, configurable: true });
+  track.scrollLeft = scrollLeft;
+  act(() => {
+    for (const callback of resizeCallbacks) {
+      callback([], null as unknown as ResizeObserver);
+    }
+  });
+}
+
+function stubReducedMotion(reduce: boolean) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: reduce && query.includes("prefers-reduced-motion"),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+}
 
 /** Helper to find the carousel root element via its aria-roledescription. */
 function getCarouselRoot(): HTMLElement {
@@ -66,10 +100,9 @@ describe("Carousel", () => {
       </Carousel>,
     );
 
-    const slides = screen.getAllByRole("group");
-    for (const slide of slides) {
-      expect(slide).toHaveAttribute("aria-roledescription", "slide");
-    }
+    const slides = screen
+      .getAllByRole("group")
+      .filter((el) => el.getAttribute("aria-roledescription") === "slide");
     expect(slides).toHaveLength(2);
   });
 
@@ -100,6 +133,7 @@ describe("Carousel", () => {
     const track = screen.getByRole("region", { name: "Carousel items" });
     const scrollBySpy = vi.fn();
     track.scrollBy = scrollBySpy;
+    makeScrollable(track);
 
     await user.click(screen.getByRole("button", { name: "Next" }));
 
@@ -123,6 +157,7 @@ describe("Carousel", () => {
     const track = screen.getByRole("region", { name: "Carousel items" });
     const scrollBySpy = vi.fn();
     track.scrollBy = scrollBySpy;
+    makeScrollable(track, 300);
 
     await user.click(screen.getByRole("button", { name: "Previous" }));
 
@@ -322,5 +357,158 @@ describe("Carousel", () => {
 
     expect(scrollBySpy).toHaveBeenCalledTimes(1);
     expect(scrollBySpy).toHaveBeenCalledWith({ left: 300, behavior: "smooth" });
+  });
+  /* ------------------------------------------------------------------ */
+  /*  #187 / #188 / #189 / #190 / #191 / #192                            */
+  /* ------------------------------------------------------------------ */
+
+  describe("#187 · a mousedown on the track leaves native focus alone", () => {
+    it("does not preventDefault on a left mousedown", () => {
+      renderWithField();
+      const track = screen.getByRole("region", { name: "Carousel items" });
+      const input = screen.getByLabelText("Note");
+
+      const event = createEvent.mouseDown(input, { button: 0, bubbles: true });
+      fireEvent(input, event);
+
+      // preventDefault on mousedown is what suppressed focus and caret placement.
+      expect(event.defaultPrevented).toBe(false);
+      expect(track.className).toContain("carousel-track");
+    });
+
+    it("still cancels the native image drag", () => {
+      renderWithField();
+      const track = screen.getByRole("region", { name: "Carousel items" });
+
+      const event = createEvent.dragStart(track);
+      fireEvent(track, event);
+
+      expect(event.defaultPrevented).toBe(true);
+    });
+  });
+
+  describe("#188 · end-of-rail arrows leave the tab order", () => {
+    it("disables both arrows when the rail cannot move", () => {
+      render(
+        <Carousel>
+          <Carousel.Track>
+            <Carousel.Item>Slide 1</Carousel.Item>
+          </Carousel.Track>
+        </Carousel>,
+      );
+
+      expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    });
+
+    it("enables the arrow whose direction has somewhere to go", () => {
+      render(
+        <Carousel>
+          <Carousel.Track>
+            <Carousel.Item>Slide 1</Carousel.Item>
+            <Carousel.Item>Slide 2</Carousel.Item>
+          </Carousel.Track>
+        </Carousel>,
+      );
+      makeScrollable(screen.getByRole("region", { name: "Carousel items" }));
+
+      expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+    });
+  });
+
+  // #189 — aria-roledescription and a name are prohibited on the implicit
+  // `generic` role, so a conforming reader announced neither.
+  it("#189: the root carries a real role alongside its roledescription", () => {
+    render(
+      <Carousel>
+        <Carousel.Track>
+          <Carousel.Item>Slide 1</Carousel.Item>
+        </Carousel.Track>
+      </Carousel>,
+    );
+
+    const root = getCarouselRoot();
+    expect(root).toHaveAttribute("role", "group");
+    expect(root).toHaveAttribute("aria-label", "Carousel");
+  });
+
+  // #190 — an explicit behavior: "smooth" outranks the reduced-motion CSS block.
+  it("#190: scrolls instantly when the user asked for reduced motion", async () => {
+    stubReducedMotion(true);
+    const user = userEvent.setup();
+    render(
+      <Carousel>
+        <Carousel.Track>
+          <Carousel.Item>Slide 1</Carousel.Item>
+          <Carousel.Item>Slide 2</Carousel.Item>
+        </Carousel.Track>
+      </Carousel>,
+    );
+
+    const track = screen.getByRole("region", { name: "Carousel items" });
+    const scrollBySpy = vi.fn();
+    track.scrollBy = scrollBySpy;
+    makeScrollable(track);
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(scrollBySpy).toHaveBeenCalledWith(expect.objectContaining({ behavior: "auto" }));
+  });
+
+  // #191 — `scrollLeft > 0` and a positive step are both LTR-only.
+  describe("#191 · right-to-left", () => {
+    it("enables Previous from a negative scrollLeft", () => {
+      render(
+        <Carousel>
+          <Carousel.Track>
+            <Carousel.Item>Slide 1</Carousel.Item>
+            <Carousel.Item>Slide 2</Carousel.Item>
+          </Carousel.Track>
+        </Carousel>,
+      );
+      const track = screen.getByRole("region", { name: "Carousel items" });
+      track.dir = "rtl";
+      makeScrollable(track, -300);
+
+      expect(screen.getByRole("button", { name: "Previous" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+    });
+
+    it("advances toward the negative end", async () => {
+      const user = userEvent.setup();
+      render(
+        <Carousel>
+          <Carousel.Track>
+            <Carousel.Item>Slide 1</Carousel.Item>
+            <Carousel.Item>Slide 2</Carousel.Item>
+          </Carousel.Track>
+        </Carousel>,
+      );
+      const track = screen.getByRole("region", { name: "Carousel items" });
+      track.dir = "rtl";
+      const scrollBySpy = vi.fn();
+      track.scrollBy = scrollBySpy;
+      makeScrollable(track);
+
+      await user.click(screen.getByRole("button", { name: "Next" }));
+
+      expect(scrollBySpy).toHaveBeenCalledWith(expect.objectContaining({ left: -300 }));
+    });
+  });
+
+  // #192 — the arrow labels were hard-coded English with no way in.
+  it("#192: renames the arrows through prevLabel / nextLabel", () => {
+    render(
+      <Carousel prevLabel="Précédent" nextLabel="Suivant">
+        <Carousel.Track>
+          <Carousel.Item>Slide 1</Carousel.Item>
+        </Carousel.Track>
+      </Carousel>,
+    );
+
+    expect(screen.getByRole("button", { name: "Précédent" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Suivant" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Previous" })).not.toBeInTheDocument();
   });
 });

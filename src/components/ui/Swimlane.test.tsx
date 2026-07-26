@@ -20,7 +20,9 @@ afterEach(() => {
 });
 
 describe("Swimlane", () => {
-  it("renders a scrollable container with the swimlane class", () => {
+  // Not a scroller: the body is `width: 100%` with no overflow by design — the
+  // caller brings the scroll container (docs/components/swimlane.md).
+  it("renders the section root with the swimlane class", () => {
     const { container } = render(
       <Swimlane title="Popular">
         <div>Item 1</div>
@@ -88,6 +90,89 @@ describe("Swimlane", () => {
     );
     const root = container.querySelector(".swimlane");
     expect(root?.className).toContain("extra-class");
+  });
+
+  // #174 — the link's text and its attributes were both unreachable.
+  describe("#174 · the 'View all' link is reachable", () => {
+    it("uses viewAllLabel instead of the English default", () => {
+      render(
+        <Swimlane title="Recent" viewAllHref="/all" viewAllLabel="Tout voir">
+          <div>Content</div>
+        </Swimlane>,
+      );
+      expect(screen.getByRole("link", { name: "Tout voir" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "View all" })).not.toBeInTheDocument();
+    });
+
+    it("forwards viewAllProps onto the anchor without losing its class", () => {
+      render(
+        <Swimlane
+          title="Recent"
+          viewAllHref="/all"
+          viewAllProps={{
+            "aria-label": "All recent titles",
+            target: "_blank",
+            rel: "noreferrer",
+            className: "extra",
+          }}
+        >
+          <div>Content</div>
+        </Swimlane>,
+      );
+      const link = screen.getByRole("link", { name: "All recent titles" });
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noreferrer");
+      expect(link).toHaveAttribute("href", "/all");
+      expect(link.className).toContain("swimlane__view-all");
+      expect(link.className).toContain("extra");
+    });
+  });
+
+  // #176 — a lane nested under an existing h2 used to skip an outline level.
+  it("renders the title at the level titleAs names", () => {
+    render(
+      <Swimlane title="Nested" titleAs="h3">
+        <div>Content</div>
+      </Swimlane>,
+    );
+    expect(screen.getByRole("heading", { level: 3, name: "Nested" })).toBeInTheDocument();
+  });
+
+  // #175 — the reveal's SSR markup is opacity: 0 with no way out.
+  describe("#175 · animate={false} is a real opt-out", () => {
+    it("renders no scroll-reveal-hidden class", () => {
+      const { container } = render(
+        <Swimlane title="Always readable" animate={false}>
+          <div>Content</div>
+        </Swimlane>,
+      );
+      const root = container.querySelector(".swimlane") as HTMLElement;
+      expect(root.tagName).toBe("SECTION");
+      expect(root.className).not.toContain("scroll-reveal-hidden");
+      expect(screen.getByRole("heading", { level: 2, name: "Always readable" })).toBeVisible();
+    });
+
+    it("still hides behind the reveal by default", () => {
+      const { container } = render(
+        <Swimlane title="Revealed">
+          <div>Content</div>
+        </Swimlane>,
+      );
+      expect((container.querySelector(".swimlane") as HTMLElement).className).toContain(
+        "scroll-reveal-hidden",
+      );
+    });
+
+    it("forwards rest props with the reveal off", () => {
+      const { container } = render(
+        <Swimlane title="Plain" animate={false} id="lane-2" data-analytics="row-2">
+          <div>Content</div>
+        </Swimlane>,
+      );
+      const root = container.querySelector(".swimlane") as HTMLElement;
+      expect(root.id).toBe("lane-2");
+      expect(root.dataset.analytics).toBe("row-2");
+    });
   });
 
   // #171 — rest props are spread onto ScrollReveal, which has to forward them.

@@ -5,6 +5,7 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -19,6 +20,12 @@ import { cn } from "../../util/style";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
+/** Why `accept` / `maxSize` turned a file away. */
+export type FileUploadRejection = {
+  file: File;
+  reason: "type" | "size";
+};
+
 type FileUploadProps = {
   /**
    * Accepted file rules, in the same grammar as the input's `accept` attribute
@@ -32,9 +39,19 @@ type FileUploadProps = {
   multiple?: boolean;
   /** Called when files are selected (via drop or browse). */
   onFilesSelected?: (files: File[]) => void;
+  /**
+   * Called with every file `accept` / `maxSize` turned away, on the same drop or
+   * browse that reports the accepted ones. Without it a rejection still shows an
+   * internal message; with it the caller can render its own.
+   */
+  onFilesRejected?: (rejections: FileUploadRejection[]) => void;
   /** Called when the user clears / removes all files via the built-in preview. */
   onClear?: () => void;
-  /** Called when the user removes a single file by index. */
+  /**
+   * Called when the user removes a single file by index. Without it no per-file
+   * remove control renders at all — falling back to `onClear` would drop every
+   * file when the user asked for one.
+   */
   onRemoveFile?: (index: number) => void;
   /** Currently selected files — pass these to enable the built-in preview. */
   files?: File[];
@@ -48,13 +65,13 @@ type FileUploadProps = {
   disabled?: boolean;
   /** Hint text shown below the main prompt. */
   hint?: string;
-  /** Error message to display (overrides internal state). */
+  /** Error message to display (overrides the internal rejection message). */
   error?: string | null;
   /** Success message to display. */
   success?: string | null;
   /** Whether the component is in an uploading state. */
   uploading?: boolean;
-} & ComponentPropsWithRef<"div">;
+} & Omit<ComponentPropsWithRef<"div">, "children">;
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -62,6 +79,21 @@ type FileUploadProps = {
 
 function buildAcceptString(accept?: string[]): string | undefined {
   return accept && accept.length > 0 ? accept.join(",") : undefined;
+}
+
+function describeRejections(
+  rejections: FileUploadRejection[],
+  maxSize?: number,
+): string {
+  if (rejections.length > 1) {
+    return `${rejections.length} files were not accepted.`;
+  }
+  const { file, reason } = rejections[0];
+  if (reason === "size") {
+    const limit = maxSize != null ? ` The maximum is ${formatBytes(maxSize)}.` : "";
+    return `"${file.name}" is too large (${formatBytes(file.size)}).${limit}`;
+  }
+  return `"${file.name}" is not an accepted file type.`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -145,10 +177,12 @@ function MediaPreviewLarge({
   file,
   previewUrl,
   onRemove,
+  disabled,
 }: {
   file: File;
   previewUrl: string;
   onRemove?: () => void;
+  disabled?: boolean;
 }) {
   const isVideo = file.type.startsWith("video/");
 
@@ -158,6 +192,7 @@ function MediaPreviewLarge({
         <button
           type="button"
           className="file-upload__media-remove"
+          disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
@@ -203,10 +238,12 @@ function MediaPreviewGrid({
   file,
   previewUrl,
   onRemove,
+  disabled,
 }: {
   file: File;
   previewUrl: string;
   onRemove?: () => void;
+  disabled?: boolean;
 }) {
   const isVideo = file.type.startsWith("video/");
 
@@ -216,6 +253,7 @@ function MediaPreviewGrid({
         <button
           type="button"
           className="file-upload__media-grid-remove"
+          disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
@@ -255,10 +293,12 @@ function FilePreviewItem({
   file,
   previewUrl,
   onRemove,
+  disabled,
 }: {
   file: File;
   previewUrl?: string | null;
   onRemove?: () => void;
+  disabled?: boolean;
 }) {
   const isImage = file.type.startsWith("image/");
 
@@ -289,6 +329,7 @@ function FilePreviewItem({
         <button
           type="button"
           className="file-upload__preview-remove"
+          disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
@@ -312,6 +353,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
     maxSize,
     multiple = false,
     onFilesSelected,
+    onFilesRejected,
     onClear,
     onRemoveFile,
     files: filesProp,
@@ -333,6 +375,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
 ) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [rejectionMessage, setRejectionMessage] = useState<string | null>(null);
 
   const hasFiles = filesProp != null && filesProp.length > 0;
 
@@ -376,16 +419,19 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
   /* ---- Validation ---- */
 
   const validateFiles = useCallback(
-    (files: File[]): File[] => {
-      return files.filter((file) => {
+    (files: File[]): { accepted: File[]; rejected: FileUploadRejection[] } => {
+      const accepted: File[] = [];
+      const rejected: FileUploadRejection[] = [];
+      for (const file of files) {
         if (accept && !matchesAccept(file, accept)) {
-          return false;
+          rejected.push({ file, reason: "type" });
+        } else if (maxSize != null && file.size > maxSize) {
+          rejected.push({ file, reason: "size" });
+        } else {
+          accepted.push(file);
         }
-        if (maxSize != null && file.size > maxSize) {
-          return false;
-        }
-        return true;
-      });
+      }
+      return { accepted, rejected };
     },
     [accept, maxSize],
   );
@@ -395,13 +441,19 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
   const handleFiles = useCallback(
     (fileList: FileList | null) => {
       if (!fileList || fileList.length === 0) return;
-      const files = Array.from(fileList);
-      const valid = validateFiles(files);
-      if (valid.length > 0) {
-        onFilesSelected?.(multiple ? valid : [valid[0]]);
+      const { accepted, rejected } = validateFiles(Array.from(fileList));
+
+      // A rejection used to be entirely silent: no callback, no message, no state.
+      setRejectionMessage(rejected.length > 0 ? describeRejections(rejected, maxSize) : null);
+      if (rejected.length > 0) {
+        onFilesRejected?.(rejected);
+      }
+
+      if (accepted.length > 0) {
+        onFilesSelected?.(multiple ? accepted : [accepted[0]]);
       }
     },
-    [validateFiles, onFilesSelected, multiple],
+    [validateFiles, maxSize, onFilesRejected, onFilesSelected, multiple],
   );
 
   const handleDragOver = useCallback(
@@ -460,22 +512,43 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
 
   const computedHint = hint ?? (maxSize ? `Max file size: ${formatBytes(maxSize)}` : undefined);
 
+  /* ---- Messages ---- */
+
+  // The `error` prop overrides the internal rejection state, as its doc says.
+  const shownError = error ?? rejectionMessage;
+
+  const baseId = useId();
+  const hintId = `${baseId}-hint`;
+  const errorId = `${baseId}-error`;
+  const successId = `${baseId}-success`;
+  // The hint only renders alongside the prompt, so it can only be referenced there.
+  const showHint = computedHint != null && !hasFiles && !shownError && !success;
+  const describedBy =
+    [showHint && hintId, shownError && errorId, success && successId]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
   /* ---- Render ---- */
 
   return (
     <div
       ref={ref}
-      role="button"
-      tabIndex={disabled ? -1 : 0}
-      aria-label="Upload file"
+      // With a preview on screen the dropzone holds real buttons, and ARIA makes
+      // every descendant of a `button` presentational — so it is only a button
+      // in the empty state, where it is the one thing to press.
+      role={hasFiles ? undefined : "button"}
+      tabIndex={hasFiles ? undefined : disabled ? -1 : 0}
+      aria-label={hasFiles ? undefined : "Upload file"}
       aria-disabled={disabled || undefined}
+      aria-busy={uploading || undefined}
+      aria-describedby={describedBy}
       className={cn(
         "file-upload",
         hasFiles && "file-upload--has-files",
         dragOver && "file-upload--drag-over",
         uploading && "file-upload--uploading",
-        success && !hasFiles && "file-upload--success",
-        error && "file-upload--error",
+        success && "file-upload--success",
+        shownError && "file-upload--error",
         disabled && "file-upload--disabled",
         className,
       )}
@@ -499,7 +572,10 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
             <MediaPreviewLarge
               file={mediaFiles[0]}
               previewUrl={previewUrls.get(mediaFiles[0])!}
-              onRemove={onRemoveFile ? () => onRemoveFile(filesProp.indexOf(mediaFiles[0])) : onClear}
+              onRemove={
+                onRemoveFile ? () => onRemoveFile(filesProp.indexOf(mediaFiles[0])) : undefined
+              }
+              disabled={uploading}
             />
           )}
 
@@ -511,7 +587,10 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
                   key={`${file.name}-${file.size}-${i}`}
                   file={file}
                   previewUrl={previewUrls.get(file)!}
-                  onRemove={onRemoveFile ? () => onRemoveFile(filesProp.indexOf(file)) : onClear}
+                  onRemove={
+                    onRemoveFile ? () => onRemoveFile(filesProp.indexOf(file)) : undefined
+                  }
+                  disabled={uploading}
                 />
               ))}
             </div>
@@ -525,16 +604,27 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
                   key={`${file.name}-${file.size}-${i}`}
                   file={file}
                   previewUrl={previewUrls.get(file)}
-                  onRemove={onRemoveFile ? () => onRemoveFile(filesProp.indexOf(file)) : onClear}
+                  onRemove={
+                    onRemoveFile ? () => onRemoveFile(filesProp.indexOf(file)) : undefined
+                  }
+                  disabled={uploading}
                 />
               ))}
             </div>
+          )}
+
+          {/* Uploading — otherwise the disabled actions below say nothing */}
+          {uploading && (
+            <p className="file-upload__hint" role="status">
+              Uploading...
+            </p>
           )}
 
           <div className="file-upload__preview-actions">
             <button
               type="button"
               className="file-upload__preview-replace"
+              disabled={uploading || disabled}
               onClick={(e) => {
                 e.stopPropagation();
                 inputRef.current?.click();
@@ -546,6 +636,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
               <button
                 type="button"
                 className="file-upload__preview-clear"
+                disabled={uploading || disabled}
                 onClick={(e) => {
                   e.stopPropagation();
                   onClear();
@@ -557,7 +648,18 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
           </div>
 
           {/* Error message */}
-          {error && <p className="file-upload__error">{error}</p>}
+          {shownError && (
+            <p id={errorId} role="alert" className="file-upload__error">
+              {shownError}
+            </p>
+          )}
+
+          {/* Success message */}
+          {success && (
+            <p id={successId} role="status" className="file-upload__success">
+              {success}
+            </p>
+          )}
         </div>
       ) : (
         /* ---- Empty / prompt state ---- */
@@ -578,15 +680,25 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
           )}
 
           {/* Hint / constraints */}
-          {computedHint && !error && !success && (
-            <p className="file-upload__hint">{computedHint}</p>
+          {showHint && (
+            <p id={hintId} className="file-upload__hint">
+              {computedHint}
+            </p>
           )}
 
           {/* Error message */}
-          {error && <p className="file-upload__error">{error}</p>}
+          {shownError && (
+            <p id={errorId} role="alert" className="file-upload__error">
+              {shownError}
+            </p>
+          )}
 
           {/* Success message */}
-          {success && <p className="file-upload__success">{success}</p>}
+          {success && (
+            <p id={successId} role="status" className="file-upload__success">
+              {success}
+            </p>
+          )}
         </>
       )}
 

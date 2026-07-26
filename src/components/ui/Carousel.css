@@ -70,12 +70,14 @@
   background-color: color-mix(in oklch, var(--C-SURFACE-2) 75%, transparent);
 }
 
+/* Logical, not physical: under `dir="rtl"` the previous arrow belongs on the
+   right and the next one on the left. */
 .carousel-arrow--prev {
-  left: 0;
+  inset-inline-start: 0;
 }
 
 .carousel-arrow--next {
-  right: 0;
+  inset-inline-end: 0;
 }
 
 .carousel-arrow[data-hidden="true"] {

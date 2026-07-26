@@ -13,11 +13,22 @@ import {
   useState,
 } from "react";
 
+import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { composeEventHandlers } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 
 import { IconButton } from "./IconButton";
+
+/** +1 in LTR, -1 in RTL — the sign `scrollLeft` moves in to advance one frame. */
+function readingDirection(track: HTMLElement): 1 | -1 {
+  return getComputedStyle(track).direction === "rtl" ? -1 : 1;
+}
+
+function frameWidth(track: HTMLElement): number {
+  const peek = parseFloat(getComputedStyle(track).paddingInlineStart) || 0;
+  return track.clientWidth - peek;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                            */
@@ -45,22 +56,30 @@ function useCarouselContext() {
 
 type CarouselProps = {
   title?: ReactNode;
+  /** Accessible name of the previous-frame arrow. */
+  prevLabel?: string;
+  /** Accessible name of the next-frame arrow. */
+  nextLabel?: string;
 } & Omit<ComponentPropsWithRef<"div">, "title">;
 
 const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel(
-  { title, className, children, onKeyDown, ...props },
+  { title, prevLabel = "Previous", nextLabel = "Next", className, children, onKeyDown, ...props },
   ref
 ) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
 
   const updateScrollState = useCallback(() => {
     const track = trackRef.current;
     if (!track) return;
 
-    setCanScrollPrev(track.scrollLeft > 0);
-    setCanScrollNext(track.scrollLeft + track.clientWidth < track.scrollWidth - 1);
+    // `scrollLeft` runs negative under `dir="rtl"`; distance from the start edge
+    // is its magnitude either way.
+    const fromStart = Math.abs(track.scrollLeft);
+    setCanScrollPrev(fromStart > 0);
+    setCanScrollNext(fromStart + track.clientWidth < track.scrollWidth - 1);
   }, []);
 
   useEffect(() => {
@@ -92,21 +111,23 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
     };
   }, [updateScrollState]);
 
+  // An explicit `behavior: "smooth"` outranks the `scroll-behavior: auto` the
+  // reduced-motion block sets, so the preference has to be read here too.
+  const behavior: ScrollBehavior = reducedMotion ? "auto" : "smooth";
+
   const scrollPrev = useCallback(() => {
     const track = trackRef.current;
     if (!track) return;
 
-    const peek = parseFloat(getComputedStyle(track).paddingLeft) || 0;
-    track.scrollBy({ left: -(track.clientWidth - peek), behavior: "smooth" });
-  }, []);
+    track.scrollBy({ left: -readingDirection(track) * frameWidth(track), behavior });
+  }, [behavior]);
 
   const scrollNext = useCallback(() => {
     const track = trackRef.current;
     if (!track) return;
 
-    const peek = parseFloat(getComputedStyle(track).paddingLeft) || 0;
-    track.scrollBy({ left: track.clientWidth - peek, behavior: "smooth" });
-  }, []);
+    track.scrollBy({ left: readingDirection(track) * frameWidth(track), behavior });
+  }, [behavior]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -135,6 +156,9 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
       <div
         ref={ref}
         className={cn("carousel", className)}
+        // ARIA prohibits `aria-roledescription` and a name on the implicit
+        // `generic` role, so the root has to carry a real one.
+        role="group"
         aria-roledescription="carousel"
         aria-label={titleId ? undefined : "Carousel"}
         aria-labelledby={titleId}
@@ -152,8 +176,11 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
         <div className="carousel-viewport">
           {children}
           <IconButton
-            aria-label="Previous"
+            aria-label={prevLabel}
             className="carousel-arrow carousel-arrow--prev"
+            // Hidden by opacity alone, an end-of-rail arrow stayed in the tab
+            // order as an invisible no-op button.
+            disabled={!canScrollPrev}
             data-hidden={!canScrollPrev}
             onClick={scrollPrev}
           >
@@ -168,8 +195,9 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
             </svg>
           </IconButton>
           <IconButton
-            aria-label="Next"
+            aria-label={nextLabel}
             className="carousel-arrow carousel-arrow--next"
+            disabled={!canScrollNext}
             data-hidden={!canScrollNext}
             onClick={scrollNext}
           >
@@ -196,10 +224,11 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
 type CarouselTrackProps = ComponentPropsWithRef<"div">;
 
 const CarouselTrack = forwardRef<HTMLDivElement, CarouselTrackProps>(function CarouselTrack(
-  { className, onMouseDown, onClickCapture, ...props },
+  { className, onMouseDown, onClickCapture, onDragStart, ...props },
   forwardedRef
 ) {
   const { trackRef } = useCarouselContext();
+  const reducedMotion = usePrefersReducedMotion();
   const dragState = useRef({
     isDragging: false,
     startX: 0,
@@ -214,7 +243,10 @@ const CarouselTrack = forwardRef<HTMLDivElement, CarouselTrackProps>(function Ca
     (e: React.MouseEvent<HTMLDivElement>) => {
       onMouseDown?.(e);
       if (e.button !== 0) return; // left click only
-      e.preventDefault(); // prevent native image drag from hijacking the gesture
+      // No `preventDefault()` here: on mousedown it also suppresses native focus
+      // and caret placement, which made every form control inside a slide
+      // unfocusable by mouse. The native image drag is cancelled in `dragstart`
+      // instead, and text selection by `user-select: none` while dragging.
       const track = trackRef.current;
       if (!track) return;
 
@@ -269,11 +301,10 @@ const CarouselTrack = forwardRef<HTMLDivElement, CarouselTrackProps>(function Ca
       if (hasVelocity) {
         // Animate from current drag position directly to one frame away
         // from where the drag started — same distance as the arrow buttons.
-        const peek = parseFloat(getComputedStyle(track!).paddingLeft) || 0;
-        const frameSize = track!.clientWidth - peek;
+        const frameSize = frameWidth(track!);
         const target =
           state.velocity > 0 ? state.startScroll + frameSize : state.startScroll - frameSize;
-        track!.scrollTo({ left: target, behavior: "smooth" });
+        track!.scrollTo({ left: target, behavior: reducedMotion ? "auto" : "smooth" });
       }
     }
 
@@ -283,7 +314,7 @@ const CarouselTrack = forwardRef<HTMLDivElement, CarouselTrackProps>(function Ca
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [trackRef]);
+  }, [trackRef, reducedMotion]);
 
   const handleClickCapture = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -306,6 +337,7 @@ const CarouselTrack = forwardRef<HTMLDivElement, CarouselTrackProps>(function Ca
       aria-label="Carousel items"
       className={cn("carousel-track", className)}
       onMouseDown={handleMouseDown}
+      onDragStart={composeEventHandlers(onDragStart, (e) => e.preventDefault())}
       onClickCapture={handleClickCapture}
       {...props}
     />

@@ -1,8 +1,10 @@
 "use client";
 import {
   Children,
+  cloneElement,
   type ComponentPropsWithRef,
   forwardRef,
+  isValidElement,
   type ReactElement,
   useState,
 } from "react";
@@ -21,7 +23,7 @@ const sizeClassMap: Record<AvatarSize, string> = {
 };
 
 const initialsTextMap: Record<AvatarSize, string> = {
-  xs: "text-[0.625rem]",
+  xs: "text-body-3",
   sm: "text-body-3",
   md: "text-body-2",
   lg: "text-body-1",
@@ -42,12 +44,24 @@ const statusColorMap: Record<AvatarStatus, string> = {
   away: "bg-status-warning",
 };
 
+const statusLabelMap: Record<AvatarStatus, string> = {
+  online: "Online",
+  offline: "Offline",
+  away: "Away",
+};
+
+/** First *character*, not first UTF-16 code unit — an emoji or astral initial
+ *  otherwise came out as a lone surrogate. */
+function firstChar(word: string): string {
+  return Array.from(word)[0] ?? "";
+}
+
 function getInitials(name: string): string {
   const trimmed = name.trim();
   if (!trimmed) return "";
   const words = trimmed.split(/\s+/);
-  if (words.length === 1) return words[0][0].toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
+  if (words.length === 1) return firstChar(words[0]).toUpperCase();
+  return (firstChar(words[0]) + firstChar(words[1])).toUpperCase();
 }
 
 type AvatarProps = {
@@ -56,22 +70,36 @@ type AvatarProps = {
   name?: string;
   size?: AvatarSize;
   status?: AvatarStatus;
-} & ComponentPropsWithRef<"span">;
+  /**
+   * Text for `status`, folded into the avatar's accessible name. The presence
+   * dot is a colour on its own otherwise, and it sits inside a `role="img"`
+   * whose children ARIA makes presentational — so the name is the only route.
+   */
+  statusLabel?: string;
+} & Omit<ComponentPropsWithRef<"span">, "children">;
 
 export const Avatar = forwardRef<HTMLSpanElement, AvatarProps>(function Avatar(
-  { src, alt, name, size = "md", status, className, ...props },
+  { src, alt, name, size = "md", status, statusLabel, className, ...props },
   ref
 ) {
-  const [imgError, setImgError] = useState(false);
-  const showImage = src && !imgError;
+  // Keyed by the URL that failed, so a recovered or replaced `src` gets a
+  // fresh attempt instead of being latched off for the component's lifetime.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const showImage = Boolean(src) && failedSrc !== src;
   const initials = name ? getInitials(name) : "";
-  const label = alt ?? name;
+  // Blank or whitespace-only names nothing; `alt=""` reads as decorative, the
+  // same as it does on an `<img>`.
+  const label = (alt ?? name)?.trim() || undefined;
+  const statusText = status ? (statusLabel ?? statusLabelMap[status]) : undefined;
+  const accessibleName = [label, statusText].filter(Boolean).join(", ") || undefined;
 
   return (
     <span
       ref={ref}
-      role="img"
-      aria-label={label}
+      // `role="img"` with no accessible name is a nameless image to AT; without
+      // one this is a decorative box.
+      role={accessibleName ? "img" : undefined}
+      aria-label={accessibleName}
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center",
         sizeClassMap[size],
@@ -88,9 +116,9 @@ export const Avatar = forwardRef<HTMLSpanElement, AvatarProps>(function Avatar(
       >
         {showImage ? (
           <img
-            src={src}
+            src={src ?? undefined}
             alt={label ?? ""}
-            onError={() => setImgError(true)}
+            onError={() => setFailedSrc(src ?? null)}
             className="size-full object-cover"
           />
         ) : (
@@ -133,9 +161,18 @@ export const AvatarGroup = forwardRef<HTMLDivElement, AvatarGroupProps>(function
   const visibleCount = max != null && childArray.length > max ? max : childArray.length;
   const overflowCount = childArray.length - visibleCount;
 
+  // `size` sized the overlap and the +N chip but never the avatars themselves,
+  // so a sized group rendered default-sized faces. A `size` set on the child
+  // still wins.
+  const sizedChildren = childArray.slice(0, visibleCount).map((child) =>
+    isValidElement<AvatarProps>(child) && child.type === Avatar && child.props.size === undefined
+      ? cloneElement(child, { size })
+      : child
+  );
+
   return (
     <div ref={ref} className={cn("flex items-center", groupOverlapMap[size], className)} {...props}>
-      {childArray.slice(0, visibleCount).map((child) => (
+      {sizedChildren.map((child) => (
         <span key={child.key} className="ring-2 ring-surface-0 rounded-full">
           {child}
         </span>

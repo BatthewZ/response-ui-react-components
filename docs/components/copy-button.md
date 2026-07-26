@@ -15,6 +15,7 @@ browser API it stands on is not available everywhere — plan for both.
 | `value`       | `string` — the text written to the clipboard         | — (required) |
 | `timeout`     | `number` — milliseconds the confirmation holds       | `2000`       |
 | `copiedLabel` | `string` — the confirmation wording                  | `"Copied"`   |
+| `onCopyError` | `(error: Error) => void` — clipboard missing, or the write rejected | —   |
 | `className`   | `string` — merged into IconButton's own classes      | —            |
 | `ref`         | `Ref<HTMLButtonElement>`                             | —            |
 | …rest         | every `<button>` prop except `value` and `children`  | —            |
@@ -32,16 +33,16 @@ write actually succeeded and a caller-set value would lie about it. See [Gotchas
 In order:
 
 1. Your `onClick` runs, synchronously, with the click event.
-2. `navigator.clipboard?.writeText` is tested. **If it is absent the handler returns and
-   nothing further happens** — no copy, no confirmation, no error.
-3. `await navigator.clipboard.writeText(value)`. If it rejects, the `catch` swallows it and
-   again nothing further happens.
+2. `navigator.clipboard?.writeText` is tested. **If it is absent the handler calls
+   `onCopyError` and returns** — no copy, no confirmation.
+3. `await navigator.clipboard.writeText(value)`. If it rejects, `onCopyError` gets the
+   rejection and nothing else changes.
 4. Only on a resolved write does `copied` flip true and a `setTimeout` get armed to flip it
    back after `timeout`.
 
 `setCopied(true)` sits *after* the `await`, so **a failed copy never paints the
-confirmation.** The failure mode is silence rather than a false success — with one edge
-case, in [Gotchas](#gotchas).
+confirmation.** Nothing is drawn on failure either: `onCopyError` is the only channel, so
+supply it if a failure has to reach the user — with one edge case, in [Gotchas](#gotchas).
 
 ## Beside the value it copies
 
@@ -100,14 +101,9 @@ region with the same string.
 - **Re-clicking extends the window rather than cutting it short.** Every successful copy
   clears the pending timer before arming a new one, so a second click buys a full fresh
   `timeout` from that click.
-- **The pending timer is cleared on unmount — once there is one.** A mount-scoped effect holds
-  the teardown, so a button unmounted mid-confirmation never sets state afterwards. Unmount
-  while the write is still in flight is the one gap: `copied` has not flipped yet, so the
-  cleanup runs with the timer ref still `null` and clears nothing. The promise then resolves
-  on the detached component, `setCopied(true)` runs, and a `setTimeout` is armed that nothing
-  will ever clear. Bounded and quiet rather than dangerous — under React 19 a `setState` on an
-  unmounted component is a silent no-op with no console error, and the stray timer expires by
-  itself after `timeout` ms — but it is there, and no prop turns it off.
+- **Unmounting is clean, in flight or not.** A mount-scoped effect clears any pending timer,
+  and the handler checks that it is still mounted after the `await` — so a button unmounted
+  while the write is in flight neither writes state nor arms a timer.
 - **`timeout` is read at click time.** Changing the prop while the confirmation is on screen
   does not retime the window already in flight.
 - **Nothing but the timer clears `copied`.** Changing `value` mid-window leaves the
@@ -144,13 +140,9 @@ spread after the internal one, yours wins on every render — including while `c
 true, so the name stops flipping to `copiedLabel`.
 
 Understand what that costs. The confirmation rides two channels, and fixing the name closes
-the first of them outright. The second — the hidden live region — is not a dependable
-replacement: it sits inside the `<button>`, and your `aria-label` suppresses its text a second
-and independent way. See [Accessibility](#accessibility). So the real trade is a name that
-identifies the target on every encounter, bought with a confirmation that may not be announced
-at all. Usually worth it, since the name helps before every click and the confirmation only
-after one — but if the confirmation genuinely has to land, own the copy yourself: call the
-clipboard, drive your own live region, and use [IconButton](icon-button.md) for the shell.
+the first of them. The second — the hidden live region — survives: it is a sibling of the
+button, not a descendant, so neither the button's `role` nor your `aria-label` suppresses it.
+See [Accessibility](#accessibility).
 
 `aria-labelledby` passes through as well, and it outranks `aria-label` in the accessible-name
 computation — so it freezes the name just as firmly while leaving the internal `aria-label`
@@ -207,16 +199,14 @@ IconButton's padding into the 32px/40px target. Because the glyph is `currentCol
   [Naming it](#naming-it) and [Accessibility](#accessibility). `data-copied` is no longer
   overridable — it is derived from whether the copy succeeded, so a caller-set value would
   make the styling hook disagree with reality.
-- **`copiedLabel=""` compiles and blanks the name while confirming.** The confirmation wording
-  is a plain `string`, so an empty one — or a variable typed `string` that happens to be empty
-  at runtime — passes the compiler and hands the button an empty `aria-label` and an empty live
-  region for the whole window. IconButton's `aria-label=""` gotcha does not cover this one: it
-  comes in through CopyButton's own prop, not a passthrough.
+- **`copiedLabel=""` silently keeps the name as `"Copy"`.** An empty confirmation wording no
+  longer blanks the accessible name for the window; the button keeps its own name and the live
+  region stays empty, so the confirmation simply is not announced.
 - **A failed copy can hide behind an earlier success.** Copy once, then click again inside
-  the confirmation window and have that second write reject: the `catch` swallows it while
-  `copied` is already true with its timer still running, so the button goes on showing the
-  confirmation. It is the one case where the UI implies a copy that did not happen — and it
-  is worse if `value` changed between the two clicks.
+  the confirmation window and have that second write reject: `onCopyError` fires, but `copied`
+  is already true with its timer still running, so the button goes on showing the confirmation.
+  It is the one case where the UI implies a copy that did not happen — and it is worse if
+  `value` changed between the two clicks.
 - **No tooltip.** Icon-only, and it sets no `title`, so a mouse user gets no hover hint. `title`
   passes through if you want one.
 
@@ -231,31 +221,23 @@ it, and `aria-label=""` leaves the button nameless — the same hole
 [IconButton documents](icon-button.md#gotchas). `aria-label={undefined}` compiles too and is
 the quieter version: it removes the attribute outright, and with both glyphs `aria-hidden` and
 the live region empty at rest, there is nothing left for the name to be computed from.
-`copiedLabel=""` blanks the name the same way for the length of the confirmation window, and
-that one arrives through CopyButton's own prop rather than a passthrough.
+`copiedLabel=""` no longer blanks the name — the button falls back to its own `"Copy"`.
 
-The confirmation is pushed on two channels, and neither is certain:
+The confirmation is pushed on two channels:
 
 - **The name changes.** `aria-label` flips from `"Copy"` to `copiedLabel`. Screen readers
   differ on whether they re-announce the name of an element that already has focus, which is
   exactly the element the user is on after clicking.
-- **A polite live region.** An `sr-only` `<span aria-live="polite">` is rendered from the
-  first paint holding an empty string and filled with `copiedLabel` on success. That order is
-  right — a live region injected at the same moment as its content is frequently missed. But
-  the span sits **inside the `<button>`**, and `button` is one of the ARIA roles whose
-  descendants are presentational, so its semantics, live region included, are not reliably
-  exposed. A second and independent mechanism works against it as well: the button carries an
-  `aria-label`, and `aria-label` outranks element content in the accessible-name computation,
-  so wherever descendant text would otherwise have surfaced as part of the name, this span's
-  does not. Rendering the region as a sibling of the button would fix the containment problem,
-  and from outside the component you cannot.
+- **A polite live region.** An `sr-only` `<span role="status" aria-live="polite">` is rendered
+  from the first paint holding an empty string and filled with `copiedLabel` on success. That
+  order is right — a live region injected at the same moment as its content is frequently
+  missed. It is a **sibling** of the `<button>`, not a descendant, so neither the button's
+  presentational-children rule nor its `aria-label` suppresses it. CopyButton therefore renders
+  a fragment: a button and a span, not a single element.
 
-Treat the confirmation as best-effort, and note that the component gives you no success
-signal to hang your own announcement on — see
-[When there is no clipboard](#when-there-is-no-clipboard).
-
-- **Nothing is announced on failure.** A silent no-op is indistinguishable from a copy that
-  worked to anyone not watching the icon, and the icon is the only thing that moves.
+- **Nothing is announced on failure.** The icon is the only thing that moves, and it does not.
+  `onCopyError` is the hook for your own announcement — drive a [Toast](toast.md) or your own
+  live region from it.
 - **Focus, target size, and `disabled` behave exactly as on
   [IconButton](icon-button.md#accessibility)** — CopyButton changes none of them, down to the
   `focus-visible:` ring drawn flush against the button at `ring-offset-0`.

@@ -23,8 +23,8 @@ ink you put over your image stays your decision.
 
 **Anatomy.** `Hero` is the `<section>`: `position: relative`, `display: flex`,
 `overflow: hidden`, and a `min-height` from `size`. It renders your children and then —
-unless you pass `overlay={false}` — appends an `aria-hidden` scrim `<div>` that fills the
-box. `Hero.Background` is an absolutely positioned layer at `inset: 0`; give it a `src` and
+when a `Hero.Background` is among them, or `overlay` says so outright — appends an
+`aria-hidden` scrim `<div>` that fills the box. `Hero.Background` is an absolutely positioned layer at `inset: 0`; give it a `src` and
 it builds a covering `<img>`, or leave `src` off and paint the layer yourself with
 `className`. `Hero.Content` is the one part that sits **above** the scrim (`z-index: 10`),
 and it carries the responsive padding. The scrim is always appended last, so it paints over
@@ -40,7 +40,7 @@ the background — and over anything else you put directly inside `Hero`. See
 | Prop           | On                | Type                                   | Default                              |
 | -------------- | ----------------- | -------------------------------------- | ------------------------------------ |
 | `size`         | `Hero`            | `"sm" \| "md" \| "lg" \| "full"`       | `"md"`                               |
-| `overlay`      | `Hero`            | `boolean`                              | `true`                               |
+| `overlay`      | `Hero`            | `boolean`                              | a `Hero.Background` is present       |
 | `align`        | `Hero`            | `"start" \| "center" \| "end"`         | `"end"`                              |
 | `src`          | `Hero.Background` | `string`                               | —                                    |
 | `alt`          | `Hero.Background` | `string`                               | — (the `<img>` gets `alt=""`)        |
@@ -291,29 +291,26 @@ The padding ramp is responsive twice over. `Hero.css` swaps *which* `r`-token it
 `1rem` below `40rem`, `2rem` from `40rem`, `6rem` from `64rem` — a wide hero gets six times
 the gutter of a phone-width one, with no breakpoint utilities from you.
 
-`Hero.css` reads `var(--OVERLAY-SCRIM-COLOR)` with **no fallback value**, unlike
-`Drawer.css` and `CommandPalette.css`, which write `var(--OVERLAY-SCRIM-COLOR, rgb(0 0 0 /
-0.5))`. Import `@batthewz/response-ui-css` and the point is moot; skip it and Hero's scrim
-renders fully transparent instead of degrading to 50% black.
+`Hero.css` reads `var(--OVERLAY-SCRIM-COLOR, rgb(0 0 0 / 0.5))`, the same fallback
+`Drawer.css` and `CommandPalette.css` write — so without the token layer the scrim degrades
+to 50% black rather than vanishing.
 
 ## Gotchas
 
-- **Only `Hero.Content` clears the scrim.** The overlay is appended after your children, fills
-  the section, and has no `pointer-events: none`. `Hero.Content` escapes it with
-  `z-index: 10`; nothing else does. A [Button](button.md) placed straight inside `<Hero>`
-  compiles, renders dimmed, and **cannot be clicked** — it is still reachable by Tab, so the
-  bug reads as mouse-only. Put every interactive element inside `Hero.Content`.
-- **The scrim is on even when there is nothing to darken.** `overlay` defaults to `true`, so
-  `<Hero><Hero.Content>…</Hero.Content></Hero>` paints a 50%-black rectangle straight onto the
-  page. Over `--C-CANVAS` in the default theme that takes `--C-TEXT-PRIMARY` body ink from
-  17.7:1 down to 4.46:1 — under the 4.5:1 AA floor. Pass `overlay={false}` whenever there is
-  no `Hero.Background`.
+- **Only `Hero.Content` paints above the scrim.** The overlay is appended after your children
+  and fills the section, so anything but `Hero.Content` (which escapes with `z-index: 10`)
+  renders dimmed. It carries `pointer-events: none`, so it no longer swallows clicks — a
+  [Button](button.md) placed straight inside `<Hero>` is still clickable, just darkened. Put
+  content you want at full strength inside `Hero.Content`.
+- **The scrim follows the background.** `overlay` defaults to whether a `Hero.Background` is
+  among the children, so `<Hero><Hero.Content>…</Hero.Content></Hero>` paints no rectangle
+  over its own copy. Pass `overlay` explicitly to force it either way — `overlay` on a
+  background-less hero still darkens the page beneath the content.
 - **`align` is vertical.** It reads like text alignment and is not; see
   [Height and vertical placement](#height-and-vertical-placement).
 - **`alt` without `src` does nothing.** No `<img>` is rendered at all unless `src` is set, so
-  `alt` is silently dropped. `parallax` without `src` is worse than a no-op: it still mounts
-  the client Parallax wrapper and still stretches the layer to 200% height, with nothing in it
-  to move.
+  `alt` is silently dropped. `parallax` without `src` is now an honest no-op: with no image to
+  drift, neither the client Parallax wrapper nor the 200%-height layer is mounted.
 - **`animate` adds three wrappers and no cascade.** Your children end up inside
   `ScrollReveal > Stagger > div.stagger-item`. The entrance class lands on the ScrollReveal
   element, while `.stagger-item` sets `animation-delay` with **no `animation-name`** — so the
@@ -328,16 +325,17 @@ renders fully transparent instead of degrading to 50% black.
 - **`overflow: hidden` crops anything that overhangs** — a decorative shape bleeding past the
   edge, a `position: sticky` child, a menu that expands downward. Overlays that render through
   a [Portal](portal.md) escape it.
-- **`size` is `vh`, not `dvh`.** On mobile browsers with a retracting URL bar, `100vh` is the
-  *large* viewport, so a `size="full"` hero is taller than the visible area on first paint.
-  A utility cannot patch it: `cn` will not dedupe `hero--full` against a `min-h-*` class, and
-  `.hero--full` is unlayered component CSS while Tailwind v4 puts utilities in
-  `@layer utilities` — unlayered outranks layered outright, whatever the specificity or the
-  source order. Use the important modifier, or your own unlayered rule.
+- **`size="full"` is `dvh`, the rest are `vh`.** `.hero--full` declares `100vh` and then
+  `100dvh`, so a browser that understands the dynamic unit tracks a retracting URL bar and one
+  that does not falls back to the large viewport. `sm`/`md`/`lg` are still `vh` fractions.
+  Overriding any of them needs the important modifier or your own unlayered rule: `cn` will
+  not dedupe `hero--full` against a `min-h-*` class, and `.hero--full` is unlayered component
+  CSS while Tailwind v4 puts utilities in `@layer utilities` — unlayered outranks layered
+  outright, whatever the specificity or the source order.
 - **Both stylesheets are required.** Hero is almost entirely CSS: `.../styles` from this
   package supplies the layering, the scrim and the padding rules, and
   `@batthewz/response-ui-css` supplies the variables they read. Miss the first and you get an
-  unstyled `<section>` of `<div>`s; miss the second and the scrim is transparent.
+  unstyled `<section>` of `<div>`s; miss the second and the scrim falls back to 50% black.
 - **Server-renderable, with client leaves.** `Hero.tsx` carries no `"use client"`, so all
   three parts drop into an RSC tree. `parallax` and `animate` are what pull client components
   ([Parallax](parallax.md), [ScrollReveal](scroll-reveal.md), [Stagger](stagger.md)) into it.
@@ -350,9 +348,9 @@ renders fully transparent instead of degrading to 50% black.
   `aria-labelledby` pointing at your headline's `id` if it should be one.
 - **Hero renders no heading.** Nothing here creates an `<h1>`; the level is entirely yours.
   [Text](text.md) with `variant="h1"` renders a real `<h1>`.
-- **The scrim is correctly hidden.** The overlay carries `aria-hidden="true"` and holds no
-  content. Its missing `pointer-events: none` is a mouse problem, not an assistive-technology
-  one — see [Gotchas](#gotchas).
+- **The scrim is correctly hidden and inert.** The overlay carries `aria-hidden="true"`, holds
+  no content and sets `pointer-events: none`, so it is invisible to assistive technology and
+  transparent to the pointer alike.
 - **Background images are decorative by default.** With no `alt`, the `<img>` gets `alt=""`
   *and* `role="presentation"`, so it drops out of the accessibility tree. Pass `alt` and it
   becomes a named image announced in DOM order — before your headline, if `Hero.Background`

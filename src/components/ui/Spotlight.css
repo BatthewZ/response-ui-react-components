@@ -54,30 +54,37 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Even items: flip image to right, content to left */
-  .spotlight-item:nth-child(even) .spotlight-image {
-    order: 2;
-  }
-
-  .spotlight-item:nth-child(even) .spotlight-content {
+  /* Both columns are ordered explicitly, so the row lays out the same whichever
+     way round it was authored. Ordering the image alone put a content-first row
+     in the flipped order already, which is how the alternation and `reversed`
+     both came to be no-ops for it. The non-image selector is deliberately not
+     `.spotlight-content`: with `animate` on, the reveal wrapper is the grid
+     item and `.spotlight-content` is a level down. */
+  .spotlight-item > .spotlight-image {
     order: 1;
   }
 
-  /* Manual reversed class mirrors the alternation */
-  .spotlight-item--reversed .spotlight-image {
+  .spotlight-item > *:not(.spotlight-image) {
     order: 2;
   }
 
-  .spotlight-item--reversed .spotlight-content {
+  /* Even items, and any `reversed` item: image right, copy left */
+  .spotlight-item:nth-child(even) > .spotlight-image,
+  .spotlight-item--reversed > .spotlight-image {
+    order: 2;
+  }
+
+  .spotlight-item:nth-child(even) > *:not(.spotlight-image),
+  .spotlight-item--reversed > *:not(.spotlight-image) {
     order: 1;
   }
 
-  /* Reversed on even items cancels out → back to default */
-  .spotlight-item--reversed:nth-child(even) .spotlight-image {
-    order: unset;
+  /* Reversed on an even item cancels out → back to image left */
+  .spotlight-item--reversed:nth-child(even) > .spotlight-image {
+    order: 1;
   }
 
-  .spotlight-item--reversed:nth-child(even) .spotlight-content {
-    order: unset;
+  .spotlight-item--reversed:nth-child(even) > *:not(.spotlight-image) {
+    order: 2;
   }
 }
