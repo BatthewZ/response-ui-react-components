@@ -164,9 +164,16 @@ Code defects found while documenting are recorded, not fixed inline, in
 `bugs/components/<name>.md` and the root-cause clusters in [bugs/PLAN.md](./bugs/PLAN.md).
 `verify:bugs` ([scripts/bugs-ledger.mjs](./scripts/bugs-ledger.mjs)) is the oracle over
 it: unique and ordered ids, statuses in the lifecycle enum, terminal statuses carrying
-their evidence, `src/` anchors resolving to a real file and an in-range line, and a detail
+their evidence, `src/` anchors resolving to a real file and an in-range line, a **content
+fingerprint** proving the anchor still points at the code the row describes, and a detail
 block for every high or medium. **Run it after any patch** — fixing a bug shifts every
 line number below it, and nothing else would notice.
+
+When a patch moves anchored code, `node scripts/bugs-ledger.mjs --reanchor` slides the
+line numbers whose fingerprint it can still find, and prints the rest under
+`RE-VERIFY BY HAND` — those are rows whose anchored code *changed*, so the row's claim
+itself needs re-reading, not just its line number. A prior reconcile had to do this for
+157 rows by hand because no gate could tell the two cases apart.
 
 It is intentionally absent from `prepublishOnly`: every guard in that chain checks a
 shipped artifact, and `bugs/` is not in `package.json` `files`. The workflow for taking a

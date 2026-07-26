@@ -393,5 +393,9 @@ the colour reading, or a measurement taken on an unfocused element reads as a pa
   `#237` entry above). Grep that the component actually *uses* the root before closing a row.
 - **Never renumber a finding**, and never delete a row — ids are cited from published
   `AGENTS.md`.
-- **This package has no ESLint config** (`npx eslint` finds none; there is no `lint` script),
-  so `tsc` is the only static gate. Worth knowing before trusting "lint is clean".
+- **`tsc` is no longer the only static gate.** `eslint.config.js` and a `lint` script now
+  exist (deliberately narrow: `react/jsx-key`, `react-hooks/rules-of-hooks`, and
+  `noInlineConfig` so a suppression comment cannot silence anything). `verify:omit-discipline`
+  also gates the one class `tsc` is blind to by construction — a JSX spread performs no
+  excess-property check, so an `Omit`ted key delivered by spreading a *variable* typechecks
+  clean. Worth knowing before trusting either "lint is clean" or "tsc is silent".
