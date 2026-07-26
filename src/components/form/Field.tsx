@@ -7,6 +7,8 @@ import {
   useCallback,
   useContext,
   useId,
+  useMemo,
+  useState,
   useSyncExternalStore,
 } from "react";
 
@@ -15,11 +17,21 @@ import { cn } from "../../util/style";
 import { useFormContext } from "./use-form";
 
 type FieldContextValue = {
+  /** Default id a `FieldError` adopts when the caller names none. */
   errorId: string;
   /** Resolved error content (explicit prop or form-derived). */
   error?: ReactNode;
   /** Whether the field is in an error state. */
   invalid: boolean;
+  /**
+   * Id of the error element that is actually mounted, or `undefined` when none
+   * is. Not the same question as `errorId`: a `FieldError` renders `null` with
+   * no content and adopts the caller's `id` when given one, so `errorId` is a
+   * proposal and this is the answer.
+   */
+  describedBy?: string;
+  /** Registers the id a `FieldError` rendered; returns its unregister. */
+  registerError: (id: string) => () => void;
 };
 const FieldContext = createContext<FieldContextValue | null>(null);
 export const useFieldContext = () => useContext(FieldContext);
@@ -45,9 +57,24 @@ export function useFieldError(error?: boolean) {
     invalid,
     ariaProps: {
       "aria-invalid": invalid ? ("true" as const) : undefined,
-      "aria-describedby": invalid && field?.errorId ? field.errorId : undefined,
+      // The id of a mounted error element, never the id one *would* take:
+      // pointing at `errorId` unconditionally dangles whenever no FieldError
+      // renders (no content, or none in the tree) or one renders under the
+      // caller's own `id`.
+      "aria-describedby": invalid ? field?.describedBy : undefined,
     },
   };
+}
+
+/**
+ * `aria-describedby` alone, for a control whose role ARIA does not permit
+ * `aria-invalid` on. `radio` is the only such control in this package — ARIA
+ * 1.2 supports the attribute on `radiogroup` but not on `radio`, so the state
+ * belongs to the group and only the description belongs on the option.
+ */
+export function useFieldDescription() {
+  const { ariaProps } = useFieldError();
+  return { "aria-describedby": ariaProps["aria-describedby"] };
 }
 
 /** Returns aria-invalid and aria-describedby props for a form control inside a Field. */
@@ -71,8 +98,20 @@ export const Field = forwardRef<HTMLDivElement, FieldProps>(function Field(
   const formError = useFormFieldError(name);
   const resolvedError = error ?? formError;
   const invalid = resolvedError != null && resolvedError !== false && resolvedError !== "";
+
+  const [describedBy, setDescribedBy] = useState<string>();
+  const registerError = useCallback((mountedId: string) => {
+    setDescribedBy(mountedId);
+    return () => setDescribedBy((current) => (current === mountedId ? undefined : current));
+  }, []);
+
+  const context = useMemo<FieldContextValue>(
+    () => ({ errorId, error: resolvedError, invalid, describedBy, registerError }),
+    [errorId, resolvedError, invalid, describedBy, registerError]
+  );
+
   return (
-    <FieldContext value={{ errorId, error: resolvedError, invalid }}>
+    <FieldContext value={context}>
       <div ref={ref} className={cn("flex flex-col gap-r6", className)} {...props} />
     </FieldContext>
   );

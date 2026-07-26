@@ -92,11 +92,15 @@ border uses, so the message and its field read as one.
 - **One error id per Field.** Two `FieldError`s deriving from the same [Field](field.md) both take its
   `errorId`, producing a duplicate id. Only an explicit `id` prop clears it: `id` resolves to
   `field.errorId` regardless of `children`, so giving one its own content changes what shows
-  but leaves the duplicate id in place.
-- **Not server-renderable.** Like the form inputs, FieldError reads [Field](field.md) context via a
-  hook and ships **no** `"use client"` of its own, so rendering it directly from a Server
-  Component with no client ancestor throws. Inside a normal [Field](field.md) tree — itself a client
-  component — this never comes up.
+  but leaves the duplicate id in place. The last one to mount is the one the controls point
+  at.
+- **The id is published, not assumed.** FieldError registers the id it actually rendered
+  with the [Field](field.md), so `aria-describedby` on the controls follows an explicit `id`
+  and disappears when the message does. Registration runs in an effect, so it lands after
+  hydration rather than in the server HTML.
+- **Client component.** FieldError reads [Field](field.md) context and registers its id, both
+  hooks, so it carries `"use client"` and needs a client boundary in an RSC tree. Inside a
+  normal [Field](field.md) tree — itself a client component — this never comes up.
 - **No per-component CSS.** There is no `FieldError.css`. Both CSS imports are still required
   — the two utilities resolve to tokens from `@batthewz/response-ui-css`.
 
@@ -109,9 +113,10 @@ every keystroke, prefer the polite `role="status"` override above so changes que
 than interrupt.
 
 The colour is signal too, but never the only signal: the message text carries the meaning,
-so users who can't perceive the red still get the full error. Inside a [Field](field.md), the shared
-`errorId` is what turns this into the input's description — render it (with content) or the
-input's `aria-describedby` resolves to nothing.
+so users who can't perceive the red still get the full error. Inside a [Field](field.md),
+this element's id is what turns the message into the input's description, and the element
+publishes that id to the [Field](field.md) itself — so a control is described-by a message
+that exists or by nothing at all, never by an id that resolves to no element.
 
 ## Related
 

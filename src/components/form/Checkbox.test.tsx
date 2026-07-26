@@ -4,6 +4,8 @@ import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Checkbox } from "./Checkbox";
+import { Field } from "./Field";
+import { FieldError } from "./FieldError";
 
 describe("Checkbox", () => {
   it("renders a checkbox input", () => {
@@ -73,10 +75,95 @@ describe("Checkbox", () => {
     expect(checkbox.className).toContain("size-4");
   });
 
-  it("applies rounded-sm class for checkbox shape", () => {
+  it("ships no resting border or radius (#26)", () => {
+    // Measured in Firefox 146 and Chrome 144: with no `appearance-none`, a
+    // native checkbox renders byte-for-byte identically with and without an
+    // author `border` / `border-radius`, checked and unchecked alike. Only an
+    // `appearance:none` control rendered differently. No test in this package
+    // can read a stylesheet, so the honest assertion is that the dead utilities
+    // are gone; the browser measurement is what says they were dead.
     render(<Checkbox aria-label="Agree" />);
-    const checkbox = screen.getByRole("checkbox", { name: "Agree" });
-    expect(checkbox.className).toContain("rounded-sm");
+    const cls = screen.getByRole("checkbox", { name: "Agree" }).className;
+
+    expect(cls).not.toContain("rounded-");
+    expect(cls).not.toContain("border-border-strong");
+    // The two a native checkbox does honour stay.
+    expect(cls).toContain("size-4");
+    expect(cls).toContain("accent-accent");
+  });
+
+  describe("Field wiring (#76)", () => {
+    it("takes aria-invalid and aria-describedby from an invalid Field", () => {
+      render(
+        <Field error="Accept the terms to continue.">
+          <Checkbox aria-label="Terms" />
+          <FieldError />
+        </Field>
+      );
+
+      const box = screen.getByRole("checkbox", { name: "Terms" });
+      expect(box).toHaveAttribute("aria-invalid", "true");
+      expect(box).toHaveAttribute(
+        "aria-describedby",
+        screen.getByRole("alert").getAttribute("id")
+      );
+    });
+
+    it("marks itself invalid from an `error` prop with no Field around it", () => {
+      render(<Checkbox error aria-label="Terms" />);
+
+      const box = screen.getByRole("checkbox", { name: "Terms" });
+      expect(box).toHaveAttribute("aria-invalid", "true");
+      expect(box).not.toHaveAttribute("aria-describedby");
+    });
+
+    it("stays untouched outside a Field", () => {
+      render(<Checkbox aria-label="Terms" />);
+
+      const box = screen.getByRole("checkbox", { name: "Terms" });
+      expect(box).not.toHaveAttribute("aria-invalid");
+      expect(box).not.toHaveAttribute("aria-describedby");
+    });
+
+    it("survives a `field()`-shaped spread carrying aria-invalid: undefined", () => {
+      const field = { name: "terms", "aria-invalid": undefined };
+      render(
+        <Field error="Accept the terms to continue.">
+          <Checkbox aria-label="Terms" {...field} />
+          <FieldError />
+        </Field>
+      );
+
+      expect(screen.getByRole("checkbox", { name: "Terms" })).toHaveAttribute(
+        "aria-invalid",
+        "true"
+      );
+    });
+
+    it("lets a caller's aria-invalid through when it has no opinion of its own", () => {
+      // The mirror direction, and the same contract Input, Textarea and Switch
+      // ship: the component wins where it computed a state, the caller wins
+      // where it did not. Reordering the spread to fix one breaks the other.
+      render(<Checkbox aria-label="Terms" aria-invalid="true" />);
+
+      expect(screen.getByRole("checkbox", { name: "Terms" })).toHaveAttribute(
+        "aria-invalid",
+        "true"
+      );
+    });
+
+    it("defers to `error={false}` inside an invalid Field", () => {
+      render(
+        <Field error="Accept the terms to continue.">
+          <Checkbox error={false} aria-label="Terms" aria-describedby="hint" />
+          <FieldError />
+        </Field>
+      );
+
+      const box = screen.getByRole("checkbox", { name: "Terms" });
+      expect(box).not.toHaveAttribute("aria-invalid");
+      expect(box).toHaveAttribute("aria-describedby", "hint");
+    });
   });
 
   describe("focus affordance", () => {

@@ -29,8 +29,10 @@ name that goes with it, are yours to write.
 `type` is fixed to `"radio"` and is the only input prop removed from the type; everything
 else — `name`, `value`, `checked`, `defaultChecked`, `disabled`, `required`, `onChange`,
 `aria-*` — spreads onto the underlying `<input>`. Radio adds **no** props of its own: no
-label, no `error`, no awareness of the group it belongs to. It also removes its own focus
-outline. See [Gotchas](#gotchas).
+label, no `error`, no awareness of the group it belongs to. It does read one thing from its
+surroundings — inside a [Field](field.md) it inherits `aria-describedby`, and nothing else;
+see [Inside a field](#inside-a-field) for why the invalid state is not part of that. It also
+removes its own focus outline. See [Gotchas](#gotchas).
 
 ## Grouping is the whole job
 
@@ -156,15 +158,15 @@ every control inside it:
 
 ## Inside a field
 
-[Field](field.md) gives the group its column layout and resolves the error, and
-[FieldError](field-error.md) renders the message — but Radio never reads that context, so
-the ARIA link from the group to the message is manual. Give the error element an explicit
-`id` and point the group's `aria-describedby` at it:
+[Field](field.md) gives the group its column layout and resolves the error,
+[FieldError](field-error.md) renders the message, and each Radio takes that message's id as
+its own `aria-describedby` — so the error is reachable from whichever option has focus with
+no `id` to invent and none to keep in sync:
 
 <!-- example:InField -->
 ```tsx
 <Field error="Choose a delivery speed.">
-  <fieldset aria-describedby="delivery-speed-error">
+  <fieldset>
     <legend className="text-body-2 font-semibold text-fg-primary">Delivery speed</legend>
     <div className="mt-r5 flex flex-col gap-r5">
       <label className="flex items-center gap-r5">
@@ -177,7 +179,7 @@ the ARIA link from the group to the message is manual. Give the error element an
       </label>
     </div>
   </fieldset>
-  <FieldError id="delivery-speed-error" />
+  <FieldError />
 </Field>
 ```
 <!-- /example -->
@@ -185,10 +187,40 @@ the ARIA link from the group to the message is manual. Give the error element an
 `required` on one member makes the whole group required, so the browser blocks submission
 until something is chosen.
 
-Note what this example does *not* do: it never marks the group invalid. `aria-invalid` has no
-effect on a `<fieldset>` — see [Accessibility](#accessibility) — so a group that has to carry
-the invalid state needs the `role="radiogroup"` container from [Controlled](#controlled)
-rather than a fieldset, with `aria-invalid="true"` and `aria-describedby` both on that `div`.
+Note what this example does *not* do: it never marks the group invalid, and neither does
+Radio. `aria-invalid` is not a global attribute — ARIA 1.2 lists it under `radiogroup` and
+under neither `radio` nor `group`, and HTML maps a `<fieldset>` to `group`. So there is no
+element in the tree above that can carry it, and a Radio that set it on itself would be
+stating the wrong thing on a role that does not support it. That is the one half of the
+field wiring Radio deliberately leaves out, and [Checkbox](checkbox.md) — whose `checkbox`
+role *does* support the attribute — is the mirror case, carrying both halves.
+
+A group that must announce itself invalid therefore needs the `role="radiogroup"` container
+from [Controlled](#controlled) rather than a fieldset, carrying `aria-invalid="true"`. The
+description still arrives on the options by itself:
+
+<!-- example:InvalidGroup -->
+```tsx
+<Field error="Choose a delivery speed.">
+  <div role="radiogroup" aria-label="Delivery speed" aria-invalid="true">
+    <div className="flex flex-col gap-r5">
+      <label className="flex items-center gap-r5">
+        <Radio name="delivery-speed-invalid" value="standard" required />
+        Standard — 3–5 working days
+      </label>
+      <label className="flex items-center gap-r5">
+        <Radio name="delivery-speed-invalid" value="express" required />
+        Express — next working day
+      </label>
+    </div>
+  </div>
+  <FieldError />
+</Field>
+```
+<!-- /example -->
+
+The fieldset and its legend are out of the picture there, so the group's name has to come
+from `aria-label` or `aria-labelledby` instead.
 
 ## Theme tokens
 
@@ -212,13 +244,13 @@ The box is a fixed `size-4` (1rem) — a Tailwind spacing value, not a contract 
 resize it with `className="size-…"` rather than a theme variable. The ring's 2px width and
 its transparent rest colour are literals in the same way.
 
-Note what is *absent*: unlike [Checkbox](checkbox.md), Radio ships no resting `border-*` or
-`rounded-*` utility. That is the honest call rather than an omission — there is no
-`appearance-none` here either, so the circle is the browser's own control, and current
-engines widely ignore an author border or corner radius drawn on one. The recipe's
-`focus:border-border-focus` is in the same position: reachable, but on a default-appearance
-radio widely a no-op, which is why the ring and not the border is what you actually see on
-focus.
+Note what is *absent*: Radio ships no resting `border-*` or `rounded-*` utility. That is the
+honest call rather than an omission — there is no `appearance-none` here, so the circle is
+the browser's own control, and engines ignore an author border or corner radius drawn on
+one. [Checkbox](checkbox.md) used to carry both and no longer does, for the same measured
+reason. The recipe's `focus:border-border-focus` is in the same position: reachable, but on
+a default-appearance radio a no-op, which is why the ring and not the border is what you
+actually see on focus.
 
 ## Gotchas
 
@@ -237,14 +269,12 @@ focus.
   `outline-none` compiles to `outline-style: none` rather than the transparent outline
   `outline-hidden` keeps. So in forced colours neither indicator survives: add
   `forced-colors:outline` at the call site if you support that mode.
-- **Radio ignores [Field](field.md) context.** Every other control in the form module
-  inherits `aria-invalid` / `aria-describedby` automatically: eleven of them
-  ([Input](input.md), [Textarea](textarea.md), [Select](select.md), [Combobox](combobox.md), [Switch](switch.md) and six more)
-  read the field-error hook directly, and four more — [DatePicker](date-picker.md), [DateRangePicker](date-range-picker.md),
-  [NumberInput](number-input.md), [SearchInput](search-input.md) — get it through the [Input](input.md) they render. Radio does not, and
-  neither does [Checkbox](checkbox.md): those two are the module's only unwired controls.
-  Radio also takes no `error` prop, so a radio inside an invalid Field is neither marked
-  invalid nor linked to the message. Wire `aria-describedby` onto the group yourself.
+- **Radio inherits the field's description and not its state.** Inside a
+  [Field](field.md) it takes `aria-describedby` from the rendered
+  [FieldError](field-error.md), like every other control in the module — but never
+  `aria-invalid`, which ARIA 1.2 does not support on the `radio` role. It also takes no
+  `error` prop, because there would be nothing for one to set. Marking the *group* invalid
+  is still yours: see [Inside a field](#inside-a-field).
 - **One `checked` or `defaultChecked` per group.** Mark two members of the same group and the
   browser keeps only the last one checked — so the form submits that single value while your
   props still claim two, and React and the DOM disagree about the rest. Passing `checked`
@@ -258,11 +288,9 @@ focus.
   (see [Accessibility](#accessibility)).
 - **No per-component CSS.** There is no `Radio.css`. The CSS imports from
   `@batthewz/response-ui-css` are still required — `accent-accent` resolves to its tokens.
-- **Server-renderable.** No `"use client"`, no hooks, and it reads no context, so Radio drops
-  straight into an RSC tree. The last example's tree does not, but that is
-  [Field](field.md)'s client boundary — and [FieldError](field-error.md)'s, which reads the
-  same context with no directive of its own and, as [Field](field.md)'s *child*, is rendered by
-  whoever writes it rather than from behind [Field](field.md)'s boundary. Neither is Radio's doing.
+- **Client component.** Reading [Field](field.md) context is a hook, so Radio carries
+  `"use client"` and needs a client boundary in an RSC tree. It was server-renderable
+  before it read the field.
 
 ## Accessibility
 
@@ -290,15 +318,16 @@ theme. Being `focus:` rather than `focus-visible:`, it paints on a pointer click
 on keyboard focus — unlike [Button](button.md) and [IconButton](icon-button.md), which are
 focus-visible only. One mode is still uncovered; see [Gotchas](#gotchas).
 
-Marking a group invalid is manual, and so is describing it — Radio reads no field context —
-and the two do not go in the same place. `aria-describedby` is global, so it can sit on the
-`<fieldset>`, which is what [Inside a field](#inside-a-field) does. `aria-invalid` is not:
-ARIA 1.2 supports it on `radiogroup` but on neither `radio` nor `group`, and HTML maps a
+Describing a group is automatic; marking it invalid is not, and the two do not go in the
+same place. `aria-describedby` is global, so it sits on each option — Radio takes the
+[FieldError](field-error.md)'s id from [Field](field.md) context, and the message is
+therefore announced wherever focus lands in the group. `aria-invalid` is not global: ARIA
+1.2 supports it on `radiogroup` but on neither `radio` nor `group`, and HTML maps a
 `<fieldset>` to `group` — so on the fieldset it is simply ignored, and on the individual
-radios it says the wrong thing. A group that must announce itself invalid therefore needs the
-`role="radiogroup"` container from [Controlled](#controlled), carrying `aria-invalid="true"`
-and `aria-describedby` on that same `div` — the fieldset and its legend are then out of the
-picture, and the group's name has to come from `aria-label` or `aria-labelledby` instead.
+radios it would say the wrong thing on a role that does not take it. That is why Radio emits
+one and not the other, and why a group that must announce itself invalid needs the
+`role="radiogroup"` container from [Controlled](#controlled) carrying `aria-invalid="true"`
+itself; [Inside a field](#inside-a-field) shows both shapes.
 
 `required` on a single member is enough to require the whole group.
 

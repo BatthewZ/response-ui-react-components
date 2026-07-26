@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { focusOutlineResetControl, focusRingControl } from "../../util/focus";
 
+import { Field } from "./Field";
+import { FieldError } from "./FieldError";
 import { Radio } from "./Radio";
 
 describe("Radio", () => {
@@ -90,6 +92,68 @@ describe("Radio", () => {
     );
     expect(screen.getByRole("radio", { name: "Red" })).toHaveAttribute("name", "color");
     expect(screen.getByRole("radio", { name: "Blue" })).toHaveAttribute("name", "color");
+  });
+});
+
+describe("Field wiring (#75)", () => {
+  it("describes every option in an invalid Field with the rendered message", () => {
+    render(
+      <Field error="Choose a delivery speed.">
+        <div role="radiogroup" aria-label="Delivery speed">
+          <Radio name="speed" value="standard" aria-label="Standard" />
+          <Radio name="speed" value="express" aria-label="Express" />
+        </div>
+        <FieldError />
+      </Field>
+    );
+
+    const errorId = screen.getByRole("alert").getAttribute("id");
+    expect(errorId).toBeTruthy();
+    for (const name of ["Standard", "Express"]) {
+      const option = screen.getByRole("radio", { name });
+      expect(option).toHaveAttribute("aria-describedby", errorId);
+      expect(document.getElementById(errorId!)).toBe(screen.getByRole("alert"));
+    }
+  });
+
+  it("never emits aria-invalid, because ARIA 1.2 does not allow it on `radio`", () => {
+    // Deliberate asymmetry with Checkbox, asserted rather than assumed. ARIA 1.2
+    // lists `aria-invalid` under `radiogroup` and not under `radio`; `checkbox`
+    // does support it, which is why Checkbox carries both halves and this one
+    // carries the description only. The invalid state belongs on the group
+    // container the caller owns — see docs/components/radio.md.
+    render(
+      <Field error="Choose a delivery speed.">
+        <Radio name="speed" value="standard" aria-label="Standard" />
+        <FieldError />
+      </Field>
+    );
+
+    const option = screen.getByRole("radio", { name: "Standard" });
+    expect(option).not.toHaveAttribute("aria-invalid");
+    expect(option).toHaveAttribute("aria-describedby");
+  });
+
+  it("stays untouched outside a Field", () => {
+    render(<Radio name="speed" value="standard" aria-label="Standard" />);
+
+    const option = screen.getByRole("radio", { name: "Standard" });
+    expect(option).not.toHaveAttribute("aria-describedby");
+    expect(option).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("keeps a caller's own aria-describedby when there is no Field", () => {
+    render(
+      <>
+        <Radio name="speed" value="standard" aria-label="Standard" aria-describedby="hint" />
+        <p id="hint">Arrives in 3–5 days.</p>
+      </>
+    );
+
+    expect(screen.getByRole("radio", { name: "Standard" })).toHaveAttribute(
+      "aria-describedby",
+      "hint"
+    );
   });
 });
 

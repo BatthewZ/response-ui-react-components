@@ -121,12 +121,12 @@ export function DisabledGroup() {
   );
 }
 
-/** Radio reads no `Field` context, so point the group at the message yourself: give
- *  `FieldError` an explicit `id` and describe the `<fieldset>` with it. */
+/** Each option takes the rendered `FieldError`'s id from the field, so the message is
+ *  reachable from whichever option has focus — no `id` to invent, none to keep in sync. */
 export function InField() {
   return (
     <Field error="Choose a delivery speed.">
-      <fieldset aria-describedby="delivery-speed-error">
+      <fieldset>
         <legend className="text-body-2 font-semibold text-fg-primary">Delivery speed</legend>
         <div className="mt-r5 flex flex-col gap-r5">
           <label className="flex items-center gap-r5">
@@ -139,7 +139,29 @@ export function InField() {
           </label>
         </div>
       </fieldset>
-      <FieldError id="delivery-speed-error" />
+      <FieldError />
+    </Field>
+  );
+}
+
+/** The invalid *state* has nowhere to sit on a `<fieldset>` — ARIA ignores `aria-invalid`
+ *  on `group`. A `role="radiogroup"` container is the element that can carry it. */
+export function InvalidGroup() {
+  return (
+    <Field error="Choose a delivery speed.">
+      <div role="radiogroup" aria-label="Delivery speed" aria-invalid="true">
+        <div className="flex flex-col gap-r5">
+          <label className="flex items-center gap-r5">
+            <Radio name="delivery-speed-invalid" value="standard" required />
+            Standard — 3–5 working days
+          </label>
+          <label className="flex items-center gap-r5">
+            <Radio name="delivery-speed-invalid" value="express" required />
+            Express — next working day
+          </label>
+        </div>
+      </div>
+      <FieldError />
     </Field>
   );
 }

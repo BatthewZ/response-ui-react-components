@@ -4,8 +4,8 @@ The wrapper that turns a label, a control, and an error message into one accessi
 group. It stacks them in a column, resolves the field's error — from an explicit prop or,
 inside a `FormProvider`, from the form store by `name` — and publishes the `aria-invalid` /
 `aria-describedby` wiring on context for the control inside to pick up, so you don't repeat
-it on every input. Every control in the form module picks it up bar two — [Radio](radio.md) and
-[Checkbox](checkbox.md), which read no context at all.
+it on every input. Every control in the form module picks it up, [Radio](radio.md) and
+[Checkbox](checkbox.md) included.
 
 <!-- example:Minimal -->
 ```tsx
@@ -111,12 +111,17 @@ change it you have to override it at both breakpoints (see
   for the error — it never wires `htmlFor`/`id` between a [Label](label.md) and the input. Set
   `htmlFor` on the [Label](label.md) and a matching `id` on the control yourself, or the control has
   no accessible name from its label.
-- **`aria-describedby` can dangle.** A control is described-by the error whenever *it* is
-  invalid, but the error element only exists when a [FieldError](field-error.md) actually has content. Mark
+- **`aria-describedby` follows the message, not the id.** The [FieldError](field-error.md)
+  tells the Field which id it actually rendered, so a control is described-by the error only
+  while an error element is in the DOM, and by the caller's own `id` when one is given. Mark
   a control invalid on its own (e.g. `<Input error>`) inside a Field that has no error and
-  renders an empty [FieldError](field-error.md), and the control's `aria-describedby` points at an id that
-  is not in the DOM. Keep the two in sync — drive the invalid state and the [FieldError](field-error.md)
-  content from the same `error`.
+  you get `aria-invalid` with no `aria-describedby` — which is correct, and still not what
+  you want: drive the invalid state and the [FieldError](field-error.md) content from the
+  same `error` so there is a message to point at.
+- **The reference is wired after mount.** Registration happens in an effect, so a
+  server-rendered control carries no `aria-describedby` until hydration. The message is a
+  `role="alert"` and announces itself on arrival regardless; the reference matters when the
+  user returns to the control, by which time it is there.
 - **An empty [FieldError](field-error.md) renders `null`.** It only paints when there's content (its own
   children, or the field's resolved error), so it's safe to leave in the tree
   unconditionally — it costs nothing until there's a message.
@@ -129,18 +134,17 @@ change it you have to override it at both breakpoints (see
 The error is rendered by [FieldError](field-error.md) as a `<p role="alert">`, so assistive tech announces
 it when it appears.
 
-Controls read the field context to pick up their state: eleven of the package's own controls
-— Input, Textarea, Select, Combobox and Switch among them — take `aria-invalid` and
+Controls read the field context to pick up their state: [Input](input.md), Textarea, Select,
+Combobox, Switch and [Checkbox](checkbox.md) among them take `aria-invalid` and
 `aria-describedby` from the field automatically, and DatePicker, DateRangePicker, NumberInput
-and SearchInput inherit both through the Input they render. [RangeSlider](range-slider.md) is the one partial:
-it reads the same hook but forwards only `aria-invalid`, onto its wrapper, and discards the
-`aria-describedby` — so nothing there points at the message. Two controls do not.
-[Radio](radio.md) and [Checkbox](checkbox.md) read no context and take no `error` prop, so
-inside an errored Field they are neither marked invalid nor linked to the message. The
-Checkbox in [Custom layout](#custom-layout) above is there for the layout; give that Field an
-error and its ARIA would still have to be set by hand. A plain, un-wrapped `<input>` gets
-none of it either — Field wires nothing onto arbitrary children, so the control itself has to
-consume the context.
+and SearchInput inherit both through the [Input](input.md) they render. Two are partial, for
+different reasons. [RangeSlider](range-slider.md) reads the same hook but forwards only
+`aria-invalid`, onto its wrapper, and discards the `aria-describedby` — so nothing there
+points at the message. [Radio](radio.md) is the deliberate one: it takes the
+`aria-describedby` and never `aria-invalid`, because ARIA 1.2 does not support that
+attribute on the `radio` role — the invalid state belongs on a `role="radiogroup"` container
+you own. A plain, un-wrapped `<input>` gets none of it — Field wires nothing onto arbitrary
+children, so the control itself has to consume the context.
 
 Field is not a `fieldset` or `role="group"` and adds no label of its own. For a set of
 controls that needs one accessible name — a radio group, an address block — wrap them in

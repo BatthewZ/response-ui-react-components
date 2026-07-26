@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Checkbox } from "./Checkbox";
+import { Field } from "./Field";
+import { FieldError } from "./FieldError";
 
 /** The 30-second usage: wrap the box and its text in one `<label>` so the whole row toggles. */
 export function Minimal() {
@@ -40,6 +42,20 @@ export function Disabled() {
         Locked on by your plan
       </label>
     </div>
+  );
+}
+
+/** In a `Field`, the box takes the field's `aria-invalid` and the rendered `FieldError`'s id
+ *  with no props threaded through. */
+export function InField() {
+  return (
+    <Field error="Accept the terms to continue.">
+      <label className="flex items-center gap-r2">
+        <Checkbox name="terms" />
+        I accept the terms of service
+      </label>
+      <FieldError />
+    </Field>
   );
 }
 

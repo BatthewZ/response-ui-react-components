@@ -3,7 +3,8 @@
 A checkbox whose tick follows your accent colour with nothing to wire up. It is a thin
 wrapper over the native `<input type="checkbox">` — every input prop passes straight
 through, so `checked`, `onChange`, `name`, and `aria-*` behave exactly as they do
-natively.
+natively — and inside a [Field](field.md) it picks up that field's `aria-invalid` and
+`aria-describedby` on its own.
 
 <!-- example:Minimal -->
 ```tsx
@@ -14,16 +15,19 @@ natively.
 ```
 <!-- /example -->
 
-| Prop        | Type                      | Default |
-| ----------- | ------------------------- | ------- |
-| `className` | `string`                  | —       |
-| `ref`       | `Ref<HTMLInputElement>`   | —       |
-| …rest       | props of `<input>`        | —       |
+| Prop        | Type                      | Default              |
+| ----------- | ------------------------- | -------------------- |
+| `error`     | `boolean`                 | the `Field`'s state  |
+| `className` | `string`                  | —                    |
+| `ref`       | `Ref<HTMLInputElement>`   | —                    |
+| …rest       | props of `<input>`        | —                    |
 
 The `type` is fixed to `"checkbox"` and is the only input prop removed from the type;
 everything else — `checked`, `defaultChecked`, `disabled`, `onChange`, `name`, `value`,
-`required`, `aria-*` — spreads onto the underlying `<input>`. Checkbox adds **no** props
-of its own, and no label: it has two sharp edges around theming and one around
+`required`, `aria-*` — spreads onto the underlying `<input>`. `error` is the one prop
+Checkbox adds, and it is the same one [Input](./input.md), [Select](select.md) and
+[Textarea](textarea.md) take: it marks the box invalid without a [Field](field.md) around
+it. There is no label: it has one sharp edge around theming and one around
 `indeterminate`. See [Gotchas](#gotchas).
 
 ## Controlled
@@ -78,6 +82,27 @@ so React can't set it from JSX — reach for the forwarded `ref` and set it afte
 ```
 <!-- /example -->
 
+## Inside a Field
+
+Drop a Checkbox in a [Field](field.md) and it takes that field's invalid state and the id of
+the rendered [FieldError](field-error.md) without a prop from you — the same wiring
+[Input](./input.md) and [Select](select.md) get:
+
+<!-- example:InField -->
+```tsx
+<Field error="Accept the terms to continue.">
+  <label className="flex items-center gap-r2">
+    <Checkbox name="terms" />
+    I accept the terms of service
+  </label>
+  <FieldError />
+</Field>
+```
+<!-- /example -->
+
+Outside a [Field](field.md), `error` marks the box invalid on its own; inside one it
+overrides the field — pass `error={false}` to opt a single box out of a field-wide error.
+
 ## Theme tokens
 
 Checkbox has no `.css` file; every entry below is a Tailwind utility in the `.tsx` that
@@ -87,29 +112,29 @@ rest of the app.
 | Where              | Utility                  | Override            |
 | ------------------ | ------------------------ | ------------------- |
 | Tick fill (checked) | `accent-accent`         | `--C-ACCENT`        |
-| Box border         | `border-border-strong`   | `--C-BORDER-STRONG` |
-| Corner radius      | `rounded-sm`             | `--RADIUS-SM`       |
 | Focus ring         | `focus:ring-border-focus` | `--C-BORDER-FOCUS`  |
 
 The box is a fixed `size-4` (1rem) — a Tailwind spacing value, not a contract token, so
 resize it with `className="size-…"` rather than a theme variable.
 
-**The reliably-themed surface is the tick, not the box.** `accent-accent` sets the CSS
+**The themed surface is the tick, not the box.** `accent-accent` sets the CSS
 `accent-color` property, which browsers honour on native checkboxes across the board — so
-the checked fill always follows `--C-ACCENT`. The `border-border-strong` and `rounded-sm`
-utilities do **not** get the same guarantee: the component keeps the browser's native
-checkbox (there is no `appearance-none`), and every current engine draws its own box and
-ignores an author `border` / `border-radius` on it. Those two rows are reachable and would
-re-tint if they rendered, but on a default-appearance checkbox they are widely a no-op.
-See [Gotchas](#gotchas).
+the checked fill always follows `--C-ACCENT`. The box itself is the browser's: there is no
+`appearance-none` here, and Checkbox therefore ships no resting `border-*` or `rounded-*`
+utility, matching [Radio](radio.md). It used to carry `border-border-strong` and
+`rounded-sm`, and they never rendered — measured in Firefox 146 and Chrome 144, a native
+checkbox paints byte-for-byte identically with and without them, checked or unchecked,
+while the same declarations under `appearance: none` render fine. A table row for a
+variable that cannot reach a pixel is worse than no row, so both are gone. If you want a
+box you can theme, add `appearance-none` and draw the check yourself.
 
 ## Gotchas
 
-- **The themed border and radius usually don't render.** Without `appearance-none` the
-  checkbox stays a native control, and Chrome, Firefox, and Safari all draw their own box
-  and ignore the `border-border-strong` / `rounded-sm` utilities. `size-4` (dimensions)
-  and `accent-accent` (`accent-color`) do apply; the border and corner radius largely do
-  not. If you need a fully custom box, add `appearance-none` and draw the check yourself.
+- **The box is the browser's, so an author `border` / `border-radius` on it does nothing.**
+  Without `appearance-none` the checkbox stays a native control: `size-4` (dimensions) and
+  `accent-accent` (`accent-color`) apply, a border and corner radius do not — measured
+  identical, not merely "widely a no-op". A `className` that adds them will not render
+  either; add `appearance-none` alongside and draw the check yourself.
 - **The focus ring sits flush against the box.** It is a 2px `--C-BORDER-FOCUS` ring at
   `ring-offset-0`, so no gap is reserved and `--tw-ring-offset-color` is never painted. Open
   a gap with a `ring-offset-*` utility and you inherit that variable, which
@@ -130,8 +155,9 @@ See [Gotchas](#gotchas).
 - **No per-component CSS.** There is no `Checkbox.css`. The CSS imports from
   `@batthewz/response-ui-css` are still required — the utilities above resolve to its
   tokens.
-- **Server-renderable.** No `"use client"` and no hooks, so it works directly in an RSC
-  tree.
+- **Client component.** Reading [Field](field.md) context is a hook, so Checkbox carries
+  `"use client"` like the other wired controls and needs a client boundary in an RSC tree.
+  It was server-renderable before it read the field.
 
 ## Accessibility
 
@@ -149,6 +175,13 @@ Because the focus ring is `focus:` rather than `focus-visible:`, it shows on cli
 as keyboard focus. Its colour is `--C-BORDER-FOCUS` and it is drawn flush against the box
 at `ring-offset-0`, so nothing paints in a gap. The browser's own outline is not removed,
 so keyboard users get both indicators.
+
+Inside an invalid [Field](field.md), Checkbox announces the state and the reason: it takes
+`aria-invalid="true"` and an `aria-describedby` pointing at the rendered
+[FieldError](field-error.md), so a screen-reader user hears the message on the control
+rather than only when the alert fires. ARIA 1.2 supports `aria-invalid` on the `checkbox`
+role, which is why this box carries it and [Radio](radio.md) — whose `radio` role does not —
+carries the description alone.
 
 ## Related
 

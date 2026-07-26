@@ -271,7 +271,8 @@ the page. See [Accessibility](#accessibility) — that has measurable consequenc
   latter, but a parent using `:last-child`, `:nth-child`, or a child count will see two
   elements.
 - **Client component.** `"use client"`, for `useControllableState` and the Field context — it
-  needs a client boundary in an RSC tree, unlike [Checkbox](checkbox.md).
+  needs a client boundary in an RSC tree. So does [Checkbox](checkbox.md), which became one
+  when it started consuming the Field's error state.
 
 ## Accessibility
 
