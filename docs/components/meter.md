@@ -19,6 +19,7 @@ semantic colour once the value crosses a `warningAt` or `criticalAt` threshold y
 | `segments`   | `number`                            | `10`       |
 | `warningAt`  | `number`                            | —          |
 | `criticalAt` | `number`                            | —          |
+| `statusLabels` | `Partial<Record<"ok" \| "warning" \| "critical", string>>` | `{ warning: "Warning", critical: "Critical" }` |
 | `aria-label` | `string`                            | (required) |
 | `className`  | `string`                            | —          |
 | `style`      | `CSSProperties`                     | —          |
@@ -26,9 +27,8 @@ semantic colour once the value crosses a `warningAt` or `criticalAt` threshold y
 | …rest        | props of `div` (minus `children`)   | —          |
 
 `value` and `aria-label` are the only required props — the rest have defaults, and
-`children` is omitted from the type because the bars are generated from `segments`. Two
-props have sharp edges: `style.gridTemplateColumns` is ignored and `value` isn't clamped
-in the ARIA announcement. See [Gotchas](#gotchas).
+`children` is omitted from the type because the bars are generated from `segments`. One
+prop has a sharp edge: `style.gridTemplateColumns` is ignored. See [Gotchas](#gotchas).
 
 ## Thresholds and status colour
 
@@ -49,6 +49,13 @@ own styling hooks.
 Thresholds are compared against the **raw** `value`, not the fraction — on a custom
 range they are absolute numbers in that range, not percentages. `criticalAt` is tested
 first, so if the two ever cross, critical wins.
+
+The crossed threshold is also **named**, not just tinted: the word joins `aria-label`, so
+the meter above announces "Swap, Critical". `statusLabels` merges over the defaults —
+`{ critical: "Kritisch" }` translates one, `{ ok: "Normal" }` gives the untriggered state a
+word of its own, and `{ critical: "" }` drops the suffix for a name that already says it.
+The word goes in the name rather than a hidden child because `role="meter"` makes its
+children presentational, exactly as `role="img"` does on [Avatar](avatar.md)'s presence dot.
 
 ## Custom range
 
@@ -119,17 +126,20 @@ meter.
   counts are dominated by the guards: `segments={1}` is effectively binary (empty until
   `value === max`), and `segments={2}` only ever shows 0, 1, or 2. Use enough segments
   (the default is 10) for the fill to be meaningful.
-- **`aria-valuenow` is not clamped.** The fill saturates at empty/full for out-of-range
-  input, but `aria-valuenow` passes the raw number straight through — `value={150}` on a
-  `0–100` meter announces `150`, past its own `aria-valuemax`. Pass an in-range value.
+- **`aria-valuenow` is clamped to the range.** `value={150}` on a `0–100` meter announces
+  `100`, because the announcement has to sit inside the range it is announced against —
+  the fill saturates there too. An out-of-range `value` is therefore silently narrowed
+  rather than reported.
 - **`max <= min` renders a meter with at most one filled segment.** A zero or negative
   range collapses the fraction to `0` rather than throwing or dividing by zero, but the
   min-guard still fires — any `value > min` paints exactly one segment, and the meter is
   fully empty only when `value <= min`.
-- **Status is colour-only.** Crossing `warningAt`/`criticalAt` only changes the fill
-  colour and the `data-status` attribute; nothing in the announced value tells a
-  screen-reader or colourblind user they're in warning or critical territory. If that
-  distinction matters, pair the meter with a visible/announced label.
+- **Status is named to assistive tech, but still only tinted on screen.** Crossing
+  `warningAt`/`criticalAt` appends the `statusLabels` word to `aria-label` and flips
+  `data-status`, so a screen-reader user hears "Disk usage, Critical" — but the visible
+  meter changes hue and nothing else. A sighted colourblind reader is no better off; add
+  your own visible cue (or key one off `data-status`) when the distinction is
+  load-bearing.
 - **No per-component CSS; server-renderable.** There is no `Meter.css` and no
   `"use client"`, so it drops straight into an RSC tree — but the `@batthewz/response-ui-css`
   import is still required for the utilities above to resolve to tokens.
@@ -141,10 +151,12 @@ Renders `role="meter"` with `aria-valuenow`, `aria-valuemin`, and `aria-valuemax
 name, so it can never ship nameless. The individual segment `<span>`s are `aria-hidden`,
 so assistive tech announces one measured value rather than ten separate bars.
 
-Two limits to keep in mind: the announced `aria-valuenow` is the raw, unclamped `value`
-(see Gotchas), and the warning/critical **status is conveyed by colour alone** — there is
-no `aria-valuetext` or text alternative carrying it, so it is invisible to non-visual and
-colourblind users. Surface that state elsewhere when it is load-bearing.
+The warning/critical status reaches assistive tech through the **name**: the
+`statusLabels` word for the crossed threshold is appended to `aria-label`, so the meter
+announces "Disk usage, Critical" rather than a bare percentage. That closes the
+screen-reader half of WCAG 1.4.1 and no more — on screen the status is still a hue
+change, so a sighted colourblind reader sees the same meter either way. Pair it with a
+visible cue of your own when that matters.
 
 ## Related
 

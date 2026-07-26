@@ -17,30 +17,32 @@ describe("Badge", () => {
     expect(badge.className).toContain("text-fg-secondary");
   });
 
+  // The children differ from the variant's own visually-hidden word on purpose:
+  // identical text would make `getByText` ambiguous between the two nodes.
   it("success variant applies correct styling", () => {
-    render(<Badge variant="success">Success</Badge>);
-    const badge = screen.getByText("Success");
+    render(<Badge variant="success">Deployed</Badge>);
+    const badge = screen.getByText("Deployed");
     expect(badge.className).toContain("bg-status-success-bg");
     expect(badge.className).toContain("text-status-success");
   });
 
   it("warning variant applies correct styling", () => {
-    render(<Badge variant="warning">Warning</Badge>);
-    const badge = screen.getByText("Warning");
+    render(<Badge variant="warning">Degraded</Badge>);
+    const badge = screen.getByText("Degraded");
     expect(badge.className).toContain("bg-status-warning-bg");
     expect(badge.className).toContain("text-status-warning");
   });
 
   it("error variant applies correct styling", () => {
-    render(<Badge variant="error">Error</Badge>);
-    const badge = screen.getByText("Error");
+    render(<Badge variant="error">Failed</Badge>);
+    const badge = screen.getByText("Failed");
     expect(badge.className).toContain("bg-status-error-bg");
     expect(badge.className).toContain("text-status-error");
   });
 
   it("info variant applies correct styling", () => {
-    render(<Badge variant="info">Info</Badge>);
-    const badge = screen.getByText("Info");
+    render(<Badge variant="info">Queued</Badge>);
+    const badge = screen.getByText("Queued");
     expect(badge.className).toContain("bg-status-info-bg");
     expect(badge.className).toContain("text-status-info");
   });
@@ -55,5 +57,52 @@ describe("Badge", () => {
     render(<Badge ref={ref}>Ref</Badge>);
     expect(ref.current).toBeInstanceOf(HTMLSpanElement);
     expect(ref.current).toBe(screen.getByText("Ref"));
+  });
+});
+
+// #44 — the variant was tint only, so `<Badge variant="error">3</Badge>` and its
+// success twin announced identically.
+describe("Badge · variant has a text channel", () => {
+  it("emits a visually-hidden variant word ahead of the children", () => {
+    const cases = [
+      ["success", "Success"],
+      ["warning", "Warning"],
+      ["error", "Error"],
+      ["info", "Information"],
+    ] as const;
+
+    for (const [variant, word] of cases) {
+      const { unmount } = render(<Badge variant={variant}>3</Badge>);
+      const hidden = screen.getByText(word);
+      expect(hidden.className).toContain("sr-only");
+      expect(screen.getByText("3").firstElementChild).toBe(hidden);
+      unmount();
+    }
+  });
+
+  it("adds nothing for the neutral default variant", () => {
+    render(<Badge>Draft</Badge>);
+    expect(screen.getByText("Draft").textContent).toBe("Draft");
+  });
+
+  it("statusLabel replaces the default word, and '' removes it", () => {
+    const { rerender } = render(
+      <Badge variant="error" statusLabel="Échec">
+        3
+      </Badge>,
+    );
+    expect(screen.getByText("Échec").className).toContain("sr-only");
+
+    rerender(
+      <Badge variant="error" statusLabel="">
+        3 checks failed
+      </Badge>,
+    );
+    expect(screen.getByText("3 checks failed").textContent).toBe("3 checks failed");
+  });
+
+  it("names the default variant when a caller asks it to", () => {
+    render(<Badge statusLabel="Draft state">v2</Badge>);
+    expect(screen.getByText("Draft state").className).toContain("sr-only");
   });
 });

@@ -68,3 +68,13 @@ exists to prevent.
   performed, so an alignment fix can only assert classes; no pointer path is synthesised, so
   `safePolygon` passes with and without it; and measurement overwrites an SSR seed immediately.
   A record that says which wall it hit can be re-opened by someone with a real browser.
+- **`getByText` matches an element by its own *direct* text nodes, so adding a hidden child
+  can make an existing query ambiguous.** Giving a status component a visually-hidden word
+  broke every older test that had passed that same word as the component's children: the
+  query now matched the wrapper and the hidden span both, and the failure reads as "found
+  multiple elements", not as anything about the change. Give the fixture text that differs
+  from the component's own vocabulary.
+- **An announcement is still unverifiable here; the DOM precondition is not.** A hidden word,
+  an accessible name and `aria-valuetext` can each be asserted exactly, and *that* is what a
+  test in this package proves. Whether a screen reader reads them in a useful order is not
+  settleable in jsdom — say so rather than letting the attribute assertion imply it.

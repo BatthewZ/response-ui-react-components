@@ -240,3 +240,45 @@ code. The gates stayed green throughout. The owner reversed it.
   a commit message then claims work it did not do. `git reset --soft` plus explicit paths undoes
   it without touching anyone's working tree — but only if you notice, and the only reason it was
   noticed here was reading `--stat` afterwards.
+
+## I · From the pass that was allowed to add public props
+
+- **Before naming a new prop, read what the sibling components in the same family already
+  ship.** The answer to "how does a caller bound this component's scroll area" was already
+  a prop on one of the three tables and missing from the other two. Copying the sibling's
+  answer costs one grep; inventing a second name for the same idea costs a breaking change
+  later. An asymmetry closed by introducing a differently-shaped asymmetry is not closed.
+- **A convenience prop layered over an existing escape hatch needs a stated precedence, and
+  that is the assertion nobody writes.** When a component accepts both a raw `style` and a
+  named prop that writes one of its keys, one of them must win by design. The direction that
+  is never exercised by accident is the one a later "simplification" silently flips, so assert
+  both directions and say which wins in the prop's own docblock.
+- **"Can never take effect" is almost always "does not take effect in the default flow".**
+  The same element behaves differently as a block-flow child and as a flex/grid item, and a
+  scroll container's automatic minimum size is zero — so a claim measured in one layout is
+  not a claim about the component. Name the layout the claim holds in; a record that
+  overreaches gets copied verbatim into a published doc, and then the library is telling
+  consumers they cannot do something they can.
+
+## J · From the pass that gave colour-only status a text channel
+
+- **The element's role decides where the words can go, and it is not always a child.** ARIA
+  makes the children of `img`, `meter`, `progressbar`, `button` and their siblings
+  presentational, so a visually-hidden `<span>` inside one is dropped before any screen reader
+  sees it. In a family of five status surfaces, three could take a hidden first child and two
+  could not — those needed the accessible name and `aria-valuetext` instead. Check the role
+  *before* choosing the channel; the fix that works on the plain `<span>` sibling is silently
+  inert on the one with a range role.
+- **Adding a text channel to something already announced makes it worse.** A state that
+  already reaches assistive tech — through `aria-current`, `aria-valuenow`, a live region —
+  gains nothing from a hidden word beside it and loses to the double announcement. "This row
+  needs no change, and stays open for the *visual* half" is a real outcome; reaching for the
+  fix anyway is how a component ends up saying everything twice.
+- **A prop the primary entry point cannot reach is not an override path.** A component
+  consumed through a provider queue (or any factory that constructs it for you) needs the
+  option threaded through that API too. The hand-rendered escape hatch existing is not the
+  same as the prop being reachable, and the difference is invisible to a typecheck.
+- **Hard-coded English with a documented override is the settled answer here; hard-coded
+  English with none is a logged defect.** Default the word, name the prop for what it labels,
+  and let `""` remove it — a caller whose visible text already says "Failed" should not be
+  made to hear "Error, Failed".

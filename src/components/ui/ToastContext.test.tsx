@@ -37,6 +37,13 @@ function TestHarness() {
         Add short toast
       </button>
       <button
+        onClick={() =>
+          toast("Zahlung fehlgeschlagen", { variant: "error", statusLabel: "Fehler" })
+        }
+      >
+        Add translated error toast
+      </button>
+      <button
         onClick={() => {
           const id = document.body.dataset.lastToastId;
           if (id) dismiss(id);
@@ -152,6 +159,20 @@ describe("ToastContext", () => {
 
     const toast = screen.getByRole("alert");
     expect(toast).toHaveAttribute("aria-live", "assertive");
+  });
+
+  // #104 — the severity word has to be reachable from the `toast()` call, which
+  // is how the component is actually consumed; a prop only a hand-rendered
+  // <Toast> can reach is not an override path.
+  it("carries the severity word, and a caller's replacement, through toast options", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderWithProvider();
+
+    await user.click(screen.getByRole("button", { name: "Add error toast" }));
+    expect(screen.getByText("Error").className).toContain("sr-only");
+
+    await user.click(screen.getByRole("button", { name: "Add translated error toast" }));
+    expect(screen.getByText("Fehler").className).toContain("sr-only");
   });
 
   it("renders toast with correct variant", async () => {

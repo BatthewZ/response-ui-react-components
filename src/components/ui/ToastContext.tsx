@@ -18,6 +18,8 @@ type ToastOptions = {
   variant?: ToastVariant;
   title?: string;
   duration?: number;
+  /** Overrides the variant's visually-hidden severity word. See `Toast`. */
+  statusLabel?: string;
 };
 
 type ToastApi = {
@@ -31,6 +33,7 @@ type ToastEntry = {
   message: string;
   variant: ToastVariant;
   title?: string;
+  statusLabel?: string;
   duration: number;
   dismissing: boolean;
 };
@@ -112,6 +115,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       message,
       variant: options?.variant ?? "info",
       title: options?.title,
+      statusLabel: options?.statusLabel,
       duration: options?.duration ?? DEFAULT_DURATION_MS,
       dismissing: false,
     };
@@ -198,6 +202,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               key={t.id}
               variant={t.variant}
               title={t.title}
+              statusLabel={t.statusLabel}
               dismissing={t.dismissing}
               onDismiss={() => dismiss(t.id)}
               {...liveOverride(t.variant)}

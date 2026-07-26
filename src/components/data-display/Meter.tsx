@@ -11,6 +11,13 @@ export type MeterProps = {
   segments?: number;
   warningAt?: number;
   criticalAt?: number;
+  /**
+   * Words for the threshold the value has crossed, appended to `aria-label`.
+   * Merged over the defaults, so `{ critical: "Kritisch" }` translates one and
+   * `{ critical: "" }` drops it. `ok` is silent by default — it is the absence
+   * of a threshold rather than a state to announce.
+   */
+  statusLabels?: Partial<Record<MeterStatus, string>>;
   "aria-label": string;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
@@ -21,6 +28,11 @@ const filledColor: Record<MeterStatus, string> = {
   ok: "bg-accent",
   warning: "bg-status-warning",
   critical: "bg-status-error",
+};
+
+const defaultStatusLabels: Partial<Record<MeterStatus, string>> = {
+  warning: "Warning",
+  critical: "Critical",
 };
 
 /**
@@ -39,6 +51,7 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
     segments = 10,
     warningAt,
     criticalAt,
+    statusLabels,
     className,
     style,
     "aria-label": ariaLabel,
@@ -67,6 +80,11 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
         ? "warning"
         : "ok";
 
+  // The status word joins the name rather than a hidden child: `role="meter"`
+  // makes its children presentational, so text inside it never reaches AT.
+  const statusText = { ...defaultStatusLabels, ...statusLabels }[status];
+  const accessibleName = [ariaLabel, statusText].filter(Boolean).join(", ");
+
   return (
     <div
       ref={ref}
@@ -74,7 +92,7 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
       aria-valuenow={announced}
       aria-valuemin={min}
       aria-valuemax={max}
-      aria-label={ariaLabel}
+      aria-label={accessibleName}
       data-status={status}
       className={cn("grid gap-r6", className)}
       style={{ ...style, gridTemplateColumns: `repeat(${segments}, 1fr)` }}

@@ -44,3 +44,9 @@ validator over it. These are the ways the record itself has failed, independent 
 - **The fix a finding prescribes may be wrong.** One detail block leads with a reordering that
   would mirror the bug onto the caller; what actually shipped was a per-key merge. Read the code
   that fixed it, not the plan that proposed it.
+- **A row can have two halves, and closing one is not closing the row.** "Status conveyed by
+  colour alone" is two claims — nothing reaches assistive tech, and nothing is visible without
+  colour — and a text-only remedy answers the first while leaving the second exactly as it was.
+  The same shape recurs wherever a finding names both a non-visual and a visual channel. Say
+  which half closed, in the row; a half-closed row filed as fixed reads to the next reader as a
+  question already settled.

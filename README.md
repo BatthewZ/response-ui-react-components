@@ -333,7 +333,7 @@ applies to itself.
 
 `DataTable` supports three wiring modes — pick one and stick to it:
 
-- **Client-everything** — pass `pageSize` (and optionally `defaultSort`). The table sorts, slices, and derives pages entirely on the client from the full `data` array. No `onSortChange` / `onPageChange` needed.
+- **Client-everything** — pass `pageSize` (and optionally `defaultSort` / `defaultPage`, which seed the uncontrolled sort and page on mount). The table sorts, slices, and derives pages entirely on the client from the full `data` array. No `onSortChange` / `onPageChange` needed.
 - **Server-controlled** — pass `sort` + `onSortChange` and `page` + `totalPages` + `onPageChange`, and omit `pageSize`. The table renders exactly the rows you give it and reports sort/page intent back to you; you do the sorting and paging server-side.
 - **Hybrid / server-paged (lazy-load)** — never enable uncontrolled sorting here; use controlled `sort`. Accumulate fetched rows into the `data` array as the user pages, and render a footer sentinel (via the footer slot) to trigger the next load.
 

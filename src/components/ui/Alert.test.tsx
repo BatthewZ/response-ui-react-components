@@ -81,3 +81,49 @@ describe("Alert", () => {
     expect(alert).toHaveAttribute("aria-live", "off");
   });
 });
+
+// #1 — severity was carried by the tint and nothing else, so an error and a
+// success alert with the same message were byte-identical to a screen reader.
+describe("Alert · severity has a text channel", () => {
+  it("announces the severity word ahead of the message", () => {
+    render(<Alert variant="error">Payment failed</Alert>);
+    const alert = screen.getByRole("alert");
+    const word = screen.getByText("Error");
+    expect(word.className).toContain("sr-only");
+    // First child: the severity is read before the message, not after it.
+    expect(alert.firstElementChild).toBe(word);
+  });
+
+  it("labels every variant", () => {
+    const cases = [
+      ["success", "Success"],
+      ["warning", "Warning"],
+      ["info", "Information"],
+    ] as const;
+
+    for (const [variant, word] of cases) {
+      const { unmount } = render(<Alert variant={variant}>Notice</Alert>);
+      expect(screen.getByText(word).className).toContain("sr-only");
+      unmount();
+    }
+  });
+
+  it("statusLabel replaces the default word", () => {
+    render(
+      <Alert variant="error" statusLabel="Fehler">
+        Zahlung fehlgeschlagen
+      </Alert>,
+    );
+    expect(screen.getByText("Fehler").className).toContain("sr-only");
+    expect(screen.queryByText("Error")).not.toBeInTheDocument();
+  });
+
+  it("statusLabel='' drops it for a message that already names the severity", () => {
+    render(
+      <Alert variant="error" statusLabel="">
+        Error: payment failed
+      </Alert>,
+    );
+    expect(screen.getByRole("alert").querySelector(".sr-only")).toBeNull();
+  });
+});

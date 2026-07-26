@@ -360,7 +360,7 @@ Takes `onUpload(file): Promise<{ url: string }>`. With it, posts the file via th
 
 Pick one, don't mix:
 
-1. **Client-everything** — `pageSize` (+ optional `defaultSort`). Table sorts, slices, and derives pages from the full `data` array itself.
+1. **Client-everything** — `pageSize` (+ optional `defaultSort` / `defaultPage` seeds). Table sorts, slices, and derives pages from the full `data` array itself.
 2. **Server-controlled** — `sort` + `onSortChange` and `page` + `totalPages` + `onPageChange`; no `pageSize`. Table renders the rows given and reports sort/page intent.
 3. **Hybrid / server-paged (lazy-load)** — never enable uncontrolled sorting; use controlled `sort`. Accumulate fetched rows into `data` and use a footer slot sentinel to trigger the next load.
 

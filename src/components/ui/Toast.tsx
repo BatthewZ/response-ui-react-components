@@ -30,17 +30,41 @@ const ariaMap: Record<
   error: { role: "alert", "aria-live": "assertive" },
 };
 
+/** Announced ahead of the message; the tint is the only other severity channel. */
+const statusLabelMap: Record<ToastVariant, string> = {
+  success: "Success",
+  warning: "Warning",
+  error: "Error",
+  info: "Information",
+};
+
 type ToastProps = {
   variant?: ToastVariant;
   title?: string;
   onDismiss: () => void;
   dismissing?: boolean;
+  /**
+   * Visually-hidden severity word, read ahead of the title and the message.
+   * `""` drops it, for a message that already names its own severity.
+   */
+  statusLabel?: string;
 } & Omit<ComponentPropsWithRef<"div">, "title">;
 
 export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
-  { variant = "info", title, onDismiss, dismissing = false, className, children, onFocus, ...props },
+  {
+    variant = "info",
+    title,
+    onDismiss,
+    dismissing = false,
+    statusLabel,
+    className,
+    children,
+    onFocus,
+    ...props
+  },
   ref
 ) {
+  const statusText = statusLabel ?? statusLabelMap[variant];
   const rootRef = useRef<HTMLDivElement>(null);
   const mergedRef = useMemo(() => mergeRefs(ref, rootRef), [ref]);
   // Where focus was before it entered the toast. Dismissing unmounts the button
@@ -82,6 +106,7 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
       {...props}
     >
       <div className="flex-1 min-w-0">
+        {statusText && <span className="sr-only">{statusText}</span>}
         {title && <p className="font-semibold">{title}</p>}
         <p>{children}</p>
       </div>

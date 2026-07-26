@@ -33,13 +33,14 @@ Neither reads context, neither is required, and neither is wired to the bar: see
 | `color`     | `"accent" \| "success" \| "warning" \| "error"` | `"accent"`   |
 | `size`      | `"sm" \| "md" \| "lg"`                          | `"md"`       |
 | `animate`   | `boolean`                                       | `true`       |
+| `statusLabel` | `string`                                      | the word for `color` |
 | `className` | `string`                                        | —            |
 | `ref`       | `Ref<HTMLDivElement>`                           | —            |
 | …rest       | props of `div` (minus `children`)               | —            |
 
 The fill percentage is `Math.min(100, Math.max(0, (value / max) * 100))`, guarded to `0`
-when `max <= 0`, so the *visual* bar is always within `[0, 100]%`. The ARIA numbers are
-not clamped — see [Gotchas](#gotchas).
+when `max <= 0`, so the *visual* bar is always within `[0, 100]%`. The ARIA numbers track
+it — see [Gotchas](#gotchas).
 
 ## Label and value
 
@@ -148,10 +149,13 @@ block. Either path alone would do it; neither depends on the other.
 
 ## Carrying status to assistive tech
 
-`role`, `aria-valuenow`, `aria-valuemin` and `aria-valuemax` are written before the rest
-props are spread, so anything you pass wins. That is the supported escape hatch for the
-fact that `color` is purely visual — `aria-valuetext` replaces the bare number a screen
-reader would otherwise announce.
+A status `color` announces itself: `success`, `warning` and `error` set
+`aria-valuetext` to the percentage plus the status word — `"96%, Error"` — while the
+neutral `accent` sets nothing. `statusLabel` replaces the word for a translation, and
+`statusLabel=""` removes it when your own label already says it.
+
+`role`, `aria-valuenow`, `aria-valuemin`, `aria-valuemax` and `aria-valuetext` are all
+written before the rest props are spread, so a phrasing of your own still wins outright:
 
 <!-- example:AnnouncedStatus -->
 ```tsx
@@ -210,26 +214,29 @@ white at 15% over your fill and there is no token to change them.
 - **`ProgressBar.Value` is not derived from `value`.** It renders whatever text you give
   it. Hand a bar `value={64}` and a `Value` of `"80%"` and the two will disagree with no
   warning; compute both from one number.
-- **`aria-valuenow` is not clamped.** Only the width is. `value={150}` on `max={100}`
-  paints a full bar but announces `150`, past its own `aria-valuemax`; `value={-10}`
-  paints an empty bar and announces `-10`, below `aria-valuemin={0}`.
-  [ProgressRing](progress-ring.md) clamps this and ProgressBar does not, so the two
-  behave differently on the same out-of-range input.
+- **`aria-valuenow` is clamped, like the width.** `value={150}` on `max={100}` announces
+  `100` and `value={-10}` announces `0`, so the announcement never sits outside the range
+  it is announced against — and an out-of-range `value` is narrowed silently rather than
+  reported.
 - **`variant="gradient"` silently discards `color`.** The gradient rule sets the
   `background` shorthand — which resets `background-color` — and sits after the four
   colour rules at equal specificity, so it always wins.
-  `<ProgressBar variant="gradient" color="error" />` renders the accent ramp, not red.
-  Use `striped` (or `default`) when the colour is load-bearing.
+  `<ProgressBar variant="gradient" color="error" />` renders the accent ramp, not red —
+  though `aria-valuetext` still announces "Error", so the two channels disagree. Use
+  `striped` (or `default`) when the colour is load-bearing.
 - **`striped` stripes do not move.** There is no `@keyframes` anywhere in the package for
   them, and `animate` governs only the width transition. `background-size: 200% 100%` is
   set on the fill but nothing animates `background-position`, so the texture is static.
-- **`value={NaN}` renders a *full* bar.** The clamp propagates `NaN`, the inline style
-  becomes `width: NaN%`, and the CSSOM rejects that outright — leaving the fill at its
-  default `width: auto`, which is the whole track. A `loaded / total` computation with
-  `total === 0` therefore reads as 100% complete. Guard the division.
-- **`max <= 0` exposes an invalid range.** The fill fraction is guarded to `0`, but
-  `aria-valuemax` is set to your `max` unchanged, so `aria-valuemin={0}` is greater than
-  or equal to it. Keep `max` positive.
+- **`value={NaN}` renders an *empty* bar.** A non-finite `value` is floored to `0` before
+  it reaches the style, because `width: NaN%` is rejected by the CSSOM and leaves the
+  fill at `width: auto` — the whole track. So a `loaded / total` computation with
+  `total === 0` reads as 0% rather than as complete; it is still worth guarding the
+  division, since neither number is the one you meant.
+- **`max <= 0` exposes no range at all.** A `max` that describes no range cannot be
+  announced, so the fill is guarded to `0` and `aria-valuenow`/`aria-valuemin`/
+  `aria-valuemax` are all omitted — ARIA's indeterminate progressbar. A status
+  `statusLabel` is then announced on its own, without a percentage. Keep `max` positive
+  if you want a number announced.
 - **The empty part of the track is close to invisible in every shipped theme.** It is
   `--C-SURFACE-1`, measured against `--C-SURFACE-0` (the [Card](card.md) surface) at
   **1.05:1 default · 1.03:1 `events` · 1.02:1 `tech` · 1.07:1 `grimdark`**, and against the
@@ -270,11 +277,14 @@ and `aria-valuemax={max}`. There is no `min` prop, so the exposed floor is alway
   with no indication of *what* is progressing. Every example on this page passes
   `aria-label` or `aria-labelledby`; do the same, or hide a purely decorative bar with
   `aria-hidden`.
-- **`color` is conveyed by colour alone.** Switching to `error` changes the fill hue and
-  nothing else — no `data-*` attribute, no `aria-valuetext`, no text alternative. A
-  screen-reader or colourblind user hears the identical announcement at `success` and at
-  `error`. If the status is load-bearing, carry it in the accessible name or in
-  `aria-valuetext`, as the example above does.
+- **`color` is named to assistive tech, but still only a hue on screen.** A status
+  `color` emits `aria-valuetext` — `"96%, Error"` — so `success` and `error` no longer
+  announce identically. `statusLabel` replaces that word (`""` removes it), and `accent`
+  stays silent because it names no status. The word rides `aria-valuetext` rather than a
+  visually-hidden child because `role="progressbar"` makes its children presentational,
+  the same reason [Avatar](avatar.md) labels its presence dot through the name. **Nothing
+  about this helps a sighted colourblind reader** — the bar itself still differs only in
+  tint, so put the status in a visible label when it is load-bearing.
 - **The announced number can leave the announced range.** `aria-valuenow` is the raw
   `value` (see Gotchas), so out-of-range input produces a contradictory announcement even
   though the bar looks correct.

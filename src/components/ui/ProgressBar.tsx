@@ -15,6 +15,12 @@ type ProgressBarRootProps = {
   color?: "accent" | "success" | "warning" | "error";
   size?: "sm" | "md" | "lg";
   animate?: boolean;
+  /**
+   * Word for what `color` means, announced with the percentage. `""` drops it,
+   * for a bar whose own label already says it; `accent` is silent by default
+   * because it names no status.
+   */
+  statusLabel?: string;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 type ProgressBarSize = NonNullable<ProgressBarRootProps["size"]>;
@@ -34,6 +40,13 @@ const colorClass: Record<ProgressBarColor, string> = {
   error: "progress-bar__fill--error",
 };
 
+const statusLabelMap: Record<ProgressBarColor, string | undefined> = {
+  accent: undefined,
+  success: "Success",
+  warning: "Warning",
+  error: "Error",
+};
+
 const variantFillClass: Record<ProgressBarVariant, string | undefined> = {
   default: undefined,
   gradient: "progress-bar__fill--gradient",
@@ -48,6 +61,7 @@ const ProgressBarRoot = forwardRef<HTMLDivElement, ProgressBarRootProps>(functio
     color = "accent",
     size = "md",
     animate = true,
+    statusLabel,
     className,
     ...props
   },
@@ -64,6 +78,16 @@ const ProgressBarRoot = forwardRef<HTMLDivElement, ProgressBarRootProps>(functio
   const clamped = hasRange ? Math.min(max, Math.max(0, safeValue)) : 0;
   const percentage = hasRange ? (clamped / max) * 100 : 0;
   const shouldAnimate = animate && !reducedMotion;
+  // `color` is otherwise a hue and nothing else. The word rides `aria-valuetext`
+  // rather than a hidden child because `role="progressbar"` makes its children
+  // presentational — text inside it never reaches AT — and it carries the
+  // percentage too, since `aria-valuetext` replaces the value announcement.
+  const statusText = statusLabel ?? statusLabelMap[color];
+  const valueText = statusText
+    ? hasRange
+      ? `${Math.round(percentage)}%, ${statusText}`
+      : statusText
+    : undefined;
 
   return (
     <div
@@ -74,6 +98,7 @@ const ProgressBarRoot = forwardRef<HTMLDivElement, ProgressBarRootProps>(functio
       aria-valuenow={hasRange ? clamped : undefined}
       aria-valuemin={hasRange ? 0 : undefined}
       aria-valuemax={hasRange ? max : undefined}
+      aria-valuetext={valueText}
       className={cn("progress-bar", sizeClass[size], className)}
       {...props}
     >

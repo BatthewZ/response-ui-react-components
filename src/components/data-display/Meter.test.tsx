@@ -130,6 +130,67 @@ describe("Meter", () => {
   });
 });
 
+// #21 — the threshold status changed the fill tint and nothing else. The word
+// goes in the accessible name rather than a hidden child because `role="meter"`
+// makes its children presentational (the same reason Avatar labels its dot).
+describe("Meter · threshold status has a text channel", () => {
+  it("folds the crossed threshold into the accessible name", () => {
+    const { rerender } = render(
+      <Meter value={75} warningAt={70} criticalAt={90} aria-label="Disk usage" />
+    );
+    expect(screen.getByRole("meter")).toHaveAccessibleName("Disk usage, Warning");
+
+    rerender(<Meter value={95} warningAt={70} criticalAt={90} aria-label="Disk usage" />);
+    expect(screen.getByRole("meter")).toHaveAccessibleName("Disk usage, Critical");
+  });
+
+  it("leaves the name alone below the first threshold", () => {
+    render(<Meter value={10} warningAt={70} criticalAt={90} aria-label="Disk usage" />);
+    expect(screen.getByRole("meter")).toHaveAccessibleName("Disk usage");
+  });
+
+  it("statusLabels overrides one status without disturbing the others", () => {
+    const { rerender } = render(
+      <Meter
+        value={95}
+        warningAt={70}
+        criticalAt={90}
+        statusLabels={{ critical: "Kritisch", ok: "Normal" }}
+        aria-label="Speicher"
+      />
+    );
+    expect(screen.getByRole("meter")).toHaveAccessibleName("Speicher, Kritisch");
+
+    rerender(
+      <Meter
+        value={10}
+        warningAt={70}
+        criticalAt={90}
+        statusLabels={{ critical: "Kritisch", ok: "Normal" }}
+        aria-label="Speicher"
+      />
+    );
+    expect(screen.getByRole("meter")).toHaveAccessibleName("Speicher, Normal");
+  });
+
+  it("an empty label drops the suffix for a name that already says it", () => {
+    render(
+      <Meter
+        value={95}
+        criticalAt={90}
+        statusLabels={{ critical: "" }}
+        aria-label="Disk usage critical"
+      />
+    );
+    expect(screen.getByRole("meter")).toHaveAccessibleName("Disk usage critical");
+  });
+
+  it("keeps the word out of the DOM, where role=meter would hide it", () => {
+    render(<Meter value={95} criticalAt={90} aria-label="Disk usage" />);
+    expect(screen.getByRole("meter")).toHaveTextContent("");
+  });
+});
+
 describe("Meter · range integrity", () => {
   // #22
   it("announces the clamped value, not the raw one", () => {

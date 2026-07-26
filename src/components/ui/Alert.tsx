@@ -29,20 +29,38 @@ const ariaMap: Record<
   error: { role: "alert", "aria-live": "assertive" },
 };
 
+/** Announced before the message; the tint is the only other severity channel. */
+const statusLabelMap: Record<Variant, string> = {
+  success: "Success",
+  warning: "Warning",
+  error: "Error",
+  info: "Information",
+};
+
 type AlertProps = {
   variant?: Variant;
+  /**
+   * Visually-hidden severity word, read ahead of the message. `""` drops it,
+   * for a message that already names its own severity.
+   */
+  statusLabel?: string;
 } & ComponentPropsWithRef<"div">;
 
 export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
-  { variant = "info", className, ...props },
+  { variant = "info", statusLabel, className, children, ...props },
   ref
 ) {
+  const statusText = statusLabel ?? statusLabelMap[variant];
+
   return (
     <div
       ref={ref}
       className={cn(baseClasses, variantClassMap[variant], className)}
       {...ariaMap[variant]}
       {...props}
-    />
+    >
+      {statusText && <span className="sr-only">{statusText}</span>}
+      {children}
+    </div>
   );
 });

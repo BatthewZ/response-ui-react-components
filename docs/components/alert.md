@@ -1,8 +1,9 @@
 # Alert
 
 A tinted, bordered banner for a single status message — `info`, `success`,
-`warning`, or `error`. It renders one `role="alert"` live region and re-tints from
-your theme's status tokens, so a custom theme restyles every alert for free.
+`warning`, or `error`. It renders one live region, names its own severity for
+screen readers, and re-tints from your theme's status tokens, so a custom theme
+restyles every alert for free.
 
 <!-- example:Minimal -->
 ```tsx
@@ -13,12 +14,14 @@ your theme's status tokens, so a custom theme restyles every alert for free.
 | Prop        | Type                                            | Default  |
 | ----------- | ----------------------------------------------- | -------- |
 | `variant`   | `"success" \| "warning" \| "error" \| "info"`   | `"info"` |
+| `statusLabel` | `string`                                      | the word for `variant` |
 | `className` | `string`                                        | —        |
 | `ref`       | `Ref<HTMLDivElement>`                            | —        |
 | …rest       | props of `div` (`role`, `aria-live`, `id`, …)   | —        |
 
-`role="alert"` and `aria-live="polite"` are set for you, but both sit **before**
-`…rest`, so a call-site prop overrides either. See [Gotchas](#gotchas).
+`role` and `aria-live` follow the variant — `role="alert"` + `assertive` for
+`error`, `role="status"` + `polite` for the rest — and both sit **before** `…rest`,
+so a call-site prop overrides either. See [Gotchas](#gotchas).
 
 ## Variants
 
@@ -52,14 +55,20 @@ compose the structure you need:
 
 ## Don't lean on colour alone
 
-Nothing but the tint distinguishes the variants — no icon or label ships. On its
-own that fails WCAG 1.4.1: a greyscale or colour-blind reader can't tell success
-from error, and a screen reader hears only the message, never its severity. Lead
-with a text label (or an icon that has an accessible name):
+Each variant ships a visually-hidden severity word — "Success", "Warning",
+"Error", "Information" — as the first thing inside the live region, so a screen
+reader hears "Error, Payment failed" rather than the message alone. Override it
+with `statusLabel="Fehler"` to translate it, or `statusLabel=""` when the message
+already names the severity itself.
+
+That closes the assistive-tech half of WCAG 1.4.1 and nothing else: **on screen
+the variants still differ only in tint**, so a greyscale or colour-blind reader
+still can't tell success from error. Lead with a visible text label (or an icon
+that has an accessible name) when the severity matters:
 
 <!-- example:LabelledForColorBlindness -->
 ```tsx
-<Alert variant="error">
+<Alert variant="error" statusLabel="">
   <strong>Error:</strong> The uploaded file exceeds the 25 MB limit.
 </Alert>
 ```
@@ -67,9 +76,9 @@ with a text label (or an icon that has an accessible name):
 
 ## Interrupting for urgent errors
 
-The announcement is `polite` for every variant, which queues an error behind
-whatever the screen reader is already saying. For a genuinely urgent failure,
-override it to `assertive`:
+`error` already announces `assertive` — it is the one variant that exists to
+interrupt. The attribute is still yours to set, which is how you promote another
+variant to the same urgency (or demote `error` to `polite`):
 
 <!-- example:UrgentError -->
 ```tsx
@@ -109,13 +118,13 @@ shipped themes.
 
 ## Gotchas
 
-- **Variant is colour-only.** No icon, label, or `aria` hint encodes severity — the
-  message reads identically to assistive tech and in greyscale regardless of variant.
-  Supply your own label or icon (see the example above).
-- **Announced `polite`, even for errors.** `role="alert"` normally implies an
-  *assertive* live region, but the component sets `aria-live="polite"` explicitly,
-  which downgrades it. An `error` won't interrupt the screen reader unless you pass
-  `aria-live="assertive"` yourself.
+- **Variant is still colour-only on screen.** The visually-hidden severity word reaches
+  assistive tech, but nothing visible changes between variants except the tint — in
+  greyscale the four are one banner. Supply your own visible label or icon (see the
+  example above).
+- **The hidden word is part of the alert's text.** It sits inside the live region as the
+  first child, so `textContent` and any `getByText`-style query see it too. Pass
+  `statusLabel=""` where that is a problem.
 - **Only announced when inserted or changed after render.** A live region present on
   first paint is not re-announced — an alert that's on the page at load is read as
   ordinary content, not as an alert. Mount it in response to the event it reports.
@@ -129,11 +138,16 @@ shipped themes.
 
 ## Accessibility
 
-The container is a `role="alert"` live region with `aria-live="polite"`, so a message
-rendered in response to an event is announced without moving focus. Because severity
-is carried only by colour, pair the variant with a textual or icon label so it reaches
-colour-blind and screen-reader users — the pairing only covers the foreground/background
-*contrast*, not that the meaning survives without colour.
+The container is a live region — `role="alert"` + `aria-live="assertive"` for `error`,
+`role="status"` + `aria-live="polite"` for the rest — so a message rendered in response
+to an event is announced without moving focus. The severity travels with it as a
+visually-hidden first child (`statusLabel`), which is what stops an error and a success
+announcing identically.
+
+That leaves the **visual** half of WCAG 1.4.1 open: the variants differ only in tint on
+screen, so pair one with a visible label or icon when a colour-blind reader has to tell
+them apart. The theme's status pairing covers foreground/background *contrast* only, not
+that the meaning survives without colour.
 
 ## Related
 

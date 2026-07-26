@@ -175,3 +175,55 @@ describe("Toast", () => {
     expect(toast).toHaveAttribute("aria-live", "polite");
   });
 });
+
+// #104 — variant severity was colour-only, so a success and an error toast were
+// identical to a screen reader.
+describe("Toast · severity has a text channel", () => {
+  it("announces the severity word ahead of the title and the message", () => {
+    render(
+      <Toast variant="error" title="Heads up" onDismiss={vi.fn()}>
+        Payment failed
+      </Toast>,
+    );
+    const word = screen.getByText("Error");
+    expect(word.className).toContain("sr-only");
+    // Inside the live region, and before the title it qualifies.
+    expect(screen.getByRole("alert")).toContainElement(word);
+    expect(word.nextElementSibling).toHaveTextContent("Heads up");
+  });
+
+  it("labels every variant", () => {
+    const cases = [
+      ["success", "Success"],
+      ["warning", "Warning"],
+      ["info", "Information"],
+    ] as const;
+
+    for (const [variant, word] of cases) {
+      const { unmount } = render(
+        <Toast variant={variant} onDismiss={vi.fn()}>
+          Notice
+        </Toast>,
+      );
+      expect(screen.getByText(word).className).toContain("sr-only");
+      unmount();
+    }
+  });
+
+  it("statusLabel replaces the default word, and '' removes it", () => {
+    const { rerender } = render(
+      <Toast variant="error" statusLabel="Fehler" onDismiss={vi.fn()}>
+        Nachricht
+      </Toast>,
+    );
+    expect(screen.getByText("Fehler").className).toContain("sr-only");
+    expect(screen.queryByText("Error")).not.toBeInTheDocument();
+
+    rerender(
+      <Toast variant="error" statusLabel="" onDismiss={vi.fn()}>
+        Nachricht
+      </Toast>,
+    );
+    expect(screen.getByRole("alert").querySelector(".sr-only")).toBeNull();
+  });
+});

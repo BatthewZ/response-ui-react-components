@@ -110,6 +110,57 @@ describe("ProgressBar", () => {
   });
 });
 
+// #205 — `color` swapped one background and emitted nothing else, so two bars at
+// the same value with `success` and `error` announced identically. The word rides
+// `aria-valuetext` rather than a hidden child because `role="progressbar"` makes
+// its children presentational (the same reason Avatar labels its dot).
+describe("ProgressBar · status has a text channel", () => {
+  it("announces the status alongside the percentage", () => {
+    render(<ProgressBar value={96} color="error" aria-label="Quota" />);
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "96%, Error");
+  });
+
+  it("says nothing extra for the neutral accent colour", () => {
+    render(<ProgressBar value={96} aria-label="Upload" />);
+    expect(screen.getByRole("progressbar")).not.toHaveAttribute("aria-valuetext");
+  });
+
+  it("reports the percentage of the range, not the raw value", () => {
+    render(<ProgressBar value={50} max={200} color="warning" aria-label="Upload" />);
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "25%, Warning");
+  });
+
+  it("statusLabel replaces the default word, and '' removes it", () => {
+    const { rerender } = render(
+      <ProgressBar value={96} color="error" statusLabel="Dépassement" aria-label="Quota" />,
+    );
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuetext",
+      "96%, Dépassement",
+    );
+
+    rerender(<ProgressBar value={96} color="error" statusLabel="" aria-label="Over quota" />);
+    expect(screen.getByRole("progressbar")).not.toHaveAttribute("aria-valuetext");
+  });
+
+  it("falls back to the status alone when max describes no range", () => {
+    render(<ProgressBar value={5} max={0} color="warning" aria-label="Sync" />);
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "Warning");
+  });
+
+  it("a caller's own aria-valuetext wins", () => {
+    render(
+      <ProgressBar value={96} color="error" aria-valuetext="Over quota" aria-label="Quota" />,
+    );
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "Over quota");
+  });
+
+  it("keeps the word out of the DOM, where role=progressbar would hide it", () => {
+    render(<ProgressBar value={96} color="error" aria-label="Quota" />);
+    expect(screen.getByRole("progressbar")).toHaveTextContent("");
+  });
+});
+
 describe("ProgressBar · range integrity", () => {
   // #202
   it("announces the clamped value, not the raw one", () => {
