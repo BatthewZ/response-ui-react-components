@@ -1,6 +1,6 @@
 import { type ComponentPropsWithRef, type ElementType, forwardRef } from "react";
 
-import { focusRingButton } from "../../util/focus";
+import { focusRingButton, focusRingButtonFilled } from "../../util/focus";
 import { cn } from "../../util/style";
 
 type Variant = "primary" | "secondary" | "ghost" | "ghost-inverse" | "danger" | "link";
@@ -17,6 +17,9 @@ const variantClassMap: Record<Variant, string> = {
   danger: "bg-status-error text-fg-inverse hover:bg-status-error/90",
   link: "text-accent hover:underline font-bold",
 };
+
+/** Variants that paint a fill, and so need the ring's offset band. See `focusRingButtonFilled`. */
+const filledVariants: ReadonlySet<Variant> = new Set(["primary", "secondary", "danger"]);
 
 const sizeClassMap: Record<Size, string> = {
   sm: "text-body-3 px-2 py-1 gap-[var(--BUTTON-GAP-SM)] rounded-md",
@@ -44,7 +47,7 @@ export const Button = forwardRef<HTMLElement, ButtonProps>(function Button(
       {...(Tag === "button" ? { type: "button" as const } : {})}
       className={cn(
         baseClasses,
-        focusRingButton,
+        filledVariants.has(variant) ? focusRingButtonFilled : focusRingButton,
         variantClassMap[variant],
         sizeClassMap[size],
         className

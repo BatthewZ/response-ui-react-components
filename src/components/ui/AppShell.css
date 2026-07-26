@@ -179,9 +179,10 @@
   padding: 0.5rem;
 }
 
-.app-shell-sidebar[data-collapsed] .app-shell-sidebar-link-label {
-  display: none;
-}
+/* The link label is taken off the screen by `sr-only` in AppShell.tsx, not by a
+   rule here. `display: none` removes it from the accessibility tree too, and the
+   lucide icon beside it is aria-hidden, which left a collapsed rail as a list of
+   unnamed links (#388). */
 
 .app-shell-sidebar[data-collapsed] .app-shell-sidebar-section-title {
   display: none;

@@ -170,11 +170,12 @@ in the layout, still scrollable, still the same `<aside>`.
 ```
 <!-- /example -->
 
-Because the label is the only text a link has, a collapsed link is **icon-only** — which is
-why `AppShell.SidebarLink` wraps itself in a [Tooltip](tooltip.md) carrying the same
-`children` whenever `collapsed && !isMobile`. That tooltip is a hover/focus affordance, not
-an accessible name; read [Accessibility](#accessibility) before you ship a rail. A link with
-no `icon` collapses to an empty row.
+Because the label is the only text a link has, a collapsed link is **visually** icon-only —
+which is why `AppShell.SidebarLink` wraps itself in a [Tooltip](tooltip.md) carrying the same
+`children` whenever `collapsed && !isMobile`. That tooltip is a sighted-hover affordance; the
+name assistive tech reads comes from the label itself, which collapses to `sr-only` rather
+than being removed (see [Accessibility](#accessibility)). A link with no `icon` collapses to a
+row that looks empty but still announces.
 
 ## Controlling the drawer
 
@@ -356,11 +357,14 @@ one and you must change the other by hand.
 
 ## Gotchas
 
-- **On mobile the toggle opens the drawer but cannot close it.** The drawer's
-  outside-dismiss listener fires on `mousedown`, which closes it, and then the toggle's own
-  `click` — a separate, later event — flips it straight back open. Measured: after the
-  second tap the drawer is still mounted and `onOpenChange` has been called `false` then
-  `true`. `Escape` and a tap on the scrim both close it correctly; the button does not.
+- **The drawer ignores an outside-press that lands on a control naming it in `aria-controls`.**
+  Outside-dismiss fires on `mousedown` while the toggle acts on the later `click`, so without
+  this the toggle closed the drawer and immediately reopened it — it could be opened and never
+  closed from its own button. The listener now stands down for any press inside
+  `[aria-controls="<sidebar id>"]` and lets that control answer. The practical consequence is
+  for **custom** toggles: point `aria-controls` at `AppShell.Sidebar`'s id and yours behaves
+  like the built-in one; omit it and your button will fight the dismiss the same way. A press
+  anywhere else — the scrim, the main content — still closes on `mousedown` as before.
 - **`preventDefault()` in your `onClick` cancels the toggle.** `AppShell.Toggle` composes the
   handler you pass with its own: yours runs first, then the collapse/drawer flip, but only
   `if (!e.defaultPrevented)`. So `<AppShell.Toggle onClick={track}>` both tracks and toggles —
@@ -414,14 +418,16 @@ The landmark and state wiring on the chrome itself is solid: `<header role="bann
 to the first link inside, `Escape` closes it and returns focus to the toggle) and the Lucide
 icons render `aria-hidden="true"`, so nothing announces the glyphs.
 
-Three gaps you have to close yourself:
+A collapsed rail keeps its link names. The label `<span>` is taken off the screen with
+`sr-only` rather than `display: none`, so it stays in the accessibility tree: measured with
+the same engine Testing Library uses, the name is `"Dashboard"` both expanded and collapsed.
+This matters because the icon beside it is `aria-hidden`, so the label is the *only* name
+source — hiding it outright left the rail a list of unnamed links. Note the [Tooltip](tooltip.md)
+wrapper is not what saves this: it contributes `aria-describedby`, a *description*, and only
+while open. A `SidebarLink` with no `children` still has no name.
 
-- **A collapsed rail is a list of unnamed links.** The label is a `<span>` the collapsed rule
-  sets to `display: none`, and the icon is `aria-hidden` — so the link has **no accessible
-  name at all**. Measured with the same engine Testing Library uses: expanded, the name is
-  `"Dashboard"`; collapsed, it is `""`. The [Tooltip](tooltip.md) wrapper does not fix this —
-  it contributes `aria-describedby`, a *description*, and only while the tooltip is open. If
-  you ship the rail, put an `aria-label` on each `SidebarLink` (rest props reach the anchor).
+Two gaps you have to close yourself:
+
 - **`aria-modal` on the drawer does nothing.** The mobile `<aside>` carries
   `aria-modal="true"`, but that attribute is only defined for `dialog` and `alertdialog`
   roles, and this element is `role="navigation"`. Nothing marks the rest of the page `inert`

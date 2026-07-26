@@ -124,3 +124,32 @@ code. The gates stayed green throughout. The owner reversed it.
   per-component decision into a shared constant. **When you hoist, diff what each call site had
   against what the constant gives it, line by line, and keep whatever the constant would silently
   add out of the constant.**
+
+## F · From the pass that had to undo §D's *other* other half
+
+- **A shared recipe answers one question globally; check whether the question is
+  actually global.** §D hoisted the focus ring into `src/util/focus.ts` and, with it,
+  settled `ring-offset` to `0` everywhere. The reasoning was sound and is still in the
+  docblock: the offset paints a band of `--tw-ring-offset-color`, themed to
+  `--C-SURFACE-0`, so on a control sitting on surface-1/2 it reads as a halo. What
+  nobody measured was the case where the band is *load-bearing* rather than decorative
+  — a control that paints its **own fill**. Measured across the four themes, the ring
+  sits at **1.31:1** against `--C-STATUS-ERROR` and **1.76:1** against `--C-SECONDARY`,
+  and never below **2.72:1** against the band. A focused `<Button variant="danger">`
+  had a ring it was nearly impossible to see, shipped by a refactor whose whole purpose
+  was to make the ring consistent. The fix is two constants, not one
+  (`focusRingButton` / `focusRingButtonFilled`), chosen per variant.
+- **Unification pressure hides the exception.** The instinct that produced the bug is
+  the same one RC-2 rewards — *one recipe, one answer*. When collapsing N copies into
+  one, enumerate what the copies actually differed *on* before deciding the difference
+  was drift. Two of §D's three "unifications" (this one, and the `focus:` keying in §E)
+  were a real distinction being flattened.
+- **A contrast number against a surface says nothing about the same colour against a
+  fill.** `--C-BORDER-FOCUS` measures 2.22–14.84:1 against every surface in every theme
+  — genuinely fine — while measuring 1.00:1 against `--C-ACCENT`, which three of the
+  four themes make it byte-identical to. Always state *what* a ratio is against.
+- **The test that guards a recipe must enumerate the recipes.** `focus.test.ts` keeps a
+  hand-written `RECIPES` map, so adding `focusRingButtonFilled` left it unguarded until
+  it was added there too. Its literal `EXPECTED` table caught the omission on the next
+  run only because the partition assertion lists recipe *names*; a purely value-driven
+  table would have silently skipped the new export.

@@ -213,7 +213,22 @@ const AppShellSidebar = forwardRef<HTMLElement, AppShellSidebarProps>(
     const sidebarRef = useRef<HTMLElement>(null);
     const merged = useMemo(() => mergeRefs(forwardedRef, sidebarRef), [forwardedRef, sidebarRef]);
 
-    useClickOutside(sidebarRef, () => setOpen(false), isMobile && open);
+    // A press on a control that owns this sidebar is that control's to answer.
+    // `useClickOutside` fires on `mousedown`; the Toggle acts on the `click` a
+    // task later, so closing here would be undone by its own reopen and the
+    // drawer could never be dismissed from the control that opened it (#387).
+    // Keyed off `aria-controls` rather than a ref because the Toggle renders in
+    // a sibling subtree — portaled away from the sidebar on mobile — and a shell
+    // may carry more than one.
+    useClickOutside(
+      sidebarRef,
+      (event) => {
+        const target = event.target;
+        if (target instanceof Element && target.closest(`[aria-controls="${sidebarId}"]`)) return;
+        setOpen(false);
+      },
+      isMobile && open
+    );
     useFocusTrap(sidebarRef, isMobile && open);
 
     useEffect(() => {
@@ -322,7 +337,13 @@ const AppShellSidebarLink = forwardRef<HTMLAnchorElement, SidebarLinkProps>(
         {...props}
       >
         {Icon && <Icon className="app-shell-sidebar-link-icon" />}
-        <span className="app-shell-sidebar-link-label">{children}</span>
+        {/* Collapsed, the rail is icons only — but lucide marks its own svg
+            aria-hidden, so hiding the label with `display: none` left the link
+            with no accessible name at all (#388). `sr-only` keeps it in the
+            accessibility tree while taking it off the screen. */}
+        <span className={cn("app-shell-sidebar-link-label", showCollapsed && "sr-only")}>
+          {children}
+        </span>
       </Link>
     );
 

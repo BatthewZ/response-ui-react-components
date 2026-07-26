@@ -427,6 +427,130 @@ describe("AppShell", () => {
 });
 
 /**
+ * `useClickOutside` fires on `mousedown`; the Toggle acts on `click`. With the
+ * drawer open, a press on the Toggle used to close it on `mousedown` and reopen
+ * it on the `click` that followed, so the drawer could be opened and never
+ * closed from its own control.
+ *
+ * The two events must straddle a task boundary to reproduce — dispatched in one
+ * microtask the close and reopen collapse into a single render and the bug
+ * hides. `userEvent.setup()` inserts that boundary; a bare `fireEvent` pair
+ * would not, and this test would then pass against the unfixed source.
+ */
+describe("#387 · the mobile Toggle closes the drawer it opened", () => {
+  function renderShell(onOpenChange?: (open: boolean) => void) {
+    return renderWithRouter(
+      <AppShell onOpenChange={onOpenChange}>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>
+          <AppShell.SidebarLink to="/">Home</AppShell.SidebarLink>
+        </AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+  }
+
+  it("a second press on the Toggle closes the drawer", async () => {
+    stubMobileMatchMedia();
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    renderShell(onOpenChange);
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close navigation" }));
+
+    expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+    expect(screen.getByRole("button", { name: "Open navigation" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("reports the close exactly once, not close-then-reopen", async () => {
+    stubMobileMatchMedia();
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    renderShell(onOpenChange);
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    onOpenChange.mockClear();
+
+    await user.click(screen.getByRole("button", { name: "Close navigation" }));
+
+    expect(onOpenChange.mock.calls).toEqual([[false]]);
+  });
+
+  it("a press outside the drawer still closes it", async () => {
+    stubMobileMatchMedia();
+    const user = userEvent.setup();
+    renderShell();
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+
+    await user.click(screen.getByText("Main"));
+
+    expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Collapsed, the rail shows icons only: the stylesheet used to `display: none`
+ * the label and lucide marks its own svg `aria-hidden`, which left every link
+ * with an empty accessible name. The label now stays in the accessibility tree
+ * behind `sr-only`, so the name survives the collapse.
+ *
+ * jsdom applies no stylesheet, so `toHaveAccessibleName` alone cannot tell the
+ * two states apart — it reads the text either way. The class is the assertion
+ * that can actually fail, the same contract `Spinner.test.tsx` locks.
+ */
+describe("#388 · a collapsed sidebar link keeps its accessible name", () => {
+  async function collapse() {
+    const user = userEvent.setup();
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Navbar>
+          <AppShell.Toggle />
+        </AppShell.Navbar>
+        <AppShell.Sidebar>
+          <AppShell.SidebarLink to="/">Dashboard</AppShell.SidebarLink>
+        </AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+    await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+  }
+
+  it("hides the label visually rather than removing it from the tree", async () => {
+    await collapse();
+
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toHaveAttribute(
+      "data-collapsed",
+    );
+    expect(screen.getByText("Dashboard")).toHaveClass("sr-only");
+    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
+  });
+
+  it("does not hide the label while the sidebar is expanded", () => {
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Sidebar>
+          <AppShell.SidebarLink to="/">Dashboard</AppShell.SidebarLink>
+        </AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+
+    expect(screen.getByText("Dashboard")).not.toHaveClass("sr-only");
+  });
+});
+
+/**
  * A caller's bag arriving from a carrier TypeScript cannot see — plain JS, or
  * props forwarded through `any`. `href?: never` makes the *typed* spread of the
  * same object a compile error; the runtime destructure is what covers this half,

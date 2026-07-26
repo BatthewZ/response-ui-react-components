@@ -43,6 +43,19 @@
 export const focusRingButton =
   "ring-2 ring-transparent focus-visible:ring-border-focus focus-visible:ring-offset-0";
 
+/**
+ * Buttons that paint a fill. Identical to `focusRingButton` but for the offset,
+ * which restores the 2px band of `--C-SURFACE-0` between the fill and the ring.
+ *
+ * Measured across the four themes, the ring sits at 1.31:1 against
+ * `--C-STATUS-ERROR` and 1.76:1 against `--C-SECONDARY`, but never below 2.72:1
+ * against the band. A fill therefore needs the separation; a transparent control
+ * is already clear of its surface (2.52:1 at worst) and would only gain a halo,
+ * since the band is surface-0 wherever the control actually sits.
+ */
+export const focusRingButtonFilled =
+  "ring-2 ring-transparent focus-visible:ring-border-focus focus-visible:ring-offset-2";
+
 /** Outline reset for a `focusRingButton` site, keyed to match it. */
 export const focusOutlineResetButton = "focus-visible:outline-none";
 

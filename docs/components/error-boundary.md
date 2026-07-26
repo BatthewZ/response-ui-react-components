@@ -169,9 +169,12 @@ follow a theme.**
   it re-scales with the theme or steps at the 40rem breakpoint the way the rest of the
   library does.
 - **The focus ring is the one thing on this screen that is fully on contract.** It is the
-  library's button recipe — a 2px `--C-BORDER-FOCUS` ring at `ring-offset-0`, flush against
-  the button and keyed on `focus-visible:` — so the retry control rings on the same token and
-  the same interaction as [Button](button.md) even though everything around it does not. It
+  library's filled-button recipe — a 2px `--C-BORDER-FOCUS` ring at `ring-offset-2`, keyed on
+  `focus-visible:` — so the retry control rings on the same token and the same interaction as
+  [Button](button.md) even though everything around it does not. The offset band matters here:
+  the retry button is `bg-primary`, and the ring measures as little as 2.03:1 against that fill
+  across the shipped themes but never below 2.72:1 against the `--C-SURFACE-0` band, so the 2px
+  gap is what keeps the ring readable. It
   goes one step further and drops the UA outline, which [Button](button.md) keeps.
 - **`min-h-screen` is a hard `100vh`,** not a token, so the fallback's height is the one
   layout decision a theme cannot touch.

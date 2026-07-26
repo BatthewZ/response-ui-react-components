@@ -4,6 +4,7 @@ import {
   focusOutlineResetButton,
   focusOutlineResetControl,
   focusRingButton,
+  focusRingButtonFilled,
   focusRingControl,
   focusRingControlError,
   focusRingGroup,
@@ -13,6 +14,7 @@ import {
 
 const RECIPES = {
   focusRingButton,
+  focusRingButtonFilled,
   focusRingControl,
   focusRingControlError,
   focusRingGroup,
@@ -36,12 +38,13 @@ const RESETS = { focusOutlineResetButton, focusOutlineResetControl };
  * out rather than deriving it.
  */
 const EXPECTED = {
-  focusRingButton: { variant: "focus-visible", ring: true, border: false },
-  focusRingControl: { variant: "focus", ring: true, border: true },
-  focusRingControlError: { variant: "focus", ring: false, border: true },
-  focusRingWithin: { variant: "focus-within", ring: true, border: true },
-  focusRingWithinError: { variant: "focus-within", ring: false, border: true },
-  focusRingGroup: { variant: "group-focus-visible", ring: true, border: false },
+  focusRingButton: { variant: "focus-visible", ring: true, border: false, offset: "0" },
+  focusRingButtonFilled: { variant: "focus-visible", ring: true, border: false, offset: "2" },
+  focusRingControl: { variant: "focus", ring: true, border: true, offset: "0" },
+  focusRingControlError: { variant: "focus", ring: false, border: true, offset: null },
+  focusRingWithin: { variant: "focus-within", ring: true, border: true, offset: "0" },
+  focusRingWithinError: { variant: "focus-within", ring: false, border: true, offset: null },
+  focusRingGroup: { variant: "group-focus-visible", ring: true, border: false, offset: "0" },
 } as const;
 
 /** The reset that belongs with each recipe, spelled out rather than derived. */
@@ -73,7 +76,7 @@ describe("focus recipes", () => {
         .map(([name]) => name)
         .sort();
 
-    expect(byVariant("focus-visible")).toEqual(["focusRingButton"]);
+    expect(byVariant("focus-visible")).toEqual(["focusRingButton", "focusRingButtonFilled"]);
     expect(byVariant("focus")).toEqual(["focusRingControl", "focusRingControlError"]);
     expect(byVariant("focus-within")).toEqual(["focusRingWithin", "focusRingWithinError"]);
     expect(byVariant("group-focus-visible")).toEqual(["focusRingGroup"]);
@@ -86,12 +89,12 @@ describe("focus recipes", () => {
     }
   });
 
-  it("answers the ring-offset question exactly once, with 0, wherever it paints a ring", () => {
+  it("declares its ring-offset exactly once, at the width the table names", () => {
     for (const [name, recipe] of Object.entries(RECIPES)) {
-      const { ring } = EXPECTED[name as keyof typeof EXPECTED];
+      const { ring, offset } = EXPECTED[name as keyof typeof EXPECTED];
       expect([name, recipe.match(/ring-offset-\d+/g)]).toEqual([
         name,
-        ring ? ["ring-offset-0"] : null,
+        offset === null ? null : [`ring-offset-${offset}`],
       ]);
       expect([name, recipe.includes("ring-2 ring-transparent")]).toEqual([name, ring]);
     }

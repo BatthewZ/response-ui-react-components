@@ -122,3 +122,24 @@ describe("Button", () => {
     });
   });
 });
+
+describe("focus ring offset follows the fill", () => {
+  // The ring offset paints a band of --C-SURFACE-0 between the control and the
+  // ring. Measured against every theme, the ring sits at 1.31:1 (danger) and
+  // 1.76:1 (secondary) against its own fill, but never below 2.72:1 against the
+  // band. So a filled variant needs the band; a transparent one is already
+  // clear of its surface and would only gain a surface-0 halo.
+  it.each([
+    ["primary", true],
+    ["secondary", true],
+    ["danger", true],
+    ["ghost", false],
+    ["ghost-inverse", false],
+    ["link", false],
+  ] as const)("%s carries the offset band: %s", (variant, banded) => {
+    render(<Button variant={variant}>Go</Button>);
+    const cls = screen.getByRole("button").className;
+    expect([variant, cls.includes("focus-visible:ring-offset-2")]).toEqual([variant, banded]);
+    expect([variant, cls.includes("focus-visible:ring-offset-0")]).toEqual([variant, !banded]);
+  });
+});
