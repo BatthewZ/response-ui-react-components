@@ -29,7 +29,7 @@ Dropped inside a [Field](field.md) it inherits that field's error state — the 
 `name`, `required`, `disabled`, `multiple` — is a passthrough `<select>` attribute, and the
 choices are `<option>` / `<optgroup>` children you supply; there is no `options` prop. Its
 sharp edges are the ones the native control brings with it: you cannot style the open list,
-the chevron ignores your theme, and Select is not server-renderable. See
+`multiple`/`size` pass through and look wrong, and Select is not server-renderable. See
 [Gotchas](#gotchas).
 
 ## Native control, or `Combobox` / `MultiSelect`?
@@ -206,9 +206,9 @@ These are the native `<select>` props, so React's usual rule applies — a `valu
 ## Theme tokens
 
 Every utility in the table below resolves to a contract variable, so overriding the variable
-re-tints the control at runtime with the rest of the app. Three pieces of the control sit off
-the contract entirely; they are listed after the table. Select has no `.css` file of its own,
-so all of these are Tailwind utilities in the `.tsx`.
+re-tints the control at runtime with the rest of the app — there is nothing left in the closed
+control that does not. Select has no `.css` file of its own, so all of these are Tailwind
+utilities in the `.tsx`.
 
 | Where               | Utility                                               | Override                          |
 | ------------------- | ----------------------------------------------------- | --------------------------------- |
@@ -219,6 +219,8 @@ so all of these are Tailwind utilities in the `.tsx`.
 | Focus ring & border | `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
 | Error border & ring | `border-status-error` `focus:ring-status-error` | `--C-STATUS-ERROR`              |
 | Padding             | `px-r4` `py-r5`                                       | `--R-SIZE-4` `--R-SIZE-5`         |
+| Chevron gutter      | `pr-r1`                                               | `--R-SIZE-1`                      |
+| Chevron ink         | `text-fg-secondary`                                   | `--C-TEXT-SECONDARY`              |
 | Corner radius       | `rounded-md`                                          | `--RADIUS-MD`                     |
 | Transition          | `duration-fast`                                       | `--DURATION-FAST`                 |
 
@@ -238,9 +240,22 @@ The chevron is a real `lucide` element positioned over the control, not a backgr
 its ink is `text-fg-secondary` and follows the theme like everything else. (As a data-URI
 background it could not: an SVG referenced as a background image is its own document, and the
 `fill="currentColor"` inside it resolved against *that* document's initial colour — black on
-every theme, 1.06:1 on `tech`.) One piece is still off the contract: the gutter that keeps text
-clear of the chevron is `pr-10`, a fixed `2.5rem` on Tailwind's default spacing scale rather
-than the responsive `r`-scale the rest of the padding uses.
+every theme, 1.06:1 on `tech`.)
+
+The gutter that keeps text clear of the chevron is `pr-r1`, the same rung
+[DatePicker](date-picker.md) reserves for its icon cluster. It used to be `pr-10` — a frozen
+`2.5rem` on Tailwind's *default* spacing scale rather than the responsive `r`-scale every other
+padding here sits on. Off the contract, and in practice too tight: measured in Firefox 146 it
+left 4px between the text box and the chevron above the 40rem breakpoint, and never moved.
+
+`r1` is the **smallest** rung that clears the chevron at both steps — the gutter has to cover
+the glyph's `right-r4` inset plus its 16px box, and `r2` is `1.25rem` on a phone, which runs
+under it. That leaves 8px of air below 40rem and 60px above it. The 60px is more than a 16px
+glyph needs, and it is the price of staying on the scale: the value that would fit exactly is a
+`calc()` over two rungs, which resolves to no single token and so cannot be checked by
+`scripts/verify-component-docs.mjs` against the row above. A gutter the guard can verify beat a
+gutter tuned by eye. If it costs you visible text on a narrow control, `className="pr-r2"`
+merges over it — the class list runs through tailwind-merge — at the cost of the clearance.
 
 ## Gotchas
 
@@ -261,9 +276,9 @@ than the responsive `r`-scale the rest of the padding uses.
   just submits `""`.
 - **`multiple` and `size` compile and look wrong.** They are native `<select>` attributes and
   pass through, but the styling assumes a one-line control. In Chromium and Firefox alike the
-  chevron still paints, stranded in the vertical middle of the expanded list, and `pr-10`
-  still reserves its gutter down the whole height. The ARIA role also changes from `combobox`
-  to `listbox`. Reach for [MultiSelect](multi-select.md) instead.
+  chevron still paints, stranded in the vertical middle of the expanded list, and the chevron
+  gutter still reserves its space down the whole height. The ARIA role also changes from
+  `combobox` to `listbox`. Reach for [MultiSelect](multi-select.md) instead.
 - **The [Label](label.md) is not auto-associated.** [Field](field.md) wires the *error* (`aria-invalid`,
   `aria-describedby`) through context, but nothing links a [Label](label.md) to the select. Set
   `Label htmlFor="x"` and `Select id="x"` yourself, or clicking the label won't focus the
@@ -300,9 +315,11 @@ here than on a text field: browsers grant a clicked text input an indicator unco
 but judge a clicked `<select>` for themselves, so plain `:focus` is what makes the ring
 certain. `focus:outline-none` removes the UA outline, leaving the ring as the indicator.
 
-Two things to watch. The chevron is a CSS background image, so it is correctly never
-announced — but it is also the only visual cue that the control is a dropdown, and it does
-not re-tint with the theme (see [Gotchas](#gotchas)). And a placeholder option carries no
+Two things to watch. The chevron is `aria-hidden`, so it is correctly never announced — but it
+is also the only visual cue that the control is a dropdown, because `appearance-none` strips
+the UA arrow. (It is a real `lucide` element now, so it does follow the theme; the sentence
+that used to say otherwise described the data-URI background it replaced.) And a placeholder
+option carries no
 special semantics: it is read out as an ordinary choice, so word it as an instruction
 ("Select a role…") rather than leaving it blank.
 

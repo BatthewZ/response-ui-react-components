@@ -28,6 +28,11 @@ what leaves the component is always one canonical lowercase `#rrggbb` string.
 | `className`     | `string`                  | —                |
 | `aria-label`    | `string`                  | `"Choose color"` |
 | `panelLabel`    | `string`                  | `"Color picker"` |
+| `areaLabel`     | `string`                  | `"Saturation and brightness"` |
+| `saturationLabel` | `string`                | `"Saturation"`   |
+| `brightnessLabel` | `string`                | `"Brightness"`   |
+| `hueLabel`      | `string`                  | `"Hue"`          |
+| `hexLabel`      | `string`                  | `"Hex value"`    |
 | `ref`           | `Ref<HTMLButtonElement>`  | —                |
 | …rest           | props of `<button>`; `value` / `defaultValue` / `onChange` are re-typed above | — |
 
@@ -42,6 +47,25 @@ input, so a plain `<form>` submits nothing for it — see [Gotchas](#gotchas).
 `className` lands on the wrapper `<div>`, not the trigger; `ref` lands on the trigger
 `<button>`. `Placement` is Floating UI's type — `"top"`, `"right"`, `"bottom"`, `"left"`,
 each optionally suffixed `-start` / `-end`.
+
+The six `*Label` props are the panel's whole vocabulary, and they are **accessible names, not
+visible text** — the panel shows no words at all. Pass them to translate the control; `""` does
+not remove a name, it leaves that control unnamed, so pass a real string or leave the default.
+
+<!-- example:Translated -->
+```tsx
+<ColorPicker
+  aria-label="Couleur de la marque"
+  defaultValue="#3366cc"
+  panelLabel="Sélecteur de couleur"
+  areaLabel="Saturation et luminosité"
+  saturationLabel="Saturation"
+  brightnessLabel="Luminosité"
+  hueLabel="Teinte"
+  hexLabel="Valeur hexadécimale"
+/>
+```
+<!-- /example -->
 
 ## Value in, value out
 
@@ -357,7 +381,11 @@ border standing while the control is focused.
 - **The preset grid is always eight columns.** Three presets are three eighth-width
   swatches with five empty cells, not three wide ones.
 - **The floating panel is a named `role="dialog"`.** Its name is `panelLabel`, default
-  `"Color picker"` — pass your own to translate it.
+  `"Color picker"` — pass your own to translate it, along with the five `*Label` props that
+  name what is inside it.
+- **Opening the panel no longer moves focus into it.** Focus stays on the trigger and one Tab
+  reaches the saturation slider. It used to land on that slider directly, which made the first
+  arrow press commit a colour. See [Accessibility](#accessibility).
 - **The invalid border survives focus, and no longer by a tie-break.** The trigger's ring is
   `focusRingButton`, which paints a ring and never touches `border-color`, so
   `.colorpicker-trigger--error`'s red border is simply never contested: measured focused and
@@ -390,17 +418,27 @@ form, and Floating UI's `useRole` gives it `aria-haspopup="dialog"`, `aria-expan
 
 Focus management is deliberately **non-modal**: nothing is trapped, nothing is inert, and
 there is no scrim — unlike [Dialog](dialog.md), and unlike [Popover](popover.md), whose focus
-management *is* modal. Opening the panel moves focus to its first control, the **Saturation**
-slider. Tab then walks the panel in DOM order — saturation → brightness → hue rail → hex field
-→ presets — Shift+Tab from the saturation slider returns to the trigger with the panel still
-open, Escape closes it and returns focus to the trigger, and tabbing past the last preset
-closes it and carries on into the page.
+management *is* modal.
+
+**Opening the panel leaves focus on the trigger.** Tab then walks into the panel in DOM order —
+saturation → brightness → hue rail → hex field → presets — Shift+Tab from the saturation slider
+returns to the trigger with the panel still open, Escape closes it and returns focus to the
+trigger, and tabbing past the last preset closes it and carries on into the page. (Measured in
+Firefox 146: after opening, `document.activeElement` is the trigger; one Tab reaches the
+Saturation slider; Escape closes the panel and focus is back on the trigger.)
+
+This **changed**. The panel used to focus its first tabbable control on open, which since the
+square became two range inputs meant the **Saturation** slider — so the first arrow key a user
+pressed committed a colour change they had not asked for. [DatePicker](date-picker.md) and
+[DateRangePicker](date-range-picker.md) had always suppressed that initial move; ColorPicker was
+the outlier, and now matches them. If you were relying on the old behaviour, move focus yourself
+from a handler on the trigger.
 
 ### The saturation/brightness area is two sliders
 
-The square is a `role="group"` named "Saturation and brightness", holding one visually hidden
-`<input type="range">` per axis: **Saturation** and **Brightness**, each 0–100 with
-`aria-valuetext` in percent. That is the only shape in which each axis gets its own accessible
+The square is a `role="group"` named by `areaLabel` (default "Saturation and brightness"),
+holding one visually hidden `<input type="range">` per axis, named by `saturationLabel` and
+`brightnessLabel`, each 0–100 with `aria-valuetext` in percent. That is the only shape in which each axis gets its own accessible
 name, `aria-valuenow` and bounds — a single `role="slider"` can carry exactly one value, and
 this one used to carry none at all, which is what ARIA requires for the role.
 
@@ -431,7 +469,8 @@ what keeps the ring legible when that colour is close to the focus colour.
 
 ### Remaining gaps
 
-Three, none of which the component will do for you.
+Two, neither of which the component will do for you. (A third — hard-coded English inside the
+panel — is closed: every name in there is a prop, listed in the table at the top.)
 
 - **The current colour is never announced.** `aria-label` overrides the button's text
   content, so the visible `#3366cc` and the swatch (which is `aria-hidden`) are both absent
@@ -440,11 +479,7 @@ Three, none of which the component will do for you.
 - **Presets announce as hex strings.** Each is a toggle button named by its normalised
   value, so a screen reader reads "#e53935, toggle button", never "red". If the palette has
   names, they are not reachable through this API.
-- **Every name inside the panel but the dialog's is hard-coded English.** "Saturation and
-  brightness", "Saturation", "Brightness", "Hue" and "Hex value" have no override; only the
-  panel itself takes one, through `panelLabel`.
-
-The hue rail is a native `<input type="range">` labelled "Hue", so the platform supplies
+The hue rail is a native `<input type="range">` labelled by `hueLabel`, so the platform supplies
 `role="slider"`, `aria-valuenow`, its bounds, and the same key set — it is announced as a bare
 number from 0 to 360 with no unit.
 

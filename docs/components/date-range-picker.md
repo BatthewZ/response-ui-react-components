@@ -27,6 +27,7 @@ range with no client state.
 | `numberOfMonths`   | `number`                      | `2`                           |
 | `startPlaceholder` | `string`                      | — (no placeholder)            |
 | `endPlaceholder`   | `string`                      | — (no placeholder)            |
+| `rejectMessage`    | `(reason, text) => string`    | `` `${text} is not a date we can read.` `` |
 | `error`            | `boolean`                     | `Field` state, else `false`   |
 | `disabled`         | `boolean`                     | `false`                       |
 | `name`             | `string`                      | —                             |
@@ -44,8 +45,9 @@ excess-property check, so a `color` in a spread object used to reach the wrapper
 render as the legacy HTML attribute.
 
 Rest props land on the **wrapper `<div>`**, not on either input: `className`, `id`,
-`data-*`, `role` and `aria-*` all address the pair as a unit. That div is also the floating
-anchor the popover positions against. `onChange` is the exception — it carries the committed
+`data-*`, `role` and `aria-*` all address the pair as a unit. It holds the field row and, below
+it, the refusal message; the *field row* is the floating anchor the popover positions against,
+so a message appearing does not push the calendar away from the fields. `onChange` is the exception — it carries the committed
 `DateRange`, the same payload as `onValueChange` rather than a `ChangeEvent`, and is
 destructured out before the spread so it never reaches the div. That is what makes
 `{...form.field<DateRange>("stay")}` bind the pair — though the `aria-invalid` that binding
@@ -56,9 +58,10 @@ instead.
 ## What it renders
 
 One `relative` wrapper containing, in DOM order: two hidden `<input type="hidden">` (only
-when `name` is set), the start [Input](input.md), an `aria-hidden` en-dash separator, the end
-[Input](input.md), and an [IconButton](icon-button.md) that toggles the popover. The popover
-itself is portalled to the end of `<body>` and holds a [RangeCalendar](range-calendar.md).
+when `name` is set), a field row holding the start [Input](input.md), an `aria-hidden` en-dash
+separator, the end [Input](input.md) and an [IconButton](icon-button.md) that toggles the
+popover — and after that row, the refusal message element. The popover itself is portalled to
+the end of `<body>` and holds a [RangeCalendar](range-calendar.md).
 
 The two text fields are the primary control — the calendar is an alternative, not the only
 way in. Typing commits on **Enter** or on **blur**; there is no per-keystroke parsing, so a
@@ -117,17 +120,56 @@ two days are the same value.
 `min` and `max` grey out days in the calendar. `isDateDisabled` runs per day for anything
 finer — weekends, booked-out dates, holidays.
 
-They behave **differently for typed input**, and the difference is not cosmetic:
+They behave **differently for typed input**:
 
-- Out of `[min, max]` → **clamped**. With `min` at 1 June 2026, typing `01/01/2020` commits
-  and redisplays as `6/1/2026`.
-- Rejected by `isDateDisabled` → **cleared**. The endpoint becomes `null` and the field goes
-  empty, discarding whatever was previously committed there.
-- Unparseable (`"garbage"`) → **reverted** to the last committed value.
+- Out of `[min, max]` → **clamped**, silently. With `min` at 1 June 2026, typing `01/01/2020`
+  commits and redisplays as `6/1/2026`. A clamp is a successful commit, not a refusal.
+- Rejected by `isDateDisabled` → **refused**. The committed endpoint does not move, your entry
+  stays in the field, that field goes `aria-invalid`, and the `"unavailable"` message says so.
+- Unparseable (`"garbage"`) → **refused** the same way, with the `"unparseable"` message.
 
-Three inputs, three different outcomes, none of them signalled to the user. If a blackout
-date matters, validate the committed range yourself and surface it through
-[FieldError](field-error.md).
+Two of the three used to be silent, and the `isDateDisabled` case used to *clear* the endpoint
+outright — the most plausible mistake of the three was the one that destroyed a committed date.
+Both are fixed; see [Saying why a date was refused](#saying-why-a-date-was-refused). The clamp
+is still silent by design, so if a bound matters to your server, validate there too.
+
+## Saying why a date was refused
+
+<!-- example:RejectMessage -->
+```tsx
+<DateRangePicker
+  startPlaceholder="Check in"
+  endPlaceholder="Check out"
+  isDateDisabled={(day) => day.getDay() === 0}
+  rejectMessage={(reason, text) =>
+    reason === "unavailable"
+      ? `No check-ins on ${text}.`
+      : `${text} is not a date. Try MM/DD/YYYY.`
+  }
+/>
+```
+<!-- /example -->
+
+`rejectMessage` is called with the reason — `"unparseable"` when the text could not be read at
+all, `"unavailable"` when `isDateDisabled` refused the day it named — and the text that was
+refused. It is the same prop, with the same signature, on [DatePicker](date-picker.md); there is
+one convention between the two pickers, not two.
+
+**Both endpoints share one message element**, below the pair. A commit that refuses both writes
+both sentences into it, in field order, separated by a space — which is why the default quotes
+the text back: that is what tells the two apart. `aria-invalid` is per field, so the red border
+still points at the endpoint that caused it, and an endpoint the user never typed into is never
+blamed.
+
+The message is rendered in `--C-STATUS-ERROR` inside a polite live region that is mounted
+whether or not it holds anything (a region created in the same commit as its first text is not
+reliably announced — the same reason [TagInput](tag-input.md) and [Repeater](repeater.md) mount
+theirs unconditionally). Return `""` to render nothing; `aria-invalid` still reflects the
+refusal, because `""` removes the word, not the state.
+
+Editing a refused field clears its message and its invalid state immediately, and `Enter` on a
+draft already refused and not edited since is left alone, so the pair can still submit the form
+it sits in rather than eating the key forever.
 
 ## Months shown
 
@@ -256,6 +298,7 @@ variable below and both re-tint at runtime, with no rebuild.
 | Corner radius               | `rounded-md`                                           | `--RADIUS-MD`                     |
 | Popover shadow              | `shadow-md`                                            | `--SHADOW-MD`                     |
 | Transition                  | `duration-fast`                                        | `--DURATION-FAST`                 |
+| Refusal message             | `mt-r6` `text-body-3` `text-status-error`              | `--R-SIZE-6` `--BodyText-3` `--C-STATUS-ERROR` |
 
 The spacing tokens are on the responsive `r`-scale and step up at the 40rem breakpoint:
 `--R-SIZE-4` from `0.75rem` to `1.25rem` and `--R-SIZE-5` from `0.5rem` to `0.75rem`, so the
@@ -280,10 +323,14 @@ relationship has to survive without sight of the dash.
 
 ## Gotchas
 
-- **A typed date fails three different ways, all silently.** Outside `[min, max]` it clamps,
-  an `isDateDisabled` day *clears* the endpoint outright, and unparseable text reverts — so
-  the most plausible mistake of the three is the one that destroys a committed date. See
+- **A clamp is still silent; the two refusals are not.** Outside `[min, max]` a typed date
+  moves into range and commits with no signal. Unreadable text and an `isDateDisabled` day are
+  refusals: the committed endpoint holds, your entry stays in the field, that field goes
+  `aria-invalid`, and a message says which. See
   [Bounds and blackout days](#bounds-and-blackout-days).
+- **A refusal leaves your typing in the field.** So a field showing `06/11` while the hidden
+  input posts `2026-06-10` is the expected state, not a bug — the entry is kept so it can be
+  corrected rather than retyped.
 - **Reordering happens on commit, not on render — and a reversed range is the one case where
   a no-edit blur still fires.** Type or click the endpoints in either order and the earlier one
   lands in the start field. A reversed `value`/`defaultValue` renders exactly as given, but the
@@ -305,9 +352,11 @@ relationship has to survive without sight of the dash.
   needs three numbers in the locale's field order, or a month name plus a day and a year.
   Give it `{ month: "2-digit", day: "2-digit" }` and a field renders as `06/10`, which parses
   to nothing. Typing a **complete** date over it still commits — measured, `06/05/2026` in
-  the start field fires `onValueChange` with 5 June 2026 — but the field snaps straight back
-  to `06/05`, so the committed year is never on screen and any edit of the visible text is
-  dropped with no signal.
+  the start field fires `onValueChange` with 5 June 2026 — but the field then redisplays
+  `06/05`, so the committed year is never on screen. Editing the *displayed* text is still
+  discarded, because it is not a date the parser can read — but it is no longer discarded in
+  silence: that edit is a refusal now, so the field goes `aria-invalid` and the message names
+  the text it could not read. Choose a format that shows every field the parser needs.
 - **`disabled` does not stop submission.** It disables the two inputs and the trigger, but
   the hidden `name` inputs are never disabled, so a disabled picker still posts its dates —
   unlike a native disabled control, which the browser excludes.
@@ -350,9 +399,14 @@ ever opening the calendar.
   two months, the whole dialog is three `Tab`s wide: previous-month → next-month → the roving
   day, and the fourth `Tab` lands outside with the dialog already gone. `Escape` also closes
   it, and returns focus to the start field.
-- **Error state is conveyed by colour and `aria-invalid` only.** The red border carries no
-  text; inside an errored [Field](field.md) the inputs point at the
-  [FieldError](field-error.md), so render one with real content.
+- **The `error` prop's state is conveyed by colour and `aria-invalid` only.** That red border
+  carries no text; inside an errored [Field](field.md) the inputs point at the
+  [FieldError](field-error.md), so render one with real content. The picker's *own* refusals do
+  carry text — see [Saying why a date was refused](#saying-why-a-date-was-refused) — and
+  standalone, that message's id is joined into both fields' `aria-describedby`. Inside a
+  [Field](field.md) that renders a [FieldError](field-error.md) it is not: the field's error id
+  wins there, because the description comes from [Input](input.md)'s own wiring. The message is
+  still visible and still announced.
 - **Selection is announced per day, not per range.** A day button says it is selected; nothing
   announces "8 nights" or "10 June to 18 June". The text fields hold the authoritative
   answer, which is another reason to name the group.

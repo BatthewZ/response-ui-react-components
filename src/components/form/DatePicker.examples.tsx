@@ -18,6 +18,26 @@ export function Minimal() {
   );
 }
 
+/** A refusal is not silent: the entry stays in the field, the field goes `aria-invalid`, and
+ *  `rejectMessage` says why. `reason` separates "could not read that" from "that day is not
+ *  available", so the two failures can read differently. */
+export function RejectMessage() {
+  return (
+    <>
+      <Label htmlFor="booking-date">Booking date</Label>
+      <DatePicker
+        id="booking-date"
+        isDateDisabled={(date) => date.getDay() === 0}
+        rejectMessage={(reason, text) =>
+          reason === "unavailable"
+            ? `We are closed on ${text}. Pick a weekday.`
+            : `${text} is not a date. Try MM/DD/YYYY.`
+        }
+      />
+    </>
+  );
+}
+
 /** `name` renders a hidden `input` carrying `YYYY-MM-DD`, so a plain form posts a
  *  machine-readable date rather than the localized string on screen. */
 export function InAForm() {

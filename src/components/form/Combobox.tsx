@@ -299,6 +299,12 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
             value: inputValue,
             className: cn(
               "combobox-input duration-fast",
+              // The border is a utility rather than a rule in `Combobox.css`
+              // so that `focusRingControl`'s border swap and
+              // `focusRingControlError`'s red border can reach it: this
+              // package's stylesheets are unlayered, and unlayered CSS
+              // outranks every Tailwind utility whatever the specificity.
+              "border border-border-strong",
               focusOutlineResetControl,
               focusRingControl,
               invalid && focusRingControlError,

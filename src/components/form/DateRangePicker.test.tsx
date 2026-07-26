@@ -77,11 +77,19 @@ describe("DateRangePicker", () => {
     expect((end as HTMLInputElement).value).toBe(fmt(new Date(2026, 5, 18)));
   });
 
-  it("reverts an invalid endpoint draft on blur", async () => {
+  // #338. The committed endpoint is what a refusal must not move; the *draft*
+  // is deliberately kept (traps H: clear an input only on success, or when what
+  // is left is blank), so the assertion is on what was committed.
+  it("an invalid endpoint draft commits nothing and stays on screen to correct", async () => {
     const user = userEvent.setup();
+    const onValueChange = vi.fn();
     render(
       <>
-        <DateRangePicker defaultValue={{ start: new Date(2026, 0, 1), end: new Date(2026, 0, 31) }} />
+        <DateRangePicker
+          name="stay"
+          defaultValue={{ start: new Date(2026, 0, 1), end: new Date(2026, 0, 31) }}
+          onValueChange={onValueChange}
+        />
         <button type="button">elsewhere</button>
       </>,
     );
@@ -91,7 +99,16 @@ describe("DateRangePicker", () => {
     await user.type(start, "garbage");
     await user.click(screen.getByText("elsewhere"));
 
-    expect((start as HTMLInputElement).value).toBe(fmt(new Date(2026, 0, 1)));
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(document.querySelector('input[name="stay.start"]')).toHaveValue("2026-01-01");
+    expect(start).toHaveValue("garbage");
+    expect(start).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText("garbage is not a date we can read.")).toBeInTheDocument();
+    // The untouched endpoint is not blamed for the other one's refusal.
+    expect(screen.getByRole("textbox", { name: "End date" })).not.toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
   });
 
   describe("draft vs committed range", () => {
@@ -250,13 +267,14 @@ describe("DateRangePicker · popup wiring, i18n and commit safety", () => {
     expect(trigger).toHaveAttribute("aria-controls");
   });
 
-  // #334
-  it("a refused date reverts the endpoint instead of clearing it", async () => {
+  // #334 / #338
+  it("a refused date keeps the committed endpoint instead of clearing it, and says why", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
     render(
       <>
         <DateRangePicker
+          name="stay"
           defaultValue={{ start: new Date(2026, 5, 10), end: new Date(2026, 5, 20) }}
           isDateDisabled={(d) => d.getDate() === 15}
           onValueChange={onValueChange}
@@ -270,8 +288,60 @@ describe("DateRangePicker · popup wiring, i18n and commit safety", () => {
     await user.type(start, "06/15/2026");
     await user.click(screen.getByRole("button", { name: "elsewhere" }));
 
-    expect(start).toHaveValue(fmt(new Date(2026, 5, 10)));
     expect(onValueChange).not.toHaveBeenCalled();
+    expect(document.querySelector('input[name="stay.start"]')).toHaveValue("2026-06-10");
+    expect(screen.getByText("06/15/2026 is not available.")).toBeInTheDocument();
+  });
+
+  // #338 — the row's own scenario: a `formatOptions` the parser cannot read
+  // back. Editing the displayed text used to be discarded with no signal.
+  it("signals a discarded edit when formatOptions cannot round-trip", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <DateRangePicker
+          name="stay"
+          formatOptions={{ month: "2-digit", day: "2-digit" }}
+          defaultValue={{ start: new Date(2026, 5, 10), end: new Date(2026, 5, 20) }}
+        />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+
+    const start = screen.getByRole("textbox", { name: "Start date" });
+    expect(start).toHaveValue("06/10");
+
+    await user.clear(start);
+    await user.type(start, "06/11");
+    await user.click(screen.getByRole("button", { name: "elsewhere" }));
+
+    expect(start).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText("06/11 is not a date we can read.")).toBeInTheDocument();
+    expect(document.querySelector('input[name="stay.start"]')).toHaveValue("2026-06-10");
+  });
+
+  // #338 — one prop shape, one message element, shared with DatePicker.
+  it("`rejectMessage` overrides both endpoints through one prop", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <DateRangePicker
+          defaultValue={{ start: new Date(2026, 5, 10), end: new Date(2026, 5, 20) }}
+          rejectMessage={(reason, text) => `${reason}/${text}`}
+        />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+
+    const start = screen.getByRole("textbox", { name: "Start date" });
+    const end = screen.getByRole("textbox", { name: "End date" });
+    await user.clear(start);
+    await user.type(start, "aaa");
+    await user.clear(end);
+    await user.type(end, "bbb");
+    await user.click(screen.getByRole("button", { name: "elsewhere" }));
+
+    expect(screen.getByText("unparseable/aaa unparseable/bbb")).toBeInTheDocument();
   });
 
   // #336

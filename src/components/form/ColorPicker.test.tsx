@@ -486,5 +486,60 @@ describe("ColorPicker", () => {
         screen.getByRole("dialog", { name: "Sélecteur de couleur" })
       ).toBeInTheDocument();
     });
+
+    // #485 — every name inside the panel is overridable, not just the dialog's.
+    it("takes every name inside the panel from a prop", async () => {
+      const user = userEvent.setup();
+      render(
+        <ColorPicker
+          defaultValue="#000000"
+          areaLabel="Saturation et luminosité"
+          saturationLabel="Saturation FR"
+          brightnessLabel="Luminosité"
+          hueLabel="Teinte"
+          hexLabel="Valeur hexadécimale"
+        />
+      );
+
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
+
+      expect(
+        screen.getByRole("group", { name: "Saturation et luminosité" })
+      ).toBeInTheDocument();
+      expect(screen.getByRole("slider", { name: "Saturation FR" })).toBeInTheDocument();
+      expect(screen.getByRole("slider", { name: "Luminosité" })).toBeInTheDocument();
+      expect(screen.getByRole("slider", { name: "Teinte" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: "Valeur hexadécimale" })
+      ).toBeInTheDocument();
+
+      // No English left behind under the old names.
+      expect(screen.queryByRole("slider", { name: "Saturation" })).toBeNull();
+      expect(screen.queryByRole("slider", { name: "Hue" })).toBeNull();
+      expect(screen.queryByRole("textbox", { name: "Hex value" })).toBeNull();
+    });
+
+    // #484 — behaviour change. Opening used to move focus onto the Saturation
+    // slider, so the next arrow key committed a colour nobody asked for.
+    // `initialFocus={-1}` leaves it on the trigger, which is what DatePicker
+    // and DateRangePicker already do.
+    //
+    // NOT EVIDENCE OF THE FIX. Verified green with `initialFocus` removed:
+    // `<FloatingFocusManager>`'s own initial focus move does not happen under
+    // jsdom (it depends on tabbability checks that need layout), so only a
+    // browser can see it — measured in Firefox 146, `document.activeElement`
+    // after opening was the Saturation slider before and the trigger after.
+    // What this test does still guard is anything that focuses a panel control
+    // *explicitly*, such as an `autoFocus` added to one of the axes.
+    it("leaves focus on the trigger when the panel opens", async () => {
+      const user = userEvent.setup();
+      render(<ColorPicker defaultValue="#3366cc" />);
+
+      const trigger = screen.getByRole("button", { name: /^Choose color/ });
+      await user.click(trigger);
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(document.activeElement).toBe(trigger);
+    });
   });
 });

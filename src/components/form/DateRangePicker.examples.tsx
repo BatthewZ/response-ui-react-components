@@ -15,6 +15,24 @@ export function Minimal() {
   return <DateRangePicker name="stay" startPlaceholder="Check in" endPlaceholder="Check out" />;
 }
 
+/** A refusal is not silent: the entry stays in the field that caused it, that field goes
+ *  `aria-invalid`, and `rejectMessage` says why. Both endpoints share one message element, so
+ *  a commit that refuses both writes both sentences into it. */
+export function RejectMessage() {
+  return (
+    <DateRangePicker
+      startPlaceholder="Check in"
+      endPlaceholder="Check out"
+      isDateDisabled={(day) => day.getDay() === 0}
+      rejectMessage={(reason, text) =>
+        reason === "unavailable"
+          ? `No check-ins on ${text}.`
+          : `${text} is not a date. Try MM/DD/YYYY.`
+      }
+    />
+  );
+}
+
 /** Controlled: hold the range in `useState<DateRange>({ start: null, end: null })` and pass
  *  it back as `value`. `onValueChange` also fires mid-pick with `end` still `null`. */
 export function Controlled() {

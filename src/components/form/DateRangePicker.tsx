@@ -4,6 +4,7 @@ import {
   forwardRef,
   type KeyboardEvent,
   useCallback,
+  useId,
   useState,
 } from "react";
 import { CalendarDays } from "lucide-react";
@@ -18,13 +19,19 @@ import {
 } from "../../hooks/use-floating";
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { clampDate, formatDate, isBefore, parseDateInput, toISODate } from "../../util/date";
-import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 import { type DateRange, RangeCalendar } from "../ui/RangeCalendar";
 import { type CalendarLabels } from "../ui/CalendarBase";
 import { IconButton } from "../ui/IconButton";
 
-import { datePickerPopoverClassName, isSameDateRange } from "./date-picker-internals";
+import {
+  type DateRejection,
+  datePickerPopoverClassName,
+  defaultRejectMessage,
+  isSameDateRange,
+  rejectMessageClassName,
+} from "./date-picker-internals";
+import { useFieldError } from "./Field";
 import { Input } from "./Input";
 
 const EMPTY_RANGE: DateRange = { start: null, end: null };
@@ -49,7 +56,10 @@ const DEFAULT_LABELS = {
 type Resolution =
   | { kind: "empty" }
   | { kind: "date"; date: Date }
-  | { kind: "invalid" };
+  | { kind: "invalid"; reason: DateRejection };
+
+/** A refusal paired with the text that was refused, ready to be quoted. */
+type Rejection = { reason: DateRejection; text: string };
 
 type DateRangePickerProps = {
   value?: DateRange;
@@ -82,6 +92,20 @@ type DateRangePickerProps = {
   disabled?: boolean;
   /** Overrides for every string the picker and its calendar speak. */
   labels?: DateRangePickerLabels;
+  /**
+   * Sentence shown, and politely announced, when a commit refuses what was
+   * typed into an endpoint — unreadable text, or a day `isDateDisabled`
+   * rejects. Return `""` to show nothing; `aria-invalid` still reflects the
+   * refusal on the field that caused it, because `""` removes the word, not the
+   * state.
+   *
+   * Both endpoints share one message element, so a commit that refuses both
+   * writes both sentences into it, in field order. `text` is what was typed in
+   * that field, which is what distinguishes them — the same shape `DatePicker`
+   * takes, deliberately, so the two pickers have one convention between them.
+   * @default (reason, text) => `06/11 is not a date we can read.`
+   */
+  rejectMessage?: (reason: DateRejection, text: string) => string;
   /** `id` of the start input, so a `<Label htmlFor>` can name it. */
   startInputId?: string;
   /** `id` of the end input, so a `<Label htmlFor>` can name it. */
@@ -133,6 +157,7 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
       error,
       disabled,
       labels,
+      rejectMessage = defaultRejectMessage,
       startInputId,
       endInputId,
       form,
@@ -163,7 +188,36 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
     const startText = startDraft ?? display(range.start, locale, formatOptions);
     const endText = endDraft ?? display(range.end, locale, formatOptions);
 
+    // Set per endpoint when a commit could not honour what was typed there, and
+    // holding the text it refused so the message can quote it. Only an endpoint
+    // the user actually typed into can be refused: a `formatOptions` the parser
+    // cannot read back makes the *displayed* text unparseable too, and blaming
+    // the user for a field they never touched would be noise.
+    const [startRejection, setStartRejection] = useState<Rejection | null>(null);
+    const [endRejection, setEndRejection] = useState<Rejection | null>(null);
+
     const [open, setOpen] = useState(false);
+    const messageId = useId();
+
+    // The sentences are derived, not stored, so a later `rejectMessage` reaches
+    // a refusal already on screen. `""` is the documented way to say nothing
+    // without giving up aria-invalid.
+    const message =
+      [
+        startRejection ? rejectMessage(startRejection.reason, startRejection.text) : "",
+        endRejection ? rejectMessage(endRejection.reason, endRejection.text) : "",
+      ]
+        .filter(Boolean)
+        .join(" ") || null;
+
+    // `field()` always emits the key `"aria-invalid": undefined`, so the fields
+    // read the enclosing Field through `Input`'s own `useFieldError`; this call
+    // is only here to compose the field's description id with our own.
+    const { ariaProps } = useFieldError(error);
+    const describedBy =
+      [ariaProps["aria-describedby"], message != null ? messageId : undefined]
+        .filter(Boolean)
+        .join(" ") || undefined;
 
     const { refs, floatingStyles, context } = useFloating({
       placement: "bottom-start",
@@ -183,34 +237,59 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
       (draft: string): Resolution => {
         if (draft.trim() === "") return { kind: "empty" };
         const parsed = parseDateInput(draft, locale);
-        if (!parsed) return { kind: "invalid" };
+        if (!parsed) return { kind: "invalid", reason: "unparseable" };
         const clamped = clampDate(parsed, min, max);
-        if (isDateDisabled?.(clamped)) return { kind: "invalid" };
+        if (isDateDisabled?.(clamped)) return { kind: "invalid", reason: "unavailable" };
         return { kind: "date", date: clamped };
       },
       [locale, min, max, isDateDisabled],
     );
 
-    /** Commit both fields into an ordered range; text that doesn't resolve reverts. */
+    /**
+     * Commit both fields into an ordered range.
+     *
+     * An endpoint whose text does not resolve keeps its committed value — and,
+     * when the user typed it, keeps the typing too. Clearing a refused draft
+     * destroys the entry that needs correcting, and the message quotes text
+     * that would no longer be on screen.
+     */
     const commit = useCallback(() => {
       // Nothing typed since focus: committing anyway re-parses the *formatted*
       // text and rewrites a value the user never touched (a reversed range gets
       // silently reordered and `onValueChange` fires for a change nobody made).
       if (startDraft === null && endDraft === null) return;
 
-      const keep = (r: Resolution, previous: Date | null): Date | null =>
-        r.kind === "date" ? r.date : r.kind === "empty" ? null : previous;
+      const settle = (draft: string | null, text: string, previous: Date | null) => {
+        const resolution = resolve(text);
+        if (resolution.kind === "date") {
+          return { value: resolution.date, draft: null, rejection: null };
+        }
+        if (resolution.kind === "empty") {
+          return { value: null, draft: null, rejection: null };
+        }
+        return {
+          value: previous,
+          draft,
+          rejection:
+            draft === null ? null : { reason: resolution.reason, text: draft },
+        };
+      };
 
-      let start = keep(resolve(startText), range.start);
-      let end = keep(resolve(endText), range.end);
+      const startResult = settle(startDraft, startText, range.start);
+      const endResult = settle(endDraft, endText, range.end);
+
+      let start = startResult.value;
+      let end = endResult.value;
 
       // Order endpoints so start precedes end.
       if (start && end && isBefore(end, start)) {
         [start, end] = [end, start];
       }
 
-      setStartDraft(null);
-      setEndDraft(null);
+      setStartDraft(startResult.draft);
+      setEndDraft(endResult.draft);
+      setStartRejection(startResult.rejection);
+      setEndRejection(endResult.rejection);
       setRange({ start, end });
     }, [startDraft, endDraft, startText, endText, resolve, range, setRange]);
 
@@ -220,16 +299,21 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
         if (e.defaultPrevented) return;
         if (e.key !== "Enter") return;
         // Nothing pending: leave the event alone so the field still triggers
-        // implicit form submission the way a native input does.
-        if (startDraft === null && endDraft === null) return;
+        // implicit form submission the way a native input does. A draft already
+        // refused, and unedited since, counts as nothing pending — the message
+        // has been said, and fields that ate the key forever could never submit
+        // the form they sit in.
+        const settled = (draft: string | null, rejection: Rejection | null) =>
+          draft === null || rejection?.text === draft;
+        if (settled(startDraft, startRejection) && settled(endDraft, endRejection)) return;
         e.preventDefault();
         commit();
       },
-      [commit, endDraft, onKeyDown, startDraft],
+      [commit, endDraft, endRejection, onKeyDown, startDraft, startRejection],
     );
 
     return (
-      <div ref={mergeRefs(ref, refs.setReference)} className={cn("relative", className)} {...props}>
+      <div ref={ref} className={cn("relative", className)} {...props}>
         {/* `form`/`disabled` ride along so these behave like native fields when
             the picker sits outside its form or is switched off. */}
         {name !== undefined && (
@@ -250,16 +334,26 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
             />
           </>
         )}
-        <div className="flex items-center gap-r6">
+        {/* The field row is the floating anchor, not the wrapper: the message
+            below is a sibling of it, so a refusal does not push the calendar
+            away from the fields it belongs to. */}
+        <div ref={refs.setReference} className="flex items-center gap-r6">
           <Input
             type="text"
             id={startInputId}
-            error={error}
+            error={error || startRejection != null}
+            aria-describedby={describedBy}
             value={startText}
             placeholder={startPlaceholder}
             disabled={disabled}
             aria-label={label.startDate}
-            onChange={(e) => setStartDraft(e.target.value)}
+            // Editing clears that field's refusal: the message quotes what was
+            // typed, so leaving it up beside text already being corrected would
+            // name something no longer on screen.
+            onChange={(e) => {
+              setStartDraft(e.target.value);
+              setStartRejection(null);
+            }}
             onBlur={commit}
             onKeyDown={handleKeyDown}
           />
@@ -269,12 +363,16 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
           <Input
             type="text"
             id={endInputId}
-            error={error}
+            error={error || endRejection != null}
+            aria-describedby={describedBy}
             value={endText}
             placeholder={endPlaceholder}
             disabled={disabled}
             aria-label={label.endDate}
-            onChange={(e) => setEndDraft(e.target.value)}
+            onChange={(e) => {
+              setEndDraft(e.target.value);
+              setEndRejection(null);
+            }}
             onBlur={commit}
             onKeyDown={handleKeyDown}
           />
@@ -291,6 +389,18 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
             <CalendarDays aria-hidden="true" size={18} />
           </IconButton>
         </div>
+
+        {/* One message element for the pair, mounted whether or not it holds
+            anything: a live region created in the same commit as its first text
+            is not reliably announced. Same channel `TagInput` and `Repeater`
+            use, and the same one `DatePicker` uses. */}
+        <p
+          id={messageId}
+          aria-live="polite"
+          className={cn(rejectMessageClassName, message == null && "sr-only")}
+        >
+          {message}
+        </p>
 
         {open && (
           <FloatingPortal>

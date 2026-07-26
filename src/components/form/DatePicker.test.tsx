@@ -32,12 +32,17 @@ describe("DatePicker", () => {
     expect((input as HTMLInputElement).value).toBe(fmt(new Date(2026, 11, 25)));
   });
 
-  it("typing invalid text + blur reverts to the prior value", async () => {
+  // #330. The committed Date is what a refusal must not move; the *draft* is
+  // deliberately kept (traps H: clear an input only on success, or when what is
+  // left is blank), so the assertion is on the value that left the component,
+  // not on the text still on screen.
+  it("typing invalid text + blur commits nothing and keeps the entry to correct", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
     render(
       <>
         <DatePicker
+          name="when"
           defaultValue={new Date(2026, 0, 15)}
           onValueChange={onValueChange}
           aria-label="Date"
@@ -47,15 +52,17 @@ describe("DatePicker", () => {
     );
 
     const input = screen.getByRole("textbox", { name: "Date" });
-    const prior = (input as HTMLInputElement).value;
-    expect(prior).toBe(fmt(new Date(2026, 0, 15)));
+    expect((input as HTMLInputElement).value).toBe(fmt(new Date(2026, 0, 15)));
 
     await user.clear(input);
     await user.type(input, "not a date");
     await user.click(screen.getByText("elsewhere"));
 
-    expect((input as HTMLInputElement).value).toBe(prior);
     expect(onValueChange).not.toHaveBeenCalled();
+    expect(document.querySelector('input[type="hidden"][name="when"]')).toHaveValue(
+      "2026-01-15",
+    );
+    expect(input).toHaveValue("not a date");
   });
 
   it("clicking the icon opens the Calendar (role=grid visible)", async () => {
@@ -519,7 +526,92 @@ describe("DatePicker · popup wiring, i18n and native form behaviour", () => {
   });
 
   // #330
-  it("marks the field invalid when a typed date is refused", async () => {
+  it("marks the field invalid and says why when a typed date is refused", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <DatePicker aria-label="Date" name="when" defaultValue={new Date(2026, 5, 10)} />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Date" });
+    await user.clear(input);
+    await user.type(input, "not a date");
+    await user.click(screen.getByRole("button", { name: "elsewhere" }));
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText("not a date is not a date we can read.")).toBeInTheDocument();
+    // The committed value is untouched; only the field still shows the entry.
+    expect(document.querySelector('input[type="hidden"][name="when"]')).toHaveValue(
+      "2026-06-10",
+    );
+  });
+
+  // #330 — the other refusal ground reads differently, and both are overridable
+  // through the one prop the pair shares.
+  it("names an isDateDisabled refusal separately, and `rejectMessage` overrides both", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <DatePicker
+          aria-label="Date"
+          defaultValue={new Date(2026, 5, 10)}
+          isDateDisabled={(d) => d.getDate() === 15}
+        />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Date" });
+    await user.clear(input);
+    await user.type(input, "06/15/2026");
+    await user.click(screen.getByRole("button", { name: "elsewhere" }));
+
+    expect(screen.getByText("06/15/2026 is not available.")).toBeInTheDocument();
+  });
+
+  it("`rejectMessage` translates the sentence, and `\"\"` removes it without dropping aria-invalid", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <>
+        <DatePicker
+          aria-label="Date"
+          defaultValue={new Date(2026, 5, 10)}
+          rejectMessage={(reason, text) => `${reason}: ${text}`}
+        />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Date" });
+    await user.clear(input);
+    await user.type(input, "nope");
+    await user.click(screen.getByRole("button", { name: "elsewhere" }));
+
+    expect(screen.getByText("unparseable: nope")).toBeInTheDocument();
+
+    rerender(
+      <>
+        <DatePicker
+          aria-label="Date"
+          defaultValue={new Date(2026, 5, 10)}
+          rejectMessage={() => ""}
+        />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+
+    expect(screen.queryByText("unparseable: nope")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Date" })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+  });
+
+  // #330 — editing after a refusal takes the message down with it, so it never
+  // quotes text that has already been corrected.
+  it("clears the refusal as soon as the entry is edited", async () => {
     const user = userEvent.setup();
     render(
       <>
@@ -530,11 +622,14 @@ describe("DatePicker · popup wiring, i18n and native form behaviour", () => {
 
     const input = screen.getByRole("textbox", { name: "Date" });
     await user.clear(input);
-    await user.type(input, "not a date");
+    await user.type(input, "nope");
     await user.click(screen.getByRole("button", { name: "elsewhere" }));
+    expect(screen.getByText("nope is not a date we can read.")).toBeInTheDocument();
 
-    expect(input).toHaveValue(fmt(new Date(2026, 5, 10)));
-    expect(input).toHaveAttribute("aria-invalid", "true");
+    await user.type(input, "x");
+
+    expect(screen.queryByText("nope is not a date we can read.")).not.toBeInTheDocument();
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
   });
 
   // #331 / #449

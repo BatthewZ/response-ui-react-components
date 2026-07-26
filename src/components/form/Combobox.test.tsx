@@ -530,4 +530,49 @@ describe("Combobox", () => {
       );
     });
   });
+
+  // #483
+  describe("the input's border is a utility, not a stylesheet rule", () => {
+    it("carries `border border-border-strong` on the element", () => {
+      render(
+        <Combobox>
+          <Combobox.Input aria-label="Fruit" />
+        </Combobox>,
+      );
+
+      const input = screen.getByRole("combobox", { name: "Fruit" });
+      expect(input.className).toContain("border-border-strong");
+    });
+
+    it("recolours the border for the invalid state", () => {
+      render(
+        <Combobox>
+          <Combobox.Input aria-label="Fruit" error />
+        </Combobox>,
+      );
+
+      expect(screen.getByRole("combobox", { name: "Fruit" }).className).toContain(
+        "border-status-error",
+      );
+    });
+  });
 });
+
+/*
+ * Why the two checks above are class-list assertions and not colour ones:
+ * `vitest` runs with `css: false`, so nothing here can read a stylesheet or a
+ * computed colour. The defect they guard was a *cascade* one — `Combobox.css`
+ * declared `border` unlayered, and unlayered author CSS outranks every Tailwind
+ * utility whatever the specificity, so both `focusRingControl`'s
+ * `focus:border-border-focus` and `focusRingControlError`'s `border-status-error`
+ * were inert while the classes were present all along.
+ *
+ * Measured in Firefox 146 against the dev gallery, with `Input` as the positive
+ * control in the same run: focused, the border went `--C-BORDER-STRONG` →
+ * `--C-BORDER-FOCUS` (it stayed `--C-BORDER-STRONG` before the fix, and reverts
+ * to that the moment the unlayered rule is re-injected), and the invalid border
+ * resolved to `--C-STATUS-ERROR` (it stayed `--C-BORDER-STRONG` before).
+ * `scripts/verify-focus-affordance.mjs` covers the reset/ring pairing; nothing
+ * in-repo covers the layer question, so these assert the one thing that is
+ * observable here — that the border is written where a utility can win.
+ */

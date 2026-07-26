@@ -28,6 +28,23 @@ export function Uncontrolled() {
   return <ColorPicker aria-label="Highlight color" defaultValue="#ffb300" />;
 }
 
+/** Every name inside the panel is a prop. They are accessible names, not visible text, so a
+ *  translated app has to pass all six or a screen-reader user hears English. */
+export function Translated() {
+  return (
+    <ColorPicker
+      aria-label="Couleur de la marque"
+      defaultValue="#3366cc"
+      panelLabel="Sélecteur de couleur"
+      areaLabel="Saturation et luminosité"
+      saturationLabel="Saturation"
+      brightnessLabel="Luminosité"
+      hueLabel="Teinte"
+      hexLabel="Valeur hexadécimale"
+    />
+  );
+}
+
 /** `presets` adds a swatch grid under the panel. The grid is always eight columns wide, and
  *  each entry is normalised before it is compared to the current value. */
 export function Presets() {

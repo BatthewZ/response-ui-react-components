@@ -268,16 +268,17 @@ Set `error` on the input to mark a standalone combobox invalid. Resolution is
 ## Theme tokens
 
 Every rule lives in `Combobox.css` and reads the contract variables directly, the way Tabs and
-ActivityFeed do — with one exception: the input's focus ring and its invalid state come from the
-shared `src/util/focus.ts` recipes (`focusRingControl`, `focusRingControlError`), so a single
-edit there reaches this control the way it reaches `Input`. Override any of these and both the
-field and the popup re-tint at runtime.
+ActivityFeed do — with one exception: the input's **border**, its focus ring and its invalid
+state are Tailwind utilities in `Combobox.tsx` (`border border-border-strong` plus the shared
+`src/util/focus.ts` recipes `focusRingControl` and `focusRingControlError`), so a single edit
+there reaches this control the way it reaches [Input](input.md). Override any of these and both
+the field and the popup re-tint at runtime.
 
 | Where                                       | Override                            |
 | ------------------------------------------- | ----------------------------------- |
 | Input text · option text                    | `--C-TEXT-PRIMARY` · `--BodyText-2` |
 | Input fill · popup fill                     | `--C-SURFACE-0`                     |
-| Input border                                | `--C-BORDER-STRONG`                 |
+| Input border — `border` `border-border-strong` | `--C-BORDER-STRONG`              |
 | Focus border and 2px ring — `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
 | Invalid border and ring — `border-status-error` `focus:ring-status-error` | `--C-STATUS-ERROR` |
 | Disabled input fill                         | `--C-SURFACE-3`                     |
@@ -291,6 +292,15 @@ field and the popup re-tint at runtime.
 
 The spinner has no colour of its own: it is drawn with `border-current`, so it takes the
 `--C-TEXT-SECONDARY` that the loading row sets.
+
+The input's border is written as a utility rather than as a rule in `Combobox.css` — the same
+split [ColorPicker](color-picker.md)'s hex field uses — because this package's stylesheets are
+unlayered, and unlayered CSS outranks every Tailwind utility whatever the specificity. Declared
+in the stylesheet, the border could never be swapped by `focusRingControl`'s
+`focus:border-border-focus` or repainted by `focusRingControlError`'s `border-status-error`:
+measured in Firefox 146, a focused `.combobox-input` kept `--C-BORDER-STRONG` while its ring
+painted `--C-BORDER-FOCUS`, and the invalid border never appeared at all. Re-declare `border`
+in your own unlayered CSS and you take that consequence back on.
 
 A handful of values are **not** on the contract and cannot be themed: the input's padding
 (`0.5rem 2.25rem 0.5rem 0.75rem`, the right side reserving the chevron's gutter), the option

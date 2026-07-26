@@ -12,7 +12,6 @@
   font-size: var(--BodyText-2);
   color: var(--C-TEXT-PRIMARY);
   background: var(--C-SURFACE-0);
-  border: 1px solid var(--C-BORDER-STRONG);
   border-radius: var(--RADIUS-MD);
 }
 
@@ -23,7 +22,16 @@
 /* The focus affordance and the invalid state both come from the shared
    `src/util/focus.ts` recipes applied in Combobox.tsx, so a single edit there
    reaches this control too. Restating them here would be a second source of
-   truth — and the restatement is what let focus repaint the error border. */
+   truth — and the restatement is what let focus repaint the error border.
+
+   The `border` itself is written in Combobox.tsx as `border border-border-strong`
+   for the same reason, and this is the only control in the family that needed
+   moving: this package's stylesheets are unlayered, and unlayered author CSS
+   outranks every Tailwind utility whatever the specificity — so a `border`
+   declared here silently defeated both `focusRingControl`'s
+   `focus:border-border-focus` and `focusRingControlError`'s
+   `border-status-error`. Do not declare `border` (or `border-color`) on
+   `.combobox-input` again. */
 
 .combobox-input:disabled {
   background: var(--C-SURFACE-3);

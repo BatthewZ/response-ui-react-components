@@ -37,7 +37,20 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           focusOutlineResetControl,
           focusRingControl,
           "disabled:bg-surface-3 disabled:cursor-not-allowed",
-          "appearance-none pr-10",
+          // The chevron's gutter is `r1`, the same rung DatePicker reserves for
+          // its icon cluster. It used to be `pr-10` — a frozen 2.5rem on
+          // Tailwind's *default* scale rather than the `r`-scale every other
+          // padding here sits on, so it never stepped up at 40rem and left only
+          // 4px between the text and the chevron on desktop.
+          //
+          // `r1` is the smallest rung that clears `right-r4` + the glyph's 16px
+          // at both steps (8px spare below 40rem, 60px above it). `r2` is
+          // 1.25rem on a phone and would run under the chevron. The 60px is
+          // more than the graphic needs and is the price of staying on the
+          // scale; a composed `calc()` of two rungs fits better but resolves to
+          // no single token, so `scripts/verify-component-docs.mjs` cannot
+          // check the doc row that claims it.
+          "appearance-none pr-r1",
           invalid && focusRingControlError,
           className
         )}

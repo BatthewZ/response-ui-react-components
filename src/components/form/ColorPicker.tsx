@@ -60,6 +60,21 @@ type ColorPickerProps = {
   "aria-label"?: string;
   /** Accessible name for the floating editing panel. @default "Color picker" */
   panelLabel?: string;
+  /**
+   * Accessible name for the saturation/brightness group. Every label below is
+   * an accessible name rather than visible text, so `""` does not remove the
+   * word — it leaves the control unnamed.
+   * @default "Saturation and brightness"
+   */
+  areaLabel?: string;
+  /** Accessible name for the saturation axis. @default "Saturation" */
+  saturationLabel?: string;
+  /** Accessible name for the brightness axis. @default "Brightness" */
+  brightnessLabel?: string;
+  /** Accessible name for the hue rail. @default "Hue" */
+  hueLabel?: string;
+  /** Accessible name for the hex text field. @default "Hex value" */
+  hexLabel?: string;
 } & Omit<
   ComponentPropsWithRef<"button">,
   "value" | "defaultValue" | "onChange"
@@ -91,6 +106,11 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       className,
       "aria-label": ariaLabel = "Choose color",
       panelLabel = "Color picker",
+      areaLabel = "Saturation and brightness",
+      saturationLabel = "Saturation",
+      brightnessLabel = "Brightness",
+      hueLabel = "Hue",
+      hexLabel = "Hex value",
       ...props
     },
     ref,
@@ -254,7 +274,15 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
 
         {open && (
           <FloatingPortal>
-            <FloatingFocusManager context={context} modal={false}>
+            {/* `initialFocus={-1}`: opening leaves focus on the trigger rather
+                than moving it onto the first tabbable, which here is the
+                Saturation slider — so the arrow key a user presses next would
+                have committed a colour change they never asked for. Same call
+                `DatePicker` and `DateRangePicker` make; the panel holds
+                tabbable content, so the manager still gives it `tabindex="-1"`
+                rather than making it a tab stop, and Tab from the trigger
+                walks into it through the portal's focus guards. */}
+            <FloatingFocusManager context={context} modal={false} initialFocus={-1}>
               <div
                 {...getFloatingProps({
                   ref: refs.setFloating,
@@ -275,7 +303,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   className="colorpicker-sv"
                   role="group"
                   aria-disabled={disabled || undefined}
-                  aria-label="Saturation and brightness"
+                  aria-label={areaLabel}
                   style={{ "--hue": hueHex } as CSSProperties}
                   onPointerDown={handleSvPointerDown}
                   onPointerMove={handleSvPointerMove}
@@ -289,7 +317,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     step={1}
                     value={saturationPercent}
                     disabled={disabled}
-                    aria-label="Saturation"
+                    aria-label={saturationLabel}
                     aria-valuetext={`${saturationPercent}%`}
                     onChange={(event) =>
                       commitHsv({ ...hsv, s: Number(event.target.value) / 100 })
@@ -303,7 +331,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     step={1}
                     value={brightnessPercent}
                     disabled={disabled}
-                    aria-label="Brightness"
+                    aria-label={brightnessLabel}
                     aria-valuetext={`${brightnessPercent}%`}
                     onChange={(event) =>
                       commitHsv({ ...hsv, v: Number(event.target.value) / 100 })
@@ -329,7 +357,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   step={1}
                   value={Math.round(hsv.h)}
                   disabled={disabled}
-                  aria-label="Hue"
+                  aria-label={hueLabel}
                   onChange={(event) =>
                     commitHsv({ ...hsv, h: Number(event.target.value) })
                   }
@@ -355,7 +383,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                       focusOutlineResetControl,
                       focusRingControl,
                     )}
-                    aria-label="Hex value"
+                    aria-label={hexLabel}
                     spellCheck={false}
                     value={hexText}
                     disabled={disabled}

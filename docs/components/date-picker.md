@@ -27,6 +27,7 @@ its parsing and its formatting from the `locale` you hand it.
 | `error`          | `boolean`                     | `Field` state, else `false`            |
 | `disabled`       | `boolean`                     | `false`                                |
 | `clearable`      | `boolean`                     | `false`                                |
+| `rejectMessage`  | `(reason, text) => string`    | `` `${text} is not a date we can read.` `` |
 | `name`           | `string`                      | — (no hidden input is rendered)        |
 | `className`      | `string`                      | — (lands on the **wrapper**, see below) |
 | `ref`            | `Ref<HTMLInputElement>`       | — (the visible text input)             |
@@ -52,14 +53,54 @@ There are two states in play: the **draft string** you are typing, and the **com
 
 A commit runs one pipeline: parse the draft for the current `locale` → clamp to `[min, max]`
 → reject if `isDateDisabled` says so → fire `onValueChange` → reformat the field from the
-committed `Date`. If the parse fails or the day is rejected, the draft is thrown away and the
-field snaps back to the last committed value. An empty field commits `null`.
+committed `Date`. An empty field commits `null`.
+
+**A refusal keeps what you typed.** If the parse fails, or `isDateDisabled` rejects the day,
+the committed `Date` does not move — but the draft stays in the field, the field goes
+`aria-invalid`, and a message says why. That is the rule this library follows everywhere a
+control commits or rejects: clear the input on success, or when what is left is blank, never on
+a refusal, because the entry that needs correcting is the one you would be throwing away.
+(This changed: a refusal used to snap the field back to the last committed value, silently.)
+
+Editing after a refusal clears the message and the invalid state immediately — the message
+quotes your text, so it comes down the moment that text starts changing. `Enter` on a draft
+that has already been refused and not edited since is left alone, so the field can still
+submit the form it sits in rather than eating the key forever.
+
+## Saying why a date was refused
+
+<!-- example:RejectMessage -->
+```tsx
+<Label htmlFor="booking-date">Booking date</Label>
+<DatePicker
+  id="booking-date"
+  isDateDisabled={(date) => date.getDay() === 0}
+  rejectMessage={(reason, text) =>
+    reason === "unavailable"
+      ? `We are closed on ${text}. Pick a weekday.`
+      : `${text} is not a date. Try MM/DD/YYYY.`
+  }
+/>
+```
+<!-- /example -->
+
+`rejectMessage` is called with the reason — `"unparseable"` when the text could not be read at
+all, `"unavailable"` when `isDateDisabled` refused the day it named — and the text that was
+refused. It is the same prop, with the same signature, on
+[DateRangePicker](date-range-picker.md); there is one convention between the two pickers, not
+two.
+
+Whatever it returns is rendered below the field in `--C-STATUS-ERROR`, inside a polite live
+region that is mounted whether or not it holds anything (a region created in the same commit as
+its first text is not reliably announced — the same reason [TagInput](tag-input.md) and
+[Repeater](repeater.md) mount theirs unconditionally). Return `""` to render nothing;
+`aria-invalid` still reflects the refusal, because `""` removes the word, not the state.
 
 Parsing is deliberately forgiving. It first reads three runs of digits in the locale's own
 field order (`en-US` → month/day/year, `en-GB` → day/month/year), taking a two-digit year as
 `20yy`; failing that it looks for a localized month name plus a day and a year in any order,
-so `Sep 4, 2026` and `13 June 2026` both parse. What it will not do is tell the user when it
-gave up — see [Gotchas](#gotchas).
+so `Sep 4, 2026` and `13 June 2026` both parse. When it does give up, it says so — see
+[Saying why a date was refused](#saying-why-a-date-was-refused).
 
 ## Forms
 
@@ -127,9 +168,11 @@ outright rather than moving it.
 ```
 <!-- /example -->
 
-Both are advisory, not enforcement: neither sets `aria-invalid`, neither shows a message, and
-the hidden input happily posts a clamped value. If a bound matters to your server, validate
-there too.
+The two behave differently on a refusal, and the difference is worth knowing. A **clamp** is
+silent by design — it is not a refusal, the date moves into range and commits. An
+`isDateDisabled` **rejection** is not: it sets `aria-invalid`, keeps your entry in the field,
+and shows the `"unavailable"` message. Either way the hidden input posts whatever committed, so
+if a bound matters to your server, validate there too.
 
 ## Clearing
 
@@ -237,6 +280,7 @@ its popover re-tint at runtime with the rest of the app.
 | Field padding            | `px-r4` `py-r5`                                       | `--R-SIZE-4` `--R-SIZE-5`         |
 | Popover padding          | `p-r5`                                                | `--R-SIZE-5`                      |
 | Icon gutter, icon gap    | `pr-r1` `gap-r6`                                      | `--R-SIZE-1` `--R-SIZE-6`         |
+| Refusal message          | `mt-r6` `text-body-3` `text-status-error`             | `--R-SIZE-6` `--BodyText-3` `--C-STATUS-ERROR` |
 | Transition               | `duration-fast`                                       | `--DURATION-FAST`                 |
 
 Exactly one of those rows is DatePicker's own code: the right-hand gutter that keeps text clear
@@ -259,10 +303,12 @@ documented there, not here. Overriding a variable in the table above will not re
 
 ## Gotchas
 
-- **`className` styles the wrapper, not the input.** It merges onto the `relative` positioning
-  `<div>`. That is usually what you want — the input is `w-full`, so `className="w-64"` sizes
-  the whole control — but a class you meant for the input itself (padding, border, font) will
-  land on the wrapper and appear to do nothing.
+- **`className` styles the wrapper, not the input.** It merges onto the outer `<div>`, which
+  holds the field row and the refusal message. That is usually what you want — the input is
+  `w-full`, so `className="w-64"` sizes the whole control — but a class you meant for the input
+  itself (padding, border, font) will land on the wrapper and appear to do nothing. The `relative`
+  positioning context is the *inner* field row, so the icon cluster stays centred on the field
+  and the popover stays anchored to it when a message appears.
 - **Every blur runs the commit pipeline, but a blur that changes nothing now emits nothing.**
   Focus the field and tab away without touching it and the parse/clamp still runs — it just
   resolves to the day already held, and the change gate drops it: measured **0** calls, where
@@ -271,11 +317,15 @@ documented there, not here. Overriding a variable in the table above will not re
   change. "Is this form dirty?" tracking no longer sees a change that never happened. What
   still emits is a blur that genuinely moves the day — including one that only clamps it into
   `[min, max]`.
-- **Out-of-range dates are silently clamped; rejected ones silently revert.** With
-  `max={new Date(2026, 11, 31)}`, typing `01/01/2030` and pressing Enter commits
-  `2026-12-31` — no message, no `aria-invalid`. A date your `isDateDisabled` refuses, or text
-  that does not parse at all, snaps back to the previous value just as quietly. If the
-  distinction matters, render your own message from `onValueChange`.
+- **Out-of-range dates are still silently clamped.** With `max={new Date(2026, 11, 31)}`,
+  typing `01/01/2030` and pressing Enter commits `2026-12-31` — no message, no `aria-invalid`,
+  because a clamp is a successful commit rather than a refusal. Only the two *refusals* speak:
+  unreadable text, and a day `isDateDisabled` rejects. If a clamp needs surfacing, compare what
+  you get in `onValueChange` against what the user typed.
+- **A refusal now leaves your typing in the field.** It used to snap back to the last committed
+  value. The committed `Date` is untouched either way, and the hidden input still posts the old
+  value — so a field showing `31/31/2026` and a form posting `2026-06-10` is the expected state,
+  not a bug. It is marked `aria-invalid` while it lasts.
 - **The time of day is dropped.** Pass `defaultValue={new Date(2026, 5, 10, 14, 30)}` and the
   first blur re-parses the display string and commits midnight. This is a date-only control;
   keep the time component somewhere else.
@@ -289,9 +339,10 @@ documented there, not here. Overriding a variable in the table above will not re
   `weekStartsOn`, `numberOfMonths` and `showToday` are not part of DatePicker's props and are
   not forwarded, so `locale="fr-FR"` gives you French month and weekday names in a grid that
   still starts on `dim.`
-- **The popover's control labels are hardcoded English.** "Open calendar", "Clear date",
-  "Choose date", "Previous month" and "Next month" ignore `locale`, so a localized app
-  announces English to screen-reader users. The dates themselves are localized correctly.
+- **The popover's control labels default to English but are overridable.** "Open calendar",
+  "Clear date", "Choose date", "Previous month" and "Next month" come from `labels` and ignore
+  `locale`, so a localized app has to pass them — as it does `rejectMessage`. The dates
+  themselves are localized correctly.
 - **Opening the calendar does not put focus on a day.** Focus lands on the "Previous month"
   button, so arrow keys do nothing until you tab into the grid. See
   [Accessibility](#accessibility).
@@ -324,10 +375,16 @@ day button is named with its full localized date, and the selected day is `aria-
 `htmlFor` matching its `id`, or an `aria-label`.
 
 **Error state.** `error` (or an enclosing [Field](field.md)) sets `aria-invalid="true"` and turns the
-border and focus ring red. Colour is the only visual signal, so always render a
-[FieldError](field-error.md) or your own message next to it. Note that nothing marks the field
-invalid when *the picker itself* rejects input — an unparseable string, a clamped date, a day
-your `isDateDisabled` refuses — those revert with no announcement at all.
+border and focus ring red. Colour is the only visual signal for *that* state, so always render a
+[FieldError](field-error.md) or your own message next to it.
+
+When *the picker itself* refuses input, it now says so: `aria-invalid="true"`, the entry left in
+the field, and a `rejectMessage` sentence in a polite live region below it. Standalone, that
+message's id is also joined into the field's `aria-describedby`. **Inside a [Field](field.md)
+that renders a [FieldError](field-error.md), it is not** — the field's own error id wins there,
+because the description comes from [Input](input.md)'s own wiring rather than from this
+component. The message is still visible and still announced; it just is not a description of the
+field. A clamp is not a refusal and says nothing.
 
 The focus style comes from [Input](input.md): a 2px `focus:` ring, so it shows on click as
 well as on keyboard focus. The two icon buttons use `focus-visible:` instead, so they ring

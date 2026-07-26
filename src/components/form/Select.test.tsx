@@ -162,4 +162,32 @@ describe("Select", () => {
       );
     });
   });
+
+  // #471
+  describe("the chevron gutter is on the contract", () => {
+    it("reserves the chevron's space from `--R-SIZE-*`, not Tailwind's default scale", () => {
+      render(
+        <Select aria-label="Country">
+          <option>US</option>
+        </Select>
+      );
+
+      const className = screen.getByRole("combobox", { name: "Country" }).className;
+      // `r1` is the smallest rung that clears the chevron's `right-r4` inset
+      // plus its 16px box at both steps of the scale.
+      expect(className).toContain("pr-r1");
+      // `pr-10` was a frozen 2.5rem on Tailwind's default spacing scale.
+      expect(className).not.toMatch(/\bpr-\d/);
+    });
+  });
 });
+
+/*
+ * That is a class-list assertion because `vitest` runs with `css: false` and
+ * jsdom performs no layout, so nothing here can measure the rendered gutter or
+ * the chevron's position. Measured in Firefox 146 against the dev gallery: with
+ * `pr-10` the gap between the text box and the chevron was 4px at 1280px wide
+ * and 12px at 375px — fixed at 2.5rem, and tighter on the wider viewport
+ * because only the chevron's `right-r4` inset stepped up. On `pr-r1` it is 60px
+ * and 8px, i.e. it moves with the scale and never collides.
+ */
