@@ -1,9 +1,13 @@
 "use client";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import {
+  Children,
+  cloneElement,
   type ComponentPropsWithRef,
   createContext,
   forwardRef,
+  isValidElement,
+  type ReactElement,
   type ReactNode,
   useContext,
 } from "react";
@@ -87,9 +91,28 @@ const TableHead = forwardRef<HTMLTableSectionElement, TableHeadProps>(
 type TableBodyProps = ComponentPropsWithRef<"tbody">;
 
 const TableBody = forwardRef<HTMLTableSectionElement, TableBodyProps>(
-  function TableBody({ className, ...props }, ref) {
+  function TableBody({ className, children, ...props }, ref) {
     useTableContext();
-    return <tbody ref={ref} className={cn("table-body", className)} {...props} />;
+    // Zebra parity is a property of the data, not of DOM position. Any extra
+    // <tr> between two data rows — an expanded detail row, a virtualiser
+    // spacer — used to flip every band below it (#365, #368). Rows built in a
+    // loop pass their own `index`; these are the hand-authored ones, numbered
+    // here so the simple case still needs no ceremony. A row that already
+    // carries an `index` is left alone and is not counted, so a caller
+    // numbering some rows cannot be silently renumbered by us.
+    let dataRow = 0;
+    const numbered = Children.map(children, (child) => {
+      if (!isValidElement(child) || child.type !== TableRow) return child;
+      const row = child as ReactElement<TableRowProps>;
+      if (row.props.index !== undefined) return row;
+      return cloneElement(row, { index: dataRow++ });
+    });
+
+    return (
+      <tbody ref={ref} className={cn("table-body", className)} {...props}>
+        {numbered}
+      </tbody>
+    );
   }
 );
 
@@ -99,10 +122,17 @@ const TableBody = forwardRef<HTMLTableSectionElement, TableBodyProps>(
 
 type TableRowProps = {
   selected?: boolean;
+  /**
+   * Position of this row **in the data**, from 0 — which band `striped` paints.
+   * `Table.Body` numbers its own direct children, so pass this only when the
+   * rows are generated (a `.map`, a virtualised window) and DOM order does not
+   * match data order.
+   */
+  index?: number;
 } & ComponentPropsWithRef<"tr">;
 
 const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
-  function TableRow({ selected = false, className, ...props }, ref) {
+  function TableRow({ selected = false, index, className, ...props }, ref) {
     const { striped } = useTableContext();
     return (
       <tr
@@ -110,7 +140,7 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         className={cn(
           "table-row",
           selected && "table-row--selected",
-          striped && "table-row--striped",
+          striped && index !== undefined && index % 2 === 1 && "table-row--striped",
           className
         )}
         {...props}

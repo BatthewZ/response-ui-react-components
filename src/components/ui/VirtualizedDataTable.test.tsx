@@ -369,3 +369,55 @@ describe("VirtualizedDataTable", () => {
     });
   });
 });
+
+/**
+ * The zebra used to be `:nth-child(even)` over the rendered window, and the
+ * window carries a spacer `<tr>` whose presence depends on scroll position — so
+ * the whole pattern inverted on every row scrolled. Parity now comes from the
+ * dataset index, so a row's band is a property of the row, not of where the
+ * viewport happens to be.
+ */
+describe("#368 · the zebra follows the dataset, not the scroll window", () => {
+  /** Map of "Row N" → is it banded, for whatever is currently rendered. */
+  function bandsByRow(container: HTMLElement) {
+    const out: Record<string, boolean> = {};
+    for (const row of container.querySelectorAll("tbody tr.table-row")) {
+      const label = row.querySelector("td")?.textContent;
+      if (label) out[label] = row.classList.contains("table-row--striped");
+    }
+    return out;
+  }
+
+  it("a row keeps its band after the window scrolls past it", () => {
+    const { container } = render(
+      <VirtualizedDataTable
+        data={makeData(1000)}
+        columns={columns}
+        rowKey={rowKey}
+        rowHeight={40}
+        striped
+      />,
+    );
+    const scroller = stubScrollerHeight(container, 400);
+
+    const atTop = bandsByRow(container);
+    expect(atTop["Row 0"]).toBe(false);
+    expect(atTop["Row 1"]).toBe(true);
+
+    act(() => {
+      scroller.scrollTop = 40 * 5;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+
+    const scrolled = bandsByRow(container);
+    // Every row still rendered must report the band it had before the scroll.
+    for (const [label, banded] of Object.entries(scrolled)) {
+      if (label in atTop) expect(banded).toBe(atTop[label]);
+    }
+    // And the parity is still the dataset's, not the window's.
+    for (const [label, banded] of Object.entries(scrolled)) {
+      const n = Number(label.replace("Row ", ""));
+      if (Number.isFinite(n)) expect(banded).toBe(n % 2 === 1);
+    }
+  });
+});

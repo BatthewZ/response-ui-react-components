@@ -40,7 +40,9 @@ colour of it on the theme contract. Reach for it when you own the rows; reach fo
 scroller, the border and the rounded corners — around a `<table>` that holds your
 `children`. It is also the provider: `density` and `striped` are set once on the root and
 travel by context, so the five sub-parts never take them. `Table.Head` and `Table.Body`
-are plain `<thead>`/`<tbody>` passthroughs. `Table.Row` is the `<tr>` that reads `striped`.
+are near-passthroughs for `<thead>`/`<tbody>` — `Table.Body` also numbers its direct
+`Table.Row` children so the zebra can key off data position. `Table.Row` is the `<tr>` that
+reads `striped` and decides its own band.
 `Table.HeaderCell` and `Table.Cell` are the `<th>`/`<td>` that read `density` — and the
 header cell is where sorting lives.
 
@@ -49,7 +51,7 @@ header cell is where sorting lives.
 | `Table`            | `<div>` › `<table>` | `density?: "dense" \| "comfortable" \| "spacious"` (default `"comfortable"`) · `striped?: boolean` · `stickyHeader?: boolean` |
 | `Table.Head`       | `<thead>` | —                                                                                     |
 | `Table.Body`       | `<tbody>` | —                                                                                     |
-| `Table.Row`        | `<tr>`    | `selected?: boolean`                                                                  |
+| `Table.Row`        | `<tr>`    | `selected?: boolean` · `index?: number` (data position; decides the zebra band — `Table.Body` supplies it for its own children) |
 | `Table.HeaderCell` | `<th>`    | `sortDirection?: "asc" \| "desc" \| false` · `onSort?: () => void`                     |
 | `Table.Cell`       | `<td>`    | —                                                                                     |
 
@@ -131,9 +133,13 @@ header row and its body rows always agree.
 ```
 <!-- /example -->
 
-Striping is pure CSS — `:nth-child(even)` counted among a row's siblings — so within each
-`<tbody>` the tint follows DOM position, not data. Split your rows across two `Table.Body`
-sections, or slot in a `<tr>` of your own, and the parity restarts or shifts.
+The band follows the **data index**, not DOM position. `Table.Body` numbers its own direct
+`Table.Row` children, so the markup above needs nothing extra. When your rows are generated —
+a `.map`, a virtualised window, anything that puts a `<tr>` between two data rows — pass
+`index` yourself and the parity survives it; a `<tr>` of your own slotted in no longer shifts
+every band beneath it. A row carrying an explicit `index` is never renumbered, so you can mix
+the two. Splitting rows across two `Table.Body` sections restarts the numbering, which is
+usually what you want for a second logical table.
 
 ## Sorting
 

@@ -66,7 +66,7 @@ export function Dense() {
   );
 }
 
-/** `striped` tints every even row inside each `<tbody>` — parity is DOM position, not data. */
+/** `striped` bands every second row by data index; `Table.Body` numbers these itself. */
 export function Striped() {
   return (
     <Table striped>

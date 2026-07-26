@@ -823,3 +823,45 @@ describe("DataTable", () => {
     });
   });
 });
+
+/**
+ * Zebra parity used to be `:nth-child(even)` in the stylesheet, so an open
+ * detail row — a real `<tr>` sitting between two data rows — flipped the band
+ * on every row below it. Parity now comes from the data index, which no DOM
+ * insertion can move.
+ */
+describe("#365 · an expanded detail row does not invert the zebra below it", () => {
+  const four: Item[] = [
+    { id: 1, name: "Alice", age: 30 },
+    { id: 2, name: "Bob", age: 25 },
+    { id: 3, name: "Carol", age: 41 },
+    { id: 4, name: "Dan", age: 38 },
+  ];
+
+  /** Banding of the data rows only, in order. Detail rows are not data. */
+  function bands(container: HTMLElement) {
+    return Array.from(container.querySelectorAll("tbody tr.table-row"))
+      .filter((row) => !row.classList.contains("data-table-expanded-row"))
+      .map((row) => row.classList.contains("table-row--striped"));
+  }
+
+  it("bands alternate rows before and after a row is expanded", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <DataTable
+        data={four}
+        columns={columns}
+        rowKey={rowKey}
+        striped
+        renderExpanded={(row) => <div>Detail for {row.name}</div>}
+      />,
+    );
+
+    expect(bands(container)).toEqual([false, true, false, true]);
+
+    await user.click(screen.getAllByRole("button", { name: "Expand row" })[0]);
+
+    expect(screen.getByText(/Detail for Alice/)).toBeInTheDocument();
+    expect(bands(container)).toEqual([false, true, false, true]);
+  });
+});

@@ -351,13 +351,12 @@ virtualization maths has to agree with them exactly. See the
 
 ## Gotchas
 
-- **`striped` bands the *window*, not the dataset.** The stripe is `nth-child(even)` inside the
-  `<tbody>`, and the top spacer `<tr>` is child 1 whenever the window has scrolled off the top —
-  so the first row of the window is always the striped one. Measured on a 1,000-row table: at
-  `scrollTop: 0` the odd dataset rows are striped; scroll to a window starting at row 6 and the
-  *even* rows are striped instead. Since the window start moves one row at a time, the whole
-  zebra pattern inverts on every row you scroll. Leave `striped` off here until it stripes from
-  the absolute row index.
+- **`striped` bands the dataset, not the window.** The band comes from each row's absolute
+  index, so it is a property of the row and survives scrolling: row 7 is banded at every
+  scroll position, and the spacer `<tr>`s the virtualiser emits above and below the window
+  carry no band and shift nobody else's. This used to be `nth-child(even)` counted inside the
+  `<tbody>`, where the top spacer was child 1 whenever the window had scrolled off the top —
+  measured on a 1,000-row table, the entire zebra inverted on every row scrolled.
 - **Nothing enforces `rowHeight`.** No cell truncation, no `overflow: hidden`, no dev warning. A
   row whose content exceeds the number renders taller, but the spacers are still computed from
   the number — so the scroll height and the real content height diverge, the scrollbar drifts,

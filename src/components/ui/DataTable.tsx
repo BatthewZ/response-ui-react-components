@@ -372,7 +372,7 @@ export function DataTable<T>({
       const isExpanded = expandable && expanded.has(key);
       return (
         <Fragment key={key}>
-          <Table.Row selected={selectedKeys?.has(key)}>
+          <Table.Row index={i} selected={selectedKeys?.has(key)}>
             {expandable && (
               <Table.Cell>
                 <button

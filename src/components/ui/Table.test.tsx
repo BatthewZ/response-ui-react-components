@@ -141,12 +141,48 @@ describe("Table", () => {
       </Table>,
     );
 
-    const rows = screen.getAllByRole("row");
-    const bodyRows = rows.filter((row) => row.closest("tbody"));
-    const hasStripedClass = bodyRows.some((row) =>
-      row.classList.contains("table-row--striped"),
+    // `.some()` here would pass whether one row carried the class or every row
+    // did. The banding is the assertion, so read it off in order: Table.Body
+    // numbers its own children, and odd data indices are the painted band.
+    const banded = screen
+      .getAllByRole("row")
+      .filter((row) => row.closest("tbody"))
+      .map((row) => row.classList.contains("table-row--striped"));
+
+    expect(banded).toEqual([false, true]);
+  });
+
+  it("does not band any row when striped is off", () => {
+    render(
+      <Table>
+        <Table.Body>
+          <Table.Row>
+            <Table.Cell>Row 1</Table.Cell>
+          </Table.Row>
+          <Table.Row>
+            <Table.Cell>Row 2</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>,
     );
-    expect(hasStripedClass).toBe(true);
+
+    expect(
+      screen.getAllByRole("row").filter((r) => r.classList.contains("table-row--striped")),
+    ).toHaveLength(0);
+  });
+
+  it("an explicit index wins over Table.Body's numbering", () => {
+    render(
+      <Table striped>
+        <Table.Body>
+          <Table.Row index={1}>
+            <Table.Cell>First in the DOM, second in the data</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>,
+    );
+
+    expect(screen.getAllByRole("row")[0]).toHaveClass("table-row--striped");
   });
 
   it("HeaderCell with sortDirection='asc' has aria-sort='ascending'", () => {

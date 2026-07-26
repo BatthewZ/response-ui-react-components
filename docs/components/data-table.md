@@ -480,10 +480,9 @@ not as the signal itself.
   column prints `0, 1` on page 1 and `0, 1` again on page 2, and an index-based `rowKey`
   therefore collides across pages — row 0 of page 2 shows as selected because row 0 of
   page 1 was. Key off a real identifier.
-- **`striped` and `renderExpanded` fight.** The zebra is a `:nth-child(even)` rule, and an
-  open detail row is a real `<tr>` in the same `<tbody>` — so expanding a row flips the
-  stripe parity of every row beneath it, and the detail row picks up a stripe of its own.
-  Pick one of the two features per table.
+- **`striped` and `renderExpanded` compose.** The zebra is decided from each row's data index
+  rather than its DOM position, so an open detail row — a real `<tr>` in the same `<tbody>` —
+  no longer flips the band on every row beneath it, and takes no band of its own.
 - **Expansion state is never pruned.** The internal expanded set keeps keys whose rows have
   left `data`, so a row that disappears and later comes back reappears already open.
 - **`pageSize` beats `totalPages`.** Pass both and the derived client page count wins;

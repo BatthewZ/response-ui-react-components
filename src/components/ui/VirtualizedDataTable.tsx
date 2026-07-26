@@ -300,7 +300,12 @@ export function VirtualizedDataTable<T>({
           const index = startIndex + i;
           const key = rowKey(row, index);
           return (
-            <Table.Row key={key} selected={selectedKeys?.has(key)} style={{ height: rowHeight }}>
+            <Table.Row
+              key={key}
+              index={index}
+              selected={selectedKeys?.has(key)}
+              style={{ height: rowHeight }}
+            >
               {selectable && (
                 <Table.Cell>
                   <Checkbox

@@ -80,11 +80,15 @@
   background: color-mix(in oklch, var(--C-ACCENT) 8%, transparent);
 }
 
-.table-row--striped:nth-child(even) {
+/* The class is emitted only on the rows that are actually banded — parity is
+   decided from the data index in Table.tsx, not from DOM position, so a detail
+   row or a virtualiser spacer between two data rows cannot flip the bands below
+   it (#365, #368). */
+.table-row--striped {
   background: var(--C-SURFACE-1);
 }
 
-.table-row--selected.table-row--striped:nth-child(even) {
+.table-row--selected.table-row--striped {
   background: color-mix(in oklch, var(--C-ACCENT) 8%, transparent);
 }
 
