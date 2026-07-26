@@ -933,7 +933,7 @@ export function App() {
           <Tile label="Dialog">
             <Button onClick={() => setDialogOpen(true)}>Open dialog</Button>
             <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-              <div className="flex flex-col gap-r4 p-r3">
+              <div className="flex flex-col gap-r4">
                 <h3 className="text-h4">Dialog title</h3>
                 <p className="text-body-2 text-fg-secondary">
                   This is a native &lt;dialog&gt; rendered by the library.

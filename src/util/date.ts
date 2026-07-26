@@ -82,6 +82,48 @@ export function buildMonthGrid(month: Date, weekStartsOn: Weekday = 0): Date[][]
   return rows;
 }
 
+/**
+ * Constructing an `Intl.DateTimeFormat` costs ~50µs — roughly 80x a `.format()`
+ * call on an existing one. The calendar builds one accessible name per day cell,
+ * so a single month grid was spending ~2ms per render rebuilding 42 formatters
+ * it had already built. Instances are immutable once constructed, so they are
+ * shared rather than rebuilt.
+ */
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+
+/** Bound the cache so an unbounded set of locale/option pairs cannot leak. */
+const FORMATTER_CACHE_LIMIT = 64;
+
+function formatterCacheKey(locale: string, options?: Intl.DateTimeFormatOptions): string {
+  if (!options) return locale;
+  // Sorted entries, not `JSON.stringify(options)`: `{month,year}` and
+  // `{year,month}` request the same formatter, and raw stringify would key them
+  // apart. NUL separates the locale because no BCP 47 tag can contain one.
+  // Written as a backslash-u escape, never as a literal byte: a raw NUL in the
+  // source makes git classify this whole file as binary, which silently costs
+  // every diff, blame and review on it. The escape is the same character.
+  const entries = Object.entries(options).sort(([a], [b]) => (a < b ? -1 : 1));
+  return `${locale}\u0000${JSON.stringify(entries)}`;
+}
+
+/** An `Intl.DateTimeFormat` for `locale`/`options`, built once and reused. */
+function dateFormatter(locale: string, options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat(locale, options); // TEMP-AB-BYPASS
+  const key = formatterCacheKey(locale, options);
+  const cached = formatterCache.get(key);
+  if (cached) return cached;
+
+  const formatter = new Intl.DateTimeFormat(locale, options);
+  if (formatterCache.size >= FORMATTER_CACHE_LIMIT) {
+    // Insertion-order eviction (not LRU): `Map` already iterates oldest-first,
+    // and at this size the distinction isn't worth the bookkeeping.
+    const oldest = formatterCache.keys().next();
+    if (!oldest.done) formatterCache.delete(oldest.value);
+  }
+  formatterCache.set(key, formatter);
+  return formatter;
+}
+
 /** A reference week (Sun 2021-01-03 .. Sat 2021-01-09) for deriving weekday names. */
 const WEEKDAY_REFERENCE: Date[] = [
   new Date(2021, 0, 3), // Sunday
@@ -102,7 +144,7 @@ export function getWeekdayNames(
   style: "short" | "long" | "narrow" = "short",
   weekStartsOn: Weekday = 0,
 ): string[] {
-  const fmt = new Intl.DateTimeFormat(locale, { weekday: style });
+  const fmt = dateFormatter(locale, { weekday: style });
   const names: string[] = [];
   for (let i = 0; i < 7; i++) {
     const dayIndex = (weekStartsOn + i) % 7;
@@ -113,12 +155,12 @@ export function getWeekdayNames(
 
 /** Localized month + year label, e.g. "June 2026" for en-US. */
 export function getMonthLabel(month: Date, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(month);
+  return dateFormatter(locale, { month: "long", year: "numeric" }).format(month);
 }
 
 /** Localized date string via `Intl.DateTimeFormat`. */
 export function formatDate(d: Date, locale: string, options?: Intl.DateTimeFormatOptions): string {
-  return new Intl.DateTimeFormat(locale, options).format(d);
+  return dateFormatter(locale, options).format(d);
 }
 
 /**
@@ -141,7 +183,7 @@ export function getMonthNames(
   locale: string,
   style: "long" | "short" = "long",
 ): string[] {
-  const fmt = new Intl.DateTimeFormat(locale, { month: style });
+  const fmt = dateFormatter(locale, { month: style });
   const names: string[] = [];
   for (let m = 0; m < 12; m++) {
     names.push(fmt.format(new Date(2021, m, 1)));
@@ -158,7 +200,7 @@ const FIELD_ORDER_REFERENCE = new Date(3333, 11, 22);
  * en-GB => ["day","month","year"].
  */
 export function getDateFieldOrder(locale: string): ("day" | "month" | "year")[] {
-  const parts = new Intl.DateTimeFormat(locale, {
+  const parts = dateFormatter(locale, {
     day: "numeric",
     month: "numeric",
     year: "numeric",

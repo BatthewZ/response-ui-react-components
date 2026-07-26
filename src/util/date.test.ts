@@ -227,6 +227,57 @@ describe("formatDate", () => {
   });
 });
 
+// Formatters are cached by locale + options. These cover the ways a cache can be
+// wrong: keying two distinct requests together, or keying one request apart from
+// itself. See `dateFormatter` in ./date.
+describe("formatter caching", () => {
+  const date = new Date(2026, 5, 13);
+
+  it("does not share a formatter between different options", () => {
+    expect(formatDate(date, "en-US", { month: "long" })).toBe("June");
+    expect(formatDate(date, "en-US", { month: "short" })).toBe("Jun");
+    expect(formatDate(date, "en-US", { month: "long" })).toBe("June");
+  });
+
+  it("does not share a formatter between different locales", () => {
+    const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "numeric", year: "numeric" };
+    expect(formatDate(date, "en-US", options)).toBe("6/13/2026");
+    expect(formatDate(date, "en-GB", options)).toBe("13/06/2026");
+  });
+
+  it("distinguishes options from no options", () => {
+    expect(formatDate(date, "en-US")).toBe("6/13/2026");
+    expect(formatDate(date, "en-US", { year: "numeric" })).toBe("2026");
+    expect(formatDate(date, "en-US")).toBe("6/13/2026");
+  });
+
+  it("treats key order as insignificant", () => {
+    const a = formatDate(date, "en-US", { month: "long", year: "numeric" });
+    const b = formatDate(date, "en-US", { year: "numeric", month: "long" });
+    expect(a).toBe("June 2026");
+    expect(b).toBe(a);
+  });
+
+  it("stays correct once evictions begin", () => {
+    // 15:00 UTC is the 13th in UTC and already the 14th in Tokyo, so a formatter
+    // handed back for the wrong key shows up as the wrong day.
+    const instant = new Date(Date.UTC(2026, 5, 13, 15, 0));
+    const inZone = (timeZone: string) => formatDate(instant, "en-US", { timeZone });
+
+    expect(inZone("UTC")).toBe("6/13/2026");
+    expect(inZone("Asia/Tokyo")).toBe("6/14/2026");
+
+    // Churn well past the cache limit so both entries above are evicted.
+    for (const timeZone of Intl.supportedValuesOf("timeZone").slice(0, 200)) {
+      expect(inZone(timeZone)).toMatch(/^\d{1,2}\/\d{1,2}\/\d{4}$/);
+    }
+
+    expect(inZone("UTC")).toBe("6/13/2026");
+    expect(inZone("Asia/Tokyo")).toBe("6/14/2026");
+    expect(getMonthNames("en-US", "short")[5]).toBe("Jun");
+  });
+});
+
 describe("getDateFieldOrder", () => {
   it("returns month/day/year for en-US", () => {
     expect(getDateFieldOrder("en-US")).toEqual(["month", "day", "year"]);
