@@ -25,7 +25,7 @@ import { cn } from "../../util/style";
 import { Calendar } from "../ui/Calendar";
 import { IconButton } from "../ui/IconButton";
 
-import { datePickerPopoverClassName } from "./date-picker-internals";
+import { datePickerPopoverClassName, isSameDateValue } from "./date-picker-internals";
 import { useFieldErrorProps } from "./Field";
 import { Input } from "./Input";
 
@@ -91,7 +91,6 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     },
     ref,
   ) {
-    // Source of truth #1: the committed Date.
     const [selected, setSelected] = useControllableState<Date | null>({
       value,
       defaultValue: defaultValue ?? null,
@@ -99,18 +98,14 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         onValueChange?.(next);
         onChange?.(next);
       },
+      isEqual: isSameDateValue,
     });
 
-    // Source of truth #2: the draft string the user is typing. It is reseeded
-    // from `selected` whenever the committed value changes out from under us
-    // (controlled prop change, calendar pick, or a successful commit) — tracked
-    // by comparing the last value we formatted from.
-    const [draft, setDraft] = useState(() => display(selected, locale, formatOptions));
-    const lastFormattedRef = useRef<Date | null>(selected);
-    if (selected !== lastFormattedRef.current) {
-      lastFormattedRef.current = selected;
-      setDraft(display(selected, locale, formatOptions));
-    }
+    // The field text is derived from `selected`; `draft` is a transient override
+    // holding what the user has typed since focus, and `null` means "not typing".
+    // Every commit path clears it, so the committed Date stays the only value.
+    const [draft, setDraft] = useState<string | null>(null);
+    const text = draft ?? display(selected, locale, formatOptions);
 
     const [open, setOpen] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -133,27 +128,23 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       role,
     ]);
 
-    /** Commit the current draft string: parse, clamp, fire onValueChange, reformat. */
+    /**
+     * Commit the current text: parse, clamp, select. Dropping the override is
+     * unconditional — invalid or disabled input reverts by falling back to the
+     * committed value, and a valid one reformats from it.
+     */
     const commit = useCallback(() => {
-      if (draft.trim() === "") {
+      setDraft(null);
+      if (text.trim() === "") {
         setSelected(null);
-        setDraft("");
-        lastFormattedRef.current = null;
         return;
       }
-      const parsed = parseDateInput(draft, locale);
+      const parsed = parseDateInput(text, locale);
       // Reject unparseable input and dates the matcher disables (after clamping to
       // [min, max], so a typed out-of-range date snaps in rather than being rejected).
       const clamped = parsed ? clampDate(parsed, min, max) : null;
-      if (clamped && !(isDateDisabled?.(clamped) ?? false)) {
-        setSelected(clamped);
-        setDraft(display(clamped, locale, formatOptions));
-        lastFormattedRef.current = clamped;
-      } else {
-        // Invalid or disabled input: revert to the last valid formatted value.
-        setDraft(display(selected, locale, formatOptions));
-      }
-    }, [draft, locale, formatOptions, min, max, isDateDisabled, selected, setSelected]);
+      if (clamped && !(isDateDisabled?.(clamped) ?? false)) setSelected(clamped);
+    }, [text, locale, min, max, isDateDisabled, setSelected]);
 
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLInputElement>) => {
@@ -177,20 +168,18 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
 
     const handleClear = useCallback(() => {
       setSelected(null);
-      setDraft("");
-      lastFormattedRef.current = null;
+      setDraft(null);
       inputRef.current?.focus();
     }, [setSelected]);
 
     const handleCalendarSelect = useCallback(
       (date: Date) => {
         setSelected(date);
-        setDraft(display(date, locale, formatOptions));
-        lastFormattedRef.current = date;
+        setDraft(null);
         setOpen(false);
         inputRef.current?.focus();
       },
-      [locale, formatOptions, setSelected],
+      [setSelected],
     );
 
     const referenceProps = getReferenceProps({
@@ -209,7 +198,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
           ref={mergeRefs(ref, inputRef)}
           type="text"
           error={error}
-          value={draft}
+          value={text}
           placeholder={placeholder}
           disabled={disabled}
           aria-haspopup="dialog"

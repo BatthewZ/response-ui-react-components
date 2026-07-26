@@ -3,7 +3,6 @@ import {
   type ComponentPropsWithRef,
   type CSSProperties,
   forwardRef,
-  useEffect,
   useRef,
   useState,
 } from "react";
@@ -93,13 +92,20 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       },
     });
 
-    // HSV is the editing space; seed it from the initial hex once, then keep it
-    // as the source of truth so dragging through grey/black doesn't lose hue.
-    const [hsv, setHsv] = useState<Hsv>(() => hexToHsv(hex) ?? { h: 0, s: 0, v: 0 });
-    const lastHexRef = useRef(hex);
+    // HSV is the editing space, but never a second source of truth: `hsvMemory`
+    // is the last edit, and it is believed only while it still describes the
+    // committed hex. That keeps hue/saturation alive across the greyscale
+    // extremes (where hex cannot carry them) while a hex that moves for any
+    // other reason — a controlled prop, a preset, a parent refusing a commit —
+    // wins outright.
+    const [hsvMemory, setHsvMemory] = useState<Hsv>(() => hexToHsv(hex) ?? { h: 0, s: 0, v: 0 });
+    const hsv = hsvToHex(hsvMemory) === hex ? hsvMemory : (hexToHsv(hex) ?? { h: 0, s: 0, v: 0 });
 
     const [open, setOpen] = useState(false);
-    const [draft, setDraft] = useState(hex);
+    // The hex field's text derives from `hex`; `draft` is a transient override
+    // holding what the user has typed, and `null` means "not typing".
+    const [draft, setDraft] = useState<string | null>(null);
+    const hexText = draft ?? hex;
     const svRef = useRef<HTMLDivElement>(null);
 
     const { invalid, ariaProps } = useFieldError(error);
@@ -118,40 +124,21 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       role,
     ]);
 
-    // Re-seed HSV + draft when the committed hex changes from the OUTSIDE (a
-    // controlled prop update or preset/hex-field edit), but not from our own
-    // HSV-driven commits — those already match and would clobber hue at s/v=0.
-    useEffect(() => {
-      if (hex !== lastHexRef.current) {
-        const next = hexToHsv(hex);
-        if (next) setHsv(next);
-        lastHexRef.current = hex;
-        setDraft(hex);
-      }
-    }, [hex]);
-
     function commitHsv(next: Hsv) {
-      setHsv(next);
-      const nextHex = hsvToHex(next);
-      lastHexRef.current = nextHex;
-      setDraft(nextHex);
-      setHex(nextHex);
+      setHsvMemory(next);
+      setDraft(null);
+      setHex(hsvToHex(next));
     }
 
     function commitHex(input: string) {
+      setDraft(null); // an unparseable entry reverts by deriving from `hex`
       const normalized = normalizeHex(input);
-      if (!normalized) {
-        setDraft(hex); // revert invalid input
-        return;
-      }
+      if (!normalized) return;
       const next = hexToHsv(normalized);
-      if (next) setHsv(next);
-      lastHexRef.current = normalized;
-      setDraft(normalized);
+      if (next) setHsvMemory(next);
       setHex(normalized);
     }
 
-    const currentHex = hsvToHex(hsv);
     const hueHex = hsvToHex({ h: hsv.h, s: 1, v: 1 });
 
     /* — saturation/value square pointer handling — */
@@ -266,7 +253,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     style={{
                       left: `${hsv.s * 100}%`,
                       top: `${(1 - hsv.v) * 100}%`,
-                      backgroundColor: currentHex,
+                      backgroundColor: hex,
                     }}
                   />
                 </div>
@@ -298,7 +285,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     className="colorpicker-hex"
                     aria-label="Hex value"
                     spellCheck={false}
-                    value={draft}
+                    value={hexText}
                     disabled={disabled}
                     onChange={(event) => setDraft(event.target.value)}
                     onBlur={(event) => commitHex(event.target.value)}

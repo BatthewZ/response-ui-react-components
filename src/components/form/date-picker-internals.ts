@@ -3,6 +3,26 @@
  * `DateRangePicker`). Internal — not part of the public package exports.
  */
 
+import { isSameDay } from "../../util/date";
+import type { DateRange } from "../ui/RangeCalendar";
+
+/**
+ * Equality for a committed picker value, for `useControllableState`'s change
+ * gate. Day-granular because every producer in the family is: `parseDateInput`
+ * yields midnight, the calendar yields a grid day, and `toISODate` submits a
+ * day. Reference equality would let a re-parse of an unedited draft — a fresh
+ * `Date` every time — read as an edit.
+ */
+export function isSameDateValue(a: Date | null, b: Date | null): boolean {
+  if (a === null || b === null) return a === b;
+  return isSameDay(a, b);
+}
+
+/** `isSameDateValue` on both endpoints. */
+export function isSameDateRange(a: DateRange, b: DateRange): boolean {
+  return isSameDateValue(a.start, b.start) && isSameDateValue(a.end, b.end);
+}
+
 /**
  * Class names for the floating calendar popover shared by `DatePicker` and
  * `DateRangePicker`. Single source of truth so the responsive sizing stays in

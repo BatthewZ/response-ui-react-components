@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -256,6 +256,121 @@ describe("DatePicker", () => {
     expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange.mock.calls[0][0]).toBeNull();
     expect((input as HTMLInputElement).value).toBe("");
+  });
+
+  describe("draft vs committed value", () => {
+    it("#324 a blur that edits nothing commits nothing", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <>
+          <DatePicker
+            defaultValue={new Date(2026, 5, 10)}
+            onValueChange={onValueChange}
+            aria-label="Date"
+          />
+          <button type="button">elsewhere</button>
+        </>,
+      );
+
+      const input = screen.getByRole("textbox", { name: "Date" });
+      const elsewhere = screen.getByText("elsewhere");
+
+      await user.click(input);
+      await user.click(elsewhere);
+      expect(onValueChange).toHaveBeenCalledTimes(0);
+
+      await user.click(input);
+      await user.click(elsewhere);
+      expect(onValueChange).toHaveBeenCalledTimes(0);
+      expect((input as HTMLInputElement).value).toBe(fmt(new Date(2026, 5, 10)));
+    });
+
+    it("#324 an untouched empty field commits nothing on blur", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <>
+          <DatePicker onValueChange={onValueChange} aria-label="Date" />
+          <button type="button">elsewhere</button>
+        </>,
+      );
+
+      await user.click(screen.getByRole("textbox", { name: "Date" }));
+      await user.click(screen.getByText("elsewhere"));
+      expect(onValueChange).toHaveBeenCalledTimes(0);
+    });
+
+    it("#324 a real edit after a no-op blur still commits exactly once", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <>
+          <DatePicker
+            defaultValue={new Date(2026, 5, 10)}
+            onValueChange={onValueChange}
+            aria-label="Date"
+          />
+          <button type="button">elsewhere</button>
+        </>,
+      );
+
+      const input = screen.getByRole("textbox", { name: "Date" });
+      const elsewhere = screen.getByText("elsewhere");
+
+      await user.click(input);
+      await user.click(elsewhere);
+
+      await user.clear(input);
+      await user.type(input, "06/11/2026");
+      await user.click(elsewhere);
+
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect((onValueChange.mock.calls[0][0] as Date).getDate()).toBe(11);
+    });
+
+    it("#325 an inline value={new Date(…)} does not wipe in-progress typing", async () => {
+      const user = userEvent.setup();
+      let bump = () => {};
+      function Harness() {
+        const [, setTick] = useState(0);
+        bump = () => setTick((t) => t + 1);
+        // The natural-looking controlled form: a fresh Date object every render.
+        return <DatePicker value={new Date(2026, 0, 15)} aria-label="Date" />;
+      }
+      render(<Harness />);
+
+      const input = screen.getByRole("textbox", { name: "Date" });
+      expect((input as HTMLInputElement).value).toBe(fmt(new Date(2026, 0, 15)));
+
+      await user.clear(input);
+      await user.type(input, "12/25/20");
+
+      // An unrelated parent re-render — no blur, no value change.
+      act(() => bump());
+
+      expect((input as HTMLInputElement).value).toBe("12/25/20");
+    });
+
+    it("#325 a controlled value that really moves still reseeds the field", async () => {
+      const user = userEvent.setup();
+      function Harness() {
+        const [value, setValue] = useState(new Date(2026, 0, 15));
+        return (
+          <>
+            <DatePicker value={value} aria-label="Date" />
+            <button type="button" onClick={() => setValue(new Date(2026, 8, 9))}>
+              move
+            </button>
+          </>
+        );
+      }
+      render(<Harness />);
+
+      const input = screen.getByRole("textbox", { name: "Date" });
+      await user.click(screen.getByText("move"));
+      expect((input as HTMLInputElement).value).toBe(fmt(new Date(2026, 8, 9)));
+    });
   });
 
   describe("form.field() binding (#429)", () => {

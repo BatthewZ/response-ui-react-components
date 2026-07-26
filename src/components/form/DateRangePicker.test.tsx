@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { formatDate } from "../../util/date";
@@ -91,6 +92,89 @@ describe("DateRangePicker", () => {
     await user.click(screen.getByText("elsewhere"));
 
     expect((start as HTMLInputElement).value).toBe(fmt(new Date(2026, 0, 1)));
+  });
+
+  describe("draft vs committed range", () => {
+    it("#335 an inline value={{start, end}} does not wipe in-progress typing", async () => {
+      const user = userEvent.setup();
+      let bump = () => {};
+      function Harness() {
+        const [, setTick] = useState(0);
+        bump = () => setTick((t) => t + 1);
+        // The natural-looking controlled form: a fresh object every render.
+        return <DateRangePicker value={{ start: new Date(2026, 5, 10), end: null }} />;
+      }
+      render(<Harness />);
+
+      const end = screen.getByRole("textbox", { name: "End date" }) as HTMLInputElement;
+      await user.type(end, "06/1");
+      expect(end.value).toBe("06/1");
+
+      // An unrelated parent re-render — no blur, no range change.
+      act(() => bump());
+
+      expect(end.value).toBe("06/1");
+      expect(
+        (screen.getByRole("textbox", { name: "Start date" }) as HTMLInputElement).value,
+      ).toBe(fmt(new Date(2026, 5, 10)));
+    });
+
+    it("#335 a blur that edits nothing commits nothing", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <>
+          <DateRangePicker
+            defaultValue={{ start: new Date(2026, 5, 10), end: new Date(2026, 5, 14) }}
+            onValueChange={onValueChange}
+          />
+          <button type="button">elsewhere</button>
+        </>,
+      );
+
+      const start = screen.getByRole("textbox", { name: "Start date" });
+      const elsewhere = screen.getByText("elsewhere");
+
+      await user.click(start);
+      await user.click(elsewhere);
+      expect(onValueChange).toHaveBeenCalledTimes(0);
+
+      await user.click(screen.getByRole("textbox", { name: "End date" }));
+      await user.click(elsewhere);
+      expect(onValueChange).toHaveBeenCalledTimes(0);
+    });
+
+    it("#335 a controlled range that really moves still reseeds both fields", async () => {
+      const user = userEvent.setup();
+      function Harness() {
+        const [range, setRange] = useState<DateRange>({
+          start: new Date(2026, 5, 10),
+          end: new Date(2026, 5, 14),
+        });
+        return (
+          <>
+            <DateRangePicker value={range} />
+            <button
+              type="button"
+              onClick={() =>
+                setRange({ start: new Date(2026, 8, 1), end: new Date(2026, 8, 5) })
+              }
+            >
+              move
+            </button>
+          </>
+        );
+      }
+      render(<Harness />);
+
+      await user.click(screen.getByText("move"));
+      expect(
+        (screen.getByRole("textbox", { name: "Start date" }) as HTMLInputElement).value,
+      ).toBe(fmt(new Date(2026, 8, 1)));
+      expect(
+        (screen.getByRole("textbox", { name: "End date" }) as HTMLInputElement).value,
+      ).toBe(fmt(new Date(2026, 8, 5)));
+    });
   });
 
   describe("form.field() binding (#439)", () => {

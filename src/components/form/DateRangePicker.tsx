@@ -4,7 +4,6 @@ import {
   forwardRef,
   type KeyboardEvent,
   useCallback,
-  useRef,
   useState,
 } from "react";
 import { CalendarDays } from "lucide-react";
@@ -24,7 +23,7 @@ import { cn } from "../../util/style";
 import { type DateRange, RangeCalendar } from "../ui/RangeCalendar";
 import { IconButton } from "../ui/IconButton";
 
-import { datePickerPopoverClassName } from "./date-picker-internals";
+import { datePickerPopoverClassName, isSameDateRange } from "./date-picker-internals";
 import { Input } from "./Input";
 
 const EMPTY_RANGE: DateRange = { start: null, end: null };
@@ -116,17 +115,16 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
         onValueChange?.(next);
         onChange?.(next);
       },
+      isEqual: isSameDateRange,
     });
 
-    // Draft strings reseeded whenever the committed range changes out from under us.
-    const [startDraft, setStartDraft] = useState(() => display(range.start, locale, formatOptions));
-    const [endDraft, setEndDraft] = useState(() => display(range.end, locale, formatOptions));
-    const lastRangeRef = useRef<DateRange>(range);
-    if (range !== lastRangeRef.current) {
-      lastRangeRef.current = range;
-      setStartDraft(display(range.start, locale, formatOptions));
-      setEndDraft(display(range.end, locale, formatOptions));
-    }
+    // Each field's text is derived from `range`; a draft is a transient override
+    // holding what the user has typed since focus, and `null` means "not typing".
+    // `commit` clears both, so the committed range stays the only value.
+    const [startDraft, setStartDraft] = useState<string | null>(null);
+    const [endDraft, setEndDraft] = useState<string | null>(null);
+    const startText = startDraft ?? display(range.start, locale, formatOptions);
+    const endText = endDraft ?? display(range.end, locale, formatOptions);
 
     const [open, setOpen] = useState(false);
 
@@ -152,25 +150,23 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
       [locale, min, max, isDateDisabled],
     );
 
-    /** Commit both drafts into an ordered range; revert drafts that don't resolve. */
+    /** Commit both fields into an ordered range; text that doesn't resolve reverts. */
     const commit = useCallback(() => {
-      const startValid = startDraft.trim() === "" || parseDateInput(startDraft, locale) !== null;
-      const endValid = endDraft.trim() === "" || parseDateInput(endDraft, locale) !== null;
+      const startValid = startText.trim() === "" || parseDateInput(startText, locale) !== null;
+      const endValid = endText.trim() === "" || parseDateInput(endText, locale) !== null;
 
-      let start = startValid ? resolve(startDraft) : range.start;
-      let end = endValid ? resolve(endDraft) : range.end;
+      let start = startValid ? resolve(startText) : range.start;
+      let end = endValid ? resolve(endText) : range.end;
 
       // Order endpoints so start precedes end.
       if (start && end && isBefore(end, start)) {
         [start, end] = [end, start];
       }
 
-      const next: DateRange = { start, end };
-      lastRangeRef.current = next;
-      setRange(next);
-      setStartDraft(display(start, locale, formatOptions));
-      setEndDraft(display(end, locale, formatOptions));
-    }, [startDraft, endDraft, locale, formatOptions, resolve, range, setRange]);
+      setStartDraft(null);
+      setEndDraft(null);
+      setRange({ start, end });
+    }, [startText, endText, locale, resolve, range, setRange]);
 
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLInputElement>) => {
@@ -196,7 +192,7 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
           <Input
             type="text"
             error={error}
-            value={startDraft}
+            value={startText}
             placeholder={startPlaceholder}
             disabled={disabled}
             aria-label="Start date"
@@ -209,7 +205,7 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
           <Input
             type="text"
             error={error}
-            value={endDraft}
+            value={endText}
             placeholder={endPlaceholder}
             disabled={disabled}
             aria-label="End date"

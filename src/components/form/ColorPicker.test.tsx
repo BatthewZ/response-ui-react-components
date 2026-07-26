@@ -101,6 +101,67 @@ describe("ColorPicker", () => {
     expect(onValueChange).toHaveBeenCalled();
   });
 
+  describe("controlled sync (#289)", () => {
+    it("#289 a parent that ignores the change leaves nothing out of sync", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      // Controlled with no write-back: every commit is refused.
+      render(<ColorPicker value="#3366cc" onValueChange={onValueChange} />);
+      await user.click(screen.getByRole("button", { name: "Choose color" }));
+
+      const sv = screen.getByLabelText("Saturation and brightness");
+      const valueTextBefore = sv.getAttribute("aria-valuetext");
+      sv.focus();
+      await user.keyboard("{ArrowRight}{ArrowRight}");
+
+      // The refused edits are still reported to the parent…
+      expect(onValueChange).toHaveBeenCalledTimes(2);
+      // …but nothing on screen may drift away from the value the parent holds.
+      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+        "#3366cc",
+      );
+      expect(screen.getByLabelText("Hex value")).toHaveValue("#3366cc");
+      expect(sv.getAttribute("aria-valuetext")).toBe(valueTextBefore);
+    });
+
+    it("#289 an accepted edit does move the panel", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(<Harness onValueChange={onValueChange} />);
+      await user.click(screen.getByRole("button", { name: "Choose color" }));
+
+      const sv = screen.getByLabelText("Saturation and brightness");
+      sv.focus();
+      await user.keyboard("{ArrowRight}");
+
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const committed = onValueChange.mock.calls[0][0] as string;
+      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+        committed,
+      );
+      expect(screen.getByLabelText("Hex value")).toHaveValue(committed);
+    });
+
+    it("#289 hue survives a round trip through black on the square", async () => {
+      const user = userEvent.setup();
+      render(<Harness />);
+      await user.click(screen.getByRole("button", { name: "Choose color" }));
+
+      fireEvent.change(screen.getByLabelText("Hue"), { target: { value: "200" } });
+      const sv = screen.getByLabelText("Saturation and brightness");
+      // 0.02 per step from v=0.8 — 40 steps bottoms the square out at black.
+      for (let i = 0; i < 40; i++) fireEvent.keyDown(sv, { key: "ArrowDown" });
+
+      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+        "#000000",
+      );
+      // Hue is unrecoverable from #000000; it must be remembered, not re-derived.
+      expect(screen.getByLabelText("Hue")).toHaveValue("200");
+      fireEvent.keyDown(sv, { key: "ArrowUp" });
+      expect(screen.getByLabelText("Hue")).toHaveValue("200");
+    });
+  });
+
   describe("form.field() binding (#285)", () => {
     it("binds via the advertised form.field() spread and commits edits", async () => {
       const user = userEvent.setup();
