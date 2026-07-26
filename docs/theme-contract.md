@@ -207,11 +207,19 @@ For data-viz / dashboard UIs. All optional.
 | `--C-TREND-DOWN` | `var(--C-STATUS-ERROR)` |
 | `--C-TREND-DOWN-BG` | `var(--C-STATUS-ERROR-BG)` |
 
-**Chart** is a 5-hue categorical palette for series colors. Defaults are tuned for light backgrounds; for dark themes raise lightness (~0.65–0.78) so series stay legible.
+**Chart** is a 5-hue categorical palette for series colors. The first three alias the contract so a retuned theme carries the chart with it; the last two have no contract twin and are literal.
 
-```
---C-CHART-1, --C-CHART-2, --C-CHART-3, --C-CHART-4, --C-CHART-5
-```
+| Token | Default |
+| --- | --- |
+| `--C-CHART-1` | `var(--C-ACCENT)` |
+| `--C-CHART-2` | `var(--C-STATUS-SUCCESS)` |
+| `--C-CHART-3` | `var(--C-STATUS-WARNING)` |
+| `--C-CHART-4` | `oklch(0.5413 0.2466 293.01)` (purple) |
+| `--C-CHART-5` | `oklch(0.6896 0.1037 218.62)` (cyan) |
+
+The aliasing stops at three **on purpose**: the palette's job is that five series stay tellable apart, and this contract lets one theme give two roles the same value. The default theme sets `--C-STATUS-INFO` equal to `--C-ACCENT`, and `tech` sets `--C-ACCENT` equal to `--C-STATUS-SUCCESS` — so extending the aliases would render two series identically in a shipped theme. `scripts/verify-chart-palette.mjs` measures the separation in all four themes and fails the build if any pair collapses.
+
+If you define your own theme, the same rule applies to you: **overriding `--C-ACCENT` moves `--C-CHART-1`.** If that puts it near chart-3, chart-4 or chart-5, override the chart tokens too. For dark themes raise the whole ramp's lightness (~0.65–0.78) so series stay legible — `grimdark` and `tech` do exactly this and therefore override all five.
 
 ---
 

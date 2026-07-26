@@ -9,7 +9,7 @@ someone arriving cold.
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | [`LEDGER.md`](./LEDGER.md)     | **64 open defects.** The work list. Every row believed true at source.                                                      |
 | [`ARCHIVE.md`](./ARCHIVE.md)   | ~400 closed rows — fixed, declined, refuted. Ids never reused. Anchors deliberately not maintained.                         |
-| [`AUDIT.md`](./AUDIT.md)       | 7 open findings about the _checking_ — gates, tests, the record. Not component defects.                                     |
+| [`AUDIT.md`](./AUDIT.md)       | 6 open findings about the _checking_ — gates, tests, the record. Not component defects.                                     |
 | [`TAXONOMY.md`](./TAXONOMY.md) | What a row _is_ (kind) and who it hurts (harm). Work order comes from harm.                                                 |
 | [`PLAN.md`](./PLAN.md)         | **Stale.** Clusters sized against a 466-row file; most are now closed. Rewrite or retire it before trusting a number in it. |
 | `../memory/`                   | Traps, testing failure modes, ledger failure modes. **Read `traps.md` before planning.**                                    |
@@ -112,8 +112,9 @@ seam-closing pass after every wave.
 components. Good for consistency, but it means two breaking changes in one release instead of one —
 you only see it if you read the reports against each other.
 
-**`gen-docs` rewrites every page on every run**, so one lane running it can damage a file it has
-never opened (AUDIT #479). After any lane runs it, re-read the pages *other* lanes own.
+**`gen-docs` rewrites every page on every run**, so two lanes running it will trip over each
+other's pages. It can no longer *damage* an untargeted page — AUDIT #479 is fixed and the pattern
+is now self-checked on every invocation — but the churn is still real. Have one owner run it.
 
 **Sequence:** launch all lanes → as each lands, verify, commit its files by explicit path, integrate
 its rows into the record → after the last one, re-anchor once and read the by-hand list. Do not
@@ -135,50 +136,80 @@ times; do not let six agents invent six visual languages.
 | Shape/weight/border differentiation | No new dependency; works for Stepper (#147), whose AT channel is already complete | Weaker signal; per-component design work                                      |
 | Accept and document                 | Zero work                                                                         | Keeps a known 1.4.1 gap in a package whose README sells "accessibility-first" |
 
-### 2 · Palette / contrast — #173 #241 #315 #319 #415 #465 #466 (+ #446)
+### 2 · Palette / contrast — RESOLVED except one release call
 
-**The retune shipped.** `response-ui-css` `b237be3`, released as **v0.10.0**, and this package
-already depends on `^0.10.0` — the release chain is done. 11 values, lightness-only (hue and chroma
-byte-identical), all four targets met in all four themes, no pairing regressed PASS→FAIL.
-**Re-measure the seven rows above against the shipped tokens and archive the ones that now pass**;
-they were written against the old values.
+**Re-measured 2026-07-26 against the installed v0.10.0, by two independently written converters,
+each validated at white-on-black = 21.0000 and against WebAIM reference pairs, and cross-checked
+against browser-painted pixels (Firefox 146 and Chrome both clip out-of-gamut channels identically,
+0/255 delta).** Both agreed on every pairing.
 
-The grimdark `--C-TEXT-ON-ACCENT` inversion (light parchment → dark parchment on lit red) is part of
-that release. It was forced, not chosen: once accent is bright enough to read as ink on SURFACE-2,
-no light on-accent value reaches 4.5:1 — even white is 3.66:1.
+**Archived — these five rows' sentences are no longer true:** #173, #241, #319, #465, #466. Each
+closed on the upstream retune, which is these rows working as designed rather than being refuted.
+Their doc pages carried the stale ratios as *measured claims* and `docs/` ships to npm, so
+`swimlane.md`, `pagination.md` and `calendar.md` were corrected in the same pass.
 
-**One item did not ship and is still open.** `--C-BORDER-FOCUS` is a duplicated literal of the *old*
-accent, not a `var()` reference, so the retune left it behind:
+**Still open, with corrected numbers and — in two cases — a corrected door:**
 
-| theme | `--C-BORDER-FOCUS` on SURFACE-0 | `--C-ACCENT` it used to mirror |
+- **#315** (Calendar range wash) — 1.24 / 1.18 / 1.34 / 1.20, not the row's stale 1.08–1.16. **The
+  row's "cross-package" framing is wrong.** The entire surface ramp spans only ~1.2 end to end in
+  every theme, so *no* palette retune can reach 3:1 without destroying what the ramp is for. The fix
+  is here: the band needs a non-surface channel.
+- **#415** (FileUpload status ink) — **the success half closes** (4.57 in all four themes) and **the
+  error half inverts**: the row cleared its error twin using ratios measured against the very
+  backdrop it had just proved the message never sits on. Against the real backdrop it is 4.41 in
+  default and events. The same recipe is in `Badge.tsx:17`, `Alert.tsx:12`, `Toast.tsx:19`.
+  Cross-package — `--C-STATUS-ERROR` needs the same lightness-only move the success green got.
+- **#478** (ProgressBar track) — 1.00:1 confirmed exactly. Its unverified `DataTable` clause is now
+  verified and **its mechanism was wrong**: the collision is with `.table-row--striped`, not a Card.
+  And the in-family precedent does not solve it — no surface token clears 3:1 against `--C-SURFACE-1`
+  in any theme; the widest step available is 1.25.
+- **#446** — factual claims all re-verified against installed v0.10.0. Stands unchanged.
+
+#### The one thing needing the owner: a release call
+
+`--C-BORDER-FOCUS` **has already been fixed** in the `response-ui-css` working tree — commit
+`2b41af9`, "fix(themes): the focus ring meets 1.4.11 in events and grimdark". It was deliberately
+left unreleased: `package.json` stays at 0.10.0 and the entry sits under *Unreleased*, its message
+saying "The release call, and the dependent's range, are the owner's."
+
+Verified here, reading both trees:
+
+| theme | shipped v0.10.0 (S0/S1/S2) | source HEAD after `2b41af9` |
 | --- | --- | --- |
-| `events` | **2.72** (needs 3.0) | 4.89 |
-| `grimdark` | **2.96** (needs 3.0) | 5.69 |
+| `events` | **2.72 / 2.63 / 2.52** — fails | **3.39 / 3.29 / 3.15** — passes |
+| `grimdark` | **2.96 / 2.77 / 2.55** — fails | **3.66 / 3.43 / 3.15** — passes |
 
-So the focus ring now fails WCAG 1.4.11 *and* no longer matches the accent in two shipped themes.
+`default` (3.68/3.52/3.34) and `tech` (14.84/14.56/13.70) already passed and were correctly left
+alone — the default theme's ring differs from its accent in lightness, chroma *and* hue, so the
+"stale copy" story never applied to it.
 
-**The failing ratio is the defect; the desync is not necessarily one.** Checked across all four
-themes: `tech` copies its accent exactly, `events` and `grimdark` copy the *old* accent, and the
-**default theme's focus ring is deliberately its own colour** — different lightness, chroma and hue.
-`docs/theme-contract.md` defines `--C-BORDER-FOCUS` as "Focus ring color" and states no relationship
-to the accent. So a blanket `--C-BORDER-FOCUS: var(--C-ACCENT)` would overwrite a deliberate choice
-and encode a rule nobody wrote, and a matching literal is not proof that matching was intended.
+**So the fix is correct, verified, and reaching nobody.** It is not in the published artifact this
+package resolves, so every consumer still gets a focus ring that fails 1.4.11 in two shipped themes.
+The remaining work is not engineering:
 
-Three separable moves, in order of confidence:
+1. **Bump and publish `response-ui-css`** (0.10.1 — it is a fix, no contract change).
+2. **Bump this package's dependency range** to match, per the repo-root `CLAUDE.md` rule.
+3. Then update `calendar.md` and `file-upload.md`, whose `--C-BORDER-FOCUS` tables are **currently
+   correct** and become false the moment that release lands.
 
-1. **Retune the two failing values.** Required whatever else happens; same lightness-only technique.
-2. **Add a contrast gate to `response-ui-css`.** There is *no* contrast tooling in that package —
-   every ratio in this work came from a throwaway script. A gate asserting each theme's
-   `--C-BORDER-FOCUS` clears 3:1 on SURFACE-0..2 catches this for `_theme-template.css` and every
-   future theme, and it catches the harm whether or not the tokens are ever unified.
-3. **`var(--C-ACCENT)` only where the intent is confirmed** — plausibly `events`/`grimdark`/`tech`,
-   **not** default. That is an owner question, not an inference from a literal.
+Worth doing at the same time, and still absent: **a contrast gate in `response-ui-css`.** Every ratio
+in this work came from throwaway scripts. A gate asserting each theme clears its floors would have
+caught the original desync, and catches it for `_theme-template.css` and every future theme. This
+package now has `scripts/verify-chart-palette.mjs` as a worked example of the shape.
 
-Also unresolved: `--C-CHART-1`/`-2` in _this_ package's `src/tokens.css` hard-code the old accent and
-success values and will not track the retune. Second copy of a value that should be one.
+#### Resolved without needing the owner
 
-Deliberately left failing, outside the original brief: success ink on SURFACE-2 (4.31–4.35), accent
-ink on SURFACE-3 (4.10 / 4.26, consistent with the muted-text precedent's SURFACE-3 exclusion).
+`--C-CHART-1`/`-2`/`-3` in this package's `src/tokens.css` were duplicated literals — `-1` of the
+default accent, `-2` of the *pre-retune* success (already stale), `-3` of the warning. They now read
+`var(--C-ACCENT)` / `var(--C-STATUS-SUCCESS)` / `var(--C-STATUS-WARNING)` and track the theme.
+
+The aliasing deliberately **stops at three**, and that partition is now gated by
+`scripts/verify-chart-palette.mjs`, which measures OKLab separation across all four themes. Both
+exceptions were measured, not reasoned: pointing `-4` at `--C-STATUS-INFO` collapses chart-1/chart-4
+to **0.000** in the *default* theme (which sets INFO byte-identical to ACCENT), and deleting `tech`'s
+literal override collapses chart-1/chart-2 to **0.000** (it sets ACCENT byte-identical to SUCCESS).
+A dark theme also needs the whole ramp lifted to ~0.65–0.78 lightness, which contract ink values do
+not supply. Do not "finish the job" by aliasing the other two.
 
 ### 3 · Public API — #24 #287 #353
 
@@ -235,10 +266,12 @@ Runnable as a wave of 4–5 lanes on the existing method. Suggested partition by
   64 or retire it; a stale plan is believed.
 - **`dist/` is stale**, so `verify:directives` fails for reasons unrelated to source (AUDIT #472).
   Run `bun run build` before trusting it.
-- **AUDIT #479 is live and dangerous**: `gen-docs.mjs` silently deletes doc sections when an example
-  fence is empty, its only signal names a _different_ example, and `--check` then agrees with the
-  damaged file. It has already eaten a page its author never touched. Re-read every page you own
-  after running it.
+- **AUDIT #479 is FIXED** — `gen-docs.mjs` no longer deletes doc sections when an example fence is
+  empty. The marker now terminates at the first close marker, an unclosed block is reported instead
+  of rewritten, and `assertMarkerCannotSpanBlocks()` runs on every invocation *including the write
+  path*, so the pattern cannot regress silently. Old and new patterns match the same 541 blocks, so
+  nothing else moved. **The generator still rewrites every page on every run**, which remains a
+  reason not to have two lanes run it — but a run can no longer damage a page it did not target.
 - **AUDIT #473**: `verify:omit-discipline` misattributes a nested prop bag's `Omit` to the component.
   One exemption is recorded with its reasoning; the pattern (`viewAllProps`, `imgProps`,
   `tableProps`) is spreading, so the scan should be bound to the component's own props type.

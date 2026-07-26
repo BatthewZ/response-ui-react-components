@@ -145,9 +145,14 @@ code. The gates stayed green throughout. The owner reversed it.
   was drift. Two of §D's three "unifications" (this one, and the `focus:` keying in §E)
   were a real distinction being flattened.
 - **A contrast number against a surface says nothing about the same colour against a
-  fill.** `--C-BORDER-FOCUS` measures 2.22–14.84:1 against every surface in every theme
-  — genuinely fine — while measuring 1.00:1 against `--C-ACCENT`, which three of the
-  four themes make it byte-identical to. Always state *what* a ratio is against.
+  fill.** `--C-BORDER-FOCUS` measures 2.22–14.84:1 across the surfaces while measuring
+  1.00:1 against `--C-ACCENT` in the theme that makes the two byte-identical. Always
+  state *what* a ratio is against. **This bullet also demonstrates its own second
+  lesson**: it used to call that surface range "genuinely fine", which was never true —
+  a focus indicator's floor is 3:1 and two themes sat under it — and it used to say
+  "three of the four themes", which a later palette retune reduced to one. **An
+  illustrative number decays faster than the principle it illustrates. Re-measure
+  before you cite one, including from this file.**
 - **The test that guards a recipe must enumerate the recipes.** `focus.test.ts` keeps a
   hand-written `RECIPES` map, so adding `focusRingButtonFilled` left it unguarded until
   it was added there too. Its literal `EXPECTED` table caught the omission on the next
@@ -403,3 +408,30 @@ code. The gates stayed green throughout. The owner reversed it.
   test that relies on jsdom lacking that API. When the fix is one line and the fallout is in
   another lane's file, say so in the record and leave it: an unannounced default change is
   worse than an open row.
+
+## N · From the palette re-measurement pass
+
+(The letter after `M`. Two sections in this file are both called `K` — a pre-existing
+collision, left alone because briefs in flight cite the later one by letter.)
+
+- **Measure the artifact you consume, not the checkout next to you.** This repo holds the
+  CSS package as a sibling directory *and* as an installed dependency, and they are not the
+  same thing. A fix can be committed in the sibling, deliberately left unversioned pending a
+  release call, and therefore be completely absent from what every consumer — including this
+  package's own test run — actually resolves. Two correct measurements of "the same" token
+  disagreed by 0.7 for exactly this reason, and it read like one of them was broken. The tell
+  is that the two sources agree on most values and diverge on precisely the ones someone
+  recently touched. **Read `node_modules/`, and say which you read.**
+- **A dependency range cannot deliver a fix that was never published.** "Fixed upstream" and
+  "shipped upstream" are different states, and only the second one reaches anybody. When a
+  cross-package row is closed by an upstream change, check the upstream *version* moved, not
+  just that the commit exists — otherwise the row gets archived against a value no build has.
+- **A row can exonerate a clause using the very backdrop it just disproved.** One contrast row
+  correctly established that a status message never sits on the surface everyone assumed, then
+  cleared its sibling clause using numbers measured against that same disproved surface. The
+  correction and the error shipped in one cell. When a row fixes its own mechanism, **re-derive
+  every number in it**, not only the one that prompted the correction.
+- **Contrast rows expire silently when someone else retunes a palette.** Five rows in this
+  ledger became false without a line of this package changing, and the doc pages quoting their
+  ratios became false statements shipped to npm. Any measured claim needs its input version
+  named in the row, or nobody can tell later whether it was re-checked or merely re-read.

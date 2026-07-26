@@ -107,7 +107,74 @@ function parseExamples(text) {
   return examples;
 }
 
-const MARKER = /<!-- example:(\w+) -->\n(?:```tsx\n[\s\S]*?\n```\n)?<!-- \/example -->/g;
+// An example block is its opening marker through the FIRST `<!-- /example -->` after it.
+// Nothing about the body is asserted by the pattern, which is deliberate — see below.
+//
+// AUDIT #479: the previous pattern spelled the body as an optional fence,
+// `(?:```tsx\n[\s\S]*?\n```\n)?`, and that silently deleted documentation. Given an EMPTY
+// ```` ```tsx ```` block, the lazy inner `[\s\S]*?` cannot find its closing fence before the
+// block's own `<!-- /example -->`, so it kept expanding — past the close marker, past every
+// heading and paragraph that followed, and stopped at the NEXT example's closing fence, whose
+// `<!-- /example -->` completed the match. One injection then overwrote the lot. The only
+// signal was an "unused example" error naming the *other* example, and `--check` afterwards
+// compared against the damaged file and agreed with it. It ate a section of `empty-state.md`
+// and — since every page is rewritten on every run — a section of `scroll-reveal.md`, a file
+// its author had never opened.
+//
+// Two properties make that unreachable now, and both matter:
+//   1. The body is lazy and unconstrained, terminated by the first close marker. There is no
+//      inner quantifier that can fail and force the match to grow past it, so a match can
+//      never span more than one block whatever the body contains.
+//   2. A body containing another OPENING marker means a close marker is missing upstream.
+//      That is checked in the replacer and raised as an error instead of being rewritten,
+//      because it is the one remaining shape where a well-formed-looking match could still
+//      swallow a neighbour.
+const MARKER = /<!-- example:(\w+) -->\n([\s\S]*?)<!-- \/example -->/g;
+
+/**
+ * The containment property MARKER exists to guarantee, asserted against fixtures on every
+ * run — including the write path, which is the one that can destroy a file.
+ *
+ * It lives here rather than in a test file because `vitest.config.ts` includes only
+ * `src/**` and this is a `scripts/` module: a test written elsewhere would not run with the
+ * suite, and a guard nobody runs is how AUDIT #479 survived long enough to eat two pages.
+ * Running it unconditionally costs microseconds and cannot be skipped.
+ *
+ * The fixtures are the shapes that actually broke it, kept literal so a future "simplify the
+ * regex" edit fails here instead of passing review and deleting prose.
+ */
+function assertMarkerCannotSpanBlocks() {
+  const page = (body) =>
+    ["<!-- example:First -->", ...body, "<!-- /example -->", "", "## Prose", "",
+     "<!-- example:Second -->", "```tsx", "const x = 1;", "```", "<!-- /example -->"].join("\n");
+  const bodies = {
+    "empty fence": ["```tsx", "```"], // the #479 trigger
+    "no fence": [],
+    "normal fence": ["```tsx", "const y = 2;", "```"],
+    "fence quoting a fence": ["```tsx", 'const s = "```";', "```"],
+  };
+  for (const [label, body] of Object.entries(bodies)) {
+    const names = [...page(body).matchAll(MARKER)].map((m) => m[1]);
+    if (names.join(",") !== "First,Second") {
+      throw new Error(
+        `gen-docs: MARKER self-check failed for "${label}" — matched [${names}], expected ` +
+          `[First,Second]. The pattern is spanning example blocks and would DELETE the ` +
+          `documentation between them (AUDIT #479). Refusing to run.`,
+      );
+    }
+  }
+  // A block that never closes must be detectable, so the replacer can refuse it.
+  const unclosed = ["<!-- example:First -->", "```tsx", "```", "", "## Prose", "",
+    "<!-- example:Second -->", "```tsx", "z", "```", "<!-- /example -->"].join("\n");
+  const [first] = [...unclosed.matchAll(MARKER)];
+  if (!first || !first[2].includes("<!-- example:")) {
+    throw new Error(
+      "gen-docs: MARKER self-check failed — an unclosed example block no longer surfaces the " +
+        "following opening marker in its body, so the replacer's guard cannot fire.",
+    );
+  }
+}
+assertMarkerCannotSpanBlocks();
 
 let stale = [];
 let errors = [];
@@ -126,7 +193,16 @@ for (const file of findExampleFiles(SRC)) {
   const original = readFileSync(docPath, "utf8");
   const used = new Set();
 
-  const updated = original.replace(MARKER, (whole, name) => {
+  const updated = original.replace(MARKER, (whole, name, body) => {
+    // A nested opening marker means the block above this one never closed. Rewriting here
+    // would consume that block's content, which is the AUDIT #479 failure mode. Refuse.
+    if (body.includes("<!-- example:")) {
+      errors.push(
+        `${kebab(component)}.md: example "${name}" is not closed before the next ` +
+          `<!-- example: --> marker. Add the missing <!-- /example -->; nothing was rewritten.`,
+      );
+      return whole;
+    }
     const example = examples.get(name);
     if (!example) {
       errors.push(`${kebab(component)}.md references example "${name}", which no longer exists`);

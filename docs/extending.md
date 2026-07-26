@@ -164,8 +164,10 @@ This package already ships the dashboard vocabulary — once `.../styles` is imp
 have these without defining anything:
 
 - **Chart palette:** `bg-chart-1` … `bg-chart-5` (and the raw `--C-CHART-1..5`), a 5-hue
-  categorical set. For more than five series, cycle with modulo (`(i % 5) + 1`) as above,
-  or add your own `--C-CHART-6…` tokens (see "Custom tokens" below).
+  categorical set. `chart-1..3` alias `--C-ACCENT` / `--C-STATUS-SUCCESS` /
+  `--C-STATUS-WARNING`, so they track your theme; `chart-4..5` are literal. For more than
+  five series, cycle with modulo (`(i % 5) + 1`) as above, or add your own `--C-CHART-6…`
+  tokens (see "Custom tokens" below).
 - **Trend colours:** `text-trend-up` / `text-trend-down` (and `-bg` variants). These alias
   the theme's status colours by default, so they track every theme automatically.
 - **Composable primitives:** `Sparkline`, `ProgressRing`, `Meter`, `DescriptionList`,
@@ -173,7 +175,9 @@ have these without defining anything:
   layout primitives (`Stack`, `Row`, `Container`) and `Card`.
 
 For dark themes, raise chart-colour lightness (~0.65–0.78) so series stay legible — see the
-optional dashboard tokens in [docs/theme-contract.md](./theme-contract.md).
+optional dashboard tokens in [docs/theme-contract.md](./theme-contract.md). Because
+`chart-1..3` alias the contract, retinting `--C-ACCENT` also moves `chart-1`: if that lands
+it near another series, override the chart tokens for that theme as `grimdark` and `tech` do.
 
 If you wire a charting library (Recharts, visx, D3…), feed it the resolved token values so
 it stays themable, e.g. read `getComputedStyle(el).getPropertyValue("--C-CHART-1")`, or set

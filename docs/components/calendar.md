@@ -198,10 +198,13 @@ of the app at runtime, with no rebuild.
 
 The selected-day ink is written `var(--C-TEXT-ON-ACCENT, var(--C-TEXT-INVERSE))`, so a
 theme that defines only `--C-TEXT-INVERSE` still gets an ink colour rather than falling
-back to the inherited one. Note that the intended pair is not legible everywhere: measured
-against `--C-ACCENT`, the selected day's digit is **2.80:1** in `events` and **3.81:1** in
-`grimdark` (5.17:1 default, 14.84:1 `tech`), so in two of the four shipped themes the
-selection fails AA for body-size text on the fill it is designed for.
+back to the inherited one. Measured against `--C-ACCENT` in `@batthewz/response-ui-css`
+**v0.10.0**, the selected day's digit clears AA for body-size text in every shipped theme:
+**5.17:1** default, **5.04:1** `events`, **5.69:1** `grimdark`, **14.84:1** `tech`. The
+`events` and `grimdark` values were 2.80:1 and 3.81:1 before that release and were repaired
+in the palette, not here. One edge remains: the `:hover` fill swaps to `--C-ACCENT-HOVER`
+while the ink does not, which lands at **4.49:1** in `grimdark` — a hair under, and a
+reminder that this pair has no headroom in that theme.
 
 All three spacing tokens sit on the responsive `r`-scale, and two of them step up at
 `40rem`: the panel padding and month gap (`--R-SIZE-4`, `0.75rem` → `1.25rem`) and the
@@ -278,9 +281,11 @@ date — `"June 13, 2026"` — so a screen reader never reads a bare `"13"`.
   <kbd>Home</kbd>/<kbd>End</kbd> jumping to the ends.
 - **Today is `aria-current="date"`,** and only ever on the in-month instance, so it is
   announced once even in a multi-month view. Its *visual* marker is a 1px
-  `--C-BORDER-STRONG` inset ring, which measures **1.41–1.79:1** against `--C-SURFACE-0`
-  across the four shipped themes — effectively invisible. If sighted users must find today,
-  add your own marker.
+  `--C-BORDER-STRONG` inset ring, which measures **3.23–3.49:1** against `--C-SURFACE-0`
+  across the four shipped themes in `@batthewz/response-ui-css` **v0.10.0** — clearing the
+  3:1 floor WCAG 1.4.11 sets for a non-text indicator, where it used to sit at 1.41–1.79:1
+  and be effectively invisible. It is a hairline at exactly the floor, not a bold marker, so
+  if finding today quickly matters in your product, still add your own.
 - **Month changes announce through `aria-live="polite"`** on the header caption, at every
   `numberOfMonths`; in a multi-month view it reads the whole visible span.
 - **Disabled days remain focusable** by design: `aria-disabled` rather than `disabled`, so

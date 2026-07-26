@@ -8,10 +8,16 @@
   --C-TREND-UP-BG: var(--C-STATUS-SUCCESS-BG);
   --C-TREND-DOWN: var(--C-STATUS-ERROR);
   --C-TREND-DOWN-BG: var(--C-STATUS-ERROR-BG);
-  /* Chart — categorical palette */
-  --C-CHART-1: oklch(0.5461 0.2152 262.88);
-  --C-CHART-2: oklch(0.6271 0.1699 149.21);
-  --C-CHART-3: oklch(0.6658 0.1574 58.32);
+  /* Chart — 5-hue categorical palette.
+     1–3 alias the contract so a retuned theme carries the chart with it; 4–5 have no
+     contract twin and stay literal. The alias is deliberately partial: the palette's
+     job is that five series stay tellable apart, and aliasing 4 measurably breaks that:
+     the default theme sets --C-STATUS-INFO byte-identical to --C-ACCENT, so pointing
+     chart-4 at it collapses chart-1 and chart-4 into one colour.
+     `scripts/verify-chart-palette.mjs` holds the measurement and gates it. */
+  --C-CHART-1: var(--C-ACCENT);
+  --C-CHART-2: var(--C-STATUS-SUCCESS);
+  --C-CHART-3: var(--C-STATUS-WARNING);
   --C-CHART-4: oklch(0.5413 0.2466 293.01);
   --C-CHART-5: oklch(0.6896 0.1037 218.62);
   /* Media domain (relocated from css) */
@@ -39,7 +45,13 @@
   --color-chart-4: var(--C-CHART-4);
   --color-chart-5: var(--C-CHART-5);
 }
-/* Dark-theme chart re-tuning + media-card feel per theme (relocated from css themes) */
+/* Dark-theme chart re-tuning + media-card feel per theme (relocated from css themes).
+   These stay literal on purpose and must not be folded into the `var()` aliases above:
+   a dark theme needs the whole ramp lifted to ~0.65–0.78 lightness (theme-contract.md),
+   which the contract's own ink values do not supply — and `tech` sets --C-ACCENT and
+   --C-STATUS-SUCCESS to the same neon green, so deleting this override collapses
+   chart-1 and chart-2 to distance 0.000. Measured by doing exactly that and watching
+   scripts/verify-chart-palette.mjs go red; it is the gate that keeps this true. */
 :root[data-theme="grimdark"] {
   --C-CHART-1: oklch(0.68 0.17 262.88);
   --C-CHART-2: oklch(0.72 0.19 149.58);
