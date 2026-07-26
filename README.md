@@ -128,7 +128,8 @@ The full reskinning surface lives in the foundation package. These are the canon
 - **Guards** (1): RequireAuth (headless)
 - **Router** (1): RouterAdapterProvider, useLink, usePathname
 - **Hooks**: useActiveSection, useClickOutside, useControllableState, useDebounce, useDocumentTitle, useFloating, useFocusTrap, useMediaQuery, usePrefersReducedMotion, useRovingFocus, useTheme, useVirtualRows
-- **Util**: `cn`, `createCn`, `mergeExtension`, `tailwindMergeExtension`, `twMerge`, `mergeRefs`, `mergeProps`, `composeEventHandlers`, `formatBytes`, plus date helpers (`formatDate`, `parseDateInput`, `buildMonthGrid`, `addDays`, `addMonths`, …)
+- **Util**: `cn`, `createCn`, `mergeExtension`, `tailwindMergeExtension`, `twMerge`, `mergeRefs`, `mergeProps`, `composeEventHandlers`, `formatBytes`, plus date helpers (`formatDate`, `parseDateInput`, `buildMonthGrid`, `addDays`, `addMonths`, `toISODate`, `getMonthNames`, …)
+- **Types**: the props type of every component, plus `ColumnDef` and `SortState` (both data tables) and `AvatarUploadProps` / `AvatarUploadResult`
 
 ### Composing props and handlers
 
