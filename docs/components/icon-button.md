@@ -140,12 +140,11 @@ contrast is between `--C-TEXT-SECONDARY` and *your* background, not one the comp
 so the same button is physically larger on desktop with no breakpoint utilities from you. It
 is also the only thing setting the button's size — see [Gotchas](#gotchas).
 
-**Six values are literals, not contract variables.** The press scale (`active:scale-95`), the
-disabled dimming (`disabled:opacity-50`), the focus ring's 2px width, its 2px *offset* width
-(`focus-visible:ring-offset-2`, a separate literal), and its transparent rest colour are all
-hard-coded — reasonable, since none of them are values a theme needs to own. The ring's offset
-*colour* is not one of them: it resolves to `--C-SURFACE-0` through a `@layer base` default in
-`@batthewz/response-ui-css`, and a `ring-offset-*` utility overrides it.
+**Four values are literals, not contract variables.** The press scale (`active:scale-95`), the
+disabled dimming (`disabled:opacity-50`), the focus ring's 2px width, and its transparent rest
+colour are all hard-coded — reasonable, since none of them are values a theme needs to own. The
+ring's *offset* is `ring-offset-0`, so it draws flush against the button and never paints
+`--tw-ring-offset-color` at all.
 
 ## Gotchas
 
@@ -164,13 +163,14 @@ hard-coded — reasonable, since none of them are values a theme needs to own. T
   purely your icon's box plus `p-r5`. A 16px icon yields a 32px target below the 40rem
   breakpoint and 40px above it. Size the target deliberately for touch — see
   [Accessibility](#accessibility).
-- **The focus ring's offset tracks the theme.** `focus-visible:ring-offset-2` sets no
-  `ring-offset-color` of its own, so the gap used to be filled with Tailwind's default `#fff`
-  and read as a white halo on dark themes. `@batthewz/response-ui-css` now defaults
-  `--tw-ring-offset-color` to `--C-SURFACE-0` in `@layer base`, which fixes this here and in
-  [Button](button.md), [Checkbox](checkbox.md), [ErrorBoundary](error-boundary.md) and
-  [AvatarUpload](avatar-upload.md) at the same time. A `ring-offset-*` colour utility still
-  overrides it, because the default is layered rather than unlayered.
+- **The focus ring reserves no gap.** `focus-visible:ring-offset-0` draws it flush against
+  the button, which is what an IconButton needs: the offset gap is a solid band of
+  `--tw-ring-offset-color`, themed to `--C-SURFACE-0` by `@batthewz/response-ui-css`, and an
+  IconButton is transparent at rest and lands on whatever surface you drop it on. Pass a
+  `ring-offset-*` utility to open one anyway and you will see that band wherever the button
+  is not sitting on surface-0. [Button](button.md), [Checkbox](checkbox.md),
+  [ErrorBoundary](error-boundary.md) and [AvatarUpload](avatar-upload.md) share the same
+  recipe.
 - **The press animation ignores `prefers-reduced-motion`.** `active:scale-95` shrinks the
   button on pointer-down unconditionally; there is no `motion-reduce` guard.
 - **Server-renderable.** No `"use client"` directive and no hooks, so it drops straight into

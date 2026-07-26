@@ -22,7 +22,13 @@ Reach for it to collect a score, or to display an average next to a review count
 | `disabled`      | `boolean`               | `false` |
 | `className`     | `string`                | —       |
 | `ref`           | `Ref<HTMLDivElement>`   | —       |
-| …rest           | props of `<div>` minus `onChange` | — |
+| …rest           | props of `<div>`; `onChange` is a compile error | — |
+
+`onChange` is declared `onChange?: never`, so passing one is a **compile error**, not a prop
+that silently does nothing. A JSX spread performs no excess-property check, so `Omit` alone
+let `{...form.field("x")}` land a handler on the root `<div>` — where it never fires, because
+React dispatches `onChange` only for a descendant form control and Rating renders none. Use
+`onValueChange`.
 
 `aria-label` is the only required prop: the stars are `aria-hidden` glyphs, so without it
 the group would announce as unnamed. The rest spreads onto the root **last**, so `id`,

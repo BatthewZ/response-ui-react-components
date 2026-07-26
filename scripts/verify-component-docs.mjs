@@ -24,6 +24,13 @@
 //                    Utilities are checked in both directions: present in the .tsx, and
 //                    paired with the right variable in their own table row.
 //
+// One addition to the source a component is read as (RC-2, commit aafb9f8): the focus
+// ring became a set of named constants in `src/util/focus.ts`, so the utilities that
+// spell it are no longer written in any component file. `siblingImports` follows only
+// `./`, by design, so the recipe was unreachable and every doc that named
+// `focus-visible:ring-border-focus` failed. `focusRecipe` below re-attaches it — see the
+// comment there for why that is not a general loosening.
+//
 // Exits 1 on any error. Warnings (a component named in prose that now has a spoke to
 // link to) report but do not fail.
 
@@ -78,6 +85,32 @@ function siblingImports(file, text) {
   return { tsx, css };
 }
 
+const stripComments = (text) =>
+  text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+/**
+ * The focus ring is the one piece of class vocabulary that lives outside the component
+ * tree: `src/util/focus.ts` holds it as named constants so the eight hand-rolled copies
+ * could go. `siblingImports` will not reach `../../util/focus`, and must not start
+ * following `../` — that would pull in every util and lucide too, which is the loosening
+ * its docblock refuses. So the recipe is re-attached by name instead, and only to
+ * components that actually import it, directly or through a sibling that does (Carousel
+ * and DatePicker reach it via `./IconButton` and `./Input`). A component that does not
+ * import it still cannot claim `focus-visible:ring-border-focus` in its table.
+ *
+ * Comments are stripped first: the recipe's docblock argues its case in prose full of
+ * backticked utilities (`duration-fast`, `ring-offset-0`), and a doc must not be able to
+ * satisfy this check against a sentence.
+ *
+ * This says a component *can* spell the recipe, not that it paints a ring on the right
+ * element — that invariant belongs to verify-focus-affordance.mjs, which resolves the
+ * same constants per JSX element.
+ */
+const focusRecipePath = join(SRC, "util", "focus.ts");
+const focusRecipe = existsSync(focusRecipePath)
+  ? stripComments(readFileSync(focusRecipePath, "utf8"))
+  : "";
+
 /** Component name -> its source text (own + same-dir siblings), for the utility/token search. */
 const components = new Map();
 for (const file of walk(SRC, (f) => f.endsWith(".tsx") && !/\.(test|examples)\./.test(f))) {
@@ -86,7 +119,11 @@ for (const file of walk(SRC, (f) => f.endsWith(".tsx") && !/\.(test|examples)\./
   const cssPath = file.replace(/\.tsx$/, ".css");
   const ownCss = existsSync(cssPath) ? readFileSync(cssPath, "utf8") : "";
   const extra = siblingImports(file, own);
-  components.set(name, { tsx: own + extra.tsx, css: ownCss + extra.css });
+  const tsx = own + extra.tsx;
+  components.set(name, {
+    tsx: tsx + (tsx.includes("util/focus") ? focusRecipe : ""),
+    css: ownCss + extra.css,
+  });
 }
 
 /** Public value exports, for the title check. */

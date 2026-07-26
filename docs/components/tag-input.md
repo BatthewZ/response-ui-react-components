@@ -39,8 +39,9 @@ other passthrough prop — `id`, `style`, `aria-*`, `onFocus` — lands on the i
 `<input>`. And `name` is intercepted rather than passed through: it names one hidden input per
 committed tag, not the draft field. See [Gotchas](#gotchas).
 
-There is no `Tag` sub-component and no render prop: the chip is drawn by TagInput itself,
-and a tag is always a plain `string`.
+There is no `Tag` sub-component and no render prop: TagInput draws each chip itself, as a
+default-variant [Badge](badge.md) wrapping the label and a remove button, and a tag is
+always a plain `string`.
 
 ## How a tag is committed
 
@@ -197,22 +198,26 @@ re-tints the control at runtime with the rest of the app.
 | Focus ring & border             | `focus-within:ring-border-focus` `focus-within:border-border-focus`           | `--C-BORDER-FOCUS`                        |
 | Error border, ring & message    | `border-status-error` `focus-within:ring-status-error` `text-status-error`    | `--C-STATUS-ERROR`                        |
 | Disabled fill                   | `bg-surface-3`                                                                | `--C-SURFACE-3`                           |
-| Chip fill                       | `bg-surface-2`                                                                | `--C-SURFACE-2`                           |
-| Chip label ink                  | `text-fg-secondary`                                                           | `--C-TEXT-SECONDARY`                      |
-| Chip label weight               | `font-semibold`                                                               | `--Semibold-Weight`                       |
 | Draft text · remove-hover ink   | `text-fg-primary` `hover:text-fg-primary`                                     | `--C-TEXT-PRIMARY`                        |
 | Placeholder · remove glyph      | `placeholder:text-fg-muted` `text-fg-muted`                                   | `--C-TEXT-MUTED`                          |
-| Field & chip padding, gaps      | `px-r4` `py-r5` `px-r5` `py-r6` `gap-r6` `mt-r6`                              | `--R-SIZE-4` `--R-SIZE-5` `--R-SIZE-6`    |
+| Field padding, gaps             | `px-r4` `py-r5` `gap-r6` `mt-r6`                                              | `--R-SIZE-4` `--R-SIZE-5` `--R-SIZE-6`    |
 | Corner radius                   | `rounded-md` `rounded-sm`                                                     | `--RADIUS-MD` `--RADIUS-SM`               |
 | Type scale                      | `text-body-2` `text-body-3`                                                   | `--BodyText-2` `--BodyText-3`             |
 | Transition                      | `duration-fast`                                                               | `--DURATION-FAST`                         |
 
+The chip's own fill, ink, weight and padding are **not** in that table, because TagInput
+does not draw them: the chip is a default-variant [Badge](badge.md), so `--C-SURFACE-2`,
+`--C-TEXT-SECONDARY`, `--Semibold-Weight`, `--RADIUS-SM` and `--BodyText-3` reach it
+through Badge's own utilities. Override those variables and every Badge in the app moves
+with the chips; see [Badge's theme tokens](badge.md#theme-tokens). The one class TagInput
+adds to the chip is `gap-r6`, to space the label from its remove button.
+
 Two of the spacing tokens step up at the 40rem breakpoint along the responsive `r`-scale —
 the field's horizontal padding (`--R-SIZE-4`, `0.75rem` → `1.25rem`) and its vertical
-padding, which doubles as the chips' horizontal padding (`--R-SIZE-5`, `0.5rem` →
-`0.75rem`). `--R-SIZE-6` — the gap between chips, the chips' own vertical padding, and the
-message's offset from the field — holds at `0.25rem` on both sides. The type steps are
-responsive too: `--BodyText-2` runs `0.8125rem` → `0.875rem` and `--BodyText-3`
+padding (`--R-SIZE-5`, `0.5rem` → `0.75rem`, which is also the value Badge uses for the
+chips' horizontal padding). `--R-SIZE-6` — the gap between chips, the gap inside a chip,
+and the message's offset from the field — holds at `0.25rem` on both sides. The type steps
+are responsive too: `--BodyText-2` runs `0.8125rem` → `0.875rem` and `--BodyText-3`
 `0.75rem` → `0.8125rem`.
 
 The chip is a tighter echo of the field: `--RADIUS-SM` inside `--RADIUS-MD`, one type step

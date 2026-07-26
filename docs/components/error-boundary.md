@@ -155,7 +155,7 @@ There is no `ErrorBoundary.css` — the fallback is styled entirely with utiliti
 | Retry fill           | `bg-primary` `hover:bg-primary-hover`    | `--C-PRIMARY` `--C-PRIMARY-HOVER` |
 | Retry label          | `text-fg-on-primary`                     | `--C-TEXT-ON-PRIMARY`             |
 | Retry corners        | `rounded-md`                             | `--RADIUS-MD`                     |
-| Retry focus ring     | `focus:ring-border-focus`                | `--C-BORDER-FOCUS`                |
+| Retry focus ring     | `focus-visible:ring-border-focus`        | `--C-BORDER-FOCUS`                |
 
 The heading sets **no** colour of its own, so it inherits whatever `color` the boundary
 lands in rather than `--C-TEXT-PRIMARY`.
@@ -168,11 +168,10 @@ follow a theme.**
   (`--H1`…`--H6`) and responsive `r*` spacing steps (`--R-SIZE-*`) are not used, so none of
   it re-scales with the theme or steps at the 40rem breakpoint the way the rest of the
   library does.
-- **The focus ring's offset is themed.** `focus:ring-offset-2` reserves a 2px gap between the
-  button and its ring, filled from `--tw-ring-offset-color`. That variable used to be unset,
-  falling back to Tailwind's `#fff` and painting a white halo on every dark theme;
-  `@batthewz/response-ui-css` now defaults it to `--C-SURFACE-0` in `@layer base`, which also
-  covers the four other components that carried the same gap.
+- **The focus ring is the one thing on this screen that is fully on contract.** It is the
+  library's shared recipe — a 2px `--C-BORDER-FOCUS` ring at `ring-offset-0`, flush against
+  the button — so the retry control rings exactly like [Button](button.md) does even though
+  everything around it does not.
 - **`min-h-screen` is a hard `100vh`,** not a token, so the fallback's height is the one
   layout decision a theme cannot touch.
 
@@ -191,9 +190,9 @@ follow a theme.**
   tooling. React itself still logs the error to the console. To report from the root, use
   React 19's `onCaughtError` option on `createRoot`; to show the message, subclass.
 - **The retry button is hand-rolled, not a [Button](button.md).** It re-implements the primary
-  variant's classes, so it doesn't track [Button](button.md)'s variants, sizes, or its
-  `focus-visible`-only ring. It does set `type="button"`, so a boundary inside a `<form>`
-  no longer submits that form when Try again is clicked.
+  variant's classes, so it doesn't track [Button](button.md)'s variants or sizes. It does
+  share the focus ring — both import the same recipe — and it sets `type="button"`, so a
+  boundary inside a `<form>` no longer submits that form when Try again is clicked.
 - **It has to be a class, and that is not a style choice.** React exposes error catching
   only through `getDerivedStateFromError`/`componentDidCatch`; there is no hook equivalent,
   which is why this is the library's class component.
@@ -218,9 +217,10 @@ focuses the heading on mount.
   injects a second `<h1>` into a page that already has one and breaks the heading outline.
 - **The retry control is a real `<button>` with a visible text label,** so it is reachable
   and named without any `aria-*`.
-- **Its ring is `focus:`, not `focus-visible:`,** so it shows on mouse click too — unlike
-  [Button](button.md) and [IconButton](icon-button.md), which are focus-visible only. `focus:outline-none`
-  removes the native outline, so that ring is the only focus indicator the button has.
+- **Its ring is `focus-visible:`,** the same as [Button](button.md) and
+  [IconButton](icon-button.md): keyboard focus paints it, a mouse click does not.
+  `focus-visible:outline-none` removes the native outline, so that ring is the only focus
+  indicator the button has.
 - **The copy is hard-coded English.** In a localized app, the screen a user sees at the
   worst possible moment is the one screen still in English.
 

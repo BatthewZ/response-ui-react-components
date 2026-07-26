@@ -89,7 +89,7 @@ rest of the app.
 | Tick fill (checked) | `accent-accent`         | `--C-ACCENT`        |
 | Box border         | `border-border-strong`   | `--C-BORDER-STRONG` |
 | Corner radius      | `rounded-sm`             | `--RADIUS-SM`       |
-| Focus ring         | `focus:ring-border-focus` | `--C-BORDER-FOCUS`  |
+| Focus ring         | `focus-visible:ring-border-focus` | `--C-BORDER-FOCUS`  |
 
 The box is a fixed `size-4` (1rem) — a Tailwind spacing value, not a contract token, so
 resize it with `className="size-…"` rather than a theme variable.
@@ -110,16 +110,15 @@ See [Gotchas](#gotchas).
   and ignore the `border-border-strong` / `rounded-sm` utilities. `size-4` (dimensions)
   and `accent-accent` (`accent-color`) do apply; the border and corner radius largely do
   not. If you need a fully custom box, add `appearance-none` and draw the check yourself.
-- **The focus ring's offset is themed.** Focus is a 2px `--C-BORDER-FOCUS` ring plus a 2px
-  `ring-offset-2` gap. That gap used to be filled with Tailwind's default
-  `--tw-ring-offset-color` (`#fff`) and showed as a white halo on the dark `grimdark` and
-  `tech` themes; `@batthewz/response-ui-css` now defaults the variable to `--C-SURFACE-0` in
-  `@layer base`, so the gap tracks the theme. Pass a `ring-offset-*` colour utility to
-  override it per call site. The sibling text controls ([Input](./input.md),
-  [Select](select.md), [Textarea](textarea.md)) sidestep the gap entirely with
-  `ring-offset-0`.
-- **The ring is `focus:`, not `focus-visible:`.** Like [Input](./input.md) — and unlike
-  [Button](button.md) — it appears on pointer clicks as well as keyboard focus.
+- **The focus ring sits flush against the box.** It is a 2px `--C-BORDER-FOCUS` ring at
+  `ring-offset-0`, so no gap is reserved and `--tw-ring-offset-color` is never painted. Open
+  a gap with a `ring-offset-*` utility and you inherit that variable, which
+  `@batthewz/response-ui-css` themes to `--C-SURFACE-0` — correct where the checkbox sits on
+  surface-0, and a visible band of the wrong colour anywhere else.
+- **The ring is `focus-visible:`, not `focus:`.** Like [Button](button.md), and unlike the
+  text controls ([Input](./input.md), [Textarea](textarea.md)), a mouse click focuses the box
+  without painting the ring — keyboard focus paints it. That is the browser's own
+  `:focus-visible` rule, which grants a text field an indicator on click but not a checkbox.
 - **`indeterminate` is not a prop.** Set it via the `ref` after mount (see above); passing
   it as a prop does nothing, because it is a DOM property with no HTML attribute.
 - **No built-in label.** Checkbox renders a bare `<input>` — give it an accessible name
@@ -142,9 +141,9 @@ toggles with `Space`, and exposes its checked / unchecked / mixed state to assis
 For a tri-state box, setting `.indeterminate` also reports `aria-checked="mixed"` for free
 — no extra ARIA needed.
 
-Because the focus ring is `focus:` rather than `focus-visible:`, it shows on click as well
-as keyboard focus. The ring colour is `--C-BORDER-FOCUS`; note the caveat above about the
-white offset gap on dark themes.
+The focus ring is `focus-visible:`, so it paints on keyboard focus and not on a pointer
+click — the browser's rule for a control that is not text entry. Its colour is
+`--C-BORDER-FOCUS` and it is drawn flush against the box.
 
 ## Related
 

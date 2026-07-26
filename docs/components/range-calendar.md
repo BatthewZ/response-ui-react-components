@@ -42,7 +42,10 @@ type DateRange = { start: Date | null; end: Date | null };
 | `showToday`      | `boolean`                                                  | `false`                    |
 | `todayLabel`     | `string`                                                   | `"Today"`                  |
 | `ref`            | `Ref<HTMLDivElement>`                                      | —                          |
-| …rest            | `div` props, minus `onChange` / `value` / `defaultValue`   | —                          |
+| …rest            | `div` props, minus `value` / `defaultValue`; `onChange` is a compile error | —          |
+
+`onChange` is declared `onChange?: never`: passing one is a **compile error**, not a prop
+that quietly does nothing. The change channel is `onValueChange`.
 
 Two selection props and two month props, and they are independent: `value`/`defaultValue`
 is *what is picked*, `month`/`defaultMonth` is *what is on screen*. Controlling one does

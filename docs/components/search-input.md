@@ -187,8 +187,8 @@ renders, styled entirely with Tailwind utilities.
 | Fill                 | `bg-surface-0`                                        | `--C-SURFACE-0`                   |
 | Disabled fill        | `disabled:bg-surface-3`                               | `--C-SURFACE-3`                   |
 | Border               | `border-border-strong`                                | `--C-BORDER-STRONG`               |
-| Focus ring & border  | `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS`                |
-| Invalid border & ring | `border-status-error` `focus:ring-status-error`      | `--C-STATUS-ERROR`                |
+| Focus ring & border  | `focus-visible:ring-border-focus` `focus-visible:border-border-focus` | `--C-BORDER-FOCUS` |
+| Invalid border & ring | `border-status-error` `focus-visible:ring-status-error` | `--C-STATUS-ERROR`             |
 | Vertical padding     | `py-r5`                                               | `--R-SIZE-5`                      |
 | Corner radius        | `rounded-md`                                          | `--RADIUS-MD`                     |
 | Transition           | `duration-fast`                                       | `--DURATION-FAST`                 |

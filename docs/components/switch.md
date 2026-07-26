@@ -26,10 +26,14 @@ submits later with a form.
 | `value`           | `string`                        | `"on"`  |
 | `className`       | `string`                        | —       |
 | `ref`             | `Ref<HTMLButtonElement>`        | —       |
-| …rest             | props of `<button>`, minus `onChange` and the native `value` | — |
+| …rest             | props of `<button>`, minus the native `value`; `onChange` is a compile error | — |
 
-`value` is re-typed as the string the hidden input submits, not the native button `value`;
-`onChange` is removed outright, because the change channel is `onCheckedChange`. `disabled`
+`value` is re-typed as the string the hidden input submits, not the native button `value`.
+`onChange` goes further than removal: it is declared `onChange?: never`, so writing one is a
+**compile error** rather than a prop that quietly does nothing. That matters because a JSX
+spread performs no excess-property check — `{...form.field("subscribe")}` used to typecheck
+and land an `onChange` on the `<button>`, where React never fires it. The change channel is
+`onCheckedChange`; wire a form with `watch`/`setValue`. `disabled`
 and `onClick` are pulled out and applied to the `<button>` explicitly — `onClick` wrapped, see
 [Vetoing a toggle](#vetoing-a-toggle) — and everything left over (`id`, `aria-*`, `data-*`,
 `form`, `tabIndex`, …) spreads onto the button before the attributes that report the switch's

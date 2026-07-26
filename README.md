@@ -277,7 +277,7 @@ For non-string values, annotate the bind: `form.field<string[]>("tags")`. `check
 ```tsx
 <Switch
   checked={Boolean(form.watch("subscribe"))}
-  onChange={(v) => form.setValue("subscribe", v)}
+  onCheckedChange={(v) => form.setValue("subscribe", v)}
 />
 ```
 

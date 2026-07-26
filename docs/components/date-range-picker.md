@@ -32,11 +32,16 @@ range with no client state.
 | `name`             | `string`                      | —                             |
 | `className`        | `string`                      | —                             |
 | `ref`              | `Ref<HTMLDivElement>`         | —                             |
-| …rest              | props of `<div>`, minus `color`; `value` / `defaultValue` / `onChange` are re-typed above | — |
+| …rest              | props of `<div>`; `color` is a compile error; `value` / `defaultValue` / `onChange` are re-typed above | — |
 
 `DateRange` is `{ start: Date | null; end: Date | null }`, exported from the package root.
 Both endpoints are independently nullable, which is what makes a half-picked range
 representable — and what you receive mid-pick, so see [Gotchas](#gotchas).
+
+`color` is the one prop you cannot pass at all: it is declared `color?: never`, so writing
+one is a **compile error**. `Omit` alone was not enough — a JSX spread performs no
+excess-property check, so a `color` in a spread object used to reach the wrapper `<div>` and
+render as the legacy HTML attribute.
 
 Rest props land on the **wrapper `<div>`**, not on either input: `className`, `id`,
 `data-*`, `role` and `aria-*` all address the pair as a unit. That div is also the floating
@@ -241,8 +246,8 @@ variable below and both re-tint at runtime, with no rebuild.
 | Disabled field fill         | `disabled:bg-surface-3`                                | `--C-SURFACE-3`                   |
 | Field border                | `border-border-strong`                                 | `--C-BORDER-STRONG`               |
 | Popover border              | `border-border-default`                                | `--C-BORDER-DEFAULT`              |
-| Focus ring and border       | `focus:ring-border-focus` `focus:border-border-focus`  | `--C-BORDER-FOCUS`                |
-| Error border and ring       | `border-status-error` `focus:ring-status-error`        | `--C-STATUS-ERROR`                |
+| Focus ring and border       | `focus-visible:ring-border-focus` `focus-visible:border-border-focus` | `--C-BORDER-FOCUS` |
+| Error border and ring       | `border-status-error` `focus-visible:ring-status-error` | `--C-STATUS-ERROR`               |
 | Field padding               | `px-r4` `py-r5`                                        | `--R-SIZE-4` `--R-SIZE-5`         |
 | Popover padding             | `p-r5`                                                 | `--R-SIZE-5`                      |
 | Corner radius               | `rounded-md`                                           | `--RADIUS-MD`                     |

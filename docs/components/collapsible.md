@@ -114,15 +114,16 @@ one still follows whatever `open` you pass.
 
 `Collapsible.css` styles the root (`width: 100%`) and the content wrapper, and nothing else.
 There is no rule anywhere for `.collapsible-trigger` — the class is emitted purely as a hook
-for you. Out of the box the trigger is therefore a bare browser `<button>`: UA font, UA
-padding, UA focus ring. That is deliberate for a headless-ish primitive, but it means an
-unstyled `Collapsible` looks nothing like the rest of the library, and you own the focus
-indicator (see [Accessibility](#accessibility)).
+for you. Out of the box the trigger is therefore a bare browser `<button>` — UA font, UA
+padding — with one exception: it carries the library's focus ring as a utility, so keyboard
+focus is themed before you style anything (see [Accessibility](#accessibility)). That is
+deliberate for a headless-ish primitive, but it means an unstyled `Collapsible` still looks
+nothing like the rest of the library.
 
 <!-- example:StyledTrigger -->
 ```tsx
 <Collapsible className="rounded-md border border-border-default">
-  <Collapsible.Trigger className="flex w-full items-center justify-between p-r5 text-body-2 text-fg-primary focus-visible:ring-2 focus-visible:ring-border-focus">
+  <Collapsible.Trigger className="flex w-full items-center justify-between p-r5 text-body-2 text-fg-primary">
     Payment method
     <span aria-hidden="true">▾</span>
   </Collapsible.Trigger>
@@ -187,18 +188,21 @@ mounted and the reveal animates both ways.
 
 ## Theme tokens
 
-`Collapsible` uses **no Tailwind utilities and no colour, type, spacing or radius tokens** —
-it paints nothing. The only contract variables it reads are the two that time the reveal:
+`Collapsible` reads **no colour, type, spacing or radius token for anything it paints at
+rest** — at rest it paints nothing. Three contract variables reach it: two that time the
+reveal, and one for the trigger's focus ring.
 
-| Where                       | Override                                          |
-| --------------------------- | ------------------------------------------------- |
-| Panel open/close transition | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+| Where                       | Utility                           | Override                                          |
+| --------------------------- | --------------------------------- | ------------------------------------------------- |
+| Panel open/close transition | —                                 | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+| Trigger focus ring          | `focus-visible:ring-border-focus` | `--C-BORDER-FOCUS`                                |
 
-That is the whole table, and it is the point: the component re-themes by *not* having an
-opinion. Everything visible — the trigger's ink, its padding, any border or surface around
-the panel — comes from the `className`s you pass, so it picks up your theme the same way the
-rest of your markup does. Under `prefers-reduced-motion` the transition itself is dropped — the
-two variables still resolve, they just stop being animated.
+That is the whole table, and it is nearly the point: the component re-themes by *not* having
+an opinion about anything except the one affordance a keyboard user cannot do without.
+Everything visible — the trigger's ink, its padding, any border or surface around the panel —
+comes from the `className`s you pass, so it picks up your theme the same way the rest of your
+markup does. Under `prefers-reduced-motion` the transition itself is dropped — the two motion
+variables still resolve, they just stop being animated.
 
 ## Gotchas
 
@@ -235,12 +239,12 @@ and an `aria-controls` that points at the panel's `useId`-generated `id`. Space 
 work because it is a button, not because of a key handler. `disabled` uses the native
 attribute, so the trigger leaves the tab order entirely when disabled.
 
-**The trigger has no focus styling at all.** Neither `Collapsible.tsx` nor `Collapsible.css`
-defines a `:focus-visible` rule or a focus utility, so keyboard focus falls back to the
-browser's default ring. It is visible, but it is one of only two focus indicators in the
-library that neither match the others nor re-tint from `--C-BORDER-FOCUS` — the other being
-[ThemeSwitcher](theme-switcher.md). Add your own, as
-[Styling](#styling) does, or keyboard users get a ring that ignores your theme.
+**The trigger draws the library's focus ring.** `Collapsible.css` still defines no
+`:focus-visible` rule — there is no `.collapsible-trigger` rule for one to sit in — so the
+ring arrives as a Tailwind utility on the `<button>` instead: the same 2px `--C-BORDER-FOCUS`
+ring [Button](button.md) and [IconButton](icon-button.md) draw, re-tinting with your theme
+and costing you nothing to opt into. Your own `focus-visible:ring-*` class on
+`Collapsible.Trigger` still overrides it — `className` merges last.
 
 **`aria-expanded` and the accessibility tree agree.** The trigger reports
 `aria-expanded="false"` and the panel it names is `inert` while closed, so it leaves the

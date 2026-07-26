@@ -257,8 +257,8 @@ signal to hang your own announcement on — see
 - **Nothing is announced on failure.** A silent no-op is indistinguishable from a copy that
   worked to anyone not watching the icon, and the icon is the only thing that moves.
 - **Focus, target size, and `disabled` behave exactly as on
-  [IconButton](icon-button.md#accessibility)** — CopyButton changes none of them, including
-  the themed `--tw-ring-offset-color` it inherits from `@batthewz/response-ui-css`.
+  [IconButton](icon-button.md#accessibility)** — CopyButton changes none of them, down to the
+  `focus-visible:` ring drawn flush against the button at `ring-offset-0`.
 
 ## Related
 

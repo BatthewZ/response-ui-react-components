@@ -36,7 +36,10 @@ exception — see [Gotchas](#gotchas).)
 | `showToday`      | `boolean`                        | `false`   |
 | `todayLabel`     | `string`                         | `"Today"` |
 | `ref`            | `Ref<HTMLDivElement>`            | —         |
-| …rest            | `div` props, minus `onChange` / `value` / `defaultValue` | — |
+| …rest            | `div` props, minus `value` / `defaultValue`; `onChange` is a compile error | — |
+
+`onChange` is declared `onChange?: never`: passing one is a **compile error**, not a prop
+that quietly does nothing. The change channel is `onValueChange`.
 
 Selection and displayed month are two independent controlled/uncontrolled pairs. Pass
 `value` (even `null`) and you own the selection; pass `month` and you own what is on

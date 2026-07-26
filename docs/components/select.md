@@ -216,8 +216,8 @@ so all of these are Tailwind utilities in the `.tsx`.
 | Fill                | `bg-surface-0`                                        | `--C-SURFACE-0`                   |
 | Disabled fill       | `disabled:bg-surface-3`                               | `--C-SURFACE-3`                   |
 | Border              | `border-border-strong`                                | `--C-BORDER-STRONG`               |
-| Focus ring & border | `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS`                |
-| Error border & ring | `border-status-error` `focus:ring-status-error`       | `--C-STATUS-ERROR`                |
+| Focus ring & border | `focus-visible:ring-border-focus` `focus-visible:border-border-focus` | `--C-BORDER-FOCUS` |
+| Error border & ring | `border-status-error` `focus-visible:ring-status-error` | `--C-STATUS-ERROR`              |
 | Padding             | `px-r4` `py-r5`                                       | `--R-SIZE-4` `--R-SIZE-5`         |
 | Corner radius       | `rounded-md`                                          | `--RADIUS-MD`                     |
 | Transition          | `duration-fast`                                       | `--DURATION-FAST`                 |
@@ -230,7 +230,7 @@ the surface, not the accent, not the radius, not the font.
 
 The default border is `--C-BORDER-STRONG`, not `--C-BORDER-DEFAULT` — form controls sit a
 step higher-contrast than card edges. The error state swaps the resting border and the focus
-ring to `--C-STATUS-ERROR`; it does not tint the fill. The swap covers `focus:border-*` too,
+ring to `--C-STATUS-ERROR`; it does not tint the fill. The swap covers `focus-visible:border-*` too,
 so a *focused* invalid select stays error-coloured throughout. The focus ring is
 `ring-offset-0`, flush against the border, so nothing paints in a gap.
 
@@ -303,8 +303,10 @@ When invalid it sets `aria-invalid="true"`, and inside a [Field](field.md) it al
 border and ring colour, so pair it with a visible [FieldError](field-error.md) message for users who can't
 perceive the difference.
 
-Focus shows a 2px ring in `--C-BORDER-FOCUS` plus a matching border; it is a `focus:` ring,
-not `focus-visible:`, so it appears on click as well as on keyboard focus.
+Focus shows a 2px ring in `--C-BORDER-FOCUS` plus a matching border, keyed on
+`focus-visible:` — the same recipe every other control in the library uses. Keyboard focus
+always paints it; whether a pointer click does is the browser's `:focus-visible` heuristic,
+which grants a text field an indicator unconditionally but judges a `<select>` for itself.
 
 Two things to watch. The chevron is a CSS background image, so it is correctly never
 announced — but it is also the only visual cue that the control is a dropdown, and it does

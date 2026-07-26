@@ -46,11 +46,11 @@ export function Disabled() {
   );
 }
 
-/** The trigger ships with no CSS of its own — style it directly, focus ring included. */
+/** The trigger ships with no CSS of its own — style it directly; it brings its own focus ring. */
 export function StyledTrigger() {
   return (
     <Collapsible className="rounded-md border border-border-default">
-      <Collapsible.Trigger className="flex w-full items-center justify-between p-r5 text-body-2 text-fg-primary focus-visible:ring-2 focus-visible:ring-border-focus">
+      <Collapsible.Trigger className="flex w-full items-center justify-between p-r5 text-body-2 text-fg-primary">
         Payment method
         <span aria-hidden="true">▾</span>
       </Collapsible.Trigger>
