@@ -173,25 +173,25 @@ export function DataTable<T>({
   // Client pagination is active when pageSize is a positive number.
   const clientPaged = typeof pageSize === "number" && pageSize > 0;
 
-  // Uncontrolled page state.
-  const [internalPage, setInternalPage] = useState(1);
-  const isControlledPage = pageProp !== undefined;
-
-  function setPage(next: number) {
-    if (isControlledPage) {
-      onPageChange?.(next);
-    } else {
-      setInternalPage(next);
-      onPageChange?.(next);
-    }
-  }
+  // Page mode locks on the first render for the same reason sort does: a parent
+  // writing `page={x ?? undefined}` must not flip the table uncontrolled
+  // mid-life. The ref mirrors the lock `useControllableState` keeps internally
+  // but does not expose, which the reset-on-sort and server-pagination
+  // decisions below both read.
+  const isControlledPageRef = useRef(pageProp !== undefined);
+  const isControlledPage = isControlledPageRef.current;
+  const [rawPage, setPage] = useControllableState<number>({
+    value: isControlledPage ? (pageProp ?? 1) : undefined,
+    defaultValue: 1,
+    onChange: onPageChange,
+  });
 
   function handleSort(columnKey: string) {
     setCurrentSort(cycleSort(currentSort, columnKey));
 
     // In client mode, a sort change resets the uncontrolled page to 1.
     if (!isControlledSort && clientPaged && !isControlledPage) {
-      setInternalPage(1);
+      setPage(1);
     }
   }
 
@@ -212,7 +212,6 @@ export function DataTable<T>({
     : (totalPagesProp ?? 1);
 
   // Current page value, clamped so shrinking data can't strand an out-of-range page.
-  const rawPage = isControlledPage ? (pageProp as number) : internalPage;
   const currentPage = clientPaged
     ? Math.min(Math.max(1, rawPage), derivedTotalPages)
     : rawPage;
@@ -264,187 +263,165 @@ export function DataTable<T>({
   // - server mode: the existing page + totalPages + onPageChange triple
   const showClientPagination = clientPaged && derivedTotalPages > 1;
   const showServerPagination =
-    !clientPaged && pageProp != null && totalPagesProp != null && !!onPageChange;
+    !clientPaged && isControlledPage && totalPagesProp != null && !!onPageChange;
   const showPagination = showClientPagination || showServerPagination;
-  const paginationPage = clientPaged ? currentPage : (pageProp as number);
-  const paginationTotalPages = clientPaged ? derivedTotalPages : (totalPagesProp as number);
 
   function renderPaginationBlock() {
     if (!showPagination) return null;
     return (
       <div className={cn("mt-r3 flex justify-center")}>
         <Pagination
-          page={paginationPage}
-          totalPages={paginationTotalPages}
+          page={currentPage}
+          totalPages={derivedTotalPages}
           onPageChange={(p) => setPage(p)}
         />
       </div>
     );
   }
 
-  // Render loading skeleton
-  if (loading) {
+  // ONE header for every state. The loading and empty bodies used to carry
+  // hand-maintained copies of this block, which drifted apart (#363/#364).
+  function renderHeader() {
     return (
-      <Table density={density} striped={false} stickyHeader={stickyHeader}>
-        <Table.Head>
-          <Table.Row>
-            {expandable && <Table.HeaderCell className="w-10" />}
-            {selectable && <Table.HeaderCell className="w-10" />}
-            {columns.map((col) => (
-              <Table.HeaderCell key={col.key} style={{ width: col.width }}>
-                {col.header}
-              </Table.HeaderCell>
-            ))}
-          </Table.Row>
-        </Table.Head>
-        <Table.Body>
-          {Array.from({ length: loadingRowCount }, (_, i) => (
-            <Table.Row key={i}>
-              {expandable && (
-                <Table.Cell>
-                  <Skeleton variant="rectangular" width={16} height={16} />
-                </Table.Cell>
-              )}
-              {selectable && (
-                <Table.Cell>
-                  <Skeleton variant="rectangular" width={16} height={16} />
-                </Table.Cell>
-              )}
-              {columns.map((col) => (
-                <Table.Cell key={col.key}>
-                  <Skeleton variant="text" />
-                </Table.Cell>
-              ))}
-            </Table.Row>
+      <Table.Head>
+        <Table.Row>
+          {expandable && <Table.HeaderCell className="w-10" />}
+          {selectable && (
+            <Table.HeaderCell className="w-10">
+              <Checkbox
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = someSelected && !allSelected;
+                }}
+                onChange={handleSelectAll}
+                aria-label="Select all rows"
+              />
+            </Table.HeaderCell>
+          )}
+          {columns.map((col) => (
+            <Table.HeaderCell
+              key={col.key}
+              style={{
+                width: col.width,
+                textAlign: col.align,
+              }}
+              sortDirection={
+                col.sortable
+                  ? currentSort?.key === col.key
+                    ? currentSort.direction
+                    : false
+                  : undefined
+              }
+              onSort={col.sortable ? () => handleSort(col.key) : undefined}
+            >
+              {col.header}
+            </Table.HeaderCell>
           ))}
-        </Table.Body>
-      </Table>
+        </Table.Row>
+      </Table.Head>
     );
   }
 
-  // Render empty state
-  if (data.length === 0) {
+  function renderLoadingRows() {
+    return Array.from({ length: loadingRowCount }, (_, i) => (
+      <Table.Row key={i}>
+        {expandable && (
+          <Table.Cell>
+            <Skeleton variant="rectangular" width={16} height={16} />
+          </Table.Cell>
+        )}
+        {selectable && (
+          <Table.Cell>
+            <Skeleton variant="rectangular" width={16} height={16} />
+          </Table.Cell>
+        )}
+        {columns.map((col) => (
+          <Table.Cell key={col.key}>
+            <Skeleton variant="text" />
+          </Table.Cell>
+        ))}
+      </Table.Row>
+    ));
+  }
+
+  function renderEmptyRow() {
     return (
-      <div>
-        <Table density={density} striped={false} stickyHeader={stickyHeader}>
-          <Table.Head>
-            <Table.Row>
-              {selectable && <Table.HeaderCell className="w-10" />}
-              {columns.map((col) => (
-                <Table.HeaderCell key={col.key} style={{ width: col.width }}>
-                  {col.header}
-                </Table.HeaderCell>
-              ))}
-            </Table.Row>
-          </Table.Head>
-          <Table.Body>
-            <Table.Row>
-              <Table.Cell colSpan={totalColumns}>
-                {emptyContent ?? (
-                  <EmptyState size="md">
-                    <EmptyStateTitle>No data</EmptyStateTitle>
-                    <EmptyStateDescription>There are no items to display.</EmptyStateDescription>
-                  </EmptyState>
-                )}
-              </Table.Cell>
-            </Table.Row>
-          </Table.Body>
-        </Table>
-      </div>
+      <Table.Row>
+        <Table.Cell colSpan={totalColumns}>
+          {emptyContent ?? (
+            <EmptyState size="md">
+              <EmptyStateTitle>No data</EmptyStateTitle>
+              <EmptyStateDescription>There are no items to display.</EmptyStateDescription>
+            </EmptyState>
+          )}
+        </Table.Cell>
+      </Table.Row>
     );
   }
 
-  // Render data
-  return (
-    <div>
-      <Table density={density} striped={striped} stickyHeader={stickyHeader}>
-        <Table.Head>
-          <Table.Row>
-            {expandable && <Table.HeaderCell className="w-10" />}
+  function renderRows() {
+    return pageData.map((row, i) => {
+      const key = rowKey(row, i);
+      const isExpanded = expandable && expanded.has(key);
+      return (
+        <Fragment key={key}>
+          <Table.Row selected={selectedKeys?.has(key)}>
+            {expandable && (
+              <Table.Cell>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-md p-r6 text-fg-secondary hover:bg-surface-2 cursor-pointer duration-fast"
+                  aria-label={isExpanded ? "Collapse row" : "Expand row"}
+                  aria-expanded={isExpanded}
+                  onClick={() => toggleExpanded(key)}
+                >
+                  <ChevronRight
+                    size={16}
+                    aria-hidden="true"
+                    className={cn("duration-fast", isExpanded && "rotate-90")}
+                  />
+                </button>
+              </Table.Cell>
+            )}
             {selectable && (
-              <Table.HeaderCell className="w-10">
+              <Table.Cell>
                 <Checkbox
-                  checked={allSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someSelected && !allSelected;
-                  }}
-                  onChange={handleSelectAll}
-                  aria-label="Select all rows"
+                  checked={selectedKeys?.has(key) ?? false}
+                  onChange={() => handleSelectRow(key)}
+                  aria-label={`Select row ${key}`}
                 />
-              </Table.HeaderCell>
+              </Table.Cell>
             )}
             {columns.map((col) => (
-              <Table.HeaderCell
-                key={col.key}
-                style={{
-                  width: col.width,
-                  textAlign: col.align,
-                }}
-                sortDirection={
-                  col.sortable
-                    ? currentSort?.key === col.key
-                      ? currentSort.direction
-                      : false
-                    : undefined
-                }
-                onSort={col.sortable ? () => handleSort(col.key) : undefined}
-              >
-                {col.header}
-              </Table.HeaderCell>
+              <Table.Cell key={col.key} style={{ textAlign: col.align }}>
+                {col.render ? col.render(row, i) : cellToString((row as Record<string, unknown>)[col.key])}
+              </Table.Cell>
             ))}
           </Table.Row>
-        </Table.Head>
+          {expandable && renderExpanded && (
+            <ExpandableDetailRow
+              open={isExpanded}
+              colSpan={totalColumns}
+              density={density}
+            >
+              {() => renderExpanded(row, i)}
+            </ExpandableDetailRow>
+          )}
+        </Fragment>
+      );
+    });
+  }
+
+  // Rows only exist in the data state; striping a skeleton or an empty-state
+  // row would band placeholder content.
+  const hasRows = !loading && data.length > 0;
+
+  return (
+    <div>
+      <Table density={density} striped={hasRows && striped} stickyHeader={stickyHeader}>
+        {renderHeader()}
         <Table.Body>
-          {pageData.map((row, i) => {
-            const key = rowKey(row, i);
-            const isExpanded = expandable && expanded.has(key);
-            return (
-              <Fragment key={key}>
-                <Table.Row selected={selectedKeys?.has(key)}>
-                  {expandable && (
-                    <Table.Cell>
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center rounded-md p-r6 text-fg-secondary hover:bg-surface-2 cursor-pointer duration-fast"
-                        aria-label={isExpanded ? "Collapse row" : "Expand row"}
-                        aria-expanded={isExpanded}
-                        onClick={() => toggleExpanded(key)}
-                      >
-                        <ChevronRight
-                          size={16}
-                          aria-hidden="true"
-                          className={cn("duration-fast", isExpanded && "rotate-90")}
-                        />
-                      </button>
-                    </Table.Cell>
-                  )}
-                  {selectable && (
-                    <Table.Cell>
-                      <Checkbox
-                        checked={selectedKeys?.has(key) ?? false}
-                        onChange={() => handleSelectRow(key)}
-                        aria-label={`Select row ${key}`}
-                      />
-                    </Table.Cell>
-                  )}
-                  {columns.map((col) => (
-                    <Table.Cell key={col.key} style={{ textAlign: col.align }}>
-                      {col.render ? col.render(row, i) : cellToString((row as Record<string, unknown>)[col.key])}
-                    </Table.Cell>
-                  ))}
-                </Table.Row>
-                {expandable && renderExpanded && (
-                  <ExpandableDetailRow
-                    open={isExpanded}
-                    colSpan={totalColumns}
-                    density={density}
-                  >
-                    {() => renderExpanded(row, i)}
-                  </ExpandableDetailRow>
-                )}
-              </Fragment>
-            );
-          })}
+          {loading ? renderLoadingRows() : hasRows ? renderRows() : renderEmptyRow()}
         </Table.Body>
       </Table>
 

@@ -193,6 +193,8 @@ export function VirtualizedDataTable<T>({
 
   const totalColumns = columns.length + (selectable ? 1 : 0);
 
+  // ONE header for every state. The loading and empty branches used to render a
+  // second, sort-less copy of this block (#447).
   function renderHeader() {
     return (
       <Table.Head>
@@ -234,7 +236,7 @@ export function VirtualizedDataTable<T>({
   if (loading) {
     return (
       <Table density={density} striped={false} stickyHeader={stickyHeader}>
-        {renderHeaderStatic(columns, selectable)}
+        {renderHeader()}
         <Table.Body>
           {Array.from({ length: loadingRowCount }, (_, i) => (
             <Table.Row key={i}>
@@ -259,7 +261,7 @@ export function VirtualizedDataTable<T>({
   if (data.length === 0) {
     return (
       <Table density={density} striped={false} stickyHeader={stickyHeader}>
-        {renderHeaderStatic(columns, selectable)}
+        {renderHeader()}
         <Table.Body>
           <Table.Row>
             <Table.Cell colSpan={totalColumns}>
@@ -325,21 +327,5 @@ export function VirtualizedDataTable<T>({
         )}
       </Table.Body>
     </Table>
-  );
-}
-
-/** Header markup shared by the loading and empty states (no sort handlers). */
-function renderHeaderStatic<T>(columns: ColumnDef<T>[], selectable: boolean) {
-  return (
-    <Table.Head>
-      <Table.Row>
-        {selectable && <Table.HeaderCell className="w-10" />}
-        {columns.map((col) => (
-          <Table.HeaderCell key={col.key} style={{ width: col.width }}>
-            {col.header}
-          </Table.HeaderCell>
-        ))}
-      </Table.Row>
-    </Table.Head>
   );
 }

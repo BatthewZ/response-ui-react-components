@@ -313,4 +313,59 @@ describe("VirtualizedDataTable", () => {
     expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.queryByText("Row 0")).not.toBeInTheDocument();
   });
+
+  /* ---------------------------------------------------------------- */
+  /*  One header, three states (#447)                                  */
+  /* ---------------------------------------------------------------- */
+
+  describe("header parity across the loading, empty and data states", () => {
+    const mixedColumns: ColumnDef<Item>[] = [
+      { key: "name", header: "Name", sortable: true, width: 120 },
+      { key: "value", header: "Value", align: "right" },
+    ];
+
+    /**
+     * Every header attribute the render paths could drift on. The duplication
+     * is the defect, so this compares WHOLE headers rather than naming today's
+     * divergences — a future edit to one copy reddens it too.
+     */
+    function headerShape(container: HTMLElement) {
+      return [...container.querySelectorAll("thead th")].map((th) => ({
+        text: th.textContent,
+        className: th.className,
+        tabIndex: th.getAttribute("tabindex"),
+        ariaSort: th.getAttribute("aria-sort"),
+        textAlign: (th as HTMLElement).style.textAlign,
+        width: (th as HTMLElement).style.width,
+        sortIcons: th.querySelectorAll("[class*='sort-icon']").length,
+        checkboxes: th.querySelectorAll("input[type='checkbox']").length,
+      }));
+    }
+
+    function renderIn(extra: { data: Item[]; loading?: boolean }) {
+      return render(
+        <VirtualizedDataTable
+          data={extra.data}
+          loading={extra.loading}
+          columns={mixedColumns}
+          rowKey={rowKey}
+          rowHeight={40}
+          defaultSort={{ key: "name", direction: "asc" }}
+          selectable
+          selectedKeys={new Set()}
+          onSelectionChange={vi.fn()}
+        />
+      ).container;
+    }
+
+    it("renders an identical header in all three states", () => {
+      const withRows = headerShape(renderIn({ data: makeData(10) }));
+      // Sanity: the reference header is the rich one, not an empty shell.
+      expect(withRows).toHaveLength(3);
+      expect(withRows[1]).toMatchObject({ ariaSort: "ascending", sortIcons: 1 });
+
+      expect(headerShape(renderIn({ data: makeData(10), loading: true }))).toEqual(withRows);
+      expect(headerShape(renderIn({ data: [] }))).toEqual(withRows);
+    });
+  });
 });

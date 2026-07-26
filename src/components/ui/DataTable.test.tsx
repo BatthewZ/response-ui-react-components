@@ -542,6 +542,158 @@ describe("DataTable", () => {
     });
   });
 
+  /* ---------------------------------------------------------------- */
+  /*  One header, three states (#363, #364)                            */
+  /* ---------------------------------------------------------------- */
+
+  describe("header parity across the loading, empty and data states", () => {
+    const mixedColumns: ColumnDef<Item>[] = [
+      { key: "name", header: "Name", sortable: true, width: 120 },
+      { key: "age", header: "Age", align: "right" },
+    ];
+
+    /**
+     * Every header attribute the three render paths could drift on. The
+     * duplication is the defect, so this compares WHOLE headers rather than
+     * naming today's divergences — a future edit to one copy reddens it too.
+     */
+    function headerShape(container: HTMLElement) {
+      return [...container.querySelectorAll("thead th")].map((th) => ({
+        text: th.textContent,
+        className: th.className,
+        tabIndex: th.getAttribute("tabindex"),
+        ariaSort: th.getAttribute("aria-sort"),
+        textAlign: (th as HTMLElement).style.textAlign,
+        width: (th as HTMLElement).style.width,
+        sortIcons: th.querySelectorAll("[class*='sort-icon']").length,
+        checkboxes: th.querySelectorAll("input[type='checkbox']").length,
+      }));
+    }
+
+    function renderIn(extra: { data: Item[]; loading?: boolean }) {
+      return render(
+        <DataTable
+          data={extra.data}
+          loading={extra.loading}
+          columns={mixedColumns}
+          rowKey={rowKey}
+          defaultSort={{ key: "name", direction: "asc" }}
+          selectable
+          selectedKeys={new Set()}
+          onSelectionChange={vi.fn()}
+          renderExpanded={(row) => <div>Detail for {row.name}</div>}
+        />,
+      ).container;
+    }
+
+    it("renders an identical header in all three states", () => {
+      const withRows = headerShape(renderIn({ data }));
+      // Sanity: the reference header is the rich one, not an empty shell.
+      expect(withRows).toHaveLength(4);
+      expect(withRows[2]).toMatchObject({ ariaSort: "ascending", sortIcons: 1 });
+
+      expect(headerShape(renderIn({ data, loading: true }))).toEqual(withRows);
+      expect(headerShape(renderIn({ data: [] }))).toEqual(withRows);
+    });
+
+    it("spans the empty-state cell across exactly the columns the header renders", () => {
+      const container = renderIn({ data: [] });
+      const headerCount = container.querySelectorAll("thead th").length;
+      const emptyCell = container.querySelector("tbody td");
+      expect(emptyCell).toHaveAttribute("colspan", String(headerCount));
+    });
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  Footer and pager survive every state (#358)                      */
+  /* ---------------------------------------------------------------- */
+
+  describe("footer and pagination in the loading and empty states", () => {
+    function renderWithPager(extra: { data: Item[]; loading?: boolean }) {
+      return render(
+        <DataTable
+          data={extra.data}
+          loading={extra.loading}
+          columns={columns}
+          rowKey={rowKey}
+          page={3}
+          totalPages={5}
+          onPageChange={vi.fn()}
+          footer={<button type="button">Load more</button>}
+        />,
+      ).container;
+    }
+
+    function counts(container: HTMLElement) {
+      return {
+        pagers: container.querySelectorAll("nav[aria-label='Pagination']").length,
+        footers: [...container.querySelectorAll("button")].filter(
+          (b) => b.textContent === "Load more",
+        ).length,
+      };
+    }
+
+    it("keeps both when the current page comes back empty", () => {
+      expect(counts(renderWithPager({ data: [] }))).toEqual({ pagers: 1, footers: 1 });
+    });
+
+    it("keeps both while loading", () => {
+      expect(counts(renderWithPager({ data, loading: true }))).toEqual({
+        pagers: 1,
+        footers: 1,
+      });
+    });
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  Paging mode locks on the first render                            */
+  /* ---------------------------------------------------------------- */
+
+  it("stays page-controlled when the parent momentarily passes undefined", async () => {
+    const user = userEvent.setup();
+    const onPageChange = vi.fn();
+    const five: Item[] = [
+      { id: 1, name: "A", age: 1 },
+      { id: 2, name: "B", age: 2 },
+      { id: 3, name: "C", age: 3 },
+      { id: 4, name: "D", age: 4 },
+      { id: 5, name: "E", age: 5 },
+    ];
+
+    // The server owns the page and this parent deliberately ignores the
+    // requested one, so any slice movement can only come from internal state.
+    function Harness() {
+      const [page, setPage] = useState<number | undefined>(2);
+      return (
+        <>
+          <button type="button" onClick={() => setPage(undefined)}>
+            clear
+          </button>
+          <DataTable
+            data={five}
+            columns={columns}
+            rowKey={rowKey}
+            pageSize={2}
+            page={page}
+            onPageChange={onPageChange}
+          />
+        </>
+      );
+    }
+
+    render(<Harness />);
+    expect(bodyFirstCells()).toEqual(["C", "D"]);
+
+    await user.click(screen.getByRole("button", { name: "clear" }));
+    expect(bodyFirstCells()).toEqual(["A", "B"]);
+
+    await user.click(screen.getByRole("button", { name: /^page 3$/i }));
+    expect(onPageChange).toHaveBeenCalledTimes(1);
+    expect(onPageChange).toHaveBeenCalledWith(3);
+    // Still controlled: the parent ignored the request, so the slice must not move.
+    expect(bodyFirstCells()).toEqual(["A", "B"]);
+  });
+
   it("renders the footer slot", () => {
     render(
       <DataTable
