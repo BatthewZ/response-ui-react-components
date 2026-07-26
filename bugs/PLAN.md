@@ -132,7 +132,10 @@ answer rather than an error:
 - A `fireEvent.click`-only test hides a keyboard-path break (#126, #350). Cover Enter/Space.
 
 **Doors.** One, narrow: **composing `FileUpload`'s `onDrop`** requires removing
-`Omit<…, "onDrop">` — a public type change. Left `deferred`. Everything else in this cluster
+`Omit<…, "onDrop">` — a public type change. Was `deferred`; **walked in `15590d3`**
+after adversarial verification measured the deferral was hiding a live defect: a spread
+`onDrop` replaced the internal handler, so `onFilesSelected` never fired and the drop
+pipeline died silently. `FileUploadProps` now accepts `onDrop` and composes it. Ledger #427. Everything else in this cluster
 is additive. Note the shape of the opt-out is a judgement the fixes made explicitly and
 consistently: compose, then skip the component's own behaviour `if (e.defaultPrevented)` —
 **except** on non-cancelable events (`animationend`, `pointerleave`), where honouring
