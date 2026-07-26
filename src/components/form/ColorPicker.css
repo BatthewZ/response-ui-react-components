@@ -26,9 +26,9 @@
   box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
 }
 
-/* (0,3,0), so focusing an invalid trigger no longer repaints its border with
-   the focus colour. The ring still reports focus; the colour still reports
-   invalid. */
+/* Same (0,2,0) as the plain focus rule but declared after it, so focusing an
+   invalid trigger no longer repaints its border with the focus colour. The ring
+   still reports focus; the colour still reports invalid. */
 .colorpicker-trigger--error:focus-visible {
   border-color: var(--C-STATUS-ERROR);
   box-shadow: 0 0 0 2px var(--C-STATUS-ERROR);
@@ -159,12 +159,14 @@
   outline: none;
 }
 
+/* Focus replaces the resting hairline rather than restating it: the ring is its
+   own edge against the rail, so the literal it carried is not needed here. */
 .colorpicker-hue:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35), 0 0 0 3px var(--C-BORDER-FOCUS);
+  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
 }
 
 .colorpicker-hue:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35), 0 0 0 3px var(--C-BORDER-FOCUS);
+  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
 }
 
 /* Hex row */

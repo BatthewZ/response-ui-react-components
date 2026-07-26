@@ -20,6 +20,14 @@
   white-space: nowrap;
 }
 
+/* Inset, like the sibling segmented control (`.tabs-tab`): the group pads its
+   options by only 0.125rem, so an outset ring would sit on the group border
+   instead of on the segment that actually holds focus. */
+.theme-switcher__option:focus-visible {
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: -2px;
+}
+
 .theme-switcher__option:hover {
   color: var(--C-TEXT-PRIMARY);
   background: var(--C-SURFACE-1);

@@ -60,7 +60,10 @@
   cursor: not-allowed;
 }
 
-.range-slider[aria-invalid="true"] .range-slider__input:focus-visible {
+/* The inputs are full-width transparent overlays, so a UA outline draws a box
+   round the whole rail rather than the thumb. Suppress it in every state — the
+   thumb paints the ring — instead of only while invalid. */
+.range-slider__input:focus-visible {
   outline: none;
 }
 
@@ -85,8 +88,10 @@
   cursor: not-allowed;
 }
 
+/* No backdrop-coloured gap: the thumb's 2px border already separates the fill
+   from the ring, and `--C-SURFACE-0` would guess the wrong layer anywhere else. */
 .range-slider__input:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 2px var(--C-SURFACE-0), 0 0 0 4px var(--C-BORDER-FOCUS);
+  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
 }
 
 /* Firefox thumb */
@@ -105,7 +110,7 @@
 }
 
 .range-slider__input:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 2px var(--C-SURFACE-0), 0 0 0 4px var(--C-BORDER-FOCUS);
+  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
 }
 
 /* Firefox paints a default track — keep it invisible so our rail shows. */

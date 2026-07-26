@@ -53,8 +53,11 @@
   background-color: var(--C-ACCENT);
 }
 
+/* The thumb's own 2px border already separates the accent fill from the ring, so
+   the ring needs no backdrop-coloured gap — one would have to guess the layer the
+   slider sits on, and `--C-SURFACE-0` guesses wrong on any other surface. */
 .slider:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 2px var(--C-SURFACE-0), 0 0 0 4px var(--C-BORDER-FOCUS);
+  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
 }
 
 /* ------------------------------------------------------------------ */
@@ -70,5 +73,5 @@
 }
 
 .slider:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 2px var(--C-SURFACE-0), 0 0 0 4px var(--C-BORDER-FOCUS);
+  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
 }
