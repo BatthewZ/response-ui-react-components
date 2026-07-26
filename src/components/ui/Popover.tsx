@@ -190,7 +190,7 @@ const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
 
     return (
       <FloatingPortal>
-        <FloatingFocusManager context={context}>
+        <FloatingFocusManager context={context} modal={false}>
           <div
             ref={mergeRefs(ref, refs.setFloating)}
             id={contentId}

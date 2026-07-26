@@ -131,6 +131,45 @@ describe("Popover", () => {
     expect(onOpenChange).toHaveBeenCalledWith(true);
   });
 
+  it("moves focus to the panel when opened", async () => {
+    const user = userEvent.setup();
+    renderPopover();
+
+    await user.click(screen.getByRole("button", { name: "Toggle popover" }));
+
+    // The panel holds no tab stop of its own, so the focus manager gives it
+    // tabindex="0" and focuses it — which is why .popover-content must paint a
+    // replacement ring under its `outline: none` (ledger #129). The move is queued,
+    // hence waitFor rather than a bare assertion.
+    const panel = await screen.findByRole("dialog");
+    expect(panel).toHaveAttribute("tabindex", "0");
+    await waitFor(() => expect(panel).toHaveFocus());
+  });
+
+  it("leaves the rest of the page reachable while open", async () => {
+    const user = userEvent.setup();
+    render(
+      <div>
+        <button>Outside the popover</button>
+        <Popover>
+          <Popover.Trigger>Toggle popover</Popover.Trigger>
+          <Popover.Content>
+            <p>Popover body content</p>
+          </Popover.Content>
+        </Popover>
+      </div>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Toggle popover" }));
+    await screen.findByText("Popover body content");
+
+    // A popover is not a modal dialog. A focus trap marks everything outside the
+    // portal aria-hidden + inert, which erases both of these from the accessibility
+    // tree — `getByRole` refuses to see an aria-hidden subtree, so it fails then.
+    expect(screen.getByRole("button", { name: "Outside the popover" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Toggle popover" })).toBeInTheDocument();
+  });
+
   it("composes an asChild child's own onClick instead of replacing it", async () => {
     const user = userEvent.setup();
     const childClick = vi.fn();

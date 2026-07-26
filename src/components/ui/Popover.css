@@ -17,3 +17,11 @@
   z-index: 40;
   outline: none;
 }
+
+/* The panel is a dialog with no tabbable content of its own, so FloatingFocusManager
+   gives it tabindex="0" and focuses it on open — the reset above would otherwise
+   leave a keyboard user with no focus affordance at all. */
+.popover-content:focus-visible {
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: 2px;
+}

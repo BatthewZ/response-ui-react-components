@@ -10,24 +10,42 @@
 //
 // The invariant:
 //
-//   If a class resets the outline (`outline: none | 0 | <any> transparent`) AND that
-//   class lands on an element that can take DOM focus, then some focus-keyed rule
-//   must paint a replacement ring in `--C-BORDER-FOCUS`.
+//   If something resets the outline (a CSS `outline: none | 0 | <any> transparent`
+//   declaration, or a Tailwind `outline-none` / `focus:outline-none` utility) AND it
+//   lands on an element that can take DOM focus, then some focus-keyed rule or
+//   utility must paint a replacement ring in `--C-BORDER-FOCUS`.
+//
+// Both halves of the codebase are read, because the same defect is written both ways:
+// component stylesheets (src/components/**/*.css, ledger #116/#129) and Tailwind
+// utilities in JSX `className` expressions (src/**/*.tsx, ledger #73).
 //
 // Focusability is derived from source, never from a list. For every class that
 // appears as the subject of a reset rule, the JSX in src/**/*.tsx is scanned for the
 // elements that carry it, and an element is focusable when it is a natively
 // focusable tag (`button`, `input`, `select`, `textarea`, `summary`, `iframe`,
-// `a[href]`), carries `tabIndex` >= 0 (including a roving `cond ? 0 : -1`), or is
-// `contentEditable`. `tabIndex={-1}` and elements that are only virtually focused
-// (`aria-activedescendant`) are NOT focusable, and the script prints each one with
-// its reason rather than skipping it silently. A reset class that cannot be located
-// in any .tsx is an error, not an exemption — the guard says so instead of guessing.
+// `a[href]`), carries `tabIndex` >= 0 (including a roving `cond ? 0 : -1`), is
+// `contentEditable`, or is focused at runtime by a `<FloatingFocusManager>` (see
+// `managerTabStop` — a JSX attribute scan alone cannot see that one, which is what
+// let ledger #129 hide behind an "exemption"). `tabIndex={-1}` and elements that are
+// only virtually focused (`aria-activedescendant`) are NOT focusable, and the script
+// prints each one with its reason rather than skipping it silently. A reset class
+// that cannot be located in any .tsx is an error, not an exemption — the guard says
+// so instead of guessing.
 //
 // A replacement may live on the element's own `:focus-visible` (or a pseudo-element
-// under it: `.slider:focus-visible::-webkit-slider-thumb`), or on a `:focus-within`
-// rule keyed to one of its JSX ancestors — the wrapper-ring recipe MultiSelect and
-// TagInput use, where the ring belongs to the bordered box, not the bare input.
+// under it: `.slider:focus-visible::-webkit-slider-thumb`) or its own
+// `focus:ring-border-focus` utility, or on a `:focus-within` rule / a
+// `focus-within:ring-border-focus` utility keyed to one of its JSX ancestors — the
+// wrapper-ring recipe MultiSelect and TagInput use, where the ring belongs to the
+// bordered box, not the bare input. Reset and replacement need not sit in the same
+// string: every literal in the whole `className` expression is pooled, so Radio's
+// two-argument `cn("… focus:outline-none", "focus:ring-2 focus:ring-border-focus")`
+// reads as one element.
+//
+// Utilities hoisted into a shared constant (`const FOCUS_RING = "focus:outline-none
+// focus:ring-2 focus:ring-border-focus"`, then `cn(FOCUS_RING)`) are resolved through
+// `buildConstStrings`, so moving the strings out of the component files does not
+// blind the check.
 //
 // Scope and non-goals, stated plainly:
 // - PRESENCE only. A rule that exists but is out-specified by a competing rule (the
@@ -35,8 +53,14 @@
 //   a different check.
 // - CONTRAST is not measured. A ring declared in `--C-BORDER-FOCUS` counts even where
 //   that token is too low-contrast against the surface (ledger #242).
-// - Tailwind `focus:outline-none` utilities written in .tsx are the same defect class
-//   (ledger #73) but are not covered: this reads src/components/**/*.css only.
+// - Only string-literal constants resolve. A class string built by a function call or
+//   assembled at runtime is invisible: its reset is not seen (a miss, never a false
+//   alarm) and it does not count as a replacement.
+// - Tabbable content inside a floating panel is judged statically, and any child
+//   component (`<Calendar>`) is assumed to render something tabbable. A panel whose
+//   only tabbable children come from a component that in fact renders none is
+//   therefore judged non-focusable — a miss, not a false alarm.
+// - Runtime focus() calls other than `<FloatingFocusManager>`'s are not modelled.
 //
 // Exits 1 on any violation.
 
@@ -56,6 +80,30 @@ const RESET =
   /(?:^|;)\s*outline(?:-style|-width)?\s*:\s*(?:none|0(?:px|rem|em)?|[^;]*\btransparent\b)\s*(?:!important\s*)?(?=;|$)/;
 
 const NATIVELY_FOCUSABLE = new Set(["button", "input", "select", "textarea", "summary", "iframe"]);
+
+/** Tailwind bases that remove the outline, and the ones that paint the house ring. */
+const TW_RESET = /^(?:outline-none|outline-hidden|outline-0|outline-transparent)$/;
+const TW_RING = /^(?:ring|outline|border|shadow)-border-focus$/; // --color-border-focus: var(--C-BORDER-FOCUS)
+const FOCUS_VARIANTS = new Set(["focus", "focus-visible", "focus-within"]);
+
+const twParts = (token) => {
+  const parts = token.split(":");
+  return { variants: parts.slice(0, -1), base: parts[parts.length - 1] };
+};
+
+/** A reset applies to the focused state when it is unconditional or focus-keyed. */
+function isTwReset(token) {
+  const { variants, base } = twParts(token);
+  return TW_RESET.test(base) && variants.every((v) => FOCUS_VARIANTS.has(v));
+}
+
+const isTwRing = (token, variant) => {
+  const { variants, base } = twParts(token);
+  return TW_RING.test(base) && variants.includes(variant);
+};
+
+const twOwnRing = (token) => isTwRing(token, "focus") || isTwRing(token, "focus-visible");
+const twWithinRing = (token) => isTwRing(token, "focus-within");
 
 /** Roles whose elements are pointed at by `aria-activedescendant` instead of focused. */
 const VIRTUALLY_FOCUSED_ROLES = new Set([
@@ -348,12 +396,65 @@ function classTokens(attrs, literals) {
 }
 
 /**
+ * `const NAME = "…"` string constants across src, expanded to a fixpoint so
+ * `` const FOCUS_RING = `${FOCUS_RESET} ring-2` `` resolves. Deliberately narrower
+ * than `buildLiteralMap`: object properties are excluded, because `className: "…"`
+ * appears as a property all over this library and would then resolve the *parameter*
+ * named `className` in every `cn(…, className)` call to some other file's classes.
+ */
+function buildConstStrings(files) {
+  const consts = new Map();
+  for (const file of files) {
+    const text = blankComments(readFileSync(file, "utf8"));
+    for (const m of text.matchAll(
+      /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|`([^`]*)`)/g,
+    )) {
+      if (!consts.has(m[1])) consts.set(m[1], new Set());
+      consts.get(m[1]).add(m[2] ?? m[3] ?? m[4]);
+    }
+  }
+  for (let pass = 0; pass < 4; pass++) {
+    for (const [name, values] of consts) {
+      const resolved = [...values].map((v) =>
+        v.replace(/\$\{\s*([A-Za-z_$][\w$]*)\s*\}/g, (whole, id) => {
+          const source = consts.get(id);
+          // An ambiguous or unknown name is left as written: it survives as a token
+          // that matches neither a reset nor a ring, which is inert either way.
+          return source?.size === 1 ? [...source][0] : whole;
+        }),
+      );
+      consts.set(name, new Set(resolved));
+    }
+  }
+  return consts;
+}
+
+/**
+ * Utility tokens an element may carry: its own literals plus the contents of any
+ * string constant it names, so a `className={cn(FOCUS_RING)}` refactor stays visible.
+ * Kept separate from `classTokens` so a resolved constant can never be mistaken for a
+ * component class and silently re-point the stylesheet half of the check.
+ */
+function utilityTokens(attrs, literals, consts) {
+  const raw = readAttr(attrs, "className");
+  if (raw === undefined) return [];
+  const tokens = classTokens(attrs, literals);
+  if (raw.kind !== "expr") return tokens;
+  const identifiers = raw.text.replace(/"[^"]*"|'[^']*'|`[^`]*`/g, " ");
+  const named = [...identifiers.matchAll(/[A-Za-z_$][\w$]*/g)]
+    .flatMap((m) => [...(consts.get(m[0]) ?? [])])
+    .flatMap((v) => v.split(/\s+/))
+    .filter(Boolean);
+  return [...tokens, ...named];
+}
+
+/**
  * Elements in one .tsx, each with its JSX ancestors' class tokens. Comments are
  * blanked first (this repo's docblocks are full of JSX), and `<` only opens a tag when
  * the preceding character cannot end an identifier — which is what separates `<div`
  * from `useState<number>` and `forwardRef<HTMLDivElement, P>`.
  */
-function scanElements(file, text, literals) {
+function scanElements(file, text, literals, consts) {
   const src = blankComments(text).replace(/(^|[^:])\/\/[^\n]*/gm, (m, keep) =>
     keep + " ".repeat(m.length - keep.length),
   );
@@ -361,9 +462,25 @@ function scanElements(file, text, literals) {
   // `const triggerProps = mergeProps(props, { className: cn("colorpicker-trigger", …) })`
   // then `<button {...getReferenceProps({ ...triggerProps })}>` — the classes reach the
   // element through a named props object, so index those objects and follow the spread.
+  // `{ as: Tag = "button" }` then `<Tag>`: a polymorphic tag whose default is a
+  // literal element name is that element, not an opaque component. Button's whole
+  // focus affordance rides on this — without it `<Tag>` reads as unfocusable.
+  const tagAliases = new Map();
+  for (const m of src.matchAll(/\b([A-Z][\w$]*)\s*=\s*["']([a-z][a-z0-9]*)["']/g)) {
+    if (!tagAliases.has(m[1])) tagAliases.set(m[1], new Set());
+    tagAliases.get(m[1]).add(m[2]);
+  }
+  const resolveTag = (tag) => {
+    const values = tagAliases.get(tag);
+    return values?.size === 1 ? [...values][0] : tag;
+  };
+
   const spreadClasses = new Map();
+  const spreadUtilities = new Map();
   for (const m of src.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([\s\S]*?);\n/g)) {
-    if (m[2].includes("className")) spreadClasses.set(m[1], classTokens(m[2], literals));
+    if (!m[2].includes("className")) continue;
+    spreadClasses.set(m[1], classTokens(m[2], literals));
+    spreadUtilities.set(m[1], utilityTokens(m[2], literals, consts));
   }
 
   const out = [];
@@ -392,24 +509,36 @@ function scanElements(file, text, literals) {
     if (end === -1) continue;
 
     const attrs = src.slice(i + name[0].length, end).replace(/\/$/, "");
+    const spreads = [...attrs.matchAll(/\.\.\.([A-Za-z_$][\w$]*)/g)].map((m) => m[1]);
     const classes = [
       ...classTokens(attrs, literals),
-      ...[...attrs.matchAll(/\.\.\.([A-Za-z_$][\w$]*)/g)].flatMap(
-        (m) => spreadClasses.get(m[1]) ?? [],
-      ),
+      ...spreads.flatMap((n) => spreadClasses.get(n) ?? []),
     ];
+    const utilities = [
+      ...utilityTokens(attrs, literals, consts),
+      ...spreads.flatMap((n) => spreadUtilities.get(n) ?? []),
+    ];
+    const parent = stack[stack.length - 1];
+    const manager = parent?.tag === "FloatingFocusManager" ? parent : undefined;
     out.push({
+      id: out.length,
       file,
       line: lineAt(src, i),
-      tag: name[1],
+      tag: resolveTag(name[1]),
       classes,
+      utilities,
+      ancestorIds: stack.map((f) => f.id),
       ancestorClasses: stack.flatMap((f) => f.classes),
+      ancestorUtilities: stack.flatMap((f) => f.utilities),
       tabIndex: attrValue(attrs, "tabIndex"),
       href: hasAttr(attrs, "href"),
       contentEditable: hasAttr(attrs, "contentEditable"),
       role: attrValue(attrs, "role"),
+      managerOrder: manager && attrValue(manager.attrs, "order"),
+      managed: manager !== undefined,
     });
-    if (src[end - 1] !== "/") stack.push({ tag: name[1], classes });
+    if (src[end - 1] !== "/")
+      stack.push({ id: out.length - 1, tag: name[1], classes, utilities, attrs });
     i = end;
   }
   return out;
@@ -417,15 +546,45 @@ function scanElements(file, text, literals) {
 
 const tsxFiles = walk(SRC, (p) => /\.tsx?$/.test(p) && !p.includes(".test.")).sort();
 const literals = buildLiteralMap(tsxFiles);
+const constStrings = buildConstStrings(tsxFiles);
 const elements = [];
 const virtualFocusFiles = new Set();
+const dialogRoleFiles = new Set();
 for (const file of tsxFiles.filter((p) => p.endsWith(".tsx"))) {
   const text = readFileSync(file, "utf8");
   if (text.includes("aria-activedescendant")) virtualFocusFiles.add(file);
-  elements.push(...scanElements(file, text, literals));
+  if (/useRole\([^)]*role:\s*["'](?:dialog|alertdialog)["']/.test(text)) dialogRoleFiles.add(file);
+  elements.push(...scanElements(file, text, literals, constStrings));
 }
 
 const carriersOf = (cls) => elements.filter((el) => el.classes.includes(cls));
+
+/** Anything that could hold a tab stop, including a component whose render we cannot see. */
+const maybeTabbable = (el) =>
+  NATIVELY_FOCUSABLE.has(el.tag) ||
+  (el.tag === "a" && el.href) ||
+  (el.tabIndex !== undefined && !/^-\s*1$/.test(el.tabIndex.trim())) ||
+  /^[A-Z]/.test(el.tag);
+
+const hasTabbableContent = (el) =>
+  elements.some((d) => d.file === el.file && d.ancestorIds.includes(el.id) && maybeTabbable(d));
+
+const isDialog = (el) => /dialog/i.test(el.role ?? "") || dialogRoleFiles.has(el.file);
+
+/**
+ * Whether `<FloatingFocusManager>` turns its child into a tab stop and focuses it.
+ * Ported from the library's own `handleTabIndex`: for a floating element that is a
+ * dialog (or an explicit `order` that includes "floating") it sets `tabindex="0"`
+ * when there is no tabbable content to hold focus instead, and the mount effect then
+ * focuses `tabbables[initialFocus] || floatingElement`. `initialFocus={-1}` only
+ * suppresses that initial move — the tab stop remains — so it is not consulted here.
+ */
+function managerTabStop(el) {
+  if (!el.managed) return false;
+  const floatingFirst = /\bfloating\b/.test(el.managerOrder ?? "");
+  if (!floatingFirst && !isDialog(el)) return false;
+  return floatingFirst || !hasTabbableContent(el);
+}
 
 /**
  * Focusability, from the element alone. `tabIndex` wins over the tag: a `<button
@@ -443,12 +602,24 @@ function focusability(el) {
   if (NATIVELY_FOCUSABLE.has(el.tag)) return { focusable: true, why: `<${el.tag}>` };
   if (el.tag === "a" && el.href) return { focusable: true, why: `<a href>` };
   if (el.contentEditable) return { focusable: true, why: `contentEditable` };
+  if (managerTabStop(el))
+    return {
+      focusable: true,
+      why: `<${el.tag}> given tabindex="0" and focused by <FloatingFocusManager> (dialog holding no tabbable content)`,
+    };
   const virtual = virtualFocusFiles.has(el.file) && VIRTUALLY_FOCUSED_ROLES.has(el.role);
+  const managed = el.managed
+    ? isDialog(el)
+      ? `<${el.tag}> in <FloatingFocusManager> — holds tabbable content, so the manager focuses that instead, never the panel`
+      : `<${el.tag}> in <FloatingFocusManager> — not a dialog, so the manager leaves it without a tabindex and never focuses it`
+    : undefined;
   return {
     focusable: false,
-    why: virtual
-      ? `<${el.tag} role="${el.role}"> with no tabIndex — virtually focused via aria-activedescendant, never DOM-focused`
-      : `<${el.tag}> with no tabIndex — never DOM-focused`,
+    why:
+      managed ??
+      (virtual
+        ? `<${el.tag} role="${el.role}"> with no tabIndex — virtually focused via aria-activedescendant, never DOM-focused`
+        : `<${el.tag}> with no tabIndex — never DOM-focused`),
   };
 }
 
@@ -459,6 +630,7 @@ function focusability(el) {
 const violations = [];
 const exemptions = [];
 const guarded = [];
+const scanned = `${cssFiles.length} stylesheets, ${elements.length} JSX elements`;
 
 const seen = new Set();
 for (const reset of resets.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line)) {
@@ -507,6 +679,40 @@ for (const reset of resets.sort((a, b) => a.file.localeCompare(b.file) || a.line
   );
 }
 
+/* Tailwind utilities: the same invariant, one element at a time (ledger #73). */
+for (const el of elements) {
+  const reset = el.utilities.find(isTwReset);
+  if (!reset) continue;
+
+  const anchor = `${relative(ROOT, el.file)}:${el.line}`;
+  const { focusable, why } = focusability(el);
+  if (!focusable) {
+    exemptions.push(`\`${reset}\` (${anchor}) — ${why}`);
+    continue;
+  }
+
+  const own = el.utilities.find(twOwnRing);
+  const wrapper = el.ancestorUtilities.find(twWithinRing);
+  const ownCss = el.classes.flatMap((cls) => ringFor.get(cls) ?? [])[0];
+  const wrapperCss = el.ancestorClasses.flatMap((cls) => withinRingFor.get(cls) ?? [])[0];
+
+  if (own) guarded.push(`\`${reset}\` (${anchor}) — ${why} — ring \`${own}\` on the same element`);
+  else if (wrapper)
+    guarded.push(`\`${reset}\` (${anchor}) — ${why} — ring \`${wrapper}\` on a JSX ancestor`);
+  else if (ownCss || wrapperCss) {
+    const rule = ownCss ?? wrapperCss;
+    guarded.push(
+      `\`${reset}\` (${anchor}) — ${why} — ring at ` +
+        `${relative(ROOT, rule.file)}:${rule.line} \`${rule.selector}\``,
+    );
+  } else
+    violations.push(
+      `NO AFFORDANCE  \`${reset}\` (${anchor}) resets the outline on a focusable control ` +
+        `(${why}) and neither it nor a JSX ancestor declares a replacement ring in ` +
+        `border-focus / var(--C-BORDER-FOCUS).`,
+    );
+}
+
 if (violations.length > 0) {
   console.error("\nverify-focus-affordance: VIOLATIONS FOUND\n");
   for (const v of violations) console.error("  - " + v);
@@ -514,13 +720,13 @@ if (violations.length > 0) {
     console.error("\n  Exempt (not DOM-focusable, so the reset is harmless):");
     for (const e of exemptions) console.error("    - " + e);
   }
-  console.error(`\n${violations.length} violation(s) across ${cssFiles.length} component stylesheets.`);
+  console.error(`\n${violations.length} violation(s) across ${scanned}.`);
   process.exit(1);
 }
 
 console.log(
   `verify-focus-affordance: OK — ${guarded.length} focusable control(s) reset their outline and ` +
-    `each declares a replacement affordance (${cssFiles.length} stylesheets scanned).\n`,
+    `each declares a replacement affordance (${scanned}).\n`,
 );
 console.log("  Guarded (focusable, reset, replacement present):");
 for (const g of guarded) console.log("    - " + g);
