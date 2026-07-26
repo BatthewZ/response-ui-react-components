@@ -79,6 +79,16 @@ good. These are the ways they have still let defects through.
 - **Prose about a gate drifts exactly like prose about a component.** A maintainer doc described
   the publish chain as five steps when it ran nine; the script itself is the only trustworthy
   source. If you document a chain, assert your description against it mechanically.
+- **Closing a code row re-falsifies the page that recorded it, and no gate will ever say so.**
+  The docs pass wrote pre-fix behaviour into Gotchas *by design*; the fix waves then closed
+  hundreds of rows while only the latest lanes swept the spokes, so roughly 245 sentences
+  across 60 pages went on describing already-fixed bugs — every gate green throughout, because
+  prose truth is the one thing none of them measures. The worst survivors were false
+  *cannot*s: pages telling consumers the library can't name a landmark, keep a tooltip open, or
+  give them heading navigation, long after the ability shipped — a page that under-promises
+  steers users away from working features and reads as authoritative while doing it. A fix is
+  not landed until the component's spoke — and any neighbouring page citing the behaviour — is
+  answered in the same increment; deferring that reconciliation compounds silently.
 - **The docs generator deletes a section when you hand it an *empty* fence.** Adding a new
   example to a component page means writing the `<!-- example:Name -->` marker by hand and
   letting `gen-docs` fill the fence — but its marker pattern treats the fence body as optional
