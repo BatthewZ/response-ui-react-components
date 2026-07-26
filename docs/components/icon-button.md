@@ -184,9 +184,10 @@ ring's *offset* is `ring-offset-0`, so it draws flush against the button and nev
   `--tw-ring-offset-color`, themed to `--C-SURFACE-0` by `@batthewz/response-ui-css`, and an
   IconButton is transparent at rest and lands on whatever surface you drop it on. Pass a
   `ring-offset-*` utility to open one anyway and you will see that band wherever the button
-  is not sitting on surface-0. [Button](button.md), [Checkbox](checkbox.md),
-  [ErrorBoundary](error-boundary.md) and [AvatarUpload](avatar-upload.md) share the same
-  recipe.
+  is not sitting on surface-0. [Button](button.md)'s transparent variants and
+  [Collapsible](collapsible.md)'s trigger share the same flush recipe; Button's filled
+  variants restore the 2px band on purpose, because a fill needs the separation from the
+  ring.
 - **The press animation is guarded.** `active:scale-95` shrinks the button on pointer-down,
   and `motion-reduce:active:scale-100` holds it still for anyone who asked for less motion
   (WCAG 2.3.3). Both utilities have the same specificity, so the guard wins on source order —
@@ -219,8 +220,8 @@ see is an empty *value*, so IconButton warns at render when it would have no nam
 - **Focus behaves like [Button](button.md#accessibility)** — `focus-visible` only, and a
   Tailwind ring is a `box-shadow`, so focusing never reflows the layout no matter what the
   ring does. `ring-transparent` at rest is a colour placeholder, not reserved space: on focus
-  the ring's spread grows from 2px to 4px and a further 2px offset shadow paints beneath it.
-  The unset offset colour is shared with Button, not an IconButton exception.
+  the same 2px ring turns `--C-BORDER-FOCUS` — the spread does not grow, and with
+  `ring-offset-0` no offset shadow paints beneath it.
 - **`disabled` removes the control from the tab order,** as the native attribute always does.
   A disabled icon-only button is therefore unreachable by Tab, though it stays in the
   accessibility tree — a screen reader's browse cursor still finds it and reads the name along

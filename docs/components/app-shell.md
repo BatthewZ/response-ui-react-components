@@ -42,7 +42,8 @@ inside `<AppShell>` doesn't affect the layout** — but any child that isn't one
 falls outside the three slots and gets auto-placed, so keep providers and overlays outside
 the root.
 
-`AppShell.Toggle`, `AppShell.Sidebar` and `AppShell.SidebarLink` read the context and throw
+`AppShell.Toggle`, `AppShell.Sidebar`, `AppShell.SidebarSection` and `AppShell.SidebarLink`
+read the context and throw
 `"AppShell compound components must be used within <AppShell>"` outside it. `Navbar`,
 `Brand`, `NavbarActions` and `Main` read nothing and never throw — they are pre-styled
 boxes you can wrap freely.

@@ -168,7 +168,7 @@ so overriding one re-tints every slider in the app at runtime, with no rebuild.
 | -------------------------------------- | -------------------- |
 | Filled part of the track, and the thumb | `--C-ACCENT`         |
 | Unfilled part of the track              | `--C-SURFACE-2`      |
-| Thumb ring, and the gap inside the focus ring | `--C-SURFACE-0` |
+| Thumb ring                              | `--C-SURFACE-0`      |
 | Focus ring                              | `--C-BORDER-FOCUS`   |
 | Outline when invalid                    | `--C-STATUS-ERROR`   |
 | Track and thumb corners                 | `--RADIUS-FULL`      |
@@ -193,31 +193,26 @@ a flat `0.5` opacity. None of them sit on the responsive `r`-scale, so a slider 
 the same size on mobile and desktop while the layout around it steps up at the 40rem
 breakpoint.
 
-Both the thumb ring and the 2px gap inside the focus ring are hard-wired to
-`--C-SURFACE-0`, the *base* surface — see [Gotchas](#gotchas) before dropping a slider on
-a card.
+The thumb's 2px ring is hard-wired to `--C-SURFACE-0`, the *base* surface — see
+[Gotchas](#gotchas) before dropping a slider on a card. The focus ring needs no
+backdrop-coloured gap: it lands flush on that ring, so it carries no surface guess of its
+own.
 
 ## Gotchas
 
-- **The thumb is a fifth larger in Firefox.** The two thumb pseudo-elements get *identical*
-  declarations — `::-webkit-slider-thumb` and `::-moz-range-thumb` are both a `1.25rem`
-  box with a `2px` ring, the same radius, colour, and focus shadow — and they still render
-  at different sizes, because the two default to different `box-sizing`. The `-webkit-` one
-  defaults to `border-box`, so the ring sits inside the box and the thumb measures
-  **20 × 20px** in Chromium; the `-moz-` one defaults to `content-box`, so the ring is added
-  outside it and the thumb measures **24 × 24px** in Firefox. Tailwind Preflight's `*, ::before, ::after { box-sizing: border-box }`
-  does not reach either pseudo-element, so a Preflight build does not even them out. The
-  focus `box-shadow` is drawn around the larger box too, so the focus ring is bigger in
-  Firefox by the same 4px. Add your own `::-moz-range-thumb { box-sizing: border-box }` if
-  the difference matters. The track itself is not affected — it is one gradient on the
-  input, identical in both engines (see [Theme tokens](#theme-tokens)).
+- **The thumb is the same 20 × 20px in both engines — because the stylesheet says so, not
+  because defaults agree.** `::-moz-range-thumb` defaults to `content-box` (Tailwind
+  Preflight's `*, ::before, ::after` reset does not reach UA pseudo-elements), which used
+  to add the `2px` ring outside the `1.25rem` box and render a 24px thumb in Firefox
+  against Chromium's 20px. `Slider.css` now sets `box-sizing: border-box` on the `-moz-`
+  pseudo-element explicitly — measured at 20.00px in both engines — so if you restyle the
+  thumb, keep that declaration.
 - **The invalid outline survives focus.** `.slider:focus-visible` sets `outline: none` to
   suppress the browser default, and at identical specificity it used to delete the
   `[aria-invalid="true"]` outline along with it. A dedicated
   `.slider[aria-invalid="true"]:focus-visible` rule now restores the error outline at higher
-  specificity, so tabbing onto an invalid slider keeps it. `aria-invalid` and any
-  [FieldError](field-error.md) text also carry the
-  state, so nothing is lost to assistive tech, but the visual cue is.
+  specificity, so tabbing onto an invalid slider keeps both the focus ring on the thumb and
+  the error outline on the track.
 - **The invalid state is an outline only.** The fill and thumb stay `--C-ACCENT` when
   `error` is set — unlike [RangeSlider](range-slider.md), which re-tints both to the error colour.
 - **Your `value` and the value in your state can diverge silently.** The component hands
@@ -231,11 +226,11 @@ a card.
   negative range rather than dividing by zero, so the track reads as empty no matter what
   `value` is. The browser separately treats a `max` below `min` as `min`, pinning the
   thumb.
-- **The thumb ring assumes the base surface.** The 2px thumb border and the 2px gap inside
-  the focus ring are both `--C-SURFACE-0`. On any other layer — a `--C-SURFACE-1` card, a
-  tinted panel — that ring is a visible halo in the wrong colour. This is the hand-written
-  CSS twin of the library-wide focus-ring offset gap. Restyle it through `className`, or
-  keep sliders on the base surface.
+- **The thumb ring assumes the base surface.** The 2px thumb border is `--C-SURFACE-0`. On
+  any other layer — a `--C-SURFACE-1` card, a tinted panel — that ring is a visible halo in
+  the wrong colour. (The focus ring no longer adds a surface-coloured gap of its own; the
+  border is the only place the guess lives.) Restyle it through `className`, or keep
+  sliders on the base surface.
 - **Your `style` wins over the fill.** The component writes `--slider-fill` first and
   spreads your `style` after it, so `style={{ "--slider-fill": "…" }}` overrides the
   computed fill and desynchronises it from the thumb.

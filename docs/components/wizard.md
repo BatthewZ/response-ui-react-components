@@ -47,11 +47,13 @@ Finish for you. The index is controllable, so cross-step validation stays yours.
 | `nextLabel`           | `string`                        | `"Next"`       |
 | `finishLabel`         | `string`                        | `"Finish"`     |
 | `className`           | `string`                        | —              |
+| …rest                 | `div` props, minus `children`; `onChange` is a compile error | — |
 
-That is the whole surface. `WizardProps` is a closed type — it does not extend the props of
-a `div`, and Wizard spreads no rest props onto its root, so `className` is the only thing
-you can put on the outer element. `id` and `ref` are compile errors; `data-*` and `aria-*`
-are not, and disappear. See [Gotchas](#gotchas).
+Rest props are spread onto the root `<div class="wizard">`, so `id`, `aria-label`,
+`data-testid`, `ref` and handlers all land there. `onChange` is declared `onChange?: never`
+— a compile error, not a prop that quietly does nothing — because the change channel is
+`onStepChange`, and a spread `{...form.field("x")}` would otherwise land a handler that a
+step's own inputs fire by bubbling.
 
 A `WizardStep` is three fields:
 
@@ -120,10 +122,10 @@ footer are laid out identically in both.
 ## Header navigation
 
 With `allowBackNavigation` at its default `true`, Wizard hands the header an `onStepClick`
-that acts only when `index < activeStep`: completed steps jump back, the current and
-upcoming ones are ignored. That gate is Wizard's, not the header's —
-[Stepper](stepper.md) turns **every** marker into a `<button>` as soon as any handler is
-supplied, so the forward ones are still focusable and still do nothing.
+plus an `isStepClickable` gate that admits only earlier steps: completed steps jump back,
+the current and upcoming ones stay plain `<span>` markers — [Stepper](stepper.md) renders a
+`<button>` only for the steps the gate admits, so there are no focusable markers that do
+nothing.
 
 Set it to `false` and no handler is passed at all: the markers render as `<span>`s, the
 header returns to a pure indicator, and the only way through the flow is the footer.
@@ -205,9 +207,9 @@ therefore just not calling your setter. Below, `step`/`setStep` is a `useState(0
 ```
 <!-- /example -->
 
-Note what this example does **not** try to do: gate the finish. `onComplete` fires in the
-same click as the `onStepChange` you refused — see [Gotchas](#gotchas) — so a final check
-belongs inside `onComplete` itself, not in the transition handler.
+Gating the transition gates the finish too: `onComplete` follows the *state*, not the
+request, so refusing the final `onStepChange` means the flow never enters the completed
+state and `onComplete` never fires. One handler guards both.
 
 Controlled-ness is locked on the first render. Mounting with `step={undefined}` and
 supplying a number later leaves the wizard uncontrolled for its whole life, and
@@ -234,7 +236,7 @@ itself calls it with `count: steps.length`.
 | `isFirst`    | `boolean`                | `activeStep <= 0`.                                                            |
 | `isLast`     | `boolean`                | `activeStep === count - 1` — the last actionable step, **false** once complete. |
 | `isComplete` | `boolean`                | `activeStep >= count`.                                                        |
-| `next()`     | `() => void`             | Advances one. On the last step lands on `count` and calls `onComplete`. No-op once complete. |
+| `next()`     | `() => void`             | Advances one. On the last step requests the terminal `count`; `onComplete` fires only when the state actually lands there. No-op once complete. |
 | `back()`     | `() => void`             | Retreats one. No-op at `0`; from the completed state returns to the last step. |
 | `goTo(step)` | `(step: number) => void` | Clamps into `0…count - 1`, so it can never reach the completed state.         |
 
@@ -300,30 +302,29 @@ form. Steps taller than that still grow the panel.
   `content` survives leaving it. A `useState` draft, a scroll position, an uncontrolled
   `<input>`'s value are all gone when the user presses Back and returns. Hold anything that has
   to persist across steps in the parent that renders the `Wizard`, not inside a step.
-- **`onComplete` cannot be refused, only ignored.** `next()` calls the state setter and then
-  fires `onComplete` in the same breath, with no check that the change was accepted. In a
-  controlled wizard whose handler declines the final move, `onComplete` still runs — and
-  because the flow never reaches the terminal index, Finish is never disabled and every
-  further click fires it again (measured: three clicks, three calls). If `onComplete` submits
-  an order, do the validation and the idempotency guard inside `onComplete`.
+- **`onComplete` follows the state, not the click.** It is edge-triggered on *entering* the
+  completed state, so a controlled parent that declines the final `onStepChange` never
+  receives it, and while the flow sits complete it does not re-fire. It is still not
+  once-per-mount: back out of the completed state and finish again, and it fires again.
 - **Do not clamp the index in a controlled parent.** `onStepChange` legitimately emits
-  `steps.length`. `setStep(Math.min(next, steps.length - 1))` looks defensive and is exactly
-  the bug above.
-- **The completed state is reversible from the header.** With `allowBackNavigation` on, every
-  marker — including the last step's — satisfies `index < activeStep` once complete, so a
-  click on it drops back to the last step and re-enables Finish.
-- **`allowBackNavigation` buys you dead tab stops.** It is all-or-nothing: turning it on makes
-  all N markers focusable buttons, and Wizard's handler silently ignores the forward ones.
+  `steps.length`. `setStep(Math.min(next, steps.length - 1))` looks defensive, but it means
+  the flow never enters the completed state — Finish never disables and `onComplete` never
+  fires.
+- **The completed state is reversible from the header — except through the last marker.**
+  Once complete, the last step's marker is deliberately not clickable, so a stray click
+  cannot silently un-complete the flow; the *earlier* markers still jump back, which leaves
+  the completed state and re-arms Finish on the way forward.
+- **Header buttons exist only where they act.** `allowBackNavigation` makes exactly the
+  reachable (earlier) markers into buttons; the current and upcoming markers stay
+  non-focusable spans, so there are no dead tab stops.
 - **`goTo` cannot finish the flow.** It clamps to `count - 1`, so it can never reach the
   terminal "all done" index that `next()` lands on. It no longer reports moves it did not
   make: `useControllableState` skips `onChange` when the resolved value equals the current
   one, so `goTo(0)` while already on step `0` is silent.
-- **`aria-*` and `data-*` on the root compile and then vanish.** Wizard destructures its
-  eleven props and spreads no rest, so nothing else reaches the `<div class="wizard">`.
-  TypeScript catches `id` and `ref` but exempts hyphenated JSX attributes from checking, so
-  `<Wizard aria-label="Checkout" data-testid="checkout" />` typechecks and the root renders
-  with `class` and nothing else (measured). Wrap the wizard in your own element to label or
-  target it.
+- **The step panel remount also remounts its focus.** Every step change moves DOM focus to
+  the panel itself (`tabIndex={-1}`), including a Back — so a keyboard user's position is
+  always the new content, not the button they pressed. The initial mount does not steal
+  focus.
 - **`steps={[]}` renders quietly.** You get an empty header, an empty content region, and
   both footer buttons disabled — no throw, no warning.
 - **Client component.** `Wizard.tsx` opens with `"use client"`, so it needs a client boundary
@@ -336,22 +337,21 @@ whole from [Stepper](stepper.md) — including its known gaps. The footer is two
 `<button type="button">`s with visible text labels, so a wizard nested in a `<form>` will not
 submit it, and the disabled states are the native attribute rather than a styling trick.
 
-- **A step change is not announced, and focus does not move.** The panel is a bare
-  `<div class="wizard__content">` — no `role`, no `aria-live`, no `id`, not focusable, and
-  nothing associates it with the header the way [Tabs](tabs.md) associates a panel with its
-  tab. After a click on Next, focus stays on the Next button (measured), which sits *after*
-  the panel in DOM order, so a screen-reader user gets no signal and has to navigate
-  backwards to find what changed. If your steps are long, manage focus yourself.
+- **A step change moves focus to the panel and announces it.** The content region is a
+  `role="group"` named with the active step's `title`, holds `tabIndex={-1}`, and receives
+  DOM focus on every step change after the initial mount — so a screen-reader user lands on
+  the new content instead of hunting backwards from the Next button.
 - **In the completed state nothing is current.** Every marker reads `done` and no element
   carries `aria-current` (measured), so "where am I" has no answer in the accessibility tree
   once the flow is finished.
-- **The region cannot be named.** `aria-label` and `aria-labelledby` are dropped before they
-  reach the root (see [Gotchas](#gotchas)), so a landmark or a name for the flow has to go on
-  a wrapper you render yourself.
-- **Clickable markers are poorly named.** A completed marker's only child is an
-  `aria-hidden` check glyph, so it announces as an unnamed button; active and upcoming ones
-  are named by their number alone. `allowBackNavigation={false}` removes all of them from
-  the tab order and is the better default for a strictly linear flow.
+- **Name the flow through rest props.** `aria-label` or `aria-labelledby` on the `Wizard`
+  reaches the root `<div>` untouched, so the whole flow can be a labelled region without a
+  wrapper.
+- **Clickable markers are named.** A header button announces as `"{title}, {status}"` — the
+  status word is part of the accessible name because the check glyph is `aria-hidden` and
+  `aria-current` sits on the `<li>`, not the control. Non-clickable markers carry the same
+  status as visually-hidden text, withheld on the current step where `aria-current="step"`
+  already announces it.
 - **A disabled button explains nothing.** Back on the first step and the primary button in
   the completed state are announced as unavailable with no reason given. Nothing in Wizard
   disables Next for a failed validation, so gate it in `onStepChange` — the button stays

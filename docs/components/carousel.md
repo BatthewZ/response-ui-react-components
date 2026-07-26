@@ -42,8 +42,8 @@ everything else is a plain rest spread placed **after** the attributes each part
 itself, so a prop you pass replaces the internal one — `tabIndex`, `aria-label` and
 `aria-roledescription`. The root's `onKeyDown` is the exception: it now composes with the
 arrow-key handler rather than replacing it. `Carousel.Track` likewise composes your
-`onMouseDown` and `onClickCapture` with its own drag
-handling instead of replacing them. See [Gotchas](#gotchas).
+`onMouseDown`, `onDragStart` and `onClickCapture` with its own drag handling instead of
+replacing them. See [Gotchas](#gotchas).
 
 ## How many slides you see at once
 
@@ -77,7 +77,7 @@ one slide per view. Set that variable on the root and it inherits down to every 
 TypeScript's `style` prop doesn't accept custom properties, so the object needs an
 `as CSSProperties` cast — `CSSProperties` is a type import from `react`.
 
-The arrows scroll by `track.clientWidth` minus the track's left padding (the peek), not by
+The arrows scroll by `track.clientWidth` minus the track's start padding (the peek), not by
 one slide, and snapping is `proximity` rather than `mandatory` — so a rail of narrow items
 advances by roughly a screenful and is allowed to come to rest between two slides.
 

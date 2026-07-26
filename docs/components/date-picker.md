@@ -28,6 +28,11 @@ its parsing and its formatting from the `locale` you hand it.
 | `disabled`       | `boolean`                     | `false`                                |
 | `clearable`      | `boolean`                     | `false`                                |
 | `rejectMessage`  | `(reason, text) => string`    | `` `${text} is not a date we can read.` `` |
+| `labels`         | `DatePickerLabels`            | English strings                        |
+| `weekStartsOn`   | `0 \| 1 \| 2 \| 3 \| 4 \| 5 \| 6` | `0` (Sun) — forwarded to the calendar |
+| `numberOfMonths` | `number`                      | `1` — forwarded to the calendar        |
+| `showToday`      | `boolean`                     | `false` — forwarded to the calendar    |
+| `todayLabel`     | `string`                      | `"Today"` — forwarded to the calendar  |
 | `name`           | `string`                      | — (no hidden input is rendered)        |
 | `className`      | `string`                      | — (lands on the **wrapper**, see below) |
 | `ref`            | `Ref<HTMLInputElement>`       | — (the visible text input)             |
@@ -121,9 +126,8 @@ or east of UTC. Clear the field and the hidden value becomes `""`.
 <!-- /example -->
 
 `required` passes through to the *visible* input, so the browser's own "please fill in this
-field" check applies to the text you can see. Keep the DatePicker inside the `<form>` it
-belongs to: a `form="…"` attribute lands on the visible unnamed input and never reaches the
-hidden one, so an out-of-form picker submits nothing.
+field" check applies to the text you can see. A `form="…"` attribute reaches the hidden
+input as well as the visible one, so a picker rendered outside its `<form>` still submits.
 
 ## Controlled
 
@@ -256,7 +260,8 @@ Standalone, drive the same styling from `error`:
 <!-- /example -->
 
 `disabled` recesses the field, blocks typing, hides the clear button, and disables the
-calendar button — so the popover has no way to open.
+calendar button — so the popover has no way to open. The hidden `name` input is disabled
+too, so a disabled picker submits nothing, like a native disabled control.
 
 ## Theme tokens
 
@@ -335,25 +340,25 @@ documented there, not here. Overriding a variable in the table above will not re
   5 June and emits **0**. This used to be a real corruption: the field kept the `en-US` string
   `6/5/2026`, the day-first `en-GB` parser read it back as **6 May**, and the next blur
   committed a date the user never chose. Remounting on a locale change is no longer necessary.
-- **The calendar is fixed to one Sunday-first month with no Today button.** [Calendar](calendar.md)'s
-  `weekStartsOn`, `numberOfMonths` and `showToday` are not part of DatePicker's props and are
-  not forwarded, so `locale="fr-FR"` gives you French month and weekday names in a grid that
-  still starts on `dim.`
+- **The calendar's own knobs are forwarded, not defaulted away.** `weekStartsOn`,
+  `numberOfMonths`, `showToday` and `todayLabel` pass straight through to the popover
+  [Calendar](calendar.md) — but `locale` still does not set the week start, so `locale="fr-FR"`
+  without `weekStartsOn={1}` gives you French names in a grid that starts on `dim.`
 - **The popover's control labels default to English but are overridable.** "Open calendar",
   "Clear date", "Choose date", "Previous month" and "Next month" come from `labels` and ignore
   `locale`, so a localized app has to pass them — as it does `rejectMessage`. The dates
   themselves are localized correctly.
-- **Opening the calendar does not put focus on a day.** Focus lands on the "Previous month"
-  button, so arrow keys do nothing until you tab into the grid. See
-  [Accessibility](#accessibility).
+- **Opening the calendar puts focus on a day.** The dialog's focus manager is told to stand
+  down (`initialFocus={-1}`) and the calendar focuses its own roving day — the selected day
+  when one is visible — so arrow keys work immediately. See [Accessibility](#accessibility).
 
 ## Accessibility
 
-The visible control is an ordinary `textbox`. It carries `aria-haspopup="dialog"`,
-`aria-expanded`, and an `aria-controls` pointing at the popover; the calendar button carries
-`aria-haspopup="dialog"` and `aria-expanded` too, so the popup is advertised twice — once on
-the field, once on the button. There is no `role="combobox"` and no `aria-activedescendant`:
-the input is a plain text field that happens to own a dialog.
+The visible control is an ordinary `textbox`, and it advertises no popup — the
+`aria-haspopup="dialog"`, `aria-expanded` and `aria-controls` live on the calendar button,
+the one control that actually opens the dialog. There is no `role="combobox"` and no
+`aria-activedescendant`: the input is a plain text field that happens to sit beside a
+button that owns a dialog.
 
 The popover is a portalled `role="dialog"` labelled "Choose date", not modal (`aria-modal` is
 absent and there is no focus trap), which is the right call for a field-attached picker —
@@ -364,12 +369,12 @@ leaves the value untouched. Clicking outside closes it, and so does tabbing past
 focus moves on to whatever follows the field in the page. Picking a day closes the popover and
 returns focus to the input, as does the clear button.
 
-Opening it is the weak spot: focus goes to the first control in the dialog — the "Previous
-month" button — not to the selected day, so a keyboard user presses `ArrowRight` and nothing
-happens. Three more `Tab`s (month caption, next-month, then the grid) are needed to get there.
-Once focus is on a day the grid behaves: arrows move by day and week, `Home`/`End` jump to the
-ends of the week, `PageUp`/`PageDown` change month, the whole grid is a single tab stop, each
-day button is named with its full localized date, and the selected day is `aria-selected`.
+Opening it lands focus straight on the calendar's roving day — the selected day when it is
+in view — not on the "Previous month" button, so the first `ArrowRight` moves a day. From
+there the grid behaves: arrows move by day and week, `Home`/`End` jump to the ends of the
+week, `PageUp`/`PageDown` change month, the whole grid is a single tab stop, each day button
+is named with its full localized date, and the selected day's `role="gridcell"` wrapper
+carries `aria-selected`.
 
 **Naming.** The field has no accessible name of its own. Give it a [Label](label.md) with
 `htmlFor` matching its `id`, or an `aria-label`.

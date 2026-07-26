@@ -17,7 +17,7 @@ optional collapsing so a deep path doesn't eat the header.
 **Anatomy.** `Breadcrumbs` renders the `<nav aria-label="Breadcrumb">` and, inside it, the
 `<ol class="breadcrumbs__list">`. It reads its `children` with `Children.toArray`, applies
 the collapse window if you asked for one, then **interleaves a separator `<li>` between
-every remaining child itself** — you never write the separators. Each `Breadcrumbs.Item`
+every remaining child itself** — you never have to write a separator. Each `Breadcrumbs.Item`
 is one `<li>` that picks one of three inner elements from its props, in this order: a
 `<span aria-current="page">` if you pass `current`, an adapter `Link` if you pass `href`,
 and a plain `<span>` if you pass neither.
@@ -125,8 +125,9 @@ below is your router's own `Link` (react-router's, Next's, TanStack's) wrapped t
 
 This is the same one-time setup `AppShell.SidebarLink` and
 [RequireAuth](require-auth.md)'s default redirect use; the full adapter recipe, including
-`usePathname`, is in the package README and `AGENTS.md`. Breadcrumbs itself never calls
-`usePathname` — see [Gotchas](#gotchas).
+`usePathname`, is in the package README and `AGENTS.md`. Breadcrumbs itself reads
+`usePathname` only to reset the ellipsis expansion on navigation — never to decide which
+crumb is current; see [Gotchas](#gotchas).
 
 ## Theme tokens
 
@@ -167,8 +168,8 @@ letter-spacing are `em`-relative literals rather than contract variables, tracki
   `<a href>`; in an SPA that is a document load, not a route change. See
   [Routing](#routing). The `Link` is also handed only `to` and a class name, so there is no
   way to ask for a history-replacing navigation from an `Item`.
-- **`aria-current` is entirely on you.** Breadcrumbs never reads the current URL — it does
-  not call `usePathname`, and nothing compares an `href` to the location. Forget `current`
+- **`aria-current` is entirely on you.** Breadcrumbs reads the pathname only to key the
+  ellipsis-expansion state — nothing compares an `href` to the location. Forget `current`
   on the last crumb and the trail announces as a row of links with no "you are here".
 - **`current` beats `href`.** Pass both and the item renders the `<span aria-current="page">`;
   the `href` is silently dropped and the crumb is not clickable. Usually what you want for

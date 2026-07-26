@@ -208,6 +208,7 @@ control that changes your theme is itself fully themed by that theme.
 | Hover wash                   | `--C-SURFACE-1`                       |
 | Selected option              | `--C-SURFACE-0` · `--SHADOW-SM`       |
 | Option padding               | `--R-SIZE-6` block · `--R-SIZE-4` inline |
+| Focus ring                   | `--C-BORDER-FOCUS`                    |
 | Transition                   | `--DURATION-FAST` · `--MOTION-EASE-SHIFT` |
 
 The three surfaces stack on purpose: the track sits one step *into* the page
@@ -262,11 +263,11 @@ not. The key handling is the component's own, because the hook's handler
 moves focus *without* selecting, which for a radiogroup would leave the tab stop and the
 checked option in different places (the same split [Rating](rating.md) settled on).
 
-`ThemeSwitcher.css` defines no `:focus-visible` rule and removes no outline, so keyboard
-focus falls back to the browser's default ring. It is visible, but it is one of only two
-focus indicators in the library that neither match the others nor re-tint from
-`--C-BORDER-FOCUS` — the other being [Collapsible](collapsible.md)'s trigger `<button>`, which has no focus
-styling in its `.tsx` or its `.css` either.
+Keyboard focus draws a 2px `--C-BORDER-FOCUS` outline on `:focus-visible`, **inset**
+(`outline-offset: -2px`) like the sibling segmented control [Tabs](tabs.md): the track pads
+its options by only `0.125rem`, so an outset ring would sit on the group border instead of
+on the segment that actually holds focus. It re-tints with the theme like every other focus
+indicator in the library.
 
 The resting label is `--C-TEXT-SECONDARY` at `0.8125rem` on `--C-SURFACE-2`. No guard in
 this repo measures contrast pairs, so check that one against your own theme's values.

@@ -273,9 +273,11 @@ own theme. See the [theme contract](../theme-contract.md).
   unless you add `role="status"` yourself. Note that a live region inserted into the DOM at
   the same moment as its content is announced inconsistently across screen readers — keep
   the container mounted and swap its children if the announcement must be reliable.
-- **Contrast.** The description and icon are `--C-TEXT-MUTED`, which fails WCAG AA against
-  every theme's `--C-SURFACE-0` (see [Theme tokens](#theme-tokens)). Do not put the only
-  copy of an instruction there.
+- **Contrast.** The description and icon are `--C-TEXT-MUTED`, which since the
+  `@batthewz/response-ui-css` v0.10.1 retune clears WCAG AA body text against every shipped
+  theme's `--C-SURFACE-0` (see [Theme tokens](#theme-tokens)). It is still the contract's
+  most-muted role, and a theme of your own may tune it back down — keep the sentence a user
+  must act on in the title.
 - **Actions are your components.** `EmptyStateActions` is an unlabelled `<div>` that adds no
   semantics — focus order, button `type`, and accessible names are whatever you render into
   it. A [Button](button.md#gotchas) brings its own `type="button"`; a raw `<button>` you render

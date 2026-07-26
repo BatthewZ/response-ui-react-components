@@ -55,9 +55,9 @@ both jobs — labels the avatar and generates the initials.
 `"Ada Byron King Lovelace"` gives `AB`, and `"Katherine Grace Johnson"` gives `KG`. A
 single-word name gives a single letter. Leading, trailing, and repeated whitespace is
 collapsed first, so a name that is empty or all whitespace produces no initials at all. The
-letter is taken by UTF-16 code unit, so a word starting with an astral character — most emoji,
-some CJK extension characters — yields a lone surrogate rather than the glyph; accents and
-common CJK are fine (`"josé álvarez"` → `JÁ`, `"李 明"` → `李明`).
+letter is taken per Unicode code point, not per UTF-16 code unit, so a word starting with an
+astral character — an emoji, a CJK extension character — yields the whole glyph rather than a
+lone surrogate; accents and CJK work as expected (`"josé álvarez"` → `JÁ`, `"李 明"` → `李明`).
 
 <!-- example:Initials -->
 ```tsx
@@ -98,8 +98,10 @@ avatar lands flush on that component's connector rail. The initials step with th
 ## Presence
 
 `status` adds a dot to the bottom-right corner — `online` (success), `away` (warning),
-`offline` (a neutral surface tint). The dot is decoration only: it has no label and is not
-announced, so pair it with text wherever presence carries meaning.
+`offline` (a neutral surface tint). The dot element itself is unlabelled, but `status` folds
+a label into the avatar's accessible name — `"Ada Lovelace, Online"` — and `statusLabel`
+replaces the English default. On screen the dot is still only a colour, so pair it with
+visible text wherever presence carries meaning.
 
 <!-- example:Status -->
 ```tsx
@@ -149,8 +151,9 @@ The chip appears only when there are more children than `max`, and counts the di
 five children with `max={3}` render three avatars and `+2`. Omit `max` and everything renders
 with no chip.
 
-The group's `size` sets the overlap distance and the `+N` chip's dimensions — it does **not**
-reach the children. Set it in both places or the chip won't match the stack:
+The group's `size` sets the overlap distance, the `+N` chip's dimensions, **and** its Avatar
+children: a child with no explicit `size` inherits the group's, and one with its own keeps
+it. Setting it in both places, as below, is harmless:
 
 <!-- example:GroupSizing -->
 ```tsx
@@ -173,7 +176,7 @@ change at runtime.
 | Fallback circle fill         | `bg-surface-2`                                      | `--C-SURFACE-2`                                              |
 | Initials · `+N` ink          | `text-fg-secondary`                                 | `--C-TEXT-SECONDARY`                                         |
 | Initials · `+N` weight       | `font-semibold`                                     | `--Semibold-Weight`                                          |
-| Initials · `+N` type (`sm`–`xl`) | `text-body-3` `text-body-2` `text-body-1` `text-h3` | `--BodyText-3` `--BodyText-2` `--BodyText-1` `--H3`      |
+| Initials · `+N` type (`xs`–`xl`) | `text-body-3` `text-body-2` `text-body-1` `text-h3` | `--BodyText-3` `--BodyText-2` `--BodyText-1` `--H3`      |
 | Circle corners               | `rounded-full`                                      | `--RADIUS-FULL`                                              |
 | Presence — online · away     | `bg-status-success` `bg-status-warning`             | `--C-STATUS-SUCCESS` `--C-STATUS-WARNING`                    |
 | Presence — offline · `+N` chip | `bg-surface-3`                                    | `--C-SURFACE-3`                                              |
@@ -187,8 +190,8 @@ thicken inside a circle that doesn't. Every size reads a type token, `xs` includ
 `text-body-3` with `sm` rather than pinning a literal.
 
 The ring around the presence dot and around each stacked avatar is hard-coded to
-`--C-SURFACE-0`. That is correct on the topmost surface and wrong anywhere else — see
-[Gotchas](#gotchas).
+`--C-SURFACE-0`. That is correct on a `surface-0` backdrop and wrong anywhere else —
+including, in the dark themes, the page itself — see [Gotchas](#gotchas).
 
 ## Gotchas
 
@@ -204,14 +207,14 @@ The ring around the presence dot and around each stacked avatar is hard-coded to
 - **An avatar with nothing to announce drops its `role` instead of keeping an empty one.**
   `<Avatar />`, `name="   "` and `alt=""` (an empty `alt` still beats a real `name`, the same
   way it marks an `<img>` decorative) all produce a plain `<span>` with no `role="img"` and no
-  `aria-label`, rather than a nameless image. That is the better failure, not a substitute for
+  `aria-label`, rather than a nameless image — unless `status` is set, whose label alone can
+  still name it. That is the better failure, not a substitute for
   a name: pass a non-empty `alt` or `name` whenever the avatar carries meaning.
 - **`children` is a compile error, as it is on Skeleton and Spinner.** `AvatarProps` omits it
-  from `ComponentPropsWithRef<"span">`, so `<Avatar name="Ada Lovelace">anything</Avatar>` no
-  longer typechecks and then silently drops what you passed. [Skeleton](skeleton.md) and the
-  wrapper's own JSX children beat the spread. [Skeleton](skeleton.md) and
-  [Spinner](spinner.md) do omit it and reject the same code at compile time; Avatar is the odd
-  one out. Compose around an Avatar, never inside it.
+  from `ComponentPropsWithRef<"span">`, so `<Avatar name="Ada Lovelace">anything</Avatar>`
+  fails to typecheck instead of typechecking and then silently dropping what you passed —
+  the same guard [Skeleton](skeleton.md) and [Spinner](spinner.md) carry. Compose around an
+  Avatar, never inside it.
 - **The presence dot is announced through the name, not the dot.** `status` appends its label
   to the avatar's accessible name (`"Ada Lovelace, Online"`); `statusLabel` replaces the English
   default. The dot element stays unlabelled — it has to be, because ARIA makes the children of
@@ -219,13 +222,16 @@ The ring around the presence dot and around each stacked avatar is hard-coded to
   a grey/amber pair that is a hard discrimination for some readers, so put the state in visible
   text as well wherever it matters.
 - **`AvatarGroup`'s `size` reaches its Avatar children.** A child with an explicit `size` keeps
-  it; one without inherits the group's. Anything that is not an `Avatar` is left alone. The old
-  behaviour was that children kept whatever `size` they were
-  given, so `<AvatarGroup size="lg">` around default `md` avatars produces a `+N` chip that is
-  visibly larger than the stack.
+  it; one without inherits the group's. Anything that is not a direct `Avatar` element is left
+  alone — wrap your avatars in a component of your own and they size themselves again, so pass
+  `size` explicitly there.
 - **The stack ring assumes a `surface-0` background.** The 2px ring that separates overlapping
   avatars, and the one around the presence dot, always paint `--C-SURFACE-0`. On a `surface-1`
   card, a `surface-2` panel, or a `bg-primary` band it reads as a pale halo rather than a cut-out.
+  The dark themes don't even guarantee the page: `grimdark` and `tech` paint the body
+  `--C-CANVAS`, which diverges from their `--C-SURFACE-0`, so an avatar sitting directly on the
+  page there already gets a visibly lighter ring. The dot's ring sits on an inner element
+  `className` cannot reach, so there is no override path.
 - **`className` merges last.** It is passed through `cn()` after the size class, so a `size-*`
   utility in `className` overrides the `size` prop — that is how [AvatarUpload](avatar-upload.md) stretches an
   avatar to fill its own frame.
@@ -234,7 +240,8 @@ The ring around the presence dot and around each stacked avatar is hard-coded to
 
 ## Accessibility
 
-The wrapper is a `<span role="img">` whose accessible name is `alt ?? name`. The initials are
+The wrapper is a `<span role="img">` whose accessible name is `alt ?? name`, with the
+`status` label appended when there is one. The initials are
 rendered in an `aria-hidden` span, so screen readers never spell out "A, L" — they read the
 name. The `<img>` also carries an `alt` of the same string, but `role="img"` makes its subtree
 presentational, so the label is announced once.

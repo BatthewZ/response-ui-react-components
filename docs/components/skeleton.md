@@ -22,11 +22,12 @@ shapes, colour and corners straight off the theme contract, and a pulse that sto
 | `ref`       | `Ref<HTMLSpanElement>`                                   | —        |
 | …rest       | props of `span`                                          | —        |
 
-`variant` picks the corner treatment — and, on `text` only, a `1em` height. Size otherwise
+`variant` picks the corner treatment; a default height comes with the base rule — `1em`,
+except on `circular`, which derives its height from its width instead. Size otherwise
 comes from `width` and `height`, which are written straight into the element's inline
-`style`: a bare number becomes `px`, a string is used verbatim. That inline style is why
-`width` cannot be set from a class and `height` usually can. See [Gotchas](#gotchas) —
-`variant`, `width` and `height` each have a sharp edge.
+`style`: a bare number becomes `px`, a string is used verbatim. Between the inline style
+and the component stylesheet, **neither dimension can be set from a class**. See
+[Gotchas](#gotchas) — `variant`, `width` and `height` each have a sharp edge.
 
 ## Skeleton or Spinner?
 
@@ -41,10 +42,10 @@ The tiebreaker is **layout stability**, not aesthetics. A skeleton that isn't th
 the content it replaces buys you nothing a spinner wouldn't — you still get the reflow, you
 just get it prettier. If you can't predict the size, use a spinner.
 
-Two practical differences follow from that. Skeleton is plural by nature (a screen is many
-of them), which is why it announces nothing until you give one of them `children` — see
-[Accessibility](#accessibility). And Skeleton drops its animation under
-`prefers-reduced-motion`; Spinner does not.
+One practical consequence follows from that. Skeleton is plural by nature (a screen is
+many of them), which is why it announces nothing until you give one of them `children` —
+see [Accessibility](#accessibility). Spinner shares that default, and both drop their
+motion under `prefers-reduced-motion`, so neither of those is a tiebreaker.
 
 ## Shapes and sizing
 
@@ -57,14 +58,16 @@ of them), which is why it announces nothing until you give one of them `children
 ```
 <!-- /example -->
 
-Only `text` carries a height of its own — `1em`, so it tracks the font size of whatever it
-sits in. `circular`, `rectangular` and `rounded` leave height to you, and with none set they
-compute to **0px** and render nothing visible. The element's one child is a visually hidden,
-absolutely positioned label, so there is no in-flow content to give the box a height.
+Every variant has a default height. The base rule sets `1em`, so a bare skeleton tracks
+the font size of whatever it sits in — right for a line of text, and the reason
+`rectangular` and `rounded` usually want an explicit `height`, since a block placeholder
+one line tall is rarely the shape you meant.
 
-`circular` is `border-radius: 50%`, which is a circle only when the box is square. With the
-default `width: "100%"` still in place, `<Skeleton variant="circular" height={40} />` is a
-full-width ellipse — pass a matching `width`.
+`circular` is `border-radius: 50%` with `aspect-ratio: 1` and `height: auto`, so its
+height derives from its width and a circle stays circular. Pass an explicit `height` and
+the ratio no longer governs: with the default `width: "100%"` still in place,
+`<Skeleton variant="circular" height={40} />` is a full-width ellipse — pass a matching
+`width`, or only a `width` and let the ratio set the height.
 
 ## Composing a skeleton screen
 
@@ -146,8 +149,8 @@ the user must be told about, render the region up front and change what is insid
 ## Sizing with a class
 
 `className` is appended through `cn`. None of the base classes are Tailwind utilities, so
-`tailwind-merge` has nothing to collapse and a height utility simply lands — on the three
-variants that have no height rule of their own:
+`tailwind-merge` has nothing to collapse and a height utility simply lands on the
+element — but landing is not winning:
 
 <!-- example:SizedFromClassName -->
 ```tsx
@@ -155,15 +158,20 @@ variants that have no height rule of their own:
 ```
 <!-- /example -->
 
-Width is different, and the asymmetry is the thing to remember: `width` always reaches the
-DOM as an inline style, and inline styles beat every class. `w-64` on a Skeleton is dead
-code. See [Gotchas](#gotchas).
+The `h-48` there is dead code. Since every variant gained a default height, `.skeleton`'s
+`height` rule lives in unlayered component CSS, and unlayered author rules outrank
+Tailwind's `@layer utilities` outright — a cascade fact that once bit only
+`variant="text"` and now covers every variant. `width` never even reaches the cascade: it
+always ships as an inline style, which beats any class. So `w-64` and `h-48` are both
+inert on a Skeleton — size it with the `width` and `height` props, or `style`. See
+[Gotchas](#gotchas).
 
 ## Theme tokens
 
 Every visible rule lives in `Skeleton.css` and reads contract variables directly, the way
 [Tabs](tabs.md) and [ActivityFeed](activity-feed.md) do. The component's only Tailwind class
-is `sr-only`, on the hidden label, which resolves to no token. Override these and every
+is `sr-only`, on the hidden label it renders when you pass `children`, and it resolves to
+no token. Override these and every
 placeholder in the app re-tints, at runtime, with no rebuild.
 
 | Where                            | Override        |
@@ -192,10 +200,11 @@ That is the whole contract surface, and three things are deliberately *outside* 
 
 ## Gotchas
 
-- **Three of the four variants render nothing without a `height`.** `circular`,
-  `rectangular` and `rounded` have no height rule, and the only child is an absolutely
-  positioned `sr-only` span, so the box collapses to 0px. `<Skeleton variant="circular" />`
-  is silently invisible. `text` is the exception (`1em`).
+- **A one-line default height on block shapes.** Every variant falls back to the base
+  rule's `1em` (`circular` to its aspect ratio), so nothing renders at 0px — but a
+  `rectangular` or `rounded` placeholder without an explicit `height` is a text-line-sized
+  sliver, almost never the block you meant. Pass `height` for anything that isn't a line
+  of text.
 - **`width` can't come from a class.** It defaults to `"100%"` and is always emitted as an
   inline style, which outranks any utility — `w-64` and `w-full` never apply. Set the `width`
   prop, or `style`. `width={undefined}` just re-applies the `"100%"` default — to drop the
@@ -203,10 +212,12 @@ That is the whole contract surface, and three things are deliberately *outside* 
   overwrites it with nothing and React omits the property, so a Skeleton with no `height` renders
   with no `style` attribute at all. (`max-w-*` is the exception that proves the rule: it sets a
   different property, so it clamps the inline `100%` and does work.)
-- **`height` from a class works — except on `variant="text"`.** `height` reaches the inline
-  style only when you pass it, so `className="h-48"` applies to the other three. On `text`,
-  `.skeleton--text { height: 1em }` is unlayered component CSS and outranks Tailwind's
-  `@layer utilities`, so the class loses and the box stays one line tall.
+- **`height` can't come from a class either — on any variant.** The base
+  `.skeleton { height: 1em }` (and `circular`'s `height: auto`) is unlayered component CSS,
+  and unlayered author rules outrank Tailwind's `@layer utilities` regardless of
+  specificity — so `className="h-48"` loses everywhere and the box stays one line tall.
+  Pass the `height` prop, or `style`, both of which write an inline style that beats the
+  stylesheet.
 - **`style` beats both size props.** The caller's `style` spreads *after* `{ width, height }`,
   so `style={{ height: "2rem" }}` wins. Deliberate, and the escape hatch for `variant="text"`.
 - **A skeleton announces nothing unless you give it `children`.** By default it is
@@ -243,11 +254,10 @@ screen-reader user less than one region does.
 **Motion.** `Skeleton.css` ships a `@media (prefers-reduced-motion: reduce)` block that sets
 `animation: none` and pins `opacity: 0.7`, so a reader who has asked their OS for reduced
 motion gets a static, still-visible placeholder rather than an opacity cycle. This is the
-library's normal behaviour — 23 component stylesheets carry the same guard — and it is the
-concrete way Skeleton differs from [Spinner](spinner.md), whose `animate-spin` utility is
-unguarded because it is a Tailwind utility with no stylesheet to put the guard in. If you are
-choosing a loading affordance for a long wait and vestibular safety matters, that difference
-is real.
+library's normal behaviour — 23 component stylesheets carry the same guard, and
+[Spinner](spinner.md), having no stylesheet to put one in, carries the equivalent
+`motion-reduce:animate-none` utility instead. Either loading affordance is safe for a long
+wait.
 
 **Contrast.** Once hidden, a skeleton is a decorative graphic, so WCAG 1.4.11's 3:1 rule for
 meaningful non-text content doesn't apply. It still has to be *visible* to do its job, and

@@ -35,6 +35,7 @@ exception — see [Gotchas](#gotchas).)
 | `weekStartsOn`   | `0 \| 1 \| 2 \| 3 \| 4 \| 5 \| 6` | `0` (Sun) |
 | `showToday`      | `boolean`                        | `false`   |
 | `todayLabel`     | `string`                         | `"Today"` |
+| `labels`         | `CalendarLabels`                 | English strings |
 | `ref`            | `Ref<HTMLDivElement>`            | —         |
 | …rest            | `div` props, minus `value` / `defaultValue`; `onChange` is a compile error | — |
 
@@ -109,7 +110,9 @@ instead of growing a nested scrollbar.
 long month names in the header caption, the short ones in the month picker, and each day
 button's accessible name. `weekStartsOn` is a separate index (`0` = Sunday) that rotates the columns and also
 retargets <kbd>Home</kbd>/<kbd>End</kbd>, so a `fr-FR` calendar does not silently start on
-Monday — set both.
+Monday — set both. The ‹ › buttons' accessible names ("Previous month", "Next month", and
+the year/decade variants the quick-nav uses) default to English; override them through the
+`labels` object.
 
 ## The Today shortcut
 
@@ -150,7 +153,8 @@ and feed it back:
 Clicking the header caption opens a 12-month picker, and clicking it again opens a
 12-year page; picking a year returns to the months, picking a month returns to the grid.
 While a picker is open the ‹ › buttons step by a year and by twelve years respectively.
-This quick-nav only exists when a single month is displayed — see [Gotchas](#gotchas).
+The caption stays interactive at every `numberOfMonths`; with several grids it reads the
+whole visible span and the quick-jump moves the whole window.
 
 ## Sizing
 
@@ -187,7 +191,7 @@ of the app at runtime, with no rebuild.
 | Today marker ring                             | `--C-BORDER-STRONG`                                         |
 | Outside-month and disabled days               | `--C-TEXT-MUTED`                                            |
 | Hover wash — day, caption, picker cell, Today | `--C-SURFACE-2`                                             |
-| Range band and preview (`RangeCalendar` only) | `--C-SURFACE-2`                                             |
+| Range band and preview (`RangeCalendar` only) | `--C-SURFACE-3`                                             |
 | Today footer ink                              | `--C-ACCENT`                                                |
 | Cell and control corners                      | `--RADIUS-MD`                                               |
 | Focus outline                                 | `--C-BORDER-FOCUS`                                          |

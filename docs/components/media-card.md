@@ -205,8 +205,9 @@ The white ink `Content` applies is **not** a token you can re-point: it is a lit
 differently, override the rule or pass your own colour class.
 
 Under `prefers-reduced-motion: reduce` the card keeps its `box-shadow` transition but drops
-the transform from the transition list and sets `transform: none` on hover — so the elevation
-change survives and the scale and lift do not.
+the transform from the transition list and sets `transform: none` on hover — so on hover the
+elevation change survives and the scale and lift do not. The `:focus-within` twin is not
+zeroed the same way: tabbing in still applies the transform, just untransitioned.
 
 ## Gotchas
 
@@ -234,7 +235,10 @@ change survives and the scale and lift do not.
   you just get the poster ratio and no card frame.
 - **The lift answers focus as well as hover.** `.media-card:focus-within` carries the same
   scale, travel and elevation as `:hover`, so tabbing into a control inside the card raises it
-  the same way. Both are dropped under `prefers-reduced-motion: reduce`.
+  the same way. Under `prefers-reduced-motion: reduce` they part ways: the reduced-motion
+  block zeroes the transform on `:hover` only, so a hovered card keeps just the shadow change
+  while a focused one still scales and lifts — instantly, since the transform is dropped from
+  the transition list.
 - **Client component.** `MediaCard.tsx` opens with `"use client"` — `orientation` is passed
   through a React context — so importing any part opts that module into the client bundle.
 

@@ -57,7 +57,8 @@ export function AnnounceOnce() {
   );
 }
 
-/** `height` can come from `className` on the non-text variants; `width` never can. */
+/** The `h-48` is deliberately inert — the page uses it to show utilities lose to the
+ *  unlayered base `height`; size with the `width`/`height` props instead. */
 export function SizedFromClassName() {
   return <Skeleton variant="rounded" width="18rem" className="h-48" />;
 }

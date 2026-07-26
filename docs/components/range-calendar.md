@@ -41,6 +41,7 @@ type DateRange = { start: Date | null; end: Date | null };
 | `weekStartsOn`   | `0 \| 1 \| 2 \| 3 \| 4 \| 5 \| 6`                          | `0` (Sunday)               |
 | `showToday`      | `boolean`                                                  | `false`                    |
 | `todayLabel`     | `string`                                                   | `"Today"`                  |
+| `labels`         | `CalendarLabels`                                           | English strings            |
 | `ref`            | `Ref<HTMLDivElement>`                                      | —                          |
 | …rest            | `div` props, minus `value` / `defaultValue`; `onChange` is a compile error | —          |
 
@@ -113,10 +114,11 @@ yourself.
 
 ## Driving the visible month
 
-The displayed month is seeded once, at mount. Changing `value` afterwards moves nothing:
-set a controlled range to a span in another month and the grids stay where they were, with
-no endpoint visible anywhere. Preset buttons, "apply last quarter" links, and anything else
-that writes a range from outside must move the view too:
+The view follows a *change* of range on its own — write a span in another month from a
+preset button and the grids move there, anchored on `start ?? end`, with `onMonthChange`
+reporting the move. Own `month` yourself and that follow becomes a request instead: the
+grids stay put and `onMonthChange` is called with the month that would show the range,
+which the handler below honours by holding it in state:
 
 <!-- example:WithPresets -->
 ```tsx
@@ -171,11 +173,14 @@ on its own is fine — the calendar stays uncontrolled and just reports where it
 <!-- /example -->
 
 `min`, `max`, and `isDateDisabled` are combined into a single per-day test, and a day that
-fails it renders `aria-disabled="true"` and drops its click. They gate **endpoints only**.
-Nothing checks the span between two endpoints, so with weekends blocked, a Friday →
-Monday pick commits and the Saturday between them renders both `aria-disabled="true"` and
-`data-in-range`. If a contiguous run of available days is a real requirement — a hotel
-booking, a rental — validate the committed range yourself in `onValueChange`.
+fails it renders `aria-disabled="true"` and drops its click. While the second endpoint is
+being picked, a candidate day is *also* blocked when any `isDateDisabled` day lies strictly
+between it and `start` — so with weekends blocked, a Friday → Monday pick refuses the
+Monday rather than committing a range that spans the Saturday. `min` and `max` need no
+such scan: they are contiguous bounds, so they cannot block an interior day of a span
+whose endpoints both pass. The one hole left is a `value`/`defaultValue` you write from
+outside — nothing validates a range the component didn't pick, so guard preset spans
+yourself.
 
 ## Locale and week start
 
@@ -189,7 +194,8 @@ booking, a rental — validate the committed range yourself in `onValueChange`.
 headers, and each day button's accessible name ("13 June 2026"). `weekStartsOn` is a
 separate `0`–`6` knob and defaults to Sunday — the locale does not set it, so `en-GB`
 without `weekStartsOn={1}` still starts its weeks on Sunday. It also shifts what
-<kbd>Home</kbd>/<kbd>End</kbd> treat as the ends of a week.
+<kbd>Home</kbd>/<kbd>End</kbd> treat as the ends of a week. The `labels` object overrides
+the English defaults for the ‹ › button names and the in-range/preview name suffixes.
 
 ## Today shortcut
 
@@ -199,8 +205,10 @@ without `weekStartsOn={1}` still starts its weeks on Sunday. It also shifts what
 ```
 <!-- /example -->
 
-`showToday` renders a footer button that navigates to today, focuses it, and leaves the
-picker in the day view. In this component it selects nothing — see [Gotchas](#gotchas).
+`showToday` renders a footer button that navigates to today, focuses it, and — when today
+is selectable — feeds it into the same two-click protocol as clicking the cell: it starts
+a new range, or completes one mid-pick. If `min`/`max`/`isDateDisabled` rule today out,
+the button still navigates but selects nothing.
 
 ## Theme tokens
 
@@ -213,7 +221,8 @@ per-component variable to reach for here.
 Everything that sheet reads, grouped by what you would want to change:
 
 - **Range band** — days strictly between the endpoints, and the live preview, both wash
-  with `--C-SURFACE-2` and square off their corners.
+  with `--C-SURFACE-3` — one surface step deeper than the hover wash — and square off
+  their corners.
 - **Endpoints** — `--C-ACCENT` fill, inked with `--C-TEXT-ON-ACCENT` falling back to
   `--C-TEXT-INVERSE`; hover is `--C-ACCENT-HOVER` falling back to `--C-ACCENT`.
 - **Shell** — `--C-SURFACE-0` fill, a 1px `--C-BORDER-DEFAULT` border, `--RADIUS-LG`
@@ -252,9 +261,10 @@ that component, not from `Calendar.css`.
 - **`onValueChange` fires with a half-finished range.** The first click emits
   `{ start, end: null }`. A handler that assumes both dates exist will read `null` on every
   other call. Guard on `end != null` before you fetch, filter, or submit.
-- **Blocked days can sit inside a committed range.** `min`, `max`, and `isDateDisabled`
-  reject *endpoints* only. Measured: with weekends disabled, Friday → Monday commits and
-  the Saturday between them carries both `aria-disabled="true"` and `data-in-range`.
+- **Only ranges the component picks are validated.** An interactive pick can no longer
+  span an `isDateDisabled` day — completing a range scans the interior and blocks the
+  second endpoint — but a `value` or `defaultValue` you write from outside is rendered as
+  given, blocked interior days and all.
 - **The view follows a *change* of range, not the range itself.** Hand a calendar showing
   June a range of 1–7 October from a preset button and it moves to October, firing
   `onMonthChange`. The anchor is `start ?? end`. Because it is edge-triggered, paging away
@@ -265,10 +275,10 @@ that component, not from `Calendar.css`.
   `defaultMonth ?? range.start ?? range.end ?? today`, in that order, so the month you name
   explicitly opens even when a range is already set: `defaultMonth={March 2026}` with a
   `defaultValue` starting 5 January opens on **March**.
-- **`showToday` never selects in a range calendar.** The footer button navigates to today
-  and focuses it; measured, no endpoint is set. [Calendar](calendar.md) wires the same button to select,
-  and the underlying `onTodayClick` callback is not part of this component's prop type, so
-  you cannot restore that behaviour from the outside.
+- **`showToday` is a range pick, not a jump-and-select.** The footer button feeds today
+  into the two-click protocol, so mid-pick it *completes* the in-progress range at today
+  rather than selecting today alone — press it twice from a clean slate and you get a
+  one-day range. When today is not selectable it only navigates.
 - **`onPointerLeave` cannot hold the hover preview open.** A handler you pass is composed
   with the internal one — yours runs first, then the preview is cleared unconditionally, with
   no `preventDefault()` opt-out. So the previewed span always drops when the pointer leaves

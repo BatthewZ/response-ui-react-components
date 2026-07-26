@@ -28,6 +28,10 @@ range with no client state.
 | `startPlaceholder` | `string`                      | — (no placeholder)            |
 | `endPlaceholder`   | `string`                      | — (no placeholder)            |
 | `rejectMessage`    | `(reason, text) => string`    | `` `${text} is not a date we can read.` `` |
+| `labels`           | `DateRangePickerLabels`       | English strings               |
+| `startInputId`     | `string`                      | —                             |
+| `endInputId`       | `string`                      | —                             |
+| `form`             | `string`                      | — (for the hidden `name` inputs) |
 | `error`            | `boolean`                     | `Field` state, else `false`   |
 | `disabled`         | `boolean`                     | `false`                       |
 | `name`             | `string`                      | —                             |
@@ -236,10 +240,12 @@ overrides the field in both directions — `error={false}` forces both inputs va
 errored [Field](field.md).
 
 The [Label](label.md) here carries no `htmlFor`, because there is no single control to point
-it at: this is two inputs, and neither takes an `id`. Naming the pair is done with
-`role="group"` and `aria-labelledby` on the wrapper instead, which rest props make possible.
-Without that, the only names in the accessibility tree are the built-in `"Start date"` and
-`"End date"` — see [Accessibility](#accessibility).
+it at: this is two inputs. `startInputId` / `endInputId` can give each one an `id` for a
+label to target, but their built-in `aria-label`s still win the name computation — rename
+them through `labels` instead. Naming the pair is done with `role="group"` and
+`aria-labelledby` on the wrapper, which rest props make possible. Without that, the only
+names in the accessibility tree are the built-in `"Start date"` and `"End date"` — see
+[Accessibility](#accessibility).
 
 ## Native form submission
 
@@ -357,9 +363,9 @@ relationship has to survive without sight of the dash.
   discarded, because it is not a date the parser can read — but it is no longer discarded in
   silence: that edit is a refusal now, so the field goes `aria-invalid` and the message names
   the text it could not read. Choose a format that shows every field the parser needs.
-- **`disabled` does not stop submission.** It disables the two inputs and the trigger, but
-  the hidden `name` inputs are never disabled, so a disabled picker still posts its dates —
-  unlike a native disabled control, which the browser excludes.
+- **`disabled` stops submission too.** It disables the two visible inputs, the trigger,
+  *and* the hidden `name` inputs, so a disabled picker posts nothing — the same exclusion
+  the browser applies to a native disabled control.
 - **No placeholders by default.** With `startPlaceholder`/`endPlaceholder` unset, an empty
   picker is two blank boxes and a dash. The `"Start date"` / `"End date"` names exist only in
   the accessibility tree. Pass both, or put a visible caption above the pair.
@@ -374,31 +380,31 @@ Tab order is start field → end field → calendar button. Both fields are ordi
 so every editing shortcut the platform provides works, and the range can be filled in without
 ever opening the calendar.
 
-- **The two fields are named `"Start date"` and `"End date"`,** hard-coded in English on the
-  component. They take no `id`, so a `<label for>` has nothing to bind to, and the built-in
-  `aria-label` would outrank it anyway. Neither name is localizable or overridable. Name the
-  *pair* instead — `role="group"` plus `aria-labelledby` on the wrapper, as in
+- **The two fields are named `"Start date"` and `"End date"` by default,** via built-in
+  `aria-label`s you can localize through `labels.startDate` / `labels.endDate`.
+  `startInputId` / `endInputId` give each input an `id`, so a `<Label htmlFor>` can target
+  one for click-to-focus — but the built-in `aria-label` still outranks a native label in
+  the name computation, so change the name through `labels`, not through a `<label>`. Name
+  the *pair* as well — `role="group"` plus `aria-labelledby` on the wrapper, as in
   [In a Field](#in-a-field) — so a screen-reader user hears "Travel dates, group" before
   "Start date, edit text".
 - **The calendar button is the popover trigger,** labelled `"Open calendar"`, with
   `aria-haspopup="dialog"` and `aria-expanded`. Clicking or `Enter`/`Space` toggles it.
-- **The start field also claims the popup it cannot open.** It carries
-  `aria-haspopup="dialog"`, `aria-expanded` and (while open) `aria-controls`, because the
-  floating reference props are spread onto it — but nothing on that input opens the popover.
-  The end field carries none of it, so the same pair of controls announces asymmetrically.
-- **Opening moves focus into the popover,** landing on its "Previous month" button. `Tab`
-  walks the rest of the header and then reaches the day grid, where arrow keys move by day,
-  `Home`/`End` by week edge, and `PageUp`/`PageDown` by month. Each day button is named with
-  its full localized date and marked `aria-selected`; today gets `aria-current="date"`. In
-  the single-month layout the header caption is itself a button that drills into a month
-  and then a year picker.
+- **Neither text field claims the popup.** The floating reference props —
+  `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls` — live on the calendar button
+  alone, the control that actually opens the dialog, so the two fields announce
+  symmetrically as plain text inputs.
+- **Opening moves focus straight onto a day.** The dialog's focus manager stands down
+  (`initialFocus={-1}`) and the calendar focuses its own roving day, so arrow keys work
+  immediately: by day, `Home`/`End` to the week edges, `PageUp`/`PageDown` by month. Each
+  day button is named with its full localized date; selection state sits on its
+  `role="gridcell"` wrapper, and today gets `aria-current="date"`. At every layout the
+  header caption is a button that drills into a month and then a year picker.
 - **The popover is non-modal and is not a focus trap.** It is portalled to the end of
-  `<body>`, and it holds only a handful of tab stops — the header controls plus the one day
-  button that owns the roving tab index. Tabbing past the last of them moves focus on to
-  whatever follows the picker in the page **and closes the popover**. Measured at the default
-  two months, the whole dialog is three `Tab`s wide: previous-month → next-month → the roving
-  day, and the fourth `Tab` lands outside with the dialog already gone. `Escape` also closes
-  it, and returns focus to the start field.
+  `<body>`, and it holds only a handful of tab stops — ‹, the caption button, ›, then the
+  one day button that owns the roving tab index. Tabbing past the last of them moves focus
+  on to whatever follows the picker in the page **and closes the popover**. `Escape` also
+  closes it, and returns focus to the start field.
 - **The `error` prop's state is conveyed by colour and `aria-invalid` only.** That red border
   carries no text; inside an errored [Field](field.md) the inputs point at the
   [FieldError](field-error.md), so render one with real content. The picker's *own* refusals do
@@ -407,9 +413,10 @@ ever opening the calendar.
   [Field](field.md) that renders a [FieldError](field-error.md) it is not: the field's error id
   wins there, because the description comes from [Input](input.md)'s own wiring. The message is
   still visible and still announced.
-- **Selection is announced per day, not per range.** A day button says it is selected; nothing
-  announces "8 nights" or "10 June to 18 June". The text fields hold the authoritative
-  answer, which is another reason to name the group.
+- **Selection is announced per day, not per range.** An endpoint announces as selected, and
+  a day inside the span is named with an ", in selected range" suffix — but nothing
+  announces "8 nights" or "10 June to 18 June" as a whole. The text fields hold the
+  authoritative answer, which is another reason to name the group.
 
 ## Related
 

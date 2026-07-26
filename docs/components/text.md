@@ -64,10 +64,11 @@ outline. See [Gotchas](#gotchas).
 `primary` and `secondary` are the two inks meant to be *read* on a `surface-*` token, in
 descending emphasis. `muted` is not a third rung of that ladder: the
 [theme contract](../theme-contract.md) defines `--C-TEXT-MUTED` as the "most-muted"
-ink — placeholders and hints — and against every `surface-*` step of every shipped theme
-it measures under 2.6:1, which clears neither the 4.5:1 WCAG AA threshold for body text
-nor the 3:1 one for large text. Reach for it when the words are decoration; reach for
-`secondary` when they are information. See [Accessibility](#accessibility).
+ink — placeholders and hints. Since the `@batthewz/response-ui-css` v0.10.1 retune it
+measures 4.85–5.23:1 against `--C-SURFACE-0` across the shipped themes, clearing WCAG AA
+for body text on the base surface — but the contract names the role, not a ratio. Reach
+for it when the words are decoration; reach for `secondary` when they are information.
+See [Accessibility](#accessibility).
 
 The other two are background-specific: `on-primary` is defined as text drawn on the
 `--C-PRIMARY` fill, `inverse` as text on a background of the opposite luminance to the
@@ -159,6 +160,7 @@ component.
 | Hint-level ink | `text-fg-muted`                                                    | `--C-TEXT-MUTED`                                |
 | Inverse ink    | `text-fg-inverse`                                                  | `--C-TEXT-INVERSE`                              |
 | Ink on a fill  | `text-fg-on-primary`                                               | `--C-TEXT-ON-PRIMARY`                           |
+| Weight         | `font-semibold` `font-bold`                                        | `--Semibold-Weight` `--Bold-Weight`             |
 
 **Each type step is a pair.** A `text-*` step emits `font-size` *and* `line-height` —
 `text-h1` compiles to
@@ -179,11 +181,10 @@ three `--BodyText-*` sizes *and* all three `--BodyText-*-line-height`s, so body 
 pins the `--BodyText-1`/`-2` leadings, so in those two the size still grows at 40rem while
 the leading half of the pair stays put.
 
-**Weight is not in the table above**, because `weight` builds its class name dynamically
-(`` `font-${weight}` ``) and so the utility never appears literally in `Text.tsx`.
-Tailwind's scanner cannot see a template-literal class name; `font-semibold` and
-`font-bold` exist in the built CSS only because other components in this package write
-them out literally and the package registers its own `src` as a Tailwind source. They
+**Weight composes from a static map.** `font-semibold` and `font-bold` are written out
+literally in `Text.tsx` — never assembled as `` `font-${weight}` ``, which Tailwind's
+scanner cannot see — so both utilities are guaranteed to exist in the built CSS whenever
+this package is a Tailwind source. They
 resolve to `--Semibold-Weight` and `--Bold-Weight`. Neither has a single value: on the
 default scale `--Semibold-Weight` is `500` below 40rem and `600` at or above it, and
 `--Bold-Weight` is `600` → `700`. Each theme re-pins both to one number that holds at
@@ -222,15 +223,6 @@ as a role, not a number.
   than `700`, and `grimdark`'s `semibold` (`700`) matches it exactly. On a heading,
   `weight` is not a dependable "more emphasis" knob in either direction — keep it for body
   variants, and check the numbers above before using it on a heading.
-- **`weight` rides on classes it never writes.** `weight` composes its utility as
-  `` `font-${weight}` ``, which Tailwind's scanner cannot see, so the class reaches the
-  built CSS only because some *other* file under `src/` spells it out literally.
-  `font-semibold` is written out by seven components, so it is not going anywhere.
-  `font-bold` is written out in exactly two places — [Button](button.md)'s `link` variant
-  and [ErrorBoundary](error-boundary.md)'s fallback heading — and the second is already on this package's list
-  to be rewritten in design-system tokens. `weight="bold"` works today, but it is one
-  unrelated refactor away from emitting a class with no rule behind it. If you depend on
-  it, keep a literal `font-bold` somewhere Tailwind scans.
 - **`inverse` and `on-primary` need a fill under them.** Text renders no background, so
   those two colours are only legible on something you supply.
 - **`className` beats `variant` and `color`.** Classes are merged with `tailwind-merge`
@@ -261,15 +253,18 @@ ships — including the `id` an `aria-labelledby` elsewhere depends on.
 carrying meaning (an error, a diff removal), pair it with text or an icon; colour alone
 fails WCAG 1.4.1.
 
-`color="muted"` is not a body-text ink. Measured against all four `surface-*` steps of the
-default theme and of `tech`, `events` and `grimdark`, `--C-TEXT-MUTED` never rises above
-2.6:1 — it fails WCAG AA for body text (4.5:1) and for large text (3:1) on every one of
-them. Over the same set `--C-TEXT-PRIMARY` never falls below 8.4:1, and
-`--C-TEXT-SECONDARY` never below 4.4:1. So `primary` is the ink for anything that has to
-be read, `secondary` the one for de-emphasised copy, and `muted` belongs on placeholders
-and hints that repeat something already available elsewhere. Never let it carry the only
-copy of a fact. If your own theme redefines these, re-check the ratios — the contract
-names the roles, it does not guarantee the contrast.
+`color="muted"` is the hint-level role, not a third body ink. The
+`@batthewz/response-ui-css` v0.10.1 retune lifted `--C-TEXT-MUTED` to 4.85–5.23:1 against
+`--C-SURFACE-0` in the shipped themes — an older copy of this page measured it under
+2.6:1 and said the opposite — so muted copy now clears WCAG AA for body text on the base
+surface. The ranking still holds: measured against all four `surface-*` steps of every
+shipped theme, `--C-TEXT-PRIMARY` never falls below 8.4:1 and `--C-TEXT-SECONDARY` never
+below 4.4:1, so `primary` is the ink for anything that has to be read, `secondary` the
+one for de-emphasised copy, and `muted` belongs on placeholders and hints that repeat
+something already available elsewhere — the muted figures above are `--C-SURFACE-0` only,
+so re-check before letting it carry the only copy of a fact on a deeper surface. If your
+own theme redefines these, re-check every ratio — the contract names the roles, it does
+not guarantee the contrast.
 
 ## Related
 

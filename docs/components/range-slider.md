@@ -25,6 +25,7 @@ and the selected segment are painted underneath from theme tokens.
 | `disabled`      | `boolean`                                               | —                                       |
 | `minLabel`      | `string`                                                | `"Minimum"`                             |
 | `maxLabel`      | `string`                                                | `"Maximum"`                             |
+| `formatValue`   | `(value: number) => string`                             | — (`aria-valuetext` on both thumbs)     |
 | `className`     | `string`                                                | — (lands on the wrapper)                |
 | `style`         | `CSSProperties`                                         | —                                       |
 | `ref`           | `Ref<HTMLDivElement>`                                   | —                                       |
@@ -243,7 +244,7 @@ app at runtime, with no rebuild.
 | Selected segment between the thumbs, and both thumbs | `--C-ACCENT`    |
 | Unselected rail                                   | `--C-SURFACE-2`    |
 | Segment and thumbs when invalid                   | `--C-STATUS-ERROR` |
-| Ring around each thumb, and the gap inside its focus ring | `--C-SURFACE-0` |
+| Ring around each thumb                            | `--C-SURFACE-0`    |
 | Focus ring on the focused thumb                   | `--C-BORDER-FOCUS` |
 | Rail, segment, and thumb corners                  | `--RADIUS-FULL`    |
 
@@ -261,8 +262,9 @@ A handful of measurements are **not** on the contract and are not themeable: the
 around it steps up at the 40rem breakpoint. Width comes from the parent — this control always
 fills it.
 
-Both the thumb ring and the 2px gap inside the focus ring are hard-wired to `--C-SURFACE-0`,
-the *base* surface — see [Gotchas](#gotchas) before dropping one on a card.
+Each thumb's 2px ring is hard-wired to `--C-SURFACE-0`, the *base* surface — see
+[Gotchas](#gotchas) before dropping one on a card. The focus ring lands flush on that ring,
+with no backdrop-coloured gap of its own.
 
 ## Gotchas
 
@@ -288,22 +290,20 @@ the *base* surface — see [Gotchas](#gotchas) before dropping one on a card.
 - **Your `style` wins over the geometry.** `--range-lo` and `--range-hi` are written first and
   your `style` object is spread after them, so `style={{ "--range-lo": "…" }}` overrides the
   computed segment and desynchronises it from the thumbs.
-- **The thumb is a fifth larger in Firefox.** `::-webkit-slider-thumb` and `::-moz-range-thumb`
-  get identical declarations here — a `1.25rem` box with a `2px` ring — and the two
-  pseudo-elements default to different `box-sizing`, so they do not render at the same size.
-  [Slider](slider.md#gotchas) has the identical rule shape and documents the mechanism and the
-  measured sizes in full; Tailwind Preflight reaches neither pseudo-element. Add your own
-  `::-moz-range-thumb { box-sizing: border-box }` if it matters.
-- **The invalid state has the weaker focus indicator.** The only `outline` declaration in the
-  stylesheet removes the browser's default focus outline, and it is scoped to
-  `[aria-invalid="true"]` — so a *valid* slider keeps whatever outline the browser draws
-  around the focused input (a full-track-width box, since the inputs are stretched across the
-  rail) and an *invalid* one does not. The thumb's own `--C-BORDER-FOCUS` ring is drawn in
-  both states, so focus is never invisible; it is just inconsistent between the two.
-- **The thumb ring assumes the base surface.** The 2px thumb border and the 2px gap inside the
-  focus ring are both `--C-SURFACE-0`. On any other layer — a `--C-SURFACE-1` card, a tinted
-  panel — that ring reads as a halo in the wrong colour. Restyle it through `className`, or
-  keep range sliders on the base surface.
+- **The thumbs match across engines because the stylesheet says so.** `::-moz-range-thumb`
+  defaults to `content-box` — Tailwind Preflight reaches neither thumb pseudo-element — which
+  used to render a 24px thumb in Firefox against Chromium's 20px. `RangeSlider.css` sets
+  `box-sizing: border-box` on it explicitly, the same fix as [Slider](slider.md#gotchas);
+  keep that declaration if you restyle the thumbs.
+- **The UA focus outline is suppressed in every state.** `.range-slider__input:focus-visible`
+  sets `outline: none` unconditionally — a UA outline would draw a full-track-width box,
+  since the inputs are stretched across the rail — and the focused thumb paints its own
+  `--C-BORDER-FOCUS` ring instead, valid or invalid alike, so the indicator is consistent
+  between the two states.
+- **The thumb ring assumes the base surface.** The 2px thumb border is `--C-SURFACE-0`. On
+  any other layer — a `--C-SURFACE-1` card, a tinted panel — that ring reads as a halo in the
+  wrong colour. (The focus ring adds no surface-coloured gap of its own.) Restyle it through
+  `className`, or keep range sliders on the base surface.
 - **Both CSS imports are required.** The `.range-slider` rules live in this package's `styles`
   entry and read `--C-*` / `--RADIUS-*` from `@batthewz/response-ui-css` — import the
   foundation first, then this package's `styles`. Without them you get two unstyled native
@@ -322,7 +322,7 @@ user can move either of two collided thumbs, in either direction, where a pointe
 only move whichever one is on top. The rail and the selected segment are `aria-hidden`
 decorative spans.
 
-Four things are still yours to supply.
+Three things are still yours to supply.
 
 - **A name for each thumb.** `minLabel` and `maxLabel` become `aria-label` on the lower and
   upper input. Unlike [Slider](slider.md), a name always exists — but the defaults,
@@ -332,13 +332,15 @@ Four things are still yours to supply.
   unrelated sliders. Pass `role="group"` and an `aria-label` or `aria-labelledby` to bind them
   into one named group; both reach the wrapper through the rest spread.
 - **The unit.** A range input is commonly announced as a bare number or as a percentage of its
-  travel, which is wrong on a scale like `-30`–`10`. `aria-valuetext` is the fix and it cannot
-  be delivered here, so fold the unit into `minLabel` / `maxLabel` instead.
-- **The error description.** `aria-invalid` and the [Field](field.md)-derived
-  `aria-describedby` both sit on the wrapper rather than on the inputs, so the slider a
-  screen reader actually lands on still reports itself valid and undescribed. `role="group"`
-  at least gives the pair a node those attributes belong to. Outside a field, an
-  `aria-describedby` of your own reaches the wrapper untouched.
+  travel, which is wrong on a scale like `-30`–`10`. `formatValue` is the fix — it becomes
+  `aria-valuetext` on both thumbs — and folding the unit into `minLabel` / `maxLabel` names
+  the two ends as well.
+
+The error wiring, by contrast, is not yours to supply: `aria-invalid` and the
+[Field](field.md)-derived `aria-describedby` land on **both thumbs**, so the slider a screen
+reader lands on reports itself invalid and points at the message. Your own
+`aria-describedby` merges under the derived one — it survives standalone and loses inside an
+errored [Field](field.md).
 
 A visible readout is not a substitute for any of these: it is separate text with no
 programmatic relationship to either input unless you create one.

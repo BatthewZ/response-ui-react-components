@@ -24,8 +24,8 @@
  *   colour at all.
  * - **No recipe resets the UA outline.** Whether a control replaces the
  *   browser's outline or keeps it alongside the ring is a per-component call and
- *   has never been uniform — `Input`, `Select`, `Textarea`, `OTPInput`, `Radio`
- *   and `ErrorBoundary`'s retry replace it; `Checkbox`, `Button`, `IconButton`
+ *   has never been uniform — `Input`, `Select`, `Textarea`, `OTPInput` and
+ *   `Radio` replace it; `Checkbox`, `Button`, `IconButton`
  *   and `Collapsible.Trigger` keep the UA outline, which is contrast-adaptive
  *   and survives forced-colours mode. A site that resets pairs the matching
  *   `focusOutlineReset*` below with its recipe, so the reset and the ring always

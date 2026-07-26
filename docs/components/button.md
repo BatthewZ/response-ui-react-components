@@ -153,7 +153,11 @@ breakpoint, so a gap that did would drift out of proportion with it.
 ## Accessibility
 
 Focus is `focus-visible` only — keyboard focus shows the ring, mouse clicks don't. The
-ring is always 2px and transparent until focused, so **focusing never shifts layout.**
+ring is always 2px and transparent until focused, so **focusing never shifts layout.** The
+filled variants (`primary`, `secondary`, `danger`) additionally open a 2px offset band on
+focus — a solid ring of `--tw-ring-offset-color`, themed to `--C-SURFACE-0` by
+`@batthewz/response-ui-css` — separating the ring from the fill; the transparent variants
+draw the ring flush (`ring-offset-0`).
 
 Icon-only buttons need an accessible name; reach for [IconButton](icon-button.md), which enforces it.
 

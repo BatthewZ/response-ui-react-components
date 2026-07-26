@@ -2,8 +2,9 @@
 
 The net under your render tree. An uncaught render error in React doesn't break one
 component — it unmounts the **entire root**, so an app without a boundary fails all the
-way to a blank page. Wrap a subtree in this and a throw below it swaps in a full-screen
-"Something went wrong" screen with a **Try again** button instead.
+way to a blank page. Wrap a subtree in this and a throw below it swaps in a content-sized
+"Something went wrong" panel with a **Try again** button — or a `fallback` you supply,
+handed the reset callback so it can offer its own retry.
 
 <!-- example:Minimal -->
 ```tsx
@@ -13,14 +14,15 @@ way to a blank page. Wrap a subtree in this and a throw below it swaps in a full
 ```
 <!-- /example -->
 
-| Prop       | Type        | Default      |
-| ---------- | ----------- | ------------ |
-| `children` | `ReactNode` | — (required) |
+| Prop       | Type                                              | Default        |
+| ---------- | ------------------------------------------------- | -------------- |
+| `children` | `ReactNode`                                       | — (required)   |
+| `fallback` | `ReactNode \| ((reset: () => void) => ReactNode)` | built-in panel |
 
-`children` is the entire API. There is no `fallback`, no `onError`, no `className`, and
-no rest spread; the props interface isn't exported either, so there is nothing to extend
-from. Every string on the fallback screen is hard-coded English. See
-[Gotchas](#gotchas).
+That is the entire API. There is no `onError`, no `className`, and no rest spread; the
+props interface isn't exported either, so there is nothing to extend from. Every string
+on the built-in fallback is hard-coded English — `fallback` is the route to a localized
+or restyled one. See [Gotchas](#gotchas).
 
 ## What it catches
 
@@ -82,13 +84,16 @@ boundary, because the render that follows is React's.
 Once tripped, the boundary **latches**. Its state lives on the mounted instance, so new
 props, a parent re-render, or different `children` do not clear it — only two things do:
 
-1. **The user clicks Try again**, which sets `hasError` back to `false` and re-renders the
-   same children. Nothing else has changed, so if the cause is deterministic (a null field
-   in the data, a bad prop) the very next render throws and the user is back on the
-   fallback instantly. Treat it as a retry for transient failures, not a repair.
+1. **Reset is called** — by the built-in fallback's Try again button, or by whatever you
+   wire it to in a function `fallback`, which receives it as its argument. Either way it
+   sets `hasError` back to `false` and re-renders the same children. Nothing else has
+   changed, so if the cause is deterministic (a null field in the data, a bad prop) the
+   very next render throws and the user is back on the fallback instantly. Treat it as a
+   retry for transient failures, not a repair.
 2. **The boundary is remounted.** There is no `onReset`, no `resetKeys`, and no imperative
-   handle, so a changing `key` is the caller's only lever — most usefully the route path,
-   which clears a crashed screen when the user navigates away from it:
+   handle, so outside the fallback a changing `key` is the caller's only lever — most
+   usefully the route path, which clears a crashed screen when the user navigates away
+   from it:
 
 <!-- example:ResetOnNavigation -->
 ```tsx
@@ -118,10 +123,12 @@ can't see:
 ```
 <!-- /example -->
 
-What nesting scopes is **what stays mounted, not how much space the fallback takes.** The
-fallback is `min-h-screen` regardless of where the boundary sits, so a panel-level
-boundary still hands the user a viewport-tall error screen where a chart used to be, and
-pushes everything under it down the page. See [Gotchas](#gotchas).
+The built-in fallback cooperates with this: it is sized by its own content, not the
+viewport, so a panel-level boundary swaps a crashed chart for a compact error panel
+rather than a full-height screen. What it does **not** do is hold the crashed region's
+footprint — the panel is as tall as its two lines and a button, so content below it moves
+up. Pass a `fallback` sized to the region if the layout must not shift. See
+[Gotchas](#gotchas).
 
 ## Pairing with Suspense
 
@@ -139,65 +146,59 @@ rather than being mistaken for a pending state:
 ```
 <!-- /example -->
 
-The asymmetry is worth noticing: `Suspense` takes its fallback as a prop, this boundary
-does not.
+The symmetry is worth noticing: both take their fallback as a prop, and the boundary's
+goes one further — the function form receives `reset`, so a custom error screen keeps the
+retry.
 
 ## Theme tokens
 
-There is no `ErrorBoundary.css` — the fallback is styled entirely with utilities in the
-`.tsx`, and only some of them reach the contract. These do:
+There is no `ErrorBoundary.css` — the built-in fallback is styled with utilities in the
+`.tsx`, every one of which reaches the contract, and its retry control is a real
+[Button](button.md), which brings that component's whole token surface with it.
 
-| Where                | Utility                                  | Override                          |
-| -------------------- | ---------------------------------------- | --------------------------------- |
-| Fallback backdrop    | `bg-surface-1`                           | `--C-SURFACE-1`                   |
-| Body copy ink        | `text-fg-secondary`                      | `--C-TEXT-SECONDARY`              |
-| Heading weight       | `font-bold`                              | `--Bold-Weight`                   |
-| Retry fill           | `bg-primary` `hover:bg-primary-hover`    | `--C-PRIMARY` `--C-PRIMARY-HOVER` |
-| Retry label          | `text-fg-on-primary`                     | `--C-TEXT-ON-PRIMARY`             |
-| Retry corners        | `rounded-md`                             | `--RADIUS-MD`                     |
-| Retry focus ring     | `focus-visible:ring-border-focus`        | `--C-BORDER-FOCUS`                |
+| Where             | Utility             | Override                                        |
+| ----------------- | ------------------- | ----------------------------------------------- |
+| Fallback backdrop | `bg-surface-1`      | `--C-SURFACE-1`                                 |
+| Fallback padding  | `p-r2`              | `--R-SIZE-2`                                    |
+| Heading type      | `text-h3`           | `--H3` (and its `-line-height` pair)            |
+| Heading weight    | `font-bold`         | `--Bold-Weight`                                 |
+| Heading gap       | `mb-r5`             | `--R-SIZE-5`                                    |
+| Body copy ink     | `text-fg-secondary` | `--C-TEXT-SECONDARY`                            |
+| Body gap          | `mb-r3`             | `--R-SIZE-3`                                    |
+| Retry button      | —                   | everything [Button](button.md#theme-tokens) reads (`primary`, `md`) |
 
 The heading sets **no** colour of its own, so it inherits whatever `color` the boundary
-lands in rather than `--C-TEXT-PRIMARY`.
+lands in rather than `--C-TEXT-PRIMARY`. Type and spacing sit on the library's `text-h*`
+and responsive `r*` scales, so the panel re-scales with the theme and steps at the 40rem
+breakpoint like the rest of the library.
 
-**Three things here are off-contract, and they are the reason this screen doesn't fully
-follow a theme.**
-
-- **Type and spacing are raw Tailwind.** The heading is `text-2xl`, the gaps are `mb-2`,
-  `mb-6`, and the button's padding is `px-4 py-2`. The library's own `text-h*` type steps
-  (`--H1`…`--H6`) and responsive `r*` spacing steps (`--R-SIZE-*`) are not used, so none of
-  it re-scales with the theme or steps at the 40rem breakpoint the way the rest of the
-  library does.
-- **The focus ring is the one thing on this screen that is fully on contract.** It is the
-  library's filled-button recipe — a 2px `--C-BORDER-FOCUS` ring at `ring-offset-2`, keyed on
-  `focus-visible:` — so the retry control rings on the same token and the same interaction as
-  [Button](button.md) even though everything around it does not. The offset band matters here:
-  the retry button is `bg-primary`, and the ring measures as little as 2.03:1 against that fill
-  across the shipped themes but never below 3.39:1 against the `--C-SURFACE-0` band (measured
-  against `@batthewz/response-ui-css` **v0.10.1**), so the 2px gap is what keeps the ring readable — and the band now clears
-  the 3:1 floor in every theme, where it bottomed out at 2.72 before that release. It
-  goes one step further and drops the UA outline, which [Button](button.md) keeps.
-- **`min-h-screen` is a hard `100vh`,** not a token, so the fallback's height is the one
-  layout decision a theme cannot touch.
+The retry's focus ring is [Button](button.md)'s filled recipe — a 2px `--C-BORDER-FOCUS`
+ring at `ring-offset-2`, keyed on `focus-visible:`. The offset band matters here: the
+button is `bg-primary`, and the ring measures as little as 2.03:1 against that fill
+across the shipped themes but never below 3.39:1 against the `--C-SURFACE-0` band
+(measured against `@batthewz/response-ui-css` **v0.10.1**), so the 2px gap is what keeps
+the ring readable — and the band now clears the 3:1 floor in every theme, where it
+bottomed out at 2.72 before that release.
 
 ## Gotchas
 
-- **No `fallback` prop, and no way to change a word of it.** The heading ("Something went
-  wrong"), the body ("An unexpected error occurred."), and the button ("Try again") are
-  literals in the component. There is no `className` and no rest spread either, so the
-  only way to a different error screen — or a localized one — is your own boundary class.
-- **The fallback always fills the viewport.** `min-h-screen` with centred content is a
-  page-level design. Used as a scoped, inline boundary around a card or a panel, it
-  replaces that panel with a full-height centred error screen. There is no compact mode.
+- **`fallback` replaces the screen wholesale — there is no way to change one word of the
+  built-in one.** The heading ("Something went wrong"), the body ("An unexpected error
+  occurred."), and the button ("Try again") are literals, with no `className` and no rest
+  spread to restyle them. A localized or restyled error screen means passing `fallback`;
+  use the function form to keep a retry, since it receives `reset`.
+- **The built-in fallback holds no footprint.** It is sized by its content — two lines and
+  a button on a `bg-surface-1` panel — so a crashed viewport-height region collapses to a
+  short panel and the content below it shifts up. Pass a `fallback` (or wrap the boundary)
+  with an explicit `min-height` when the layout must hold.
 - **The caught error is thrown away.** State is `{ hasError: boolean }`, the static handler
   takes no argument, and there is no `componentDidCatch` — so the message, the stack, and
   the component stack never reach your code, and nothing is reported to error-tracking
   tooling. React itself still logs the error to the console. To report from the root, use
   React 19's `onCaughtError` option on `createRoot`; to show the message, subclass.
-- **The retry button is hand-rolled, not a [Button](button.md).** It re-implements the primary
-  variant's classes, so it doesn't track [Button](button.md)'s variants or sizes. It does
-  share the focus ring — both import the same recipe — and it sets `type="button"`, so a
-  boundary inside a `<form>` no longer submits that form when Try again is clicked.
+- **The retry button is a real [Button](button.md)** — default `primary` variant, `md`
+  size — so it tracks Button's styling, tokens, and `type="button"` default, and a
+  boundary inside a `<form>` does not submit that form when Try again is clicked.
 - **It has to be a class, and that is not a style choice.** React exposes error catching
   only through `getDerivedStateFromError`/`componentDidCatch`; there is no hook equivalent,
   which is why this is the library's class component.
@@ -225,12 +226,11 @@ focuses the heading on mount.
 - **Its ring is `focus-visible:`, not `focus:`,** so a mouse click does not paint it —
   the same as [Button](button.md) and [IconButton](icon-button.md), and unlike the form
   controls ([Input](input.md), [Checkbox](checkbox.md), [Radio](radio.md)), which ring on
-  click too. The library keys the ring by element category, and the retry control is a
-  `<button>`. `focus-visible:outline-none` removes the native outline, so that ring is the
-  only focus indicator the button has — the one thing it does *not* share with
-  [Button](button.md), which keeps the UA outline alongside its ring.
-- **The copy is hard-coded English.** In a localized app, the screen a user sees at the
-  worst possible moment is the one screen still in English.
+  click too. The retry control *is* a [Button](button.md), so it behaves exactly as that
+  page documents, UA outline included — Button keeps it alongside the ring.
+- **The built-in copy is hard-coded English.** In a localized app, the screen a user sees
+  at the worst possible moment is the one screen still in English — unless you pass a
+  `fallback`.
 
 ## Related
 

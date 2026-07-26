@@ -36,7 +36,7 @@ throw `"Collapsible compound components must be used within <Collapsible>"` with
 | `disabled`     | `boolean`                  | `false` |
 
 `className`, `id`, `ref` and `aria-*` pass through on all three — but read
-[Gotchas](#gotchas) before you pass `id` to `Collapsible.Content`.
+[Gotchas](#gotchas) before you pass `id` to `Collapsible.Content` or `Collapsible.Trigger`.
 
 ## When *not* to reach for it
 
@@ -44,9 +44,10 @@ throw `"Collapsible compound components must be used within <Collapsible>"` with
 widget, and it is better than this one in three concrete ways: it needs no JavaScript, so
 it works before hydration and in an RSC tree with no client boundary; it is keyboard- and
 screen-reader-correct without you checking; and when closed it genuinely does not render
-its content, so nothing inside costs anything. `Collapsible` misses the first two outright —
-it is `"use client"` — and matches the third only halfway: its closed panel is `inert` rather
-than gone, so nothing inside is focusable or announced, but all of it is still mounted and
+its content, so nothing inside costs anything. `Collapsible` misses the first outright —
+it is `"use client"` — matches the second only once hydrated, and matches the third only
+halfway: its closed panel is `inert` rather than gone, so nothing inside is focusable or
+announced, but all of it is still mounted and
 still paying for itself. Reach for `Collapsible` when you need something `<details>`
 can't give you: the open state as a React value driving other UI, a controlled panel you
 open from elsewhere in the app, or the sliding height transition below.
@@ -208,9 +209,11 @@ variables still resolve, they just stop being animated.
 
 - **A closed panel is still mounted** — `inert` and clipped, not unmounted. See
   [A closed panel is inert, not gone](#a-closed-panel-is-inert-not-gone).
-- **Don't pass `id` to `Collapsible.Content`.** `{...props}` spreads last, so your `id`
-  replaces the generated one while the trigger's `aria-controls` keeps pointing at the
-  original — the association silently breaks. The same spread order applies everywhere: on
+- **Don't pass `id` to `Collapsible.Content` — or to `Collapsible.Trigger`.** `{...props}`
+  spreads last, so your `id` replaces the generated one while the trigger's `aria-controls`
+  keeps pointing at the original — the association silently breaks. An `id` on the trigger
+  breaks the other direction: the content's `aria-labelledby` keeps naming the old trigger
+  `id`, un-naming the region. The same spread order applies everywhere: on
   the trigger a hand-written `aria-expanded` or `disabled` overrides the computed one, and on
   the content so do `role` and `inert` — passing `inert={false}` puts a closed panel's
   contents back in the tab order.
@@ -253,12 +256,11 @@ collapsed and cannot then read straight into it, and a keyboard user cannot Tab 
 they can't see. The panel is still *mounted* while closed, which costs something else entirely —
 see [A closed panel is inert, not gone](#a-closed-panel-is-inert-not-gone).
 
-**The region has no accessible name.** `Collapsible.Content` sets `role="region"` but never
-sets `aria-labelledby`, and the trigger is given no `id` to point one at — so the role is
-either announced with no label or dropped as a landmark altogether, depending on the
-assistive technology. Either way it earns nothing. [Accordion](accordion.md) does wire its content's
-`aria-labelledby` to its trigger `id`; this one doesn't. Both props pass through, so supply
-your own `id` on the trigger and a matching `aria-labelledby` on the content.
+**The region is named by its trigger.** `Collapsible.Content` sets `role="region"` with an
+`aria-labelledby` pointing at the trigger's generated `id` — the same pair
+[Accordion](accordion.md) wires — so the panel announces as a landmark under the trigger's
+own text. That makes the trigger's children the region's name: keep them textual, and note
+that replacing either generated `id` breaks the pairing — see [Gotchas](#gotchas).
 
 ## Related
 

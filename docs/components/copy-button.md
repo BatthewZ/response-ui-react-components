@@ -68,19 +68,21 @@ guard in step 2 fires, and every click is a no-op with the button still reading 
 The API can also be present and still fail: `writeText` rejects when the document lacks
 transient user activation or focus, in a cross-origin iframe whose permissions policy
 withholds `clipboard-write`, and in an embedded webview that exposes `writeText` and then
-rejects it. Those are the paths that end in the `catch`, which is empty apart from a comment.
-A webview that ships no `writeText` at all lands somewhere else entirely: the guard in step 2
-fires and the handler returns before there is a promise to reject.
+rejects it. Those are the paths that end in the `catch`, which hands the rejection to
+`onCopyError`. A webview that ships no `writeText` at all lands somewhere else entirely: the
+guard in step 2 fires and the handler calls `onCopyError` — with a synthetic "Clipboard API
+unavailable" error, since there is no promise to reject — before returning.
 
-CopyButton surfaces none of this. There is no success callback of any kind, no error
-callback, no rethrow, and no log — and `onClick` cannot stand in for one, because it has
-already fired by then and it fires on the failing paths too. Mind the near-miss: `onCopy`
+Every failing path therefore reaches `onCopyError`; what CopyButton still has no callback
+for is **success** — and `onClick` cannot stand in for one, because it has already fired by
+then and it fires on the failing paths too. Mind the near-miss: `onCopy`
 *does* compile. `ComponentPropsWithRef<"button">` carries React's DOM `copy` handler and rest
 props pass straight through, so it reaches the real `<button>` as a live listener — for the
 event the browser fires when a *user* copies a selection. A programmatic `writeText` does not
-raise it, so a copy that succeeds calls your `onCopy` zero times. If your product has to
-*know* whether the copy landed, or render a fallback when it didn't, call the clipboard
-yourself and use [IconButton](icon-button.md) for the shell.
+raise it, so a copy that succeeds calls your `onCopy` zero times. Rendering a fallback when
+the copy didn't land is what `onCopyError` is for; if your product has to *know* that it
+did land — analytics, a confirmation of your own — call the clipboard yourself and use
+[IconButton](icon-button.md) for the shell.
 
 Two things follow. Exercise the copy on the origin you actually ship rather than only on
 `localhost`, where the API is always *exposed* — which, per the paragraph above, is not the

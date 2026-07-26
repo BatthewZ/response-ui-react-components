@@ -87,8 +87,10 @@ structural — they track the design system's responsive scale but are not overr
 - **Equal heights are the whole point.** Every cell stretches to its row's tallest — so
   card footers line up. If you need content-sized, uneven cells, use [Row](row.md) with wrap; for
   deliberately uneven heights (masonry), use [MasonryGrid](masonry-grid.md).
-- **`gap` is a fixed step, not the responsive `r`-scale reflow.** It maps to `gap-r*`
-  utilities; override the underlying `--R-SIZE-*` to retune globally.
+- **One `gap` step for every breakpoint.** Unlike `columns`, `gap` takes no per-breakpoint
+  map — the chosen step applies at all widths. The step's *value* is still responsive:
+  `gap-r*` reads `--R-SIZE-*`, which grows at the 40rem step-up (`r6` excepted). Override
+  the underlying `--R-SIZE-*` to retune globally.
 - **Ships per-component CSS.** `Grid.css` must be loaded (it is, via the `styles` import),
   alongside `@batthewz/response-ui-css` for the spacing tokens.
 - **Server-renderable.** No `"use client"` — it drops straight into an RSC tree.

@@ -20,6 +20,7 @@ Reach for it to collect a score, or to display an average next to a review count
 | `allowHalf`     | `boolean`               | `false` |
 | `readOnly`      | `boolean`               | `false` |
 | `disabled`      | `boolean`               | `false` |
+| `formatValue`   | `(value, max) => string` | — (bare number) |
 | `className`     | `string`                | —       |
 | `ref`           | `Ref<HTMLDivElement>`   | —       |
 | …rest           | props of `<div>`; `onChange` is a compile error | — |
@@ -98,9 +99,10 @@ never stores it, so nothing moves until `value` comes back changed.
 With `allowHalf`, a click is resolved against the star's bounding box: land left of the
 midpoint and it commits `n − 0.5`, right of it `n`. The arrow-key step drops from `1` to
 `0.5` at the same time — so the arrows still walk the whole ladder and still reach `max`
-(measured: ten `ArrowRight`s from `0` commit `0.5, 1, 1.5 … 5`). What breaks is
-*activation*: `Enter`/`Space` on a star can only ever commit `n − 0.5`. That, and the way the
-announced star names shift while a half value is held, are covered in [Gotchas](#gotchas).
+(measured: ten `ArrowRight`s from `0` commit `0.5, 1, 1.5 … 5`). Activating a star with
+`Enter`/`Space` commits its **whole** value — the half is a pointer gesture. That, and the
+way the announced star names shift while a half value is held, are covered in
+[Gotchas](#gotchas).
 
 ## Scale
 
@@ -111,8 +113,9 @@ announced star names shift while a half value is held, are covered in [Gotchas](
 <!-- /example -->
 
 `max` renders that many stars and caps the value: every interactive change is clamped into
-`0 … max` before `onValueChange` sees it. Nothing clamps a `value` you pass **in**, so keep
-yours inside the range.
+`0 … max` before `onValueChange` sees it, and a `value` you pass **in** is snapped to the
+scale — clamped into range and rounded to the step — before it is drawn or announced, so
+the picture and the number never disagree.
 
 ## Sizing
 
