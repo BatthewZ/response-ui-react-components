@@ -23,14 +23,14 @@ function Harness({ onValueChange }: { onValueChange?: (hex: string) => void }) {
 describe("ColorPicker", () => {
   it("shows the current hex on the trigger", () => {
     render(<ColorPicker defaultValue="#abcdef" />);
-    expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+    expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
       "#abcdef",
     );
   });
 
   it("normalizes the initial value", () => {
     render(<ColorPicker defaultValue="#ABC" />);
-    expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+    expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
       "#aabbcc",
     );
   });
@@ -39,7 +39,7 @@ describe("ColorPicker", () => {
     const user = userEvent.setup();
     render(<ColorPicker defaultValue="#3366cc" />);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Choose color" }));
+    await user.click(screen.getByRole("button", { name: /^Choose color/ }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByLabelText("Hex value")).toHaveValue("#3366cc");
   });
@@ -48,7 +48,7 @@ describe("ColorPicker", () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
     render(<Harness onValueChange={onValueChange} />);
-    await user.click(screen.getByRole("button", { name: "Choose color" }));
+    await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
     const hexField = screen.getByLabelText("Hex value");
     fireEvent.change(hexField, { target: { value: "#ff8800" } });
@@ -59,7 +59,7 @@ describe("ColorPicker", () => {
   it("reverts an invalid hex entry on blur", async () => {
     const user = userEvent.setup();
     render(<ColorPicker defaultValue="#3366cc" />);
-    await user.click(screen.getByRole("button", { name: "Choose color" }));
+    await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
     const hexField = screen.getByLabelText("Hex value") as HTMLInputElement;
     fireEvent.change(hexField, { target: { value: "nonsense" } });
@@ -71,7 +71,7 @@ describe("ColorPicker", () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
     render(<Harness onValueChange={onValueChange} />);
-    await user.click(screen.getByRole("button", { name: "Choose color" }));
+    await user.click(screen.getByRole("button", { name: /^Choose color/ }));
     await user.click(screen.getByRole("button", { name: "#ff0000" }));
     expect(onValueChange).toHaveBeenLastCalledWith("#ff0000");
   });
@@ -80,7 +80,7 @@ describe("ColorPicker", () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
     render(<Harness onValueChange={onValueChange} />);
-    await user.click(screen.getByRole("button", { name: "Choose color" }));
+    await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
     fireEvent.change(screen.getByLabelText("Hue"), { target: { value: "0" } });
     // Hue 0 at this saturation/value yields a red-dominant hex.
@@ -93,7 +93,7 @@ describe("ColorPicker", () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();
     render(<Harness onValueChange={onValueChange} />);
-    await user.click(screen.getByRole("button", { name: "Choose color" }));
+    await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
     const sv = screen.getByLabelText("Saturation and brightness");
     sv.focus();
@@ -107,7 +107,7 @@ describe("ColorPicker", () => {
       const onValueChange = vi.fn();
       // Controlled with no write-back: every commit is refused.
       render(<ColorPicker value="#3366cc" onValueChange={onValueChange} />);
-      await user.click(screen.getByRole("button", { name: "Choose color" }));
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
       const sv = screen.getByLabelText("Saturation and brightness");
       const valueTextBefore = sv.getAttribute("aria-valuetext");
@@ -117,7 +117,7 @@ describe("ColorPicker", () => {
       // The refused edits are still reported to the parent…
       expect(onValueChange).toHaveBeenCalledTimes(2);
       // …but nothing on screen may drift away from the value the parent holds.
-      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+      expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
         "#3366cc",
       );
       expect(screen.getByLabelText("Hex value")).toHaveValue("#3366cc");
@@ -128,7 +128,7 @@ describe("ColorPicker", () => {
       const user = userEvent.setup();
       const onValueChange = vi.fn();
       render(<Harness onValueChange={onValueChange} />);
-      await user.click(screen.getByRole("button", { name: "Choose color" }));
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
       const sv = screen.getByLabelText("Saturation and brightness");
       sv.focus();
@@ -136,7 +136,7 @@ describe("ColorPicker", () => {
 
       expect(onValueChange).toHaveBeenCalledTimes(1);
       const committed = onValueChange.mock.calls[0][0] as string;
-      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+      expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
         committed,
       );
       expect(screen.getByLabelText("Hex value")).toHaveValue(committed);
@@ -145,14 +145,14 @@ describe("ColorPicker", () => {
     it("#289 hue survives a round trip through black on the square", async () => {
       const user = userEvent.setup();
       render(<Harness />);
-      await user.click(screen.getByRole("button", { name: "Choose color" }));
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
 
       fireEvent.change(screen.getByLabelText("Hue"), { target: { value: "200" } });
       const sv = screen.getByLabelText("Saturation and brightness");
       // 0.02 per step from v=0.8 — 40 steps bottoms the square out at black.
       for (let i = 0; i < 40; i++) fireEvent.keyDown(sv, { key: "ArrowDown" });
 
-      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+      expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
         "#000000",
       );
       // Hue is unrecoverable from #000000; it must be remembered, not re-derived.
@@ -182,18 +182,18 @@ describe("ColorPicker", () => {
       );
 
       // The dropped prop reads as the empty colour, never as `undefined` on screen.
-      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+      expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
         "#000000",
       );
 
-      await user.click(screen.getByRole("button", { name: "Choose color" }));
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
       await user.click(screen.getByRole("button", { name: "#ff0000" }));
 
       expect(onValueChange).toHaveBeenCalledTimes(1);
       expect(onValueChange).toHaveBeenLastCalledWith("#ff0000");
       // Still controlled: this parent refused the commit, so nothing may be
       // adopted into internal state behind its back.
-      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+      expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
         "#000000",
       );
       expect(screen.getByLabelText("Hex value")).toHaveValue("#000000");
@@ -215,14 +215,14 @@ describe("ColorPicker", () => {
       }
       render(<FieldHarness />);
 
-      await user.click(screen.getByRole("button", { name: "Choose color" }));
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
       await user.click(screen.getByRole("button", { name: "#ff0000" }));
 
       // Today: the props type is closed and nothing is spread, so `onChange` is
       // dropped on the floor — the store never hears the edit and the controlled
       // `value` never moves, leaving a permanently inert control.
       expect(values).toEqual({ brand: "#ff0000" });
-      expect(screen.getByRole("button", { name: "Choose color" })).toHaveTextContent(
+      expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveTextContent(
         "#ff0000",
       );
     });
@@ -240,7 +240,7 @@ describe("ColorPicker", () => {
         />,
       );
 
-      await user.click(screen.getByRole("button", { name: "Choose color" }));
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
       await user.click(screen.getByRole("button", { name: "#ff0000" }));
 
       expect(onValueChange).toHaveBeenCalledTimes(1);
@@ -259,7 +259,7 @@ describe("ColorPicker", () => {
         />,
       );
 
-      const trigger = screen.getByRole("button", { name: "Choose color" });
+      const trigger = screen.getByRole("button", { name: /^Choose color/ });
       expect(trigger).toHaveAttribute("id", "brand-trigger");
       expect(trigger).toHaveAttribute("name", "brand");
       expect(trigger).toHaveAttribute("data-slot", "colour");
@@ -274,7 +274,7 @@ describe("ColorPicker", () => {
       const onBlur = vi.fn();
       render(<ColorPicker defaultValue="#3366cc" onBlur={onBlur} />);
 
-      const trigger = screen.getByRole("button", { name: "Choose color" });
+      const trigger = screen.getByRole("button", { name: /^Choose color/ });
       await user.click(trigger);
       // The click still opens the panel (getReferenceProps kept its handler)…
       expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -286,7 +286,7 @@ describe("ColorPicker", () => {
     it("keeps a caller's aria-invalid when it has no opinion of its own (#434)", () => {
       const bindings: { "aria-invalid": true | undefined } = { "aria-invalid": true };
       render(<ColorPicker defaultValue="#3366cc" {...bindings} />);
-      expect(screen.getByRole("button", { name: "Choose color" })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveAttribute(
         "aria-invalid",
         "true",
       );
@@ -298,10 +298,91 @@ describe("ColorPicker", () => {
       // `undefined` delete the component's own opinion.
       const bindings: { "aria-invalid": true | undefined } = { "aria-invalid": undefined };
       render(<ColorPicker defaultValue="#3366cc" error {...bindings} />);
-      expect(screen.getByRole("button", { name: "Choose color" })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: /^Choose color/ })).toHaveAttribute(
         "aria-invalid",
         "true",
       );
+    });
+  });
+  describe("the trigger's accessible name carries the colour (#286)", () => {
+    it("puts the current hex in the name, keeping the caller's label", async () => {
+      const user = userEvent.setup();
+      render(<ColorPicker aria-label="Brand colour" defaultValue="#ff0000" />);
+
+      const trigger = screen.getByRole("button", { name: "Brand colour #ff0000" });
+      expect(trigger).toBeInTheDocument();
+
+      await user.click(trigger);
+      await user.click(screen.getByRole("slider", { name: "Hue" }));
+      fireEvent.change(screen.getByRole("slider", { name: "Hue" }), {
+        target: { value: "240" },
+      });
+
+      expect(
+        screen.getByRole("button", { name: /^Brand colour #/ }).getAttribute("aria-label")
+      ).not.toBe("Brand colour #ff0000");
+    });
+  });
+
+  describe("presets the parser cannot read (#288)", () => {
+    it("does not render a swatch that could never commit", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <ColorPicker
+          defaultValue="#000000"
+          presets={["rebeccapurple", "#ff0000"]}
+          onValueChange={onValueChange}
+        />
+      );
+
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
+
+      expect(screen.queryByRole("button", { name: "rebeccapurple" })).toBeNull();
+      await user.click(screen.getByRole("button", { name: "#ff0000" }));
+      expect(onValueChange).toHaveBeenCalledWith("#ff0000");
+    });
+  });
+
+  describe("disabled reaches the open panel (#290)", () => {
+    it("stops the square's arrow keys and the preset buttons", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      const props = {
+        defaultValue: "#808080",
+        presets: ["#ff0000"],
+        onValueChange,
+      };
+      const { rerender } = render(<ColorPicker {...props} />);
+
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
+      // Flip `disabled` while the panel is open — a click elsewhere would
+      // dismiss it before the assertion could run.
+      rerender(<ColorPicker {...props} disabled />);
+
+      const square = screen.getByRole("slider", { name: "Saturation and brightness" });
+      square.focus();
+      fireEvent.keyDown(square, { key: "ArrowRight" });
+      expect(onValueChange).not.toHaveBeenCalled();
+
+      expect(screen.getByRole("button", { name: "#ff0000" })).toBeDisabled();
+    });
+  });
+
+  describe("the floating panel is named (#292)", () => {
+    it("gives the dialog an accessible name, overridable by prop", async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<ColorPicker defaultValue="#000000" />);
+
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
+      expect(screen.getByRole("dialog", { name: "Color picker" })).toBeInTheDocument();
+      unmount();
+
+      render(<ColorPicker defaultValue="#000000" panelLabel="Sélecteur de couleur" />);
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
+      expect(
+        screen.getByRole("dialog", { name: "Sélecteur de couleur" })
+      ).toBeInTheDocument();
     });
   });
 });

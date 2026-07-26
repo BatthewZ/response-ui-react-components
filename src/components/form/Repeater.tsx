@@ -1,5 +1,5 @@
 "use client";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 
 import { cn } from "../../util/style";
@@ -18,6 +18,12 @@ export interface RepeaterItem {
   count: number;
   isFirst: boolean;
   isLast: boolean;
+  /**
+   * The Repeater's `disabled`, so row controls that are not native form
+   * elements can honour it too. Native `<input>`/`<select>`/`<button>`
+   * descendants are already disabled by the row's `<fieldset>`.
+   */
+  disabled: boolean;
   /** Remove this row. No-op when at `min`. */
   remove: () => void;
   /** Swap with the previous row. No-op for the first row. */
@@ -36,6 +42,16 @@ type RepeaterProps<T extends Record<string, unknown>> = {
   /** Factory for a new row's value when "Add" is pressed. */
   defaultItem: () => unknown;
   addLabel?: string;
+  /**
+   * Accessible name for a row's Remove control. Per row, so the buttons do not
+   * all share one name, and overridable, so it can be translated.
+   * @default (index) => `Remove item ${index + 1}`
+   */
+  removeLabel?: (index: number, count: number) => string;
+  /** @default (index) => `Move item ${index + 1} up` */
+  moveUpLabel?: (index: number, count: number) => string;
+  /** @default (index) => `Move item ${index + 1} down` */
+  moveDownLabel?: (index: number, count: number) => string;
   /** Minimum rows — removal is blocked at this count. @default 0 */
   min?: number;
   /** Maximum rows — adding is blocked at this count. */
@@ -54,14 +70,18 @@ type RepeaterProps<T extends Record<string, unknown>> = {
  * and submission exactly like any other bound field.
  *
  * @example
- * <Repeater form={form} name="links" defaultItem={() => ({ url: "" })} addLabel="Add link">
- *   {({ name }) => (
- *     <Field name={`${name}.url`} className="flex-1">
- *       <Input placeholder="https://…" {...form.field(`${name}.url`)} />
- *       <FieldError />
- *     </Field>
- *   )}
- * </Repeater>
+ * <FormProvider form={form}>
+ *   <form {...form.props}>
+ *     <Repeater form={form} name="links" defaultItem={() => ({ url: "" })} addLabel="Add link">
+ *       {({ name }) => (
+ *         <Field name={`${name}.url`} className="flex-1">
+ *           <Input placeholder="https://…" {...form.field(`${name}.url`)} />
+ *           <FieldError />
+ *         </Field>
+ *       )}
+ *     </Repeater>
+ *   </form>
+ * </FormProvider>
  */
 export function Repeater<T extends Record<string, unknown>>({
   form,
@@ -69,6 +89,9 @@ export function Repeater<T extends Record<string, unknown>>({
   children,
   defaultItem,
   addLabel = "Add",
+  removeLabel = (index) => `Remove item ${index + 1}`,
+  moveUpLabel = (index) => `Move item ${index + 1} up`,
+  moveDownLabel = (index) => `Move item ${index + 1} down`,
   min = 0,
   max,
   reorderable = false,
@@ -80,67 +103,104 @@ export function Repeater<T extends Record<string, unknown>>({
   const canRemove = count > min;
   const canAdd = max === undefined || count < max;
 
+  const removeRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const addRef = useRef<HTMLButtonElement>(null);
+  // Set when a row removes itself: its Remove button is about to unmount, so
+  // the successor has to be named before React drops it, or focus falls to
+  // <body> with nothing announced.
+  const pendingFocus = useRef<number | null>(null);
+
+  useEffect(() => {
+    const index = pendingFocus.current;
+    if (index == null) return;
+    pendingFocus.current = null;
+    const buttons = removeRefs.current;
+    const successor = buttons[index] ?? buttons[index - 1];
+    const target =
+      successor && !successor.disabled ? successor : addRef.current;
+    target?.focus();
+  }, [count]);
+
+  function removeRow(index: number) {
+    pendingFocus.current = index;
+    array.remove(index);
+  }
+
   return (
     <div className={cn("flex flex-col gap-r4", className)}>
-      {array.fields.map((field, index) => {
-        const isFirst = index === 0;
-        const isLast = index === count - 1;
-        return (
-          <div key={field.id} className="flex items-start gap-r5">
-            <div className="flex-1 min-w-0">
-              {children({
-                id: field.id,
-                name: field.name,
-                index,
-                count,
-                isFirst,
-                isLast,
-                remove: () => {
-                  if (canRemove) array.remove(index);
-                },
-                moveUp: () => {
-                  if (!isFirst) array.move(index, index - 1);
-                },
-                moveDown: () => {
-                  if (!isLast) array.move(index, index + 1);
-                },
-              })}
+      {/* The rows are a list: without the semantics a screen reader hears a run
+          of unrelated fields and cannot tell how many there are or which one it
+          is in. */}
+      <div role="list" className="flex flex-col gap-r4">
+        {array.fields.map((field, index) => {
+          const isFirst = index === 0;
+          const isLast = index === count - 1;
+          return (
+            <div key={field.id} role="listitem" className="flex items-start gap-r5">
+              {/* A `disabled` fieldset disables every native control inside it,
+                  which is the only way `disabled` can reach fields this
+                  component does not own. Preflight already strips the UA
+                  border/padding/margin; `min-w-0` clears `min-inline-size`. */}
+              <fieldset disabled={disabled} className="flex-1 min-w-0">
+                {children({
+                  id: field.id,
+                  name: field.name,
+                  index,
+                  count,
+                  isFirst,
+                  isLast,
+                  disabled,
+                  remove: () => {
+                    if (canRemove) removeRow(index);
+                  },
+                  moveUp: () => {
+                    if (!isFirst) array.move(index, index - 1);
+                  },
+                  moveDown: () => {
+                    if (!isLast) array.move(index, index + 1);
+                  },
+                })}
+              </fieldset>
+              <div className="flex items-center gap-r6 pt-r6">
+                {reorderable && (
+                  <>
+                    <IconButton
+                      type="button"
+                      aria-label={moveUpLabel(index, count)}
+                      disabled={disabled || isFirst}
+                      onClick={() => array.move(index, index - 1)}
+                    >
+                      <ChevronUp size={16} aria-hidden="true" />
+                    </IconButton>
+                    <IconButton
+                      type="button"
+                      aria-label={moveDownLabel(index, count)}
+                      disabled={disabled || isLast}
+                      onClick={() => array.move(index, index + 1)}
+                    >
+                      <ChevronDown size={16} aria-hidden="true" />
+                    </IconButton>
+                  </>
+                )}
+                <IconButton
+                  type="button"
+                  ref={(node) => {
+                    removeRefs.current[index] = node;
+                  }}
+                  aria-label={removeLabel(index, count)}
+                  disabled={disabled || !canRemove}
+                  onClick={() => removeRow(index)}
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                </IconButton>
+              </div>
             </div>
-            <div className="flex items-center gap-r6 pt-r6">
-              {reorderable && (
-                <>
-                  <IconButton
-                    type="button"
-                    aria-label="Move up"
-                    disabled={disabled || isFirst}
-                    onClick={() => array.move(index, index - 1)}
-                  >
-                    <ChevronUp size={16} aria-hidden="true" />
-                  </IconButton>
-                  <IconButton
-                    type="button"
-                    aria-label="Move down"
-                    disabled={disabled || isLast}
-                    onClick={() => array.move(index, index + 1)}
-                  >
-                    <ChevronDown size={16} aria-hidden="true" />
-                  </IconButton>
-                </>
-              )}
-              <IconButton
-                type="button"
-                aria-label="Remove item"
-                disabled={disabled || !canRemove}
-                onClick={() => array.remove(index)}
-              >
-                <Trash2 size={16} aria-hidden="true" />
-              </IconButton>
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
       <div>
         <Button
+          ref={addRef}
           type="button"
           variant="secondary"
           size="sm"

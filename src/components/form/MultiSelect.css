@@ -31,7 +31,11 @@
   border-color: var(--C-STATUS-ERROR);
 }
 
+/* Focus must not erase the invalid state: `.multiselect-control:focus-within`
+   above swaps the border to the focus colour at the same specificity, so this
+   rule has to restate the error border as well as the ring. */
 .multiselect-control--error:focus-within {
+  border-color: var(--C-STATUS-ERROR);
   box-shadow: 0 0 0 2px var(--C-STATUS-ERROR);
 }
 

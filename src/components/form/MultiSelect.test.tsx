@@ -308,4 +308,165 @@ describe("MultiSelect", () => {
     await user.keyboard("{ArrowUp}");
     expect(activeIds()).toEqual([first]);
   });
+
+  describe("dismissing the listbox (#265)", () => {
+    it("closes when the chevron is clicked again", async () => {
+      const user = userEvent.setup();
+      const { container } = render(<Harness />);
+
+      await user.click(screen.getByRole("combobox"));
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+      const toggle = container.querySelector(".multiselect-toggle")!;
+      await user.click(toggle);
+
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("closes when focus leaves the control", async () => {
+      const user = userEvent.setup();
+      render(
+        <>
+          <Harness />
+          <button type="button">After</button>
+        </>
+      );
+
+      await user.click(screen.getByRole("combobox"));
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+      await user.tab();
+
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("controlled open (#445)", () => {
+    it("honours the open prop and reports changes", async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      const { rerender } = render(<Harness open={false} onOpenChange={onOpenChange} />);
+
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      await user.click(screen.getByRole("combobox"));
+      expect(onOpenChange).toHaveBeenCalledWith(true);
+      // Still shut: the prop owns the state.
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+
+      rerender(<Harness open onOpenChange={onOpenChange} />);
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+    });
+  });
+
+  describe("Enter with the list open (#266)", () => {
+    it("does not submit the surrounding form when nothing is highlighted", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+      render(
+        <form onSubmit={onSubmit}>
+          <Harness />
+        </form>
+      );
+
+      await user.click(screen.getByRole("combobox"));
+      await user.keyboard("{Enter}");
+
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("chip removal (#267 / #441)", () => {
+    it("puts every chip's remove button in the tab order", async () => {
+      const user = userEvent.setup();
+      render(<Harness defaultValue={undefined} />);
+
+      await user.click(screen.getByRole("combobox"));
+      await user.click(within(screen.getByRole("listbox")).getByText("Apple"));
+      await user.click(within(screen.getByRole("listbox")).getByText("Banana"));
+
+      const remove = screen.getByRole("button", { name: "Remove Apple" });
+      expect(remove).not.toHaveAttribute("tabindex", "-1");
+    });
+
+    it("keeps focus inside the control after a chip removes itself", async () => {
+      const user = userEvent.setup();
+      render(<Harness defaultValue={undefined} />);
+
+      await user.click(screen.getByRole("combobox"));
+      await user.click(within(screen.getByRole("listbox")).getByText("Apple"));
+      await user.click(within(screen.getByRole("listbox")).getByText("Banana"));
+
+      await user.click(screen.getByRole("button", { name: "Remove Apple" }));
+
+      expect(document.activeElement).not.toBe(document.body);
+      expect(screen.getByRole("button", { name: "Remove Banana" })).toHaveFocus();
+    });
+
+    it("falls back to the text input when the last chip goes", async () => {
+      const user = userEvent.setup();
+      render(<Harness defaultValue={undefined} />);
+
+      await user.click(screen.getByRole("combobox"));
+      await user.click(within(screen.getByRole("listbox")).getByText("Apple"));
+
+      await user.click(screen.getByRole("button", { name: "Remove Apple" }));
+
+      expect(screen.getByRole("combobox")).toHaveFocus();
+    });
+  });
+
+  describe("ARIA that describes what is actually there", () => {
+    it("#270 drops aria-controls while the listbox is closed", async () => {
+      const user = userEvent.setup();
+      render(<Harness />);
+
+      const input = screen.getByRole("combobox");
+      expect(input).not.toHaveAttribute("aria-controls");
+
+      await user.click(input);
+      const id = input.getAttribute("aria-controls");
+      expect(id).toBeTruthy();
+      expect(document.getElementById(id!)).toBe(screen.getByRole("listbox"));
+    });
+
+    it("#271 does not advertise list autocomplete when not searchable", () => {
+      render(<Harness searchable={false} />);
+
+      expect(screen.getByRole("combobox")).toHaveAttribute(
+        "aria-autocomplete",
+        "none"
+      );
+    });
+
+    it("#263 puts id and aria-labelledby on the combobox input", () => {
+      render(
+        <>
+          <span id="ms-label">Fruit</span>
+          <Harness id="ms-input" aria-label={undefined} aria-labelledby="ms-label" />
+        </>
+      );
+
+      const input = screen.getByRole("combobox", { name: "Fruit" });
+      expect(input).toHaveAttribute("id", "ms-input");
+    });
+  });
+
+  describe("duplicate entries in a controlled value (#272)", () => {
+    it("renders both chips without a duplicate-key error", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      render(
+        <MultiSelect
+          aria-label="Fruit"
+          options={OPTIONS}
+          value={["apple", "apple"]}
+          onValueChange={vi.fn()}
+        />
+      );
+
+      expect(screen.getAllByRole("button", { name: "Remove Apple" })).toHaveLength(2);
+      expect(consoleError).not.toHaveBeenCalled();
+      consoleError.mockRestore();
+    });
+  });
 });

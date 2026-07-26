@@ -98,4 +98,23 @@ describe("Input", () => {
     expect(className).toContain("focus:border-border-focus");
     expect(className).not.toContain("focus:border-status-error");
   });
+  describe("a field() spread cannot erase the invalid state (#455)", () => {
+    it("keeps aria-invalid when the caller supplies the key as undefined", () => {
+      render(<Input error aria-label="Field" {...{ "aria-invalid": undefined }} />);
+
+      expect(screen.getByRole("textbox", { name: "Field" })).toHaveAttribute(
+        "aria-invalid",
+        "true"
+      );
+    });
+
+    it("lets a caller's aria-invalid through when it has no opinion of its own", () => {
+      render(<Input aria-label="Field" aria-invalid="true" />);
+
+      expect(screen.getByRole("textbox", { name: "Field" })).toHaveAttribute(
+        "aria-invalid",
+        "true"
+      );
+    });
+  });
 });

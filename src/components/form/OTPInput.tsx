@@ -36,6 +36,13 @@ type OTPInputProps = {
   onChange?: (v: string) => void;
   onComplete?: (v: string) => void;
   mode?: OTPMode;
+  /**
+   * Accessible name for one box, given its 1-based position and the total.
+   * The default says "Character", not "Digit" — the boxes hold letters under
+   * `mode="alphanumeric"` — and it is a prop so it can be translated.
+   * @default (position, length) => `Character ${position} of ${length}`
+   */
+  charLabel?: (position: number, length: number) => string;
   error?: boolean;
   disabled?: boolean;
 } & Omit<ComponentPropsWithRef<"div">, "onChange" | "defaultValue">;
@@ -63,6 +70,7 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
     onChange,
     onComplete,
     mode = "numeric",
+    charLabel = (position, total) => `Character ${position} of ${total}`,
     error,
     disabled,
     className,
@@ -212,7 +220,7 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
             maxLength={1}
             disabled={disabled}
             value={slots[i] ?? ""}
-            aria-label={`Digit ${i + 1}`}
+            aria-label={charLabel(i + 1, length)}
             {...ariaProps}
             className={cn(
               "size-12 text-center text-h5 text-fg-primary",

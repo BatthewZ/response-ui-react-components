@@ -34,16 +34,16 @@ props, so the input is always `type="search"`.
 
 The `error` prop of [Input](input.md) is **not** in this type; the only route to the
 invalid styling is a [Field](field.md) — see [Inside a Field](#inside-a-field). Several
-sharper edges are worth reading before you ship it — `disabled` does not reach the clear
-button, `className` and `style` land on different elements, and the accessible name is a
-hard-coded literal. See [Gotchas](#gotchas).
+sharper edges are worth reading before you ship it — `className` and `style` land on different
+elements, and the default accessible name only stands aside if you give the field a name of
+your own. See [Gotchas](#gotchas).
 
 ## Name it
 
-The component hard-codes `aria-label="Search"`, and an `aria-label` beats an associated
-`<label>` in the accessible-name computation. So a visible [Label](label.md) wired with
-`htmlFor` is **silently ignored** — the field still announces as "Search". Point
-`aria-labelledby` at the label's `id` (or pass your own `aria-label`) to fix it:
+The component falls back to `aria-label="Search"` only when you have given it no name of its
+own — no `aria-label`, no `aria-labelledby`, and no `id` for a `<label htmlFor>` to point at.
+Supply any of those and the default stands aside, so a visible [Label](label.md) wired with
+`htmlFor` names the field the way it should:
 
 <!-- example:AccessibleName -->
 ```tsx
@@ -213,29 +213,14 @@ under `prefers-reduced-motion: reduce`.
 
 ## Gotchas
 
-- **`disabled` doesn't reach the clear button.** `disabled` is spread onto the `<input>`
-  only; the clear `<button>` is rendered unconditionally whenever `value` is non-empty and
-  is never disabled. A disabled SearchInput showing "oklch" still renders an enabled X, and
-  clicking it fires `onChange("")` and `onClear()` — the value a disabled field was meant to
-  protect is one click away. `readOnly` is the same, and Escape clears a `readOnly` field too.
 - **`className` and `style` land on different elements.** The type is `<input>`'s, but
   `className` is destructured out and applied to the wrapper `<div>` while `style` goes to
   the input with the rest of the props. So `className="px-8"` will not repad the field, and
   a `style` width sizes the input inside a wrapper that is still `width: 100%`.
-- **Escape clears *and* keeps going.** The Escape handler calls neither `preventDefault()`
-  nor `stopPropagation()`, so the event bubbles with `defaultPrevented === false`. Inside a
-  [Dialog](dialog.md) — a native `<dialog>` that closes on the browser's Escape close request
-  — one press both empties the search box and closes the dialog. If you want the first
-  Escape to only clear, stop it yourself in your own `onKeyDown`.
-- **Escape clears an already-empty field.** There is no guard on `value`, so pressing Escape
-  in an empty box still calls `onChange("")` and `onClear()`. If `onClear` resets pagination
-  or refetches, it will do so on every stray Escape.
-- **The clear button vanishes under your focus.** It only renders while `value` is truthy,
-  so activating it unmounts it: focus falls back to `<body>`, and the next Tab
-  restarts from the top of the document instead of continuing after the field.
-- **`defaultValue` compiles but is wrong.** It survives the `Omit`, so `<SearchInput value=…
-  defaultValue=… />` typechecks and then trips React's controlled/uncontrolled warning at
-  runtime. There is no uncontrolled mode; drop it.
+- **Escape is consumed only when it clears something.** A press that empties a non-empty field
+  calls `preventDefault()` and `stopPropagation()`, so it does not also close the
+  [Dialog](dialog.md) or command palette around the field. A press in an already-empty box
+  does nothing at all — no `onChange`, no `onClear` — and travels on to whatever is listening.
 - **Client component.** `SearchInput.tsx` carries `"use client"`, so importing it opts its
   module into the client bundle — which it needs, because the [Input](input.md) it renders
   reads the [Field](field.md) context and ships no directive of its own. The directive
@@ -245,19 +230,23 @@ under `prefers-reduced-motion: reduce`.
 
 ## Accessibility
 
-The field is a native `<input type="search">` that also carries an explicit
-`role="searchbox"` — redundant, since that is already the implicit role, but harmless. Both
-are set *before* the rest spread, so a caller can override `role` and `aria-label`. Both
+The field is a native `<input type="search">`, whose implicit role is already `searchbox`; the
+component states no `role` of its own. Both
 glyphs end up `aria-hidden` — the magnifier explicitly, the X from lucide's own default for
 a childless icon — and the browser's built-in `type="search"` clear affordances
 (`::-webkit-search-cancel-button`, `::-ms-clear`) are zeroed out in CSS, so only one X is
 ever visible.
 
-- **Its name is the string `"Search"`, in English, for every instance.** Because `aria-label`
-  outranks a `<label for>` in the name computation, wiring a visible [Label](label.md) does not change
-  it — the field still announces "Search". Pass `aria-labelledby` (which outranks `aria-label`)
-  or your own `aria-label`. This also means a page with two SearchInputs has two identically
-  named searchboxes until you name them.
+- **Its default name is the string `"Search"`, in English.** That default applies only to a
+  field you have not named: pass an `aria-label`, an `aria-labelledby`, or an `id` for a
+  visible [Label](label.md) to point at, and the component sets no name of its own. A page with
+  two unnamed SearchInputs still has two identically named searchboxes — name them.
+- **`disabled` and `readOnly` reach the clear button too.** Both disable it, and Escape does
+  nothing in either state, so a field that is meant to be protected cannot be emptied by
+  either route.
+- **Clearing keeps your focus.** The clear button unmounts as soon as the value is empty, so
+  the component moves focus back to the field first rather than letting it fall to `<body>`.
+  Its accessible name comes from `clearLabel`, so it can be translated.
 - **The clear button is a real button.** `<button type="button" aria-label="Clear search">` —
   it is in the tab order after the input, activates on Enter and Space,
   and cannot submit an enclosing form. Its `:focus-visible` state is a 2px `--C-BORDER-FOCUS`

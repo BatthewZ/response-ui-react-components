@@ -7,13 +7,38 @@ import {
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
-import { mergeProps } from "../../util/merge-props";
+import { composeEventHandlers, mergeProps } from "../../util/merge-props";
 import { cn } from "../../util/style";
 
 import { useFieldErrorProps } from "./Field";
 
-/** A `[low, high]` pair. Always kept ordered (`low <= high`) by the component. */
+/**
+ * A `[low, high]` pair. The component orders it (`low <= high`) and opens it to
+ * at least `minDistance` before rendering, so an out-of-order or too-close pair
+ * from the caller is drawn and announced as the scale can actually hold it.
+ */
 export type RangeSliderValue = [number, number];
+
+/**
+ * Bring an incoming pair onto the scale: ordered, inside `[min, max]`, and at
+ * least `minDistance` apart. Rendering only — the caller's value is never
+ * rewritten behind their back.
+ */
+function normalizePair(
+  pair: RangeSliderValue,
+  min: number,
+  max: number,
+  minDistance: number,
+): RangeSliderValue {
+  const clamp = (n: number) => Math.min(Math.max(n, min), max);
+  let lo = clamp(pair[0] <= pair[1] ? pair[0] : pair[1]);
+  let hi = clamp(pair[0] <= pair[1] ? pair[1] : pair[0]);
+  if (hi - lo < minDistance) {
+    hi = clamp(lo + minDistance);
+    lo = clamp(hi - minDistance);
+  }
+  return [lo, hi];
+}
 
 type RangeSliderProps = {
   value?: RangeSliderValue;
@@ -41,6 +66,12 @@ type RangeSliderProps = {
   minLabel?: string;
   /** Accessible label for the upper thumb. @default "Maximum" */
   maxLabel?: string;
+  /**
+   * Spoken form of a thumb's value, applied as `aria-valuetext` on both thumbs.
+   * Without it a screen reader reads the raw number as a percentage of the
+   * range, which is wrong for prices, dates or any non-linear scale.
+   */
+  formatValue?: (value: number) => string;
   className?: string;
   style?: CSSProperties;
 } & Omit<
@@ -74,8 +105,11 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
       disabled,
       minLabel = "Minimum",
       maxLabel = "Maximum",
+      formatValue,
       className,
       style,
+      "aria-invalid": ariaInvalid,
+      "aria-describedby": ariaDescribedBy,
       ...props
     },
     ref,
@@ -90,8 +124,20 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
     });
 
     const fieldErrorProps = useFieldErrorProps(error);
+    // The invalid state and the error text belong on the focusable controls
+    // that report them, not on the wrapper `<div>` — an AT never reads the
+    // wrapper while a thumb has focus. Merged rather than spread because
+    // `field()` emits the KEY `aria-invalid` valued `undefined` on every
+    // render, which a plain spread would use to delete the computed state.
+    const thumbAriaProps = mergeProps(
+      {
+        "aria-invalid": ariaInvalid,
+        "aria-describedby": ariaDescribedBy,
+      },
+      fieldErrorProps,
+    );
 
-    const [lo, hi] = current;
+    const [lo, hi] = normalizePair(current, min, max, minDistance);
     const range = max - min;
 
     const toPct = (n: number) =>
@@ -125,17 +171,32 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
 
     // Which thumb is mid-drag, captured on pointerdown and held until release.
     const [activeThumb, setActiveThumb] = useState<"lo" | "hi" | null>(null);
+    // Where the pointer is over the track, as a percentage, while idle.
+    const [pointerPct, setPointerPct] = useState<number | null>(null);
+
+    function trackPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+      if (activeThumb !== null) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      if (rect.width === 0) return;
+      setPointerPct(((event.clientX - rect.left) / rect.width) * 100);
+    }
 
     // The actively dragged thumb stays on top for the whole gesture so the
     // drag never hands off to its sibling mid-stroke — that hand-off dropped
     // the native pointer capture and caused the stutter when a thumb crossed
-    // the midpoint. When idle, fall back to a positional heuristic: once both
-    // thumbs bunch near the top end the upper input would sit over the lower
-    // one and trap it, so raise the lower thumb past the midpoint to keep it
-    // grabbable.
+    // the midpoint.
+    //
+    // When idle, only the top input is hit-testable where the two overlap, so
+    // at equal values one thumb is unreachable by pointer and a fixed heuristic
+    // just chooses which one is buried. Decide by approach instead: a pointer
+    // left of the pair wants the lower thumb, one to its right the upper. Falls
+    // back to the positional heuristic before the pointer has been seen.
     const lowOnTop =
       activeThumb === "lo" ||
-      (activeThumb === null && lo > (min + max) / 2);
+      (activeThumb === null &&
+        (pointerPct != null
+          ? pointerPct < (loPct + hiPct) / 2
+          : lo > (min + max) / 2));
 
     return (
       <div
@@ -149,7 +210,10 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
             ...style,
           } as CSSProperties
         }
-        {...mergeProps(props, fieldErrorProps)}
+        {...props}
+        onPointerMove={composeEventHandlers(props.onPointerMove, trackPointerMove, {
+          checkDefaultPrevented: false,
+        })}
       >
         <span className="range-slider__track" aria-hidden="true" />
         <span className="range-slider__fill" aria-hidden="true" />
@@ -162,6 +226,8 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
           value={lo}
           disabled={disabled}
           aria-label={minLabel}
+          aria-valuetext={formatValue?.(lo)}
+          {...thumbAriaProps}
           style={lowOnTop ? { zIndex: 4 } : undefined}
           onPointerDown={() => setActiveThumb("lo")}
           onPointerUp={() => setActiveThumb(null)}
@@ -178,6 +244,8 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
           value={hi}
           disabled={disabled}
           aria-label={maxLabel}
+          aria-valuetext={formatValue?.(hi)}
+          {...thumbAriaProps}
           style={!lowOnTop && activeThumb === "hi" ? { zIndex: 4 } : undefined}
           onPointerDown={() => setActiveThumb("hi")}
           onPointerUp={() => setActiveThumb(null)}

@@ -250,9 +250,9 @@ wins over the built-in `aria-label` default.
   <kbd>Home</kbd>/<kbd>End</kbd> handling and, as above, no <kbd>Delete</kbd>.
 - **Focusing a box selects its contents,** so typing over a filled box replaces rather than
   appends.
-- **Every box is named `"Digit N"`** — a hard-coded English string with no prop to override
-  it. In `mode="alphanumeric"` that name is simply wrong: a screen-reader user entering a
-  backup code hears "Digit 3" while the field accepts letters.
+- **Every box is named from `charLabel`**, which defaults to `"Character N of M"` — right in
+  either `mode`, since the boxes hold letters under `mode="alphanumeric"`. Pass your own
+  `charLabel` to translate it or to say "digit" where you know the code is numeric.
 - **`autoComplete="one-time-code"` is set on the first box only;** the rest are
   `autoComplete="off"`. See the autofill gotcha above before relying on it.
 - **The invalid state is announced, not just tinted.** `error` (or an enclosing [Field](field.md)) puts

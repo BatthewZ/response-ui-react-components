@@ -2,6 +2,7 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   type ComponentPropsWithRef,
+  type CSSProperties,
   forwardRef,
   useRef,
   useState,
@@ -38,6 +39,10 @@ type NumberInputProps = {
   "type" | "value" | "defaultValue" | "onChange"
 >;
 
+/** Width of one stepper chevron. The reserved right padding is derived from it
+ * rather than guessed at, so a long value cannot render under the chevrons. */
+const CHEVRON_SIZE = 14;
+
 /** Optionally signed decimal, with optional fraction and exponent. */
 const DECIMAL = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 
@@ -73,6 +78,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       onKeyDown,
       onBlur,
       disabled,
+      readOnly,
       ...props
     },
     ref
@@ -125,7 +131,12 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       setCommits((n) => n + 1);
     }
 
+    // A read-only field is not an editable one by another route: the steppers
+    // and the Arrow keys commit exactly what typing would.
+    const locked = disabled === true || readOnly === true;
+
     function stepBy(direction: 1 | -1) {
+      if (locked) return;
       // Step from the text in the box, committed or not, seeding an empty field
       // at 0 and letting the clamp carry it to the bound — so the first press
       // in a `min={10}` field lands on 10 itself, as a native spinner does.
@@ -136,6 +147,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     const handleKeyDown = composeEventHandlers(
       onKeyDown,
       (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (locked) return;
         if (e.key === "Enter") {
           apply(readDraft(draft));
         } else if (e.key === "ArrowUp") {
@@ -149,11 +161,19 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     );
 
     const handleBlur = composeEventHandlers(onBlur, () => {
+      if (locked) return;
       apply(readDraft(draft));
     });
 
     return (
-      <div className="relative">
+      <div
+        className="relative"
+        style={
+          {
+            "--numberinput-stepper": `calc(${CHEVRON_SIZE}px + 2 * var(--R-SIZE-5))`,
+          } as CSSProperties
+        }
+      >
         <Input
           ref={ref}
           type="text"
@@ -161,6 +181,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           role="spinbutton"
           error={error}
           disabled={disabled}
+          readOnly={readOnly}
+          aria-readonly={readOnly || undefined}
           aria-valuenow={currentValue ?? undefined}
           aria-valuemin={min}
           aria-valuemax={max}
@@ -169,14 +191,16 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          className={cn("pr-r2", className)}
+          // Reserve exactly the stepper column, not an eyeballed token that is
+          // narrower than it — a long value used to render under the chevrons.
+          className={cn("pr-[var(--numberinput-stepper)]", className)}
         />
         <div className="absolute inset-y-0 right-0 flex flex-col">
           <button
             type="button"
             tabIndex={-1}
             aria-hidden="true"
-            disabled={disabled}
+            disabled={locked}
             onPointerDown={(e) => {
               e.preventDefault();
               stepBy(1);
@@ -187,13 +211,13 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
               "disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             )}
           >
-            <ChevronUp size={14} />
+            <ChevronUp size={CHEVRON_SIZE} />
           </button>
           <button
             type="button"
             tabIndex={-1}
             aria-hidden="true"
-            disabled={disabled}
+            disabled={locked}
             onPointerDown={(e) => {
               e.preventDefault();
               stepBy(-1);
@@ -204,7 +228,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
               "disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             )}
           >
-            <ChevronDown size={14} />
+            <ChevronDown size={CHEVRON_SIZE} />
           </button>
         </div>
       </div>

@@ -3,6 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import {
+  focusOutlineResetControl,
+  focusRingControl,
+  focusRingControlError,
+} from "../../util/focus";
+
 import { Combobox } from "./Combobox";
 
 interface Fruit {
@@ -159,8 +165,28 @@ describe("Combobox", () => {
     await user.type(getInput(), "a");
 
     const listbox = screen.getByRole("listbox");
-    expect(within(listbox).getByRole("status")).toBeInTheDocument();
+    // `Spinner` is decoration unless it is given something to announce, so the
+    // assertion is on the loading slot, not on a live region it does not own.
+    expect(listbox.querySelector(".combobox-loading")).not.toBeNull();
     expect(within(listbox).queryAllByRole("option")).toHaveLength(0);
+  });
+
+  it("announces the wait when Content is given a loadingLabel", async () => {
+    const user = userEvent.setup();
+    render(
+      <Combobox loading>
+        <Combobox.Input aria-label="Fruit" />
+        <Combobox.Content loadingLabel="Chargement des fruits…">
+          <Combobox.Item index={0} value="apple">
+            Apple
+          </Combobox.Item>
+        </Combobox.Content>
+      </Combobox>,
+    );
+
+    await user.type(getInput(), "a");
+
+    expect(screen.getByRole("status")).toHaveTextContent("Chargement des fruits…");
   });
 
   it("does not select a disabled item on click", async () => {
@@ -329,5 +355,179 @@ describe("Combobox", () => {
 
     await user.keyboard("{ArrowUp}");
     expect(activeIds()).toEqual([first]);
+  });
+
+  describe("the chevron toggle (#276 / #283)", () => {
+    function getToggle(): HTMLElement {
+      return screen.getByRole("button", { name: "Show options" });
+    }
+
+    it("closes an open popup", async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      render(
+        <Combobox onOpenChange={onOpenChange}>
+          <Combobox.Input aria-label="Fruit" />
+          <Combobox.Content>
+            <Combobox.Item index={0} value="apple">
+              Apple
+            </Combobox.Item>
+          </Combobox.Content>
+        </Combobox>,
+      );
+
+      await user.click(getToggle());
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+      await user.click(getToggle());
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      // No false close/open pair on the way: one call per press.
+      expect(onOpenChange.mock.calls).toEqual([[true], [false]]);
+    });
+
+    it("takes its accessible name from a prop and reports its own state", async () => {
+      const user = userEvent.setup();
+      render(
+        <Combobox>
+          <Combobox.Input aria-label="Fruit" toggleLabel="Afficher les options" />
+          <Combobox.Content>
+            <Combobox.Item index={0} value="apple">
+              Apple
+            </Combobox.Item>
+          </Combobox.Content>
+        </Combobox>,
+      );
+
+      const toggle = screen.getByRole("button", { name: "Afficher les options" });
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+      await user.click(toggle);
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      expect(document.getElementById(toggle.getAttribute("aria-controls")!)).toBe(
+        screen.getByRole("listbox"),
+      );
+    });
+  });
+
+  describe("loading (#277)", () => {
+    it("drops aria-activedescendant while the options are swapped for the spinner", async () => {
+      const user = userEvent.setup();
+      const { rerender } = render(<Harness />);
+
+      const input = getInput();
+      await user.click(input);
+      await user.keyboard("a");
+      await user.keyboard("{ArrowDown}");
+      const active = input.getAttribute("aria-activedescendant");
+      expect(document.getElementById(active!)).not.toBeNull();
+
+      rerender(<Harness loading />);
+
+      // No options are in the document, so there is nothing for the pointer to
+      // name — a dangling IDREF is what an AT reads as "no active option name".
+      expect(input).not.toHaveAttribute("aria-activedescendant");
+      expect(screen.queryAllByRole("option")).toHaveLength(0);
+    });
+  });
+
+  describe("focus (#278 / #279)", () => {
+    it("keeps focus on the input after a mouse selection", async () => {
+      const user = userEvent.setup();
+      render(<Harness />);
+
+      const input = getInput();
+      await user.click(input);
+      await user.keyboard("a");
+      await user.click(within(screen.getByRole("listbox")).getByText("Apple"));
+
+      expect(input).toHaveFocus();
+    });
+
+    it("closes when focus leaves the control", async () => {
+      const user = userEvent.setup();
+      render(
+        <>
+          <Harness />
+          <button type="button">After</button>
+        </>,
+      );
+
+      await user.click(getInput());
+      await user.keyboard("a");
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+      await user.tab();
+
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      expect(getInput()).toHaveAttribute("aria-expanded", "false");
+    });
+  });
+
+  describe("aria-controls while closed (#280)", () => {
+    it("is absent when there is no listbox to point at", async () => {
+      const user = userEvent.setup();
+      render(<Harness />);
+
+      const input = getInput();
+      expect(input).not.toHaveAttribute("aria-controls");
+
+      await user.click(input);
+      await user.keyboard("a");
+      expect(document.getElementById(input.getAttribute("aria-controls")!)).toBe(
+        screen.getByRole("listbox"),
+      );
+    });
+  });
+
+  describe("the focus affordance comes from the shared recipe (#284)", () => {
+    // jsdom applies no stylesheets, so the assertion is on the wiring: the
+    // control consumes `src/util/focus.ts` rather than restating the recipe in
+    // Combobox.css, which is what made a single edit there miss this control.
+    it("carries the shared control ring and outline reset", () => {
+      render(<Harness />);
+
+      const classes = getInput().className.split(/\s+/);
+      for (const cls of `${focusOutlineResetControl} ${focusRingControl}`.split(/\s+/)) {
+        expect(classes).toContain(cls);
+      }
+    });
+
+    it("carries the shared invalid recipe, which recolours the border on focus too", () => {
+      render(
+        <Combobox>
+          <Combobox.Input aria-label="Fruit" error />
+        </Combobox>,
+      );
+
+      const classes = screen
+        .getByRole("combobox", { name: "Fruit" })
+        .className.split(/\s+/);
+      for (const cls of focusRingControlError.split(/\s+/)) {
+        expect(classes).toContain(cls);
+      }
+    });
+  });
+
+  describe("the input label of a multi-node option (#281)", () => {
+    it("uses the label prop rather than the concatenated textContent", async () => {
+      const user = userEvent.setup();
+      render(
+        <Combobox defaultOpen>
+          <Combobox.Input aria-label="Person" />
+          <Combobox.Content>
+            <Combobox.Item index={0} value="ada" label="Ada Lovelace">
+              <span>Ada Lovelace</span>
+              <span>Analytical Engine</span>
+            </Combobox.Item>
+          </Combobox.Content>
+        </Combobox>,
+      );
+
+      await user.click(screen.getByRole("option"));
+
+      expect(screen.getByRole("combobox", { name: "Person" })).toHaveValue(
+        "Ada Lovelace",
+      );
+    });
   });
 });

@@ -52,6 +52,8 @@ type ColorPickerProps = {
   disabled?: boolean;
   className?: string;
   "aria-label"?: string;
+  /** Accessible name for the floating editing panel. @default "Color picker" */
+  panelLabel?: string;
 } & Omit<
   ComponentPropsWithRef<"button">,
   "value" | "defaultValue" | "onChange"
@@ -79,6 +81,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       disabled,
       className,
       "aria-label": ariaLabel = "Choose color",
+      panelLabel = "Color picker",
       ...props
     },
     ref,
@@ -148,6 +151,13 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
 
     const hueHex = hsvToHex({ h: hsv.h, s: 1, v: 1 });
 
+    // Presets the hex parser cannot read — a CSS colour name, an 8-digit hex —
+    // paint a perfectly clickable swatch and then commit nothing. Drop them
+    // rather than ship a dead control.
+    const swatches = (presets ?? [])
+      .map((preset) => normalizeHex(preset))
+      .filter((hexValue): hexValue is string => hexValue != null);
+
     /* — saturation/value square pointer handling — */
     function updateFromPointer(clientX: number, clientY: number) {
       const el = svRef.current;
@@ -171,6 +181,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
     }
 
     function handleSvKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+      if (disabled) return;
       const stepS = 0.02;
       const stepV = 0.02;
       let { s, v } = hsv;
@@ -208,7 +219,10 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
     const triggerProps = mergeProps(props, {
       type: "button" as const,
       disabled,
-      "aria-label": ariaLabel,
+      // The visible hex is the trigger's value; an `aria-label` replaces the
+      // element's text outright, so the label has to carry it or the current
+      // colour never reaches AT at all.
+      "aria-label": `${ariaLabel} ${hex}`,
       className: cn(
         "colorpicker-trigger",
         invalid && "colorpicker-trigger--error",
@@ -240,6 +254,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   ref: refs.setFloating,
                   className: "colorpicker-panel",
                   style: floatingStyles,
+                  "aria-label": panelLabel,
                 })}
               >
                 {/* Saturation / value square */}
@@ -247,7 +262,8 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   ref={svRef}
                   className="colorpicker-sv"
                   role="slider"
-                  tabIndex={0}
+                  tabIndex={disabled ? -1 : 0}
+                  aria-disabled={disabled || undefined}
                   aria-label="Saturation and brightness"
                   aria-valuetext={`Saturation ${Math.round(hsv.s * 100)}%, brightness ${Math.round(hsv.v * 100)}%`}
                   style={{ "--hue": hueHex } as CSSProperties}
@@ -306,23 +322,21 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                 </div>
 
                 {/* Presets */}
-                {presets && presets.length > 0 && (
+                {swatches.length > 0 && (
                   <div className="colorpicker-presets">
-                    {presets.map((preset) => {
-                      const normalized = normalizeHex(preset) ?? preset;
-                      return (
-                        <button
-                          key={preset}
-                          type="button"
-                          className="colorpicker-preset"
-                          aria-label={normalized}
-                          aria-pressed={normalized === hex}
-                          data-active={normalized === hex ? "" : undefined}
-                          style={{ backgroundColor: normalized }}
-                          onClick={() => commitHex(preset)}
-                        />
-                      );
-                    })}
+                    {swatches.map((swatch) => (
+                      <button
+                        key={swatch}
+                        type="button"
+                        className="colorpicker-preset"
+                        aria-label={swatch}
+                        aria-pressed={swatch === hex}
+                        disabled={disabled}
+                        data-active={swatch === hex ? "" : undefined}
+                        style={{ backgroundColor: swatch }}
+                        onClick={() => commitHex(swatch)}
+                      />
+                    ))}
                   </div>
                 )}
               </div>

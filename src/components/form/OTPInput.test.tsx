@@ -359,4 +359,27 @@ describe("OTPInput", () => {
       expect(onValueChange).toHaveBeenCalledTimes(0);
     });
   });
+  describe("per-box accessible names (#243)", () => {
+    it("does not call an alphanumeric box a digit", () => {
+      render(<OTPInput length={3} mode="alphanumeric" />);
+
+      expect(screen.queryByRole("textbox", { name: /digit/i })).toBeNull();
+      expect(
+        screen.getByRole("textbox", { name: "Character 1 of 3" })
+      ).toBeInTheDocument();
+    });
+
+    it("routes the name through a prop so it can be translated", () => {
+      render(
+        <OTPInput
+          length={2}
+          charLabel={(position, total) => `Chiffre ${position} sur ${total}`}
+        />
+      );
+
+      expect(
+        screen.getByRole("textbox", { name: "Chiffre 2 sur 2" })
+      ).toBeInTheDocument();
+    });
+  });
 });

@@ -3,12 +3,16 @@ import { X } from "lucide-react";
 import {
   type ComponentPropsWithRef,
   forwardRef,
+  useId,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { focusRingWithin, focusRingWithinError } from "../../util/focus";
 import { mergeProps } from "../../util/merge-props";
+import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 import { Badge } from "../ui/Badge";
 
@@ -71,6 +75,19 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
     });
     const [draft, setDraft] = useState("");
     const [message, setMessage] = useState<string | null>(null);
+    const messageId = useId();
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // `RegExp.prototype.test` advances `lastIndex` on a `g`/`y` regex, so
+    // testing the caller's own object would leave it half-consumed and make the
+    // next call answer differently. Work from a flagless copy instead.
+    const splitter = useMemo(
+      () =>
+        /[gy]/.test(delimiter.flags)
+          ? new RegExp(delimiter.source, delimiter.flags.replace(/[gy]/g, ""))
+          : delimiter,
+      [delimiter]
+    );
 
     // Drive the visual error state from the same source as Input/Select: an
     // explicit `error` prop OR the surrounding Field's invalid state, plus any
@@ -101,14 +118,68 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
       return { tag, message: null };
     }
 
+    /**
+     * Commit every delimited segment of `text` in turn, stopping at the first
+     * one the rules reject. Returns the tags to hold and the text that was NOT
+     * consumed — the trailing segment, or everything from the rejected segment
+     * on — so nothing the user typed is ever dropped on the floor.
+     *
+     * `commitTail` decides what happens to the text after the last delimiter:
+     * typing keeps it as the live draft, pasting commits it.
+     */
+    function consume(
+      text: string,
+      current: string[],
+      commitTail: boolean
+    ): { next: string[]; rest: string; message: string | null } {
+      // A fresh `g` copy per call: the scan is stateful, so it must not be
+      // shared between calls (or with the caller's own RegExp).
+      const scanner = new RegExp(
+        splitter.source,
+        `${splitter.flags.replace(/g/g, "")}g`
+      );
+      const next = [...current];
+      let cursor = 0;
+      let match: RegExpExecArray | null;
+      while ((match = scanner.exec(text)) !== null) {
+        if (match[0] === "") {
+          scanner.lastIndex += 1;
+          continue;
+        }
+        const segment = text.slice(cursor, match.index);
+        const { tag, message: msg } = evaluate(segment, next);
+        if (tag != null) {
+          next.push(tag);
+        } else if (segment.trim() !== "") {
+          // Rejected: hand the rest back untouched rather than eating it.
+          return { next, rest: text.slice(cursor), message: msg };
+        }
+        cursor = match.index + match[0].length;
+      }
+      const tail = text.slice(cursor);
+      if (!commitTail || tail.trim() === "") {
+        return { next, rest: commitTail ? "" : tail, message: null };
+      }
+      const { tag, message: msg } = evaluate(tail, next);
+      if (tag != null) {
+        next.push(tag);
+        return { next, rest: "", message: null };
+      }
+      return { next, rest: tail, message: msg };
+    }
+
     function commitDraft() {
       const { tag, message: msg } = evaluate(draft, tags);
       setMessage(msg);
       if (tag != null) {
         setTags([...tags, tag]);
+        setDraft("");
+        return;
       }
-      // Keep the draft only when a validation message asks the user to fix it.
-      if (msg == null) setDraft("");
+      // Nothing was committed. Clearing here would destroy the user's typing
+      // for a duplicate, the `maxTags` cap or a `validateTag` refusal — keep it
+      // so they can correct it. Only blank text has nothing worth keeping.
+      if (draft.trim() === "") setDraft("");
     }
 
     function removeTag(index: number) {
@@ -117,18 +188,14 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
       const raw = e.target.value;
-      if (delimiter.test(raw)) {
-        // A delimiter char was typed — commit the segment before it.
-        const segment = raw.split(delimiter)[0] ?? "";
-        const { tag, message: msg } = evaluate(segment, tags);
-        setMessage(msg);
-        if (tag != null) {
-          setTags([...tags, tag]);
-        }
-        setDraft("");
+      if (!splitter.test(raw)) {
+        setDraft(raw);
         return;
       }
-      setDraft(raw);
+      const { next, rest, message: msg } = consume(raw, tags, false);
+      setMessage(msg);
+      if (next.length !== tags.length) setTags(next);
+      setDraft(rest);
     }
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -144,19 +211,18 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
 
     function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
       const text = e.clipboardData.getData("text");
-      if (!delimiter.test(text)) {
+      if (!splitter.test(text)) {
         onPaste?.(e);
         return;
       }
       e.preventDefault();
-      setMessage(null);
-      const next = [...tags];
-      for (const part of text.split(delimiter)) {
-        const { tag } = evaluate(part, next);
-        if (tag != null) next.push(tag);
-      }
+      // The pasted text lands after whatever is already half-typed, so the
+      // pending draft is part of the first segment rather than something to
+      // throw away.
+      const { next, rest, message: msg } = consume(draft + text, tags, true);
+      setMessage(msg);
       if (next.length !== tags.length) setTags(next);
-      setDraft("");
+      setDraft(rest);
       onPaste?.(e);
     }
 
@@ -167,9 +233,15 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
 
     const hasError = invalid || message != null;
     // aria-invalid tracks the full visual error state (Field/error prop + local
-    // message); aria-describedby keeps pointing at the Field's error element.
+    // message). The local validation message is a second description alongside
+    // any Field error element, so both ids travel together.
+    const describedBy =
+      [ariaProps["aria-describedby"], message != null ? messageId : undefined]
+        .filter(Boolean)
+        .join(" ") || undefined;
     const fieldErrorProps = {
       ...ariaProps,
+      "aria-describedby": describedBy,
       "aria-invalid": hasError ? ("true" as const) : undefined,
     };
 
@@ -185,9 +257,19 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
             disabled && "bg-surface-3 cursor-not-allowed",
             className
           )}
+          // The bordered box is the control's hit area, not just its frame:
+          // clicking its padding must reach the text input the way it does in
+          // a plain <input>. Guarded so a click on a chip's remove button (or
+          // the input itself) is left alone.
+          onMouseDown={(event) => {
+            if (disabled) return;
+            if (event.target !== event.currentTarget) return;
+            event.preventDefault();
+            inputRef.current?.focus();
+          }}
         >
           {tags.map((tag, index) => (
-            <Badge key={tag} className="gap-r6">
+            <Badge key={`${index}:${tag}`} className="gap-r6">
               {tag}
               <button
                 type="button"
@@ -201,7 +283,7 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
             </Badge>
           ))}
           <input
-            ref={ref}
+            ref={mergeRefs(ref, inputRef)}
             type="text"
             value={draft}
             disabled={disabled}
@@ -226,11 +308,12 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
               half-typed in the visible field. Same shape as DatePicker and
               Switch. `name` is deliberately kept off the draft input. */}
           {name !== undefined &&
-            tags.map((tag) => (
-              <input key={tag} type="hidden" name={name} value={tag} />
+            tags.map((tag, index) => (
+              <input key={`${index}:${tag}`} type="hidden" name={name} value={tag} />
             ))}
         </div>
         <p
+          id={messageId}
           aria-live="polite"
           className={cn("mt-r6 text-body-3 text-status-error", message == null && "sr-only")}
         >

@@ -166,4 +166,35 @@ describe("Slider", () => {
       expect(screen.getByRole("slider")).toHaveAttribute("aria-invalid", "true");
     });
   });
+  describe("the fill follows the rendered thumb (#86)", () => {
+    it("snaps an off-grid value to the step the browser will draw", () => {
+      const { container } = render(
+        <Slider aria-label="Volume" value={25} min={0} max={100} step={10} onValueChange={vi.fn()} />
+      );
+
+      // The UA sanitises 25 to 30 (nearest step, ties up), so the fill edge
+      // has to be at 30% or it sits short of the thumb.
+      const input = container.querySelector("input") as HTMLElement;
+      expect(input.style.getPropertyValue("--slider-fill")).toBe("30%");
+    });
+
+    it("never snaps past max", () => {
+      const { container } = render(
+        <Slider aria-label="Volume" value={98} min={0} max={100} step={30} onValueChange={vi.fn()} />
+      );
+
+      // Grid is 0/30/60/90; 98 is nearest 90 once 120 is ruled out by max.
+      const input = container.querySelector("input") as HTMLElement;
+      expect(input.style.getPropertyValue("--slider-fill")).toBe("90%");
+    });
+
+    it("leaves an on-grid value exactly where it is", () => {
+      const { container } = render(
+        <Slider aria-label="Volume" value={40} min={0} max={100} step={10} onValueChange={vi.fn()} />
+      );
+
+      const input = container.querySelector("input") as HTMLElement;
+      expect(input.style.getPropertyValue("--slider-fill")).toBe("40%");
+    });
+  });
 });

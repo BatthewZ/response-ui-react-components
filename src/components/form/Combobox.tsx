@@ -25,6 +25,11 @@ import {
   useListNavigation,
   useRole,
 } from "../../hooks/use-floating";
+import {
+  focusOutlineResetControl,
+  focusRingControl,
+  focusRingControlError,
+} from "../../util/focus";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 import { Spinner } from "../ui/Spinner";
@@ -67,6 +72,8 @@ interface ItemData {
   value: string;
   disabled: boolean;
   node: HTMLElement | null;
+  /** Explicit text for the input, when the option's own markup is not it. */
+  label?: string;
 }
 
 const ComboboxContext = createContext<ComboboxContextValue | null>(null);
@@ -143,7 +150,16 @@ function ComboboxRoot({
     onOpenChange: setOpen,
   });
 
-  const dismiss = useDismiss(context);
+  // The chevron toggle sits beside the input, so it is neither the reference
+  // nor the floating element: an unqualified outside-press would dismiss on its
+  // pointerdown and its own click would then re-open, leaving no way to close.
+  const dismiss = useDismiss(context, {
+    outsidePress: (event) =>
+      !(
+        event.target instanceof Node &&
+        refs.domReference.current?.parentElement?.contains(event.target)
+      ),
+  });
   const role = useRole(context, { role: "listbox" });
   const listNavigation = useListNavigation(context, {
     listRef,
@@ -198,7 +214,10 @@ function ComboboxRoot({
       if (index == null) return;
       const data = itemDataRef.current[index];
       if (!data || data.disabled) return;
-      const label = data.node?.textContent ?? data.value;
+      // `label` is the escape hatch for options whose markup is more than the
+      // text that belongs in the field — a multi-node option's `textContent`
+      // is every node run together.
+      const label = data.label ?? data.node?.textContent ?? data.value;
       selectValue(data.value, label);
     },
     [selectValue],
@@ -235,10 +254,17 @@ function ComboboxRoot({
 /*  Input                                                             */
 /* ------------------------------------------------------------------ */
 
-type ComboboxInputProps = ComponentPropsWithRef<"input"> & { error?: boolean };
+type ComboboxInputProps = ComponentPropsWithRef<"input"> & {
+  error?: boolean;
+  /** Accessible name for the chevron that opens and closes the listbox. */
+  toggleLabel?: string;
+};
 
 const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
-  function ComboboxInput({ error, className, onChange, onKeyDown, ...props }, ref) {
+  function ComboboxInput(
+    { error, className, onChange, onKeyDown, toggleLabel = "Show options", ...props },
+    ref,
+  ) {
     const {
       open,
       setOpen,
@@ -254,13 +280,30 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
 
     const { invalid, ariaProps } = useFieldError(error);
 
+    function handleFocusOut(event: React.FocusEvent<HTMLDivElement>) {
+      const next = event.relatedTarget;
+      if (
+        next instanceof Node &&
+        (event.currentTarget.contains(next) || refs.floating.current?.contains(next))
+      ) {
+        return;
+      }
+      setOpen(false);
+    }
+
     return (
-      <div className="combobox-input-wrap">
+      <div className="combobox-input-wrap" onBlur={handleFocusOut}>
         <input
           {...getReferenceProps({
             ref: mergeRefs(ref, refs.setReference),
             value: inputValue,
-            className: cn("combobox-input", invalid && "combobox-input-error", className),
+            className: cn(
+              "combobox-input duration-fast",
+              focusOutlineResetControl,
+              focusRingControl,
+              invalid && focusRingControlError,
+              className,
+            ),
             ...ariaProps,
             ...props,
             onChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -283,15 +326,24 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
           })}
           role="combobox"
           aria-expanded={open}
-          aria-controls={listboxId}
+          // `Content` renders nothing while closed, so an unconditional IDREF
+          // would point at a node that is not in the document.
+          aria-controls={open ? listboxId : undefined}
           aria-autocomplete="list"
           aria-activedescendant={activeOptionId}
         />
         <button
           type="button"
           tabIndex={-1}
-          aria-label={open ? "Close" : "Open"}
+          aria-label={toggleLabel}
+          aria-expanded={open}
+          aria-controls={open ? listboxId : undefined}
           className="combobox-toggle"
+          // Keep DOM focus on the input: `aria-activedescendant` navigation
+          // depends on it, and a focus move here reads as a focus-out.
+          onMouseDown={(event) => {
+            event.preventDefault();
+          }}
           onClick={() => {
             setOpen(!open);
           }}
@@ -307,10 +359,16 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
 /*  Content                                                           */
 /* ------------------------------------------------------------------ */
 
-type ComboboxContentProps = ComponentPropsWithRef<"div">;
+type ComboboxContentProps = ComponentPropsWithRef<"div"> & {
+  /**
+   * What the spinner is waiting on, in the caller's language. `Spinner` is
+   * decoration without it, so with no label the wait is silent to AT.
+   */
+  loadingLabel?: string;
+};
 
 const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
-  function ComboboxContent({ children, className, style, ...props }, ref) {
+  function ComboboxContent({ children, className, style, loadingLabel, ...props }, ref) {
     const {
       open,
       loading,
@@ -324,7 +382,9 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
     // Count the rendered options so Root can truncate `listRef` and reset the
     // active option whenever the (consumer-filtered) item set changes. Counting
     // here keeps Root filter-agnostic — it never sees the consumer's filter.
-    const itemCount = countItems(children);
+    // While `loading`, the Spinner replaces the children below, so the count of
+    // options actually in the document is zero.
+    const itemCount = loading ? 0 : countItems(children);
     useEffect(() => {
       registerRenderedCount(itemCount);
     }, [registerRenderedCount, itemCount]);
@@ -338,6 +398,11 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
             ref: mergeRefs(ref, refs.setFloating),
             className: cn("combobox-content", className),
             style: { ...floatingStyles, ...style },
+            // Options are plain divs; without this the press moves DOM focus
+            // to <body> and the input never gets it back.
+            onMouseDown(event: React.MouseEvent) {
+              event.preventDefault();
+            },
             ...props,
           })}
           id={listboxId}
@@ -345,7 +410,7 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
         >
           {loading ? (
             <div className="combobox-loading" role="presentation">
-              <Spinner size="sm" />
+              <Spinner size="sm">{loadingLabel}</Spinner>
             </div>
           ) : (
             children
@@ -364,11 +429,17 @@ type ComboboxItemProps = {
   index: number;
   value: string;
   disabled?: boolean;
+  /**
+   * Text to put in the input when this option is chosen. Defaults to the
+   * option's `textContent`, which is wrong the moment the option renders more
+   * than the one string that belongs in the field.
+   */
+  label?: string;
 } & ComponentPropsWithRef<"div">;
 
 const ComboboxItem = forwardRef<HTMLDivElement, ComboboxItemProps>(
   function ComboboxItem(
-    { index, value, disabled = false, children, className, onClick, ...props },
+    { index, value, disabled = false, label, children, className, onClick, ...props },
     ref,
   ) {
     const {
@@ -386,9 +457,9 @@ const ComboboxItem = forwardRef<HTMLDivElement, ComboboxItemProps>(
     const itemRef = useCallback(
       (node: HTMLDivElement | null) => {
         listRef.current[index] = node;
-        itemDataRef.current[index] = { value, disabled, node };
+        itemDataRef.current[index] = { value, disabled, node, label };
       },
-      [listRef, itemDataRef, index, value, disabled],
+      [listRef, itemDataRef, index, value, disabled, label],
     );
 
     return (

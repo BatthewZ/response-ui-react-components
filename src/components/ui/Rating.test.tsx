@@ -68,15 +68,15 @@ describe("Rating", () => {
     expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenLastCalledWith(3);
     expect(radios[2]).toHaveAttribute("aria-checked", "true");
-    // The roving-focus hook is horizontal, so the vertical arrows change the
-    // value without moving the tab stop — focus stays where it was.
-    expect(radios[0]).toHaveFocus();
+    // Focus and value are one machine (#213): the tab stop is the star holding
+    // the value, whichever arrow moved it.
+    expect(radios[2]).toHaveFocus();
 
     await user.keyboard("{ArrowDown}");
     expect(onValueChange).toHaveBeenCalledTimes(2);
     expect(onValueChange).toHaveBeenLastCalledWith(2);
     expect(radios[1]).toHaveAttribute("aria-checked", "true");
-    expect(radios[0]).toHaveFocus();
+    expect(radios[1]).toHaveFocus();
   });
 
   it("ArrowUp/ArrowDown step by 0.5 when allowHalf", async () => {
@@ -148,9 +148,12 @@ describe("Rating", () => {
     expect(onValueChange).toHaveBeenCalledWith(2.5);
   });
 
-  it("readOnly renders role=img with a label and no buttons", () => {
-    render(<Rating aria-label="Rate" value={3} readOnly max={5} />);
-    expect(screen.getByRole("img", { name: "3 out of 5 stars" })).toBeInTheDocument();
+  it("readOnly keeps the caller's label and carries the value as a meter", () => {
+    render(<Rating aria-label="Product rating" value={3} readOnly max={5} />);
+    const meter = screen.getByRole("meter", { name: "Product rating" });
+    expect(meter).toHaveAttribute("aria-valuenow", "3");
+    expect(meter).toHaveAttribute("aria-valuemin", "0");
+    expect(meter).toHaveAttribute("aria-valuemax", "5");
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   });
 
@@ -169,13 +172,13 @@ describe("Rating", () => {
   it("#211: allowHalf still offers a radio named for `max`", () => {
     render(<Rating aria-label="Rate" allowHalf max={5} value={3} onValueChange={() => {}} />);
 
-    expect(screen.getByRole("radio", { name: "5 stars" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "5" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual([
-      "1 stars",
-      "2 stars",
-      "3 stars",
-      "4 stars",
-      "5 stars",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
     ]);
   });
 
@@ -186,7 +189,7 @@ describe("Rating", () => {
       .getAllByRole("radio")
       .filter((r) => r.getAttribute("aria-checked") === "true");
     expect(checked).toHaveLength(1);
-    expect(checked[0]).toHaveAccessibleName("2.5 stars");
+    expect(checked[0]).toHaveAccessibleName("2.5");
   });
 
   it("#211: a whole-star value names its radio without a half", () => {
@@ -196,16 +199,16 @@ describe("Rating", () => {
       .getAllByRole("radio")
       .filter((r) => r.getAttribute("aria-checked") === "true");
     expect(checked).toHaveLength(1);
-    expect(checked[0]).toHaveAccessibleName("5 stars");
+    expect(checked[0]).toHaveAccessibleName("5");
   });
 
   it("#211: names are unchanged without allowHalf", () => {
     render(<Rating aria-label="Rate" max={3} value={2} onValueChange={() => {}} />);
 
     expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual([
-      "1 stars",
-      "2 stars",
-      "3 stars",
+      "1",
+      "2",
+      "3",
     ]);
   });
 
@@ -217,6 +220,201 @@ describe("Rating", () => {
     expect(radios[0]).toBeDisabled();
     await user.click(radios[2]);
     expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  describe("keyboard activation under allowHalf (#212)", () => {
+    // jsdom reports a 0×0 rect for every element, which accidentally reads as
+    // the RIGHT half. Give the star a real box so `clientX: 0` means what it
+    // means in a browser: the left edge.
+    function stubRect(el: HTMLElement) {
+      el.getBoundingClientRect = () =>
+        ({
+          left: 100,
+          width: 20,
+          top: 0,
+          height: 20,
+          right: 120,
+          bottom: 20,
+          x: 100,
+          y: 0,
+          toJSON() {},
+        }) as DOMRect;
+    }
+
+    it("Enter commits the whole star, not position − 0.5", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(<Rating aria-label="Rate" allowHalf max={5} onValueChange={onValueChange} />);
+
+      const radios = screen.getAllByRole("radio");
+      stubRect(radios[2]);
+      radios[2].focus();
+      await user.keyboard("{Enter}");
+
+      expect(onValueChange).toHaveBeenLastCalledWith(3);
+    });
+
+    it("Space commits the whole star too", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(<Rating aria-label="Rate" allowHalf max={5} onValueChange={onValueChange} />);
+
+      const radios = screen.getAllByRole("radio");
+      stubRect(radios[4]);
+      radios[4].focus();
+      await user.keyboard(" ");
+
+      expect(onValueChange).toHaveBeenLastCalledWith(5);
+    });
+  });
+
+  describe("focus and value are one machine (#213 / #214)", () => {
+    it("does not loop focus past the end while the value clamps", async () => {
+      const user = userEvent.setup();
+      render(<Rating aria-label="Rate" max={3} defaultValue={3} />);
+
+      const radios = screen.getAllByRole("radio");
+      radios[2].focus();
+      await user.keyboard("{ArrowRight}");
+
+      // The value cannot go past 3, so neither can the tab stop.
+      expect(radios[2]).toHaveFocus();
+      expect(radios[0]).not.toHaveFocus();
+    });
+
+    it("keeps focus on the checked radio through half steps", async () => {
+      const user = userEvent.setup();
+      render(<Rating aria-label="Rate" allowHalf max={5} defaultValue={2} />);
+
+      const radios = screen.getAllByRole("radio");
+      radios[1].focus();
+
+      const checked = () =>
+        radios.findIndex((r) => r.getAttribute("aria-checked") === "true");
+
+      // 2 → 2.5: the half lands on star 3, so that is the checked radio.
+      await user.keyboard("{ArrowRight}");
+      expect(checked()).toBe(2);
+      expect(radios[2]).toHaveFocus();
+
+      // 2.5 → 3 is the same radio, so focus does not move again.
+      await user.keyboard("{ArrowRight}");
+      expect(checked()).toBe(2);
+      expect(radios[2]).toHaveFocus();
+    });
+
+    it("a click moves the tab stop to the clicked star", async () => {
+      const user = userEvent.setup();
+      render(<Rating aria-label="Rate" max={5} />);
+
+      const radios = screen.getAllByRole("radio");
+      await user.click(radios[3]);
+
+      expect(radios[3]).toHaveAttribute("tabindex", "0");
+      for (const other of [radios[0], radios[1], radios[2], radios[4]]) {
+        expect(other).toHaveAttribute("tabindex", "-1");
+      }
+    });
+
+    it("Tab enters the group on the star holding the value", async () => {
+      const user = userEvent.setup();
+      render(
+        <>
+          <button type="button">Before</button>
+          <Rating aria-label="Rate" max={5} defaultValue={4} />
+        </>,
+      );
+
+      screen.getByRole("button", { name: "Before" }).focus();
+      await user.tab();
+
+      expect(screen.getAllByRole("radio")[3]).toHaveFocus();
+    });
+  });
+
+  describe("Home and End (#217)", () => {
+    it("commit the first and last ratings", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <Rating aria-label="Rate" max={5} defaultValue={3} onValueChange={onValueChange} />,
+      );
+
+      screen.getAllByRole("radio")[2].focus();
+
+      await user.keyboard("{End}");
+      expect(onValueChange).toHaveBeenLastCalledWith(5);
+
+      await user.keyboard("{Home}");
+      expect(onValueChange).toHaveBeenLastCalledWith(1);
+    });
+  });
+
+  describe("no hard-coded English (#218)", () => {
+    it("names every radio with the bare number by default", () => {
+      render(<Rating aria-label="Rate" max={2} />);
+
+      expect(screen.getByRole("radio", { name: "1" })).toBeInTheDocument();
+      expect(screen.queryByRole("radio", { name: /star/i })).not.toBeInTheDocument();
+    });
+
+    it("routes the name through formatValue when one is supplied", () => {
+      render(
+        <Rating
+          aria-label="Note"
+          max={2}
+          formatValue={(v, max) => `${v} sur ${max} étoiles`}
+        />,
+      );
+
+      expect(
+        screen.getByRole("radio", { name: "1 sur 2 étoiles" }),
+      ).toBeInTheDocument();
+    });
+
+    it("uses formatValue for the read-only value text", () => {
+      render(
+        <Rating
+          aria-label="Note"
+          max={5}
+          value={4}
+          readOnly
+          formatValue={(v, max) => `${v} sur ${max}`}
+        />,
+      );
+
+      expect(screen.getByRole("meter")).toHaveAttribute("aria-valuetext", "4 sur 5");
+    });
+  });
+
+  describe("an out-of-range or off-step value (#219)", () => {
+    it("clamps a value above max", () => {
+      render(<Rating aria-label="Rate" max={5} value={9} readOnly />);
+
+      expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "5");
+    });
+
+    it("snaps a fractional value to the step it can draw", () => {
+      render(<Rating aria-label="Rate" max={5} value={4.3} readOnly />);
+
+      expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "4");
+    });
+
+    it("snaps to the nearest half under allowHalf", () => {
+      render(<Rating aria-label="Rate" max={5} allowHalf value={4.3} readOnly />);
+
+      expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "4.5");
+    });
+  });
+
+  describe("readOnly with disabled (#220)", () => {
+    it("still reports and paints the disabled state", () => {
+      render(<Rating aria-label="Rate" max={5} value={3} readOnly disabled />);
+
+      const meter = screen.getByRole("meter");
+      expect(meter).toHaveAttribute("aria-disabled", "true");
+      expect(meter).toHaveClass("rating--disabled");
+    });
   });
 
   describe("omitted props", () => {
@@ -244,7 +442,7 @@ describe("Rating", () => {
       const props = bag();
       render(<Rating aria-label="Rate" readOnly {...untypedProps(props)} />);
 
-      expect(hostProps(screen.getByRole("img"))).not.toHaveProperty("onChange");
+      expect(hostProps(screen.getByRole("meter"))).not.toHaveProperty("onChange");
     });
   });
 });

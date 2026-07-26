@@ -220,13 +220,13 @@ a card.
   state, so nothing is lost to assistive tech, but the visual cue is.
 - **The invalid state is an outline only.** The fill and thumb stay `--C-ACCENT` when
   `error` is set — unlike [RangeSlider](range-slider.md), which re-tints both to the error colour.
-- **Your `value` and the rendered value can diverge silently.** The component hands `value`
-  to the input as-is; the browser then applies HTML's sanitisation — clamping to
+- **Your `value` and the value in your state can diverge silently.** The component hands
+  `value` to the input as-is; the browser then applies HTML's sanitisation — clamping to
   `[min, max]` and rounding anything off the `step` grid to the nearest step. `value={37}`
-  with `step={10}` renders the thumb at `40`, while `--slider-fill` is computed from your
-  raw `37`, so the fill edge and the thumb disagree. `onValueChange` is never fired to tell
-  you the input moved, so your state stays wrong until the user drags. Pass values that are
-  in range and on the step grid.
+  with `step={10}` renders the thumb at `40`. The fill follows the thumb, because
+  `--slider-fill` is computed from the same sanitised number, but `onValueChange` is never
+  fired to tell you the input moved, so *your* state stays at `37` until the user drags. Pass
+  values that are in range and on the step grid.
 - **`max <= min` empties the fill.** The percentage is guarded to `0` for a zero or
   negative range rather than dividing by zero, so the track reads as empty no matter what
   `value` is. The browser separately treats a `max` below `min` as `min`, pinning the

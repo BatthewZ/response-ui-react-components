@@ -32,6 +32,12 @@ export type RequireAuthProps = {
   status: AuthStatus;
   redirect?: string;
   loadingFallback?: ReactNode;
+  /**
+   * Announced while `status` is `"loading"`. `Spinner` is decoration by default,
+   * so without this the blocking wait is silent to assistive tech; it is a prop
+   * rather than a literal so the wait can be described in the caller's language.
+   */
+  loadingLabel?: string;
   unauthenticatedFallback?: ReactNode;
   children: ReactNode;
 };
@@ -51,6 +57,7 @@ export function RequireAuth({
   status,
   redirect,
   loadingFallback,
+  loadingLabel = "Loading",
   unauthenticatedFallback,
   children,
 }: RequireAuthProps) {
@@ -59,7 +66,7 @@ export function RequireAuth({
       <>
         {loadingFallback ?? (
           <Center className="min-h-screen">
-            <Spinner size="lg" />
+            <Spinner size="lg">{loadingLabel}</Spinner>
           </Center>
         )}
       </>

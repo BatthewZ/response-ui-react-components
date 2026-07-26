@@ -117,4 +117,49 @@ describe("Select", () => {
     const select = screen.getByRole("combobox", { name: "Country" });
     expect(select.className).toContain("appearance-none");
   });
+  describe("the dropdown chevron (#77 / #89)", () => {
+    it("paints the chevron from a themed element, not an SVG-as-image", () => {
+      const { container } = render(
+        <Select aria-label="Country">
+          <option>US</option>
+        </Select>
+      );
+
+      const select = screen.getByRole("combobox", { name: "Country" });
+      // No data-URI background: `fill="currentColor"` cannot resolve inside one,
+      // so it painted black on every theme.
+      expect(select.className).not.toContain("data:image/svg+xml");
+      const chevron = container.querySelector("svg");
+      expect(chevron).not.toBeNull();
+      expect(chevron).toHaveAttribute("aria-hidden", "true");
+      expect(chevron!.getAttribute("class")).toContain("text-fg-secondary");
+    });
+
+    it("carries no ::placeholder rule, which a <select> cannot match", () => {
+      render(
+        <Select aria-label="Country">
+          <option>US</option>
+        </Select>
+      );
+
+      expect(
+        screen.getByRole("combobox", { name: "Country" }).className
+      ).not.toContain("placeholder:");
+    });
+  });
+
+  describe("a field() spread cannot erase the invalid state (#455)", () => {
+    it("keeps aria-invalid when the caller supplies the key as undefined", () => {
+      render(
+        <Select error aria-label="Country" {...{ "aria-invalid": undefined }}>
+          <option>US</option>
+        </Select>
+      );
+
+      expect(screen.getByRole("combobox", { name: "Country" })).toHaveAttribute(
+        "aria-invalid",
+        "true"
+      );
+    });
+  });
 });

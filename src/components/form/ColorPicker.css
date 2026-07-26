@@ -50,7 +50,8 @@
   letter-spacing: 0.02em;
 }
 
-/* Swatch — checkerboard backdrop shows through any (future) transparency. */
+/* Swatch — a flat fill of the committed colour. No checkerboard: the parser
+   rejects 8-digit hex, so nothing here is ever translucent. */
 .colorpicker-swatch {
   width: 1.125rem;
   height: 1.125rem;

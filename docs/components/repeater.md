@@ -339,16 +339,13 @@ their own pages; there is nothing here to override. See the
   row above it, and the message travels down with its row (measured). Nothing needs to be
   re-run afterwards. (Before this was fixed the mutations rewrote only the values, and a
   message stayed pinned to whichever row inherited the index.)
-- **Removing a row throws focus to the document body.** The Remove button you just pressed is
-  inside the row that unmounts, so a keyboard or screen-reader user is dumped back to the top
-  of the page with no announcement. There is no focus-restoration hook to opt into.
-- **`disabled` does not disable the row fields.** It is applied to Repeater's own Add, Remove
-  and Move buttons and nowhere else; a row's `<input>` stays fully editable. `RepeaterItem`
-  carries no `disabled` either, so custom row controls can't even read it. Pass `disabled: true`
-  to `useForm` to freeze the fields, and both if you want the whole group inert.
-- **Every row's buttons share one accessible name.** `"Remove item"`, `"Move up"` and
-  `"Move down"` are hard-coded English literals with no prop to change them — `addLabel` is the
-  only configurable string. Five rows announce five identical `"Remove item, button"`s.
+- **Removing a row keeps the keyboard where it was.** The Remove button you just pressed
+  unmounts with its row, so focus moves to the next row's Remove button — or to Add when the
+  last row goes — instead of falling to the document body. Nothing is *announced*, though: if
+  the count is load-bearing, render your own `aria-live` message.
+- **`disabled` reaches the row fields.** Each row's children are wrapped in a `<fieldset
+  disabled>`, which disables every native control inside it, and `RepeaterItem` carries
+  `disabled` so custom row controls that are not form elements can honour it too.
 - **`name` and `defaultItem` are not typed against your form's values.** `name` is a bare
   `string` and `defaultItem` returns `unknown`, so a typo compiles: `name="lnks"` renders zero
   rows, and pressing Add then writes a brand-new `lnks` array into the submitted values
@@ -365,15 +362,16 @@ The built-in controls are [IconButton](icon-button.md)s with a required `aria-la
 one's lucide glyph is `aria-hidden="true"`, so every button announces exactly once and never as
 "button, button". The Add button pairs its icon with the visible `addLabel` text.
 
-- **Give the row's own fields the distinguishing name.** The button labels are fixed and
-  identical across rows, so a screen-reader user's only handle on "which row" is what you render
-  inside it. Every example above folds `index + 1` into the row's [Label](label.md) and builds
-  its `htmlFor`/`id` pair off the row's `name`, which keeps both the wording and the generated
-  ids unique per row.
-- **Nothing announces a row appearing or disappearing.** Rows are plain `<div>`s: no
-  `role="list"`/`listitem`, no `<fieldset>`/`<legend>`, no live region. Adding a row is silent,
-  and removing one is silent *and* drops focus. If the count is load-bearing, render your own
-  `aria-live` message.
+- **Each row's buttons are named for their row.** `removeLabel`, `moveUpLabel` and
+  `moveDownLabel` are called with the row index and the count; the defaults are
+  `"Remove item 3"`, `"Move item 3 up"` and `"Move item 3 down"`. Pass your own to translate
+  them, or to name the row by its content rather than its position. Give the row's own fields a
+  distinguishing name too — every example above folds `index + 1` into the row's
+  [Label](label.md) and builds its `htmlFor`/`id` pair off the row's `name`.
+- **The rows are a `role="list"` of `role="listitem"`s**, so a screen reader can say how many
+  there are and which one it is in. There is still no live region: adding or removing a row is
+  not announced, only the focus move is handled. Render your own `aria-live` message if the
+  count matters.
 - **A blocked bound is a disabled button with no reason attached.** At `max` the Add button is
   `disabled`, which removes it from the tab order entirely — a keyboard user tabs straight past
   it and is told nothing. Render a visible "5 recipients maximum" line next to it.

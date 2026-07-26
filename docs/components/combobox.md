@@ -267,17 +267,19 @@ Set `error` on the input to mark a standalone combobox invalid. Resolution is
 
 ## Theme tokens
 
-Combobox uses **no Tailwind utilities** — every rule lives in `Combobox.css` and reads the
-contract variables directly, the way Tabs and ActivityFeed do. Override any of these and both
-the field and the popup re-tint at runtime.
+Every rule lives in `Combobox.css` and reads the contract variables directly, the way Tabs and
+ActivityFeed do — with one exception: the input's focus ring and its invalid state come from the
+shared `src/util/focus.ts` recipes (`focusRingControl`, `focusRingControlError`), so a single
+edit there reaches this control the way it reaches `Input`. Override any of these and both the
+field and the popup re-tint at runtime.
 
 | Where                                       | Override                            |
 | ------------------------------------------- | ----------------------------------- |
 | Input text · option text                    | `--C-TEXT-PRIMARY` · `--BodyText-2` |
 | Input fill · popup fill                     | `--C-SURFACE-0`                     |
 | Input border                                | `--C-BORDER-STRONG`                 |
-| Focus border and 2px ring                   | `--C-BORDER-FOCUS`                  |
-| Invalid border and ring                     | `--C-STATUS-ERROR`                  |
+| Focus border and 2px ring — `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
+| Invalid border and ring — `border-status-error` `focus:ring-status-error` | `--C-STATUS-ERROR` |
 | Disabled input fill                         | `--C-SURFACE-3`                     |
 | Placeholder · empty slot · disabled option  | `--C-TEXT-MUTED`                    |
 | Chevron and loading spinner ink             | `--C-TEXT-SECONDARY`                |
@@ -312,12 +314,6 @@ indicator, with `outline: none` removing the browser's fallback. See the
 
 ## Gotchas
 
-- **The chevron cannot close the popup.** Its `aria-label` flips to `"Close"` while open, but
-  clicking it while open leaves the list open: the outside-press dismissal fires on
-  `pointerdown` and the button's own `onClick` then toggles it straight back. A controlled
-  consumer sees `onOpenChange(false)` immediately followed by `onOpenChange(true)` on every
-  click. Only `Escape`, an outside click, selecting an option, or driving `open` yourself
-  actually closes it.
 - **`Enter` does not submit the surrounding form while the list is open.** Opening the popup
   already marks an option active — the first row, on a combobox nobody has navigated yet — so
   the first `Enter` is consumed: `preventDefault()` runs and that option is selected. A second
@@ -325,23 +321,13 @@ indicator, with `outline: none` removing the browser's fallback. See the
   match instead of submitting — but if the filter matched **nothing**, no option is active, the
   key is not intercepted, and the same `Enter` submits the form with the "no results" popup
   still on screen. Whether `Enter` submits depends on how many rows your filter returned.
-- **Selecting with the mouse leaves focus on `<body>`.** Focus is not returned to the input
-  after a click-selection, so the next `Tab` restarts from the top of the document. Keyboard
-  selection with `Enter` keeps focus on the input.
-- **The option's label is its `textContent`.** Selection writes `node.textContent` into the
-  input, with no way to supply a separate display string. A two-line option built from two
-  `<span>`s puts `"Ada LovelaceAnalytical Engine"` in the field. Keep rich options to one line
-  of text, or drive `inputValue` yourself in `onValueChange`.
+- **The option's label defaults to its `textContent`.** Selection writes `node.textContent`
+  into the input unless the item carries a `label`. A two-line option built from two `<span>`s
+  would put `"Ada LovelaceAnalytical Engine"` in the field — pass
+  `<Combobox.Item label="Ada Lovelace">` to say what belongs there.
 - **The value and the input text drift apart, permanently.** Select an option, then edit the
   text: the value is unchanged and nothing reverts on close or blur. If a committed selection
   matters, compare the two in `onValueChange`/`onInputValueChange` and reconcile them yourself.
-- **`loading` hides your options but still counts them.** The item count is taken from
-  `Combobox.Content`'s children before the spinner swap, so the active index stays at `0` and
-  the input keeps an `aria-activedescendant` pointing at an `id` that is not in the document
-  while the spinner shows.
-- **Nothing closes the popup when focus leaves.** There is no blur or focus-out dismissal —
-  tabbing from the input to the next control leaves the portalled listbox mounted and
-  `aria-expanded="true"` on an unfocused combobox.
 - **The active option is marked by its ring, not its wash.** The `--C-SURFACE-1` background is
   1.02–1.07:1 on the `--C-SURFACE-0` popup — invisible in every shipped theme — so
   `.combobox-item[data-active]` also draws a 2px `--C-BORDER-FOCUS` outline at `-2px` offset,
@@ -377,18 +363,20 @@ Four things the code does **not** do, and that you may have to work around:
 - **`Combobox.Input` has no accessible name.** Give it an `aria-label`, or a
   [Label](label.md) whose `htmlFor` matches its `id`. Without one it announces as an unnamed
   combobox.
-- **`aria-controls` is set unconditionally**, including while the popup is closed and the
-  element with that `id` does not exist. It resolves correctly the moment the list opens.
 - **`Combobox.Empty` is `role="presentation"` and there is no live region.** The "no results"
   text is inside the listbox, but nothing announces that the option count dropped to zero —
-  add your own `aria-live` region if that transition needs to be spoken. The same applies to
-  `loading`: the [Spinner](spinner.md)'s `role="status"` sits inside the listbox rather than beside the
-  input.
+  add your own `aria-live` region if that transition needs to be spoken. For `loading`, pass
+  `loadingLabel` to `Combobox.Content`: the [Spinner](spinner.md) is decoration without it, and
+  becomes the wait's `role="status"` with it, in your own language.
 - **The chevron button is `tabIndex={-1}`** — deliberately outside the tab order, since the
-  input handles opening — but it is still in the accessibility tree with a hard-coded English
-  `"Open"`/`"Close"` name and no `aria-expanded` or `aria-controls` of its own. A screen-reader
-  user browsing element-by-element meets a button that does not say what it opens, and cannot
-  be renamed.
+  input handles opening — but it is still in the accessibility tree. It carries its own
+  `aria-expanded` and `aria-controls`, and its name comes from `toggleLabel` (default
+  `"Show options"`), so it can be translated.
+- **`aria-controls` is dropped while the popup is closed**, on both the input and the chevron,
+  because `Combobox.Content` renders nothing then and the IDREF would resolve to nothing.
+- **The popup closes when focus leaves the control**, as well as on `Escape`, an outside
+  press, a selection, and a second click of the chevron. Selecting with the mouse keeps DOM
+  focus on the input.
 
 Contrast is still the weak point. The input border (1.41–1.79:1) sits under the 3:1 non-text
 floor in **every** shipped theme, and `--C-BORDER-FOCUS` — which now carries the keyboard cue

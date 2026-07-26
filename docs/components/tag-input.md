@@ -113,15 +113,14 @@ rejects with no message at all.
 <!-- /example -->
 
 **Only the string branch gives the user anything to go on.** Hitting the `maxTags` cap,
-retyping a tag that already exists, and a `validateTag` that returns `false` are all
-silent — and all three still wipe the draft. Typing `typescript` into a full field and
-pressing Enter leaves you with an empty input, no chip, and no explanation. Reserve
-`false` for candidates the user cannot see (a background de-dupe), and return a string
-whenever a human needs to know why. See [Gotchas](#gotchas).
+retyping a tag that already exists, and a `validateTag` that returns `false` are all silent.
+Typing `typescript` into a full field and pressing Enter leaves you with no chip and no
+explanation — though your text is still there to correct. Reserve `false` for candidates the
+user cannot see (a background de-dupe), and return a string whenever a human needs to know why.
 
-The message is sticky in a useful way: when `validateTag` returns a string the draft is
-**kept** so it can be corrected, and the message clears on the next successful commit, or
-as soon as an emptied field is blurred.
+**A rejected draft is never thrown away.** Whatever the reason — cap, duplicate, `false`, or a
+string message — the text stays in the field so it can be fixed. Only a successful commit (or
+blank text) clears it, and the message clears on the next successful commit.
 
 ## Controlled
 
@@ -264,29 +263,16 @@ not promise.
   to the form layer. (Before this was fixed the same spread typechecked clean and threw
   `TypeError: tags.map is not a function` on the first keystroke.)
 
-- **Rejection destroys what you typed.** The draft is cleared on every path that does not
-  produce a message — the `maxTags` cap, a duplicate, and `validateTag` returning `false`.
-  The user sees their text vanish and no chip appear. Only the `validateTag`-returns-string
-  branch preserves the draft.
-- **A `delimiter` carrying `g` or `y` misfires — the component mutates your regex.** Both
-  paths call `delimiter.test(...)` on the object you passed, and a stateful regex advances
-  its own `lastIndex` across calls. Measured over three entries typed into a fresh field:
-  `/;/` gives `["ab", "cd", "ef"]`, but `/;/g` gives `["ab", "ef"]` — the second `;` is
-  tested from `lastIndex: 3`, matches nothing, and leaves the raw text `"cd;"` (delimiter
-  and all) sitting in the input, to be wiped by the next commit that *does* fire. `/;/y` is
-  worse: sticky only ever matches at index 0, so **no** tag is committed and every draft
-  keeps its delimiter. Paste alternates the same way, falling through to an ordinary
-  un-split paste on every other attempt. The default `/[,\n]/` is flagless; keep yours
-  flagless too — the component never needs a global match, only a test and a `split`.
-- **A delimiter typed mid-string throws away the tail.** Only the segment *before* the
-  first delimiter is committed; the remainder is discarded, not returned to the draft. With
-  `abc` in the field, putting the caret after `a` and typing `,` leaves you with one chip
-  `a` and an empty input — `bc` is gone. Same shape on paste: an existing draft is wiped by
-  a delimited paste rather than merged into it.
-- **Paste swallows validation messages.** The paste path evaluates each segment but reads
-  only the accept/reject answer, never the message, so a `validateTag` that returns a string
-  silently drops the segment. Pasting six topics into a field that requires lowercase can
-  add nothing at all and say nothing at all.
+- **A `delimiter` carrying `g` or `y` is safe to pass.** The component works from a flagless
+  copy of your regex, so `.test()` never advances your object's `lastIndex` and a `/;/g` or
+  `/;/y` delimiter commits exactly what `/;/` does. Your `RegExp` is never mutated.
+- **A delimiter typed mid-string keeps the tail.** Every delimited segment is committed in
+  turn and the trailing one becomes the new draft, so a change event carrying `a,b,c` leaves
+  chips `a` and `b` with `c` in the field. A paste is merged onto whatever was already
+  half-typed rather than replacing it, and it commits its trailing segment too.
+- **A rejected segment stops the run.** If one segment of a delimited string is refused, it and
+  everything after it are handed back to the draft with any message shown, rather than being
+  eaten silently. `validateTag`'s string messages surface on the paste path as well.
 - **Enter inside the field never submits the form.** `preventDefault()` runs before the
   commit and before your own `onKeyDown`, unconditionally — so pressing Enter here does not
   submit the surrounding `<form>` even when the draft is empty. Enter from the form's other
@@ -294,10 +280,10 @@ not promise.
 - **Your `onKeyDown` / `onPaste` / `onBlur` run second.** They are chained after the
   internal handlers, not before them, so you cannot cancel a commit from your own handler —
   the tag is already added by the time you see the event.
-- **Duplicate entries in a controlled `value` break React's keys.** Chips are keyed by the
-  tag string. Every internal path de-duplicates, but a `value` prop is taken as given:
-  `value={["react", "react"]}` renders and logs React's "two children with the same key"
-  error. De-duplicate before you hand the array over.
+- **Duplicate entries in a controlled `value` render twice.** Every internal path
+  de-duplicates, but a `value` prop is taken as given, so `value={["react", "react"]}` shows
+  two chips — a faithful picture of your array, and no longer a React key collision.
+  De-duplicate before you hand the array over if that is not what you meant.
 - **Clicking the wrapper's padding does not focus the field.** The border, the focus ring
   and `className` belong to a plain `<div>` with no click handler; only the text input and
   the chips' remove buttons respond to a click.

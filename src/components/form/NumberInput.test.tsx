@@ -459,4 +459,58 @@ describe("NumberInput", () => {
       expect(input).toHaveValue("-1.5");
     });
   });
+  describe("readOnly is a real read-only (#233)", () => {
+    it("reports itself read-only to assistive tech", () => {
+      render(<NumberInput aria-label="Qty" defaultValue={5} readOnly />);
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      expect(input).toHaveAttribute("readonly");
+      expect(input).toHaveAttribute("aria-readonly", "true");
+    });
+
+    it("does not step on Arrow keys", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <NumberInput
+          aria-label="Qty"
+          defaultValue={5}
+          readOnly
+          onValueChange={onValueChange}
+        />
+      );
+
+      const input = screen.getByRole("spinbutton", { name: "Qty" });
+      input.focus();
+      await user.keyboard("{ArrowUp}{ArrowDown}");
+
+      expect(onValueChange).not.toHaveBeenCalled();
+      expect(input).toHaveValue("5");
+    });
+
+    it("disables the steppers", () => {
+      const { container } = render(
+        <NumberInput aria-label="Qty" defaultValue={5} readOnly />
+      );
+
+      for (const button of container.querySelectorAll("button")) {
+        expect(button).toBeDisabled();
+      }
+    });
+  });
+
+  describe("the reserved stepper column (#234)", () => {
+    it("reserves exactly the column the chevrons occupy", () => {
+      const { container } = render(<NumberInput aria-label="Qty" />);
+
+      const wrapper = container.querySelector(".relative") as HTMLElement;
+      // 14px chevron plus the button's own px-r5 on each side.
+      expect(wrapper.style.getPropertyValue("--numberinput-stepper")).toBe(
+        "calc(14px + 2 * var(--R-SIZE-5))"
+      );
+      expect(
+        screen.getByRole("spinbutton", { name: "Qty" }).className
+      ).toContain("pr-[var(--numberinput-stepper)]");
+    });
+  });
 });

@@ -48,10 +48,12 @@ reading before you ship it. See [Gotchas](#gotchas).
 
 ## Read-only display
 
-`readOnly` returns a different tree: one `<div role="img">` labelled `"{value} out of
-{max} stars"`, with no buttons and nothing focusable. It is the right shape for an average
-score, because a screen reader gets the number in one utterance instead of walking five
-radios.
+`readOnly` returns a different tree: one `<div role="meter">` carrying your own `aria-label`
+plus `aria-valuenow`/`aria-valuemin`/`aria-valuemax`, with no buttons and nothing focusable. It
+is the right shape for an average score, because a screen reader gets the number in one
+utterance instead of walking five radios — and because the label you passed is the subject
+being rated, the component never overwrites it with a sentence of its own. Pass `formatValue`
+to add a unit, in your language; it becomes `aria-valuetext`.
 
 <!-- example:ReadOnlyAverage -->
 ```tsx
@@ -66,8 +68,9 @@ Half-star *rendering* needs no `allowHalf` — that prop only governs what input
 Each star is drawn in two layers, a `fill: none` outline plus a filled copy clipped to a
 percentage width, and the clip is quantised: `≥ n` fills the star, `≥ n − 0.5` half-fills
 it, anything less leaves it empty. So `value={4.5}` draws four and a half stars either way,
-but `value={4.3}` draws exactly four while the label still reads "4.3 out of 5 stars".
-Round before you pass a real-world average in.
+and `value={4.3}` is snapped to what the scale can draw and announce — 4 without `allowHalf`,
+4.5 with it — so the picture and the number never disagree. A value outside `[0, max]` is
+clamped the same way.
 
 ## Controlled
 
@@ -206,48 +209,28 @@ print the number beside them, as [Read-only display](#read-only-display) does.
 
 ## Gotchas
 
-- **Arrow keys drive two independent state machines.** `ArrowRight`/`ArrowLeft` move the
-  roving tab stop *and* separately add or subtract one step from the value, and nothing
-  keeps the two aligned. Focus **loops** (last → first) while the value **clamps** at
-  `max`, so from a fresh `0` on a 5-star group the fifth `ArrowRight` leaves the value at 5
-  with the focus ring back on star 1. With `allowHalf` they desync from the first press:
-  one `ArrowRight` moves focus to star 2 but sets only `0.5`; five presses reach `2.5` with
-  focus wrapped around to star 1. `ArrowUp`/`ArrowDown` are the clean path — the roving
-  hook is horizontal and ignores them, so they move the value by one increment (`0.5` with
-  `allowHalf`, otherwise `1`) and leave focus where it is.
-- **Clicking a star does not update the roving index.** The index starts at 0 and only
-  `ArrowLeft`/`ArrowRight`/`Home`/`End` advance it. Click star 4 — focus lands on it — then
-  press `ArrowRight`: focus jumps back to **star 2** while the value goes to 5. The same
-  cause makes Tab always enter the group on star 1, never on the selected star.
-- **`Home`/`End` move focus and change nothing.** They are handled by the roving-focus
-  hook, which the value logic does not observe, so `End` jumps to the last star and fires
-  no `onValueChange`.
-- **Under `allowHalf`, activating a star always commits the half.** `Enter`/`Space` fires a
-  click whose `clientX` is `0` — the same zero that `event.detail` keyboard-detection relies
-  on — so `clientX − rect.left` never reaches the star's midpoint and the left-half branch
-  always wins: `Enter` on star 5 commits `4.5`, and no star can be *activated* to its whole
-  value. The arrow keys are unaffected — they never look at the pointer, so all four of them
-  step the value by `0.5` and do reach `max` (measured). This is only a trap if you expect
-  `Enter` on the last star to mean "five stars"; it means 4.5.
+- **Focus and the value are one state machine.** The tab stop is always the star holding the
+  value: `ArrowRight`/`ArrowLeft` (and `ArrowUp`/`ArrowDown`, which do the same thing) step the
+  value by one increment — `0.5` with `allowHalf`, otherwise `1` — and focus follows it. It
+  clamps at both ends rather than looping, so `ArrowRight` at `max` moves neither. Clicking a
+  star moves the tab stop to it, and `Tab` enters the group on the star holding the value, not
+  on star 1.
+- **`Home` and `End` commit.** `Home` sets the first selectable rating (`0.5` with `allowHalf`,
+  otherwise `1`) and `End` sets `max`; both fire `onValueChange` like every other key.
+- **Under `allowHalf`, activating a star commits its whole value.** A keyboard-fired click
+  carries `detail === 0` and no pointer position, so `Enter`/`Space` on star 5 commits `5`. The
+  half is a pointer gesture: click the left half of a star to get `n − 0.5`.
 - **Under `allowHalf` the star names move with the value.** Each radio is named for the value
   it stands for — its own position, except the *checked* one, which is named for the value
   actually held. On a whole value that is the plain ladder: at `value={3}` the five radios
-  announce "1 stars" … "5 stars" and the checked one is "3 stars". On a **half** value the
-  checked star is renamed and the whole value it would otherwise offer drops out of the set:
-  at `value={2.5}` the radios read 1 · 2 · **2.5** · 4 · 5, with no "3 stars" to pick. At
-  `value={max − 0.5}` the one that drops out is `max` itself — `value={4.5}` of five leaves
-  1 · 2 · 3 · 4 · **4.5**, so there is no radio named "5 stars" while that value is held. The
-  arrow keys still reach `max`; only the named options are short one rung.
-- **`readOnly` throws away your `aria-label`.** The read-only branch overwrites it with the
-  generated `"{value} out of {max} stars"`, so
-  `<Rating readOnly value={4} aria-label="Average customer rating" />` announces "4 out of
-  5 stars" with no hint of *what* was rated. Name it from the surrounding content instead.
-- **`readOnly` also ignores `disabled`.** The read-only branch returns before `disabled` is
-  read, so you get neither `aria-disabled` nor the dimmed class. `readOnly` is already
-  non-interactive, so this is only a styling surprise.
-- **Nothing clamps an out-of-range `value`.** Clamping happens on commit only, so
-  `<Rating readOnly value={9} max={5} />` renders five full stars and announces
-  "9 out of 5 stars". Range-check before you pass it.
+  announce "1" … "5" and the checked one is "3". On a **half** value the checked star is
+  renamed and the whole value it would otherwise offer drops out of the set: at `value={2.5}`
+  the radios read 1 · 2 · **2.5** · 4 · 5, with no "3" to pick. The arrow keys still reach
+  `max`; only the named options are short one rung. The names are bare numbers by default —
+  the only rendering that is right in every language — and `formatValue` adds a unit.
+- **An out-of-range or off-step `value` is snapped, not trusted.** `value={9} max={5}` renders
+  and announces 5; `value={4.3}` renders and announces 4 (or `4.5` with `allowHalf`). The
+  picture and the announced number can never disagree.
 - **It is not a form control.** No `<input>`, no `name`, no hidden field — the value never
   reaches `FormData` or an uncontrolled `<form>` submit. Read it from `onValueChange`.
 - **Value `0` leaves no radio checked.** That is the correct "not yet rated" state, but a
@@ -265,26 +248,27 @@ so every star is natively focusable and `Enter`/`Space` activate it through the 
 The buttons carry an explicit `type="button"`, so a rating inside a `<form>` never submits
 it.
 
-- **Each star has a hidden name.** An `sr-only` span renders "N stars" inside every button,
-  and `aria-checked` tracks the current value — the checked radio is now always named for the
-  value it actually holds. The string is hard-coded English with no way to translate it, and
-  under `allowHalf` the *set* of names shifts as the value moves, which can leave `max`
-  unnamed — see [Gotchas](#gotchas).
+- **Each star has a hidden name.** An `sr-only` span renders the value inside every button,
+  and `aria-checked` tracks the current value — the checked radio is always named for the value
+  it actually holds. The default is the bare number, which needs no translation; `formatValue`
+  supplies a unit in your own language. Under `allowHalf` the *set* of names shifts as the
+  value moves, which can leave `max` unnamed — see [Gotchas](#gotchas).
 - **The glyphs are hidden.** Each star span is `aria-hidden="true"`, so the icon never
   double-announces over the hidden name.
 - **The focus indicator is real and does not shift layout.** `.rating-button` resets itself
   with `all: unset`, which removes the UA ring, but `:focus-visible` restores a 2px
   `--C-BORDER-FOCUS` outline at 2px offset — higher specificity, so it wins — and `outline`
   is drawn outside the box model, so focusing moves nothing.
-- **Keyboard navigation is non-standard.** `ArrowLeft`/`ArrowRight` move focus and change
-  the value as two separate effects that drift apart; `ArrowUp`/`ArrowDown` change the
-  value without moving focus; `Home`/`End` move focus without changing the value. If you
-  need APG-conformant radio-group behaviour, this is the gap to know about.
+- **Keyboard navigation follows the value.** All four arrows step the value by one increment
+  and carry the tab stop with it; `Home` and `End` jump to the first and last ratings and
+  commit them. The tab stop is always the checked star, so `Tab` re-enters the group where the
+  user left it.
 - **Disabled is out of the tab order entirely.** Every button is `disabled` *and*
   `tabIndex={-1}`, so tabbing skips the whole group; the `aria-disabled="true"` on the root
   is only reachable by browsing, not by keyboard focus.
-- **Read-only announces as one image.** `role="img"` plus the generated label gives the
-  whole score in a single utterance, which is the right call for a static average.
+- **Read-only announces as one meter.** `role="meter"` with `aria-valuenow`/`min`/`max` gives
+  the whole score in a single utterance under *your* `aria-label`, which is the right call for
+  a static average. `disabled` still applies there: `aria-disabled` plus the dimmed class.
 - **Colour is not sufficient on its own.** The measured ratios above put the filled star
   below 3:1 on most light-theme surfaces and the empty star far below it everywhere but
   `tech`; pair the stars with the number.

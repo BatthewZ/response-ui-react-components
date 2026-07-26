@@ -345,47 +345,27 @@ Chip label ink is the one pairing with margin to spare: `--C-TEXT-SECONDARY` on
 
 ## Gotchas
 
-- **The chevron never closes the list.** Clicking the control — chevron included — while the
-  list is open re-runs "open and focus", so the menu stays up; measured open after a second
-  click and after a chevron click. Only `Escape` or a press outside closes it. The affordance
-  looks like a toggle and is not one.
-- **Tabbing away leaves the listbox open.** Nothing dismisses on blur: measured with focus on
-  the next button, the floating list was still mounted over the page. It closes on the next
-  outside pointer press. If you `Tab` out of a form full of these, you can leave a panel
-  stranded on screen.
-- **`id` and `aria-labelledby` land on the wrapper `<div>`.** The rest-spread targets the
-  outer element, so neither reaches the input. `<Label htmlFor="skills">` +
-  `<MultiSelect id="skills">` names nothing — measured, the `id` is on the wrapper and the
-  input has none, so the combobox has no accessible name. Name it with `aria-label` instead.
+- **The chevron is the toggle.** Clicking it opens and closes the list; clicking anywhere else
+  in the control only opens it, the way a text field does. `Escape`, an outside press and
+  moving focus out of the control all close it too.
 - **There is no native form participation, and `name` does not compile.** The rest props are
   `<div>` props, and `name` is not one of them: `<MultiSelect name="skills">` is a TypeScript
   error (`Property 'name' does not exist`), not a prop that is typed and then dropped. There
   is no hidden input per value either, so a plain `<form>` post carries nothing. A form store
   binds fine — `onChange` hands it the array — but a spread `name` only reaches the wrapper
   `<div>` as an inert attribute.
-- **`Enter` with nothing highlighted submits the surrounding form.** The keydown handler
-  calls `preventDefault()` only when it is actually toggling an option, so `Enter` pressed
-  while the list is open but no option is active falls through to the form — measured, one
-  submit, with the menu still open. `Enter` on a highlighted option does not submit.
-- **Chips are not tab stops.** Every remove button is `tabIndex={-1}`, so `Tab` moves input →
-  out of the component regardless of how many chips there are. The keyboard paths to remove
-  are Backspace (last chip only) and toggling the option in the list.
-- **Removing a chip drops focus to `<body>`.** The remove button unmounts itself on click and
-  nothing restores focus, so the next `Tab` starts from the top of the document. Clicking an
-  *option* does return focus to the input.
+- **`Enter` belongs to the open list.** While the list is open the key is consumed whether or
+  not an option is highlighted, so it never submits the surrounding form by accident.
 - **A value that is not in `options` renders as a raw chip.** The label lookup falls back to
   the value string, so `defaultValue={["rust"]}` against a list with no `rust` shows a chip
   reading `rust` — and because it has no row in the listbox, it can only be removed with its
   own × or by Backspace.
-- **Duplicate values in a controlled array break React's keys.** Chips are keyed by the value
-  string; the component never de-duplicates what you hand it, so `value={["react", "react"]}`
-  renders two chips and logs React's "two children with the same key" error. De-duplicate
-  before you pass the array.
+- **Duplicate values in a controlled array render twice.** The component never de-duplicates
+  what you hand it, so `value={["react", "react"]}` shows two chips — a faithful picture of
+  your array, and no longer a React key collision. De-duplicate before you pass it if that is
+  not what you meant.
 - **`maxItems` never trims.** It blocks additions and disables unselected options; an
   over-long `value` is rendered in full. Enforce the cap on your own data if it matters.
-- **The open state is not a prop.** There is no `open`/`onOpenChange` and no imperative
-  handle, so you cannot open or close the list from outside — `ref` gives you the wrapper
-  `<div>`, not the input.
 - **`className` styles the wrapper.** The bordered control is an inner `<div>`; a class you
   pass lands on the positioned outer element, which is `position: relative; width: 100%` and
   paints nothing.
@@ -408,10 +388,14 @@ rows are `role="option"` with `aria-selected`, and `aria-disabled` on anything b
 `tabIndex={-1}` and navigation is virtual — so `Escape` returns you to a control that never
 lost focus. Each chip's × is a real `<button type="button">` named `Remove <label>`.
 
-Five things to plan around:
+Four things to plan around:
 
-- **Only `aria-label` can name it.** See [Gotchas](#gotchas) — `id`/`aria-labelledby` land on
-  the wrapper, so omitting `aria-label` leaves the combobox with no accessible name at all.
+- **Name it with `aria-label`, `aria-labelledby` or `id` + `<Label htmlFor>`.** All three reach
+  the combobox input; the rest of the spread stays on the wrapper. Omit all three and the
+  combobox has no accessible name at all.
+- **Every chip's × is a tab stop.** `Tab` walks the chips before reaching the input, so any
+  chip can be removed from the keyboard, not just the last one via Backspace. Removing a chip
+  moves focus to the next chip's ×, or to the input when the last one goes.
 - **The highlighted option is marked by a ring, not by its wash.** The `--C-SURFACE-1`
   background is 1.02–1.07:1 and carries nothing on its own, so `.multiselect-item[data-active]`
   also draws a 2px `--C-BORDER-FOCUS` outline at `-2px` offset. It has to come from the
@@ -424,11 +408,9 @@ Five things to plan around:
 - **Nothing announces a change.** There is no live region. Toggling an option, hitting the
   `maxItems` cap, and Backspacing a chip away all happen silently; so does the "No options"
   row, which is `role="presentation"` inside a listbox the user is not focused in.
-- **`aria-controls` dangles while closed.** It always names the listbox id, but the element
-  only exists while the list is open, so a closed control points at nothing.
-- **`searchable={false}` still advertises `aria-autocomplete="list"`.** The input is
-  `readOnly` and filters nothing, but the promise of an autocompleting text field stays on
-  it.
+- **`aria-controls` is set only while the list is open**, because that is the only time the
+  element it names is in the document. `searchable={false}` reports
+  `aria-autocomplete="none"`, since a read-only input filters nothing.
 
 The error state is conveyed by border and ring colour plus `aria-invalid`, so always pair it
 with a visible [FieldError](field-error.md) message. Focus is a `:focus-within` ring on the

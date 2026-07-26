@@ -1,3 +1,4 @@
+"use client";
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import {
@@ -5,6 +6,7 @@ import {
   focusRingControl,
   focusRingControlError,
 } from "../../util/focus";
+import { mergeProps } from "../../util/merge-props";
 import { cn } from "../../util/style";
 
 import { useFieldError } from "./Field";
@@ -21,7 +23,6 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
   return (
     <textarea
       ref={ref}
-      {...ariaProps}
       className={cn(
         "w-full px-r4 py-r5 text-body-2 text-fg-primary",
         "bg-surface-0 border border-border-strong rounded-md",
@@ -34,7 +35,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
         invalid && focusRingControlError,
         className
       )}
-      {...props}
+      // `field()` always emits the KEY `aria-invalid`, valued `undefined` when
+      // the field is valid — a plain `{...props}` after `{...ariaProps}` would
+      // therefore erase the state computed from `error`/Field. Merging keeps
+      // ours where we have an opinion and the caller's where we do not.
+      {...mergeProps(props, ariaProps)}
     />
   );
 });

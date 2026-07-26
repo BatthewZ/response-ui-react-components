@@ -28,6 +28,21 @@ type SliderProps = {
   error?: boolean;
 } & Omit<ComponentPropsWithRef<"input">, "type" | "value" | "defaultValue" | "onChange">;
 
+/**
+ * The value the browser will actually render the thumb at. `<input type="range">`
+ * sanitises an off-grid value to the nearest step (ties going up, never past
+ * `max`), so a fill drawn from the raw prop sits somewhere the thumb is not.
+ */
+function snapToStep(value: number, min: number, max: number, step: number): number {
+  const clamped = Math.min(Math.max(value, min), max);
+  if (!(step > 0) || !Number.isFinite(clamped)) return clamped;
+  let snapped = min + Math.round((clamped - min) / step) * step;
+  if (snapped > max) snapped -= step;
+  // The multiply-add above can land on 0.30000000000000004; the thumb does not.
+  snapped = Number(snapped.toPrecision(12));
+  return Math.min(Math.max(snapped, min), max);
+}
+
 export const Slider = forwardRef<HTMLInputElement, SliderProps>(function Slider(
   {
     value,
@@ -56,7 +71,8 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(function Slider(
   const fieldErrorProps = useFieldErrorProps(error);
 
   const range = max - min;
-  const pct = range > 0 ? ((current - min) / range) * 100 : 0;
+  const rendered = snapToStep(current, min, max, step);
+  const pct = range > 0 ? ((rendered - min) / range) * 100 : 0;
   const clamped = Math.min(100, Math.max(0, pct));
 
   return (

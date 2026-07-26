@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Badge } from "../ui/Badge";
 
@@ -234,6 +234,173 @@ describe("TagInput", () => {
         "aria-invalid",
         "true"
       );
+    });
+  });
+
+  describe("the draft survives every rejection (#247)", () => {
+    it("keeps the typed text when the maxTags cap refuses it", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" maxTags={1} defaultValue={["a"]} />);
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      await user.type(input, "beta{Enter}");
+
+      expect(input).toHaveValue("beta");
+    });
+
+    it("keeps the typed text when it duplicates an existing tag", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["apple"]} />);
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      await user.type(input, "apple{Enter}");
+
+      expect(input).toHaveValue("apple");
+    });
+
+    it("keeps the typed text when validateTag returns false", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" validateTag={() => false} />);
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      await user.type(input, "nope{Enter}");
+
+      expect(input).toHaveValue("nope");
+    });
+
+    it("still clears the draft on a successful commit", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" />);
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      await user.type(input, "ok{Enter}");
+
+      expect(input).toHaveValue("");
+    });
+  });
+
+  describe("multi-segment input (#248)", () => {
+    it("commits every delimited segment and keeps the trailing one as the draft", () => {
+      const onValueChange = vi.fn();
+      render(<TagInput aria-label="Tags" onValueChange={onValueChange} />);
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      // One change event carrying several segments — autofill, IME commit or a
+      // programmatic write. Typing char-by-char never produces this shape.
+      fireEvent.change(input, { target: { value: "a,b,c" } });
+
+      expect(onValueChange).toHaveBeenLastCalledWith(["a", "b"]);
+      expect(input).toHaveValue("c");
+    });
+  });
+
+  describe("paste (#249)", () => {
+    it("keeps the pending draft as the head of the pasted text", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(<TagInput aria-label="Tags" onValueChange={onValueChange} />);
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      await user.type(input, "re");
+      await user.paste("act, redux");
+
+      expect(onValueChange).toHaveBeenLastCalledWith(["react", "redux"]);
+    });
+
+    it("surfaces a validateTag message from the pasted text", async () => {
+      const user = userEvent.setup();
+      render(
+        <TagInput
+          aria-label="Tags"
+          validateTag={(tag) => (tag === "bad" ? "Not allowed" : true)}
+        />
+      );
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      input.focus();
+      await user.paste("good, bad, other");
+
+      expect(screen.getByText("Not allowed")).toBeInTheDocument();
+      expect(screen.getByText("good")).toBeInTheDocument();
+    });
+  });
+
+  describe("a stateful delimiter RegExp (#250)", () => {
+    // Declared once, outside render, so the component sees the same object the
+    // caller holds — which is exactly the condition `.test()` corrupts.
+    const globalDelimiter = /;/g;
+
+    it("commits every entry when the delimiter carries the g flag", () => {
+      const onValueChange = vi.fn();
+      render(
+        <TagInput
+          aria-label="Tags"
+          delimiter={globalDelimiter}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      fireEvent.change(input, { target: { value: "a;" } });
+      fireEvent.change(input, { target: { value: "b;" } });
+
+      expect(onValueChange).toHaveBeenLastCalledWith(["a", "b"]);
+      expect(globalDelimiter.lastIndex).toBe(0);
+    });
+
+    it("commits with a sticky delimiter", () => {
+      const stickyDelimiter = /;/y;
+      const onValueChange = vi.fn();
+      render(
+        <TagInput
+          aria-label="Tags"
+          delimiter={stickyDelimiter}
+          onValueChange={onValueChange}
+        />
+      );
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      fireEvent.change(input, { target: { value: "a;" } });
+
+      expect(onValueChange).toHaveBeenLastCalledWith(["a"]);
+    });
+  });
+
+  describe("validation message wiring (#253)", () => {
+    it("points aria-describedby at the message element", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" validateTag={() => "Too short"} />);
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      await user.type(input, "x{Enter}");
+
+      const message = screen.getByText("Too short");
+      expect(message.id).not.toBe("");
+      expect(input.getAttribute("aria-describedby")?.split(" ")).toContain(message.id);
+    });
+  });
+
+  describe("duplicate entries in a controlled value (#254)", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    afterEach(() => consoleError.mockClear());
+
+    it("renders both chips without a duplicate-key error", () => {
+      render(<TagInput aria-label="Tags" value={["react", "react"]} onValueChange={vi.fn()} />);
+
+      expect(screen.getAllByText("react")).toHaveLength(2);
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("the wrapper is the hit area (#255)", () => {
+    it("focuses the text input when its padding is clicked", async () => {
+      const user = userEvent.setup();
+      render(<TagInput aria-label="Tags" defaultValue={["a"]} />);
+
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      await user.click(input.parentElement!);
+
+      expect(input).toHaveFocus();
     });
   });
 

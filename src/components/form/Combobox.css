@@ -14,29 +14,20 @@
   background: var(--C-SURFACE-0);
   border: 1px solid var(--C-BORDER-STRONG);
   border-radius: var(--RADIUS-MD);
-  outline: none;
 }
 
 .combobox-input::placeholder {
   color: var(--C-TEXT-MUTED);
 }
 
-.combobox-input:focus-visible {
-  border-color: var(--C-BORDER-FOCUS);
-  box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS);
-}
+/* The focus affordance and the invalid state both come from the shared
+   `src/util/focus.ts` recipes applied in Combobox.tsx, so a single edit there
+   reaches this control too. Restating them here would be a second source of
+   truth — and the restatement is what let focus repaint the error border. */
 
 .combobox-input:disabled {
   background: var(--C-SURFACE-3);
   cursor: not-allowed;
-}
-
-.combobox-input-error {
-  border-color: var(--C-STATUS-ERROR);
-}
-
-.combobox-input-error:focus-visible {
-  box-shadow: 0 0 0 2px var(--C-STATUS-ERROR);
 }
 
 .combobox-toggle {

@@ -123,17 +123,17 @@ when the override is dropped — quietly, rather than being reported.
 Presets are one-click commits, not a separate value space: each is normalised and compared
 to the current hex, and the match gets `aria-pressed="true"` plus a double ring. Because
 the grid is a fixed `repeat(8, 1fr)`, eight is exactly one row — fewer still occupy an
-eighth of the panel each, more wrap. A preset the normaliser rejects is not skipped: it is
-rendered as a swatch (the browser will happily paint `rebeccapurple`) and clicking it
-silently does nothing. See [Gotchas](#gotchas).
+eighth of the panel each, more wrap. A preset the normaliser rejects is **not** rendered:
+`"rebeccapurple"` would paint a perfectly clickable swatch that could never commit, so it is
+dropped from the grid instead.
 
 ## Naming the trigger
 
-`aria-label` **replaces** the visible hex in the accessibility tree rather than adding to
-it — the readout is plain text inside the button and the swatch is `aria-hidden`. A picker
-showing `#3366cc` announces as "Choose color, button" unless you say otherwise, so the one
-thing a sighted user reads off it is the one thing a screen-reader user never hears. Fold
-the value into the label:
+`aria-label` replaces the button's text in the accessible name, so the component appends the
+current hex to whatever you pass: a picker labelled `"Accent color"` showing `#3366cc`
+announces as "Accent color #3366cc, button". The value a sighted user reads off the trigger is
+the value a screen-reader user hears. Pass `aria-label` to say *what* is being coloured; you do
+not need to fold the value in yourself:
 
 <!-- example:NamedWithValue -->
 ```tsx
@@ -146,8 +146,8 @@ the value into the label:
 <!-- /example -->
 
 A visible [Label](label.md) can be wired up too, now that `id` reaches the trigger — but pick
-the right attribute. The component always sets `aria-label` (`"Choose color"` when you pass
-none), and `aria-label` outranks a `<label for>` in the accessible-name computation, so
+the right attribute. The component always sets `aria-label` (`"Choose color"` plus the hex when
+you pass none), and `aria-label` outranks a `<label for>` in the accessible-name computation, so
 `htmlFor` plus a matching `id` buys you click-to-focus and nothing else. `aria-labelledby`
 outranks `aria-label` in turn, so that is the one to point at the label's `id` when the
 visible text should be the name.
@@ -336,11 +336,13 @@ there does not reach this component.
   a different hex commits, so an expensive handler wants debouncing. It no longer fires with an
   *unchanged* value, though: a pointer move inside one rounded hex, and the hue rail at
   brightness 0, both resolve to the hex already held and emit nothing.
-- **A non-hex preset renders but cannot be selected.** `presets={["rebeccapurple"]}` paints
-  a purple swatch labelled `rebeccapurple`; clicking it fires no callback and changes
-  nothing, because the commit path rejects it. Presets must be hex.
+- **A non-hex preset is dropped, not rendered.** `presets={["rebeccapurple"]}` paints no
+  swatch at all, because the commit path could never accept it. Presets must be hex; check the
+  grid if one you expected is missing.
 - **The preset grid is always eight columns.** Three presets are three eighth-width
   swatches with five empty cells, not three wide ones.
+- **The floating panel is a named `role="dialog"`.** Its name is `panelLabel`, default
+  `"Color picker"` — pass your own to translate it.
 - **The invalid border survives focus.** `.colorpicker-trigger:focus-visible` is `(0,2,0)`
   against `.colorpicker-trigger--error`'s `(0,1,0)`, so it used to out-rank the error rule
   regardless of order and repaint a focused invalid trigger with the focus colour. A dedicated
@@ -348,11 +350,10 @@ there does not reach this component.
   tying: it is `(0,2,0)` too, and is declared after, so source order settles it. Focus and
   invalid are now both legible at once — the ring reports focus, the colour reports invalid.
   If you re-declare either rule in your own CSS, order is what you have to get right.
-- **`disabled` guards the trigger, not an already-open panel.** Setting `disabled`
-  programmatically while the panel is open (from a save that starts in flight, say) leaves
-  it open: the hex field and hue rail go disabled, but the square still responds to arrow
-  keys and the preset buttons still commit. Any click outside would have closed it first,
-  which is why this is narrow rather than common.
+- **`disabled` reaches an already-open panel.** Setting it programmatically while the panel is
+  open (from a save that starts in flight, say) leaves the panel up, but everything in it is
+  inert: the hex field and hue rail are disabled, the square drops out of the tab order and
+  ignores arrow keys, and the preset buttons are disabled.
 - **It submits nothing.** There is no hidden input, and `name` lands on the trigger — a
   `<button type="button">`, which the browser never submits — so a plain `<form>` post
   carries no value for it however the control is named. Bind it to a form store instead, or

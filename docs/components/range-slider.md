@@ -30,11 +30,12 @@ and the selected segment are painted underneath from theme tokens.
 | `ref`           | `Ref<HTMLDivElement>`                                   | —                                       |
 | …rest           | `<div>` props except `defaultValue`, `children`; `onChange` is re-typed above | —         |
 
-Read that last row twice. The rest props are **`div` props, spread onto the wrapper** — the
-two `<input>` elements are unreachable from outside. `id`, `aria-describedby`, `aria-label`
-and `aria-valuetext` all land on the wrapper; the only per-thumb props the component
-forwards are `min`, `max`, `step`, `disabled`, and the two label strings. See
-[Gotchas](#gotchas).
+Read that last row twice. The rest props are **`div` props, spread onto the wrapper**. Two
+exceptions travel down to the thumbs, because they only mean anything on the focusable
+control: `aria-invalid` and `aria-describedby`, which are merged under whatever the component
+derives from `error` or a surrounding [Field](field.md). `formatValue` supplies each thumb's
+`aria-valuetext`. Everything else per-thumb — `min`, `max`, `step`, `disabled`, `minLabel`,
+`maxLabel` — is a named prop. See [Gotchas](#gotchas).
 
 `onChange` is the one prop that escapes that spread: it carries the committed
 `RangeSliderValue`, the same payload as `onValueChange` rather than a `ChangeEvent`, and is
@@ -109,9 +110,12 @@ far thumb is never dragged along, and the two never swap places.
 ```
 <!-- /example -->
 
-With the default `minDistance` of `0` the two can land on exactly the same number — which is
-where the pointer gets stuck, so a non-zero gap is worth setting whenever a zero-width range
-is meaningless. See [Gotchas](#gotchas).
+With the default `minDistance` of `0` the two can land on exactly the same number. Both stay
+grabbable there: the thumb the pointer is approaching from — left of the pair, or right of it —
+is the one raised to the top. A non-zero gap is still worth setting whenever a zero-width range
+is meaningless. A `value`/`defaultValue` that arrives reversed, out of range, or closer than
+`minDistance` is brought onto the scale before it is drawn, so the picture always matches the
+numbers announced.
 
 A movement that clamps to the number already held fires nothing: `onValueChange` runs only
 when the clamped pair differs from the current one, so a drag that keeps pushing at the wall
@@ -142,17 +146,17 @@ granularity of dragging and of the arrow keys together.
 <!-- /example -->
 
 Note where the unit went. On a scale that is not a percentage, screen readers commonly
-announce a range input as a percentage of its travel — and unlike
-[Slider](slider.md), there is no way to correct that here, because `aria-valuetext` cannot
-reach either input. Putting the unit in `minLabel` / `maxLabel` is the available workaround:
-the name is spoken even when the number is wrong.
+announce a range input as a percentage of its travel. `formatValue` corrects that: it is
+applied as `aria-valuetext` on both thumbs, so `formatValue={(v) => `$${v}`}` makes each thumb
+announce the money rather than the percentage. Putting the unit in `minLabel` / `maxLabel`
+names the two ends as well.
 
 ## In a form
 
-Inside a [Field](field.md), the resolved error drives the wrapper's `aria-invalid`, which
-re-tints the fill and both thumbs, and the field's error `id` lands on the wrapper too as
-`aria-describedby`. Both stop there — neither reaches an `<input>` — so give the wrapper
-`role="group"` if that description is to belong to anything at all.
+Inside a [Field](field.md), the resolved error puts `aria-invalid` and the field's error `id`
+on **both thumbs**, so a focused thumb reports itself invalid and points at the message. The
+wrapper carries neither — an AT never reads it while a thumb has focus — but it still re-tints
+the fill and the thumbs from the same state.
 
 <!-- example:InField -->
 ```tsx
@@ -173,16 +177,14 @@ re-tints the fill and both thumbs, and the field's error `id` lands on the wrapp
 ```
 <!-- /example -->
 
-The matched `id` pair in that example is left over from when the wrapper discarded the
-derived value, and it now works against you: an `aria-describedby` of your own is merged
-*under* the component's, so inside an errored [Field](field.md) the wrapper points at the
-`id` [FieldError](field-error.md) generates for itself — which the explicit `id` has just
-overridden. Drop both and the two ends meet.
+An `aria-describedby` of your own is merged *under* the component's, so inside an errored
+[Field](field.md) the thumbs point at the `id` [FieldError](field-error.md) generates for
+itself rather than at yours.
 
 Standalone, the `error` prop sets the same state directly. It takes precedence over the
 surrounding field, so `error={false}` forces a valid appearance inside an invalid
 [Field](field.md). With no field to derive anything from, an `aria-describedby` you pass
-reaches the wrapper untouched — which is what the example below relies on.
+reaches both thumbs untouched — which is what the example below relies on.
 
 <!-- example:ErrorState -->
 ```tsx
@@ -264,41 +266,25 @@ the *base* surface — see [Gotchas](#gotchas) before dropping one on a card.
 
 ## Gotchas
 
-- **Two thumbs on the same number: one of them is buried.** Both inputs span the full track
-  with `pointer-events: none`, and only the thumbs take pointer events — so where the thumbs
-  overlap exactly, the pointer always grabs whichever input is stacked higher. While no drag
-  is in progress, the component raises the *lower* input to `z-index: 4` when its value is
-  above the midpoint of `[min, max]`, and otherwise leaves both at `auto`, where DOM order
-  puts the *upper* input on top. Both branches leave the other thumb unreachable: at
-  `[30, 30]` on a `0`–`100` scale the lower thumb cannot be grabbed, and at `[70, 70]` the
-  upper one cannot. Dragging the reachable thumb away frees the buried one, and both remain
-  reachable by keyboard, but the control reads as stuck. A `minDistance` above `0` prevents
-  the collision entirely — as long as the value you start it with respects the gap too.
+- **Two thumbs on the same number: the one you reach for comes to the top.** Both inputs span
+  the full track with `pointer-events: none`, and only the thumbs take pointer events — so
+  where the thumbs overlap exactly, the pointer grabs whichever input is stacked higher. While
+  no drag is in progress the component decides that from the pointer: left of the pair raises
+  the lower thumb, right of it leaves the upper one on top, so whichever direction you approach
+  from, the thumb that can move that way is the one you get. A touch that lands without any
+  prior pointer movement falls back to a positional heuristic; the next press is correct. A
+  `minDistance` above `0` avoids the collision entirely.
 - **The rail is not clickable.** `pointer-events` are confined to the thumbs, so clicking an
   empty stretch of track does nothing — no jump-to-position, unlike a plain
   [Slider](slider.md). Every change comes from dragging a thumb or from the keyboard.
-- **The error state does not reach the thumbs.** `aria-invalid="true"` and the
-  `aria-describedby` the component derives from a [Field](field.md) are both written on the
-  wrapper `div`, never on either input, so the control you actually focus still reports
-  itself valid. All the thumbs get is the colour change on the fill. Add `role="group"` so
-  the wrapper is a node those attributes can describe, as the examples above do.
 - **Your own `aria-describedby` loses inside an errored [Field](field.md).** It is merged
   under the value the component derives, which names the `id`
   [FieldError](field-error.md) generates for itself. Pass one only where there is no field
-  to derive from, and leave FieldError's `id` alone inside one — set both and the wrapper
-  ends up pointing at an `id` that no longer exists.
-- **Nothing you pass can reach the thumbs.** The rest props are `div` props. `aria-valuetext`
-  (the one attribute that fixes a non-percentage announcement), `aria-describedby`, and `id`
-  all land on the wrapper. `minLabel` / `maxLabel` are the only per-thumb ARIA the component
-  exposes.
-- **`minDistance` is not applied to the value you pass in.** It is enforced only on changes
-  the component itself makes. `defaultValue={[50, 50]}` with `minDistance={10}` renders both
-  thumbs on `50` and stays there until the first drag.
-- **An out-of-order pair is rendered as given.** Despite what `RangeSliderValue`'s own
-  docblock says, ordering is imposed only on values the component produces. `value={[80, 20]}`
-  renders the lower thumb at `80` and the upper at `20`, and the selected segment — inset
-  `80%` from both sides — disappears entirely. The first drag snaps the pair back into order,
-  which looks like a jump.
+  to derive from, and leave FieldError's `id` alone inside one.
+- **Most of what you pass lands on the wrapper.** The rest props are `div` props, so `id` and
+  `aria-label` describe the wrapper, not a thumb. The per-thumb surface is deliberate and
+  small: `minLabel` / `maxLabel` for the names, `formatValue` for `aria-valuetext`, and
+  `aria-invalid` / `aria-describedby`, which the component routes down for you.
 - **Your `style` wins over the geometry.** `--range-lo` and `--range-hi` are written first and
   your `style` object is spread after them, so `style={{ "--range-lo": "…" }}` overrides the
   computed segment and desynchronises it from the thumbs.

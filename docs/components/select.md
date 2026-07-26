@@ -234,20 +234,13 @@ ring to `--C-STATUS-ERROR`; it does not tint the fill. The swap covers `focus:bo
 so a *focused* invalid select stays error-coloured throughout. The focus ring is
 `ring-offset-0`, flush against the border, so nothing paints in a gap.
 
-Three pieces of the control are **not** on the contract. The chevron is a data-URI SVG
-background image, so it is a literal, not a token: an SVG referenced as a background image is
-its own document, and the `fill="currentColor"` inside it resolves against that document's
-initial colour rather than the select's `text-fg-primary`. It paints `rgb(0, 0, 0)` in both
-Chromium and Firefox — with the select's own `color` forced to red, and under
-`data-theme="grimdark"` with a dark `color-scheme`, where it sits at about 1.10:1 against
-`--C-SURFACE-0`. The gutter that keeps text clear of it is `pr-10`, a fixed `2.5rem` on
-Tailwind's default spacing scale rather than the responsive `r`-scale the padding uses. And
-the arrow's inset is a hard `0.5rem` from the right edge. Only its `1.5em` box scales with the theme, being relative to
-the `--BodyText-2` font size.
-
-One class is inert: `placeholder:text-fg-muted` is carried over from
-[Input](input.md), but `::placeholder` does not match a `<select>`, so it paints nothing —
-including on the empty-valued placeholder option above.
+The chevron is a real `lucide` element positioned over the control, not a background image, so
+its ink is `text-fg-secondary` and follows the theme like everything else. (As a data-URI
+background it could not: an SVG referenced as a background image is its own document, and the
+`fill="currentColor"` inside it resolved against *that* document's initial colour — black on
+every theme, 1.06:1 on `tech`.) One piece is still off the contract: the gutter that keeps text
+clear of the chevron is `pr-10`, a fixed `2.5rem` on Tailwind's default spacing scale rather
+than the responsive `r`-scale the rest of the padding uses.
 
 ## Gotchas
 
@@ -256,11 +249,9 @@ including on the empty-valued placeholder option above.
   padding, no hover colour, and on macOS and iOS not even a font. Nothing in your theme
   reaches it beyond `color-scheme`. If the list itself has to be designed, that is what
   [Combobox](combobox.md) and [MultiSelect](multi-select.md) are for.
-- **The chevron is always black.** Its `currentColor` is resolved inside the background
-  image's own document, not against `text-fg-primary`, so it does not follow the theme: it
-  measures `rgb(0, 0, 0)` in Chromium and in Firefox whatever the select's own colour or
-  `color-scheme`. On the dark themes that is about 1.10:1 against the control's own fill —
-  the only affordance that marks this as a dropdown, all but invisible.
+- **The control renders as a wrapper `<div>` around the `<select>`.** The chevron is a
+  sibling element rather than a background image, so a `Select` is two nodes, not one. Rest
+  props, the ref and `className` all still go to the `<select>` itself.
 - **It is `w-full` by default,** not sized to its longest option the way a bare `<select>`
   is. Pass `className="w-auto"` (or a fixed width) to opt out — the class list runs through
   tailwind-merge, so yours replaces the default rather than fighting it.

@@ -153,3 +153,69 @@ code. The gates stayed green throughout. The owner reversed it.
   it was added there too. Its literal `EXPECTED` table caught the omission on the next
   run only because the partition assertion lists recipe *names*; a purely value-driven
   table would have silently skipped the new export.
+
+## G · From the table/data-display fix pass
+
+- **A "fired once" boolean is the wrong guard for anything that grows.** An infinite-loading
+  callback re-armed only when the window left the trigger zone deadlocked the moment a page
+  landed that was too small to push it back out. Key the guard to the *quantity that changes*
+  (the dataset length), not to a flag. The mirror defect — firing before any interaction — is a
+  different question and usually the documented contract, so fix them separately.
+- **"Controlled-only" selection is a feature that looks broken.** Two tables accepted a
+  `selectable` flag whose handlers bailed out unless two further optional props were passed, so
+  the boxes rendered enabled and did nothing. The same file already had the right pattern for a
+  sibling feature. Before adding a type union to *forbid* the state, check whether the component
+  can simply hold the state — an escape hatch already in the file beats a new constraint.
+- **List-role, landmark and Safari/VoiceOver fixes cannot be observed in this environment.**
+  jsdom computes the implicit role whatever the stylesheet does, so the only honest assertion is
+  the attribute that carries the fix. Say so in the test, or the next reader will believe the
+  announcement was verified.
+- **The CSS package ships class twins of its element selectors.** Heading face, tracking and
+  weight come from `h1`–`h6` *and* from matching `.h1`–`.h6` classes. Anything that has to look
+  like a heading on a non-heading element already has a supported route; do not conclude the
+  look is unreachable from this package.
+- **Docs here often describe the defect in detail.** Several component pages document the exact
+  gotcha a ledger row names. A fix is not finished until that paragraph is rewritten — a doc
+  that still describes the old behaviour is a false statement shipped in the same commit as its
+  correction.
+
+## H · From the form-controls fix pass
+
+- **A "silent rejection" is usually two defects, and the second is the expensive one.** Every
+  reject path that also cleared the draft (`maxTags`, duplicate, `validateTag → false`) destroyed
+  typing. The rule that survives review: clear an input only on *success*, or when what is left
+  is blank. The same shape recurs in any commit-or-reject control.
+- **`RegExp.prototype.test` is stateful and the caller owns the object.** A `delimiter` prop
+  carrying `g` or `y` had its `lastIndex` advanced by the component, so consecutive commits
+  disagreed. Work from a flagless copy; never `.test()` a caller's regex twice.
+- **Two overlaid `<input type="range">` thumbs need a *directional* z-index, not a positional
+  one.** Any fixed heuristic just chooses which thumb is buried at equal values. Deciding from
+  where the pointer is relative to the pair keeps both reachable in every configuration.
+- **A floating panel whose trigger is a sibling of the reference element dismisses itself.**
+  `useDismiss`'s outside-press fires on the toggle's own `pointerdown`, then the toggle's
+  `onClick` reopens — so the button "can never close" and emits a false `false`/`true` pair.
+  Either scope `outsidePress` to the control, or keep focus off the toggle with a
+  `mousedown` `preventDefault()`. Both are needed if you also add focus-out dismissal.
+- **Focus-out dismissal and non-focusable options fight each other.** Portalled `role="option"`
+  divs take focus to `<body>` on press, which reads as a focus-out. `onMouseDown` →
+  `preventDefault()` on the floating container fixes the focus loss *and* the spurious close in
+  one move, and is what keeps `aria-activedescendant` valid.
+- **Roving focus plus a value is one state machine, not two.** Rating ran the hook's key handler
+  alongside its own: focus looped where the value clamped, and a click never moved the tab stop.
+  Derive the roving index from the value in an effect and handle the keys once.
+- **`clientX` is `0` for a keyboard-fired click.** Any "which half was clicked" logic silently
+  picks the left half on `Enter`/`Space`. `event.detail === 0` is the discriminator — and jsdom
+  reports a 0×0 rect, which accidentally reads as the *right* half, so a test that does not stub
+  `getBoundingClientRect` passes for the wrong reason.
+- **An SVG in a data-URI `background-image` cannot read `currentColor`.** It is its own
+  document; `fill="currentColor"` resolves to the initial colour (black) on every theme. There
+  is no CSS-var route into a `url()` — the fix is a real element positioned over the control.
+- **`{...props}` after `{...ariaProps}` is the whole of the #434/#455 family.** `form.field()`
+  emits the key `aria-invalid` valued `undefined` on every render, so a plain spread deletes the
+  state the component computed. `mergeProps(props, ariaProps)` is the fix, and it belongs
+  wherever a component both computes ARIA and accepts a rest spread.
+- **`<fieldset disabled>` is the only way a wrapper can disable children it does not own.**
+  Preflight already strips its UA border/padding/margin; add `min-w-0` for `min-inline-size`.
+- **Check the sibling components another agent is editing.** `Spinner` became decoration-by-
+  default mid-pass, which silently removed the `role="status"` a Combobox test asserted. A
+  green suite before the change is not a green suite after it.

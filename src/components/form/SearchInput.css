@@ -18,10 +18,15 @@
   padding-right: 2.25rem;
 }
 
+/* The size variants have to differ in height, not just in glyph size: the base
+   recipe's `py-r5` and `text-body-2` line-height both survive a font-size-only
+   override, which left `sm` and `md` the same height. */
 .search-input__input--sm {
+  padding-block: var(--R-SIZE-6);
   padding-left: 2rem;
   padding-right: 2rem;
   font-size: var(--BodyText-3);
+  line-height: var(--BodyText-3-line-height);
 }
 
 /* `type="search"` renders a native clear affordance (WebKit/Chromium show one

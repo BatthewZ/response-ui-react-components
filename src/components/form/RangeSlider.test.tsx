@@ -202,15 +202,19 @@ describe("RangeSlider", () => {
       const { container } = render(<Harness />);
 
       expect(screen.getByRole("alert")).toHaveTextContent("Out of range");
-      expect(container.querySelector(".range-slider")).toHaveAttribute(
+      // #295: on the thumbs, not the wrapper — the wrapper is never what an AT
+      // reads while a thumb has focus.
+      for (const label of ["Low", "High"]) {
+        expect(screen.getByLabelText(label)).toHaveAttribute("aria-invalid", "true");
+        // Merging the whole of fieldErrorProps (rather than cherry-picking
+        // aria-invalid) also stops the Field's error id being discarded.
+        expect(screen.getByLabelText(label)).toHaveAttribute(
+          "aria-describedby",
+          screen.getByRole("alert").id,
+        );
+      }
+      expect(container.querySelector(".range-slider")).not.toHaveAttribute(
         "aria-invalid",
-        "true",
-      );
-      // Merging the whole of fieldErrorProps (rather than cherry-picking
-      // aria-invalid) also stops the Field's error id being discarded.
-      expect(container.querySelector(".range-slider")).toHaveAttribute(
-        "aria-describedby",
-        screen.getByRole("alert").id,
       );
     });
 
@@ -230,12 +234,123 @@ describe("RangeSlider", () => {
           </form>
         );
       }
-      const { container } = render(<Harness />);
-      const root = container.querySelector(".range-slider");
+      render(<Harness />);
 
-      expect(root).not.toHaveAttribute("aria-invalid");
+      expect(screen.getByLabelText("Low")).not.toHaveAttribute("aria-invalid");
       fireEvent.click(screen.getByRole("button", { name: "fail" }));
-      expect(root).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByLabelText("Low")).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByLabelText("High")).toHaveAttribute("aria-invalid", "true");
+    });
+  });
+  describe("equal thumbs stay reachable (#297)", () => {
+    function withTrackRect(el: HTMLElement) {
+      el.getBoundingClientRect = () =>
+        ({
+          left: 0,
+          width: 100,
+          top: 0,
+          height: 10,
+          right: 100,
+          bottom: 10,
+          x: 0,
+          y: 0,
+          toJSON() {},
+        }) as DOMRect;
+    }
+
+    it("raises the lower thumb when the pointer approaches from the left", () => {
+      const { container } = render(
+        <RangeSlider value={[50, 50]} minLabel="Low" maxLabel="High" />,
+      );
+      const root = container.querySelector(".range-slider") as HTMLElement;
+      withTrackRect(root);
+
+      fireEvent.pointerMove(root, { clientX: 20 });
+
+      expect(screen.getByLabelText<HTMLInputElement>("Low").style.zIndex).toBe("4");
+    });
+
+    it("leaves the upper thumb on top when the pointer approaches from the right", () => {
+      const { container } = render(
+        <RangeSlider value={[50, 50]} minLabel="Low" maxLabel="High" />,
+      );
+      const root = container.querySelector(".range-slider") as HTMLElement;
+      withTrackRect(root);
+
+      fireEvent.pointerMove(root, { clientX: 90 });
+
+      expect(screen.getByLabelText<HTMLInputElement>("Low").style.zIndex).toBe("");
+    });
+
+    it("both thumbs pinned at max still expose the lower one", () => {
+      const { container } = render(
+        <RangeSlider value={[100, 100]} minLabel="Low" maxLabel="High" />,
+      );
+      const root = container.querySelector(".range-slider") as HTMLElement;
+      withTrackRect(root);
+
+      // At the top end the pointer can only come from the left.
+      fireEvent.pointerMove(root, { clientX: 60 });
+
+      expect(screen.getByLabelText<HTMLInputElement>("Low").style.zIndex).toBe("4");
+    });
+  });
+
+  describe("per-thumb announcement (#298)", () => {
+    it("applies formatValue as aria-valuetext on both thumbs", () => {
+      render(
+        <RangeSlider
+          value={[20, 80]}
+          minLabel="Low"
+          maxLabel="High"
+          formatValue={(v) => `${v} dollars`}
+        />,
+      );
+
+      expect(screen.getByLabelText("Low")).toHaveAttribute("aria-valuetext", "20 dollars");
+      expect(screen.getByLabelText("High")).toHaveAttribute("aria-valuetext", "80 dollars");
+    });
+  });
+
+  describe("an incoming pair is brought onto the scale (#299 / #300)", () => {
+    it("orders a reversed pair so the fill is drawn", () => {
+      const { container } = render(
+        <RangeSlider value={[80, 20]} minLabel="Low" maxLabel="High" />,
+      );
+
+      expect(screen.getByLabelText<HTMLInputElement>("Low").value).toBe("20");
+      expect(screen.getByLabelText<HTMLInputElement>("High").value).toBe("80");
+      const root = container.querySelector(".range-slider") as HTMLElement;
+      expect(root.style.getPropertyValue("--range-lo")).toBe("20%");
+      expect(root.style.getPropertyValue("--range-hi")).toBe("20%");
+    });
+
+    it("opens a defaultValue that violates minDistance", () => {
+      render(
+        <RangeSlider
+          defaultValue={[50, 50]}
+          minDistance={10}
+          minLabel="Low"
+          maxLabel="High"
+        />,
+      );
+
+      expect(screen.getByLabelText<HTMLInputElement>("Low").value).toBe("50");
+      expect(screen.getByLabelText<HTMLInputElement>("High").value).toBe("60");
+    });
+
+    it("pulls the lower thumb down when opening would overrun max", () => {
+      render(
+        <RangeSlider
+          defaultValue={[100, 100]}
+          minDistance={10}
+          minLabel="Low"
+          maxLabel="High"
+        />,
+      );
+
+      expect(screen.getByLabelText<HTMLInputElement>("Low").value).toBe("90");
+      expect(screen.getByLabelText<HTMLInputElement>("High").value).toBe("100");
     });
   });
 });

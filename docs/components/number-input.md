@@ -175,8 +175,13 @@ the field at runtime with the rest of the app.
 | Chevron ink               | `text-fg-secondary`                      | `--C-TEXT-SECONDARY`            |
 | Hover / pressed wash      | `hover:bg-surface-2` `active:bg-surface-3` | `--C-SURFACE-2` `--C-SURFACE-3` |
 | Button padding            | `px-r5`                                  | `--R-SIZE-5`                    |
-| Room reserved on the input | `pr-r2`                                 | `--R-SIZE-2`                    |
+| Room reserved on the input | `px-r5` twice, plus the 14px chevron    | `--R-SIZE-5`                    |
 | Wash transition           | `duration-fast`                          | `--DURATION-FAST`               |
+
+The room reserved on the input is not an eyeballed spacing step: the component publishes
+`--numberinput-stepper` on its wrapper as `calc(14px + 2 * var(--R-SIZE-5))` — the chevron plus
+the button's own padding — and the field's `padding-right` reads it, so a long value can never
+render underneath the chevrons.
 
 **The field itself, inherited from the [Input](input.md) it renders:**
 
@@ -212,8 +217,9 @@ both breakpoints.
   reconciliation only re-syncs when the `value` prop *changes*. Measured: `value={5}` with a
   no-op handler, one press of ▲, and the field reads `6` while `aria-valuenow` stays `5`,
   permanently. Mirror your clamping into `min`/`max` so the component reaches the same answer.
-- **`readOnly` does not stop the steppers.** It reaches the input and blocks typing, but the
-  buttons and the arrow keys still commit new values. Use `disabled` if the value must not move.
+- **`readOnly` stops every route in.** Typing, the steppers, the arrow keys and the
+  commit-on-blur are all inert, and the field reports `aria-readonly="true"`. Use `disabled`
+  instead when the control should also leave the tab order.
 - **`Number()` accepts more than decimals.** `0x1f` commits as `31` and `Infinity` commits as
   `Infinity` (and lands in `aria-valuenow`); surrounding whitespace is trimmed. `inputMode`
   only hints the mobile keyboard — set `min`/`max` if you need a bounded result.

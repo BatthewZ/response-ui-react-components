@@ -78,4 +78,23 @@ describe("Textarea", () => {
     render(<Textarea rows={5} aria-label="Bio" />);
     expect(screen.getByRole("textbox", { name: "Bio" })).toHaveAttribute("rows", "5");
   });
+  describe("a field() spread cannot erase the invalid state (#455)", () => {
+    it("keeps aria-invalid when the caller supplies the key as undefined", () => {
+      render(<Textarea error aria-label="Field" {...{ "aria-invalid": undefined }} />);
+
+      expect(screen.getByRole("textbox", { name: "Field" })).toHaveAttribute(
+        "aria-invalid",
+        "true"
+      );
+    });
+
+    it("lets a caller's aria-invalid through when it has no opinion of its own", () => {
+      render(<Textarea aria-label="Field" aria-invalid="true" />);
+
+      expect(screen.getByRole("textbox", { name: "Field" })).toHaveAttribute(
+        "aria-invalid",
+        "true"
+      );
+    });
+  });
 });

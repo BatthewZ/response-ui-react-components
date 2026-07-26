@@ -4,6 +4,8 @@ import {
   forwardRef,
   type KeyboardEvent,
   type MouseEvent,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 import { Star } from "lucide-react";
@@ -22,6 +24,14 @@ type RatingProps = {
   disabled?: boolean;
   "aria-label": string;
   /**
+   * Names one rating value for assistive tech: the accessible name of the radio
+   * standing for it, and the read-only display's `aria-valuetext`.
+   *
+   * The default is the bare number — the only rendering that is right in every
+   * language. Pass this to add a unit ("4 stars", "4 étoiles").
+   */
+  formatValue?: (value: number, max: number) => string;
+  /**
    * Not a Rating prop — the change channel is `onValueChange`.
    *
    * Declared `never` rather than only `Omit`ted because a JSX spread performs no
@@ -35,6 +45,21 @@ type RatingProps = {
 
 function clamp(v: number, max: number): number {
   return Math.max(0, Math.min(v, max));
+}
+
+/**
+ * An incoming `value` is whatever the caller holds. Snap it to a value this
+ * scale can actually draw and announce, so `value={9} max={5}` cannot claim
+ * nine and `value={4.3}` cannot draw four stars while announcing 4.3.
+ */
+function normalize(v: number, max: number, allowHalf: boolean): number {
+  const snapped = allowHalf ? Math.round(v * 2) / 2 : Math.round(v);
+  return clamp(Number.isFinite(snapped) ? snapped : 0, max);
+}
+
+/** 0-based index of the star that holds `value`. */
+function starIndexOf(value: number, max: number): number {
+  return Math.min(max - 1, Math.max(0, Math.ceil(value) - 1));
 }
 
 /** Fill amount for the star at 1-based position `position`, given `value`. */
@@ -65,20 +90,41 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
     readOnly = false,
     disabled = false,
     "aria-label": ariaLabel,
+    formatValue,
     className,
     onChange: _onChange,
     ...props
   },
   ref
 ) {
-  const [value, setValue] = useControllableState<number>({
+  const [rawValue, setValue] = useControllableState<number>({
     value: controlledValue,
     defaultValue,
     onChange: onValueChange,
   });
+  const value = normalize(rawValue, max, allowHalf);
   const [hover, setHover] = useState<number | null>(null);
 
-  const { getRovingProps } = useRovingFocus({ orientation: "horizontal" });
+  const { getRovingProps, setFocusedIndex } = useRovingFocus({
+    orientation: "horizontal",
+  });
+  const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Focus and value are one state machine, not two: the tab stop is always the
+  // star holding the value, and DOM focus follows it whenever the group already
+  // had focus. Without this, arrow keys loop the tab stop while the value
+  // clamps, a click never moves the tab stop, and Tab re-enters on star 1.
+  useEffect(() => {
+    const index = starIndexOf(value, max);
+    setFocusedIndex(index);
+    const buttons = buttonsRef.current;
+    const active = document.activeElement;
+    if (active instanceof HTMLButtonElement && buttons.includes(active)) {
+      buttons[index]?.focus();
+    }
+  }, [value, max, setFocusedIndex]);
+
+  const nameFor = (v: number) => (formatValue ? formatValue(v, max) : String(v));
 
   // Display value: hover preview wins when set (interactive only).
   const display = hover ?? value;
@@ -88,9 +134,18 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
     return (
       <div
         ref={ref}
-        role="img"
-        aria-label={`${value} out of ${max} stars`}
-        className={cn("rating", className)}
+        // A value within a known range, which is what `meter` is for. `img`
+        // could only carry the value by overwriting the caller's `aria-label`
+        // with a generated English sentence — the label is a required prop and
+        // names the subject being rated, so it has to survive.
+        role="meter"
+        aria-label={ariaLabel}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-valuenow={value}
+        aria-valuetext={formatValue ? formatValue(value, max) : undefined}
+        aria-disabled={disabled || undefined}
+        className={cn("rating", disabled && "rating--disabled", className)}
         {...props}
       >
         {Array.from({ length: max }, (_, i) => (
@@ -108,19 +163,40 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
     setValue(clamp(next, max));
   }
 
+  // Every key the group handles moves the value; focus follows from the effect
+  // above. Home/End are the first and last selectable ratings, not just tab
+  // stops.
   function handleStarKeyDown(e: KeyboardEvent) {
     if (disabled) return;
-    if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-      e.preventDefault();
-      commit(value + step);
-    } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-      e.preventDefault();
-      commit(value - step);
+    let next: number;
+    switch (e.key) {
+      case "ArrowRight":
+      case "ArrowUp":
+        next = value + step;
+        break;
+      case "ArrowLeft":
+      case "ArrowDown":
+        next = value - step;
+        break;
+      case "Home":
+        next = step;
+        break;
+      case "End":
+        next = max;
+        break;
+      default:
+        return;
     }
+    e.preventDefault();
+    commit(next);
   }
 
   function valueFromClick(position: number, e: MouseEvent<HTMLButtonElement>): number {
     if (!allowHalf) return position;
+    // A keyboard-activated click carries no pointer position: `detail` is 0 and
+    // `clientX` reads 0, which would resolve to the left half every time and
+    // leave no way to activate a star at its whole value.
+    if (e.detail === 0) return position;
     const rect = e.currentTarget.getBoundingClientRect();
     const isLeftHalf = e.clientX - rect.left < rect.width / 2;
     return isLeftHalf ? position - 0.5 : position;
@@ -147,12 +223,15 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
             aria-checked={isChecked}
             disabled={disabled}
             tabIndex={disabled ? -1 : roving.tabIndex}
-            ref={roving.ref}
-            className="rating-button"
-            onKeyDown={(e) => {
-              roving.onKeyDown(e);
-              handleStarKeyDown(e);
+            ref={(node) => {
+              roving.ref(node);
+              buttonsRef.current[i] = node;
             }}
+            className="rating-button"
+            // Deliberately not `roving.onKeyDown` as well: the hook's own key
+            // handling is the second state machine this component used to run
+            // alongside the value, and it loops where the value clamps.
+            onKeyDown={handleStarKeyDown}
             onClick={(e) => commit(valueFromClick(position, e))}
             onMouseMove={(e) => {
               if (disabled) return;
@@ -166,7 +245,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
                 `position - 0.5` left no radio named `max` and misnamed the
                 checked one whenever the value was a whole star. */}
             <span className="sr-only">
-              {allowHalf && isChecked ? value : position} stars
+              {nameFor(allowHalf && isChecked ? value : position)}
             </span>
             <StarIcon fill={fillFor(position, display)} />
           </button>
