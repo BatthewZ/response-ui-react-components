@@ -24,10 +24,19 @@
   height: var(--R-SIZE-4);
 }
 
-/* Fill (inner bar) */
+/* Fill (inner bar)
+
+   `color` picks the two ends of the ramp, never the paint directly: the style
+   variants below draw with `background-image`, which sits *over* the colour's
+   `background-color`. Before this indirection the `gradient` variant used the
+   `background` shorthand and, declared later at equal specificity, discarded
+   `color` entirely. */
 .progress-bar__fill {
+  --progress-bar-fill: var(--C-ACCENT);
+  --progress-bar-fill-end: var(--C-ACCENT-HOVER);
   height: 100%;
   border-radius: var(--RADIUS-FULL);
+  background-color: var(--progress-bar-fill);
   transition: width var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
 }
 
@@ -37,35 +46,61 @@
 
 /* Color variants */
 .progress-bar__fill--accent {
-  background-color: var(--C-ACCENT);
+  --progress-bar-fill: var(--C-ACCENT);
+  --progress-bar-fill-end: var(--C-ACCENT-HOVER);
 }
 
 .progress-bar__fill--success {
-  background-color: var(--C-STATUS-SUCCESS);
+  --progress-bar-fill: var(--C-STATUS-SUCCESS);
+  --progress-bar-fill-end: color-mix(in oklch, var(--C-STATUS-SUCCESS) 75%, var(--C-CANVAS));
 }
 
 .progress-bar__fill--warning {
-  background-color: var(--C-STATUS-WARNING);
+  --progress-bar-fill: var(--C-STATUS-WARNING);
+  --progress-bar-fill-end: color-mix(in oklch, var(--C-STATUS-WARNING) 75%, var(--C-CANVAS));
 }
 
 .progress-bar__fill--error {
-  background-color: var(--C-STATUS-ERROR);
+  --progress-bar-fill: var(--C-STATUS-ERROR);
+  --progress-bar-fill-end: color-mix(in oklch, var(--C-STATUS-ERROR) 75%, var(--C-CANVAS));
 }
 
 /* Style variants */
 .progress-bar__fill--gradient {
-  background: linear-gradient(90deg, var(--C-ACCENT), var(--C-ACCENT-HOVER));
+  background-image: linear-gradient(
+    90deg,
+    var(--progress-bar-fill),
+    var(--progress-bar-fill-end)
+  );
 }
 
+/* The stripe ink is the ramp's own on-fill partner, not a hard-coded white:
+   at `oklch(1 0 0 / 0.15)` the stripes vanished on every light-fill theme. */
 .progress-bar__fill--striped {
   background-image: repeating-linear-gradient(
     45deg,
     transparent,
     transparent 0.5rem,
-    oklch(1 0 0 / 0.15) 0.5rem,
-    oklch(1 0 0 / 0.15) 1rem
+    color-mix(in oklch, var(--C-TEXT-ON-ACCENT) 15%, transparent) 0.5rem,
+    color-mix(in oklch, var(--C-TEXT-ON-ACCENT) 15%, transparent) 1rem
   );
   background-size: 200% 100%;
+  animation: progress-bar-stripes var(--MOTION-DURATION-SHIFT) linear infinite;
+}
+
+/* Without this the `background-size: 200% 100%` above scrolled nothing. */
+@keyframes progress-bar-stripes {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 200% 0;
+  }
+}
+
+.progress-bar__fill--no-animate.progress-bar__fill--striped {
+  animation: none;
 }
 
 /* Label / Value sub-components */
@@ -95,5 +130,6 @@
 @media (prefers-reduced-motion: reduce) {
   .progress-bar__fill {
     transition: none;
+    animation: none;
   }
 }

@@ -20,6 +20,7 @@ type CollapsibleContextValue = {
   open: boolean;
   toggle: () => void;
   disabled: boolean;
+  triggerId: string;
   contentId: string;
 };
 
@@ -51,7 +52,9 @@ const CollapsibleRoot = forwardRef<HTMLDivElement, CollapsibleProps>(function Co
     defaultValue: defaultOpen,
     onChange: onOpenChange,
   });
-  const contentId = useId();
+  const baseId = useId();
+  const triggerId = `${baseId}-trigger`;
+  const contentId = `${baseId}-content`;
 
   const toggle = useCallback(() => {
     if (disabled) return;
@@ -59,7 +62,7 @@ const CollapsibleRoot = forwardRef<HTMLDivElement, CollapsibleProps>(function Co
   }, [disabled, setOpen]);
 
   return (
-    <CollapsibleContext.Provider value={{ open, toggle, disabled, contentId }}>
+    <CollapsibleContext.Provider value={{ open, toggle, disabled, triggerId, contentId }}>
       <div
         ref={ref}
         className={cn("collapsible", className)}
@@ -81,11 +84,12 @@ type CollapsibleTriggerProps = ComponentPropsWithRef<"button">;
 
 const CollapsibleTrigger = forwardRef<HTMLButtonElement, CollapsibleTriggerProps>(
   function CollapsibleTrigger({ className, children, onClick, ...props }, ref) {
-    const { open, toggle, disabled, contentId } = useCollapsibleContext();
+    const { open, toggle, disabled, triggerId, contentId } = useCollapsibleContext();
 
     return (
       <button
         ref={ref}
+        id={triggerId}
         type="button"
         aria-expanded={open}
         aria-controls={contentId}
@@ -114,13 +118,17 @@ type CollapsibleContentProps = ComponentPropsWithRef<"div">;
 
 const CollapsibleContent = forwardRef<HTMLDivElement, CollapsibleContentProps>(
   function CollapsibleContent({ className, children, ...props }, ref) {
-    const { open, contentId } = useCollapsibleContext();
+    const { open, triggerId, contentId } = useCollapsibleContext();
 
     return (
       <div
         ref={ref}
         id={contentId}
         role="region"
+        // A region with no name is an unnamed landmark — the trigger is the only
+        // thing that names it, so it has to carry an id. `Accordion.Content`
+        // wires the same pair.
+        aria-labelledby={triggerId}
         data-state={open ? "open" : "closed"}
         // Collapsed content is only CSS-clipped (grid-template-rows: 0fr), so
         // without this its links stay tabbable and in the a11y tree. Same fix

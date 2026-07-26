@@ -54,16 +54,26 @@ const ProgressBarRoot = forwardRef<HTMLDivElement, ProgressBarRootProps>(functio
   ref
 ) {
   const reducedMotion = usePrefersReducedMotion();
-  const percentage = max <= 0 ? 0 : Math.min(100, Math.max(0, (value / max) * 100));
+  // A `max` that describes no range (0, negative, NaN) cannot be announced: it
+  // would put `aria-valuemin` at or above `aria-valuemax`. ARIA's answer is an
+  // indeterminate progressbar, which omits the three range attributes entirely.
+  const hasRange = Number.isFinite(max) && max > 0;
+  // `NaN` must not reach the style: the CSSOM rejects `width: NaN%`, the fill
+  // falls back to `width: auto` and a broken value renders as a *full* bar.
+  const safeValue = Number.isFinite(value) ? value : 0;
+  const clamped = hasRange ? Math.min(max, Math.max(0, safeValue)) : 0;
+  const percentage = hasRange ? (clamped / max) * 100 : 0;
   const shouldAnimate = animate && !reducedMotion;
 
   return (
     <div
       ref={ref}
       role="progressbar"
-      aria-valuenow={value}
-      aria-valuemin={0}
-      aria-valuemax={max}
+      // The announcement tracks the fill: an unclamped `aria-valuenow` could sit
+      // outside the range it is announced against.
+      aria-valuenow={hasRange ? clamped : undefined}
+      aria-valuemin={hasRange ? 0 : undefined}
+      aria-valuemax={hasRange ? max : undefined}
       className={cn("progress-bar", sizeClass[size], className)}
       {...props}
     >

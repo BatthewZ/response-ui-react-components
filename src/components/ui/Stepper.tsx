@@ -21,6 +21,7 @@ type StepperContextValue = {
   activeStep: number;
   orientation: StepperOrientation;
   onStepClick?: (index: number) => void;
+  isStepClickable: (index: number) => boolean;
 };
 
 const StepperContext = createContext<StepperContextValue | null>(null);
@@ -43,6 +44,12 @@ type StepperProps = {
   activeStep: number;
   orientation?: StepperOrientation;
   onStepClick?: (index: number) => void;
+  /**
+   * Which steps `onStepClick` actually acts on. Only those render as buttons —
+   * without it a handler that ignores half its indices still left every step a
+   * focusable, do-nothing tab stop. @default every step
+   */
+  isStepClickable?: (index: number) => boolean;
 } & ComponentPropsWithRef<"ol">;
 
 const StepperRoot = forwardRef<HTMLOListElement, StepperProps>(function Stepper(
@@ -50,6 +57,7 @@ const StepperRoot = forwardRef<HTMLOListElement, StepperProps>(function Stepper(
     activeStep,
     orientation = "horizontal",
     onStepClick,
+    isStepClickable = () => true,
     className,
     children,
     ...props
@@ -59,7 +67,7 @@ const StepperRoot = forwardRef<HTMLOListElement, StepperProps>(function Stepper(
   const items = Children.toArray(children);
 
   return (
-    <StepperContext.Provider value={{ activeStep, orientation, onStepClick }}>
+    <StepperContext.Provider value={{ activeStep, orientation, onStepClick, isStepClickable }}>
       <ol
         ref={ref}
         className={cn("stepper", className)}
@@ -92,8 +100,9 @@ const Step = forwardRef<HTMLLIElement, StepProps>(function Step(
   { title, description, icon, className, ...props },
   ref,
 ) {
-  const { activeStep, orientation, onStepClick } = useStepperContext();
+  const { activeStep, orientation, onStepClick, isStepClickable } = useStepperContext();
   const index = useContext(StepIndexContext);
+  const clickable = onStepClick != null && isStepClickable(index);
 
   const status: StepStatus =
     index < activeStep ? "done" : index === activeStep ? "active" : "upcoming";
@@ -121,7 +130,7 @@ const Step = forwardRef<HTMLLIElement, StepProps>(function Step(
       aria-current={status === "active" ? "step" : undefined}
       {...props}
     >
-      {onStepClick ? (
+      {clickable && onStepClick ? (
         <button
           type="button"
           className="stepper-indicator"

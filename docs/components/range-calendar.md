@@ -85,12 +85,10 @@ August–September.
 ```
 <!-- /example -->
 
-The single-month layout is not just narrower — it turns the centre caption into a button
-that opens a month picker, then a year picker. With two or more grids that caption is an
-empty `aria-hidden` spacer instead (each grid already labels itself), so **the quick-jump
-does not exist at the default `numberOfMonths`**. Below a 40rem viewport the component
-collapses to one paged month regardless of what you passed, which is also where the
-quick-jump reappears.
+The centre caption is always a button that opens a month picker, then a year picker. With
+two or more grids it reads the whole visible span (`"June 2026 – July 2026"`) and the quick
+jump moves the whole window. Below a 40rem viewport the component collapses to one paged
+month regardless of what you passed.
 
 ## Controlled selection
 
@@ -300,21 +298,18 @@ is never the only announcement.
   is, else the 1st of the first displayed month. Measured at the default two grids, one
   grid holds that tab stop and the other holds none, so reaching a day in the second month
   means arrowing across the boundary rather than tabbing into it.
-- **The extent of the range is conveyed by colour alone.** Measured: with 10–14 June
-  committed, the 12th renders `aria-selected="false"` and only a `data-in-range` attribute.
-  Nothing in the accessibility tree distinguishes an in-range day from an unselected one,
-  and the wash that does distinguish them visually is `--C-SURFACE-2` on `--C-SURFACE-0`,
-  measured elsewhere in this repo at 1.08–1.16:1 across the four shipped themes — below the
-  3:1 floor for non-text contrast. The hover preview has no ARIA at all. Fails WCAG 1.4.1;
-  if the range's span must be perceivable, render your own text summary next to the
+- **Range membership is in the accessible name.** An in-range day is named
+  `"June 12, 2026, in selected range"` and a previewed one `", in previewed range"`, so the
+  span is not carried by the tint alone. Override the two suffixes through `labels.inRange`
+  and `labels.previewRange`. The wash itself is `--C-SURFACE-3` — one step deeper than the
+  hover wash so the two are no longer identical, but still well under the 3:1 non-text floor;
+  if the span must be perceivable at a glance, render your own text summary next to the
   calendar, the way the first example on this page does.
-- **`aria-selected` is on the button, not the cell.** ARIA does not support `aria-selected`
-  on `role="button"`, and the `role="gridcell"` wrapper carries no selection state, so even
-  the two endpoints are not reliably announced as selected.
-- **Paging is silent at the default width.** In multi-month day view the header caption is
-  an empty `aria-hidden` spacer, so pressing ‹ or › changes both grids with no live region
-  to announce it and no change to the button's own label. Measured: zero `aria-live` nodes
-  at `numberOfMonths={2}`, one at `numberOfMonths={1}` (the caption button).
+- **`aria-selected` is on the `role="gridcell"` wrapper,** not on the day `<button>` — ARIA
+  does not support the attribute on `button`. Style hooks off `[data-selected]` on the button.
+- **Paging announces at every width.** The header caption is always a real button and always
+  the calendar's `aria-live="polite"` region; in multi-month day view it reads the whole
+  visible span, e.g. `"June 2026 – July 2026"`.
 - **Disabled days stay reachable.** They use `aria-disabled` rather than the `disabled`
   attribute, so roving arrow-key focus still lands on them and they announce as unavailable
   instead of disappearing from the grid; the click is simply dropped.

@@ -48,6 +48,9 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
 ) {
   const range = max - min;
   const fraction = range <= 0 ? 0 : clamp((value - min) / range, 0, 1);
+  // The announcement has to sit inside the range it is announced against — an
+  // out-of-range `value` fills no further, so it must not read further either.
+  const announced = clamp(value, min, Math.max(min, max));
 
   let filled = Math.round(fraction * segments);
   // Off-by-one guards: a value above the floor shows at least one segment, and
@@ -68,7 +71,7 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
     <div
       ref={ref}
       role="meter"
-      aria-valuenow={value}
+      aria-valuenow={announced}
       aria-valuemin={min}
       aria-valuemax={max}
       aria-label={ariaLabel}

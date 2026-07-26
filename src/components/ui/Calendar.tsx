@@ -3,7 +3,8 @@ import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { isSameDay } from "../../util/date";
-import { CalendarBase, type Weekday } from "./CalendarBase";
+import { isSameDateValue } from "../form/date-picker-internals";
+import { CalendarBase, type CalendarLabels, type Weekday } from "./CalendarBase";
 
 type CalendarProps = {
   value?: Date | null;
@@ -21,6 +22,7 @@ type CalendarProps = {
   /** Render a footer with a "Today" button that selects today. */
   showToday?: boolean;
   todayLabel?: string;
+  labels?: CalendarLabels;
   /**
    * Not a Calendar prop — the change channel is `onValueChange`. Declared `never`
    * rather than only `Omit`ted because a JSX spread performs no excess-property
@@ -46,17 +48,23 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     onChange: (next) => {
       if (next) onValueChange?.(next);
     },
+    // The grid hands back a fresh `Date` for every pick, so `Object.is` reads a
+    // re-selection of the already-selected day as a change and re-emits it.
+    isEqual: isSameDateValue,
   });
 
   return (
+    // `rest` is spread *first*: a JSX spread performs no excess-property check,
+    // so a spread object carrying `onDaySelect`/`onTodayClick` would otherwise
+    // replace the selection wiring this component exists to provide.
     <CalendarBase
+      {...rest}
       ref={ref}
       defaultMonth={defaultMonth ?? value ?? defaultValue ?? undefined}
       focusAnchor={selected}
       getDayStatus={(day) => ({ selected: selected != null && isSameDay(day, selected) })}
       onDaySelect={(day) => setSelected(day)}
       onTodayClick={(today) => setSelected(today)}
-      {...rest}
     />
   );
 });

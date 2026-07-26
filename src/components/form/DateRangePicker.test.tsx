@@ -232,3 +232,115 @@ describe("DateRangePicker", () => {
     });
   });
 });
+
+describe("DateRangePicker · popup wiring, i18n and commit safety", () => {
+  // #333
+  it("only the control that opens the dialog advertises it", async () => {
+    const user = userEvent.setup();
+    render(<DateRangePicker />);
+
+    const start = screen.getByRole("textbox", { name: "Start date" });
+    expect(start).not.toHaveAttribute("aria-haspopup");
+    expect(start).not.toHaveAttribute("aria-expanded");
+    expect(start).not.toHaveAttribute("aria-controls");
+
+    const trigger = screen.getByRole("button", { name: "Open calendar" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-controls");
+  });
+
+  // #334
+  it("a refused date reverts the endpoint instead of clearing it", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <>
+        <DateRangePicker
+          defaultValue={{ start: new Date(2026, 5, 10), end: new Date(2026, 5, 20) }}
+          isDateDisabled={(d) => d.getDate() === 15}
+          onValueChange={onValueChange}
+        />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+
+    const start = screen.getByRole("textbox", { name: "Start date" });
+    await user.clear(start);
+    await user.type(start, "06/15/2026");
+    await user.click(screen.getByRole("button", { name: "elsewhere" }));
+
+    expect(start).toHaveValue(fmt(new Date(2026, 5, 10)));
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  // #336
+  it("takes its field names from `labels` and accepts ids", () => {
+    render(
+      <DateRangePicker
+        startInputId="stay-start"
+        endInputId="stay-end"
+        labels={{ startDate: "Date de début", endDate: "Date de fin" }}
+      />,
+    );
+
+    expect(screen.getByRole("textbox", { name: "Date de début" })).toHaveAttribute(
+      "id",
+      "stay-start",
+    );
+    expect(screen.getByRole("textbox", { name: "Date de fin" })).toHaveAttribute("id", "stay-end");
+  });
+
+  // #337
+  it("the hidden inputs carry `form` and `disabled`", () => {
+    const { container } = render(<DateRangePicker name="stay" form="other" disabled />);
+    const hidden = container.querySelectorAll<HTMLInputElement>('input[type="hidden"]');
+
+    expect(hidden).toHaveLength(2);
+    for (const el of hidden) {
+      expect(el).toHaveAttribute("form", "other");
+      expect(el).toBeDisabled();
+    }
+  });
+
+  // #339
+  it("a blur with no edit does not rewrite the range", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    // Deliberately reversed: the old commit-on-every-blur reordered it unasked.
+    render(
+      <>
+        <DateRangePicker
+          defaultValue={{ start: new Date(2026, 5, 20), end: new Date(2026, 5, 10) }}
+          onValueChange={onValueChange}
+        />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+
+    const start = screen.getByRole("textbox", { name: "Start date" });
+    await user.click(start);
+    await user.click(screen.getByRole("button", { name: "elsewhere" }));
+
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(start).toHaveValue(fmt(new Date(2026, 5, 20)));
+  });
+
+  // #451
+  it("composes the caller's onKeyDown and honours preventDefault", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    const onKeyDown = vi.fn((e: React.KeyboardEvent) => {
+      if (e.key === "Enter") e.preventDefault();
+    });
+    render(<DateRangePicker onKeyDown={onKeyDown} onValueChange={onValueChange} />);
+
+    const start = screen.getByRole("textbox", { name: "Start date" });
+    await user.type(start, "06/10/2026");
+    await user.keyboard("{Enter}");
+
+    expect(onKeyDown).toHaveBeenCalled();
+    // The caller preempted the commit.
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+});

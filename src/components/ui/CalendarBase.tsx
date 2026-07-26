@@ -22,6 +22,7 @@ import {
   isAfter,
   isBefore,
   isSameDay,
+  startOfDay,
   startOfMonth,
 } from "../../util/date";
 import { mergeRefs } from "../../util/merge-refs";
@@ -41,6 +42,35 @@ export type DayStatus = {
   inRange?: boolean;
   /** Day lies within the hover/keyboard preview of an in-progress range. */
   preview?: boolean;
+};
+
+/**
+ * Every string the calendar speaks that is not derived from `locale`. Supplied
+ * as one object so a translated calendar needs a single prop, and so the
+ * pickers can forward their own overrides straight through.
+ */
+export type CalendarLabels = {
+  previousMonth?: string;
+  nextMonth?: string;
+  previousYear?: string;
+  nextYear?: string;
+  previousYears?: string;
+  nextYears?: string;
+  /** Appended to a day's name when it lies inside the committed range. */
+  inRange?: string;
+  /** Appended to a day's name when it lies inside the in-progress preview. */
+  previewRange?: string;
+};
+
+export const DEFAULT_CALENDAR_LABELS: Required<CalendarLabels> = {
+  previousMonth: "Previous month",
+  nextMonth: "Next month",
+  previousYear: "Previous year",
+  nextYear: "Next year",
+  previousYears: "Previous years",
+  nextYears: "Next years",
+  inRange: "in selected range",
+  previewRange: "in previewed range",
 };
 
 export type CalendarBaseProps = {
@@ -67,6 +97,10 @@ export type CalendarBaseProps = {
   showToday?: boolean;
   /** Label for the Today button (default "Today"). */
   todayLabel?: string;
+  /** Overrides for the calendar's own strings. See {@link DEFAULT_CALENDAR_LABELS}. */
+  labels?: CalendarLabels;
+  /** Move DOM focus onto the roving day when the calendar mounts. */
+  autoFocus?: boolean;
   /** Selection side effect when Today is pressed (after navigating + focusing today). */
   onTodayClick?: (today: Date) => void;
   /**
@@ -105,6 +139,102 @@ type PickerView = "days" | "months" | "years";
 /** Number of years shown per page in the year picker. */
 const YEARS_PER_PAGE = 12;
 
+/** Columns in the month/year quick-nav grid — must match `.calendar-picker-grid`. */
+const QUICK_NAV_COLUMNS = 3;
+
+type QuickNavItem = {
+  key: string;
+  label: string;
+  disabled: boolean;
+  /** The month/year currently displayed by the calendar. */
+  current: boolean;
+  onSelect: () => void;
+};
+
+/**
+ * The month and year quick-nav panels. A flat run of buttons with one tab stop
+ * and 2-D arrow-key movement — deliberately *not* `role="grid"`: it holds no
+ * rows and no gridcells, and its buttons carry navigation state (`aria-current`),
+ * not selection (`aria-selected`, which `button` does not support).
+ */
+function QuickNavGrid({ ariaLabel, items }: { ariaLabel: string; items: QuickNavItem[] }) {
+  const initialIndex = Math.max(
+    0,
+    items.findIndex((i) => i.current),
+  );
+  const [focusIndex, setFocusIndex] = useState(initialIndex);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const pendingRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const pending = pendingRef.current;
+    if (pending === null) return;
+    pendingRef.current = null;
+    gridRef.current
+      ?.querySelectorAll<HTMLButtonElement>(".calendar-picker-cell")
+      [pending]?.focus();
+  });
+
+  function move(next: number) {
+    const clamped = Math.min(Math.max(next, 0), items.length - 1);
+    setFocusIndex(clamped);
+    pendingRef.current = clamped;
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    switch (e.key) {
+      case "ArrowLeft":
+        move(focusIndex - 1);
+        break;
+      case "ArrowRight":
+        move(focusIndex + 1);
+        break;
+      case "ArrowUp":
+        move(focusIndex - QUICK_NAV_COLUMNS);
+        break;
+      case "ArrowDown":
+        move(focusIndex + QUICK_NAV_COLUMNS);
+        break;
+      case "Home":
+        move(0);
+        break;
+      case "End":
+        move(items.length - 1);
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+  }
+
+  return (
+    <div
+      ref={gridRef}
+      className="calendar-picker-grid"
+      role="group"
+      aria-label={ariaLabel}
+      onKeyDown={handleKeyDown}
+    >
+      {items.map((item, i) => (
+        <button
+          key={item.key}
+          type="button"
+          className="calendar-picker-cell"
+          tabIndex={i === focusIndex ? 0 : -1}
+          aria-disabled={item.disabled || undefined}
+          aria-current={item.current ? "true" : undefined}
+          onClick={() => {
+            if (item.disabled) return;
+            item.onSelect();
+          }}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(function CalendarBase(
   {
     month,
@@ -122,6 +252,8 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
     onDayHover,
     showToday = false,
     todayLabel = "Today",
+    labels,
+    autoFocus = false,
     onTodayClick,
     className,
     style,
@@ -131,6 +263,7 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
   },
   ref,
 ) {
+  const label = { ...DEFAULT_CALENDAR_LABELS, ...labels };
   // Below the design system's 40rem breakpoint, collapse a multi-month calendar
   // to a single paged month. Stacked months overflow a phone-width popover and
   // force an awkward nested scrollbar; instead the ‹ › nav pages between months,
@@ -138,7 +271,10 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
   // quick-jump (it's an inert spacer in the multi-month layout).
   const isCompact = useMediaQuery("(width < 40rem)");
   const monthCount = isCompact ? 1 : Math.max(1, numberOfMonths);
-  const today = new Date();
+  // Local midnight, not the wall clock: every day cell emits midnight, so a
+  // wall-clock `today` made the Today button's payload unequal (`getTime()`) to
+  // the same day picked from the grid.
+  const today = startOfDay(new Date());
 
   function isDayDisabled(d: Date): boolean {
     if (min && isBefore(d, min)) return true;
@@ -215,6 +351,15 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
     btn?.focus();
   });
 
+  // Opening the calendar inside a popover must land on the grid, not on the
+  // first tabbable chrome button — arrow keys are otherwise dead on open.
+  const hasAutoFocusedRef = useRef(false);
+  useEffect(() => {
+    if (!autoFocus || hasAutoFocusedRef.current) return;
+    hasAutoFocusedRef.current = true;
+    rootRef.current?.querySelector<HTMLButtonElement>('.calendar-day[tabindex="0"]')?.focus();
+  }, [autoFocus]);
+
   function goToMonth(target: Date) {
     setDisplayedMonth(startOfMonth(target));
   }
@@ -282,7 +427,13 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
   function handleSelect(day: Date) {
     if (isDayDisabled(day)) return;
     setFocusDate(day);
-    if (!isMonthVisible(day)) revealMonth(day);
+    if (!isMonthVisible(day)) {
+      // Paging unmounts the button that was clicked (a leading/trailing padding
+      // day), so focus has to be re-landed on its in-month twin or it falls to
+      // <body>. Same handoff `moveFocusTo` performs for the arrow keys.
+      pendingFocusRef.current = day;
+      revealMonth(day);
+    }
     onDaySelect(day);
   }
 
@@ -291,7 +442,9 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
     setFocusDate(today);
     pendingFocusRef.current = today;
     if (!isMonthVisible(today)) goToMonth(today);
-    onTodayClick?.(today);
+    // Navigate always; select only if today is actually selectable, so Today
+    // cannot commit a date the grid itself refuses.
+    if (!isDayDisabled(today)) onTodayClick?.(today);
   }
 
   // ---- Header label / navigation --------------------------------------------
@@ -319,17 +472,14 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
   let headerLabel: string;
   if (view === "years") headerLabel = `${decadeStart} – ${decadeStart + YEARS_PER_PAGE - 1}`;
   else if (view === "months") headerLabel = String(displayedMonth.getFullYear());
+  else if (monthCount > 1)
+    headerLabel = `${captionFor(displayedMonth)} – ${captionFor(addMonths(displayedMonth, monthCount - 1))}`;
   else headerLabel = captionFor(displayedMonth);
 
   const prevLabel =
-    view === "days" ? "Previous month" : view === "months" ? "Previous year" : "Previous years";
+    view === "days" ? label.previousMonth : view === "months" ? label.previousYear : label.previousYears;
   const nextLabel =
-    view === "days" ? "Next month" : view === "months" ? "Next year" : "Next years";
-
-  // In the day view the caption opens the quick-nav picker — but only for a single
-  // month; multi-month grids label themselves via their own per-month captions, so
-  // the center header is left as an empty spacer to avoid a duplicate label.
-  const captionInteractive = view !== "days" || monthCount === 1;
+    view === "days" ? label.nextMonth : view === "months" ? label.nextYear : label.nextYears;
 
   function onCaptionClick() {
     if (view === "days") setView("months");
@@ -340,62 +490,39 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
 
   function renderMonthsView() {
     const year = displayedMonth.getFullYear();
-    return (
-      <div className="calendar-picker-grid" role="grid" aria-label={String(year)}>
-        {monthNamesLong.map((name, m) => {
-          const disabled =
-            (min && year * 12 + m < monthOrdinal(min)) ||
-            (max && year * 12 + m > monthOrdinal(max)) ||
-            false;
-          const isCurrent = m === displayedMonth.getMonth();
-          return (
-            <button
-              key={name}
-              type="button"
-              className="calendar-picker-cell"
-              aria-disabled={disabled || undefined}
-              aria-selected={isCurrent}
-              onClick={() => {
-                if (disabled) return;
-                setDisplayedMonth(new Date(year, m, 1));
-                setView("days");
-              }}
-            >
-              {getMonthNames(locale, "short")[m]}
-            </button>
-          );
-        })}
-      </div>
-    );
+    const monthNamesShort = getMonthNames(locale, "short");
+    const items: QuickNavItem[] = monthNamesLong.map((name, m) => ({
+      key: name,
+      label: monthNamesShort[m],
+      disabled:
+        (min && year * 12 + m < monthOrdinal(min)) ||
+        (max && year * 12 + m > monthOrdinal(max)) ||
+        false,
+      current: m === displayedMonth.getMonth(),
+      onSelect: () => {
+        setDisplayedMonth(new Date(year, m, 1));
+        setView("days");
+      },
+    }));
+    return <QuickNavGrid ariaLabel={String(year)} items={items} />;
   }
 
   function renderYearsView() {
-    const years = Array.from({ length: YEARS_PER_PAGE }, (_, i) => decadeStart + i);
-    return (
-      <div className="calendar-picker-grid" role="grid" aria-label={headerLabel}>
-        {years.map((year) => {
-          const disabled =
-            (min && year < min.getFullYear()) || (max && year > max.getFullYear()) || false;
-          const isCurrent = year === displayedMonth.getFullYear();
-          return (
-            <button
-              key={year}
-              type="button"
-              className="calendar-picker-cell"
-              aria-disabled={disabled || undefined}
-              aria-selected={isCurrent}
-              onClick={() => {
-                if (disabled) return;
-                setDisplayedMonth(new Date(year, displayedMonth.getMonth(), 1));
-                setView("months");
-              }}
-            >
-              {year}
-            </button>
-          );
-        })}
-      </div>
-    );
+    const items: QuickNavItem[] = Array.from({ length: YEARS_PER_PAGE }, (_, i) => {
+      const year = decadeStart + i;
+      return {
+        key: String(year),
+        label: String(year),
+        disabled:
+          (min && year < min.getFullYear()) || (max && year > max.getFullYear()) || false,
+        current: year === displayedMonth.getFullYear(),
+        onSelect: () => {
+          setDisplayedMonth(new Date(year, displayedMonth.getMonth(), 1));
+          setView("months");
+        },
+      };
+    });
+    return <QuickNavGrid ariaLabel={headerLabel} items={items} />;
   }
 
   function renderMonthGrid(monthDate: Date) {
@@ -442,16 +569,35 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
                 const isFocusDay = !outside && isSameDay(day, focusDate);
                 const selected = status.selected || status.rangeStart || status.rangeEnd || false;
 
+                // Range membership has no ARIA state of its own, and the tint
+                // that carries it is far below the non-text contrast floor —
+                // so it goes into the day's accessible name instead.
+                const rangeSuffix = status.inRange
+                  ? label.inRange
+                  : status.preview
+                    ? label.previewRange
+                    : null;
+                const name = rangeSuffix
+                  ? `${dayLabel(day, locale)}, ${rangeSuffix}`
+                  : dayLabel(day, locale);
+
                 return (
-                  <div role="gridcell" className="calendar-cell" key={dayKey(day)}>
+                  // `aria-selected` belongs on the gridcell: ARIA does not
+                  // support it on `button`, so on the day itself it was ignored.
+                  <div
+                    role="gridcell"
+                    className="calendar-cell"
+                    aria-selected={selected}
+                    key={dayKey(day)}
+                  >
                     <button
                       type="button"
                       data-day={dayKey(day)}
                       className="calendar-day"
                       tabIndex={isFocusDay ? 0 : -1}
                       aria-disabled={disabled || undefined}
-                      aria-label={dayLabel(day, locale)}
-                      aria-selected={selected}
+                      aria-label={name}
+                      data-selected={selected ? "" : undefined}
                       aria-current={isToday ? "date" : undefined}
                       data-today={isToday ? "" : undefined}
                       data-outside={outside ? "" : undefined}
@@ -496,19 +642,17 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
         <IconButton type="button" aria-label={prevLabel} onClick={stepBackward}>
           <ChevronLeft aria-hidden="true" size={18} />
         </IconButton>
-        {captionInteractive ? (
-          <button
-            type="button"
-            className="calendar-label calendar-label-button"
-            aria-live="polite"
-            onClick={onCaptionClick}
-          >
-            {headerLabel}
-          </button>
-        ) : (
-          // Empty spacer keeps the prev/next buttons justified in multi-month day view.
-          <div className="calendar-label" aria-hidden="true" />
-        )}
+        {/* Always interactive, including multi-month: this button is both the
+            month/year quick-nav and the calendar's only live region, and the
+            per-month captions it used to defer to are `aria-hidden`. */}
+        <button
+          type="button"
+          className="calendar-label calendar-label-button"
+          aria-live="polite"
+          onClick={onCaptionClick}
+        >
+          {headerLabel}
+        </button>
         <IconButton type="button" aria-label={nextLabel} onClick={stepForward}>
           <ChevronRight aria-hidden="true" size={18} />
         </IconButton>

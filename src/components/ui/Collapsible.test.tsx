@@ -217,3 +217,20 @@ describe("Collapsible", () => {
     });
   });
 });
+
+describe("Collapsible · region naming", () => {
+  // #144
+  it("the content region is named by its trigger", () => {
+    render(
+      <Collapsible defaultOpen>
+        <Collapsible.Trigger>Details</Collapsible.Trigger>
+        <Collapsible.Content>Body</Collapsible.Content>
+      </Collapsible>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Details" });
+    expect(trigger.id).not.toBe("");
+    const region = screen.getByRole("region", { name: "Details" });
+    expect(region).toHaveAttribute("aria-labelledby", trigger.id);
+  });
+});

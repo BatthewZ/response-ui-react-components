@@ -190,7 +190,7 @@
     color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
 }
 
-.calendar-day:hover:not([aria-disabled="true"]):not([aria-selected="true"]) {
+.calendar-day:hover:not([aria-disabled="true"]):not([data-selected]) {
   background-color: var(--C-SURFACE-2);
 }
 
@@ -206,13 +206,13 @@
 }
 
 /* Selected day */
-.calendar-day[aria-selected="true"] {
+.calendar-day[data-selected] {
   background-color: var(--C-ACCENT);
   color: var(--C-TEXT-ON-ACCENT, var(--C-TEXT-INVERSE));
   font-weight: var(--Semibold-Weight);
 }
 
-.calendar-day[aria-selected="true"]:hover:not([aria-disabled="true"]) {
+.calendar-day[data-selected]:hover:not([aria-disabled="true"]) {
   background-color: var(--C-ACCENT-HOVER, var(--C-ACCENT));
 }
 
@@ -231,14 +231,17 @@
 /*  Range selection                                                    */
 /* ------------------------------------------------------------------ */
 
-/* Days strictly between the two endpoints, plus the live hover/keyboard preview. */
+/* Days strictly between the two endpoints, plus the live hover/keyboard preview.
+   One surface step deeper than the hover wash above: at --C-SURFACE-2 the band
+   and a hovered ordinary day were pixel-identical, so range extent had no
+   visual channel of its own. */
 .calendar-day[data-in-range],
 .calendar-day[data-preview] {
-  background-color: var(--C-SURFACE-2);
+  background-color: var(--C-SURFACE-3);
   border-radius: 0;
 }
 
-/* Endpoints keep the solid accent fill (via aria-selected) and square off the
+/* Endpoints keep the solid accent fill (via data-selected) and square off the
    inner edge so they join the in-range band seamlessly. */
 .calendar-day[data-range-start] {
   border-top-right-radius: 0;
@@ -279,11 +282,11 @@
   transition: background-color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
 }
 
-.calendar-picker-cell:hover:not([aria-disabled="true"]):not([aria-selected="true"]) {
+.calendar-picker-cell:hover:not([aria-disabled="true"]):not([aria-current="true"]) {
   background-color: var(--C-SURFACE-2);
 }
 
-.calendar-picker-cell[aria-selected="true"] {
+.calendar-picker-cell[aria-current="true"] {
   background-color: var(--C-ACCENT);
   color: var(--C-TEXT-ON-ACCENT, var(--C-TEXT-INVERSE));
   font-weight: var(--Semibold-Weight);

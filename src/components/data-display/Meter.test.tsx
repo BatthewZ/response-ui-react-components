@@ -129,3 +129,16 @@ describe("Meter", () => {
     expect(node).toHaveAttribute("role", "meter");
   });
 });
+
+describe("Meter · range integrity", () => {
+  // #22
+  it("announces the clamped value, not the raw one", () => {
+    render(<Meter value={140} max={100} aria-label="Disk" />);
+    expect(screen.getByRole("meter", { name: "Disk" })).toHaveAttribute("aria-valuenow", "100");
+  });
+
+  it("announces the floor for a value below min", () => {
+    render(<Meter value={-5} min={0} max={100} aria-label="Disk" />);
+    expect(screen.getByRole("meter", { name: "Disk" })).toHaveAttribute("aria-valuenow", "0");
+  });
+});

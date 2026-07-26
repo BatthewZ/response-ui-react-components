@@ -169,3 +169,75 @@ describe("Wizard", () => {
     expect(screen.getByText("Step one body")).toBeInTheDocument();
   });
 });
+
+describe("Wizard · completion, semantics and dead tab stops", () => {
+  // #303
+  it("a controlled parent that refuses the advance is never told it completed", async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    // `step` is pinned: every advance is requested and refused.
+    render(<Wizard steps={STEPS} step={STEPS.length - 1} onComplete={onComplete} />);
+
+    const finish = screen.getByRole("button", { name: "Finish" });
+    await user.click(finish);
+    await user.click(finish);
+    await user.click(finish);
+
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it("fires onComplete exactly once when the flow does complete", async () => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+    render(<Wizard steps={STEPS} defaultStep={STEPS.length - 1} onComplete={onComplete} />);
+
+    await user.click(screen.getByRole("button", { name: "Finish" }));
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  // #304
+  it("forwards aria-* / data-* to the root", () => {
+    const { container } = render(
+      <Wizard steps={STEPS} aria-label="Signup flow" data-testid="flow" />,
+    );
+    const root = container.firstElementChild!;
+    expect(root).toHaveAttribute("aria-label", "Signup flow");
+    expect(root).toHaveAttribute("data-testid", "flow");
+  });
+
+  // #305
+  it("names the step panel and moves focus to it when the step changes", async () => {
+    const user = userEvent.setup();
+    render(<Wizard steps={STEPS} />);
+
+    const panel = screen.getByRole("group", { name: "Account" });
+    expect(panel).toHaveAttribute("id");
+    expect(panel).not.toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByRole("group", { name: "Plan" })).toHaveFocus();
+  });
+
+  // #306
+  it("leaves no dead tab stop on a step the handler ignores", () => {
+    render(<Wizard steps={STEPS} defaultStep={1} />);
+    const markers = screen.getAllByRole("button", { name: /completed|current step|Plan|Review/ });
+    // Only step 0 is behind the cursor, so it is the only marker button.
+    expect(markers.filter((b) => b.classList.contains("stepper-indicator"))).toHaveLength(1);
+  });
+
+  // #307
+  it("the last marker cannot un-complete a finished flow", async () => {
+    const user = userEvent.setup();
+    render(<Wizard steps={STEPS} defaultStep={STEPS.length - 1} />);
+    await user.click(screen.getByRole("button", { name: "Finish" }));
+
+    const last = STEPS[STEPS.length - 1];
+    expect(
+      screen.queryByRole("button", { name: `${last.title}, completed` }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Finish" })).toBeDisabled();
+  });
+});

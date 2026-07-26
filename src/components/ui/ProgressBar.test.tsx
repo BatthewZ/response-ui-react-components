@@ -109,3 +109,35 @@ describe("ProgressBar", () => {
     expect(getFill()).toHaveClass("progress-bar__fill");
   });
 });
+
+describe("ProgressBar · range integrity", () => {
+  // #202
+  it("announces the clamped value, not the raw one", () => {
+    render(<ProgressBar value={150} max={100} aria-label="Upload" />);
+    const bar = screen.getByRole("progressbar", { name: "Upload" });
+    expect(bar).toHaveAttribute("aria-valuenow", "100");
+    expect(bar.firstElementChild).toHaveStyle({ width: "100%" });
+  });
+
+  it("announces 0 for a value below the floor", () => {
+    render(<ProgressBar value={-20} max={100} aria-label="Upload" />);
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
+  });
+
+  // #204
+  it("renders an empty bar for a NaN value, never a full one", () => {
+    render(<ProgressBar value={Number.NaN} max={100} aria-label="Upload" />);
+    const bar = screen.getByRole("progressbar");
+    expect(bar.firstElementChild).toHaveStyle({ width: "0%" });
+    expect(bar).toHaveAttribute("aria-valuenow", "0");
+  });
+
+  // #209
+  it("exposes no range at all when max describes none", () => {
+    render(<ProgressBar value={5} max={0} aria-label="Upload" />);
+    const bar = screen.getByRole("progressbar");
+    expect(bar).not.toHaveAttribute("aria-valuenow");
+    expect(bar).not.toHaveAttribute("aria-valuemin");
+    expect(bar).not.toHaveAttribute("aria-valuemax");
+  });
+});

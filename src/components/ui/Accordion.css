@@ -18,6 +18,14 @@
 /*  Trigger                                                            */
 /* ------------------------------------------------------------------ */
 
+/* Presentational wrapper: the trigger needs a heading ancestor for heading
+   navigation, and the heading must contribute no typography of its own. */
+.accordion-heading {
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
 .accordion-trigger {
   all: unset;
   box-sizing: border-box;

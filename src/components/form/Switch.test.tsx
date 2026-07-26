@@ -123,10 +123,35 @@ describe("Switch", () => {
       );
     }
     const { container } = render(<Harness />);
-    const hidden = container.querySelector('input[type="hidden"][name="notify"]');
-    expect(hidden).toHaveValue("");
+    const hidden = () => container.querySelector('input[type="hidden"][name="notify"]');
+    // #82 — unchecked submits nothing, exactly like a native checkbox, so
+    // `FormData.has("notify")` answers the question it looks like it answers.
+    expect(hidden()).toBeNull();
     await user.click(screen.getByRole("switch"));
-    expect(hidden).toHaveValue("yes");
+    expect(hidden()).toHaveValue("yes");
+  });
+
+  // #79 / #83
+  it("the hidden input is excluded when disabled and carries `form`", () => {
+    const { container } = render(
+      <Switch aria-label="Toggle" name="notify" value="yes" defaultChecked disabled form="prefs" />,
+    );
+    const hidden = container.querySelector<HTMLInputElement>(
+      'input[type="hidden"][name="notify"]',
+    )!;
+    expect(hidden).toBeDisabled();
+    expect(hidden).toHaveAttribute("form", "prefs");
+  });
+
+  // #79 — the payload a real <form> would send.
+  it("a disabled Switch submits nothing", () => {
+    render(
+      <form aria-label="prefs">
+        <Switch aria-label="Toggle" name="notify" value="yes" defaultChecked disabled />
+      </form>,
+    );
+    const data = new FormData(screen.getByRole("form", { name: "prefs" }) as HTMLFormElement);
+    expect(data.has("notify")).toBe(false);
   });
 
   it("applies aria-invalid when error is set", () => {

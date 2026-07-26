@@ -148,3 +148,31 @@ describe("Stepper", () => {
     expect(container.querySelector(".stepper-indicator svg")).not.toBeInTheDocument();
   });
 });
+
+describe("Stepper · isStepClickable", () => {
+  // #140
+  it("only the steps the handler acts on become buttons", () => {
+    const onStepClick = vi.fn();
+    render(
+      <Stepper activeStep={1} onStepClick={onStepClick} isStepClickable={(i) => i < 1}>
+        <Stepper.Step title="One" />
+        <Stepper.Step title="Two" />
+        <Stepper.Step title="Three" />
+      </Stepper>,
+    );
+
+    const indicators = document.querySelectorAll(".stepper-indicator");
+    expect(indicators).toHaveLength(3);
+    expect(Array.from(indicators).filter((el) => el.tagName === "BUTTON")).toHaveLength(1);
+  });
+
+  it("defaults to every step clickable", () => {
+    render(
+      <Stepper activeStep={1} onStepClick={vi.fn()}>
+        <Stepper.Step title="One" />
+        <Stepper.Step title="Two" />
+      </Stepper>,
+    );
+    expect(document.querySelectorAll("button.stepper-indicator")).toHaveLength(2);
+  });
+});

@@ -234,26 +234,19 @@ you can override it, and you almost certainly should not.
   defaultValue={20 Jan 2026} />` opens on **June** — the month you named explicitly, not the
   one inferred from the selection. Pass `defaultMonth` when you want to open somewhere the
   selection isn't; omit it and the selection seeds the view.
-- **`showToday` emits a different kind of `Date`.** A day cell emits local midnight; the
-  Today button emits `new Date()`, the current wall-clock instant. Measured on the same
-  render: `00:00:00.000` from the grid, `02:18:01.670` from the button. Two picks of the
-  same day are therefore not `getTime()`-equal — normalise with `startOfDay` (exported
-  from this package) before you store or compare.
-- **Quick-nav and the month announcement are single-month only.** With
-  `numberOfMonths > 1` above `40rem`, the header caption is replaced by an inert
-  `aria-hidden` spacer: no month picker, no year picker, and no `aria-live` node anywhere
-  in the component. Below `40rem` the layout collapses to one month and both return.
+- **`showToday` emits local midnight,** the same instant a day cell emits, so two picks of
+  the same day are `getTime()`-equal. Today only *selects* when today is actually
+  selectable; if `min`/`max`/`isDateDisabled` rule it out, the button still navigates.
 - **A selected date outside the displayed month renders unselected.** Leading and trailing
   days from adjacent months are contextual only — they carry no selection, today or
   roving-focus state, deliberately, so a date can't highlight twice across two grids.
   Measured: with `month={June 2026}` and `value={May 31 2026}`, the May 31 cell is visible
   in the June grid with `aria-selected="false"`.
-- **Clicking a padding day drops DOM focus.** Selecting a leading/trailing day selects it
-  *and* pages the calendar to its month — but that button unmounts, and measured
-  `document.activeElement` becomes `<body>`, so the next <kbd>Tab</kbd> restarts from the
-  top of the document. Arrowing across the boundary is unaffected: it pages first, then
-  <kbd>Enter</kbd> selects with focus intact.
-- **`onValueChange` does not de-duplicate.** Clicking the same day twice fires it twice.
+- **Clicking a padding day keeps DOM focus.** Selecting a leading/trailing day selects it
+  *and* pages the calendar to its month; focus is handed to that day's in-month button, the
+  same way an arrow-key move across the boundary does.
+- **`onValueChange` de-duplicates by day.** Clicking the already-selected day again resolves
+  to the value already held and fires nothing.
 - **`numberOfMonths` is honoured on the server, then re-evaluated.** The breakpoint is read
   with a media query that returns `false` during SSR and the hydration render, so a
   `numberOfMonths={2}` calendar ships two grids in the server HTML and collapses to one
@@ -276,23 +269,20 @@ date — `"June 13, 2026"` — so a screen reader never reads a bare `"13"`.
   `weekStartsOn`), and <kbd>PageUp</kbd>/<kbd>PageDown</kbd> move ±1 month. Every one of
   those moves DOM focus with it and pages the window when the target isn't visible; no
   other key is intercepted, so <kbd>Tab</kbd> and <kbd>Escape</kbd> reach your container.
-- **`aria-selected` is on the wrong element.** It is written on the day `<button>`, a role
-  that does not support it, while the `role="gridcell"` wrapper carries no selected state
-  (measured: `null`). Assistive tech is not required to announce the selection, and the
-  fill is otherwise the only cue.
-- **The month and year pickers have no keyboard model.** They render `role="grid"` with
-  twelve `<button>` children and no rows or cells at all (measured: 0 `row`, 0 `gridcell`),
-  every button is a separate tab stop, and arrow keys do nothing inside them (measured).
-  Getting to the picker is keyboard-reachable — the caption is a real button — but
-  navigating it is Tab-only. ‹ › and <kbd>PageUp</kbd>/<kbd>PageDown</kbd> remain the
-  reliable route.
+- **`aria-selected` is on the `role="gridcell"` wrapper,** not on the day `<button>` — ARIA
+  does not support the attribute on `button`. Style hooks off `[data-selected]` on the button.
+- **The month and year pickers are one tab stop each.** They are a `role="group"` of buttons
+  — deliberately not `role="grid"`, which would promise rows and cells they do not have. The
+  displayed month/year is marked `aria-current="true"` (navigation state, not selection) and
+  holds the tab stop; arrow keys move ±1 and ±3 across the three-column layout, with
+  <kbd>Home</kbd>/<kbd>End</kbd> jumping to the ends.
 - **Today is `aria-current="date"`,** and only ever on the in-month instance, so it is
   announced once even in a multi-month view. Its *visual* marker is a 1px
   `--C-BORDER-STRONG` inset ring, which measures **1.41–1.79:1** against `--C-SURFACE-0`
   across the four shipped themes — effectively invisible. If sighted users must find today,
   add your own marker.
-- **Month changes announce through `aria-live="polite"`** on the header caption — in
-  single-month mode only, per the gotcha above.
+- **Month changes announce through `aria-live="polite"`** on the header caption, at every
+  `numberOfMonths`; in a multi-month view it reads the whole visible span.
 - **Disabled days remain focusable** by design: `aria-disabled` rather than `disabled`, so
   a keyboard user can discover *why* a range is closed instead of arrowing over a hole.
 - **The focus indicator is a 2px `--C-BORDER-FOCUS` outline** at `2px` offset on days,

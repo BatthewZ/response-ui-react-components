@@ -515,3 +515,80 @@ describe("mode lock", () => {
     expect(onValueChange).toHaveBeenNthCalledWith(3, ["a", "b"]);
   });
 });
+
+describe("Accordion · headings, mode and id safety", () => {
+  // #137
+  it("wraps each trigger in a heading at the requested level", () => {
+    render(
+      <Accordion headingLevel={2}>
+        <Accordion.Item value="a">
+          <Accordion.Trigger>First</Accordion.Trigger>
+          <Accordion.Content>Body</Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="b">
+          <Accordion.Trigger>Second</Accordion.Trigger>
+          <Accordion.Content>Body</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(2);
+    expect(screen.getByRole("heading", { level: 2, name: "First" })).toContainElement(
+      screen.getByRole("button", { name: "First" }),
+    );
+  });
+
+  it("defaults to level 3", () => {
+    render(
+      <Accordion>
+        <Accordion.Item value="a">
+          <Accordion.Trigger>First</Accordion.Trigger>
+          <Accordion.Content>Body</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+    expect(screen.getByRole("heading", { level: 3, name: "First" })).toBeInTheDocument();
+  });
+
+  // #142
+  it("mode=single opens only the first of a multi-value defaultValue", () => {
+    render(
+      <Accordion mode="single" defaultValue={["a", "b"]}>
+        <Accordion.Item value="a">
+          <Accordion.Trigger>First</Accordion.Trigger>
+          <Accordion.Content>Body A</Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="b">
+          <Accordion.Trigger>Second</Accordion.Trigger>
+          <Accordion.Content>Body B</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+
+    expect(screen.getByRole("button", { name: "First" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Second" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  // #143
+  it("a value containing a space still wires aria-controls / aria-labelledby", () => {
+    render(
+      <Accordion defaultValue="billing details">
+        <Accordion.Item value="billing details">
+          <Accordion.Trigger>Billing</Accordion.Trigger>
+          <Accordion.Content>Body</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Billing" });
+    const controls = trigger.getAttribute("aria-controls")!;
+    expect(controls).not.toMatch(/\s/);
+    const content = document.getElementById(controls);
+    expect(content).not.toBeNull();
+    expect(content).toHaveAttribute("aria-labelledby", trigger.id);
+    expect(trigger.id).not.toMatch(/\s/);
+  });
+});

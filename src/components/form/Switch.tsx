@@ -40,6 +40,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
     value = "on",
     className,
     disabled,
+    form,
     onClick,
     onChange: _onChange,
     ...props
@@ -65,6 +66,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
         data-state={isChecked ? "checked" : "unchecked"}
         data-size={size}
         disabled={disabled}
+        form={form}
         onClick={(event) => {
           onClick?.(event);
           if (event.defaultPrevented) return;
@@ -74,7 +76,13 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
       >
         <span className="switch-thumb" />
       </button>
-      {name ? <input type="hidden" name={name} value={isChecked ? value : ""} /> : null}
+      {/* Native checkbox semantics for the form payload: an unchecked switch
+          submits nothing at all (so `FormData.has(name)` answers the question it
+          looks like it answers), a disabled one is excluded, and `form` lets the
+          switch live outside the form it belongs to. */}
+      {name && isChecked ? (
+        <input type="hidden" name={name} value={value} form={form} disabled={disabled} />
+      ) : null}
     </>
   );
 });

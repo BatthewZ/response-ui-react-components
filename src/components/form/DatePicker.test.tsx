@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { formatDate } from "../../util/date";
+import { formatDate, getWeekdayNames } from "../../util/date";
 import { DatePicker } from "./DatePicker";
 import { Field } from "./Field";
 import { useForm } from "./use-form";
@@ -461,5 +461,129 @@ describe("DatePicker", () => {
         "aria-invalid",
       );
     });
+  });
+});
+
+describe("DatePicker · popup wiring, i18n and native form behaviour", () => {
+  // #326
+  it("opening the calendar lands focus on the grid, not on the chrome", async () => {
+    const user = userEvent.setup();
+    render(<DatePicker aria-label="Date" defaultValue={new Date(2026, 5, 10)} />);
+
+    await user.click(screen.getByRole("button", { name: "Open calendar" }));
+
+    expect(document.activeElement).toHaveClass("calendar-day");
+    expect(document.activeElement).toHaveAttribute("data-day", "2026-5-10");
+  });
+
+  // #328
+  it("only the control that opens the dialog advertises it", async () => {
+    const user = userEvent.setup();
+    render(<DatePicker aria-label="Date" />);
+
+    const input = screen.getByRole("textbox", { name: "Date" });
+    expect(input).not.toHaveAttribute("aria-haspopup");
+    expect(input).not.toHaveAttribute("aria-expanded");
+    expect(input).not.toHaveAttribute("aria-controls");
+
+    const trigger = screen.getByRole("button", { name: "Open calendar" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "dialog");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(trigger).toHaveAttribute("aria-controls");
+  });
+
+  // #327
+  it("takes every announced string from `labels`", async () => {
+    const user = userEvent.setup();
+    render(
+      <DatePicker
+        aria-label="Date"
+        clearable
+        defaultValue={new Date(2026, 5, 10)}
+        labels={{
+          openCalendar: "Ouvrir le calendrier",
+          clearDate: "Effacer la date",
+          chooseDate: "Choisir une date",
+          previousMonth: "Mois précédent",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Effacer la date" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ouvrir le calendrier" }));
+    expect(screen.getByRole("dialog", { name: "Choisir une date" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mois précédent" })).toBeInTheDocument();
+  });
+
+  // #330
+  it("marks the field invalid when a typed date is refused", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <DatePicker aria-label="Date" defaultValue={new Date(2026, 5, 10)} />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Date" });
+    await user.clear(input);
+    await user.type(input, "not a date");
+    await user.click(screen.getByRole("button", { name: "elsewhere" }));
+
+    expect(input).toHaveValue(fmt(new Date(2026, 5, 10)));
+    expect(input).toHaveAttribute("aria-invalid", "true");
+  });
+
+  // #331 / #449
+  it("the hidden ISO input carries `form` and `disabled`", () => {
+    const { container } = render(
+      <DatePicker aria-label="Date" name="when" form="other" disabled defaultValue={new Date(2026, 5, 10)} />,
+    );
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"][name="when"]')!;
+
+    expect(hidden).toHaveAttribute("form", "other");
+    expect(hidden).toBeDisabled();
+  });
+
+  // #332
+  it("forwards the calendar's layout props", async () => {
+    const user = userEvent.setup();
+    render(
+      <DatePicker aria-label="Date" locale="fr-FR" weekStartsOn={1} showToday todayLabel="Aujourd'hui" />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open calendar" }));
+
+    expect(screen.getByRole("button", { name: "Aujourd'hui" })).toBeInTheDocument();
+    const firstWeekday = document.querySelector(".calendar-weekday")!;
+    expect(firstWeekday).toHaveAttribute("aria-label", getWeekdayNames("fr-FR", "short", 1)[0]);
+  });
+
+  // #450
+  it("Enter with nothing pending leaves the event alone for implicit submission", async () => {
+    const user = userEvent.setup();
+    // jsdom does not perform implicit submission, so the observable is the one
+    // that decides it: whether the keydown reaches the form un-prevented.
+    const prevented: boolean[] = [];
+    render(
+      <form onKeyDown={(e) => prevented.push(e.defaultPrevented)}>
+        <DatePicker aria-label="Date" name="when" defaultValue={new Date(2026, 5, 10)} />
+      </form>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Date" });
+    await user.click(input);
+    await user.keyboard("{Enter}");
+    expect(prevented).toEqual([false]);
+
+    // A pending edit still commits, and still swallows the Enter.
+    await user.clear(input);
+    await user.type(input, "12/25/2026");
+    await user.keyboard("{Enter}");
+    expect(prevented[prevented.length - 1]).toBe(true);
+    expect(input).toHaveValue(fmt(new Date(2026, 11, 25)));
   });
 });

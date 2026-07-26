@@ -20,11 +20,14 @@ import { cn } from "../../util/style";
 
 type Mode = "single" | "multiple";
 
+/** Heading rank the trigger's wrapper renders at. */
+export type AccordionHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
+
 type AccordionContextValue = {
   openValues: string[];
   toggle: (value: string) => void;
   mode: Mode;
-  baseId: string;
+  headingLevel: AccordionHeadingLevel;
 };
 
 const AccordionContext = createContext<AccordionContextValue | null>(null);
@@ -65,11 +68,21 @@ type AccordionProps = {
    */
   value?: string | string[];
   onValueChange?: (value: string | string[]) => void;
+  /**
+   * Heading rank the triggers render at, so they appear in a screen reader's
+   * heading list under the right ancestor. @default 3
+   */
+  headingLevel?: AccordionHeadingLevel;
 } & Omit<ComponentPropsWithRef<"div">, "defaultValue">;
 
-function normalizeValues(val: string | string[] | undefined): string[] {
+/**
+ * `mode` is a property of the whole open set, not just of `toggle`: a
+ * `single` accordion seeded with two values rendered both panels open.
+ */
+function normalizeValues(val: string | string[] | undefined, mode: Mode): string[] {
   if (val === undefined) return [];
-  return Array.isArray(val) ? val : [val];
+  const list = Array.isArray(val) ? val : [val];
+  return mode === "single" ? list.slice(0, 1) : list;
 }
 
 const AccordionRoot = forwardRef<HTMLDivElement, AccordionProps>(function Accordion(
@@ -78,21 +91,20 @@ const AccordionRoot = forwardRef<HTMLDivElement, AccordionProps>(function Accord
     defaultValue,
     value: controlledValue,
     onValueChange,
+    headingLevel = 3,
     className,
     children,
     ...props
   },
   ref
 ) {
-  const baseId = useId();
-
   // Only `useControllableState` reads the raw prop; this ref is the mode lock's
   // one job here — keep feeding the hook a defined value once controlled, so a
   // later `value={undefined}` is read as an empty set rather than a mode switch.
   const isControlledRef = useRef(controlledValue !== undefined);
   const [openValues, setOpenValues] = useControllableState<string[]>({
-    value: isControlledRef.current ? normalizeValues(controlledValue) : undefined,
-    defaultValue: normalizeValues(defaultValue),
+    value: isControlledRef.current ? normalizeValues(controlledValue, mode) : undefined,
+    defaultValue: normalizeValues(defaultValue, mode),
     onChange: (next) => onValueChange?.(mode === "single" ? (next[0] ?? "") : next),
   });
 
@@ -109,7 +121,7 @@ const AccordionRoot = forwardRef<HTMLDivElement, AccordionProps>(function Accord
   );
 
   return (
-    <AccordionContext.Provider value={{ openValues, toggle, mode, baseId }}>
+    <AccordionContext.Provider value={{ openValues, toggle, mode, headingLevel }}>
       <div ref={ref} className={cn("accordion", className)} {...props}>
         {children}
       </div>
@@ -130,10 +142,14 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(function Ac
   { value, disabled = false, className, children, ...props },
   ref
 ) {
-  const { openValues, baseId } = useAccordionContext();
+  const { openValues } = useAccordionContext();
   const isOpen = openValues.includes(value);
-  const triggerId = `${baseId}-trigger-${value}`;
-  const contentId = `${baseId}-content-${value}`;
+  // Generated, never interpolated from `value`: a value containing a space (or
+  // any other separator) produced ids that silently broke `aria-controls` and
+  // `aria-labelledby`.
+  const baseId = useId();
+  const triggerId = `${baseId}-trigger`;
+  const contentId = `${baseId}-content`;
 
   return (
     <ItemContext.Provider value={{ value, isOpen, disabled, triggerId, contentId }}>
@@ -158,8 +174,9 @@ type AccordionTriggerProps = ComponentPropsWithRef<"button">;
 
 const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
   function AccordionTrigger({ className, children, onClick, onKeyDown, ...props }, ref) {
-    const { toggle } = useAccordionContext();
+    const { toggle, headingLevel } = useAccordionContext();
     const { value, isOpen, disabled, triggerId, contentId } = useItemContext();
+    const Heading = `h${headingLevel}` as const;
 
     function handleClick() {
       if (!disabled) {
@@ -201,6 +218,10 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
     }
 
     return (
+      // The trigger has to sit inside a heading or heading navigation skips
+      // every section. The wrapper is presentation-only — `.accordion-heading`
+      // strips the UA's own font and spacing.
+      <Heading className="accordion-heading">
       <button
         ref={ref}
         id={triggerId}
@@ -231,6 +252,7 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
           />
         </svg>
       </button>
+      </Heading>
     );
   }
 );

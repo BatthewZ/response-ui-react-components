@@ -21,12 +21,35 @@ import { clampDate, formatDate, isBefore, parseDateInput, toISODate } from "../.
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 import { type DateRange, RangeCalendar } from "../ui/RangeCalendar";
+import { type CalendarLabels } from "../ui/CalendarBase";
 import { IconButton } from "../ui/IconButton";
 
 import { datePickerPopoverClassName, isSameDateRange } from "./date-picker-internals";
 import { Input } from "./Input";
 
 const EMPTY_RANGE: DateRange = { start: null, end: null };
+
+/** Every string the picker speaks, plus the calendar's own. */
+export type DateRangePickerLabels = CalendarLabels & {
+  startDate?: string;
+  endDate?: string;
+  openCalendar?: string;
+  /** Accessible name of the popover dialog. */
+  chooseDateRange?: string;
+};
+
+const DEFAULT_LABELS = {
+  startDate: "Start date",
+  endDate: "End date",
+  openCalendar: "Open calendar",
+  chooseDateRange: "Choose date range",
+} satisfies DateRangePickerLabels;
+
+/** What a typed endpoint resolved to. `invalid` must keep the previous value. */
+type Resolution =
+  | { kind: "empty" }
+  | { kind: "date"; date: Date }
+  | { kind: "invalid" };
 
 type DateRangePickerProps = {
   value?: DateRange;
@@ -57,6 +80,14 @@ type DateRangePickerProps = {
   endPlaceholder?: string;
   error?: boolean;
   disabled?: boolean;
+  /** Overrides for every string the picker and its calendar speak. */
+  labels?: DateRangePickerLabels;
+  /** `id` of the start input, so a `<Label htmlFor>` can name it. */
+  startInputId?: string;
+  /** `id` of the end input, so a `<Label htmlFor>` can name it. */
+  endInputId?: string;
+  /** Owning form for the hidden `name` inputs when the picker sits outside it. */
+  form?: string;
   /**
    * Base name for native form submission. Emits two hidden inputs carrying
    * machine-readable YYYY-MM-DD values: `${name}.start` and `${name}.end`.
@@ -101,13 +132,19 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
       endPlaceholder,
       error,
       disabled,
+      labels,
+      startInputId,
+      endInputId,
+      form,
       name,
       className,
       color: _color,
+      onKeyDown,
       ...props
     },
     ref,
   ) {
+    const label = { ...DEFAULT_LABELS, ...labels };
     const [range, setRange] = useControllableState<DateRange>({
       value,
       defaultValue: defaultValue ?? EMPTY_RANGE,
@@ -137,26 +174,35 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
     const role = useRole(context, { role: "dialog" });
     const { getReferenceProps, getFloatingProps } = useInteractions([dismiss, role]);
 
-    /** Parse + clamp a draft to an enabled Date, or null (empty / invalid / disabled). */
+    /**
+     * Classify a draft. `invalid` (unparseable *or* disabled) is distinct from
+     * `empty`: collapsing the two let a rejected date clear the endpoint the user
+     * had already committed.
+     */
     const resolve = useCallback(
-      (draft: string): Date | null => {
-        if (draft.trim() === "") return null;
+      (draft: string): Resolution => {
+        if (draft.trim() === "") return { kind: "empty" };
         const parsed = parseDateInput(draft, locale);
-        if (!parsed) return null;
+        if (!parsed) return { kind: "invalid" };
         const clamped = clampDate(parsed, min, max);
-        if (isDateDisabled?.(clamped)) return null;
-        return clamped;
+        if (isDateDisabled?.(clamped)) return { kind: "invalid" };
+        return { kind: "date", date: clamped };
       },
       [locale, min, max, isDateDisabled],
     );
 
     /** Commit both fields into an ordered range; text that doesn't resolve reverts. */
     const commit = useCallback(() => {
-      const startValid = startText.trim() === "" || parseDateInput(startText, locale) !== null;
-      const endValid = endText.trim() === "" || parseDateInput(endText, locale) !== null;
+      // Nothing typed since focus: committing anyway re-parses the *formatted*
+      // text and rewrites a value the user never touched (a reversed range gets
+      // silently reordered and `onValueChange` fires for a change nobody made).
+      if (startDraft === null && endDraft === null) return;
 
-      let start = startValid ? resolve(startText) : range.start;
-      let end = endValid ? resolve(endText) : range.end;
+      const keep = (r: Resolution, previous: Date | null): Date | null =>
+        r.kind === "date" ? r.date : r.kind === "empty" ? null : previous;
+
+      let start = keep(resolve(startText), range.start);
+      let end = keep(resolve(endText), range.end);
 
       // Order endpoints so start precedes end.
       if (start && end && isBefore(end, start)) {
@@ -166,60 +212,81 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
       setStartDraft(null);
       setEndDraft(null);
       setRange({ start, end });
-    }, [startText, endText, locale, resolve, range, setRange]);
+    }, [startDraft, endDraft, startText, endText, resolve, range, setRange]);
 
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          commit();
-        }
+        onKeyDown?.(e);
+        if (e.defaultPrevented) return;
+        if (e.key !== "Enter") return;
+        // Nothing pending: leave the event alone so the field still triggers
+        // implicit form submission the way a native input does.
+        if (startDraft === null && endDraft === null) return;
+        e.preventDefault();
+        commit();
       },
-      [commit],
+      [commit, endDraft, onKeyDown, startDraft],
     );
-
-    const referenceProps = getReferenceProps({ onBlur: commit, onKeyDown: handleKeyDown });
 
     return (
       <div ref={mergeRefs(ref, refs.setReference)} className={cn("relative", className)} {...props}>
+        {/* `form`/`disabled` ride along so these behave like native fields when
+            the picker sits outside its form or is switched off. */}
         {name !== undefined && (
           <>
-            <input type="hidden" name={`${name}.start`} value={range.start ? toISODate(range.start) : ""} />
-            <input type="hidden" name={`${name}.end`} value={range.end ? toISODate(range.end) : ""} />
+            <input
+              type="hidden"
+              name={`${name}.start`}
+              form={form}
+              disabled={disabled}
+              value={range.start ? toISODate(range.start) : ""}
+            />
+            <input
+              type="hidden"
+              name={`${name}.end`}
+              form={form}
+              disabled={disabled}
+              value={range.end ? toISODate(range.end) : ""}
+            />
           </>
         )}
         <div className="flex items-center gap-r6">
           <Input
             type="text"
+            id={startInputId}
             error={error}
             value={startText}
             placeholder={startPlaceholder}
             disabled={disabled}
-            aria-label="Start date"
+            aria-label={label.startDate}
             onChange={(e) => setStartDraft(e.target.value)}
-            {...referenceProps}
+            onBlur={commit}
+            onKeyDown={handleKeyDown}
           />
           <span aria-hidden="true" className="text-fg-muted">
             –
           </span>
           <Input
             type="text"
+            id={endInputId}
             error={error}
             value={endText}
             placeholder={endPlaceholder}
             disabled={disabled}
-            aria-label="End date"
+            aria-label={label.endDate}
             onChange={(e) => setEndDraft(e.target.value)}
             onBlur={commit}
             onKeyDown={handleKeyDown}
           />
+          {/* The reference props belong to the control that actually opens the
+              dialog. Spread on the start input they advertised `aria-haspopup`,
+              `aria-expanded` and `aria-controls` for a popup it could not open,
+              while this button — the one that does open it — advertised none. */}
           <IconButton
             type="button"
-            aria-label="Open calendar"
-            aria-haspopup="dialog"
-            aria-expanded={open}
+            aria-label={label.openCalendar}
             disabled={disabled}
-            onClick={() => setOpen((v) => !v)}
+            {...getReferenceProps({ onClick: () => setOpen((v) => !v) })}
           >
             <CalendarDays aria-hidden="true" size={18} />
           </IconButton>
@@ -227,21 +294,25 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
 
         {open && (
           <FloatingPortal>
-            <FloatingFocusManager context={context} modal={false}>
+            {/* `initialFocus={-1}`: the calendar focuses its own roving day, so
+                focus lands on the grid rather than on "Previous month". */}
+            <FloatingFocusManager context={context} modal={false} initialFocus={-1}>
               <div
                 ref={refs.setFloating}
                 style={floatingStyles}
-                aria-label="Choose date range"
+                aria-label={label.chooseDateRange}
                 className={datePickerPopoverClassName}
                 {...getFloatingProps()}
               >
                 <RangeCalendar
+                  autoFocus
                   value={range}
                   defaultMonth={defaultMonth}
                   min={min}
                   max={max}
                   isDateDisabled={isDateDisabled}
                   locale={locale}
+                  labels={labels}
                   numberOfMonths={numberOfMonths}
                   onValueChange={setRange}
                 />

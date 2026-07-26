@@ -334,4 +334,62 @@ describe("RangeCalendar", () => {
       expect(onValueChange).toHaveBeenCalledTimes(1);
     });
   });
+  // #321
+  it("blocks a second endpoint whose span would cross a disabled day", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    // June 13 2026 is a Saturday; block the whole weekend.
+    const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
+    render(
+      <RangeCalendar
+        defaultMonth={JUNE_2026}
+        numberOfMonths={1}
+        isDateDisabled={isWeekend}
+        onValueChange={onValueChange}
+      />,
+    );
+
+    await user.click(day(new Date(2026, 5, 12))); // Friday — starts the range
+    const monday = day(new Date(2026, 5, 15));
+    expect(monday).toHaveAttribute("aria-disabled", "true");
+
+    await user.click(monday);
+    // Still only the opening click committed; the crossing range never landed.
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(day(new Date(2026, 5, 13))).not.toHaveAttribute("data-in-range");
+  });
+
+  // #322
+  it("Today selects as well as navigates", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<RangeCalendar numberOfMonths={1} showToday onValueChange={onValueChange} />);
+
+    await user.click(screen.getByRole("button", { name: "Today" }));
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    const range = onValueChange.mock.calls[0][0] as DateRange;
+    expect(range.start).toBeInstanceOf(Date);
+    expect(range.end).toBeNull();
+  });
+
+  // #428
+  it("a spread bag cannot replace the range wiring", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    const hijack = vi.fn();
+    render(
+      <RangeCalendar
+        defaultMonth={JUNE_2026}
+        numberOfMonths={1}
+        onValueChange={onValueChange}
+        {...untypedProps({ onDaySelect: hijack, onTodayClick: hijack, onDayHover: hijack })}
+      />,
+    );
+
+    await user.click(day(new Date(2026, 5, 10)));
+
+    expect(hijack).not.toHaveBeenCalled();
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+  });
 });

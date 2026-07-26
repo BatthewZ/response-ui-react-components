@@ -1,5 +1,13 @@
 "use client";
-import { type ReactNode, useCallback, useMemo } from "react";
+import {
+  type ComponentPropsWithRef,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+} from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { cn } from "../../util/style";
@@ -74,8 +82,18 @@ export function useWizard({
     // Advancing off the last step lands on `count`, the terminal "all done"
     // index: every step's `index < activeStep`, so the last one flips to done.
     setActiveStep(activeStep + 1);
-    if (activeStep >= count - 1) onComplete?.();
-  }, [activeStep, count, onComplete, setActiveStep]);
+  }, [activeStep, count, setActiveStep]);
+
+  // `onComplete` follows the *state*, not the request. Fired inside `next` it
+  // ran even when a controlled parent refused the advance, and a parent that
+  // kept refusing could be told the flow had completed on every press.
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const wasComplete = useRef(isComplete);
+  useEffect(() => {
+    if (isComplete && !wasComplete.current) onCompleteRef.current?.();
+    wasComplete.current = isComplete;
+  }, [isComplete]);
 
   const back = useCallback(() => {
     if (activeStep > 0) setActiveStep(activeStep - 1);
@@ -94,7 +112,7 @@ export interface WizardStep {
   content: ReactNode;
 }
 
-export interface WizardProps {
+export type WizardProps = {
   steps: WizardStep[];
   /** Controlled active step index. */
   step?: number;
@@ -109,7 +127,16 @@ export interface WizardProps {
   nextLabel?: string;
   finishLabel?: string;
   className?: string;
-}
+  /**
+   * Not a Wizard prop — the change channel is `onStepChange`.
+   *
+   * Declared `never` rather than only `Omit`ted because a JSX spread performs no
+   * excess-property check: `Omit` alone let `{...form.field("x")}` land a handler
+   * on the root `<div>`, where a step's own inputs would fire it with a DOM
+   * `ChangeEvent`. The destructure below keeps the key off the element too.
+   */
+  onChange?: never;
+} & Omit<ComponentPropsWithRef<"div">, "onChange" | "children">;
 
 /**
  * A guided multi-step flow: the `Stepper` header tracks progress, the active
@@ -130,6 +157,8 @@ export function Wizard({
   nextLabel = "Next",
   finishLabel = "Finish",
   className,
+  onChange: _onChange,
+  ...props
 }: WizardProps) {
   const wizard = useWizard({
     count: steps.length,
@@ -145,20 +174,42 @@ export function Wizard({
   const activeIndex = Math.min(wizard.activeStep, steps.length - 1);
   const active = steps[activeIndex];
 
-  // Only completed (earlier) steps are clickable when back-navigation is on.
+  // Only *earlier* steps are reachable from the header. Clamped to `activeIndex`
+  // rather than `activeStep` so the completed state does not make the last
+  // marker clickable — pressing it would silently un-complete the flow.
+  const { activeStep, goTo } = wizard;
+  const isStepClickable = useCallback(
+    (index: number) => index < Math.min(activeStep, steps.length - 1),
+    [activeStep, steps.length],
+  );
+  // Depends on the two stable pieces of `wizard`, not on `wizard` itself — that
+  // is a fresh object literal every render, so the memo never held.
   const onStepClick = useMemo(() => {
     if (!allowBackNavigation) return undefined;
-    return (index: number) => {
-      if (index < wizard.activeStep) wizard.goTo(index);
-    };
-  }, [allowBackNavigation, wizard]);
+    return (index: number) => goTo(index);
+  }, [allowBackNavigation, goTo]);
+
+  const contentId = useId();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const isInitialRef = useRef(true);
+  // Advancing a step replaces the panel with no announcement and no focus move,
+  // which is silent for assistive tech. Focusing the named panel is what tells a
+  // screen reader user where they now are.
+  useEffect(() => {
+    if (isInitialRef.current) {
+      isInitialRef.current = false;
+      return;
+    }
+    contentRef.current?.focus();
+  }, [activeIndex]);
 
   return (
-    <div className={cn("wizard", className)}>
+    <div className={cn("wizard", className)} {...props}>
       <Stepper
         activeStep={wizard.activeStep}
         orientation={orientation}
         onStepClick={onStepClick}
+        isStepClickable={isStepClickable}
       >
         {steps.map((s) => (
           <Stepper.Step key={s.title} title={s.title} description={s.description} />
@@ -167,7 +218,15 @@ export function Wizard({
 
       {/* Keyed so each step's content remounts: without it React reconciles
           adjacent steps whose content shares a root type, and state bleeds. */}
-      <div key={activeIndex} className="wizard__content">
+      <div
+        key={activeIndex}
+        ref={contentRef}
+        id={contentId}
+        role="group"
+        aria-label={active?.title}
+        tabIndex={-1}
+        className="wizard__content"
+      >
         {active?.content}
       </div>
 

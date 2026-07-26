@@ -2,8 +2,8 @@
 import { type ComponentPropsWithRef, forwardRef, useState } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
-import { isAfter, isBefore, isSameDay } from "../../util/date";
-import { CalendarBase, type Weekday } from "./CalendarBase";
+import { addDays, isAfter, isBefore, isSameDay } from "../../util/date";
+import { CalendarBase, type CalendarLabels, type Weekday } from "./CalendarBase";
 
 /** A (possibly incomplete) selected date range. `end` is null while picking the second endpoint. */
 export type DateRange = {
@@ -29,6 +29,7 @@ type RangeCalendarProps = {
   weekStartsOn?: Weekday;
   showToday?: boolean;
   todayLabel?: string;
+  labels?: CalendarLabels;
   /**
    * Not a RangeCalendar prop — the change channel is `onValueChange`. Declared
    * `never` rather than only `Omit`ted because a JSX spread performs no
@@ -52,6 +53,7 @@ export const RangeCalendar = forwardRef<HTMLDivElement, RangeCalendarProps>(func
     onValueChange,
     defaultMonth,
     numberOfMonths = 2,
+    isDateDisabled,
     onChange: _onChange,
     ...rest
   },
@@ -61,6 +63,10 @@ export const RangeCalendar = forwardRef<HTMLDivElement, RangeCalendarProps>(func
     value,
     defaultValue: defaultValue ?? EMPTY_RANGE,
     onChange: (next) => onValueChange?.(next),
+    // No `isEqual`: measured, no reachable `setRange` call resolves to the range
+    // already held. Picking always flips `end` between a Date and null, so every
+    // commit is a real change — a comparator here would be inert, which the
+    // hook's own contract warns against.
   });
 
   // The day the pointer/keyboard is hovering while the second endpoint is unset,
@@ -103,16 +109,39 @@ export const RangeCalendar = forwardRef<HTMLDivElement, RangeCalendarProps>(func
     setHoverDate(null);
   }
 
+  /**
+   * While the second endpoint is being picked, a candidate day is *also*
+   * blocked when anything between it and `start` is blocked — otherwise a
+   * committed range spans days the matcher refuses. `min`/`max` need no scan:
+   * they are contiguous bounds, so they cannot block an interior day of a span
+   * whose endpoints both pass.
+   */
+  function isDayBlocked(day: Date): boolean {
+    if (isDateDisabled?.(day)) return true;
+    if (!picking || start == null || isDateDisabled == null) return false;
+    const lo = isBefore(day, start) ? day : start;
+    const hi = isBefore(day, start) ? start : day;
+    for (let d = addDays(lo, 1); isBefore(d, hi); d = addDays(d, 1)) {
+      if (isDateDisabled(d)) return true;
+    }
+    return false;
+  }
+
   return (
+    // `rest` is spread *first*: a JSX spread performs no excess-property check,
+    // so a spread object carrying `onDaySelect`/`onDayHover`/`onTodayClick`
+    // would otherwise replace the range wiring this component exists to provide.
     <CalendarBase
+      {...rest}
       ref={ref}
       numberOfMonths={numberOfMonths}
+      isDateDisabled={isDayBlocked}
       defaultMonth={defaultMonth ?? start ?? end ?? undefined}
       focusAnchor={start ?? end ?? null}
       getDayStatus={getDayStatus}
       onDaySelect={handleDaySelect}
       onDayHover={picking ? setHoverDate : undefined}
-      {...rest}
+      onTodayClick={handleDaySelect}
     />
   );
 });

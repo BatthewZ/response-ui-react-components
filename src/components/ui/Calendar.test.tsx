@@ -79,6 +79,17 @@ function dayButton(label: string): HTMLButtonElement {
   return matches[0];
 }
 
+/**
+ * The `role="gridcell"` wrapping a day button. `aria-selected` lives here and not
+ * on the button: ARIA does not support the attribute on `button` (#314).
+ */
+function dayCell(label: string): HTMLElement {
+  const cell = dayButton(label).closest<HTMLElement>('[role="gridcell"]');
+  if (!cell) throw new Error(`day button "${label}" has no gridcell`);
+  return cell;
+}
+
+
 describe("Calendar", () => {
   it("renders 7 localized columnheaders and a grid", () => {
     render(<Calendar defaultMonth={JUNE_2026} />);
@@ -117,7 +128,8 @@ describe("Calendar", () => {
     expect(picked.getFullYear()).toBe(2026);
     expect(picked.getMonth()).toBe(5);
     expect(picked.getDate()).toBe(10);
-    expect(tenth).toHaveAttribute("aria-selected", "true");
+    expect(dayCell("10")).toHaveAttribute("aria-selected", "true");
+    expect(tenth).not.toHaveAttribute("aria-selected");
   });
 
   it("moves the focused button with ArrowRight/Left/Up/Down", async () => {
@@ -346,7 +358,7 @@ describe("Calendar", () => {
 
     // And it cannot be selected.
     await user.keyboard("{Enter}");
-    expect(ninth).toHaveAttribute("aria-selected", "false");
+    expect(dayCell("9")).toHaveAttribute("aria-selected", "false");
   });
 
   it("does not select a disabled day on click", async () => {
@@ -362,7 +374,7 @@ describe("Calendar", () => {
 
     await user.click(dayButton("5"));
     expect(onValueChange).not.toHaveBeenCalled();
-    expect(dayButton("5")).toHaveAttribute("aria-selected", "false");
+    expect(dayCell("5")).toHaveAttribute("aria-selected", "false");
   });
 
   it("gives each day button a full-date accessible name", () => {
@@ -395,14 +407,14 @@ describe("Calendar", () => {
       <Calendar value={new Date(2026, 5, 10)} month={JUNE_2026} onValueChange={() => {}} />,
     );
 
-    expect(dayButton("10")).toHaveAttribute("aria-selected", "true");
+    expect(dayCell("10")).toHaveAttribute("aria-selected", "true");
 
     rerender(
       <Calendar value={new Date(2026, 5, 12)} month={JUNE_2026} onValueChange={() => {}} />,
     );
 
-    expect(dayButton("10")).toHaveAttribute("aria-selected", "false");
-    expect(dayButton("12")).toHaveAttribute("aria-selected", "true");
+    expect(dayCell("10")).toHaveAttribute("aria-selected", "false");
+    expect(dayCell("12")).toHaveAttribute("aria-selected", "true");
   });
 
   it("respects a controlled month (prev/next do not move without the prop changing)", async () => {
@@ -623,7 +635,7 @@ describe("#310 · the view follows a change of selection", () => {
     rerender(<Calendar value={SEPT_3} locale="en-US" />);
 
     expect(screen.getByRole("grid")).toHaveAccessibleName(label(new Date(2026, 8, 1)));
-    expect(dayButton("3")).toHaveAttribute("aria-selected", "true");
+    expect(dayCell("3")).toHaveAttribute("aria-selected", "true");
   });
 
   it("notifies the parent that the view moved", () => {
@@ -694,5 +706,43 @@ describe("#311 · an explicit defaultMonth beats a seeded selection", () => {
     expect(screen.getByRole("grid")).toHaveAccessibleName(
       getMonthLabel(new Date(2026, 0, 1), "en-US"),
     );
+  });
+});
+
+describe("Calendar · change gate and spread order", () => {
+  // #462
+  it("does not re-emit the day that is already selected", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <Calendar
+        defaultMonth={JUNE_2026}
+        defaultValue={new Date(2026, 5, 10)}
+        onValueChange={onValueChange}
+      />,
+    );
+
+    await user.click(dayButton("10"));
+
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  // #428
+  it("a spread bag cannot replace the selection wiring", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    const hijack = vi.fn();
+    render(
+      <Calendar
+        defaultMonth={JUNE_2026}
+        onValueChange={onValueChange}
+        {...untypedProps({ onDaySelect: hijack, onTodayClick: hijack })}
+      />,
+    );
+
+    await user.click(dayButton("10"));
+
+    expect(hijack).not.toHaveBeenCalled();
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 });

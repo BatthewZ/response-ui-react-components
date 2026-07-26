@@ -168,12 +168,13 @@ With a `name`, Switch renders a sibling `<input type="hidden">` carrying `value`
 That is genuinely useful for a plain HTML form post or a server action, but it is not what a
 native checkbox does, in two ways that will bite:
 
-- **Off submits an empty string; it does not omit the field.** `FormData.has("weeklyDigest")`
-  is always `true`; the off value is `""`, not absent. Read it as `get(…) === "yes"`, never as
-  a presence check.
-- **`disabled` does not suppress the value.** The hidden input never receives the `disabled`
-  attribute, so a disabled Switch still posts its value. Native form controls are excluded
-  from submission when disabled; this one is not.
+The payload follows native checkbox semantics:
+
+- **Off omits the field.** No hidden input is rendered while the Switch is off, so
+  `FormData.has("weeklyDigest")` is `false` — a presence check answers the question it looks
+  like it answers, and `get(…)` returns the `value` string when on.
+- **`disabled` suppresses the value.** The hidden input carries the `disabled` attribute, so
+  a disabled Switch posts nothing, exactly like a native control.
 
 ## Vetoing a toggle
 
@@ -262,12 +263,13 @@ the page. See [Accessibility](#accessibility) — that has measurable consequenc
   focus rule used to win and blank the error tint exactly while the user was on the control.
   A dedicated `.switch[aria-invalid="true"]:focus-visible` rule now out-ranks both: a focused
   invalid switch keeps the error colour and reports focus through the 2px outline width.
-- **`form` doesn't reach the hidden input.** `<Switch name="x" form="signup" />` puts
-  `form="signup"` on the button (harmless) but leaves the hidden input unassociated, so a
-  Switch rendered outside its `<form>` submits nothing at all.
-- **`name` renders a second DOM node.** Switch returns a fragment, so with a `name` it is a
-  `<button>` *and* an `<input type="hidden">`. Browsers hide the latter, but a parent using
-  `:last-child`, `:nth-child`, or a child count will see two elements.
+- **`form` reaches the hidden input.** `<Switch name="x" form="signup" />` associates both the
+  button and the hidden input with `#signup`, so a Switch rendered outside its `<form>` still
+  submits.
+- **`name` renders a second DOM node while on.** Switch returns a fragment, so with a `name`
+  and a checked state it is a `<button>` *and* an `<input type="hidden">`. Browsers hide the
+  latter, but a parent using `:last-child`, `:nth-child`, or a child count will see two
+  elements.
 - **Client component.** `"use client"`, for `useControllableState` and the Field context — it
   needs a client boundary in an RSC tree, unlike [Checkbox](checkbox.md).
 
