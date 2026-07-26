@@ -258,7 +258,16 @@ borrows read `--MOTION-DURATION-ENTER` and `--MOTION-EASE-ENTER` from
   clamped only if you say so — `Spotlight.Image` forwards `parallaxRate` and `parallaxClamp`,
   but neither has a bounding default. On a 1080px viewport a row entering from the bottom sits ~540px off
   centre, which at the default rate of `0.3` is a 162px band. [Hero](hero.md) avoids this by
-  over-sizing its background layer; `Spotlight.Image` does not.
+  over-sizing its background layer (`.hero__background--parallax { inset: -50% 0 }`);
+  `Spotlight.Image` cannot copy that, and the reason is worth stating so nobody tries it:
+  `.spotlight-image` declares **no height**, so it is sized by the image inside it. Measured in
+  Firefox 146 at a 1280px viewport with an 800×400 image, the wrapper is `630×319px` as
+  shipped; applying Hero's absolute-and-overscan recipe to the parallax layer takes the image
+  out of flow and the wrapper measures **`630×0px`** — the picture disappears entirely. (Given
+  the wrapper an explicit `height`, the same markup measures 300px, which is the control that
+  proves the collapse is the missing height and not the recipe.) Bounding this drift needs a
+  height contract on `.spotlight-image` first — an `aspect-ratio` or a `height` prop — which is
+  a Spotlight design decision, not a CSS tweak. `parallaxClamp` is the bound available today.
 - **A row is always two columns wide.** `grid-template-columns: 1fr 1fr` is unconditional
   above `40rem`, so an `Item` holding only a `Spotlight.Content` occupies the left half and
   leaves the right half empty, and a third child wraps onto a second row.

@@ -1,7 +1,6 @@
 "use client";
 import {
   type ComponentPropsWithRef,
-  forwardRef,
   useCallback,
   useEffect,
   useRef,
@@ -54,6 +53,13 @@ export type AvatarUploadProps<TResult extends AvatarUploadResult = AvatarUploadR
   accept?: readonly string[];
   /** Maximum file size in bytes. */
   maxSize?: number;
+  /**
+   * How long the error tooltip stays on screen, in milliseconds. `0` keeps it up
+   * until it is dismissed or the next file is chosen — the pre-#386 behaviour.
+   * The `role="alert"` region is announced once regardless of this.
+   * @default 5000
+   */
+  errorTimeout?: number;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 /* ------------------------------------------------------------------ */
@@ -120,23 +126,31 @@ function validateFile(
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(function AvatarUpload(
-  {
-    src,
-    name,
-    size = "xl",
-    onUpload,
-    onUploadComplete,
-    onUploadError,
-    accept,
-    maxSize,
-    className,
-    onClick,
-    onKeyDown,
-    ...props
-  },
+/**
+ * A plain generic function component rather than `forwardRef` (#383): a
+ * `forwardRef<HTMLDivElement, AvatarUploadProps>` erases `TResult`, so
+ * `onUploadComplete` could never see a field `onUpload` returned beyond `url`.
+ * React 19 takes `ref` as an ordinary prop, and `ComponentPropsWithRef<"div">`
+ * already carries it, so the public shape — `<AvatarUpload ref={…} />` — is
+ * unchanged. `DataTable`, `VirtualizedDataTable` and `Repeater` are the other
+ * generic components here and none of them is a `forwardRef` either.
+ */
+export function AvatarUpload<TResult extends AvatarUploadResult = AvatarUploadResult>({
+  src,
+  name,
+  size = "xl",
+  onUpload,
+  onUploadComplete,
+  onUploadError,
+  accept,
+  maxSize,
+  errorTimeout = 5000,
+  className,
+  onClick,
+  onKeyDown,
   ref,
-) {
+  ...props
+}: AvatarUploadProps<TResult>) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -151,10 +165,22 @@ export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(functi
     return () => URL.revokeObjectURL(objectUrl);
   }, [objectUrl]);
 
+  // #386 — the message used to survive until the *next successful* selection, so
+  // opening the picker and cancelling left it sitting over whatever follows.
+  // Keyed on `error` so each new message restarts its own clock.
+  useEffect(() => {
+    if (error == null || errorTimeout <= 0) return undefined;
+    const id = setTimeout(() => setError(null), errorTimeout);
+    return () => clearTimeout(id);
+  }, [error, errorTimeout]);
+
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       onClick?.(e);
       if (e.defaultPrevented || uploading) return;
+      // Re-opening the picker dismisses the previous failure, whether or not
+      // this attempt gets as far as choosing a file.
+      setError(null);
       inputRef.current?.click();
     },
     [onClick, uploading],
@@ -163,9 +189,17 @@ export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(functi
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       onKeyDown?.(e);
-      if (e.defaultPrevented || uploading) return;
+      if (e.defaultPrevented) return;
+      // Escape dismisses the message without opening anything — the keyboard
+      // half of "dismiss", and it works while an upload is in flight.
+      if (e.key === "Escape") {
+        setError(null);
+        return;
+      }
+      if (uploading) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
+        setError(null);
         inputRef.current?.click();
       }
     },
@@ -232,11 +266,19 @@ export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(functi
         {/* Avatar display */}
         <Avatar src={displaySrc} name={name} size={size} className="size-full" />
 
-        {/* Hover overlay */}
+        {/* Hover overlay. The scrim reads the contract's own token, spelled the
+            way Dialog.tsx spells it (#384); the fallback covers a consumer who
+            skipped the token layer. `text-white` / `border-white` deliberately
+            stay literal: the contract has no "ink on an overlay" token, and the
+            two candidates are disqualified by measurement — `--C-TEXT-INVERSE`
+            is near-black in `tech` and `grimdark`, giving 2.35:1 and 1.52:1
+            against the composited scrim (1.05:1 and 1.10:1 over a dark avatar),
+            and `--C-TEXT-ON-PRIMARY` is chromatic there and is the wrong role. */}
         <span
           className={cn(
             "absolute inset-0 flex items-center justify-center rounded-full",
-            "bg-black/50 text-white opacity-0 transition-opacity duration-fast",
+            "bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))] text-white",
+            "opacity-0 transition-opacity duration-fast",
             "group-hover:opacity-100 group-focus-visible:opacity-100",
             uploading && "opacity-100",
           )}
@@ -256,10 +298,14 @@ export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(functi
         />
 
         {/* Error tooltip — the visible half only. ARIA makes a `button`'s
-            descendants presentational, so the live region is a sibling below. */}
+            descendants presentational, so the live region is a sibling below,
+            and nothing interactive (a close button) may live in here either.
+            `w-max` keeps a short message on one line, as `whitespace-nowrap`
+            used to; `max-w-` then caps it at Tooltip.css's own 17.5rem and lets
+            a long `accept` list wrap instead of running off both edges (#386). */}
         {error && (
           <span
-            className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-status-error px-2 py-1 text-body-3 text-fg-inverse"
+            className="absolute -bottom-8 left-1/2 w-max max-w-[17.5rem] -translate-x-1/2 rounded bg-status-error px-2 py-1 text-center text-body-3 text-fg-inverse"
             aria-hidden="true"
           >
             {error}
@@ -287,4 +333,4 @@ export const AvatarUpload = forwardRef<HTMLDivElement, AvatarUploadProps>(functi
       </span>
     </>
   );
-});
+}

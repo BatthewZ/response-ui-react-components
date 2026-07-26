@@ -1,7 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { createRef, StrictMode, useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FileUpload } from "./FileUpload";
 
@@ -491,6 +491,154 @@ describe("FileUpload", () => {
 
       expect(describedBy).toBeTruthy();
       expect(document.getElementById(describedBy!)).toHaveTextContent("Only PNG files");
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  #416 — object URLs are minted in an effect, not during render      */
+  /* ------------------------------------------------------------------ */
+
+  describe("#416 · object-URL lifecycle", () => {
+    /** jsdom implements neither `createObjectURL` nor `revokeObjectURL`. */
+    function stubObjectUrls() {
+      let created = 0;
+      const createObjectURL = vi.fn(() => `blob:mock/${++created}`);
+      const revokeObjectURL = vi.fn();
+      vi.stubGlobal(
+        "URL",
+        class StubURL extends URL {
+          static createObjectURL = createObjectURL;
+          static revokeObjectURL = revokeObjectURL;
+        },
+      );
+      /** Every URL handed out and never handed back — the leak, counted. */
+      const leaked = () => {
+        const revoked = new Set(revokeObjectURL.mock.calls.map((c) => c[0] as string));
+        return createObjectURL.mock.results
+          .map((r) => r.value as string)
+          .filter((url) => !revoked.has(url));
+      };
+      return { createObjectURL, revokeObjectURL, leaked };
+    }
+
+    const image = new File(["x"], "photo.png", { type: "image/png" });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("leaks nothing under StrictMode's double render", () => {
+      const { leaked } = stubObjectUrls();
+      const { unmount } = render(
+        <StrictMode>
+          <FileUpload files={[image]} />
+        </StrictMode>,
+      );
+
+      // Exactly one URL is live while the preview is on screen…
+      expect(leaked()).toHaveLength(1);
+      expect(screen.getByAltText("photo.png")).toHaveAttribute("src", leaked()[0]);
+
+      unmount();
+      // …and none survives the unmount.
+      expect(leaked()).toEqual([]);
+    });
+
+    it("mints one URL for a file, however often an inline files={[file]} re-renders", () => {
+      const { createObjectURL, revokeObjectURL } = stubObjectUrls();
+
+      let bump = () => {};
+      function Host() {
+        const [, setN] = useState(0);
+        bump = () => setN((n) => n + 1);
+        // A fresh array literal every render — the shape that used to churn.
+        return <FileUpload files={[image]} />;
+      }
+      render(<Host />);
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      const url = createObjectURL.mock.results[0].value as string;
+
+      act(() => bump());
+      act(() => bump());
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+      expect(screen.getByAltText("photo.png")).toHaveAttribute("src", url);
+    });
+
+    it("revokes a file's URL once it leaves the selection", () => {
+      const { createObjectURL, revokeObjectURL } = stubObjectUrls();
+      const second = new File(["y"], "other.png", { type: "image/png" });
+
+      const { rerender } = render(<FileUpload files={[image, second]} />);
+      expect(createObjectURL).toHaveBeenCalledTimes(2);
+      const [firstUrl] = createObjectURL.mock.results.map((r) => r.value as string);
+
+      rerender(<FileUpload files={[second]} />);
+
+      expect(revokeObjectURL.mock.calls).toEqual([[firstUrl]]);
+      expect(createObjectURL).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  #420 — every built-in word has an override path                    */
+  /* ------------------------------------------------------------------ */
+
+  describe("#420 · built-in copy is overridable", () => {
+    const doc = new File(["a"], "notes.txt", { type: "text/plain" });
+
+    it("translates the empty dropzone's prompt and accessible name", () => {
+      render(
+        <FileUpload
+          labels={{ prompt: "Glisser-déposer ou", browse: "parcourir", dropzone: "Téléverser" }}
+        />,
+      );
+
+      const zone = screen.getByRole("button", { name: "Téléverser" });
+      expect(zone).toHaveTextContent("Glisser-déposer ou parcourir");
+      expect(zone).not.toHaveTextContent("Drag & drop or");
+    });
+
+    it("translates the preview actions and the uploading caption", () => {
+      render(
+        <FileUpload
+          files={[doc]}
+          uploading
+          onClear={vi.fn()}
+          labels={{ replace: "Remplacer", clearAll: "Tout effacer", uploading: "Envoi…" }}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Remplacer" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Tout effacer" })).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Envoi…");
+    });
+
+    it("interpolates the file name through removeFileLabel", () => {
+      render(
+        <FileUpload
+          files={[doc]}
+          onRemoveFile={vi.fn()}
+          removeFileLabel={(file) => `Supprimer ${file.name}`}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Supprimer notes.txt" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Remove notes.txt" })).not.toBeInTheDocument();
+    });
+
+    it("keeps a caller's own aria-label winning over labels.dropzone", () => {
+      render(<FileUpload labels={{ dropzone: "Téléverser" }} aria-label="Avatar" />);
+      expect(screen.getByRole("button", { name: "Avatar" })).toBeInTheDocument();
+    });
+
+    it("lets a label be emptied rather than defaulted", () => {
+      render(<FileUpload labels={{ prompt: "" }} />);
+      const zone = screen.getByRole("button", { name: "Upload file" });
+      expect(zone).not.toHaveTextContent("Drag & drop or");
+      expect(zone).toHaveTextContent("browse");
     });
   });
 });

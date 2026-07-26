@@ -34,6 +34,8 @@ on this page. Nothing appears in the preview until you pass the array back in.
 | `success`         | `string \| null`              | —        |
 | `uploading`       | `boolean`                     | `false`  |
 | `disabled`        | `boolean`                     | `false`  |
+| `labels`          | `FileUploadLabels`            | English — see [Translating](#translating-the-built-in-copy) |
+| `removeFileLabel` | `(file: File) => string`      | ``(file) => `Remove ${file.name}` `` |
 | `className`       | `string`                      | —        |
 | `ref`             | `Ref<HTMLDivElement>`         | —        |
 | `onFilesRejected` | `(rejections: { file: File; reason: "type" \| "size" }[]) => void` | — |
@@ -160,9 +162,13 @@ Either way the preview ends in an action bar: **Replace** always, and **Clear al
 `onClear` is set. Replace just reopens the file dialog; nothing is removed until your
 `onFilesSelected` decides what the new array is.
 
-Object URLs for the media previews are created in a `useMemo` keyed on the `files` array's
-identity and revoked when it changes or the component unmounts — so pass a stable array.
-`files={[selected]}` written inline mints a new object URL on **every** parent render.
+Object URLs for the media previews are minted in an effect and keyed on each `File`'s own
+identity, not on the `files` array's — so an inline `files={[selected]}`, rebuilt on every
+parent render, reuses the URL it already has instead of churning through a fresh mint/revoke
+pair each time. A URL is revoked the moment its `File` leaves the array, and every live one is
+revoked on unmount, including under StrictMode's double render. Because minting happens after
+commit rather than during render, a media preview paints its frame one tick before its image
+lands.
 
 ## States
 
@@ -187,8 +193,9 @@ overrides the internal message a rejected file produces.
 
 ## Naming the dropzone
 
-The root carries a hard-coded `aria-label="Upload file"`, which says nothing about *which*
-file. Rest props are spread last, so your own `aria-label` replaces it cleanly:
+The root's default `aria-label` is `"Upload file"`, which says nothing about *which* file.
+`labels.dropzone` renames it, and rest props are spread last, so a plain `aria-label` replaces
+it cleanly and wins over `labels.dropzone` if you pass both:
 
 <!-- example:CustomLabel -->
 ```tsx
@@ -206,6 +213,36 @@ file. Rest props are spread last, so your own `aria-label` replaces it cleanly:
 FileUpload renders no visible label, and a `<div>` is not a labelable element, so a
 `<label for>` will not name it even if you pass it an `id`. A visible caption beside the zone
 is separate text you write yourself; the `aria-label` is what assistive technology reads.
+
+## Translating the built-in copy
+
+Every word the component supplies is a default, not a fixture. The six fixed words live on one
+`labels` object, and the one string that interpolates — a remove button's name, which carries
+the file's own name — is a function, the same split [TagInput](tag-input.md) and
+[Repeater](repeater.md) use:
+
+```tsx
+<FileUpload
+  files={files}
+  onFilesSelected={setFiles}
+  onClear={() => setFiles([])}
+  onRemoveFile={removeAt}
+  labels={{
+    prompt: "Glisser-déposer ou",
+    browse: "parcourir",
+    uploading: "Envoi…",
+    replace: "Remplacer",
+    clearAll: "Tout effacer",
+    dropzone: "Téléverser un fichier",
+  }}
+  removeFileLabel={(file) => `Supprimer ${file.name}`}
+/>
+```
+
+Any key you leave out keeps its English default; `""` renders an empty string rather than
+falling back. The internal rejection message ("…is not an accepted file type") is **not** on
+this object — it is generated per file, and the way to replace it is `onFilesRejected` plus
+your own `error` string, which overrides it.
 
 ## Theme tokens
 
@@ -318,10 +355,13 @@ it does not lighten on the dark themes.
 - **`children` is a compile error.** The props omit it from `ComponentPropsWithRef<"div">`, so
   `<FileUpload>Drop invoices here</FileUpload>` no longer typechecks and then silently renders
   the stock prompt. There is no slot for custom content.
-- **Pass a stable `files` array.** Object URLs are minted in a `useMemo` keyed on array
-  identity, so an inline `files={[file]}` creates and revokes one on every parent render —
-  measured 3 creations across two unrelated re-renders — and the `<img src>` changes each time.
-  Under `<StrictMode>` the double render leaks one URL per media file per mount, permanently.
+- **An inline `files` array is now safe.** Object URLs used to be minted in a `useMemo` keyed
+  on the array's identity, so an inline `files={[file]}` created and revoked one on every
+  parent render (measured 3 creations across two unrelated re-renders, with the `<img src>`
+  changing each time), and `<StrictMode>`'s double render leaked one URL per media file per
+  mount, permanently. Both are fixed: minting is an effect keyed on each `File`'s identity, so
+  the same measurement now reads 1 creation and 0 revocations, and a StrictMode mount leaves
+  exactly one live URL and none after unmount.
 - **Client component.** `"use client"` is at the top of `FileUpload.tsx`, so importing it into
   a server component establishes a client boundary rather than failing.
 
@@ -340,19 +380,20 @@ discovered by tabbing.
 
 Three gaps are worth planning around:
 
-- **The default name is generic and it is the only name.** "Upload file" says nothing about
-  what file. Rest props are spread last, so pass your own `aria-label` — measured to win over
-  the built-in — whenever more than one dropzone shares a page.
+- **The default name is generic.** "Upload file" says nothing about what file. Rest props are
+  spread last, so pass your own `aria-label` — measured to win over both the built-in default
+  and `labels.dropzone` — whenever more than one dropzone shares a page.
 - **The error and success messages are announced and referenced.** `error` renders in a
   `role="alert"`, `success` in a `role="status"`, and the dropzone's `aria-describedby` points
   at whichever of the hint, the error or the success message is on screen.
 
 Neither status is signalled by colour alone — the error and success states always carry the
 string you supplied as text, and the drag-over state is a live pointer interaction rather than
-a state anyone needs announced. Every remove button carries `aria-label="Remove <filename>"`,
-so rows are distinguishable; note that string, `Replace`, `Clear all`, `Uploading...`,
-`Drag & drop or browse`, `Upload file` and the internal rejection message are all hard-coded
-English, reachable only through `aria-label` and `error` respectively.
+a state anyone needs announced. Every remove button is named for its own file — `Remove
+<filename>` by default — so rows are distinguishable. That name, and every other word the
+component supplies, is overridable: see [Translating the built-in
+copy](#translating-the-built-in-copy). The internal rejection message is the one exception,
+and `error` replaces it.
 
 ## Related
 

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AvatarUpload } from "./AvatarUpload";
+import { AvatarUpload, type AvatarUploadProps, type AvatarUploadResult } from "./AvatarUpload";
 
 /** jsdom implements neither `createObjectURL` nor `revokeObjectURL`. */
 function stubObjectUrls() {
@@ -357,5 +357,166 @@ describe("AvatarUpload", () => {
     const alert = screen.getByRole("alert");
     expect(alert.textContent).toContain("not allowed");
     expect(alert.closest("[role='button']")).toBeNull();
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  #383 — the TResult type parameter survives to onUploadComplete     */
+  /* ------------------------------------------------------------------ */
+
+  describe("#383 · the upload result keeps its own shape", () => {
+    type Uploaded = AvatarUploadResult & { assetId: string };
+
+    // A type-level assertion is a real check and needs no `@ts-expect-error`:
+    // `forwardRef<HTMLDivElement, AvatarUploadProps>` pinned the component to the
+    // default `AvatarUploadResult`, which flips this to `false` and fails
+    // `bun run typecheck` — the gate this claim actually rests on.
+    type CompleteArgOf<T extends AvatarUploadResult> = NonNullable<
+      Parameters<typeof AvatarUpload<T>>[0]["onUploadComplete"]
+    >;
+    const tResultReachesTheComponent: CompleteArgOf<Uploaded> extends (
+      data: Uploaded,
+    ) => void
+      ? true
+      : false = true;
+
+    // The props type was already generic; the erasure was in the component. This
+    // asserts the declaration side stayed honest so the two cannot drift apart.
+    const tResultIsOnTheProps: NonNullable<
+      AvatarUploadProps<Uploaded>["onUpload"]
+    > extends (file: File) => Promise<Uploaded>
+      ? true
+      : false = true;
+
+    it("hands onUploadComplete the extra fields onUpload returned", async () => {
+      expect(tResultReachesTheComponent).toBe(true);
+      expect(tResultIsOnTheProps).toBe(true);
+
+      const seen: string[] = [];
+      render(
+        <AvatarUpload
+          onUpload={(): Promise<Uploaded> =>
+            Promise.resolve({ url: "https://cdn.example.com/a.png", assetId: "asset-1" })
+          }
+          // `data.assetId` is the runtime half of the same claim: it is a
+          // compile error the moment the parameter stops flowing.
+          onUploadComplete={(data) => seen.push(data.assetId)}
+        />,
+      );
+
+      const input = document.querySelector("input[type='file']") as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(input, {
+          target: { files: [new File(["x"], "a.png", { type: "image/png" })] },
+        });
+      });
+
+      expect(seen).toEqual(["asset-1"]);
+    });
+
+    it("still takes a ref, which forwardRef used to be the reason for", () => {
+      const ref = createRef<HTMLDivElement>();
+      render(<AvatarUpload ref={ref} />);
+      expect(ref.current).toBe(screen.getByRole("button", { name: "Change avatar" }));
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  #384 — the scrim reads the contract token                          */
+  /* ------------------------------------------------------------------ */
+
+  // Class-string only. `vitest` runs with `css: false`, so no test here can read
+  // a stylesheet or resolve a custom property: what colour the token *is* in a
+  // given theme was measured outside this suite, not asserted here.
+  it("#384: paints the hover scrim from --OVERLAY-SCRIM-COLOR, as Dialog.tsx does", () => {
+    render(<AvatarUpload name="Jane Doe" />);
+    const overlay = document.querySelector<HTMLElement>("span.absolute.inset-0.flex")!;
+
+    expect(overlay.className).toContain("bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]");
+    expect(overlay.className).not.toContain("bg-black/50");
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  #386 — the error tooltip is bounded, dismissable and timed         */
+  /* ------------------------------------------------------------------ */
+
+  describe("#386 · the error tooltip", () => {
+    const rejected = new File(["x"], "notes.txt", { type: "text/plain" });
+
+    function reject(props: Partial<AvatarUploadProps> = {}) {
+      const result = render(<AvatarUpload accept={["image/png"]} {...props} />);
+      const input = document.querySelector("input[type='file']") as HTMLInputElement;
+      act(() => {
+        fireEvent.change(input, { target: { files: [rejected] } });
+      });
+      return result;
+    }
+
+    /** The visible tooltip — the `aria-hidden` twin of the sr-only alert. */
+    function tooltip() {
+      return document.querySelector<HTMLElement>("span[aria-hidden='true'].absolute.-bottom-8");
+    }
+
+    // jsdom performs no layout, so the *overflow* itself is not observable here;
+    // the width contract that bounds it is.
+    it("bounds its width instead of refusing to wrap", () => {
+      reject();
+      const el = tooltip()!;
+
+      expect(el.className).not.toContain("whitespace-nowrap");
+      expect(el.className).toContain("w-max");
+      expect(el.className).toContain("max-w-[17.5rem]");
+    });
+
+    it("clears itself after errorTimeout", () => {
+      vi.useFakeTimers();
+      try {
+        reject();
+        expect(tooltip()).not.toBeNull();
+
+        act(() => {
+          vi.advanceTimersByTime(4999);
+        });
+        expect(tooltip()).not.toBeNull();
+
+        act(() => {
+          vi.advanceTimersByTime(1);
+        });
+        expect(tooltip()).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("keeps the message up for good when errorTimeout is 0", () => {
+      vi.useFakeTimers();
+      try {
+        reject({ errorTimeout: 0 });
+        act(() => {
+          vi.advanceTimersByTime(60_000);
+        });
+        expect(tooltip()).not.toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("dismisses on Escape without opening the picker", () => {
+      reject();
+      const root = screen.getByRole("button", { name: "Change avatar" });
+      const input = document.querySelector("input[type='file']") as HTMLInputElement;
+      const clickSpy = vi.spyOn(input, "click");
+
+      fireEvent.keyDown(root, { key: "Escape" });
+
+      expect(tooltip()).toBeNull();
+      expect(screen.queryByRole("alert")).toBeEmptyDOMElement();
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it("dismisses when the picker is re-opened, not only when a file is chosen", () => {
+      reject();
+      fireEvent.click(screen.getByRole("button", { name: "Change avatar" }));
+      expect(tooltip()).toBeNull();
+    });
   });
 });

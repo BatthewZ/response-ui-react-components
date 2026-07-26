@@ -312,15 +312,40 @@ const AppShellSidebar = forwardRef<HTMLElement, AppShellSidebarProps>(
 
 /* ─── SidebarSection ─── */
 
+type SidebarHeadingLevel = "h2" | "h3" | "h4" | "h5" | "h6";
+
 type SidebarSectionProps = {
   title?: string;
+  /**
+   * Heading element for `title`. `Swimlane`'s `titleAs` is the same prop with the
+   * same default; a shell whose page already uses `h2` for its own sections wants
+   * `"h3"` here.
+   */
+  titleAs?: SidebarHeadingLevel;
 } & ComponentPropsWithRef<"div">;
 
 const AppShellSidebarSection = forwardRef<HTMLDivElement, SidebarSectionProps>(
-  function AppShellSidebarSection({ title, className, children, ...props }, ref) {
+  function AppShellSidebarSection(
+    { title, titleAs: Heading = "h2", className, children, ...props },
+    ref
+  ) {
+    const { collapsed, isMobile } = useAppShell();
+    const showCollapsed = collapsed && !isMobile;
+
     return (
       <div ref={ref} className={cn("app-shell-sidebar-section", className)} {...props}>
-        {title && <div className="app-shell-sidebar-section-title">{title}</div>}
+        {/* A heading, not a `<div>` (#395): sidebar groups were unreachable by
+            heading navigation. Collapsed, the rail is icons only — but
+            `display: none` would take the heading back out of the accessibility
+            tree, which is the same trap the link label hit (#388), so it is
+            `sr-only` here rather than a rule in AppShell.css. */}
+        {title && (
+          <Heading
+            className={cn("app-shell-sidebar-section-title", showCollapsed && "sr-only")}
+          >
+            {title}
+          </Heading>
+        )}
         {children}
       </div>
     );

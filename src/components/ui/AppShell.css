@@ -111,6 +111,16 @@
 }
 
 .app-shell-sidebar-section-title {
+  /* This is a heading element since #395, so the CSS package's `h1`–`h6` rules
+     now reach it. Two of their declarations are not overridden by anything else
+     here and would land on an 11px label: `--H2-line-height` (measured in
+     Firefox 146: the row goes 22px → 72px in all four themes) and
+     `--HEADING-FONT` (Poppins → Playfair Display / Space Grotesk / Cinzel in
+     events / tech / grimdark). Both are pinned back so the heading changed the
+     semantics and nothing else. Delete these two only alongside a deliberate
+     decision to give the rail label the theme's heading face. */
+  line-height: normal;
+  font-family: inherit;
   padding: 0.25rem 0.75rem;
   font-size: 0.6875rem;
   font-weight: var(--Semibold-Weight);
@@ -184,8 +194,14 @@
    lucide icon beside it is aria-hidden, which left a collapsed rail as a list of
    unnamed links (#388). */
 
+/* The section heading is taken off the screen by `sr-only` in AppShell.tsx too,
+   for the same reason as the link label above: it used to be `display: none`
+   here, which removes a heading from the accessibility tree — so the rail hid
+   the very groups #395 gave headings to. This rule survives only to surrender
+   the padding, because this file is unlayered and would otherwise outrank
+   `sr-only`'s own `padding: 0` whatever the utility's specificity. */
 .app-shell-sidebar[data-collapsed] .app-shell-sidebar-section-title {
-  display: none;
+  padding: 0;
 }
 
 /* ── Main content ── */

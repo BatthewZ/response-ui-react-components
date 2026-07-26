@@ -55,7 +55,7 @@ boxes you can wrap freely.
 | `AppShell.NavbarActions`  | `<div>` with `margin-left: auto`              | — (all `div` props)                                                               |
 | `AppShell.Toggle`         | `<button type="button">`                      | — (all `button` props **except `type`**)                                          |
 | `AppShell.Sidebar`        | `<aside role="navigation" aria-label="Main navigation">`, wrapped on mobile in `<div role="dialog" aria-modal="true">` | — (all `aside` props **except `role`**) |
-| `AppShell.SidebarSection` | `<div>`, with a `<div>` title above its children | `title?: string` (+ all `div` props)                                           |
+| `AppShell.SidebarSection` | `<div>`, with a heading title above its children | `title?: string` · `titleAs?: "h2" \| "h3" \| "h4" \| "h5" \| "h6"` (default `"h2"`) (+ all `div` props) |
 | `AppShell.SidebarLink`    | the router adapter's `Link` — a plain `<a href>` by default | `to: string` · `icon?: LucideIcon` · `children` required (+ all `a` props **except `children`**; `href` is a compile error — see [Gotchas](#gotchas)) |
 | `AppShell.Main`           | `<main>` — the page's main landmark; see [The main landmark](#the-main-landmark) | — (all `main` props)                |
 
@@ -104,6 +104,14 @@ and no flash of a wrongly placed sidebar.
 `--C-BORDER-DEFAULT` rule with `1rem` of space above and below it, drawn by a `+` sibling
 selector — so the rule appears between sections, never above the first one:
 
+The title is a **heading element** — `<h2>` by default, `titleAs` picks another level, exactly
+as [Swimlane](swimlane.md)'s `titleAs` does. Set it to `"h3"` if your page already uses `h2`
+for its own sections, so the sidebar does not interleave with them. The label still *looks*
+the same at every level: `.app-shell-sidebar-section-title` pins `line-height` and
+`font-family` back to the component's own, because the CSS package's `h1`–`h6` rules would
+otherwise give an 11px uppercase label the theme's heading face and an `--H2-line-height` of
+`4rem` (measured in Firefox: the row grows from 22px to 72px without the pin).
+
 <!-- example:SidebarSections -->
 ```tsx
 <AppShell>
@@ -141,9 +149,11 @@ selector — so the rule appears between sections, never above the first one:
 
 ## The collapsed rail
 
-`collapsed` narrows the desktop sidebar from `16.25rem` to `4rem`, hides every link label
-and every section title, and centres the icons. Nothing else changes: the sidebar is still
-in the layout, still scrollable, still the same `<aside>`.
+`collapsed` narrows the desktop sidebar from `16.25rem` to `4rem`, takes every link label and
+every section heading off the screen, and centres the icons. Nothing else changes: the sidebar
+is still in the layout, still scrollable, still the same `<aside>`. Both the labels and the
+headings go with `sr-only`, not `display: none`, so they stay in the accessibility tree — see
+[Accessibility](#accessibility).
 
 <!-- example:CollapsedByDefault -->
 ```tsx
@@ -319,7 +329,9 @@ The width transition and both drawer animations are dropped under
 **What is not on the contract.** The whole geometry is literals: the sidebar widths
 (`16.25rem` expanded, `4rem` collapsed, `17.5rem` for the drawer), the corner radius
 (`0.375rem`, not `--RADIUS-*`), the section-title type size (`0.6875rem` — a literal rather
-than `--BodyText-3`, which it happens to equal in the `tech` theme and in no other), and the
+than `--BodyText-3`, which it happens to equal in the `tech` theme and in no other), the
+section title's `line-height: normal` and `font-family: inherit` (deliberate: they hold the
+theme's heading face and `--H2-line-height` off the heading element the title now is), and the
 stacking order (`10` navbar, `49` scrim, `50` drawer — the drawer ties with
 [Tooltip](tooltip.md)'s layer).
 
@@ -427,7 +439,13 @@ source — hiding it outright left the rail a list of unnamed links. Note the [T
 wrapper is not what saves this: it contributes `aria-describedby`, a *description*, and only
 while open. A `SidebarLink` with no `children` still has no name.
 
-Two gaps you have to close yourself:
+Section titles are headings. `AppShell.SidebarSection` renders `title` as an `<h2>` (or
+whatever `titleAs` names), so heading navigation reaches the groups, and the collapsed rail
+takes the heading off the screen with `sr-only` rather than `display: none` — the same trade
+as the link label, and for the same reason: a `display: none` heading is out of the
+accessibility tree, so hiding it would have undone the point of making it one.
+
+One gap you have to close yourself:
 
 - **The drawer is a `dialog` wrapping the `navigation`.** On mobile the portal renders
   `<div role="dialog" aria-modal="true" aria-label="Main navigation">` around the
@@ -436,10 +454,11 @@ Two gaps you have to close yourself:
   or `aria-hidden`, so a screen-reader user can still browse the content behind the scrim
   while the DOM focus trap pulls Tab focus back — the two disagree. If you need a true modal
   drawer, reach for [Drawer](drawer.md).
-- **Section titles are `<div>`s.** They are styled like headings and read like headings, but
-  they are not headings, so heading navigation skips them and the groups are unlabelled to
-  anyone navigating that way. They are also `--C-TEXT-MUTED` (2.10–2.59:1) and are hidden
-  outright in the collapsed rail, which leaves the divider rule with nothing explaining it.
+
+Section headings paint `--C-TEXT-MUTED` on the sidebar's `--C-SURFACE-0`. This page used to
+put that at 2.10–2.59:1; re-measured against the shipped `@batthewz/response-ui-css` v0.10.0
+it is **4.95 default / 4.85 events / 4.87 tech / 5.23 grimdark**, so it clears 4.5:1 in every
+theme. The old figures predate that palette retune.
 
 Two more things worth knowing: the active link is marked with `aria-current="page"`, so its
 state is *not* colour-only for assistive tech — and for sighted users the accent now draws a

@@ -26,6 +26,33 @@ export type FileUploadRejection = {
   reason: "type" | "size";
 };
 
+/** Every fixed word FileUpload renders. See {@link DEFAULT_FILE_UPLOAD_LABELS}. */
+export type FileUploadLabels = {
+  /** Text before the browse affordance in the empty dropzone. */
+  prompt?: string;
+  /** The emphasised word inside the prompt that reads as the click target. */
+  browse?: string;
+  /** Replaces the prompt, and captions the preview, while `uploading`. */
+  uploading?: string;
+  /** Re-opens the picker from the preview. */
+  replace?: string;
+  /** Clears every file. Only rendered when `onClear` is given. */
+  clearAll?: string;
+  /** Accessible name of the empty dropzone. */
+  dropzone?: string;
+};
+
+export const DEFAULT_FILE_UPLOAD_LABELS: Required<FileUploadLabels> = {
+  prompt: "Drag & drop or",
+  browse: "browse",
+  uploading: "Uploading...",
+  replace: "Replace",
+  clearAll: "Clear all",
+  dropzone: "Upload file",
+};
+
+const defaultRemoveFileLabel = (file: File) => `Remove ${file.name}`;
+
 type FileUploadProps = {
   /**
    * Accepted file rules, in the same grammar as the input's `accept` attribute
@@ -71,6 +98,20 @@ type FileUploadProps = {
   success?: string | null;
   /** Whether the component is in an uploading state. */
   uploading?: boolean;
+  /**
+   * Overrides for the component's own fixed words. Any key you leave out keeps
+   * its English default; `""` renders an empty string rather than the default.
+   * `labels.dropzone` is a *default* accessible name — a caller's own
+   * `aria-label` arrives in the rest props, which are spread last, and wins.
+   */
+  labels?: FileUploadLabels;
+  /**
+   * Accessible name of a file's remove button. A function rather than a `labels`
+   * key because the file's name is interpolated into it — the same shape
+   * `TagInput` and `Repeater` use for their announcements.
+   * @default (file) => `Remove ${file.name}`
+   */
+  removeFileLabel?: (file: File) => string;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 /* ------------------------------------------------------------------ */
@@ -169,6 +210,9 @@ function isMediaFile(file: File): boolean {
   return file.type.startsWith("image/") || file.type.startsWith("video/");
 }
 
+/** Stable identity for the "no previews yet" render. Never mutated. */
+const EMPTY_PREVIEWS: ReadonlyMap<File, string> = new Map();
+
 /* ------------------------------------------------------------------ */
 /*  Large media preview (single image/video)                           */
 /* ------------------------------------------------------------------ */
@@ -176,11 +220,14 @@ function isMediaFile(file: File): boolean {
 function MediaPreviewLarge({
   file,
   previewUrl,
+  removeLabel,
   onRemove,
   disabled,
 }: {
   file: File;
-  previewUrl: string;
+  /** Absent for the first paint after selection: the URL is minted in an effect. */
+  previewUrl?: string;
+  removeLabel: string;
   onRemove?: () => void;
   disabled?: boolean;
 }) {
@@ -197,26 +244,27 @@ function MediaPreviewLarge({
             e.stopPropagation();
             onRemove();
           }}
-          aria-label={`Remove ${file.name}`}
+          aria-label={removeLabel}
         >
           <CloseIcon />
         </button>
       )}
 
-      {isVideo ? (
-        <video
-          src={previewUrl}
-          className="file-upload__media-large-content"
-          controls
-          muted
-        />
-      ) : (
-        <img
-          src={previewUrl}
-          alt={file.name}
-          className="file-upload__media-large-content"
-        />
-      )}
+      {previewUrl != null &&
+        (isVideo ? (
+          <video
+            src={previewUrl}
+            className="file-upload__media-large-content"
+            controls
+            muted
+          />
+        ) : (
+          <img
+            src={previewUrl}
+            alt={file.name}
+            className="file-upload__media-large-content"
+          />
+        ))}
 
       <div className="file-upload__media-caption">
         <span className="file-upload__preview-name" title={file.name}>
@@ -237,11 +285,14 @@ function MediaPreviewLarge({
 function MediaPreviewGrid({
   file,
   previewUrl,
+  removeLabel,
   onRemove,
   disabled,
 }: {
   file: File;
-  previewUrl: string;
+  /** Absent for the first paint after selection: the URL is minted in an effect. */
+  previewUrl?: string;
+  removeLabel: string;
   onRemove?: () => void;
   disabled?: boolean;
 }) {
@@ -258,25 +309,26 @@ function MediaPreviewGrid({
             e.stopPropagation();
             onRemove();
           }}
-          aria-label={`Remove ${file.name}`}
+          aria-label={removeLabel}
         >
           <CloseIcon />
         </button>
       )}
 
-      {isVideo ? (
-        <video
-          src={previewUrl}
-          className="file-upload__media-grid-content"
-          muted
-        />
-      ) : (
-        <img
-          src={previewUrl}
-          alt={file.name}
-          className="file-upload__media-grid-content"
-        />
-      )}
+      {previewUrl != null &&
+        (isVideo ? (
+          <video
+            src={previewUrl}
+            className="file-upload__media-grid-content"
+            muted
+          />
+        ) : (
+          <img
+            src={previewUrl}
+            alt={file.name}
+            className="file-upload__media-grid-content"
+          />
+        ))}
 
       <span className="file-upload__media-grid-name" title={file.name}>
         {file.name}
@@ -292,11 +344,13 @@ function MediaPreviewGrid({
 function FilePreviewItem({
   file,
   previewUrl,
+  removeLabel,
   onRemove,
   disabled,
 }: {
   file: File;
   previewUrl?: string | null;
+  removeLabel: string;
   onRemove?: () => void;
   disabled?: boolean;
 }) {
@@ -334,7 +388,7 @@ function FilePreviewItem({
             e.stopPropagation();
             onRemove();
           }}
-          aria-label={`Remove ${file.name}`}
+          aria-label={removeLabel}
         >
           <CloseIcon />
         </button>
@@ -363,6 +417,8 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
     error,
     success,
     uploading = false,
+    labels,
+    removeFileLabel = defaultRemoveFileLabel,
     className,
     onClick,
     onKeyDown,
@@ -377,20 +433,56 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
   const [dragOver, setDragOver] = useState(false);
   const [rejectionMessage, setRejectionMessage] = useState<string | null>(null);
 
+  const text = { ...DEFAULT_FILE_UPLOAD_LABELS, ...labels };
+
   const hasFiles = filesProp != null && filesProp.length > 0;
 
   /* ---- Object URLs for media previews ---- */
 
-  const previewUrls = useMemo(() => {
-    if (!filesProp) return new Map<File, string>();
-    const map = new Map<File, string>();
-    for (const file of filesProp) {
-      if (isMediaFile(file)) {
-        map.set(file, URL.createObjectURL(file));
+  // Minting belongs in an effect, not in a memo (#416). A memo runs during
+  // render, so StrictMode's double render minted two URLs per media file and
+  // committed only the second map — the first set leaked for the page's life.
+  // The ref is the live set: it is keyed by `File` identity rather than by the
+  // `files` array's identity, so an inline `files={[file]}` re-render finds the
+  // same File objects and reuses their URLs instead of churning through a fresh
+  // mint/revoke pair every time the parent renders.
+  const liveUrlsRef = useRef(new Map<File, string>());
+  // Seeded from a shared empty map rather than from the ref, so render never
+  // reads the mutable set (DataTable's EMPTY_SELECTION, same reason).
+  const [previewUrls, setPreviewUrls] = useState<ReadonlyMap<File, string>>(EMPTY_PREVIEWS);
+
+  useEffect(() => {
+    const live = liveUrlsRef.current;
+    const wanted = new Set((filesProp ?? []).filter(isMediaFile));
+
+    let changed = false;
+    for (const file of wanted) {
+      if (!live.has(file)) {
+        live.set(file, URL.createObjectURL(file));
+        changed = true;
       }
     }
-    return map;
+    for (const [file, url] of live) {
+      if (!wanted.has(file)) {
+        URL.revokeObjectURL(url);
+        live.delete(file);
+        changed = true;
+      }
+    }
+    // A new map only when the contents moved: an unchanged set keeps the same
+    // object, so `<img src>` stays byte-identical and the image is not re-decoded.
+    if (changed) setPreviewUrls(new Map(live));
   }, [filesProp]);
+
+  // Unmount only — and it is what makes StrictMode's simulated unmount release
+  // the first pass's URLs before the effect above re-mints them.
+  useEffect(() => {
+    const live = liveUrlsRef.current;
+    return () => {
+      for (const url of live.values()) URL.revokeObjectURL(url);
+      live.clear();
+    };
+  }, []);
 
   /* ---- Partition files into media vs non-media ---- */
 
@@ -406,15 +498,6 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
     }
     return { mediaFiles: media, otherFiles: other };
   }, [filesProp, useCompact]);
-
-  // Revoke old URLs on change / unmount
-  useEffect(() => {
-    return () => {
-      for (const url of previewUrls.values()) {
-        URL.revokeObjectURL(url);
-      }
-    };
-  }, [previewUrls]);
 
   /* ---- Validation ---- */
 
@@ -538,7 +621,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
       // in the empty state, where it is the one thing to press.
       role={hasFiles ? undefined : "button"}
       tabIndex={hasFiles ? undefined : disabled ? -1 : 0}
-      aria-label={hasFiles ? undefined : "Upload file"}
+      aria-label={hasFiles ? undefined : text.dropzone}
       aria-disabled={disabled || undefined}
       aria-busy={uploading || undefined}
       aria-describedby={describedBy}
@@ -571,7 +654,8 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
           {mediaFiles.length === 1 && (
             <MediaPreviewLarge
               file={mediaFiles[0]}
-              previewUrl={previewUrls.get(mediaFiles[0])!}
+              previewUrl={previewUrls.get(mediaFiles[0])}
+              removeLabel={removeFileLabel(mediaFiles[0])}
               onRemove={
                 onRemoveFile ? () => onRemoveFile(filesProp.indexOf(mediaFiles[0])) : undefined
               }
@@ -586,7 +670,8 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
                 <MediaPreviewGrid
                   key={`${file.name}-${file.size}-${i}`}
                   file={file}
-                  previewUrl={previewUrls.get(file)!}
+                  previewUrl={previewUrls.get(file)}
+                  removeLabel={removeFileLabel(file)}
                   onRemove={
                     onRemoveFile ? () => onRemoveFile(filesProp.indexOf(file)) : undefined
                   }
@@ -604,6 +689,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
                   key={`${file.name}-${file.size}-${i}`}
                   file={file}
                   previewUrl={previewUrls.get(file)}
+                  removeLabel={removeFileLabel(file)}
                   onRemove={
                     onRemoveFile ? () => onRemoveFile(filesProp.indexOf(file)) : undefined
                   }
@@ -616,7 +702,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
           {/* Uploading — otherwise the disabled actions below say nothing */}
           {uploading && (
             <p className="file-upload__hint" role="status">
-              Uploading...
+              {text.uploading}
             </p>
           )}
 
@@ -630,7 +716,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
                 inputRef.current?.click();
               }}
             >
-              Replace
+              {text.replace}
             </button>
             {onClear && (
               <button
@@ -642,7 +728,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
                   onClear();
                 }}
               >
-                Clear all
+                {text.clearAll}
               </button>
             )}
           </div>
@@ -671,11 +757,11 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
 
           {/* Main text */}
           {uploading ? (
-            <p className="file-upload__text">Uploading...</p>
+            <p className="file-upload__text">{text.uploading}</p>
           ) : (
             <p className="file-upload__text">
-              Drag & drop or{" "}
-              <span className="file-upload__text-emphasis">browse</span>
+              {text.prompt}{" "}
+              <span className="file-upload__text-emphasis">{text.browse}</span>
             </p>
           )}
 

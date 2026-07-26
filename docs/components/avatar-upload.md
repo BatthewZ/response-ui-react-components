@@ -31,9 +31,15 @@ returns — so the only thing you write is the request.
 | `onUploadError`    | `(error: Error) => void`                   | —       |
 | `accept`           | `readonly string[]`                        | —       |
 | `maxSize`          | `number` — bytes                           | —       |
+| `errorTimeout`     | `number` — ms; `0` never clears            | `5000`  |
 | `className`        | `string`                                   | —       |
 | `ref`              | `Ref<HTMLDivElement>`                      | —       |
 | …rest              | props of `div`, minus `children`           | —       |
+
+`onUpload` and `onUploadComplete` share a type parameter: whatever object your handler
+resolves with is the exact type `onUploadComplete` receives, so returning
+`{ url, assetId }` makes `data.assetId` typed rather than a compile error. It only has to
+carry a `url`; everything else is yours.
 
 Every prop is optional and `<AvatarUpload />` renders. `accept` understands the same grammar
 the OS dialog does — exact MIME types, wildcards like `image/*`, and filename extensions like
@@ -48,7 +54,8 @@ changes are ignored, so don't treat this as a controlled component.
 A single handler runs the whole sequence, in this order:
 
 1. The `<input type="file">` value is reset to `""`, so re-picking the **same** file starts
-   a fresh attempt instead of doing nothing. Any previous error message is cleared.
+   a fresh attempt instead of doing nothing. Any previous error message is cleared — as it
+   also is by opening the picker, by `Escape`, and by `errorTimeout` elapsing.
 2. `accept` and `maxSize` are checked in that order. On failure the generated message
    renders in a tooltip below the circle, `onUploadError` fires with an `Error` carrying
    that same message, and the sequence stops — the avatar does not change.
@@ -188,13 +195,27 @@ error tooltip:
 | Error tooltip ink                | `text-fg-inverse`                       | `--C-TEXT-INVERSE`  |
 | Error tooltip type               | `text-body-3`                           | `--BodyText-3`      |
 
-**The hover scrim is off the contract.** The overlay is `bg-black/50` with a `text-white`
-glyph, and the busy spinner is `border-white` — all three are Tailwind's literal colours,
-not theme variables, so they are byte-identical in every theme. The
-[theme contract](../theme-contract.md) does define `--OVERLAY-SCRIM-COLOR` for exactly this
-job ([Drawer](drawer.md), [AppShell](app-shell.md) and [CommandPalette](command-palette.md) all read it, and the shipped
-themes set it between 45% and 80% opacity), but AvatarUpload does not. Overriding it will
-not move this scrim; you have to pass your own `className`.
+The hover scrim is not in that table on purpose: it is written as
+`bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]`, and an arbitrary-value utility carrying a
+`var()` is not something `verify-component-docs` can resolve to a token — the same reason
+[Dialog](dialog.md)'s backdrop is described in prose rather than tabulated.
+
+**The scrim is on the contract; its glyph is not.** The overlay reads
+`--OVERLAY-SCRIM-COLOR`, the same token [Drawer](drawer.md), [AppShell](app-shell.md),
+[CommandPalette](command-palette.md) and [Dialog](dialog.md) read, with `rgb(0 0 0 / 0.5)` as
+the fallback for an app that skipped the token layer. The shipped themes set it to 45%
+(events), 50% (default), 70% (tech) and 80% (grimdark), so re-theming it moves this scrim too.
+
+The camera glyph and the busy spinner's ring are still literal `text-white` / `border-white`,
+and that is deliberate rather than an oversight: the contract has no "ink on an overlay"
+token. `--C-TEXT-INVERSE` is the obvious candidate and is **near-black** in `tech` and
+`grimdark` — measured against the composited scrim it gives **2.35:1** and **1.52:1** over a
+light photo, and **1.05:1** / **1.10:1** over a dark one, i.e. an invisible glyph. White
+measures 3.98 (default), 2.89 (events), 8.46 (tech) and 12.63 (grimdark) against the scrim
+over a white photo, and ≥19:1 over a black one. Note the `events` figure: its lighter 45%
+scrim puts a white glyph under the 3:1 floor WCAG 1.4.11 sets for a non-text control cue,
+over a light photo. If that matters for your avatars, override the token or the glyph colour
+through `className`.
 
 The five box sizes are fixed Tailwind spacing rather than the responsive `r`-scale, so the
 circle is the same diameter on mobile and desktop. `--BodyText-3` on the error tooltip *is*
@@ -219,16 +240,23 @@ responsive and steps up at the 40rem breakpoint.
 - **`src` is ignored once the component holds a preview.** The internal URL takes precedence
   for the instance's lifetime — it is cleared only by a *failed* upload — so a re-render with
   a server-authoritative `src` will not be shown. Remount with a `key` to force it.
-- **The `TResult` generic is not reachable.** `AvatarUploadProps` is declared generic over
-  the upload result, but the component is `forwardRef<HTMLDivElement, AvatarUploadProps>`,
-  which pins it to the default. `onUpload` may *return* extra fields, but
-  `onUploadComplete` types its argument as `{ url: string }`, so reading `data.assetId` is
-  a compile error. Neither `AvatarUploadProps` nor `AvatarUploadResult` is re-exported from
-  the package barrel, so you cannot restate the type yourself either.
-- **The error tooltip is `whitespace-nowrap` and absolutely positioned** 2rem below the
-  circle, centred. A long `accept` list produces a single wide strip that overflows its
-  container in both directions and can sit over whatever follows. It clears only when the
-  next file is chosen — there is no dismiss, and no timeout.
+- **AvatarUpload is not a `forwardRef` component.** It cannot be: `forwardRef` takes exactly
+  two type arguments and erases `TResult`, which pinned `onUploadComplete` to
+  `{ url: string }`. It is a plain generic function component taking React 19's `ref` prop
+  instead, which every other generic component here ([DataTable](data-table.md),
+  [VirtualizedDataTable](virtualized-data-table.md), [Repeater](repeater.md)) already is.
+  `<AvatarUpload ref={r} />` behaves identically and
+  `ComponentRef<typeof AvatarUpload>` still resolves to `HTMLDivElement` (both checked against
+  `tsc`), so the only thing that changed is the internal shape. `AvatarUploadProps` and
+  `AvatarUploadResult` are both exported from the package barrel if you need to name either.
+- **The error tooltip is absolutely positioned** 2rem below the circle, centred, capped at
+  `17.5rem` wide and wrapping past that — a long `accept` list is a block, not a strip, but
+  it still overhangs a circle narrower than itself and can sit over whatever follows. It is
+  cleared by `errorTimeout` (5s by default), by `Escape` while the control has focus, and by
+  re-opening the picker; before, it survived until the *next successful* selection, so
+  cancelling the OS dialog left it up indefinitely. There is still no visible close button:
+  the tooltip lives inside a `role="button"`, whose descendants ARIA makes presentational,
+  so an interactive control cannot go there.
 - **No `disabled` prop.** The component ignores its own click and key handlers while an
   upload is in flight, but you cannot disable it from outside, and `cursor-pointer` stays on
   throughout.
@@ -250,11 +278,13 @@ compose with the component's own — see [Gotchas](#gotchas).)
 
 Two gaps are worth planning around:
 
-- **Nothing announces the upload.** The busy spinner lives inside an `aria-hidden` span, and
-  the root gains no `aria-busy` and no `aria-disabled` while `onUpload` is pending. Clicks
-  and keypresses in that window are silently dropped. Assistive-technology users get no
-  signal that anything is happening, which is why the [Callbacks](#reporting-the-result)
-  example routes state changes into a `role="status"` region of its own.
+- **Nothing *announces* the upload, though the state is exposed.** The busy spinner lives
+  inside an `aria-hidden` span, but the root does carry `aria-busy="true"` and
+  `aria-disabled="true"` while `onUpload` is pending, so a screen reader that re-reads the
+  control reports it — nothing pushes that into a live region as it happens. Clicks and
+  keypresses in that window are still dropped. That is why the
+  [Callbacks](#reporting-the-result) example routes state changes into a `role="status"`
+  region of its own.
 - **The built-in error tooltip is a `role="alert"` nested inside a `role="button"`.** ARIA
   makes a button's descendants presentational, so that alert is not a reliable live region —
   and because `aria-label` wins over content for the name computation, the message doesn't

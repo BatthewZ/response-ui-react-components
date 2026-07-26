@@ -109,6 +109,70 @@ describe("AppShell", () => {
     expect(screen.getByText("Section B")).toBeInTheDocument();
   });
 
+  /* ------------------------------------------------------------------ */
+  /*  #395 — sidebar groups are reachable by heading navigation          */
+  /* ------------------------------------------------------------------ */
+
+  describe("#395 · SidebarSection titles are headings", () => {
+    function renderSections(
+      props: { defaultCollapsed?: boolean; defaultOpen?: boolean } = {},
+      sectionProps = {},
+    ) {
+      return renderWithRouter(
+        <AppShell {...props}>
+          <AppShell.Sidebar>
+            <AppShell.SidebarSection title="Workspace" {...sectionProps}>
+              <AppShell.SidebarLink to="/projects">Projects</AppShell.SidebarLink>
+            </AppShell.SidebarSection>
+          </AppShell.Sidebar>
+          <AppShell.Main>Main</AppShell.Main>
+        </AppShell>,
+      );
+    }
+
+    it("renders the title as an h2, not a div", () => {
+      renderSections();
+      const heading = screen.getByRole("heading", { name: "Workspace", level: 2 });
+      expect(heading.tagName).toBe("H2");
+    });
+
+    it("takes the level from titleAs, as Swimlane does", () => {
+      renderSections({}, { titleAs: "h4" });
+      expect(screen.getByRole("heading", { name: "Workspace", level: 4 }).tagName).toBe("H4");
+    });
+
+    // The second clause of the row: `display: none` in the collapsed rail put
+    // the heading straight back out of the accessibility tree. jsdom reads no
+    // stylesheet, so what is asserted is (a) the heading is still exposed and
+    // (b) the class that takes it off screen is `sr-only`, the same answer the
+    // link label got in #388 — NOT that it is visually hidden, which only a
+    // browser can say.
+    it("keeps the heading in the accessibility tree in the collapsed rail", () => {
+      renderSections({ defaultCollapsed: true });
+      const heading = screen.getByRole("heading", { name: "Workspace", level: 2 });
+
+      expect(heading.className).toContain("sr-only");
+      expect(heading.className).toContain("app-shell-sidebar-section-title");
+    });
+
+    it("does not hide the heading when the rail is expanded", () => {
+      renderSections();
+      expect(
+        screen.getByRole("heading", { name: "Workspace" }).className,
+      ).not.toContain("sr-only");
+    });
+
+    // The mobile drawer is a full-width panel, never the icon rail, so a
+    // `collapsed` shell must not hide the heading there.
+    it("keeps the heading visible in the mobile drawer even when collapsed", () => {
+      stubMobileMatchMedia();
+      renderSections({ defaultCollapsed: true, defaultOpen: true });
+      expect(
+        screen.getByRole("heading", { name: "Workspace" }).className,
+      ).not.toContain("sr-only");
+    });
+  });
+
   it("renders sidebar links", () => {
     renderWithRouter(
       <AppShell>
