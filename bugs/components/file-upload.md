@@ -110,3 +110,31 @@ Harmless while a caller's `onClick` was being *replaced*; once #407 composed the
 have double-fired the caller's handler on every click, so #407 was not deliverable without
 this. **Fixed** alongside it by stopping propagation on the input, and locked by tightening
 the assertion to an exact count.
+
+### 465 · FileUpload — the dropzone's call to action is under AA on two themes (med)
+
+Surfaced 2026-07-26 by the contrast re-scope. Unlogged by every earlier pass, which measured the
+dropzone's muted prompt (`#414`) and its dashed border but not the emphasised word inside the
+prompt.
+
+`.file-upload__text-emphasis` (`FileUpload.css:91-94`) inks `--C-ACCENT` at `Semibold` on the
+`--C-SURFACE-1` fill the dropzone paints. That span is the word **"browse"** — the clickable call
+to action in "Drag & drop … or browse".
+
+| Theme | `--C-ACCENT` on `--C-SURFACE-1` |
+| --- | --- |
+| default | 4.95:1 |
+| tech | 14.56:1 |
+| events | **2.63:1** |
+| grimdark | **2.77:1** |
+
+**Not closed by the `--C-TEXT-MUTED` retune** (css `cbc6876`). That retune fixed the surrounding
+prompt text; this is accent ink, a different token, and it moved with neither.
+
+**Failure scenario:** on `events` and `grimdark` the one word telling a user they can click to pick
+a file is the least legible text in the control.
+
+Same shape as `#173` (`Swimlane`, `--C-ACCENT` body copy at 2.72/2.96:1) — accent used as *ink* for
+text rather than as a *fill*. `AppShell.css`'s own comment records the package already reaching that
+conclusion once and moving the active-link accent off ink onto an inset edge. Worth a sweep for
+`color: var(--C-ACCENT)` across the component CSS.
