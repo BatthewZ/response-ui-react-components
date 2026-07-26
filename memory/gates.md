@@ -67,6 +67,15 @@ good. These are the ways they have still let defects through.
   moment you add a second key. So a one-key probe "proves" the hole is closed while the real
   binding, always several keys, slips straight through. Reproduce with the shape the caller
   actually uses, not the smallest shape you can write.
+- **No gate here can see a performance fix at all, so a disabled one stays green forever.** A
+  memoizing cache in the date utilities was short-circuited by a `return` on its first line —
+  every call rebuilt the formatter the cache existed to reuse, and the whole cache body became
+  unreachable. Types, lint and all 1931 tests passed, and the change was reviewed and committed
+  as sound. Nothing was wrong with the gates: the tests assert *output*, and a bypassed cache
+  returns identical output; `no-unreachable` is not among the two rules this lint config
+  deliberately enables; and `tsc` treats unreachable code as an editor suggestion, not an error.
+  Optimizations are the one class of change where green means only "still correct", never "still
+  fast". Re-measure after the final restore — not after the last time you looked.
 - **Prose about a gate drifts exactly like prose about a component.** A maintainer doc described
   the publish chain as five steps when it ran nine; the script itself is the only trustworthy
   source. If you document a chain, assert your description against it mechanically.

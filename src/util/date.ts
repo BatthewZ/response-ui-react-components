@@ -108,7 +108,6 @@ function formatterCacheKey(locale: string, options?: Intl.DateTimeFormatOptions)
 
 /** An `Intl.DateTimeFormat` for `locale`/`options`, built once and reused. */
 function dateFormatter(locale: string, options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
-  return new Intl.DateTimeFormat(locale, options); // TEMP-AB-BYPASS
   const key = formatterCacheKey(locale, options);
   const cached = formatterCache.get(key);
   if (cached) return cached;

@@ -67,6 +67,19 @@ exists to prevent.
   `python3 -m http.server`; pass `-s=<name>` for an isolated session; and **validate the harness
   before trusting a measurement** — assert one computed value you can predict from source, or
   you are measuring your own scaffolding.
+- **A latency number read through `requestAnimationFrame` is quantized to the frame and cannot
+  resolve a sub-frame win.** Timing click-to-DOM across a render that got ~40% cheaper moved the
+  reading from "17–19ms, jittering over the boundary" to "16.7ms, eight times running" — the
+  floor, not the improvement, and easy to misread as no change. Sample the CPU profiler over
+  tens of interactions and compare scripting time instead; then A/B it by disabling the change
+  in place, because an absolute profile of one build tells you what is expensive, not what your
+  patch did.
+- **The whole page is the confound in any interaction-latency measurement.** The dev gallery is
+  one component holding ~28 pieces of state, so every click anywhere re-renders all of it. A
+  component accused of being slow measured ~18ms alone and ~65–165ms in that page — and an
+  unrelated checkbox in the same page measured the same ~65ms, which is what actually settled
+  it. Always time a second, trivially cheap control widget in the same page before blaming the
+  component under suspicion.
 - **A null result needs a positive control.** "Firefox paints no track" and "the border renders
   nothing" are both claims that a broken harness produces for free. Each was only trustworthy
   because the same harness was made to show the thing when given a red background, or because a
