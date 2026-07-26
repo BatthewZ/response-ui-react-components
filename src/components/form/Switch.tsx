@@ -15,6 +15,18 @@ type SwitchProps = {
   error?: boolean;
   name?: string;
   value?: string;
+  /**
+   * Not a Switch prop — the change channel is `onCheckedChange`, and `field()`
+   * cannot bind a Switch (its `value` is the string the hidden input submits, not
+   * the checked state; see README, "`checked`-based controls are wired via
+   * `watch`/`setValue`").
+   *
+   * Declared `never` rather than only `Omit`ted because a JSX spread performs no
+   * excess-property check: `Omit` alone let `{...form.field("x")}` land a handler
+   * on the `<button>`, where React never fires it. Now that spread is a compile
+   * error, and the destructure below keeps the key off the element regardless.
+   */
+  onChange?: never;
 } & Omit<ComponentPropsWithRef<"button">, "onChange" | "value">;
 
 export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch(
@@ -29,6 +41,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
     className,
     disabled,
     onClick,
+    onChange: _onChange,
     ...props
   },
   ref

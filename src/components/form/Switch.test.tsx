@@ -5,6 +5,29 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Label } from "./Label";
 import { Switch } from "./Switch";
+import { useForm } from "./use-form";
+
+/**
+ * The props React handed the host element. `Omit` is compile-time only, and every
+ * key it removes here is a legitimate DOM attribute name that React renders no
+ * attribute for and warns nothing about — so this is the only place a key that
+ * slipped through a `{...props}` spread is observable.
+ */
+function hostProps(el: Element): Record<string, unknown> {
+  const key = Object.keys(el).find((k) => k.startsWith("__reactProps$"));
+  if (!key) throw new Error("element is not React-rendered");
+  return (el as unknown as Record<string, Record<string, unknown>>)[key];
+}
+
+/**
+ * A caller's bag arriving from a carrier TypeScript cannot see — plain JS, or
+ * props forwarded through `any`. `onChange?: never` makes the *typed* spread of
+ * the same object a compile error; the runtime destructure is what covers this
+ * half, and it is the half a published package cannot assume away.
+ */
+function untypedProps(bag: Record<string, unknown>): Record<string, never> {
+  return bag as Record<string, never>;
+}
 
 describe("Switch", () => {
   it("renders with role=switch", () => {
@@ -167,6 +190,81 @@ describe("Switch", () => {
     it("still lets the caller override type", () => {
       render(<Switch aria-label="Toggle" type="submit" />);
       expect(screen.getByRole("switch")).toHaveAttribute("type", "submit");
+    });
+  });
+
+  describe("omitted props", () => {
+    it("a field()-shaped bag's onChange never reaches the <button>", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const onCheckedChange = vi.fn();
+      // The real `field()` shape — always multi-key. A one-key `{ onChange }` bag
+      // is rejected by TS2559 ("no properties in common") and would give a false
+      // green.
+      const bag = { name: "subscribe", value: "on", onChange, onBlur: vi.fn() };
+
+      render(
+        <Switch
+          aria-label="Subscribe"
+          onCheckedChange={onCheckedChange}
+          {...untypedProps(bag)}
+        />,
+      );
+      const sw = screen.getByRole("switch");
+      await user.click(sw);
+
+      expect(hostProps(sw)).not.toHaveProperty("onChange");
+      expect(onChange).toHaveBeenCalledTimes(0);
+      expect(onCheckedChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps forwarding the rest props the type does accept", () => {
+      const onBlur = vi.fn();
+      const bag = { name: "subscribe", value: "yes", onChange: vi.fn(), onBlur };
+
+      const { container } = render(
+        <Switch aria-label="Subscribe" defaultChecked {...untypedProps(bag)} />,
+      );
+
+      const hidden = container.querySelector('input[type="hidden"][name="subscribe"]');
+      expect(hidden).toHaveValue("yes");
+      expect(hostProps(screen.getByRole("switch")).onBlur).toBe(onBlur);
+    });
+
+    // The binding a Switch actually has. `field()` is not it, and cannot be: it
+    // supplies `value` as the field's STATE, while Switch's `value` is the string
+    // its hidden input submits. README ("`checked`-based controls are wired via
+    // `watch`/`setValue` instead of `field()`") and docs/components/switch.md
+    // ("`onChange` is removed outright, because the change channel is
+    // `onCheckedChange`") both say so; `onChange?: never` now makes the spread a
+    // compile error rather than a dead handler. This is the supported route.
+    it("watch/setValue via onCheckedChange writes the store", async () => {
+      const user = userEvent.setup();
+      const read = vi.fn();
+
+      function Harness() {
+        const form = useForm({ defaultValues: { subscribe: false } });
+        return (
+          <>
+            <Switch
+              aria-label="Subscribe"
+              checked={Boolean(form.watch("subscribe"))}
+              onCheckedChange={(v) => form.setValue("subscribe", v)}
+            />
+            <button type="button" onClick={() => read(form.getValues())}>
+              read
+            </button>
+          </>
+        );
+      }
+      render(<Harness />);
+
+      await user.click(screen.getByRole("switch"));
+      expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "true");
+      await user.click(screen.getByRole("button", { name: "read" }));
+
+      expect(read).toHaveBeenCalledTimes(1);
+      expect(read.mock.calls[0][0]).toEqual({ subscribe: true });
     });
   });
 });

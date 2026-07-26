@@ -10,6 +10,16 @@ import { useForm } from "./use-form";
 const LOCALE = "en-US";
 const fmt = (d: Date) => formatDate(d, LOCALE);
 
+/**
+ * A caller's bag arriving from a carrier TypeScript cannot see — plain JS, or
+ * props forwarded through `any`. `color?: never` makes the *typed* spread of the
+ * same object a compile error; the runtime destructure is what covers this half,
+ * and it is the half a published package cannot assume away.
+ */
+function untypedProps(bag: Record<string, unknown>): Record<string, never> {
+  return bag as Record<string, never>;
+}
+
 describe("DateRangePicker", () => {
   it("typing both endpoints + Enter commits an ordered range", async () => {
     const user = userEvent.setup();
@@ -120,6 +130,21 @@ describe("DateRangePicker", () => {
       expect((end as HTMLInputElement).value).toBe(fmt(new Date(2026, 5, 14)));
       // One commit when focus leaves `start`, one on Enter in `end`.
       expect(onValueChange).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("omitted props", () => {
+    it("an omitted `color` never reaches the wrapper div", () => {
+      // Two keys: a one-key `{ color }` bag is rejected by TS2559 ("no properties
+      // in common") and would give a false green. `id` is a supported rest prop and
+      // proves the spread itself still works.
+      const bag = { color: "red", id: "stay-picker" };
+
+      const { container } = render(<DateRangePicker {...untypedProps(bag)} />);
+      const root = container.firstElementChild;
+
+      expect(root).toHaveAttribute("id", "stay-picker");
+      expect(root).not.toHaveAttribute("color");
     });
   });
 });

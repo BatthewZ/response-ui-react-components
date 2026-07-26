@@ -4,6 +4,28 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Rating } from "./Rating";
 
+/**
+ * The props React handed the host element. `Omit` is compile-time only, and
+ * `onChange` on a `<div>` renders no attribute and fires only for a descendant
+ * form control (Rating has none) — so this is the only place a key that slipped
+ * through a `{...props}` spread is observable.
+ */
+function hostProps(el: Element): Record<string, unknown> {
+  const key = Object.keys(el).find((k) => k.startsWith("__reactProps$"));
+  if (!key) throw new Error("element is not React-rendered");
+  return (el as unknown as Record<string, Record<string, unknown>>)[key];
+}
+
+/**
+ * A caller's bag arriving from a carrier TypeScript cannot see — plain JS, or
+ * props forwarded through `any`. `onChange?: never` makes the *typed* spread of
+ * the same object a compile error; the runtime destructure is what covers this
+ * half, and it is the half a published package cannot assume away.
+ */
+function untypedProps(bag: Record<string, unknown>): Record<string, never> {
+  return bag as Record<string, never>;
+}
+
 describe("Rating", () => {
   it("renders a radiogroup with `max` radios", () => {
     render(<Rating aria-label="Rate" max={5} />);
@@ -195,5 +217,34 @@ describe("Rating", () => {
     expect(radios[0]).toBeDisabled();
     await user.click(radios[2]);
     expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  describe("omitted props", () => {
+    // The real `field()` shape. A one-key `{ onChange }` bag is rejected by TS2559
+    // ("no properties in common") and would give a false green.
+    const bag = () => ({ name: "score", value: 3, onChange: vi.fn(), onBlur: vi.fn() });
+
+    it("a field()-shaped bag's onChange never reaches the radiogroup", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      const props = bag();
+
+      render(
+        <Rating aria-label="Rate" onValueChange={onValueChange} {...untypedProps(props)} />,
+      );
+      const group = screen.getByRole("radiogroup", { name: "Rate" });
+      await user.click(screen.getAllByRole("radio")[4]);
+
+      expect(hostProps(group)).not.toHaveProperty("onChange");
+      expect(props.onChange).toHaveBeenCalledTimes(0);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("the read-only layout drops it too", () => {
+      const props = bag();
+      render(<Rating aria-label="Rate" readOnly {...untypedProps(props)} />);
+
+      expect(hostProps(screen.getByRole("img"))).not.toHaveProperty("onChange");
+    });
   });
 });

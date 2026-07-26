@@ -69,6 +69,17 @@ export type CalendarBaseProps = {
   todayLabel?: string;
   /** Selection side effect when Today is pressed (after navigating + focusing today). */
   onTodayClick?: (today: Date) => void;
+  /**
+   * Not a calendar prop — the selection channel is `onDaySelect`.
+   *
+   * Declared `never` rather than only `Omit`ted because a JSX spread performs no
+   * excess-property check: `Omit` alone let `{...form.field("x")}` land a handler
+   * on the root `<div>`, where it never fires (React dispatches `onChange` only
+   * for a descendant form control, and the calendar renders none). Now that
+   * spread is a compile error, and the destructure below keeps the key off the
+   * element.
+   */
+  onChange?: never;
 } & Omit<ComponentPropsWithRef<"div">, "onChange">;
 
 /** Months since year 0 — a total order over (year, month) for visibility checks. */
@@ -115,6 +126,7 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
     className,
     style,
     onPointerLeave,
+    onChange: _onChange,
     ...props
   },
   ref,

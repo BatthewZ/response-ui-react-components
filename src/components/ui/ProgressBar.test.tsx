@@ -94,4 +94,18 @@ describe("ProgressBar", () => {
     render(<ProgressBar value={50} />);
     expect(getFill().className).toContain("progress-bar__fill--no-animate");
   });
+
+  // The root Omits `children` and does not destructure it, but JSX element children
+  // are emitted after the spread in the object the JSX runtime builds, so the fill
+  // always wins. Measured, not assumed — the omission needs no runtime guard.
+  it("a spread `children` cannot displace the fill", () => {
+    const bag = { children: "HIJACKED", id: "bar" };
+
+    render(<ProgressBar value={50} {...bag} />);
+    const root = screen.getByRole("progressbar");
+
+    expect(root).toHaveAttribute("id", "bar");
+    expect(root).toHaveTextContent("");
+    expect(getFill()).toHaveClass("progress-bar__fill");
+  });
 });

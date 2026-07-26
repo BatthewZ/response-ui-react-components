@@ -29,6 +29,13 @@ type RangeCalendarProps = {
   weekStartsOn?: Weekday;
   showToday?: boolean;
   todayLabel?: string;
+  /**
+   * Not a RangeCalendar prop — the change channel is `onValueChange`. Declared
+   * `never` rather than only `Omit`ted because a JSX spread performs no
+   * excess-property check, so `Omit` alone let `{...form.field("x")}` through to
+   * `CalendarBase`.
+   */
+  onChange?: never;
 } & Omit<ComponentPropsWithRef<"div">, "onChange" | "value" | "defaultValue">;
 
 /** True if `day` lies within the inclusive `[a, b]` span (a/b unordered). */
@@ -45,6 +52,7 @@ export const RangeCalendar = forwardRef<HTMLDivElement, RangeCalendarProps>(func
     onValueChange,
     defaultMonth,
     numberOfMonths = 2,
+    onChange: _onChange,
     ...rest
   },
   ref,

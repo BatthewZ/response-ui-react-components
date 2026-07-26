@@ -1,10 +1,45 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getMonthLabel } from "../../util/date";
 import { type DateRange, RangeCalendar } from "./RangeCalendar";
+
+/**
+ * The props React handed the host element. `Omit` is compile-time only, and
+ * `onChange` on a `<div>` renders no attribute and fires only for a descendant
+ * form control (the calendar has none) — so this is the only place a key that
+ * slipped through a `{...props}` spread is observable.
+ */
+function hostProps(el: Element): Record<string, unknown> {
+  const key = Object.keys(el).find((k) => k.startsWith("__reactProps$"));
+  if (!key) throw new Error("element is not React-rendered");
+  return (el as unknown as Record<string, Record<string, unknown>>)[key];
+}
+
+/**
+ * A caller's bag arriving from a carrier TypeScript cannot see — plain JS, or
+ * props forwarded through `any`. `onChange?: never` makes the *typed* spread of
+ * the same object a compile error; the runtime destructure is what covers this
+ * half, and it is the half a published package cannot assume away.
+ */
+function untypedProps(bag: Record<string, unknown>): Record<string, never> {
+  return bag as Record<string, never>;
+}
+
+/**
+ * RangeCalendar's own `onChange` guard is invisible to a runtime test: it forwards
+ * to `CalendarBase`, which strips the key too, so deleting RangeCalendar's
+ * destructure leaves every assertion below green. What is *not* redundant is the
+ * type ban — without `onChange?: never` on RangeCalendar itself,
+ * `{...form.field<DateRange>("stay")}` compiles again and silently binds nothing.
+ * This line stops compiling the moment `onChange` accepts anything but `undefined`.
+ */
+type OnlyUndefined<T> = [T] extends [undefined] ? true : never;
+const _rangeCalendarOnChangeIsBanned: OnlyUndefined<
+  ComponentProps<typeof RangeCalendar>["onChange"]
+> = true;
 
 const JUNE_2026 = new Date(2026, 5, 15);
 
@@ -268,6 +303,35 @@ describe("RangeCalendar", () => {
       const last = onValueChange.mock.calls[1][0] as DateRange;
       expect(last.start!.getDate()).toBe(28);
       expect(last.end!.getDate()).toBe(3);
+    });
+  });
+
+  describe("omitted props", () => {
+    it("a field()-shaped bag's onChange never reaches the calendar root", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      // The real `field<DateRange>()` shape. A one-key `{ onChange }` bag is
+      // rejected by TS2559 ("no properties in common") and would give a false green.
+      const bag = {
+        name: "stay",
+        value: { start: null, end: null } as DateRange,
+        onChange: vi.fn(),
+        onBlur: vi.fn(),
+      };
+
+      const { container } = render(
+        <RangeCalendar
+          defaultMonth={JUNE_2026}
+          onValueChange={onValueChange}
+          {...untypedProps(bag)}
+        />,
+      );
+      const root = container.querySelector(".calendar");
+      await user.click(day(new Date(2026, 5, 10)));
+
+      expect(hostProps(root!)).not.toHaveProperty("onChange");
+      expect(bag.onChange).toHaveBeenCalledTimes(0);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
     });
   });
 });

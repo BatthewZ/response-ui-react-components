@@ -64,6 +64,12 @@ type DateRangePickerProps = {
    */
   name?: string;
   className?: string;
+  /**
+   * Not a DateRangePicker prop. Declared `never` rather than only `Omit`ted
+   * because a JSX spread performs no excess-property check, so `Omit` alone let a
+   * caller's `color` reach the wrapper `<div>` and render as an attribute.
+   */
+  color?: never;
 } & Omit<
   ComponentPropsWithRef<"div">,
   "onChange" | "value" | "defaultValue" | "color"
@@ -98,6 +104,7 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
       disabled,
       name,
       className,
+      color: _color,
       ...props
     },
     ref,

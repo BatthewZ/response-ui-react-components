@@ -301,6 +301,20 @@ describe("StatCard", () => {
       expect(screen.getByTestId("trend").textContent).toContain("8%");
     });
 
+    // Trend Omits `children` and does not destructure it, but JSX element children
+    // are emitted after the spread in the object the JSX runtime builds, so the arrow
+    // and the formatted value always win. Measured, not assumed — the omission needs
+    // no runtime guard.
+    it("a spread `children` cannot displace the arrow or the value", () => {
+      const bag = { children: "HIJACKED", "data-testid": "trend" };
+
+      render(<StatCard.Trend value={12} direction="up" {...bag} />);
+      const el = screen.getByTestId("trend");
+
+      expect(el.textContent).toBe("+12%");
+      expect(el.querySelector("svg")).toBeInTheDocument();
+    });
+
     it("uses default formatting when no format prop is provided", () => {
       render(<StatCard.Trend value={7} direction="up" data-testid="trend" />);
       expect(screen.getByTestId("trend").textContent).toContain("+7%");

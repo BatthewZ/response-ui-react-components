@@ -21,6 +21,16 @@ type RatingProps = {
   readOnly?: boolean;
   disabled?: boolean;
   "aria-label": string;
+  /**
+   * Not a Rating prop — the change channel is `onValueChange`.
+   *
+   * Declared `never` rather than only `Omit`ted because a JSX spread performs no
+   * excess-property check: `Omit` alone let `{...form.field("x")}` land a handler
+   * on the root `<div>`, where it never fires (React dispatches `onChange` only
+   * for a descendant form control, and Rating renders none). Now that spread is a
+   * compile error, and the destructure below keeps the key off the element.
+   */
+  onChange?: never;
 } & Omit<ComponentPropsWithRef<"div">, "onChange">;
 
 function clamp(v: number, max: number): number {
@@ -56,6 +66,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
     disabled = false,
     "aria-label": ariaLabel,
     className,
+    onChange: _onChange,
     ...props
   },
   ref

@@ -21,6 +21,12 @@ type CalendarProps = {
   /** Render a footer with a "Today" button that selects today. */
   showToday?: boolean;
   todayLabel?: string;
+  /**
+   * Not a Calendar prop — the change channel is `onValueChange`. Declared `never`
+   * rather than only `Omit`ted because a JSX spread performs no excess-property
+   * check, so `Omit` alone let `{...form.field("x")}` through to `CalendarBase`.
+   */
+  onChange?: never;
 } & Omit<ComponentPropsWithRef<"div">, "onChange" | "value" | "defaultValue">;
 
 export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calendar(
@@ -29,6 +35,7 @@ export const Calendar = forwardRef<HTMLDivElement, CalendarProps>(function Calen
     defaultValue,
     onValueChange,
     defaultMonth,
+    onChange: _onChange,
     ...rest
   },
   ref,
