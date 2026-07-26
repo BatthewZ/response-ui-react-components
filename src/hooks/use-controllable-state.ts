@@ -8,10 +8,17 @@ export interface UseControllableStateParams<T> {
   defaultValue: T;
   /**
    * Called with the resolved next value in either mode, but only when that
-   * value differs from the current one (`Object.is`). A setter call that
+   * value differs from the current one (per `isEqual`). A setter call that
    * resolves to the value already held is a no-op.
    */
   onChange?: (next: T) => void;
+  /**
+   * Equality used by that gate. Defaults to `Object.is`, which is reference
+   * equality — correct for scalars, but a no-op for values rebuilt on each
+   * commit (`Date`, ranges, sort tuples), where an unchanged value is a fresh
+   * object and re-emits. Pass a comparator at those call sites.
+   */
+  isEqual?: (a: T, b: T) => boolean;
 }
 
 export type UseControllableStateReturn<T> = [
@@ -38,7 +45,7 @@ export type UseControllableStateReturn<T> = [
 export function useControllableState<T>(
   params: UseControllableStateParams<T>,
 ): UseControllableStateReturn<T> {
-  const { value, defaultValue, onChange } = params;
+  const { value, defaultValue, onChange, isEqual } = params;
 
   // Lock the mode on first render so it never flips mid-life.
   const isControlledRef = useRef(value !== undefined);
@@ -55,12 +62,15 @@ export function useControllableState<T>(
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
+  const isEqualRef = useRef(isEqual);
+  isEqualRef.current = isEqual;
+
   const setValue = useCallback((next: T | ((prev: T) => T)) => {
     const current = valueRef.current;
     const resolved =
       typeof next === "function" ? (next as (prev: T) => T)(current) : next;
 
-    if (Object.is(resolved, current)) return;
+    if ((isEqualRef.current ?? Object.is)(resolved, current)) return;
 
     if (!isControlledRef.current) {
       valueRef.current = resolved;

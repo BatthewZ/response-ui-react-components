@@ -192,4 +192,56 @@ describe("useControllableState", () => {
     // Still controlled — internal state is never adopted.
     expect(result.current[0]).toBe(undefined);
   });
+  it("defaults the gate to Object.is, so a rebuilt equal value still emits", () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() =>
+      useControllableState<Date>({ defaultValue: new Date(2026, 0, 1), onChange })
+    );
+
+    act(() => {
+      result.current[1](new Date(2026, 0, 1));
+    });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("suppresses that emission when isEqual reports the value unchanged", () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() =>
+      useControllableState<Date>({
+        defaultValue: new Date(2026, 0, 1),
+        onChange,
+        isEqual: (a, b) => a.getTime() === b.getTime(),
+      })
+    );
+
+    act(() => {
+      result.current[1](new Date(2026, 0, 1));
+    });
+    expect(onChange).toHaveBeenCalledTimes(0);
+
+    act(() => {
+      result.current[1](new Date(2026, 0, 2));
+    });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(result.current[0].getDate()).toBe(2);
+  });
+
+  it("reads isEqual through a ref, so a fresh comparator applies without a new setter", () => {
+    const onChange = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ isEqual }: { isEqual?: (a: number, b: number) => boolean }) =>
+        useControllableState<number>({ defaultValue: 0, onChange, isEqual }),
+      { initialProps: {} as { isEqual?: (a: number, b: number) => boolean } }
+    );
+
+    const firstSetter = result.current[1];
+    rerender({ isEqual: (a, b) => Math.trunc(a) === Math.trunc(b) });
+    expect(result.current[1]).toBe(firstSetter);
+
+    act(() => {
+      result.current[1](0.5);
+    });
+    expect(onChange).toHaveBeenCalledTimes(0);
+  });
 });
