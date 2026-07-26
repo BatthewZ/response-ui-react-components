@@ -8,7 +8,23 @@ import { cn } from "../../util/style";
 /*  ProgressBar (root)                                                 */
 /* ------------------------------------------------------------------ */
 
-type ProgressBarRootProps = {
+/**
+ * Where the bar's accessible name comes from. It has no text of its own, and
+ * `ProgressBar.Label` cannot supply one: the root omits `children`, so the label
+ * is the bar's *sibling* and no context can join the two. So the type asks for
+ * the association instead — one of the three routes the docs already describe:
+ * a literal name, an IDREF at a `ProgressBar.Label` you gave an `id`, or
+ * `aria-hidden` for a bar that is pure decoration. `Meter` requires `aria-label`
+ * outright; a bar differs only in also shipping a label sub-part to point at.
+ */
+// Arm order is the error message: TypeScript reports the last member, so the
+// route most callers want is the one it names.
+type ProgressBarNameProps =
+  | { "aria-hidden": true | "true" }
+  | { "aria-labelledby": string }
+  | { "aria-label": string };
+
+type ProgressBarOwnProps = {
   value: number;
   max?: number;
   variant?: "default" | "gradient" | "striped";
@@ -21,11 +37,15 @@ type ProgressBarRootProps = {
    * because it names no status.
    */
   statusLabel?: string;
-} & Omit<ComponentPropsWithRef<"div">, "children">;
+};
 
-type ProgressBarSize = NonNullable<ProgressBarRootProps["size"]>;
-type ProgressBarColor = NonNullable<ProgressBarRootProps["color"]>;
-type ProgressBarVariant = NonNullable<ProgressBarRootProps["variant"]>;
+type ProgressBarRootProps = ProgressBarOwnProps &
+  ProgressBarNameProps &
+  Omit<ComponentPropsWithRef<"div">, "children">;
+
+type ProgressBarSize = NonNullable<ProgressBarOwnProps["size"]>;
+type ProgressBarColor = NonNullable<ProgressBarOwnProps["color"]>;
+type ProgressBarVariant = NonNullable<ProgressBarOwnProps["variant"]>;
 
 const sizeClass: Record<ProgressBarSize, string> = {
   sm: "progress-bar--sm",

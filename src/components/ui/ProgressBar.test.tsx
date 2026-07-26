@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProgressBar } from "./ProgressBar";
@@ -23,49 +24,49 @@ function getFill(): HTMLElement {
 
 describe("ProgressBar", () => {
   it("renders with role='progressbar'", () => {
-    render(<ProgressBar value={50} />);
+    render(<ProgressBar value={50} aria-label="Upload" />);
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
   it("value prop sets aria-valuenow", () => {
-    render(<ProgressBar value={42} />);
+    render(<ProgressBar value={42} aria-label="Upload" />);
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "42");
   });
 
   it("max prop sets aria-valuemax", () => {
-    render(<ProgressBar value={20} max={200} />);
+    render(<ProgressBar value={20} max={200} aria-label="Upload" />);
     const bar = screen.getByRole("progressbar");
     expect(bar).toHaveAttribute("aria-valuemax", "200");
   });
 
   it("defaults aria-valuemax to 100", () => {
-    render(<ProgressBar value={50} />);
+    render(<ProgressBar value={50} aria-label="Upload" />);
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuemax", "100");
   });
 
   it("visual bar width reflects percentage", () => {
-    render(<ProgressBar value={75} max={100} />);
+    render(<ProgressBar value={75} max={100} aria-label="Upload" />);
     const bar = screen.getByRole("progressbar");
     const fill = bar.firstElementChild as HTMLElement;
     expect(fill.style.width).toBe("75%");
   });
 
   it("clamps visual width to 100%", () => {
-    render(<ProgressBar value={150} max={100} />);
+    render(<ProgressBar value={150} max={100} aria-label="Upload" />);
     const bar = screen.getByRole("progressbar");
     const fill = bar.firstElementChild as HTMLElement;
     expect(fill.style.width).toBe("100%");
   });
 
   it("visual width is 0% when value is 0", () => {
-    render(<ProgressBar value={0} />);
+    render(<ProgressBar value={0} aria-label="Upload" />);
     const bar = screen.getByRole("progressbar");
     const fill = bar.firstElementChild as HTMLElement;
     expect(fill.style.width).toBe("0%");
   });
 
   it("forwards className prop", () => {
-    render(<ProgressBar value={50} className="custom-class" />);
+    render(<ProgressBar value={50} className="custom-class" aria-label="Upload" />);
     expect(screen.getByRole("progressbar").className).toContain("custom-class");
   });
 
@@ -80,18 +81,18 @@ describe("ProgressBar", () => {
   });
 
   it("animates the fill by default", () => {
-    render(<ProgressBar value={50} />);
+    render(<ProgressBar value={50} aria-label="Upload" />);
     expect(getFill().className).not.toContain("progress-bar__fill--no-animate");
   });
 
   it("animate={false} opts the fill out of the width transition", () => {
-    render(<ProgressBar value={50} animate={false} />);
+    render(<ProgressBar value={50} animate={false} aria-label="Upload" />);
     expect(getFill().className).toContain("progress-bar__fill--no-animate");
   });
 
   it("reduced motion opts the fill out even with animate left at its default", () => {
     motion.reduced = true;
-    render(<ProgressBar value={50} />);
+    render(<ProgressBar value={50} aria-label="Upload" />);
     expect(getFill().className).toContain("progress-bar__fill--no-animate");
   });
 
@@ -101,7 +102,7 @@ describe("ProgressBar", () => {
   it("a spread `children` cannot displace the fill", () => {
     const bag = { children: "HIJACKED", id: "bar" };
 
-    render(<ProgressBar value={50} {...bag} />);
+    render(<ProgressBar value={50} aria-label="Upload" {...bag} />);
     const root = screen.getByRole("progressbar");
 
     expect(root).toHaveAttribute("id", "bar");
@@ -190,5 +191,64 @@ describe("ProgressBar · range integrity", () => {
     expect(bar).not.toHaveAttribute("aria-valuenow");
     expect(bar).not.toHaveAttribute("aria-valuemin");
     expect(bar).not.toHaveAttribute("aria-valuemax");
+  });
+});
+
+// #203 — `ProgressBar.Label` implies a wiring it cannot perform: the root omits
+// `children`, so the label is its sibling and no context can join them. The type
+// asks the caller for the association instead, the way `Meter` asks for a name.
+describe("ProgressBar · the bar has to be named", () => {
+  type RootProps = ComponentProps<typeof ProgressBar>;
+
+  // Compile-time assertions, enforced by `tsc --noEmit`: each `true` is only
+  // assignable if the conditional resolves the way its name says.
+  const namelessRejected: { value: number } extends RootProps ? false : true = true;
+  const ariaLabelAccepted: { value: number; "aria-label": string } extends RootProps
+    ? true
+    : false = true;
+  const ariaLabelledbyAccepted: { value: number; "aria-labelledby": string } extends RootProps
+    ? true
+    : false = true;
+  const ariaHiddenAccepted: { value: number; "aria-hidden": true } extends RootProps
+    ? true
+    : false = true;
+
+  it("accepts each documented route to a name, and nothing else", () => {
+    expect([
+      namelessRejected,
+      ariaLabelAccepted,
+      ariaLabelledbyAccepted,
+      ariaHiddenAccepted,
+    ]).toEqual([true, true, true, true]);
+  });
+
+  it("takes its name from a ProgressBar.Label the caller points it at", () => {
+    render(
+      <>
+        <ProgressBar.Label id="upload-label">Uploading design-system.zip</ProgressBar.Label>
+        <ProgressBar value={64} aria-labelledby="upload-label" />
+      </>,
+    );
+
+    expect(
+      screen.getByRole("progressbar", { name: "Uploading design-system.zip" }),
+    ).toBeInTheDocument();
+  });
+
+  it("still composes the status word with a name that came from a Label", () => {
+    render(
+      <>
+        <ProgressBar.Label id="quota-label">Storage used</ProgressBar.Label>
+        <ProgressBar value={96} color="error" aria-labelledby="quota-label" />
+      </>,
+    );
+
+    const bar = screen.getByRole("progressbar", { name: "Storage used" });
+    expect(bar).toHaveAttribute("aria-valuetext", "96%, Error");
+  });
+
+  it("a purely decorative bar opts out of the name instead of going unnamed", () => {
+    render(<ProgressBar value={64} aria-hidden />);
+    expect(screen.queryByRole("progressbar")).toBeNull();
   });
 });

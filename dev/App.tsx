@@ -924,9 +924,9 @@ export function App() {
           </Tile>
           <Tile label="ProgressBar">
             <div className="flex w-64 flex-col gap-r4">
-              <ProgressBar value={30} />
-              <ProgressBar value={65} variant="gradient" />
-              <ProgressBar value={90} variant="striped" />
+              <ProgressBar value={30} aria-label="Default bar" />
+              <ProgressBar value={65} variant="gradient" aria-label="Gradient bar" />
+              <ProgressBar value={90} variant="striped" aria-label="Striped bar" />
             </div>
           </Tile>
 

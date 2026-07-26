@@ -16,18 +16,19 @@ and a pill radius, containing exactly one fill `<div>` sized by an inline `width
 percentage. Its prop type **omits `children`**, so nothing renders inside it — the two
 sub-parts are pre-styled `<span>`s you place *beside* the bar, not within it.
 `ProgressBar.Label` is the caption ink, `ProgressBar.Value` the tabular-numerals readout.
-Neither reads context, neither is required, and neither is wired to the bar: see
-[Gotchas](#gotchas).
+Neither reads context and neither wires itself to the bar — the root's type asks *you* for
+that association, and will not compile without it: see [Naming the bar](#naming-the-bar).
 
 | Part                | Renders                                             | Props                                                                    |
 | ------------------- | --------------------------------------------------- | ------------------------------------------------------------------------ |
-| `ProgressBar`       | `<div role="progressbar">` + one fill `<div>`        | `value` · `max?` · `variant?` · `color?` · `size?` · `animate?` (+ all `div` props except `children`) |
+| `ProgressBar`       | `<div role="progressbar">` + one fill `<div>`        | `value` · one of `aria-label` / `aria-labelledby` / `aria-hidden` · `max?` · `variant?` · `color?` · `size?` · `animate?` · `statusLabel?` (+ all `div` props except `children`) |
 | `ProgressBar.Label` | `<span class="progress-bar__label">`                 | all `span` props                                                          |
 | `ProgressBar.Value` | `<span class="progress-bar__value">`                 | all `span` props                                                          |
 
 | Prop        | Type                                            | Default      |
 | ----------- | ----------------------------------------------- | ------------ |
 | `value`     | `number`                                        | — (required) |
+| `aria-label` **or** `aria-labelledby` **or** `aria-hidden` | `string` / `string` / `true` | — (one required) |
 | `max`       | `number`                                        | `100`        |
 | `variant`   | `"default" \| "gradient" \| "striped"`          | `"default"`  |
 | `color`     | `"accent" \| "success" \| "warning" \| "error"` | `"accent"`   |
@@ -42,12 +43,30 @@ The fill percentage is `Math.min(100, Math.max(0, (value / max) * 100))`, guarde
 when `max <= 0`, so the *visual* bar is always within `[0, 100]%`. The ARIA numbers track
 it — see [Gotchas](#gotchas).
 
+## Naming the bar
+
+A bar carries no text, so it has nothing to take an accessible name from, and
+`ProgressBar.Label` cannot give it one: the root omits `children`, so the label is the
+bar's **sibling** and no context can reach across. Rather than let that go unsaid, the
+root's type requires one of three things — pick the one that fits and the compiler stops
+asking:
+
+| You pass | For |
+| --- | --- |
+| `aria-label="Uploading design-system.zip"` | A bar with no visible caption. |
+| `aria-labelledby="upload-label"` | A bar captioned by a `ProgressBar.Label` you gave that `id`. |
+| `aria-hidden` | A bar that is pure decoration, hidden from assistive tech entirely. |
+
+Omit all three and `<ProgressBar value={64} />` does not compile — TypeScript reports
+`aria-label` as missing, which is the right answer for most bars. This is the whole of the
+association work: the sub-part still does not wire itself, but a bar can no longer ship
+announcing "64" and nothing else.
+
 ## Label and value
 
 Because the root takes no `children`, a captioned bar is two blocks you compose yourself:
 a header row holding the [Label](label.md) and the `Value`, then the bar beneath it. Put an `id` on
-the [Label](label.md) and point the bar's `aria-labelledby` at it — that association is the one
-thing the component does not do for you.
+the [Label](label.md) and point the bar's `aria-labelledby` at it.
 
 <!-- example:WithLabelAndValue -->
 ```tsx
@@ -207,10 +226,11 @@ white at 15% over your fill and there is no token to change them.
 - **The root takes no `children`.** `children` is `Omit`-ed from the prop type, so
   `<ProgressBar value={64}>…</ProgressBar>` is a compile error. `ProgressBar.Label` and
   `ProgressBar.Value` go beside the bar, and you own the layout between them.
-- **`ProgressBar.Label` does not label the bar.** It is a bare styled `<span>` — it sets
-  no `id`, and the root sets no `aria-labelledby`. A bar with a [Label](label.md) sitting next to it
-  still announces with **no accessible name**. Wire the two yourself, as the example above
-  does, or pass `aria-label`.
+- **`ProgressBar.Label` does not label the bar by itself.** It is a bare styled `<span>` —
+  it sets no `id`, and the root reads no context, because the two are siblings. What stops
+  a bar going unnamed is the *type*: one of `aria-label`, `aria-labelledby` or
+  `aria-hidden` is required (see [Naming the bar](#naming-the-bar)). Give the
+  [Label](label.md) an `id` and point at it.
 - **`ProgressBar.Value` is not derived from `value`.** It renders whatever text you give
   it. Hand a bar `value={64}` and a `Value` of `"80%"` and the two will disagree with no
   warning; compute both from one number.
@@ -269,14 +289,16 @@ white at 15% over your fill and there is no token to change them.
 
 ## Accessibility
 
-The root renders `role="progressbar"` with `aria-valuenow={value}`, `aria-valuemin={0}`
-and `aria-valuemax={max}`. There is no `min` prop, so the exposed floor is always zero.
+The root renders `role="progressbar"` with `aria-valuenow` (the *clamped* `value`),
+`aria-valuemin={0}` and `aria-valuemax={max}` — all three omitted when `max` describes no
+range. There is no `min` prop, so the exposed floor is always zero.
 `prefers-reduced-motion` is respected — the fill snaps rather than easing.
 
-- **There is no default accessible name.** A bare `role="progressbar"` announces a number
-  with no indication of *what* is progressing. Every example on this page passes
-  `aria-label` or `aria-labelledby`; do the same, or hide a purely decorative bar with
-  `aria-hidden`.
+- **There is no default accessible name, and the type will not let you skip one.** A bare
+  `role="progressbar"` announces a number with no indication of *what* is progressing, so
+  the root requires `aria-label`, `aria-labelledby`, or `aria-hidden` for a decorative bar
+  ([Naming the bar](#naming-the-bar)). Nothing is defaulted — an English default would be
+  worse than the compile error.
 - **`color` is named to assistive tech, but still only a hue on screen.** A status
   `color` emits `aria-valuetext` — `"96%, Error"` — so `success` and `error` no longer
   announce identically. `statusLabel` replaces that word (`""` removes it), and `accent`
@@ -285,9 +307,9 @@ and `aria-valuemax={max}`. There is no `min` prop, so the exposed floor is alway
   the same reason [Avatar](avatar.md) labels its presence dot through the name. **Nothing
   about this helps a sighted colourblind reader** — the bar itself still differs only in
   tint, so put the status in a visible label when it is load-bearing.
-- **The announced number can leave the announced range.** `aria-valuenow` is the raw
-  `value` (see Gotchas), so out-of-range input produces a contradictory announcement even
-  though the bar looks correct.
+- **The announced number cannot leave the announced range.** `aria-valuenow` is clamped
+  into `[0, max]` alongside the fill width (see Gotchas), so an out-of-range `value` is
+  narrowed silently rather than announced as something impossible.
 - **There is no indeterminate mode.** `value` is required and always produces a
   determinate bar; there is no way to express "working, duration unknown". Use
   [Spinner](spinner.md) for that.

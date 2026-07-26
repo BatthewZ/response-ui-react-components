@@ -23,7 +23,8 @@ perfectly still when the reader has asked for `prefers-reduced-motion`.
 | …rest       | props of `div`        | —                |
 
 The wrapper is a plain `<div>` — the only styles Parallax writes are a computed inline
-`transform` and a `will-change: transform` hint (while motion is active). Passing `0` to
+`transform` and a `will-change: transform` hint (while motion is active *and* the layer is
+near the viewport, see [Gotchas](#gotchas)). Passing `0` to
 either number is honoured, not treated as unset: `rate={0}`
 freezes the layer and `clamp={0}` pins the offset to zero. See [Gotchas](#gotchas).
 
@@ -91,24 +92,23 @@ land where you expect.
 
 Parallax paints nothing of its own — no colour, radius, spacing, or timing. The only
 style it writes is a computed inline `transform` (plus a `will-change: transform` hint
-while motion is active); everything visible comes from the `children` you wrap and the
+while the layer is moving and near the viewport); everything visible comes from the `children` you wrap and the
 `className` / `style` you pass through. There are no contract variables to override on
 this component — theme the content inside it instead.
 
 ## Gotchas
 
-- **The transform is left in place when reduced-motion turns on mid-scroll.** Parallax
-  writes the offset imperatively to `el.style.transform`; React never owns that value.
-  So if the reader enables `prefers-reduced-motion` after a layer has already drifted,
-  the effect tears down its listener but the last transform stays applied — the layer
-  freezes wherever it was rather than snapping back to its layout position.
-- **Offset recomputes on scroll only.** There is no `resize` or `orientationchange`
-  listener, and `viewportCenter` is read from `window.innerHeight`. After a viewport
-  resize (or mobile rotation) the layer can sit slightly off until the next scroll
-  event nudges it back into place.
-- **`will-change: transform` is set for the element's whole life** while motion is
-  enabled, which parks a permanent compositor layer on the wrapper. Keep the wrapped
-  subtree small and don't blanket a page in `Parallax`.
+- **Offset recomputes on scroll and on resize, and on nothing else.** `viewportCenter`
+  is read from `window.innerHeight`, so a viewport that changes height is followed —
+  but a layout change that moves the element without either event (an image above it
+  finishing loading, a collapsed panel opening) leaves the layer at its last computed
+  offset until the next scroll. Nudge it by dispatching a `resize` if you move content
+  above a layer programmatically.
+- **The `will-change: transform` hint is scoped to the viewport.** It is applied only
+  while the wrapper is within 200px of the viewport, so an offscreen layer parks no
+  compositor layer. Where `IntersectionObserver` is unavailable the hint falls back to
+  the element's whole life — a layer beats no layer — so on those engines the old
+  advice stands: keep the wrapped subtree small.
 - **The wrapper moves outside its own layout box.** `overflow-hidden` on the `Parallax`
   itself won't clip the drift — it clips the element's children, not the element. Put
   the clip on a **parent** if the movement must be masked.
@@ -121,6 +121,9 @@ this component — theme the content inside it instead.
 Parallax honours `prefers-reduced-motion: reduce`: when it is set, no scroll listener is
 attached, no `will-change` hint is written, and the children render at their normal
 position. Motion-sensitive readers get a static layout with no scroll-linked movement.
+Turning the preference on *mid-scroll* is honoured too — the imperative `transform` is
+cleared as the effect tears down, so a layer that had already drifted returns to its
+layout position rather than freezing where it was.
 
 The component adds no roles or ARIA — it is a transparent visual wrapper. Decorative
 imagery inside it should still carry `alt=""` so it is skipped by assistive tech.
