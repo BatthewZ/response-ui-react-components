@@ -102,8 +102,18 @@ const raw = readFileSync(LEDGER, "utf8");
 const lines = raw.split("\n");
 
 const rows = [];
+/**
+ * Rows whose closing `|` was lost. Split-and-rejoin parses these happily — the
+ * summary simply absorbs the missing delimiter — so nothing here noticed when a
+ * scripted edit stripped the pipe from 27 rows at once. Markdown *does* notice:
+ * the row stops being a table row and renders as loose text. Recorded as its own
+ * list because the row still has an id and a status, so every other check on it
+ * passes and the file reads green while a chunk of the table is not a table.
+ */
+const malformed = [];
 lines.forEach((line, i) => {
   if (!/^\|\s*\d+\s*\|/.test(line)) return;
+  if (!/\|\s*$/.test(line)) malformed.push({ id: Number(line.match(/^\|\s*(\d+)/)[1]), line: i + 1 });
   const c = line.split("|").map((s) => s.trim());
   const [, id, status, component, loc, sev, ...rest] = c;
   const parts = status.split("·").map((s) => s.trim());
@@ -234,6 +244,10 @@ if (flag("reanchor")) {
 
 const violations = [];
 const v = (row, msg) => violations.push({ id: row.id, line: row.line, msg });
+
+for (const m of malformed) {
+  v(m, "row does not end in `|` — it is no longer a table row and will render as loose text");
+}
 
 const seen = new Map();
 let prev = 0;
