@@ -440,11 +440,13 @@ from the component.
   cell's top edge and 1px inside its bottom, so it never crosses into a neighbouring cell.
   The cell keeps its own `:focus-visible` rule for the case where you pass a `tabIndex` and
   focus the `<th>` yourself.
-- **The sort arrow is low contrast.** Unsorted, it is `--C-TEXT-MUTED` on the
-  `--C-SURFACE-1` header band: 2.43:1 in the default and `grimdark` themes, 2.37:1 in
-  `events`, 2.06:1 in `tech` — all under the 3:1 that WCAG 1.4.11 asks of a non-text
-  control. Sorted, it is `--C-ACCENT`: 4.95:1 in the default theme and 14.56:1 in `tech`,
-  but 2.63:1 in `events` and 2.77:1 in `grimdark`.
+- **The sort arrow now clears its floor in both states.** Measured against
+  `@batthewz/response-ui-css` **v0.10.1** on the `--C-SURFACE-1` header band: unsorted, it is
+  `--C-TEXT-MUTED` at **4.74 / 4.70 / 4.78 / 4.90:1** (default / `events` / `tech` /
+  `grimdark`); sorted, it is `--C-ACCENT` at **4.95 / 4.74 / 14.56 / 5.32:1**. Both clear the
+  3:1 WCAG 1.4.11 asks of a non-text control by a wide margin. This bullet used to record the
+  opposite — 2.06–2.43 unsorted and 2.63–2.77 sorted in two themes — and both were fixed
+  upstream in the palette rather than here: `--C-TEXT-MUTED` and `--C-ACCENT` in **v0.10.0**.
 - **`selected` reaches assistive tech.** A `<tr>` inside a `<table>` maps to role `row`,
   and ARIA 1.2 lists `aria-selected` among that role's supported states in exactly that
   context — no `role="grid"` is needed, and none is set, because `grid` would promise

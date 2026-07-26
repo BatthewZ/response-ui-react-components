@@ -322,20 +322,22 @@ default / `events` / `tech` / `grimdark`:
 
 - The **highlighted option**'s wash is `--C-SURFACE-1` on the listbox's `--C-SURFACE-0` —
   **1.05 / 1.03 / 1.02 / 1.07:1**, invisible in every shipped theme, which is why it is no
-  longer the marker. The 2px `--C-BORDER-FOCUS` ring drawn over it measures **3.52 / 2.63 /
-  14.56 / 2.77:1** against that wash, clearing the 3:1 WCAG 1.4.11 asks of a focus indicator
-  in the default and `tech` themes and falling just short of it in `events` and `grimdark`.
+  longer the marker. The 2px `--C-BORDER-FOCUS` ring drawn over it measures **3.52 / 3.29 /
+  14.56 / 3.43:1** against that wash, clearing the 3:1 WCAG 1.4.11 asks of a focus indicator
+  in every shipped theme. It read 2.63 and 2.77 in `events` and `grimdark` until
+  `@batthewz/response-ui-css` **v0.10.1** retuned `--C-BORDER-FOCUS`.
   See [Accessibility](#accessibility).
-- The **remove glyph** on a chip is `--C-TEXT-MUTED` on `--C-SURFACE-2`: **2.31 / 2.27 /
-  1.94 / 2.23:1**, under the same 3:1 floor for a control's graphical affordance. It only
-  reaches `--C-TEXT-PRIMARY` (9.70–16.12:1) on hover.
+- The **remove glyph** on a chip is `--C-TEXT-MUTED` on `--C-SURFACE-2`: **4.50:1 in all four
+  themes** — each theme was tuned to land exactly on the floor there, so it clears 3:1 for a
+  graphical affordance with room to spare but has no headroom as body text. It was 1.94–2.31
+  before **v0.10.0**. It still reaches `--C-TEXT-PRIMARY` on hover.
 - The **placeholder**, the **"No options"** row and a **disabled option's label** all ink
-  `--C-TEXT-MUTED` on `--C-SURFACE-0`: **2.54 / 2.45 / 2.10 / 2.59:1**, below AA's 4.5:1 for
-  body text.
-- The **check glyph** is `--C-ACCENT` on `--C-SURFACE-0` — **5.17 / 2.72 / 14.84 / 2.96:1**,
-  so it falls under 3:1 in `events` and `grimdark`. Selection is also carried by the chip
-  and by the option's heavier weight, so the check is corroboration rather than the only
-  signal.
+  `--C-TEXT-MUTED` on `--C-SURFACE-0`: **4.95 / 4.85 / 4.87 / 5.23:1**, clearing AA's 4.5:1
+  for body text. These read 2.10–2.59 before **v0.10.0**.
+- The **check glyph** is `--C-ACCENT` on `--C-SURFACE-0` — **5.17 / 4.89 / 14.84 / 5.69:1**,
+  clearing 3:1 in every theme; it was 2.72 and 2.96 in `events` and `grimdark` before
+  **v0.10.0**. Selection is also carried by the chip and by the option's heavier weight, so
+  the check is corroboration rather than the only signal.
 - Chip fill against the control fill is **1.08–1.16:1**, so a chip is delimited by its
   radius and its ink weight far more than by its background.
 
@@ -400,10 +402,11 @@ Four things to plan around:
   background is 1.02–1.07:1 and carries nothing on its own, so `.multiselect-item[data-active]`
   also draws a 2px `--C-BORDER-FOCUS` outline at `-2px` offset. It has to come from the
   attribute rather than `:focus-visible`, because DOM focus never leaves the input and that
-  pseudo-class can never match an option. The ring measures 3.52 / 2.63 / 14.56 / 2.77:1
-  against the wash (see [Theme tokens](#theme-tokens)) — a real indicator in the default and
-  `tech` themes, marginally short of 3:1 in `events` and `grimdark`, where re-tinting
-  `--C-BORDER-FOCUS` is the fix. Screen-reader users are unaffected either way:
+  pseudo-class can never match an option. The ring measures 3.52 / 3.29 / 14.56 / 3.43:1
+  against the wash (see [Theme tokens](#theme-tokens)) — over the 3:1 floor in every theme
+  since `@batthewz/response-ui-css` v0.10.1, where it was marginally short in `events` and
+  `grimdark` before. A custom theme owns `--C-BORDER-FOCUS`, so re-check it there.
+  Screen-reader users are unaffected either way:
   `aria-activedescendant` is correct.
 - **Nothing announces a change.** There is no live region. Toggling an option, hitting the
   `maxItems` cap, and Backspacing a chip away all happen silently; so does the "No options"

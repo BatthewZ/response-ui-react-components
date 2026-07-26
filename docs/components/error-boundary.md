@@ -173,8 +173,9 @@ follow a theme.**
   `focus-visible:` — so the retry control rings on the same token and the same interaction as
   [Button](button.md) even though everything around it does not. The offset band matters here:
   the retry button is `bg-primary`, and the ring measures as little as 2.03:1 against that fill
-  across the shipped themes but never below 2.72:1 against the `--C-SURFACE-0` band, so the 2px
-  gap is what keeps the ring readable. It
+  across the shipped themes but never below 3.39:1 against the `--C-SURFACE-0` band (measured
+  against `@batthewz/response-ui-css` **v0.10.1**), so the 2px gap is what keeps the ring readable — and the band now clears
+  the 3:1 floor in every theme, where it bottomed out at 2.72 before that release. It
   goes one step further and drops the UA outline, which [Button](button.md) keeps.
 - **`min-h-screen` is a hard `100vh`,** not a token, so the fallback's height is the one
   layout decision a theme cannot touch.

@@ -225,9 +225,10 @@ the accessibility tree rather than being collapsed the way they would be in a `<
 - **Line numbers are generated content.** `user-select: none` keeps them out of selections
   and copies, which is the point — but browsers that expose `::before` text to the
   accessibility tree will read the number before its line. They are also inked
-  `--C-TEXT-MUTED`, which measures between 2.10:1 and 2.59:1 against `--C-SURFACE-0` across
-  the four shipped themes — under the 3:1 large-text floor — so treat a visible line number
-  as decoration and don't build prose ("see line 12") on it.
+  `--C-TEXT-MUTED`, which measures between **4.85:1 and 5.23:1** against `--C-SURFACE-0` across
+  the four shipped themes since `@batthewz/response-ui-css` **v0.10.0** — over AA, where it read
+  2.10–2.59 before. They are legible now, but they are still `aria-hidden` decoration by
+  construction, so don't build prose ("see line 12") on a number a screen reader never reads.
 - **The copy button's own behaviour is CopyButton's** — its focus ring and its visually
   hidden confirmation are [documented there](copy-button.md#accessibility), including the
   caveat that the confirmation may not be announced at all. Its *name* is yours: several

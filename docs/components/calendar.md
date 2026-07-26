@@ -291,9 +291,14 @@ date — `"June 13, 2026"` — so a screen reader never reads a bare `"13"`.
 - **Disabled days remain focusable** by design: `aria-disabled` rather than `disabled`, so
   a keyboard user can discover *why* a range is closed instead of arrowing over a hole.
 - **The focus indicator is a 2px `--C-BORDER-FOCUS` outline** at `2px` offset on days,
-  caption, picker cells and the Today button. That token measures 2.72:1 (`events`) and
-  2.96:1 (`grimdark`) against `--C-SURFACE-0`, below the 3:1 non-text floor in half the
-  shipped themes.
+  caption, picker cells and the Today button. Measured against `@batthewz/response-ui-css`
+  **v0.10.1**, that token clears the 3:1 non-text floor on every surface a calendar sits on:
+  **3.68** default · **3.39** `events` · **14.84** `tech` · **3.66** `grimdark` on
+  `--C-SURFACE-0`, and 3.34 / 3.15 / 13.70 / 3.15 on `--C-SURFACE-2`. It used to read 2.72
+  and 2.96 in `events` and `grimdark` — those themes copied their *pre-retune* accent into
+  the focus token, and v0.10.1 retuned it. **On `--C-SURFACE-3` it still falls short**
+  (2.97 / 2.87 / 12.37 / 2.74), so a calendar rendered on the most elevated surface has a
+  focus ring under the floor in three of the four themes.
 - **The root has no role or name.** It is a bare `<div>`; if the calendar needs to be a
   labelled region, pass `role` and `aria-label` through — they reach the root untouched.
 - Every transition in the stylesheet is switched off under `prefers-reduced-motion: reduce`.

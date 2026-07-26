@@ -361,11 +361,13 @@ one and you must change the other by hand.
 - The active wash against the sidebar fill is **1.05–1.18:1**, i.e. no perceptible block of
   colour on its own — which is why the state is carried by the 1px inset `--C-ACCENT` edge
   rather than by the wash or the ink colour.
-- Section titles in `--C-TEXT-MUTED`: **2.10–2.59:1** — under AA on every theme, the
-  library-wide behaviour of that token.
-- `--C-BORDER-FOCUS` against `--C-SURFACE-0`: **3.68** default · **2.72** `events` ·
-  **14.84** `tech` · **2.96** `grimdark`, so the focus outline is under the 3:1 non-text
-  floor in two themes.
+- Section titles in `--C-TEXT-MUTED`: **4.95** default · **4.85** `events` · **4.87** `tech` ·
+  **5.23** `grimdark` against the sidebar's `--C-SURFACE-0`, clearing AA in every theme. They
+  used to measure 2.10–2.59:1; `@batthewz/response-ui-css` **v0.10.0** retuned that token.
+- `--C-BORDER-FOCUS` against `--C-SURFACE-0`: **3.68** default · **3.39** `events` ·
+  **14.84** `tech` · **3.66** `grimdark`, clearing the 3:1 non-text floor in every theme.
+  `events` and `grimdark` read 2.72 and 2.96 until **v0.10.1** — they had copied their
+  *pre-retune* accent into the focus token, and that release corrected it.
 
 ## Gotchas
 

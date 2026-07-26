@@ -193,13 +193,15 @@ rather than this component alone.
 
 **Two of these pairs are low-contrast as shipped.** The box fill is `--C-SURFACE-0`, which is
 also the base page surface, so on a default page the border is the *only* thing that draws
-the box — and `--C-BORDER-STRONG` against `--C-SURFACE-0` measures 1.47:1 in the default
-theme, 1.44:1 in `events`, 1.41:1 in `tech` and 1.79:1 in `grimdark`, all under the 3:1 that
-WCAG 1.4.11 asks of a control's visual boundary. The focus indicator has the same problem in
-half the themes: `--C-BORDER-FOCUS` on `--C-SURFACE-0` measures 3.68:1 (default) and 14.84:1
-(`tech`) but only 2.72:1 in `events` and 2.96:1 in `grimdark`. Both are properties of the
-[theme contract](../theme-contract.md)'s values rather than of this component's markup, so
-the fix is to darken those two variables in your theme — see [Gotchas](#gotchas).
+the box. Measured against `@batthewz/response-ui-css` **v0.10.1**, both boundaries now clear
+the 3:1 WCAG 1.4.11 asks of a control's visual edge: `--C-BORDER-STRONG` on `--C-SURFACE-0` is
+**3.30** default · **3.23** `events` · **3.25** `tech` · **3.49** `grimdark`, and
+`--C-BORDER-FOCUS` on the same surface is **3.68 / 3.39 / 14.84 / 3.66**. Both were failing
+until recently and were fixed upstream rather than here — the boundary in **v0.10.0**, which
+took it from 1.41–1.79, and the focus ring in **v0.10.1**, which took `events` and `grimdark`
+from 2.72 and 2.96. They are properties of the [theme contract](../theme-contract.md)'s values
+rather than of this component's markup, so a custom theme owns them: if you retune
+`--C-BORDER-STRONG` or `--C-BORDER-FOCUS`, re-check both — see [Gotchas](#gotchas).
 
 ## Gotchas
 

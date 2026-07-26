@@ -305,11 +305,14 @@ that sets `transition: none` on both the track and the thumb. The thumb still en
 right place; it just gets there instantly. No `motion-reduce:` utility is involved, so this
 holds no matter how the consumer's Tailwind build is configured.
 
-**The one real failure is contrast.** Measured against the shipped themes, the thumb never
-reaches the 3:1 that WCAG 1.4.11 requires of a state indicator when the switch is off — it is
-1.08:1–1.16:1 on the `--C-SURFACE-2` track in all four. Checked, the thumb clears 3:1 against
-the `--C-ACCENT` track only in `default` (5.17:1) and `tech` (14.84:1); in `events` (2.72:1)
-and `grimdark` (2.96:1) it falls short in *both* states. There is no border to fall back on
+**The one real failure is contrast, and it is now the *off* state only.** Measured against
+`@batthewz/response-ui-css` **v0.10.1**: switched **on**, the `--C-SURFACE-0` thumb against the
+`--C-ACCENT` track clears the 3:1 that WCAG 1.4.11 requires of a state indicator in every theme
+— **5.17** default · **4.89** `events` · **14.84** `tech` · **5.69** `grimdark`. `events` and
+`grimdark` read 2.72 and 2.96 before **v0.10.0** retuned the accent, so that half of this
+finding is closed. Switched **off**, the same thumb sits on a `--C-SURFACE-2` track at
+**1.08:1–1.16:1 in all four themes**, and no palette retune can fix it — the whole surface ramp
+spans about 1.2 end to end by design. There is no border to fall back on
 either. The consequence is that the moving
 thumb — the non-colour cue that is supposed to keep a switch out of the WCAG 1.4.1
 "colour alone" trap — is not reliably perceivable, leaving the accent tint doing the work by

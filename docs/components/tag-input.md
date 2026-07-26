@@ -272,12 +272,12 @@ lucide icon, not CSS.
 
 Two measured contrast notes. The chip label clears AA comfortably —
 `--C-TEXT-SECONDARY` on `--C-SURFACE-2` is 6.87:1 in the default and `events` themes, 5.32:1 in
-`tech`, 5.11:1 in `grimdark`. The remove **glyph** does not: `--C-TEXT-MUTED` on
-`--C-SURFACE-2` measures 2.31 / 2.27 / 1.94 / 2.23:1 across those same four themes,
-against the 3:1 floor WCAG 1.4.11 sets for a control's graphical affordance. It only
-reaches `--C-TEXT-PRIMARY` on hover. Ratios computed from the shipped OKLCH token values in
-`@batthewz/response-ui-css`; the same `--C-TEXT-MUTED` ceiling caps the placeholder at
-2.10–2.59:1. See the [theme contract](../theme-contract.md) for what the tokens do and do
+`tech`, 5.11:1 in `grimdark`. The remove **glyph** is quieter but also clears its floor: `--C-TEXT-MUTED` on
+`--C-SURFACE-2` measures **4.50:1 in all four themes** — each was tuned to land exactly on
+that floor — so it clears the 3:1 WCAG 1.4.11 sets for a control's graphical affordance with
+room to spare, though it has none as body text. It still reaches `--C-TEXT-PRIMARY` on hover.
+Ratios computed from the shipped OKLCH token values in `@batthewz/response-ui-css` **v0.10.1**; the same token puts the
+placeholder at 4.85–5.23:1 on `--C-SURFACE-0`. Both read 1.94–2.59 before that release. See the [theme contract](../theme-contract.md) for what the tokens do and do
 not promise.
 
 ## Gotchas

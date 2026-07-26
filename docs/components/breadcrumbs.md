@@ -243,11 +243,14 @@ trail, or if the UI isn't in English.
   `"Show more breadcrumbs"`. But it carries no `aria-expanded`, so a screen reader is not told
   it is a disclosure control, and that label is a hard-coded English string with no prop to
   change it: it stays English in a localised app.
-- **Muted ink fails contrast, and one use of it is interactive.** Separators and the ellipsis
-  button both paint `--C-TEXT-MUTED`, measured at 2.10:1–2.59:1 on `--C-SURFACE-0` across the
-  four shipped themes and down to 1.75:1 on `--C-SURFACE-3` — under AA's 4.5:1 and AA-large's
-  3:1 everywhere. Decorative separators can live with that; the ellipsis is the one control on
-  the trail a user has to find, and it is below the legibility floor.
+- **Muted ink clears AA on the usual surfaces, and one use of it is interactive.** Separators
+  and the ellipsis button both paint `--C-TEXT-MUTED`, measured against
+  `@batthewz/response-ui-css` **v0.10.1** at **4.85:1–5.23:1** on `--C-SURFACE-0` across the
+  four shipped themes — over AA's 4.5:1, where it read 2.10–2.59 before **v0.10.0** retuned that
+  token. **On `--C-SURFACE-3` it still falls short at 3.92:1–4.10:1**, so a trail rendered on the
+  most elevated surface is under AA though over AA-large's 3:1. Decorative separators can live
+  with that either way; the ellipsis is the one control on the trail a user has to find, so if
+  you place breadcrumbs on `--C-SURFACE-3`, give it its own ink.
 - **Nothing marks a crumb as clickable at rest.** A link and a plain text crumb are both
   `--C-TEXT-SECONDARY` with no underline; the underline and `--C-ACCENT` arrive only on hover.
   Only the current crumb is visually distinct (primary ink, semibold). If which crumbs

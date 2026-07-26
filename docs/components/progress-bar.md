@@ -285,11 +285,12 @@ white at 15% over your fill and there is no token to change them.
   needs to be legible. ([ProgressRing](progress-ring.md) uses `--C-SURFACE-2` for the
   equivalent track — still only 1.10:1 on `--C-SURFACE-0` in the default theme, but the two
   siblings do not match out of the box either way.)
-- **In `events` and `grimdark` the *filled* part is barely visible too.** The default
-  `accent` fill measures **2.63:1** on its own track in `events` and **2.77:1** in
-  `grimdark` — under the 3:1 floor WCAG 1.4.11 sets for a graphical object that carries
-  meaning. It is fine in the default theme (4.95:1) and `tech` (14.56:1). Pair the bar with
-  a `ProgressBar.Value` readout rather than relying on the fill edge.
+- **The *filled* part now clears its floor in every theme.** The default `accent` fill
+  measures **4.95 / 4.74 / 14.56 / 5.32:1** on its own track (default / `events` / `tech` /
+  `grimdark`), over the 3:1 WCAG 1.4.11 sets for a graphical object that carries meaning. It
+  was 2.63 and 2.77 in `events` and `grimdark` until `@batthewz/response-ui-css` **v0.10.0**
+  retuned the accent. The *track* is the remaining problem — see the bullet above — so a
+  `ProgressBar.Value` readout is still the reliable way to convey the number.
 - **`className` reaches the track only, and loses to the track's own rules.** There is no
   prop that classes the inner fill. And because `ProgressBar.css` ships unlayered while
   Tailwind utilities live in `@layer utilities` (measured: the utilities layer ends well

@@ -126,13 +126,22 @@ re-anchor mid-wave; you would stamp fingerprints against half-written files.
 
 ### 1 · A release call in `response-ui-css` — blocks nothing here, reaches every consumer
 
-`--C-BORDER-FOCUS` is **already fixed** in that package's working tree (`2b41af9`) and deliberately
-left unreleased — `package.json` stays at 0.10.0 and the entry sits under *Unreleased*. Verified
-against both trees: `events` 2.72 → 3.39 and `grimdark` 2.96 → 3.66 across SURFACE-0..2, so it
-genuinely clears WCAG 1.4.11 where the published build does not. **The fix is correct and reaching
-nobody.** It needs a publish (0.10.1) plus a dependency bump here, then `calendar.md` and
-`file-upload.md` — whose `--C-BORDER-FOCUS` tables are *currently correct* — become false and need
-updating in the same pass. Details and the full table are in §2 below.
+**DONE — `response-ui-css` v0.10.1 is published and this package depends on `^0.10.1`.**
+`--C-BORDER-FOCUS` now clears WCAG 1.4.11 on SURFACE-0..2 in every theme: `events` 2.72 → 3.39 and
+`grimdark` 2.96 → 3.66, with `default` and `tech` untouched because they already passed.
+
+**The doc debt that came with it was far larger than the two pages predicted here**, and that
+prediction was wrong because it inherited a lane's spot-check instead of sweeping. Thirteen pages
+carried ratios asserted as current that the palette had made false — and not only from v0.10.1:
+most were stale since **v0.10.0**, whose doc debt was never fully paid either. All corrected, each
+naming the version it was measured against and what it read before. If a future release moves a
+token, **sweep every page for the number, do not spot-check**: `docs/` ships to npm, so a stale
+ratio is a false statement delivered to consumers, and several of these told readers a component
+failed a floor it now clears.
+
+What remains cross-package is in **#493**: `--C-SURFACE-3` is excluded from both retunes, so
+`--C-BORDER-FOCUS` there is 2.74–2.97 in three themes and `--C-TEXT-MUTED` is 3.92–4.10 in all
+four. That exclusion is deliberate upstream, so it is a scope question for the CSS package.
 
 Two more cross-package items sit behind the same door: **#415**'s error half (`--C-STATUS-ERROR` on
 its own `-BG` is 4.41 in default and `events`, and the same recipe is in `Badge`, `Alert`, `Toast`),

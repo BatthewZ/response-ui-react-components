@@ -219,8 +219,10 @@ One value is deliberately **not** on the contract: the description's measure —
 
 The panel sets no surface token of its own, so its ink is only as legible as the surface
 you put it on. `--C-TEXT-MUTED` paints both the icon and the description, and against
-`--C-SURFACE-0` it measures **2.54:1** in the default theme, 2.45:1 in `events`, 2.10:1
-in `tech` and 2.59:1 in `grimdark` — all below the 4.5:1 WCAG AA threshold for body text.
+`--C-SURFACE-0` it measures **4.95:1** in the default theme, 4.85:1 in `events`, 4.87:1
+in `tech` and 5.23:1 in `grimdark` — clearing the 4.5:1 WCAG AA threshold for body text in
+every shipped theme. These read 2.10–2.59 until `@batthewz/response-ui-css` **v0.10.1** retuned that token, so an older
+copy of this page said the opposite.
 Keep the sentence a user must act on in the title, which is `--C-TEXT-PRIMARY` and
 measures 17.7:1 on the default theme's `--C-SURFACE-0`; or raise `--C-TEXT-MUTED` in your
 own theme. See the [theme contract](../theme-contract.md).

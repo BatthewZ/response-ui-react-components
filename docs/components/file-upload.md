@@ -291,27 +291,37 @@ values, each pair against the background the component itself paints behind it:
 
 | Pair                                                          | default | events | tech  | grimdark |
 | ------------------------------------------------------------- | ------- | ------ | ----- | -------- |
-| Prompt · hint · size · glyph, on the zone fill                 | 2.43    | 2.37   | 2.06  | 2.43     |
+| Prompt · hint · size · glyph, on the zone fill                 | 4.74    | 4.70   | 4.78  | 4.90     |
 | Dashed dropzone border, on the zone fill                       | 1.18    | 1.18   | 1.18  | 1.26     |
-| Success message, on the success fill                           | 3.15    | 3.15   | 13.39 | 6.70     |
+| Success message, on the success fill                           | 4.57    | 4.57   | 13.39 | 6.70     |
 | Error message, on the error fill                               | 4.41    | 4.41   | 5.35  | 4.59     |
 
-The three text rows are set in `--BodyText-2`/`--BodyText-3` — 12–14px, so AA asks 4.5:1.
-Row one misses it in every theme, and misses the 3:1 large-text floor too, even though it is
-the component's *only* instruction; it is painted in the token the
-[theme contract](../theme-contract.md) reserves for "placeholders, hints". Row three misses
-4.5:1 in `default` and `events`, row four misses it narrowly in the same two. Rows three and
-four are the contract's own paired status foreground/background tokens, which makes them the
-most surprising of the four. Row two is not text: it is the entire affordance that says "you
-can drop here", and it is under the 3:1 that WCAG 1.4.11 asks of a graphical object in every
-theme. The contract promises a ratio for none of them, which is exactly why it is worth
-measuring. Retint through `--C-TEXT-MUTED` and `--C-BORDER-DEFAULT`, or through `className`,
-if this matters for your audience.
+Measured against `@batthewz/response-ui-css` **v0.10.1**. The three text rows are set in
+`--BodyText-2`/`--BodyText-3` — 12–14px, so AA asks 4.5:1. **Row one now clears it in every
+theme** (it read 2.06–2.43 before v0.10.0 retuned `--C-TEXT-MUTED`, and missed even the 3:1
+large-text floor while being the component's *only* instruction). **Row three now clears it
+too**, at 4.57 where it read 3.15 in the two light themes. **Row four is the one still under
+the floor**: the error message is 4.41 in `default` and `events`, and that pairing —
+`--C-STATUS-ERROR` on `--C-STATUS-ERROR-BG` — is the contract's own designated ink/fill pair,
+so the component is doing the right thing and the fix belongs upstream.
+
+**Row two is the other one still failing, and it is not text.** The dashed border is the entire
+affordance that says "you can drop here", and at 1.18–1.26:1 it is far under the 3:1 WCAG 1.4.11
+asks of a graphical object, in every theme. Unlike row four this one cannot be fixed in the
+palette either: it pairs `--C-BORDER-DEFAULT` against the zone fill, and the whole surface ramp
+spans about 1.2 end to end by design. Retint through `--C-BORDER-DEFAULT` or `className` if it
+matters for your audience.
+
+The contract promises a ratio for none of these pairings, which is exactly why they are worth
+measuring — and why two of the four moved without this component changing.
 
 Drag-over feedback rests on the same arithmetic: the fill moves `--C-SURFACE-1` →
 `--C-SURFACE-2`, a 1.04–1.09:1 change nobody can see, so the whole signal is the border going
-`--C-BORDER-FOCUS` — 3.34:1 in the default theme and `tech` 13.70:1, but 2.52:1 in `events`
-and 2.55:1 in `grimdark`.
+`--C-BORDER-FOCUS`. Measured against `@batthewz/response-ui-css` **v0.10.1**, that border
+clears the 3:1 floor on the drag-over fill in every theme — **3.34** default · **3.15**
+`events` · **13.70** `tech` · **3.15** `grimdark`. The two low values used to be 2.52 and
+2.55, because those themes copied their *pre-retune* accent into the focus token; v0.10.1
+retuned it and left `default` and `tech` untouched, which is why only two of the four moved.
 
 A few values are deliberately hard literals rather than tokens: the 10rem minimum zone height
 and large-preview height, the 8rem grid column floor, the 2.5rem thumbnail, the 1.75rem and

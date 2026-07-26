@@ -293,19 +293,22 @@ is the menu-button pattern implemented properly — with four things still to kn
   outline and paints the same `--C-SURFACE-1` wash it uses for hover — **1.02:1 to 1.07:1**
   against `--C-SURFACE-0`, which on its own is no indicator at all — so a `:focus-visible` rule
   puts a 2px `--C-BORDER-FOCUS` outline back at `-2px` offset. Against that wash it measures
-  **3.52 / 2.63 / 14.56 / 2.77:1** (default / `events` / `tech` / `grimdark`), so it clears the
-  3:1 that WCAG 2.2 SC 1.4.11 asks of a focus indicator in two shipped themes and falls just
-  short in `events` and `grimdark`. Re-tint `--C-BORDER-FOCUS` in those two rather than
-  overriding the rule.
+  **3.52 / 3.29 / 14.56 / 3.43:1** (default / `events` / `tech` / `grimdark`) against
+  `@batthewz/response-ui-css` **v0.10.1**, clearing the 3:1 that WCAG 2.2 SC 1.4.11 asks of a
+  focus indicator in every shipped theme. `events` and `grimdark` read 2.63 and 2.77 before
+  that release, which retuned `--C-BORDER-FOCUS` in exactly those two. If you ship your own
+  theme, that token is yours to check — re-tint it rather than overriding this rule.
 - **`Tab` does not close the menu.** The APG menu-button pattern closes on Tab and moves focus
   onward. Here `Content` traps it: with focus on an item, Tab and Shift+Tab both leave focus on
   that same item and the menu stays open. Worse, if you opened the menu **with the mouse**, no
   item has been focused yet, so focus is still on the trigger, no item is tabbable, and Tab
   jumps straight past the menu to the next control on the page — leaving an open menu behind
   with focus outside it. Escape is the reliable way out.
-- **Muted ink fails contrast.** Disabled items and `DropdownMenu.Label` both paint
-  `--C-TEXT-MUTED` on `--C-SURFACE-0` at **2.10:1 to 2.59:1** — under AA's 4.5:1 in every shipped
-  theme. Don't put anything load-bearing in a section label.
+- **Muted ink clears AA, but still reads as hint-level.** Disabled items and
+  `DropdownMenu.Label` both paint `--C-TEXT-MUTED` on `--C-SURFACE-0` at **4.85:1 to 5.23:1**
+  since `@batthewz/response-ui-css` **v0.10.0**, where it measured 2.10–2.59 and failed AA outright. It is legible now; it is
+  still the quietest ink in the contract, so weigh that before putting something load-bearing in
+  a section label.
 - **The open menu hides the whole page from assistive tech.** `Content` renders
   `FloatingFocusManager` with its defaults, and `modal` defaults to `true`, so while the menu is
   open every other element under `<body>` is given `aria-hidden="true"` — the trigger included.

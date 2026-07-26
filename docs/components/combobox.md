@@ -313,14 +313,16 @@ and skipped the default scale's step up at 40rem in all of them.
 Three token pairs here are worth measuring before you ship a theme, because the defaults are
 thin. The active-option **wash** is `--C-SURFACE-1` painted on the popup's `--C-SURFACE-0`,
 which is **1.02–1.07:1** across the four shipped themes — invisible, which is why the wash is
-no longer what marks the option. The **ring** drawn over it is `--C-BORDER-FOCUS` at
-**3.52 / 2.63 / 14.56 / 2.77:1** (default / `events` / `tech` / `grimdark`) against that wash,
-so it clears the 3:1 floor in two themes of the four and lands just under it in the other two;
-see [Gotchas](#gotchas). The input border is `--C-BORDER-STRONG` on
-`--C-SURFACE-0` at **1.41–1.79:1**, and the focus ring `--C-BORDER-FOCUS` on the same fill is
-**2.72:1** in `events` and **2.96:1** in `grimdark` — both under the 3:1 floor for a non-text
-indicator, with `outline: none` removing the browser's fallback. See the
-[theme contract](../theme-contract.md).
+no longer what marks the option. Measured against `@batthewz/response-ui-css` **v0.10.1**, the
+other two pairs now clear their floors. The **ring** drawn over the wash is `--C-BORDER-FOCUS`
+at **3.52 / 3.29 / 14.56 / 3.43:1** (default / `events` / `tech` / `grimdark`), over the 3:1
+non-text floor in every theme. The **input border** is `--C-BORDER-STRONG` on `--C-SURFACE-0`
+at **3.30 / 3.23 / 3.25 / 3.49:1**, and the focus ring on that same fill is
+**3.68 / 3.39 / 14.84 / 3.66:1**. All three were failing until recently and all three were
+fixed upstream rather than here — the border in **v0.10.0** (from 1.41–1.79) and the focus ring
+in **v0.10.1** (from 2.63–2.77 on the wash, 2.72 and 2.96 on the fill). `outline: none` still
+removes the browser's fallback, so if you retune either token in your own theme, these are the
+pairings to re-check. See the [theme contract](../theme-contract.md).
 
 ## Gotchas
 
@@ -343,10 +345,10 @@ indicator, with `outline: none` removing the browser's fallback. See the
   `.combobox-item[data-active]` also draws a 2px `--C-BORDER-FOCUS` outline at `-2px` offset,
   the same ring the rest of the library draws on `:focus-visible`. It has to be drawn from the
   attribute because navigation is virtual: DOM focus never leaves the input, so `:focus-visible`
-  can never match an option. That ring measures 3.52 / 2.63 / 14.56 / 2.77:1 against the wash
-  (default / `events` / `tech` / `grimdark`), so in `events` and `grimdark` it is still just
-  under the 3:1 floor — re-tint `--C-BORDER-FOCUS` there, or override the rule, if keyboard
-  users matter.
+  can never match an option. That ring measures 3.52 / 3.29 / 14.56 / 3.43:1 against the wash
+  (default / `events` / `tech` / `grimdark`) against `@batthewz/response-ui-css` v0.10.1, over
+  the 3:1 floor in every theme — it read 2.63 and 2.77 in `events` and `grimdark` until that
+  release retuned `--C-BORDER-FOCUS`. A custom theme owns that token, so re-check it there.
 - **Hovering an option makes it the active one,** overwriting whatever the arrow keys had
   selected. Moving the mouse across the list while typing will move the `Enter` target.
 - **Client-only.** `Combobox.tsx` carries `"use client"`, so the whole subtree is a client
@@ -388,9 +390,10 @@ Four things the code does **not** do, and that you may have to work around:
   press, a selection, and a second click of the chevron. Selecting with the mouse keeps DOM
   focus on the input.
 
-Contrast is still the weak point. The input border (1.41–1.79:1) sits under the 3:1 non-text
-floor in **every** shipped theme, and `--C-BORDER-FOCUS` — which now carries the keyboard cue
-on an option as well as the focus ring on the input — sits under it in `events` and `grimdark`.
+Contrast is no longer the weak point, though it is close to the line. The input border is
+**3.23–3.49:1** and `--C-BORDER-FOCUS` — which carries the keyboard cue on an option as well as
+the focus ring on the input — is **3.29–14.84:1**, both over the 3:1 non-text floor in every
+shipped theme. They measured 1.41–1.79 and 2.63–2.96 respectively before `@batthewz/response-ui-css` **v0.10.1**.
 See [Theme tokens](#theme-tokens) for the numbers. Re-tinting that one variable fixes both
 cues at once, which makes it the first thing to measure when you ship a theme.
 

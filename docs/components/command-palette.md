@@ -394,10 +394,11 @@ either side, so the list's own inset never changes. The `--BodyText-*` steps are
 `@batthewz/response-ui-css` is not loaded at all.
 
 **Muted ink is hint-level, and here it carries real content.** `--C-TEXT-MUTED` on
-`--C-SURFACE-0` measures 2.54:1 in the default theme, 2.45:1 in `events`, 2.59:1 in `grimdark`
-and 2.10:1 in `tech` — under the 4.5:1 body-text floor in all four. The placeholder can live
-with that; the group headers and the "No results" message are the only thing on screen in
-their state and cannot. Pass an `emptyMessage` node with your own ink if that matters to you.
+`--C-SURFACE-0` measures 4.95:1 in the default theme, 4.85:1 in `events`, 5.23:1 in `grimdark`
+and 4.87:1 in `tech` — clearing the 4.5:1 body-text floor in all four since `@batthewz/response-ui-css` **v0.10.1**, where
+it read 2.10–2.59 before. It is still *visually* hint-level, so prefer the title for anything a
+user must act on; but the group headers and the "No results" message are no longer under the
+floor. Pass an `emptyMessage` node with your own ink if you want more weight than that.
 Disabled rows compound it further — the same token at `opacity: 0.6` lands at 1.46–1.68:1 —
 though an inactive control is exempt from the contrast minimum. See the
 [theme contract](../theme-contract.md).
@@ -414,10 +415,11 @@ palette's colour, spacing and timing but not its shape.
   non-text indicator, so `.command-palette-option[data-active]` also draws a 2px
   `--C-BORDER-FOCUS` outline at `-2px` offset. It comes from the attribute rather than
   `:focus-visible` because DOM focus never leaves the search input, so no pseudo-class can ever
-  match the row. Against that wash the ring measures 3.34 / 2.52 / 13.70 / 2.55:1 (default /
-  `events` / `tech` / `grimdark`) — over the floor in two themes, just under it in the other
-  two, where re-tinting `--C-BORDER-FOCUS` (which also carries the search input's own ring) is
-  the single fix.
+  match the row. Against that wash the ring measures 3.34 / 3.15 / 13.70 / 3.15:1 (default /
+  `events` / `tech` / `grimdark`) against `@batthewz/response-ui-css` **v0.10.1** — over the
+  3:1 floor in every theme. It read 2.52 and 2.55 in `events` and `grimdark` before that
+  release retuned `--C-BORDER-FOCUS`, which also carries the search input's own ring, so a
+  custom theme retuning that token moves both at once.
 - **Arrow keys walk the array, not the screen.** Grouping is a rendering pass over the same
   flat filtered list, but `activeIndex` moves through that flat list by ±1. With
   `[File-A, Edit-A, File-B]` the palette *renders* File-A, File-B, Edit-A — and ArrowDown from
@@ -474,8 +476,9 @@ needed, and closing returns focus to whatever was focused before — both native
   items. There is no Tab-to-select, no PageUp/PageDown, and no type-ahead beyond the query.
 - **The highlight is drawn as a ring, because focus is virtual.** Its wash is 1.08–1.16:1 and
   carries nothing, so the row's `data-active` rule draws a `--C-BORDER-FOCUS` outline instead —
-  2.52–13.70:1 depending on the theme, which is over the 3:1 floor in two of the four and just
-  under it in `events` and `grimdark`. See [Gotchas](#gotchas). The highlight is also gated on
+  3.15–13.70:1 depending on the theme, over the 3:1 floor in all four since
+  `@batthewz/response-ui-css` v0.10.1 (it was 2.52–2.55 in `events` and `grimdark` before).
+  See [Gotchas](#gotchas). The highlight is also gated on
   the same predicate as `aria-activedescendant`, so a palette whose rows are all disabled shows
   no cursor at all rather than one pointing at a row Enter would not act on.
 - **You cannot give the search input an accessible name.** Rest props are spread on the

@@ -255,10 +255,11 @@ ever visible.
   activation and focus resets to the document body, which is a WCAG 2.4.3 focus-order
   problem for keyboard users. Move focus back to the input yourself with a `ref` if that
   matters.
-- **The X glyph is below the graphical-contrast floor.** At rest it is `--C-TEXT-MUTED` on
-  the field's `--C-SURFACE-0` fill, which measures 2.54:1 in the default theme, 2.45:1 in
-  `events`, 2.59:1 in `grimdark` and 2.10:1 in `tech` — all under the 3:1 WCAG 1.4.11
-  minimum for a control's essential graphic. It only reaches `--C-TEXT-PRIMARY` on
+- **The X glyph now clears the graphical-contrast floor.** At rest it is `--C-TEXT-MUTED` on
+  the field's `--C-SURFACE-0` fill, which measures 4.95:1 in the default theme, 4.85:1 in
+  `events`, 5.23:1 in `grimdark` and 4.87:1 in `tech` — clearing the 3:1 WCAG 1.4.11
+  minimum for a control's essential graphic in every theme since `@batthewz/response-ui-css` **v0.10.1**, where it read
+  2.10–2.59 before. It only reaches `--C-TEXT-PRIMARY` on
   **hover** — keyboard focus adds the outline but does not change the ink — and the hover
   wash (`--C-SURFACE-2` on `--C-SURFACE-0`) measures 1.10:1 in the default theme, so the
   wash contributes nothing either. Override `--C-TEXT-MUTED`, or restyle
