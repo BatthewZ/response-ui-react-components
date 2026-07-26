@@ -490,6 +490,20 @@ collision, left alone because briefs in flight cite the later one by letter.)
   reveal wrapper drops its entrance class on `animationend`; a descendant rule keyed off that class
   loses it mid-flight and later items snap instead of finishing. Keying off the *absence* of the
   hidden class is stable, because that class is removed exactly once.
+- **Reviewing a diff in windowed chunks is not reviewing the diff.** A coordinator paged through
+  an unfamiliar change with `head -40` and then `sed -n '40,80p'`, judged it sound, and committed
+  it. The very first line of the function under review was `return …; // TEMP-AB-BYPASS`, which
+  made the entire body it was there to add unreachable — and it fell in the seam between the two
+  windows. Every gate stayed green because the bypass returned identical output. If you are going
+  to vouch for a diff, read it end to end in one pass, and grep it for the words people leave on
+  scaffolding — `TEMP`, `TODO`, `XXX`, `BYPASS`, `DEBUG`, `FIXME` — before it becomes a commit
+  with your name on it.
+- **Work you did not commission can appear in a shared tree, and adopting it makes it yours.**
+  Two changes arrived mid-wave from outside every lane's scope. Keeping them was right — they
+  were sound and tested — but they were committed under their own message so no lane's commit
+  claimed work it had not done, and the one that was *not* sound got through because it was
+  reviewed less carefully than a lane's report would have been. Hold inherited work to the
+  standard you hold a lane's, or hold it out of the commit.
 - **The seam between two lanes is a class name.** One lane moved a utility into a shared
   component's base classes; another lane's test built its expectation by rendering that component
   *with the utility passed by hand*. Both were correct in isolation and the suite went red only

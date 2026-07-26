@@ -3,7 +3,8 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 /**
- * Deliberately narrow: two rules, each tied to a defect class in `bugs/LEDGER.md`.
+ * Deliberately narrow: three rules, each tied to a defect class in `bugs/LEDGER.md`
+ * or in `memory/gates.md`.
  * The recommended presets (typescript-eslint, react/recommended) are not enabled —
  * they would bury these signals under hundreds of stylistic findings.
  *
@@ -30,6 +31,16 @@ export default tseslint.config(
     rules: {
       // Missing keys in an iterator: ledger #138, #179, #254, #272.
       "react/jsx-key": ["error", { checkFragmentShorthand: true }],
+      // A profiling bypass — `return …; // TEMP-AB-BYPASS` on the first line of a
+      // memoizing helper — shipped in `util/date.ts`, making the whole cache body
+      // unreachable. Nothing caught it: the tests assert output and a bypassed
+      // cache returns identical output, `tsc` treats unreachable code as an editor
+      // suggestion rather than an error, and it survived human review by falling in
+      // the seam between two windowed reads of the diff. This is the cheapest gate
+      // that would have, it needs no configuration, and unreachable code is a
+      // defect rather than a style opinion — so it earns its place under this
+      // file's own rule, one entry per defect class that actually occurred.
+      "no-unreachable": "error",
       // ~80 components built on useEffect/useCallback/useMemo; a conditional hook
       // corrupts hook order for every render after it.
       "react-hooks/rules-of-hooks": "error",
