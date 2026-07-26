@@ -56,8 +56,6 @@ those may now describe different code, and only a reader can say.
 
 | 486 | confirmed · measured | Repeater | [Repeater.tsx:48](src/components/form/Repeater.tsx#L48 "fp:01387169") | low | A **generic wrapper component** over `Repeater` no longer compiles, and its error message is unreadable. #260 narrowed `name` to `ArrayPath<T>`, which is correct and catches real typos — but with `T` a naked type parameter the conditional stays deferred, so `function MyRepeater<T>(…) { return <Repeater<T> name={name} …/> }` fails and TypeScript expands the conditional over three lines to say why. Concrete-`T` call sites are unaffected: all 7 examples, both dev-gallery instances and the whole test file compile unchanged. **Named by the lane that created it rather than left to be discovered**, with the trade stated: the fix is to export a `RepeaterName<T>` alias so a wrapper can annotate its own prop, at the cost of one barrel line and one more public type. `repeater.md` documents the existing escape hatch meanwhile — wrap `useFieldArray`, which the page already recommends for custom controls. **Owner's call**, because it is public API surface, not a defect in the narrowing |
 
-| 487 | confirmed · source | Dialog | [Dialog.tsx:68](src/components/ui/Dialog.tsx#L68 "fp:b20630c6") | low | `docs/components/dialog.md` is false and tells readers to do something the component already does: it says the backdrop is "a literal black written into the component, not the `--OVERLAY-SCRIM-COLOR` variable" and advises adding `className="backdrop:bg-(--OVERLAY-SCRIM-COLOR)"`. `Dialog.tsx:68` already ships `backdrop:bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]` and `Dialog.test.tsx:170-174` asserts that exact string. Same class as #467 — a published page contradicting the component, and `docs/` ships to npm. Found while adopting the same token in AvatarUpload (#384) |
-
 | 488 | confirmed · measured | **library-wide** | library-wide | low | `verify-component-docs.mjs` cannot resolve a token read through an arbitrary-value utility, so such a read can never appear in a token table and the gate silently under-reports. Two shapes measured: `bg-[var(--X,fallback)]` (a `var()` with a fallback) and `pr-[calc(var(--R-SIZE-4)+1rem+var(--R-SIZE-5))]` (a composed expression) — only the bare single-token form `prefix-[var(--TOKEN)]` resolves. It also does not recognise inset utilities such as `right-r4` as utilities at all. **This changed a shipped decision:** #471 shipped a `calc()` gutter that fitted the chevron better, then reverted to a bare rung because the doc row claiming those tokens failed this gate. A gate that cannot see a legitimate token read pushes authors off the contract it exists to protect |
 
 | 489 | confirmed · measured | Input · Field | [Input.tsx:36](src/components/form/Input.tsx#L36 "fp:42a9c101") | low | A wrapping component cannot **add** to `aria-describedby` inside a `Field` — it can only be replaced. `useFieldError` returns `field.describedBy` whenever the field is invalid and `mergeProps(props, ariaProps)` gives that priority, so a caller's or a wrapper's own description id is dropped. Measured as the reason both date pickers' new reject-message id (#330/#338) disappears inside an errored `Field`, and the same shape would bite any future wrapper that wants to describe its own control. The fix is to **compose** the two id lists rather than replace, which is one line in a shared file — deliberately not made by the lane that found it, since `Input.tsx` is shared and mid-wave |
@@ -73,49 +71,6 @@ those may now describe different code, and only a reader can say.
 ## Detail blocks
 
 Added by the 2026-07 reconcile for `med` rows with no spoke in `bugs/components/`.
-
-### 467 · Swimlane — the published page contradicts the component (med)
-
-Surfaced while fixing #174–#176, and **not** caused by that work — both halves predate it.
-
-`docs/components/swimlane.md` states twice that rest props do not reach the DOM:
-
-| where | what it says |
-| ----- | ------------ |
-| `:35` (prop table) | "`section` props minus `title` — **typed but never reach the DOM**" |
-| `:249` (accessibility) | "`id`, `style`, `role`, `aria-*`, `data-*` and event handlers compile and are then dropped" |
-
-Both are false. `Swimlane.tsx:66` renders `<section … {...rest}>` and `:79` does the same on the
-animated path; `Swimlane.test.tsx` has a passing *"forwards rest props with the reveal off"*
-asserting `id` and `data-analytics` land on the element. #171 fixed this in the code and the page
-was never reconciled.
-
-The consequence is worse than a stale sentence. The accessibility section reasons *from* the
-false claim to a false conclusion — "The section cannot be named… `aria-label`/`aria-labelledby`
-are among the props that never reach the DOM" — so a reader who needs to name the landmark is
-told, on a page shipped to npm, that the library cannot do it. It can, with the obvious prop.
-
-Fix: correct `:35` and `:249`, then rewrite the accessibility bullet to say `aria-label` works.
-The Gotchas section already describes the true behaviour, so the page contradicts itself and only
-one half needs to move.
-
-### 468 · menu-internals — typeahead swallows text typed into a trigger (med)
-
-The sibling #125 did not close. That row named `useListNavigation`'s reference handler, which
-`preventDefault`s Arrow/Home/End and froze the caret of a `<textarea>` inside a
-`ContextMenu.Trigger`; the fix wraps **only** Floating UI's own reference `onKeyDown` and skips
-caret keys aimed at `input`/`textarea`/`select`/`contenteditable`.
-
-`useTypeahead` (`menu-internals.tsx:160`) has the identical shape and never got the exemption, so
-every **printable** character typed into that same `<textarea>` is consumed as a typeahead query
-against the menu items. The caret moves now; the letters still do not arrive.
-
-Fix: apply #125's existing text-control exemption to the typeahead handler as well. The predicate
-is already written and already tested — this is reuse, not new logic.
-
-A regression test belongs on the composed path, not on `useTypeahead` in isolation: the defect
-only exists because the handler is mounted on the *reference*, and a unit test of the hook would
-pass while the trigger stayed broken.
 
 ### 446 · response-ui-css — headings ignore the theme's weight tokens (med, cross-package)
 
