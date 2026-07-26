@@ -33,6 +33,11 @@
   fill: var(--sparkline-color, currentColor);
 }
 
+/* Single-value line/area: the datum itself, since there is no segment to draw. */
+.sparkline-point {
+  fill: var(--sparkline-color, currentColor);
+}
+
 /* ------------------------------------------------------------------ */
 /*  Draw-in animation                                                  */
 /* ------------------------------------------------------------------ */
@@ -63,8 +68,9 @@
     forwards;
 }
 
-/* Area fill and bars fade in. */
+/* Area fill, bars and the single-value point fade in. */
 .sparkline--animate .sparkline-area,
+.sparkline--animate .sparkline-point,
 .sparkline--animate .sparkline-bar {
   opacity: 0;
   animation: sparkline-fade var(--MOTION-DURATION-SHIFT, 320ms) var(--MOTION-EASE-SHIFT, ease-out)
@@ -78,6 +84,7 @@
 @media (prefers-reduced-motion: reduce) {
   .sparkline--animate .sparkline-line,
   .sparkline--animate .sparkline-area,
+  .sparkline--animate .sparkline-point,
   .sparkline--animate .sparkline-bar {
     animation: none;
     stroke-dasharray: none;

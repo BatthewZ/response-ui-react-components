@@ -242,9 +242,10 @@ in `@batthewz/response-ui-css`, which read the shared `--MOTION-DURATION-ENTER` 
   layer ends at byte 30370, `.timeline-item` sits at 100794. So `className="pb-r3"` on an item
   loses to `.timeline-item`'s `padding-bottom`; the important form `pb-r3!` wins, because for
   important declarations the layer order is reversed.
-- **Your `key`s on the children do nothing.** The root keys each provider by **index**, so React
-  reconciles by position. Prepend one event to the list and every entry from that point on
-  unmounts and remounts, losing component state, and every card re-runs its entrance.
+- **Key your children.** The root keys each item's provider by the child's own key, so a
+  keyed list survives a prepend or a reorder: the entries move rather than unmounting, keeping
+  component state and not replaying the entrance. Children with no `key` of their own fall
+  back to position, where a prepend still remounts the tail.
 - **`Timeline.Item` never throws outside `<Timeline>`.** With no provider it falls back to
   index `0` and `animate: true`, so it renders a lone animated card — but the
   `--_timeline-*` locals it positions the node against are declared on `.timeline`, so an

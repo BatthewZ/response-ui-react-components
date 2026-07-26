@@ -48,7 +48,7 @@ header cell is where sorting lives.
 
 | Part               | Renders   | Own props                                                                             |
 | ------------------ | --------- | ------------------------------------------------------------------------------------- |
-| `Table`            | `<div>` › `<table>` | `density?: "dense" \| "comfortable" \| "spacious"` (default `"comfortable"`) · `striped?: boolean` · `stickyHeader?: boolean` |
+| `Table`            | `<div>` › `<table>` | `density?: "dense" \| "comfortable" \| "spacious"` (default `"comfortable"`) · `striped?: boolean` · `stickyHeader?: boolean` · `tableProps?: ComponentPropsWithRef<"table">` (the only route to the inner `<table>`) |
 | `Table.Head`       | `<thead>` | —                                                                                     |
 | `Table.Body`       | `<tbody>` | —                                                                                     |
 | `Table.Row`        | `<tr>`    | `selected?: boolean` · `index?: number` (data position; decides the zebra band — `Table.Body` supplies it for its own children) |
@@ -57,8 +57,8 @@ header cell is where sorting lives.
 
 Every part also accepts the props of the element it renders, so `className`, `id`,
 `colSpan`, `scope`, `ref` and `aria-*` pass through. On the **root** those land on the
-wrapper `<div>`, not on the `<table>` — which is the single sharpest edge on this
-component. See [Gotchas](#gotchas).
+wrapper `<div>`, not on the `<table>` — `tableProps` is what reaches the table element.
+See [Gotchas](#gotchas).
 
 ## Density
 
@@ -330,10 +330,11 @@ Three things are **not** on the contract, and are worth knowing before you theme
 
 - **Rest props land on the wrapper, not the `<table>`.** `<Table aria-label="Invoices">`
   renders `<div class="table-wrapper" aria-label="Invoices">`, and a
-  `getByRole("table", { name: "Invoices" })` finds nothing — the `<table>` element takes
-  nothing from you at all, not even `className`. Name it with a `<caption>`. The flip side
-  is useful: `role="region"`, `aria-label` and `tabIndex={0}` on the root are exactly what
-  the horizontal scroller wants, and that is where they land.
+  `getByRole("table", { name: "Invoices" })` finds nothing. That is deliberate — `role="region"`,
+  `aria-label` and `tabIndex={0}` on the root are exactly what the horizontal scroller wants.
+  For the `<table>` element itself use **`tableProps`**: `<Table tableProps={{ "aria-label":
+  "Invoices" }}>` names the table, and its `className` merges with the component's own. A
+  `<caption>` child still works too.
 - **`ref` is the wrapper `<div>`.** Typed `HTMLDivElement`, because that is what it is.
   There is no handle on the `<table>` node.
 - **`stickyHeader` does nothing until the wrapper has a height.** The sticky offset is
@@ -345,9 +346,11 @@ Three things are **not** on the contract, and are worth knowing before you theme
   composes too; `preventDefault()` is the opt-out. **`tabIndex` and `aria-sort` are still
   shadowed** by a rest prop of the same name, so passing those still overrides what the cell
   computed.
-- **`sortDirection` without `onSort` announces a sort it does not show.** The cell still
-  gets `aria-sort="ascending"`, but with no `onSort` there is no arrow, no focusability and
-  no sortable styling — screen-reader users hear the state and sighted users see nothing.
+- **`sortDirection` without `onSort` is display-only, and it does show.** The cell gets
+  `aria-sort` **and** the matching arrow, so the state is announced and visible. What it does
+  not get is focusability or the sortable hover/active styling: it is a statement about the
+  data, not a control. `sortDirection={false}` with no `onSort` renders and announces
+  nothing.
 - **`selected` is a tint and nothing else.** No `aria-selected`, no `data-selected`, no
   focus or click behaviour. Selection is entirely yours to wire up and to announce.
 - **Sub-parts throw outside `<Table>`.** All five call the context hook, so a stray
@@ -389,8 +392,8 @@ from the component.
   `tech` and 1.03:1 in `grimdark` — and no attribute carries the state. Put "selected" into
   the row's content, as the example above does, or drive selection with a real
   [Checkbox](checkbox.md) in a leading cell.
-- **Name the table.** A `<caption>` child is the only route to an accessible name; the
-  `aria-label` you would reach for first lands on the wrapper, which has no role.
+- **Name the table.** Either a `<caption>` child or `tableProps={{ "aria-label": … }}`. The
+  bare `aria-label` you would reach for first lands on the wrapper, which has no role.
 - **Label the scroller if the table is wide.** The wrapper scrolls horizontally but
   announces nothing. `role="region"` plus an `aria-label` on the root makes it a named
   landmark, and `tabIndex={0}` guarantees a keyboard user can reach and scroll it.

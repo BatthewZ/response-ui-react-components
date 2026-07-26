@@ -149,11 +149,10 @@ circle — so they are fixed rather than themeable.
 The feed is a semantic `<ol>` of `<li>` items, so it announces as an ordered list and the
 sentence slots read in `actor action target timestamp` order.
 
-- **`list-style: none` can strip the list role.** The `<ol>` hides its markers in CSS, and
-  in Safari + VoiceOver that WebKit quirk drops the `list`/`listitem` semantics of the list
-  as a whole (the same issue that hits a styled `<ul>`). The component does **not** add
-  `role="list"` itself. `role` passes through, so restore it with `<ActivityFeed role="list">`
-  if "list, N items" navigation matters for your audience.
+- **`list-style: none` can strip the list role, so the `<ol>` carries `role="list"`.** Hiding
+  the markers in CSS drops the `list`/`listitem` semantics in Safari + VoiceOver (the same
+  issue that hits a styled `<ul>`), so the component sets the role itself. It is written
+  before the rest spread, so `<ActivityFeed role="…">` still replaces it.
 - **The connector rail is decorative.** It is a CSS `::before` with empty `content`, so it
   is never announced — correct.
 - **Label or hide your marker icons.** The component renders your `icon` as-is with no

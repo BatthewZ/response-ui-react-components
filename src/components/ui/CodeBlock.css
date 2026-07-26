@@ -67,6 +67,14 @@
   -moz-tab-size: 2;
 }
 
+/* The <pre> is the horizontal scrollport and carries tabIndex=0 so a keyboard
+   user can reach and scroll it (WCAG 2.1.1). Nothing resets the UA outline
+   here; this only replaces it with the package's own ring. */
+.code-block-pre:focus-visible {
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: -2px;
+}
+
 .code-block-code {
   font-family: inherit;
   white-space: pre;
@@ -86,7 +94,10 @@
 .code-block-line::before {
   content: counter(code-block-line);
   display: inline-block;
-  width: 2.5ch;
+  /* One box for every line so the code starts at the same column on each. The
+     component widens it past the 2.5ch default once the line count needs more
+     digits; a fixed box let line 100 overflow leftwards into the padding. */
+  width: var(--_code-block-gutter, 2.5ch);
   margin-right: var(--R-SIZE-5);
   text-align: right;
   color: var(--C-TEXT-MUTED);

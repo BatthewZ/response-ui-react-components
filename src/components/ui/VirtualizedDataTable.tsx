@@ -43,8 +43,15 @@ export type VirtualizedDataTableProps<T> = {
 
   // Selection — select-all spans the ENTIRE dataset (see component docs).
   selectable?: boolean;
+  /** Controlled selection. Omit it and the table keeps its own (uncontrolled). */
   selectedKeys?: Set<string | number>;
   onSelectionChange?: (keys: Set<string | number>) => void;
+  /**
+   * Accessible name for a row's selection checkbox. Without it the name is
+   * `Select row ${rowKey}` — English, and reading out a raw key
+   * ("Select row inv_0") to anyone using it.
+   */
+  rowLabel?: (row: T, index: number) => string;
 
   // Virtualization
   /** Fixed height of every row, in pixels. Required. Content must fit this height. */
@@ -77,6 +84,14 @@ export type VirtualizedDataTableProps<T> = {
 /* ------------------------------------------------------------------ */
 /*  VirtualizedDataTable                                               */
 /* ------------------------------------------------------------------ */
+
+/** Viewport estimate used until the scroll element can be measured. */
+const DEFAULT_VIEWPORT_HEIGHT = 400;
+
+// Stable identities so the memo/state below never rebuild an empty value.
+// Never mutated: every selection helper returns a new Set.
+const EMPTY_SELECTION: Set<string | number> = new Set();
+const EMPTY_KEYS: (string | number)[] = [];
 
 /**
  * Data table that virtualizes (windows) its rows so large datasets — tens of
@@ -113,8 +128,9 @@ export function VirtualizedDataTable<T>({
   selectable = false,
   selectedKeys,
   onSelectionChange,
+  rowLabel,
   rowHeight,
-  height = 400,
+  height = DEFAULT_VIEWPORT_HEIGHT,
   overscan = 8,
   onEndReached,
   endReachedThreshold = 8,
@@ -150,7 +166,11 @@ export function VirtualizedDataTable<T>({
     return [...data].sort((a, b) => comparator(a, b, currentSort.key, currentSort.direction));
   }, [data, currentSort, isControlledSort, sortComparator]);
 
-  const initialViewport = typeof height === "number" ? height : 0;
+  // A CSS height ("60vh") cannot be measured before mount, so estimate with the
+  // documented default rather than 0 — a 0 estimate renders `overscan * 2` rows
+  // server-side and on the first paint (#375). Over-estimating only mounts rows
+  // the first measurement then discards; under-estimating ships a short table.
+  const initialViewport = typeof height === "number" ? height : DEFAULT_VIEWPORT_HEIGHT;
   const { startIndex, endIndex, paddingTop, paddingBottom } = useVirtualRows({
     rowCount: sortedData.length,
     rowHeight,
@@ -159,37 +179,51 @@ export function VirtualizedDataTable<T>({
     initialViewport,
   });
 
-  // Selection spans the ENTIRE dataset (the whole set is virtually in view).
+  // Selection is uncontrolled unless the consumer drives it, so `selectable`
+  // alone gives working checkboxes instead of inert ones (#371) — the same
+  // contract `DataTable`'s expansion state already had.
+  const [selection, setSelection] = useControllableState<Set<string | number>>({
+    value: selectedKeys,
+    defaultValue: EMPTY_SELECTION,
+    onChange: onSelectionChange,
+  });
+
+  // Selection spans the ENTIRE dataset (the whole set is virtually in view), so
+  // this is the one list a virtualizer cannot window. Build it only when there
+  // is a select-all to answer for: without `selectable` it was 100k `rowKey`
+  // calls for nothing (#369).
   const allKeys = useMemo(
-    () => sortedData.map((row, i) => rowKey(row, i)),
-    [sortedData, rowKey]
+    () => (selectable ? sortedData.map((row, i) => rowKey(row, i)) : EMPTY_KEYS),
+    [selectable, sortedData, rowKey]
   );
-  const allSelected = selectedKeys != null && areAllSelected(allKeys, selectedKeys);
-  const someSelected = selectedKeys != null && isSomeSelected(allKeys, selectedKeys);
+  const allSelected = areAllSelected(allKeys, selection);
+  const someSelected = isSomeSelected(allKeys, selection);
 
   function handleSelectAll() {
-    if (!onSelectionChange || !selectedKeys) return;
-    onSelectionChange(toggleAllKeys(selectedKeys, allKeys));
+    setSelection(toggleAllKeys(selection, allKeys));
   }
 
   function handleSelectRow(key: string | number) {
-    if (!onSelectionChange || !selectedKeys) return;
-    onSelectionChange(toggleKey(selectedKeys, key));
+    setSelection(toggleKey(selection, key));
   }
 
-  // Fire onEndReached once when the rendered window nears the end; reset when it
-  // moves away (so appended data can re-arm it).
+  // Fire onEndReached once per dataset length while the window is near the end.
+  // The guard is keyed to the length, not a boolean: a boolean is re-armed only
+  // by the window leaving the threshold, so appending a page that keeps it
+  // inside stalled the loader for good (#442). Never fires while `loading` — a
+  // request is already in flight and the rows on screen are skeletons (#374).
   const nearBottom = endIndex >= sortedData.length - endReachedThreshold;
-  const firedRef = useRef(false);
+  const firedAtLengthRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!onEndReached) return;
-    if (nearBottom && sortedData.length > 0 && !firedRef.current) {
-      firedRef.current = true;
+    if (!onEndReached || loading) return;
+    if (nearBottom && sortedData.length > 0) {
+      if (firedAtLengthRef.current === sortedData.length) return;
+      firedAtLengthRef.current = sortedData.length;
       onEndReached();
     } else if (!nearBottom) {
-      firedRef.current = false;
+      firedAtLengthRef.current = null;
     }
-  }, [nearBottom, onEndReached, sortedData.length]);
+  }, [nearBottom, onEndReached, sortedData.length, loading]);
 
   const totalColumns = columns.length + (selectable ? 1 : 0);
 
@@ -198,7 +232,9 @@ export function VirtualizedDataTable<T>({
   function renderHeader() {
     return (
       <Table.Head>
-        <Table.Row>
+        {/* Row 1 of `aria-rowcount` — the data rows continue the numbering from
+            their dataset index, not from their position in the mounted window. */}
+        <Table.Row aria-rowindex={1}>
           {selectable && (
             <Table.HeaderCell className="w-10">
               <Checkbox
@@ -232,22 +268,29 @@ export function VirtualizedDataTable<T>({
     );
   }
 
-  // Loading skeleton (no virtualization needed).
+  // Loading skeleton (no virtualization needed). The skeleton cells are
+  // `aria-hidden`: one `role="status"` per cell was `rows × columns` polite
+  // live regions all saying "Loading" (#448). `aria-busy` states it once.
   if (loading) {
     return (
-      <Table density={density} striped={false} stickyHeader={stickyHeader}>
+      <Table
+        density={density}
+        striped={false}
+        stickyHeader={stickyHeader}
+        tableProps={{ "aria-busy": true }}
+      >
         {renderHeader()}
         <Table.Body>
           {Array.from({ length: loadingRowCount }, (_, i) => (
             <Table.Row key={i}>
               {selectable && (
                 <Table.Cell>
-                  <Skeleton variant="rectangular" width={16} height={16} />
+                  <Skeleton variant="rectangular" width={16} height={16} aria-hidden="true" />
                 </Table.Cell>
               )}
               {columns.map((col) => (
                 <Table.Cell key={col.key}>
-                  <Skeleton variant="text" />
+                  <Skeleton variant="text" aria-hidden="true" />
                 </Table.Cell>
               ))}
             </Table.Row>
@@ -288,6 +331,11 @@ export function VirtualizedDataTable<T>({
       stickyHeader={stickyHeader}
       className="table-virtual-scroll"
       style={{ height, overflowY: "auto" }}
+      // Only a slice of the rows is mounted, so the DOM row count is not the
+      // table's row count. `aria-rowcount` (+ the per-row `aria-rowindex`
+      // below) is what tells assistive tech the size of the real table and
+      // where in it the mounted window sits (#372). Header row included.
+      tableProps={{ "aria-rowcount": sortedData.length + 1 }}
     >
       {renderHeader()}
       <Table.Body>
@@ -303,15 +351,16 @@ export function VirtualizedDataTable<T>({
             <Table.Row
               key={key}
               index={index}
-              selected={selectedKeys?.has(key)}
+              aria-rowindex={index + 2}
+              selected={selection.has(key)}
               style={{ height: rowHeight }}
             >
               {selectable && (
                 <Table.Cell>
                   <Checkbox
-                    checked={selectedKeys?.has(key) ?? false}
+                    checked={selection.has(key)}
                     onChange={() => handleSelectRow(key)}
-                    aria-label={`Select row ${key}`}
+                    aria-label={rowLabel ? rowLabel(row, index) : `Select row ${key}`}
                   />
                 </Table.Cell>
               )}

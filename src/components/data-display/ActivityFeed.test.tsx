@@ -16,6 +16,27 @@ describe("ActivityFeed", () => {
     expect(root?.tagName).toBe("OL");
   });
 
+  // #28. The stylesheet's `list-style: none` is what drops list semantics in
+  // Safari + VoiceOver; jsdom computes the implicit role regardless, so this
+  // asserts the attribute that carries the fix, not the announcement.
+  it("marks the list explicitly", () => {
+    const { container } = render(
+      <ActivityFeed>
+        <ActivityFeed.Item actor="Ada" />
+      </ActivityFeed>,
+    );
+    expect(container.querySelector("ol.activity-feed")).toHaveAttribute("role", "list");
+  });
+
+  it("lets a caller replace the role", () => {
+    const { container } = render(
+      <ActivityFeed role="none">
+        <ActivityFeed.Item actor="Ada" />
+      </ActivityFeed>,
+    );
+    expect(container.querySelector("ol.activity-feed")).toHaveAttribute("role", "none");
+  });
+
   it("renders N <li> items", () => {
     const { container } = render(
       <ActivityFeed>

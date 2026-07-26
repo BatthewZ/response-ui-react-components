@@ -54,8 +54,15 @@ type DataTableProps<T> = {
 
   // Selection
   selectable?: boolean;
+  /** Controlled selection. Omit it and the table keeps its own (uncontrolled). */
   selectedKeys?: Set<string | number>;
   onSelectionChange?: (keys: Set<string | number>) => void;
+  /**
+   * Accessible name for a row's selection checkbox. Without it the name is
+   * `Select row ${rowKey}` — English, and reading out a raw key
+   * ("Select row 8f3a-91c2-4de1") to anyone using it.
+   */
+  rowLabel?: (row: T, index: number) => string;
 
   // Expansion
   /**
@@ -107,6 +114,10 @@ type DataTableProps<T> = {
 /*  DataTable                                                          */
 /* ------------------------------------------------------------------ */
 
+// Stable identity for the uncontrolled selection seed. Never mutated: every
+// selection helper returns a new Set.
+const EMPTY_SELECTION: Set<string | number> = new Set();
+
 /**
  * Generic data table with sorting, selection, pagination, loading, and empty states.
  *
@@ -140,6 +151,7 @@ export function DataTable<T>({
   selectable = false,
   selectedKeys,
   onSelectionChange,
+  rowLabel,
   renderExpanded,
   expandedKeys,
   onExpandedChange,
@@ -237,17 +249,24 @@ export function DataTable<T>({
     () => pageData.map((row, i) => rowKey(row, rowOffset + i)),
     [pageData, rowKey, rowOffset]
   );
-  const allSelected = selectedKeys != null && areAllSelected(visibleKeys, selectedKeys);
-  const someSelected = selectedKeys != null && isSomeSelected(visibleKeys, selectedKeys);
+  // Uncontrolled unless the consumer drives it, so `selectable` on its own
+  // gives working checkboxes rather than inert ones (#359) — the same contract
+  // the expansion state below already had.
+  const [selection, setSelection] = useControllableState<Set<string | number>>({
+    value: selectedKeys,
+    defaultValue: EMPTY_SELECTION,
+    onChange: onSelectionChange,
+  });
+
+  const allSelected = areAllSelected(visibleKeys, selection);
+  const someSelected = isSomeSelected(visibleKeys, selection);
 
   function handleSelectAll() {
-    if (!onSelectionChange || !selectedKeys) return;
-    onSelectionChange(toggleAllKeys(selectedKeys, visibleKeys));
+    setSelection(toggleAllKeys(selection, visibleKeys));
   }
 
   function handleSelectRow(key: string | number) {
-    if (!onSelectionChange || !selectedKeys) return;
-    onSelectionChange(toggleKey(selectedKeys, key));
+    setSelection(toggleKey(selection, key));
   }
 
   // Expansion (controllable; uncontrolled by default so it works out of the box).
@@ -342,17 +361,17 @@ export function DataTable<T>({
       <Table.Row key={i}>
         {expandable && (
           <Table.Cell>
-            <Skeleton variant="rectangular" width={16} height={16} />
+            <Skeleton variant="rectangular" width={16} height={16} aria-hidden="true" />
           </Table.Cell>
         )}
         {selectable && (
           <Table.Cell>
-            <Skeleton variant="rectangular" width={16} height={16} />
+            <Skeleton variant="rectangular" width={16} height={16} aria-hidden="true" />
           </Table.Cell>
         )}
         {columns.map((col) => (
           <Table.Cell key={col.key}>
-            <Skeleton variant="text" />
+            <Skeleton variant="text" aria-hidden="true" />
           </Table.Cell>
         ))}
       </Table.Row>
@@ -381,7 +400,7 @@ export function DataTable<T>({
       const isExpanded = expandable && expanded.has(key);
       return (
         <Fragment key={key}>
-          <Table.Row index={i} selected={selectedKeys?.has(key)}>
+          <Table.Row index={i} selected={selection.has(key)}>
             {expandable && (
               <Table.Cell>
                 <button
@@ -402,9 +421,9 @@ export function DataTable<T>({
             {selectable && (
               <Table.Cell>
                 <Checkbox
-                  checked={selectedKeys?.has(key) ?? false}
+                  checked={selection.has(key)}
                   onChange={() => handleSelectRow(key)}
-                  aria-label={`Select row ${key}`}
+                  aria-label={rowLabel ? rowLabel(row, i) : `Select row ${key}`}
                 />
               </Table.Cell>
             )}
@@ -434,7 +453,15 @@ export function DataTable<T>({
 
   return (
     <div>
-      <Table density={density} striped={hasRows && striped} stickyHeader={stickyHeader}>
+      {/* The skeleton cells are `aria-hidden`: one `role="status"` per cell was
+          `rows × columns` polite live regions all saying "Loading" (#366).
+          `aria-busy` states it once, on the thing that is loading. */}
+      <Table
+        density={density}
+        striped={hasRows && striped}
+        stickyHeader={stickyHeader}
+        tableProps={{ "aria-busy": loading || undefined }}
+      >
         {renderHeader()}
         <Table.Body>
           {loading ? renderLoadingRows() : hasRows ? renderRows() : renderEmptyRow()}

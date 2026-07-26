@@ -244,6 +244,71 @@ describe("StatCard", () => {
       expect(screen.getByTestId("fast").textContent).toBe("500");
       expect(fast.frames).toHaveLength(0);
     });
+
+    /* -------------------------------------------------------------- */
+    /*  #5 · a changed target re-animates                              */
+    /* -------------------------------------------------------------- */
+
+    it("counts on to a new `to` instead of freezing on the first one", () => {
+      motion.reduced = false;
+      const env = stubMotionEnvironment();
+      const startedAt = performance.now();
+
+      const view = render(
+        <StatCard.Value animateValue from={0} to={500} duration={1000} data-testid="value" />
+      );
+      const el = screen.getByTestId("value");
+
+      env.scrollIntoView();
+      env.runFrame(startedAt + 10_000);
+      expect(el.textContent).toBe("500");
+
+      // The figure updates — a re-fetch, a live stat.
+      view.rerender(
+        <StatCard.Value animateValue from={0} to={900} duration={1000} data-testid="value" />
+      );
+      const secondRunAt = performance.now();
+      env.scrollIntoView();
+
+      // A run is queued, and it starts from the figure on screen, not from `from`.
+      expect(env.frames).toHaveLength(1);
+      env.runFrame(secondRunAt + 400);
+      const midway = Number(el.textContent);
+      expect(midway).toBeGreaterThan(500);
+      expect(midway).toBeLessThan(900);
+
+      env.runFrame(secondRunAt + 10_000);
+      expect(el.textContent).toBe("900");
+    });
+
+    it("does not re-run for a target it already reached", () => {
+      motion.reduced = false;
+      const env = stubMotionEnvironment();
+      const startedAt = performance.now();
+
+      const view = render(
+        <StatCard.Value animateValue from={0} to={500} duration={1000} data-testid="value" />
+      );
+      env.scrollIntoView();
+      env.runFrame(startedAt + 10_000);
+      expect(screen.getByTestId("value").textContent).toBe("500");
+
+      // Same target, unrelated re-render, element scrolled back into view.
+      view.rerender(
+        <StatCard.Value
+          animateValue
+          from={0}
+          to={500}
+          duration={1000}
+          className="x"
+          data-testid="value"
+        />
+      );
+      env.scrollIntoView();
+
+      expect(env.frames).toHaveLength(0);
+      expect(screen.getByTestId("value").textContent).toBe("500");
+    });
   });
 
   describe("Trend", () => {

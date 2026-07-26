@@ -41,6 +41,7 @@ your row with no annotation.
 | `selectable`          | `boolean`                                                                | `false`                  |
 | `selectedKeys`        | `Set<string \| number>`                                                  | —                        |
 | `onSelectionChange`   | `(keys: Set<string \| number>) => void`                                  | —                        |
+| `rowLabel`            | `(row: T, index: number) => string`                                      | `Select row {key}`       |
 | `onEndReached`        | `() => void`                                                             | —                        |
 | `endReachedThreshold` | `number` — rows from the end that arm `onEndReached`                     | `8`                      |
 | `density`             | `"dense" \| "comfortable" \| "spacious"`                                 | `"comfortable"`          |
@@ -200,8 +201,9 @@ owns the direction flip itself.
 
 ## Selection
 
-`selectable` adds a leading checkbox column. Selection is **always controlled**: hold a
-`Set<string | number>` of row keys and pass `selectedKeys` plus `onSelectionChange`. The
+`selectable` adds a leading checkbox column. Selection is **controllable**: hold a
+`Set<string | number>` of row keys and pass `selectedKeys` plus `onSelectionChange` to own it,
+or pass neither and the table keeps the set itself (`onSelectionChange` still fires). The
 component never mutates your Set — both handlers return a new one. In the example, `selected`
 and `setSelected` are a `useState<Set<string | number>>(new Set())`.
 
@@ -231,8 +233,9 @@ your Set from one click. It shows the native indeterminate state when some but n
 ## Infinite loading
 
 The natural pairing for a windowed list. `onEndReached` fires once when the rendered window
-reaches within `endReachedThreshold` rows of the end, and re-arms as soon as the window moves
-away — so appending rows to `data` is enough to make it fire again on the next approach.
+reaches within `endReachedThreshold` rows of the end. It re-arms when the window moves away
+**and** whenever `data` grows, so appending a page always re-arms the loader — even a page too
+small to push the window back out of the threshold. It never fires while `loading` is set.
 
 <!-- example:InfiniteScroll -->
 ```tsx
@@ -369,10 +372,6 @@ virtualization maths has to agree with them exactly. See the
   inline `rowKey={(r) => r.id}` is a new function every render, so a parent re-render costs
   another full pass (measured 50,068 → 100,084 on a 50,000-row table). Define `rowKey` once
   outside the component.
-- **`selectable` alone renders checkboxes that do nothing.** Without both `selectedKeys` and
-  `onSelectionChange`, the handlers return early: measured, the select-all box renders unchecked
-  and *not* disabled, and clicking it changes nothing and calls nothing. The three props are a
-  set; the type does not say so.
 - **Controlled `sort` is round-trippable.** `sort` and `defaultSort` accept
   `SortState | null`, so the `null` that `onSortChange` emits can be passed straight back to
   clear the sort. The mode is decided on the first render and then locked, so a later
@@ -386,14 +385,13 @@ virtualization maths has to agree with them exactly. See the
   re-decide.
 - **`onEndReached` can fire before the user scrolls.** It fires whenever the *rendered* window
   reaches the threshold, which on mount it already does if the dataset is short or the viewport
-  is tall — the component's own test asserts this for 20 rows. It also fires from the `loading`
-  branch (measured: one call on a mount with `loading` and 10 rows). Make your loader idempotent
-  and guard it on your own in-flight flag.
-- **A string `height` shrinks the first paint.** The window is seeded from `height` only when it
-  is a number; a `"60vh"` or `"100%"` seeds `0` instead, and the browser corrects it on the first
-  measurement. Measured server-side: `height={400}` renders 26 rows, `height="60vh"` renders 16
-  (`overscan * 2`) — so with a string height an SSR'd or pre-hydration table is visibly short.
-  Pass a number when you can.
+  is tall — the component's own test asserts this for 20 rows. It does *not* fire while
+  `loading` is set. It fires at most once per `data.length`, so a fetch that returns nothing
+  new does not re-arm it; still, make your loader idempotent.
+- **A string `height` is estimated, not measured, until hydration.** The window is seeded from
+  `height` when it is a number; a `"60vh"` or `"100%"` seeds the 400px default instead, and the
+  browser corrects it on the first measurement. A viewport much taller than 400px still renders
+  short server-side, and a much shorter one over-renders. Pass a number when you can.
 - **Column widths are negotiated from the mounted rows only.** The table has no
   `table-layout: fixed`, and `width` from a `ColumnDef` reaches the `<th>` but not the body
   cells, so an unusually wide value scrolling into the window can re-measure the columns
@@ -419,19 +417,19 @@ It is a real `<table>` with a real `<thead>`/`<tbody>`, and the spacer rows carr
 so nothing fake leaks into the accessibility tree. What is missing is the part that tells
 assistive tech the table is windowed at all.
 
-- **The row count is the window's, not the dataset's.** No `aria-rowcount` and no `aria-rowindex`
-  are set, and the table gets no `role="grid"`. Measured on a 1,000-row dataset: `aria-rowcount`
-  is `null`, and the `<tbody>` held 17 `<tr>` elements. A screen reader therefore announces a
-  table the size of the *window*, whose contents change as it scrolls, with no way to say "row
-  4,201 of 50,000". You cannot patch it from outside either — the component accepts no props to
-  forward, and [Table](table.md) spreads its own rest props onto the wrapper `<div>`, not the `<table>`.
+- **The row count is the dataset's, not the window's.** The `<table>` carries `aria-rowcount`
+  (rows + the header row) and every rendered `<tr>` its `aria-rowindex` in the full dataset, so
+  a screen reader can say "row 4,201 of 50,000" even though only a slice is mounted. The table
+  keeps its native `table` role: `role="grid"` would promise cell-level arrow-key navigation
+  this component does not implement.
 - **Find-in-page only searches what is mounted.** Ctrl+F, browser translation and "select all"
   see the visible window and nothing else. That is inherent to windowing, but it is a real
   regression against a plain [Table](table.md) and worth weighing before you virtualize a list of 500.
-- **Row checkboxes are named with the raw key.** Each row's checkbox takes an `aria-label` of
-  the literal `"Select row "` followed by whatever `rowKey` returned — measured as
-  `"Select row inv_0"`. If your keys are database IDs, that is what gets read out, and there is
-  no prop to supply a human-readable name.
+- **Row checkboxes are named with the raw key by default.** Each row's checkbox takes an
+  `aria-label` of the literal `"Select row "` followed by whatever `rowKey` returned — measured
+  as `"Select row inv_0"`. If your keys are database IDs, that is what gets read out, and the
+  string is English. Pass `rowLabel={(row) => …}` for a human-readable name in your own
+  language.
   The select-all box is labelled `"Select all rows"` and sets the native `indeterminate` property
   imperatively, so the mixed state is announced correctly.
 - **Sortable headers are operable but not announced as controls.** The `<th>` gets `tabIndex={0}`,

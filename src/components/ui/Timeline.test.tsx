@@ -84,6 +84,51 @@ describe("Timeline", () => {
     expect(item?.className).toContain("item-extra");
   });
 
+  /* ------------------------------------------------------------------ */
+  /*  #346 · a prepended event must not remount the ones already there   */
+  /* ------------------------------------------------------------------ */
+
+  it("keeps existing items mounted when an event is prepended", () => {
+    const { rerender } = render(
+      <Timeline animate={false}>
+        <Timeline.Item key="b" title="B" />
+        <Timeline.Item key="c" title="C" />
+      </Timeline>,
+    );
+
+    const before = screen.getByRole("heading", { name: "B" });
+
+    rerender(
+      <Timeline animate={false}>
+        <Timeline.Item key="a" title="A" />
+        <Timeline.Item key="b" title="B" />
+        <Timeline.Item key="c" title="C" />
+      </Timeline>,
+    );
+
+    // Same DOM node — the entry was moved, not torn down and rebuilt (which is
+    // what loses child state and replays the entrance animation).
+    expect(screen.getByRole("heading", { name: "B" })).toBe(before);
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(3);
+  });
+
+  it("still numbers the items by position after a prepend", () => {
+    const { container, rerender } = render(
+      <Timeline animate={false}>
+        <Timeline.Item key="b" title="B" />
+      </Timeline>,
+    );
+    rerender(
+      <Timeline animate={false}>
+        <Timeline.Item key="a" title="A" />
+        <Timeline.Item key="b" title="B" />
+      </Timeline>,
+    );
+
+    const titles = [...container.querySelectorAll(".timeline-title")].map((n) => n.textContent);
+    expect(titles).toEqual(["A", "B"]);
+  });
+
   // #340 — with `animate` at its default the item renders through ScrollReveal,
   // which is the path that used to drop every prop the `<div>` type advertises.
   it("forwards rest props to an item on the default animating path", () => {

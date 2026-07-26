@@ -78,11 +78,11 @@ text selection and never lands in the clipboard.
 ```
 <!-- /example -->
 
-One trailing newline is stripped before the split, so a string ending in `\n` doesn't get a
-numbered empty last line. The copy button is unaffected by any of this: it is handed the raw
-`code` prop — trailing newline included — not the split lines, so what you paste is exactly
-what you passed. The default (no-numbers) path does no stripping at all, which is where the
-two modes part company; see [Gotchas](#gotchas).
+`code` is normalised before it is rendered: CRLF and lone CR become LF, and one trailing
+newline is stripped, so a string ending in `\n` doesn't get a phantom empty last line (with
+its own number in line-number mode). Both modes do this, so the two agree. The copy button is
+unaffected: it is handed the raw `code` prop — line endings and trailing newline included —
+not the rendered text, so what you paste is exactly what you passed.
 
 ## Inside a narrow parent
 
@@ -109,9 +109,10 @@ the end of a line is to scroll it. That has a keyboard cost — see
 
 ## Naming the region
 
-Every block is a `role="region"` landmark, named by `filename` and falling back to the
-literal `"Code block"`. Rest props are spread last, so your own `aria-label` replaces that
-name:
+A block becomes a `role="region"` landmark **when it has a name** — a `filename`, or your own
+`aria-label` / `aria-labelledby`. With none of those it is a plain `<div>`, because an unnamed
+entry in a landmark list is noise. Rest props are spread last, so your own `aria-label`
+replaces the filename:
 
 <!-- example:NamedRegion -->
 ```tsx
@@ -156,7 +157,9 @@ CSS. A theme may flatten that step (the shipped `tech` theme pins it to 0.6875re
 width). `--R-SIZE-5` steps 0.5rem → 0.75rem at the same breakpoint, widening the code padding
 and the number gutter on desktop; `--R-SIZE-6` holds at 0.25rem on both sides of it.
 
-Three values are off-contract literals: the line-number gutter is `2.5ch` wide, the code sets
+Three values are off-contract literals: the line-number gutter is `2.5ch` wide by default —
+the component overrides it through `--_code-block-gutter` once the line count needs more
+digits — the code sets
 `tab-size: 2`, and its line height is a hard `1.6` rather than `--BodyText-3-line-height` — a
 listing wants tighter leading than prose does. The type declarations also carry CSS fallbacks
 — `var(--BodyText-3, 0.75rem)` in the header, `var(--BodyText-3, 0.8125rem)` in the code (the
@@ -175,19 +178,11 @@ only if `@batthewz/response-ui-css` was never imported.
   *any* of `filename`, `language` or `copyable` is truthy, so a bare
   `<CodeBlock code="…" />` still draws a header bar holding a lone copy button.
   `copyable={false}` with neither label is the only way to remove it.
-- **Only line-number mode trims the trailing newline.** The strip lives inside the
-  `showLineNumbers` branch, and the source comment gives its reason: a code string ending in
-  `\n` would otherwise render a phantom empty final line carrying its own line number. The
-  default path does no stripping — it puts `code` in the DOM verbatim, trailing newline
-  included, inside a `white-space: pre` element — so the phantom line is handled in exactly
-  one of the two modes. Trim the string yourself if the two have to match.
-- **CRLF input leaves a carriage return on every line.** Both the trim and the split are
-  LF-only, so `"a\r\nb\r\n"` renders two lines whose text ends in `\r`. Normalise with
-  `code.replace(/\r\n/g, "\n")` before passing it.
-- **`filename=""` produces an unnamed region.** The fallback is `filename ?? "Code block"`,
-  and `??` only catches nullish — an empty string passes through to `aria-label=""` while
-  the header span is skipped, leaving a `role="region"` with no accessible name. Pass
-  `undefined`, not `""`, when there is no filename.
+- **Exactly one trailing newline is stripped.** A string ending in `\n\n` still renders a
+  blank final line — the strip is there to absorb the newline a heredoc or a file read leaves
+  behind, not to trim whitespace. Interior blank lines are untouched in both modes.
+- **`filename=""` is the same as no filename.** The empty string names nothing, so the block
+  renders no filename span and is not a landmark. Pass an `aria-label` if it needs a name.
 - **Utility classes lose to the stylesheet for anything it already sets.** The root's rule
   sets the background, border, radius, overflow and `min-width`; this package's CSS declares
   no cascade layer while Tailwind v4 puts utilities in `@layer utilities`, and unlayered
@@ -201,9 +196,10 @@ only if `@batthewz/response-ui-css` was never imported.
   "Copy". Whether a click lands at all depends on the browser —
   [`navigator.clipboard` needs a secure context](copy-button.md#when-there-is-no-clipboard),
   and CodeBlock surfaces no success or failure signal either.
-- **The number gutter is sized for two digits.** It is a fixed `2.5ch` box with the counter
-  right-aligned inside it, so from line 100 the number is already wider than its box and
-  grows leftwards into the code's own padding.
+- **The number gutter widens in whole characters.** It is a `2.5ch` box up to 99 lines, then
+  one `ch` per digit (`3ch` from line 100, `4ch` from 1000), applied to the whole block so
+  every line's code starts at the same column. The code shifts right when a block crosses a
+  power of ten.
 - **Server-renderable, with a client island.** CodeBlock has no `"use client"` and drops
   into an RSC tree as-is; leaving `copyable` on mounts one
   [CopyButton](copy-button.md) client component per block.
@@ -213,17 +209,15 @@ only if `@batthewz/response-ui-css` was never imported.
 The code sits in a real `<pre><code>` pair, so indentation and line structure survive into
 the accessibility tree rather than being collapsed the way they would be in a `<div>`.
 
-- **Every block is a landmark.** `role="region"` with a name is exposed in a screen reader's
-  landmark list. That is useful for one or two samples on a page and noisy for a dozen, and
-  the default name is the same `"Code block"` string for all of them —
-  [name them](#naming-the-region) or expect a list of identical entries. There is no prop
-  that turns the role off, though `role` is a rest prop like any other.
-- **The scroller takes no focus.** The horizontally scrolling element is the inner `<pre>`,
-  and it is given no `tabIndex`, so whether a keyboard-only user can pan a long line comes
-  down to the browser doing it for them: Chrome (127+) and Firefox focus a scroll container
-  with no focusable children automatically, WebKit does not. You cannot patch it from the
-  call site either — a `tabIndex` you pass lands on the root, which is `overflow: hidden`
-  and not the scroller, so arrow keys there scroll the page instead.
+- **A named block is a landmark; an unnamed one is not.** `role="region"` is applied only
+  when the block has a `filename`, an `aria-label` or an `aria-labelledby`, so a page of
+  unnamed samples adds nothing to the landmark list and a named one is findable.
+  [Name them](#naming-the-region) when they are worth navigating to.
+- **The scroller takes focus.** The horizontally scrolling `<pre>` carries `tabIndex={0}`, so
+  a keyboard-only user can tab to it and pan a long line with the arrow keys in every browser
+  rather than relying on the automatic scroll-container focus Chrome and Firefox do and
+  WebKit does not. It draws a `--C-BORDER-FOCUS` ring on `:focus-visible`, and it inherits the
+  block's accessible name when there is one.
 - **Line numbers are generated content.** `user-select: none` keeps them out of selections
   and copies, which is the point — but browsers that expose `::before` text to the
   accessibility tree will read the number before its line. They are also inked

@@ -12,8 +12,14 @@ type DescriptionListProps = {
   layout?: Layout;
 } & ComponentPropsWithRef<"dl">;
 
+// Horizontal pins each element type to its column instead of letting the grid
+// auto-flow fill left-to-right: a term's SECOND detail used to land in the
+// label column and shift every pair after it (#7). Pinned, it stacks under the
+// first value where it belongs. Static strings, so Tailwind's scanner sees the
+// arbitrary variants.
 const layoutClass: Record<Layout, string> = {
-  horizontal: "grid grid-cols-[max-content_1fr] gap-x-r3 gap-y-r5",
+  horizontal:
+    "grid grid-cols-[max-content_1fr] gap-x-r3 gap-y-r5 [&>dt]:col-start-1 [&>dd]:col-start-2",
   vertical: "flex flex-col gap-r5",
 };
 

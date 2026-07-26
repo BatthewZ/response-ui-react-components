@@ -56,11 +56,27 @@ describe("Sparkline", () => {
     expect(container.querySelectorAll("rect")).toHaveLength(0);
   });
 
-  it("single value does not throw or produce NaN", () => {
+  // #30: `M x y` with nothing after it paints no pixels, so a one-value line
+  // rendered an empty chart — a silent no-op with no error and no fallback.
+  it("single value renders a visible point rather than an empty path", () => {
     const { container } = render(<Sparkline values={[7]} />);
-    const path = container.querySelector("path.sparkline-line");
-    expect(path).toBeInTheDocument();
-    expect(path?.getAttribute("d")).not.toContain("NaN");
+
+    expect(container.querySelector("path.sparkline-line")).not.toBeInTheDocument();
+
+    const point = container.querySelector("circle.sparkline-point");
+    expect(point).toBeInTheDocument();
+    for (const attr of ["cx", "cy", "r"]) {
+      const value = point?.getAttribute(attr);
+      expect(value).not.toContain("NaN");
+      expect(Number(value)).toBeGreaterThan(0);
+    }
+  });
+
+  it("single value in the area variant does not draw a triangle out of one datum", () => {
+    const { container } = render(<Sparkline values={[7]} variant="area" />);
+
+    expect(container.querySelector("path.sparkline-area")).not.toBeInTheDocument();
+    expect(container.querySelector("circle.sparkline-point")).toBeInTheDocument();
   });
 
   it("single bar value does not throw or produce NaN", () => {

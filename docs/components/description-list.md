@@ -54,8 +54,8 @@ above its value, which suits narrow columns and long values.
 
 ## Multiple details per term
 
-A `Term` may own more than one `Detail` — valid `<dl>` semantics. Stack them with
-`vertical`; in `horizontal` the extra details wrap under the label column (see
+A `Term` may own more than one `Detail` — valid `<dl>` semantics. Both layouts handle it: in
+`horizontal` the extra details stack in the value column under the first (see
 [Gotchas](#gotchas)).
 
 <!-- example:MultipleDetails -->
@@ -104,6 +104,10 @@ re-tints with the rest of the app, at runtime, no rebuild.
 | Detail type        | `text-body-2`                  | `--BodyText-2`                    |
 | Row / stack gap    | `gap-r5`                       | `--R-SIZE-5`                      |
 
+The horizontal layout also pins each element type to its column with
+`[&>dt]:col-start-1` / `[&>dd]:col-start-2`, which is what keeps a term's second value in the
+value column instead of the label one.
+
 The horizontal grid adds a **column** gap between term and detail via `gap-x-r3`
 (`--R-SIZE-3`) and reuses `--R-SIZE-5` for its row gap through `gap-y-r5`; vertical
 uses the single `gap-r5` above. All three ride the responsive `r`-scale, so the gaps
@@ -117,11 +121,11 @@ so on a custom or non-standard surface, check it.
 
 ## Gotchas
 
-- **Horizontal misaligns a term's second detail.** The layout is a two-column grid with
-  default row auto-flow, so children fill left-to-right, top-to-bottom. One `Term` + one
-  `Detail` lands cleanly, but a **second** `Detail` wraps into the *label* column of the
-  next row and shifts every following pair. For multi-value entries use `layout="vertical"`,
-  or fold the values into a single `Detail`.
+- **A term's extra details stack under the first, not beside the label.** Every `<dt>` is
+  pinned to the label column and every `<dd>` to the value column, so a second `Detail` starts
+  a new row in the value column and the pairs after it are unaffected. They are a full row gap
+  apart, so a tightly grouped multi-value entry still reads better as `layout="vertical"` or as
+  one `Detail`.
 - **A long term widens every value.** The label column is `max-content` across the whole
   grid, so the single widest `Term` sets where *all* values begin. One long label pushes
   every value right. Switch to `vertical` when labels vary a lot in length.

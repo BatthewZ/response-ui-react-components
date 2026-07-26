@@ -142,6 +142,86 @@ describe("DataTable", () => {
     expect(onSelectionChange).toHaveBeenCalledWith(new Set([1]));
   });
 
+  /* ---------------------------------------------------------------- */
+  /*  #359 · selectable on its own is a working feature                */
+  /* ---------------------------------------------------------------- */
+
+  it("selectable alone gives working checkboxes", async () => {
+    const user = userEvent.setup();
+    render(<DataTable data={data} columns={columns} rowKey={rowKey} selectable />);
+
+    const row1 = screen.getByRole("checkbox", { name: /select row 1/i });
+    expect(row1).not.toBeChecked();
+
+    await user.click(row1);
+    expect(row1).toBeChecked();
+
+    await user.click(row1);
+    expect(row1).not.toBeChecked();
+  });
+
+  it("select-all works uncontrolled and reports through onSelectionChange", async () => {
+    const user = userEvent.setup();
+    const onSelectionChange = vi.fn();
+    render(
+      <DataTable
+        data={data}
+        columns={columns}
+        rowKey={rowKey}
+        selectable
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: /select all rows/i }));
+
+    expect(onSelectionChange).toHaveBeenCalledTimes(1);
+    expect(onSelectionChange).toHaveBeenCalledWith(new Set([1, 2]));
+    expect(screen.getByRole("checkbox", { name: /select row 2/i })).toBeChecked();
+  });
+
+  // #362: the default name interpolates the raw row key into an English
+  // sentence, and there was no way to say anything else.
+  it("rowLabel names a row's checkbox", () => {
+    render(
+      <DataTable
+        data={data}
+        columns={columns}
+        rowKey={rowKey}
+        selectable
+        rowLabel={(row) => `Sélectionner ${row.name}`}
+      />,
+    );
+
+    expect(
+      screen.getByRole("checkbox", { name: "Sélectionner Alice" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: /select row 1/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("a controlled selectedKeys still wins over the internal state", async () => {
+    const user = userEvent.setup();
+    const onSelectionChange = vi.fn();
+    render(
+      <DataTable
+        data={data}
+        columns={columns}
+        rowKey={rowKey}
+        selectable
+        selectedKeys={new Set()}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    const row1 = screen.getByRole("checkbox", { name: /select row 1/i });
+    await user.click(row1);
+
+    expect(onSelectionChange).toHaveBeenCalledTimes(1);
+    expect(row1).not.toBeChecked(); // the consumer did not feed the new set back
+  });
+
   it("renders Pagination when page and totalPages are provided", () => {
     render(
       <DataTable
@@ -160,7 +240,7 @@ describe("DataTable", () => {
   });
 
   it("shows skeleton rows when loading=true", () => {
-    render(
+    const { container } = render(
       <DataTable
         data={[]}
         columns={columns}
@@ -170,8 +250,35 @@ describe("DataTable", () => {
       />,
     );
 
-    const skeletons = screen.getAllByRole("status", { name: /loading/i });
-    expect(skeletons.length).toBeGreaterThan(0);
+    expect(container.querySelectorAll(".skeleton").length).toBe(
+      3 * columns.length,
+    );
+  });
+
+  // #366: one Skeleton per cell is one polite live region per cell — 3 rows x 2
+  // columns announced "Loading" six times over. The state belongs on the table.
+  it("loading skeletons are hidden from AT and the table is aria-busy", () => {
+    const { container } = render(
+      <DataTable
+        data={[]}
+        columns={columns}
+        rowKey={rowKey}
+        loading
+        loadingRowCount={3}
+      />,
+    );
+
+    expect(screen.queryAllByRole("status")).toHaveLength(0);
+    for (const skeleton of container.querySelectorAll(".skeleton")) {
+      expect(skeleton).toHaveAttribute("aria-hidden", "true");
+    }
+    expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("drops aria-busy once loading is over", () => {
+    render(<DataTable data={data} columns={columns} rowKey={rowKey} />);
+
+    expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
   });
 
   it("shows 'No data' EmptyState when data is empty", () => {

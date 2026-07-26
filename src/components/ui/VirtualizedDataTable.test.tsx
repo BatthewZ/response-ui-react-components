@@ -295,6 +295,187 @@ describe("VirtualizedDataTable", () => {
     expect(rendered[rendered.length - 1]).toHaveTextContent("Row 15");
   });
 
+  /* ---------------------------------------------------------------- */
+  /*  onEndReached re-arming (#442) and the loading branch (#374)       */
+  /* ---------------------------------------------------------------- */
+
+  it("fires again after the consumer appends a page (#442)", () => {
+    const onEndReached = vi.fn();
+    const props = { columns, rowKey, rowHeight: 40, onEndReached };
+    const { rerender } = render(<VirtualizedDataTable data={makeData(20)} {...props} />);
+
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+
+    // The consumer appends 4 rows. The window (16 rows) is still inside the
+    // 8-row threshold of the new end, so nothing re-arms a boolean guard —
+    // this is the append size that used to stall the loader for good.
+    rerender(<VirtualizedDataTable data={makeData(24)} {...props} />);
+
+    expect(onEndReached).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not fire twice for the same dataset (#442 does not re-break #374)", () => {
+    const onEndReached = vi.fn();
+    const data = makeData(20);
+    const props = { data, columns, rowKey, rowHeight: 40, onEndReached };
+    const { rerender } = render(<VirtualizedDataTable {...props} />);
+
+    rerender(<VirtualizedDataTable {...props} striped />);
+    rerender(<VirtualizedDataTable {...props} striped density="dense" />);
+
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fire onEndReached while loading (#374)", () => {
+    const onEndReached = vi.fn();
+    render(
+      <VirtualizedDataTable
+        data={makeData(10)}
+        columns={columns}
+        rowKey={rowKey}
+        rowHeight={40}
+        loading
+        onEndReached={onEndReached}
+      />
+    );
+
+    expect(onEndReached).not.toHaveBeenCalled();
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  Selection (#369, #371)                                           */
+  /* ---------------------------------------------------------------- */
+
+  it("does not key the whole dataset when selection is off (#369)", () => {
+    const keySpy = vi.fn((row: Item) => row.id);
+    render(
+      <VirtualizedDataTable
+        data={makeData(1000)}
+        columns={columns}
+        rowKey={keySpy}
+        rowHeight={40}
+      />
+    );
+
+    // Only the mounted window needs a key. The select-all list — the one list a
+    // virtualizer cannot window — must not be built when there is no select-all.
+    expect(keySpy.mock.calls.length).toBeLessThan(100);
+  });
+
+  it("still keys the whole dataset when selection is on (#369 is not a capability cut)", async () => {
+    const user = userEvent.setup();
+    const onSelectionChange = vi.fn();
+    render(
+      <VirtualizedDataTable
+        data={makeData(100)}
+        columns={columns}
+        rowKey={rowKey}
+        rowHeight={40}
+        selectable
+        selectedKeys={new Set()}
+        onSelectionChange={onSelectionChange}
+      />
+    );
+
+    await user.click(screen.getByLabelText("Select all rows"));
+
+    expect(onSelectionChange.mock.calls[0][0].size).toBe(100);
+  });
+
+  it("selectable alone gives working checkboxes (#371)", async () => {
+    const user = userEvent.setup();
+    render(
+      <VirtualizedDataTable
+        data={makeData(5)}
+        columns={columns}
+        rowKey={rowKey}
+        rowHeight={40}
+        selectable
+      />
+    );
+
+    const box = screen.getByLabelText("Select row 0") as HTMLInputElement;
+    expect(box.checked).toBe(false);
+
+    await user.click(box);
+    expect(box.checked).toBe(true);
+
+    await user.click(screen.getByLabelText("Select all rows"));
+    expect(
+      screen.getAllByRole("checkbox").filter((c) => (c as HTMLInputElement).checked)
+    ).toHaveLength(6); // 5 rows + the header box
+  });
+
+  // #373: the default name reads the raw row key aloud, in English, with no
+  // way to override it.
+  it("rowLabel names a row's checkbox", () => {
+    render(
+      <VirtualizedDataTable
+        data={makeData(3)}
+        columns={columns}
+        rowKey={rowKey}
+        rowHeight={40}
+        selectable
+        rowLabel={(row) => `Sélectionner ${row.name}`}
+      />
+    );
+
+    expect(screen.getByRole("checkbox", { name: "Sélectionner Row 0" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Select row 0")).not.toBeInTheDocument();
+  });
+
+  it("a controlled selection still wins over the internal one", async () => {
+    const user = userEvent.setup();
+    const onSelectionChange = vi.fn();
+    render(
+      <VirtualizedDataTable
+        data={makeData(5)}
+        columns={columns}
+        rowKey={rowKey}
+        rowHeight={40}
+        selectable
+        selectedKeys={new Set()}
+        onSelectionChange={onSelectionChange}
+      />
+    );
+
+    const box = screen.getByLabelText("Select row 0") as HTMLInputElement;
+    await user.click(box);
+
+    expect(onSelectionChange).toHaveBeenCalledTimes(1);
+    expect(box.checked).toBe(false); // the consumer did not feed the new set back
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  Row counts for a windowed table (#372)                           */
+  /* ---------------------------------------------------------------- */
+
+  it("reports the dataset's row count and each row's place in it (#372)", () => {
+    const { container } = render(
+      <VirtualizedDataTable
+        data={makeData(1000)}
+        columns={columns}
+        rowKey={rowKey}
+        rowHeight={40}
+      />
+    );
+
+    // 1000 data rows + the header row.
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "1001");
+    expect(container.querySelector("thead tr")).toHaveAttribute("aria-rowindex", "1");
+
+    const scroller = stubScrollerHeight(container, 400);
+    act(() => {
+      scroller.scrollTop = 40 * 100;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+
+    // The mounted slice is nowhere near the top, and says so.
+    const first = container.querySelector("tbody tr.table-row");
+    expect(first).toHaveTextContent("Row 92"); // 100 - overscan
+    expect(first).toHaveAttribute("aria-rowindex", "94"); // +1 header, +1 one-based
+  });
+
   it("renders the empty state", () => {
     render(<VirtualizedDataTable data={[]} columns={columns} rowKey={rowKey} rowHeight={40} />);
     expect(screen.getByText("No data")).toBeInTheDocument();

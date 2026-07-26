@@ -52,17 +52,35 @@ type TableProps = {
   density?: Density;
   striped?: boolean;
   stickyHeader?: boolean;
+  /**
+   * Props for the inner `<table>`. Every other prop lands on the wrapper
+   * `<div>` (which is the scrollport, and wants them), so this is the only
+   * route to the table element itself — an `aria-label`, an `aria-rowcount`,
+   * a `className`. Its `className` merges with the component's own.
+   */
+  tableProps?: ComponentPropsWithRef<"table">;
 } & ComponentPropsWithRef<"div">;
 
 const TableRoot = forwardRef<HTMLDivElement, TableProps>(function Table(
-  { density = "comfortable", striped = false, stickyHeader = false, className, children, ...props },
+  {
+    density = "comfortable",
+    striped = false,
+    stickyHeader = false,
+    tableProps,
+    className,
+    children,
+    ...props
+  },
   ref
 ) {
+  const { className: tableClassName, ...restTableProps } = tableProps ?? {};
+
   return (
     <TableContext.Provider value={{ density, striped }}>
       <div ref={ref} className={cn("table-wrapper", className)} {...props}>
         <table
-          className={cn("table", stickyHeader && "table--sticky-header")}
+          className={cn("table", stickyHeader && "table--sticky-header", tableClassName)}
+          {...restTableProps}
         >
           {children}
         </table>
@@ -166,10 +184,15 @@ const TableHeaderCell = forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
     const { density } = useTableContext();
     const sortable = !!onSort;
 
+    // A direction is shown whenever one is set, sortable or not: `sortDirection`
+    // alone already emits `aria-sort`, and an arrow no sighted user can see is
+    // state announced to AT only (#355).
+    const hasDirection = sortDirection === "asc" || sortDirection === "desc";
+
     let sortIcon: ReactNode = null;
-    if (sortable) {
+    if (sortable || hasDirection) {
       const Icon = sortDirection === "asc" ? ArrowUp : sortDirection === "desc" ? ArrowDown : ArrowUpDown;
-      const modifier = sortDirection ? "active" : "muted";
+      const modifier = hasDirection ? "active" : "muted";
       sortIcon = (
         <span className={`table-header-cell__sort-icon table-header-cell__sort-icon--${modifier}`}>
           <Icon size={14} />

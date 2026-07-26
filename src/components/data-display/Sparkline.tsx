@@ -92,6 +92,19 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(function Spar
           height={Math.max(0, round(baseline - p.y))}
         />
       ));
+    } else if (n === 1) {
+      // One value has no line to draw: `M x y` alone paints nothing, and the
+      // area variant's closing path drew a triangle out of a single datum.
+      // Render the datum itself (#30).
+      const [point] = points;
+      content = (
+        <circle
+          className="sparkline-point"
+          cx={round(point.x)}
+          cy={round(point.y)}
+          r={round(strokeWidth)}
+        />
+      );
     } else {
       const linePath = points
         .map((p, i) => `${i === 0 ? "M" : "L"} ${round(p.x)} ${round(p.y)}`)

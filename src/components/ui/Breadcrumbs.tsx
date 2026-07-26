@@ -49,13 +49,24 @@ const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
     const [expanded, setExpanded] = useState(false);
 
     const childArray = Children.toArray(children);
+
+    // Head and tail are clamped so they cannot overlap: `itemsBeforeCollapse=2`
+    // + `itemsAfterCollapse=2` over three crumbs used to slice the middle one
+    // into both halves, rendering it twice under a duplicate React key. If the
+    // two halves cover everything, there is nothing behind the ellipsis and the
+    // full trail renders instead (#138).
+    const headCount = Math.max(0, Math.min(itemsBeforeCollapse, childArray.length));
+    const tailStart = Math.max(headCount, childArray.length - Math.max(0, itemsAfterCollapse));
     const shouldCollapse =
-      maxItems !== undefined && !expanded && childArray.length > maxItems;
+      maxItems !== undefined &&
+      !expanded &&
+      childArray.length > maxItems &&
+      tailStart > headCount;
 
     let displayedItems: ReactNode[];
     if (shouldCollapse) {
-      const before = childArray.slice(0, itemsBeforeCollapse);
-      const after = childArray.slice(childArray.length - itemsAfterCollapse);
+      const before = childArray.slice(0, headCount);
+      const after = childArray.slice(tailStart);
       displayedItems = [
         ...before,
         <li key="__ellipsis" className="breadcrumbs__item">
@@ -95,7 +106,12 @@ const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
           className={cn("breadcrumbs", className)}
           {...props}
         >
-          <ol className="breadcrumbs__list">{withSeparators}</ol>
+          {/* `role="list"` restores what `list-style: none` drops in Safari +
+              VoiceOver. Set here because rest props land on the <nav>, so a
+              caller has no way to put it back (#145). */}
+          <ol role="list" className="breadcrumbs__list">
+            {withSeparators}
+          </ol>
         </nav>
       </BreadcrumbsContext.Provider>
     );

@@ -47,7 +47,13 @@ const StatCardValue = forwardRef<HTMLSpanElement, StatCardValueProps>(function S
 ) {
   const reducedMotion = usePrefersReducedMotion();
   const innerRef = useRef<HTMLSpanElement>(null);
-  const hasAnimated = useRef(false);
+  // The target already animated to, NOT a "has run once" flag: a flag froze the
+  // counter on the first value it ever reached, so a stat that updates (a live
+  // figure, a re-fetched dashboard) never moved again (#5).
+  const animatedTo = useRef<number | null>(null);
+  // Where the next run starts from — the figure on screen, so an update counts
+  // on from what the reader can see rather than restarting at `from`.
+  const currentValue = useRef<number | null>(null);
   const [displayValue, setDisplayValue] = useState<string | null>(null);
 
   const formatValue = useCallback(
@@ -71,14 +77,16 @@ const StatCardValue = forwardRef<HTMLSpanElement, StatCardValueProps>(function S
     // rather than throwing or freezing on the `from` placeholder. Kept in the
     // effect, not the render, so the server and the first client render agree.
     if (typeof IntersectionObserver === "undefined") {
+      currentValue.current = target;
+      animatedTo.current = target;
       setDisplayValue(formatValue(target));
       return;
     }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting || hasAnimated.current) return;
-        hasAnimated.current = true;
+        if (!entry.isIntersecting || animatedTo.current === target) return;
+        animatedTo.current = target;
         observer.disconnect();
 
         // Read duration from CSS custom property or use prop
@@ -87,20 +95,23 @@ const StatCardValue = forwardRef<HTMLSpanElement, StatCardValueProps>(function S
           (parseFloat(getComputedStyle(el).getPropertyValue("--MOTION-DURATION-SHIFT")) || 400);
 
         const startTime = performance.now();
-        const range = target - from;
+        const start = currentValue.current ?? from;
+        const range = target - start;
 
         function tick(now: number) {
           const elapsed = now - startTime;
           const t = Math.min(elapsed / ms, 1);
           // Cubic ease-out: 1 - (1 - t)^3
           const eased = 1 - Math.pow(1 - t, 3);
-          const current = from + range * eased;
+          const current = start + range * eased;
 
+          currentValue.current = current;
           setDisplayValue(formatValue(Math.round(current)));
 
           if (t < 1) {
             requestAnimationFrame(tick);
           } else {
+            currentValue.current = target;
             setDisplayValue(formatValue(target));
           }
         }

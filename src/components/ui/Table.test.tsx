@@ -304,6 +304,86 @@ describe("Table", () => {
     expect(wrapper).toHaveClass("custom-class");
   });
 
+  /* ---------------------------------------------------------------- */
+  /*  #349 · the inner <table> is reachable                            */
+  /* ---------------------------------------------------------------- */
+
+  describe("tableProps reach the <table>, everything else the wrapper", () => {
+    function renderWith(props: ComponentPropsWithoutRef<typeof Table>) {
+      return render(
+        <Table {...props}>
+          <Table.Head>
+            <Table.Row>
+              <Table.HeaderCell>Header</Table.HeaderCell>
+            </Table.Row>
+          </Table.Head>
+          <Table.Body>
+            <Table.Row>
+              <Table.Cell>Cell</Table.Cell>
+            </Table.Row>
+          </Table.Body>
+        </Table>,
+      );
+    }
+
+    it("names the table itself", () => {
+      renderWith({ tableProps: { "aria-label": "Invoices" } });
+
+      expect(screen.getByRole("table", { name: "Invoices" })).toBeInTheDocument();
+    });
+
+    it("merges its className with the component's own", () => {
+      renderWith({ tableProps: { className: "fixed-layout" }, stickyHeader: true });
+
+      const table = screen.getByRole("table");
+      expect(table).toHaveClass("table");
+      expect(table).toHaveClass("table--sticky-header");
+      expect(table).toHaveClass("fixed-layout");
+    });
+
+    it("leaves the wrapper's own props on the wrapper", () => {
+      const { container } = renderWith({
+        className: "wrap",
+        tableProps: { "aria-rowcount": 500 },
+      });
+
+      const wrapper = container.firstElementChild;
+      expect(wrapper).toHaveClass("table-wrapper", "wrap");
+      expect(wrapper).not.toHaveAttribute("aria-rowcount");
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "500");
+    });
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  #355 · a direction announced is a direction shown                */
+  /* ---------------------------------------------------------------- */
+
+  describe("sortDirection without onSort", () => {
+    it("shows the arrow it announces", () => {
+      renderSortableTable({ sortDirection: "desc" });
+
+      const header = screen.getByRole("columnheader");
+      expect(header).toHaveAttribute("aria-sort", "descending");
+      expect(header.querySelectorAll(".table-header-cell__sort-icon--active")).toHaveLength(1);
+    });
+
+    it("stays non-interactive: no tabIndex, no sortable styling", () => {
+      renderSortableTable({ sortDirection: "asc" });
+
+      const header = screen.getByRole("columnheader");
+      expect(header).not.toHaveAttribute("tabindex");
+      expect(header).not.toHaveClass("table-header-cell--sortable");
+    });
+
+    it("announces and shows nothing when there is no direction and no onSort", () => {
+      renderSortableTable({ sortDirection: false });
+
+      const header = screen.getByRole("columnheader");
+      expect(header).not.toHaveAttribute("aria-sort");
+      expect(header.querySelectorAll("[class*='sort-icon']")).toHaveLength(0);
+    });
+  });
+
   describe("HeaderCell keyboard sorting", () => {
     it("Enter on a sortable header fires onSort exactly once", async () => {
       const user = userEvent.setup();

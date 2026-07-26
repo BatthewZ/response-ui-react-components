@@ -35,6 +35,7 @@ row or a cell yourself.
 | `selectable`        | `boolean`                                                                | `false`              |
 | `selectedKeys`      | `Set<string \| number>`                                                  | —                    |
 | `onSelectionChange` | `(keys: Set<string \| number>) => void`                                  | —                    |
+| `rowLabel`          | `(row: T, index: number) => string`                                      | `Select row {key}`   |
 | `renderExpanded`    | `(row: T, index: number) => ReactNode`                                   | —                    |
 | `expandedKeys`      | `Set<string \| number>`                                                  | —                    |
 | `onExpandedChange`  | `(keys: Set<string \| number>) => void`                                  | —                    |
@@ -221,9 +222,10 @@ matters is the *first* render, as the first [Gotcha](#gotchas) explains.
 
 ## Selection
 
-`selectable` adds a leading checkbox column plus a select-all box in the header. Selection
-is **always controlled** — `selectedKeys` is your `Set` of `rowKey` values and
-`onSelectionChange` hands you the next one. Both are required for the boxes to work at all.
+`selectable` adds a leading checkbox column plus a select-all box in the header. Selection is
+**controllable**: pass `selectedKeys` (your `Set` of `rowKey` values) and `onSelectionChange`
+to own it, or pass neither and the table keeps the set itself. `onSelectionChange` fires in
+both modes, so you can observe an uncontrolled selection without driving it.
 
 Select-all operates on the **current page only**: it adds every visible row's key to your
 set, or removes them all if they are already there. Keys from other pages are untouched. In
@@ -452,10 +454,6 @@ not as the signal itself.
   the requested page still went from `["A","B"]` to `["E"]`). Mount with `page` `undefined`
   and a `page` you start passing later is **ignored**, silently. `page={p ?? undefined}` keeps
   whatever the first render decided; `page={p ?? 1}` is what you want if you mean controlled.
-- **`selectable` on its own renders dead checkboxes.** `selectedKeys` and
-  `onSelectionChange` are both optional in the type, but the select handlers bail out
-  unless both are present. `<DataTable … selectable />` renders the select-all box and one
-  box per row, all permanently unchecked and ignoring every click.
 - **`stickyHeader` has nothing to stick to.** [Table](table.md)'s wrapper sets `overflow-x: auto`,
   which makes that wrapper the nearest scroll container for the header, and DataTable
   exposes no `className`, `style` or `ref` with which to give it a height — so the wrapper
@@ -513,19 +511,20 @@ cells.
   flips between "Expand row" and "Collapse row". There is no `aria-controls`; the detail
   row is the immediately following `<tr>`, so DOM order carries the relationship. The
   button sets no custom focus style, leaving the browser's own outline in place.
-- **Row checkboxes are named from the key.** Each is labelled "Select row" followed by the
-  `rowKey` value, so an opaque key makes an opaque name — measured with a UUID-ish key:
-  `Select row 8f3a-91c2-4de1`, which is what a screen reader spells out. The
-  header box is labelled "Select all rows" and gets its `indeterminate` DOM property set
-  imperatively when only some visible rows are selected.
+- **Row checkboxes are named from the key unless you say otherwise.** The default label is
+  "Select row" followed by the `rowKey` value, so an opaque key makes an opaque name
+  (`Select row 8f3a-91c2-4de1` is what a screen reader spells out) and the string is English.
+  Pass `rowLabel={(row) => …}` to name them from the row's own data, in your own language.
+  The header box is labelled "Select all rows" — still hard-coded — and gets its
+  `indeterminate` DOM property set imperatively when only some visible rows are selected.
 - **Selection is announced by the checkbox alone.** The selected `<tr>` gets a colour wash
   and nothing else — no `aria-selected` (which would not be valid on a `table` row anyway).
   Anyone not seeing the tint relies entirely on the checkbox state, so keep the checkbox
   column visible.
-- **The loading state emits one live region per skeleton cell.** Each
-  [Skeleton](skeleton.md) is `role="status"` named "Loading" — measured 10 of them for
-  `loadingRowCount={5}` across two columns. On a wide table that is a lot of simultaneous
-  polite announcements; consider your own single status region instead.
+- **The loading state announces itself once, on the table.** The skeleton cells are
+  `aria-hidden` — one `role="status"` per cell was `rows × columns` polite live regions all
+  saying "Loading" — and the `<table>` carries `aria-busy="true"` while `loading` is set.
+  Add your own status region if you want the load spoken rather than merely marked.
 - **The header is the same in every state**, so a screen reader keeps the column names, the
   `aria-sort` values and the select-all checkbox while the table is loading or empty, rather
   than having them appear and disappear around a refetch. The flip side is that those

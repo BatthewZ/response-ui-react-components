@@ -15,7 +15,10 @@ const ActivityFeedRoot = forwardRef<HTMLOListElement, ActivityFeedProps>(functio
   ref,
 ) {
   return (
-    <ol ref={ref} className={cn("activity-feed", className)} {...props}>
+    // `role="list"` restores what the stylesheet's `list-style: none` drops in
+    // Safari + VoiceOver (#28). Written before the spread, so a caller can
+    // still replace it.
+    <ol role="list" ref={ref} className={cn("activity-feed", className)} {...props}>
       {children}
     </ol>
   );

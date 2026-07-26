@@ -4,6 +4,7 @@ import {
   type ComponentPropsWithRef,
   createContext,
   forwardRef,
+  isValidElement,
   type ReactNode,
   useContext,
 } from "react";
@@ -43,7 +44,15 @@ const TimelineRoot = forwardRef<HTMLDivElement, TimelineProps>(function Timeline
   return (
     <div ref={ref} className={cn("timeline", className)} {...props}>
       {items.map((child, index) => (
-        <TimelineItemContext.Provider key={index} value={{ index, animate }}>
+        // Keyed by the child, not by its position: a provider keyed by index
+        // pairs a new element key with an old provider on every prepend or
+        // reorder, and React unmounts the whole tail — child state gone, the
+        // entrance animation replayed (#346). `Children.toArray` gives every
+        // element a key, deriving from the caller's own where there is one.
+        <TimelineItemContext.Provider
+          key={isValidElement(child) ? child.key : index}
+          value={{ index, animate }}
+        >
           {child}
         </TimelineItemContext.Provider>
       ))}

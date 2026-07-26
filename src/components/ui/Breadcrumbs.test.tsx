@@ -134,6 +134,75 @@ describe("Breadcrumbs", () => {
     ).not.toBeInTheDocument();
   });
 
+  /* ---------------------------------------------------------------- */
+  /*  #138 · head and tail must not overlap                            */
+  /* ---------------------------------------------------------------- */
+
+  describe("collapse with overlapping head/tail counts", () => {
+    it("renders each crumb exactly once", () => {
+      renderWithRouter(
+        <Breadcrumbs maxItems={2} itemsBeforeCollapse={2} itemsAfterCollapse={2}>
+          <Breadcrumbs.Item href="/a">A</Breadcrumbs.Item>
+          <Breadcrumbs.Item href="/b">B</Breadcrumbs.Item>
+          <Breadcrumbs.Item current>C</Breadcrumbs.Item>
+        </Breadcrumbs>,
+      );
+
+      // B sat in both the head slice and the tail slice: rendered twice, under
+      // one React key.
+      expect(screen.getAllByText("B")).toHaveLength(1);
+      expect(screen.getAllByText("A")).toHaveLength(1);
+      expect(screen.getAllByText("C")).toHaveLength(1);
+    });
+
+    it("does not offer an ellipsis that hides nothing", () => {
+      renderWithRouter(
+        <Breadcrumbs maxItems={2} itemsBeforeCollapse={2} itemsAfterCollapse={2}>
+          <Breadcrumbs.Item href="/a">A</Breadcrumbs.Item>
+          <Breadcrumbs.Item href="/b">B</Breadcrumbs.Item>
+          <Breadcrumbs.Item current>C</Breadcrumbs.Item>
+        </Breadcrumbs>,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: "Show more breadcrumbs" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("still collapses when the counts leave something to hide", () => {
+      renderWithRouter(
+        <Breadcrumbs maxItems={3} itemsBeforeCollapse={2} itemsAfterCollapse={2}>
+          <Breadcrumbs.Item href="/a">A</Breadcrumbs.Item>
+          <Breadcrumbs.Item href="/b">B</Breadcrumbs.Item>
+          <Breadcrumbs.Item href="/c">C</Breadcrumbs.Item>
+          <Breadcrumbs.Item href="/d">D</Breadcrumbs.Item>
+          <Breadcrumbs.Item current>E</Breadcrumbs.Item>
+        </Breadcrumbs>,
+      );
+
+      expect(
+        screen.getByRole("button", { name: "Show more breadcrumbs" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("C")).not.toBeInTheDocument();
+      for (const label of ["A", "B", "D", "E"]) {
+        expect(screen.getAllByText(label)).toHaveLength(1);
+      }
+    });
+  });
+
+  // #145. jsdom computes the implicit role whatever the CSS does, so this
+  // asserts the attribute that carries the fix; the Safari + VoiceOver
+  // behaviour it exists for is not observable in this environment.
+  it("marks the list explicitly, which rest props cannot reach", () => {
+    const { container } = renderWithRouter(
+      <Breadcrumbs role="none">
+        <Breadcrumbs.Item current>Only</Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+
+    expect(container.querySelector("ol")).toHaveAttribute("role", "list");
+  });
+
   it("throws when Item is used outside root", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() =>

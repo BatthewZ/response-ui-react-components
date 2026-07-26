@@ -4,6 +4,8 @@ import { cn } from "../../util/style";
 
 type Variant = "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "body-1" | "body-2" | "body-3";
 
+type Weight = "semibold" | "bold";
+
 type Color = "primary" | "secondary" | "muted" | "inverse" | "on-primary";
 
 const variantClassMap: Record<Variant, string> = {
@@ -26,6 +28,14 @@ const colorClassMap: Record<Color, string> = {
   "on-primary": "text-fg-on-primary",
 };
 
+// Written out, never composed: `font-${weight}` is invisible to Tailwind's
+// scanner, so the utility only existed in a built stylesheet by the accident of
+// some other file naming it (#54).
+const weightClassMap: Record<Weight, string> = {
+  semibold: "font-semibold",
+  bold: "font-bold",
+};
+
 const defaultElementMap: Record<Variant, ElementType> = {
   h1: "h1",
   h2: "h2",
@@ -40,7 +50,7 @@ const defaultElementMap: Record<Variant, ElementType> = {
 
 type TextProps<T extends ElementType = "p"> = {
   variant?: Variant;
-  weight?: "semibold" | "bold";
+  weight?: Weight;
   color?: Color;
   as?: T;
 } & Omit<ComponentPropsWithRef<T>, "as" | "color">;
@@ -57,7 +67,7 @@ export const Text = forwardRef<HTMLElement, TextProps>(function Text(
       className={cn(
         variantClassMap[variant],
         colorClassMap[color],
-        weight && `font-${weight}`,
+        weight && weightClassMap[weight],
         className
       )}
       {...props}

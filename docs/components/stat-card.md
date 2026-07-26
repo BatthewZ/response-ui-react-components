@@ -154,12 +154,11 @@ badge will *not* follow; it stays on status. Override both if you want them in s
 
 ## Gotchas
 
-- **`animateValue` freezes after the first run.** The count-up fires once via an
-  `IntersectionObserver` and latches (`hasAnimated`). Changing `to` afterwards does
-  **not** re-animate or even update the displayed number — it stays stuck on the first
-  value it reached. For live-updating metrics, don't use `animateValue`; render the
-  number as `children` and update that. (Under `prefers-reduced-motion` the value *does*
-  track `to`, since that path is computed in render — an inconsistency, not a fix.)
+- **`animateValue` re-animates when `to` changes.** The count-up latches per *target*, not
+  once for the component's life: reaching `to` stops the run, and a new `to` starts another
+  one from the figure on screen (not back at `from`) the next time the card is in view. A
+  re-render that does not change `to` never re-runs it. Under `prefers-reduced-motion` the
+  value tracks `to` directly, with no run.
 - **`animateValue` needs `to`.** With `animateValue` set but no `to`, the animation
   silently no-ops and `children` render instead. It is `to`, not `animateValue`, that
   switches the value into number mode.

@@ -177,13 +177,11 @@ letter-spacing are `em`-relative literals rather than contract variables, tracki
   `<Breadcrumbs maxItems={2}>` over four children still renders three slots —
   `first / … / last`. Size the visible trail with `itemsBeforeCollapse` and
   `itemsAfterCollapse`.
-- **Overlapping windows duplicate a crumb.** The two slices are taken independently from
-  the head and tail of the child list with no overlap check, so when
-  `itemsBeforeCollapse + itemsAfterCollapse` reaches the number of children while collapse
-  is active, a crumb renders on **both** sides of the ellipsis —
-  `maxItems={2} itemsBeforeCollapse={2} itemsAfterCollapse={2}` over three crumbs produces
-  `A / B / … / B / C`, with the duplicate carrying the same React key as the original. Keep
-  the two windows summing below your shortest trail.
+- **Overlapping windows collapse to no collapse.** The head and tail are clamped so they
+  cannot overlap: when `itemsBeforeCollapse + itemsAfterCollapse` reaches the number of
+  children there is nothing left to hide, so the full trail renders with no ellipsis rather
+  than repeating the middle crumb on both sides of one. `maxItems={2} itemsBeforeCollapse={2}
+  itemsAfterCollapse={2}` over three crumbs renders `A / B / C`.
 - **Expanding is one-way, and it sticks.** The ellipsis sets an internal `expanded` flag to
   `true` and there is no path back — no `expanded`/`onExpandedChange` prop, and no reset
   when `children` change. Keep one `Breadcrumbs` mounted across navigations and the first
@@ -226,12 +224,10 @@ trail, or if the UI isn't in English.
   content to assistive tech, inconsistently, and you cannot mark it `aria-hidden`. Compare
   [Kbd](kbd.md), where the separator between two keycaps is *meaning* and is therefore left
   audible — here it is punctuation, so it is hidden.
-- **`list-style: none` can strip the list role, and you cannot patch it here.** The `<ol>`
-  hides its markers in CSS, which in Safari + VoiceOver drops the `list`/`listitem` semantics —
-  the same WebKit quirk that hits [ActivityFeed](activity-feed.md). ActivityFeed at least lets
-  you pass `role="list"` through to its `<ol>`; this component's rest props stop at the
-  `<nav>`, so there is no escape hatch. The `Breadcrumb` landmark and `aria-current` still
-  carry the meaning; what you lose is "list, 3 items" counting. Note also that the separator
+- **`list-style: none` can strip the list role, so the `<ol>` carries `role="list"`.** Hiding
+  the markers in CSS drops the `list`/`listitem` semantics in Safari + VoiceOver, and rest
+  props stop at the `<nav>`, so the role is set on the `<ol>` by the component — there is no
+  escape hatch and none is needed. Note that the separator
   `<li>`s are `role="presentation"`, so they are not exposed as list items even where the
   role survives.
 - **The ellipsis is a real button, with two gaps.** It is a `<button type="button">` — so it

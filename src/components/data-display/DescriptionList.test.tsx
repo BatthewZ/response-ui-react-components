@@ -63,6 +63,33 @@ describe("DescriptionList", () => {
     expect(screen.getAllByRole("term")).toHaveLength(1);
   });
 
+  // #7. jsdom runs no layout and vitest stubs the CSS, so what is assertable
+  // here is the rule that produces the alignment, not the alignment itself:
+  // without a pinned column the grid's auto-flow puts a second <dd> in the
+  // label column and shifts every pair after it.
+  it("pins terms and details to their own grid column in horizontal", () => {
+    const { container, rerender } = render(
+      <DescriptionList>
+        <DescriptionList.Term>Phones</DescriptionList.Term>
+        <DescriptionList.Detail>Home</DescriptionList.Detail>
+        <DescriptionList.Detail>Work</DescriptionList.Detail>
+      </DescriptionList>
+    );
+
+    const dl = () => container.querySelector("dl")!;
+    expect(dl().className).toContain("[&>dt]:col-start-1");
+    expect(dl().className).toContain("[&>dd]:col-start-2");
+
+    // Vertical is a flex stack — column pinning would be meaningless there.
+    rerender(
+      <DescriptionList layout="vertical">
+        <DescriptionList.Term>Phones</DescriptionList.Term>
+        <DescriptionList.Detail>Home</DescriptionList.Detail>
+      </DescriptionList>
+    );
+    expect(dl().className).not.toContain("col-start");
+  });
+
   it("applies token-based classes to Term and Detail", () => {
     render(
       <DescriptionList>
