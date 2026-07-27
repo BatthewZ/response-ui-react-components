@@ -7,17 +7,17 @@ someone arriving cold.
 
 | File                           | Holds                                                                                                                       |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| [`LEDGER.md`](./LEDGER.md)     | **27 open defects.** The work list. Every row believed true at source.                                                      |
+| [`LEDGER.md`](./LEDGER.md)     | **24 open defects.** The work list. Every row believed true at source.                                                      |
 | [`ARCHIVE.md`](./ARCHIVE.md)   | ~400 closed rows — fixed, declined, refuted. Ids never reused. Anchors deliberately not maintained.                         |
 | [`AUDIT.md`](./AUDIT.md)       | 6 open findings about the _checking_ — gates, tests, the record. Not component defects.                                     |
 | [`TAXONOMY.md`](./TAXONOMY.md) | What a row _is_ (kind) and who it hurts (harm). Work order comes from harm.                                                 |
 | [`PLAN.md`](./PLAN.md)         | **Retired.** Kept only as a section map, because ~30 archived rows cite it by number. Do not rewrite it into a new plan.   |
 | `../memory/`                   | Traps, testing failure modes, ledger failure modes. **Read `traps.md` before planning.**                                    |
 
-Started at 320 open, then 64, then 24. Now **27**: the 2026-07 docs-reconcile wave closed #487
-(df91fcd) but the v0.10.1 contrast sweep added #493 and the reconcile itself surfaced three new
-lows (#494–#496) — the count went *up* because the reading got closer, not because the code got
-worse. 2017 tests, all gates green, zero `unaudited` rows.
+Started at 320 open, then 64, then 24. Now **24 again, but not the same 24**: the 2026-07
+docs-reconcile wave closed #487 (df91fcd), surfaced three new lows (#494–#496) while the
+v0.10.1 contrast sweep added #493, and the owner then authorised the three API-surface rows —
+#490–#492 closed by e8e09fd. 2017 tests, all gates green, zero `unaudited` rows.
 
 ---
 
