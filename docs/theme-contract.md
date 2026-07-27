@@ -217,7 +217,7 @@ For data-viz / dashboard UIs. All optional.
 | `--C-CHART-4` | `oklch(0.5413 0.2466 293.01)` (purple) |
 | `--C-CHART-5` | `oklch(0.6896 0.1037 218.62)` (cyan) |
 
-The aliasing stops at three **on purpose**: the palette's job is that five series stay tellable apart, and this contract lets one theme give two roles the same value. The default theme sets `--C-STATUS-INFO` equal to `--C-ACCENT`, and `tech` sets `--C-ACCENT` equal to `--C-STATUS-SUCCESS` — so extending the aliases would render two series identically in a shipped theme. `scripts/verify-chart-palette.mjs` measures the separation in all four themes and fails the build if any pair collapses.
+The aliasing stops at three **on purpose**: the palette's job is that five series stay tellable apart, and this contract lets one theme give two roles the same value. The default theme sets `--C-STATUS-INFO` equal to `--C-ACCENT`, and `tech` sets `--C-ACCENT` equal to `--C-STATUS-SUCCESS` — so extending the aliases would render two series identically in a shipped theme. A repo-side guard measures the separation in all four themes and fails the build if any pair collapses.
 
 If you define your own theme, the same rule applies to you: **overriding `--C-ACCENT` moves `--C-CHART-1`.** If that puts it near chart-3, chart-4 or chart-5, override the chart tokens too. For dark themes raise the whole ramp's lightness (~0.65–0.78) so series stay legible — `grimdark` and `tech` do exactly this and therefore override all five.
 

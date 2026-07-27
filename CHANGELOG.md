@@ -100,6 +100,8 @@ distinction with no consumer on the other side of it. The date goes in when it s
 
 ### Added
 
+- **`FileUploadRejection` is now exported (#490).** The shape `onFilesRejected` hands you — `{ file: File; reason: "type" | "size" }` — was documented but not importable; it joins `FileUploadLabels` in the barrel. ([`FileUpload.tsx`](./src/components/ui/FileUpload.tsx))
+
 - **Add/remove announcements on `TagInput` and `Repeater`, under one convention (#252, #262).** Neither component told a screen-reader user that anything had happened — no confirmation for Enter, Backspace, paste, or the remove button — and `TagInput`'s three silent refusals (`maxTags`, duplicate, `validateTag → false`) were invisible to everyone not looking at the field.
 
   **The convention, deliberately one and not two:** an announcement is a **function-valued prop** taking the values that need interpolating and returning the sentence, defaulted to English, with `""` returning nothing — and every announcement a component makes goes into a **single** always-mounted `sr-only role="status" aria-live="polite"` region. This is not new; it is `CommandPalette`'s `statusMessage?: (count: number) => string` plus `Repeater`'s own `removeLabel?: (index, count) => string`. A plain string prop cannot interpolate and a `labels` bag is for fixed control names, so neither fits a per-event sentence.

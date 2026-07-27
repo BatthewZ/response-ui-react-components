@@ -38,11 +38,12 @@ on this page. Nothing appears in the preview until you pass the array back in.
 | `removeFileLabel` | `(file: File) => string`      | ``(file) => `Remove ${file.name}` `` |
 | `className`       | `string`                      | —        |
 | `ref`             | `Ref<HTMLDivElement>`         | —        |
-| `onFilesRejected` | `(rejections: { file: File; reason: "type" \| "size" }[]) => void` | — |
+| `onFilesRejected` | `(rejections: FileUploadRejection[]) => void` | — |
 | …rest             | props of `div` minus `children` | —      |
 
-Rejected files reach you through `onFilesRejected`, and show an internal message that `error`
-overrides. `accept` understands exact MIME types, wildcards (`image/*`), and filename
+Rejected files reach you through `onFilesRejected` as `FileUploadRejection` objects —
+`{ file: File; reason: "type" | "size" }`, importable from the package root — and show an
+internal message that `error` overrides. `accept` understands exact MIME types, wildcards (`image/*`), and filename
 extensions (`.pdf`). See [Gotchas](#gotchas).
 
 ## What happens when files arrive

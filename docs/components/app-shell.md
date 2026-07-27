@@ -347,9 +347,8 @@ The `639px` breakpoint is genuinely written twice, and cannot be otherwise: once
 `MOBILE_VIEWPORT_QUERY` in `AppShell.tsx` and once as the stylesheet's `@media` block. A
 media query cannot read a custom property, this package has no CSS build step, and neither
 copy is removable — the stylesheet's block is what keeps the pre-hydration render from
-showing the inline sidebar on a phone. No test can gate the match either, because vitest runs
-with `css: false`, which stubs every CSS request including `?raw`. Both files say so; change
-one and you must change the other by hand.
+showing the inline sidebar on a phone. Nothing automated checks that the two stay equal.
+Both files say so; change one and you must change the other by hand.
 
 **Measured contrast**, across the four shipped themes (`default`, `events`, `tech`,
 `grimdark`):

@@ -24,7 +24,7 @@ export { Drawer } from "./Drawer";
 export { DropdownMenu } from "./DropdownMenu";
 export { EmptyState, EmptyStateActions, EmptyStateDescription, EmptyStateIcon, EmptyStateTitle } from "./EmptyState";
 export { ErrorBoundary } from "./ErrorBoundary";
-export { FileUpload, type FileUploadLabels } from "./FileUpload";
+export { FileUpload, type FileUploadLabels, type FileUploadRejection } from "./FileUpload";
 export { Hero } from "./Hero";
 export { HoverCard } from "./HoverCard";
 export { IconButton } from "./IconButton";
