@@ -1,0 +1,54 @@
+/* EXAMPLE — domain-token tuning for the example themes in
+   `@batthewz/response-ui-css/examples/themes/`.
+
+   Sample code, not API. Nothing imports this file; `styles.css` deliberately does
+   not, because naming a theme in shipped CSS would give three example palettes a
+   standing no consumer theme has. It sits outside semver and may change freely.
+
+   Import it only if you are actually using those example themes — a demo, a docs
+   site, this repo's dev harness:
+
+   The fonts import MUST come first — CSS drops an @import that follows a rule.
+
+       @import "@batthewz/response-ui-css/examples/themes/grimdark-fonts";
+       @import "@batthewz/response-ui-css";
+       @import "@batthewz/response-ui-css/examples/themes/grimdark";
+       @import "@batthewz/response-ui-react-components/styles";
+       @import "@batthewz/response-ui-react-components/examples/theme-tuning";
+
+   READ IT AS A WORKED EXAMPLE. Your own theme needs the same treatment under its
+   own selector, for the reasons in `src/tokens.css`:
+
+     - `grimdark` and `tech` are dark, so their chart ramps are lifted to
+       ~0.65–0.78 lightness. Inheriting the light `:root` ramp on a dark canvas is
+       the single most common thing a new dark theme gets wrong.
+     - `tech` additionally sets --C-ACCENT and --C-STATUS-SUCCESS to the same neon
+       green. chart-1 and chart-2 alias those two tokens, so without this override
+       they resolve to one identical colour. Any theme that reuses a colour across
+       two contract tokens inherits that collision.
+     - The --MEDIA-CARD-* values are pure taste: how far a media card lifts on
+       hover. They demonstrate that a theme can tune component feel, not just
+       colour. Nothing breaks if you omit them. */
+
+:root[data-theme="grimdark"] {
+  --C-CHART-1: oklch(0.68 0.17 262.88);
+  --C-CHART-2: oklch(0.72 0.19 149.58);
+  --C-CHART-3: oklch(0.78 0.16 58.32);
+  --C-CHART-4: oklch(0.66 0.21 293.01);
+  --C-CHART-5: oklch(0.74 0.11 218.62);
+  --MEDIA-CARD-HOVER-SCALE: 1.02;
+  --MEDIA-CARD-HOVER-LIFT: -0.125rem;
+}
+:root[data-theme="tech"] {
+  --C-CHART-1: oklch(0.70 0.18 262.88);
+  --C-CHART-2: oklch(0.78 0.21 152.55);
+  --C-CHART-3: oklch(0.77 0.16 58.32);
+  --C-CHART-4: oklch(0.68 0.22 293.01);
+  --C-CHART-5: oklch(0.75 0.13 233.78);
+  --MEDIA-CARD-HOVER-SCALE: 1.03;
+  --MEDIA-CARD-HOVER-LIFT: -0.1875rem;
+}
+:root[data-theme="events"] {
+  --MEDIA-CARD-HOVER-SCALE: 1.03;
+  --MEDIA-CARD-HOVER-LIFT: -0.25rem;
+}

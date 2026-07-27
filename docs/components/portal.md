@@ -171,7 +171,7 @@ Portal reads no design tokens. It has no CSS file, renders no element of its own
 no class or inline style — `createPortal` relocates your children and nothing else, so there
 is nothing on it to re-theme.
 
-It does still interact with theming, through inheritance. The shipped themes are declared on
+It does still interact with theming, through inheritance. The example themes are declared on
 `:root[data-theme="…"]` and the base variables on `:root`, so every contract token is
 inherited by `document.body` exactly as it is by the rest of the page: portalled content
 re-tints on a theme swap like anything else, and utilities such as `bg-surface-0` resolve

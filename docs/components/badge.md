@@ -174,12 +174,12 @@ sides of it. The type moves too — `--BodyText-3` steps `0.75rem → 0.8125rem`
 its job is to *stop* one applying: `text-body-3` emits `--BodyText-3` **and**
 `--BodyText-3-line-height`, and that second half is a paragraph leading, not a chip height —
 `1.75rem` against a `0.75rem` font on the default scale, which stood every badge at
-`2.25rem`. With the leading reset the chip is its label plus `py-r6`, in every theme. To
+`2.25rem`. With the leading reset the chip is its label plus `py-r6`, in any theme. To
 loosen it again, pass your own `leading-*` through `className`; `cn()` will replace this one.
 
 One surprise if you know Tailwind's defaults: `font-semibold` does not mean 600 here. It
 reads `--Semibold-Weight`, which the default scale sets to **500** below 40rem and **600** at
-and above it — and each shipped theme sets it outright, at every width, because
+and above it — and each of the example themes sets it outright, at every width, because
 `:root[data-theme=…]` outweighs the breakpoint rule: `tech` 500, `events` 600, `grimdark`
 700. Retune it in your theme rather than reaching for a heavier utility, or the badge stops
 tracking the rest of the type system.
@@ -204,7 +204,7 @@ tracking the rest of the type system.
   your own live region) when the chip reports something that updates.
 - **The chip's height is its padding, not its theme's leading.** `leading-none` holds the
   line box to the font size, so the chip is the label plus `0.25rem` on each edge — the same
-  proportion in every theme. Without it the height was `--BodyText-3-line-height`, which the
+  proportion in any theme. Without it the height was `--BodyText-3-line-height`, which the
   default scale sets to `1.75rem` against a `0.75rem` font (a `2.25rem` chip, measured) while
   `tech` sets `1.125rem` — the same badge, two thirds the height, for no reason a caller
   could see. A taller chip is a `leading-*` or `py-*` utility through `className`.
@@ -237,7 +237,9 @@ order, as ordinary inline text — preceded by the variant's visually-hidden wor
   background — the pairing the label already uses: **success 4.57 · warning 3.07 · error
   4.41 · info 4.75** in the default theme, `events` the same but info 5.20, `tech` 13.39 /
   11.78 / 5.35 / 8.47, `grimdark` 6.70 / 7.97 / 4.59 / 3.53. All clear the 3:1 floor WCAG
-  1.4.11 sets for a meaningful graphical object.
+  1.4.11 sets for a meaningful graphical object. Measured against the default theme and the
+  worked examples; these numbers do not transfer to your own theme — re-check them against
+  your values.
 - **The variant glyph is `aria-hidden`, and yours should be too.** The hidden word already
   names the variant; a named icon beside it would announce it twice. An icon you pass as a
   *child* renders as-is with no accessible name — mark it `aria-hidden` when the label says

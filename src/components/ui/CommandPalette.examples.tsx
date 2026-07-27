@@ -127,7 +127,7 @@ export function IconsAndShortcuts() {
             label: "Toggle dark mode",
             icon: <Moon size={16} />,
             shortcut: "⌘⇧D",
-            onSelect: () => document.documentElement.setAttribute("data-theme", "grimdark"),
+            onSelect: () => document.documentElement.setAttribute("data-theme", "midnight"),
           },
         ]}
       />

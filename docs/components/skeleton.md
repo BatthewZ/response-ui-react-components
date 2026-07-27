@@ -184,11 +184,11 @@ placeholder in the app re-tints, at runtime, with no rebuild.
 That is the whole contract surface, and three things are deliberately *outside* it:
 
 - **The circular corner is a literal `50%`,** not a radius token. A theme that squares
-  everything off (`grimdark` sets `--RADIUS-SM` and `--RADIUS-MD` to `0`) still gets round
-  circular skeletons — correct here, but worth knowing it can't be turned off.
+  everything off (the `grimdark` example sets `--RADIUS-SM` and `--RADIUS-MD` to `0`) still
+  gets round circular skeletons — correct here, but worth knowing it can't be turned off.
 - **The pulse tracks the theme's tempo; its resting opacity does not.** The duration is
   `calc(var(--MOTION-DURATION-SHIFT, 400ms) * 4)` — 1.6s on the token layer's default, and
-  1.0s–2.4s across the shipped themes — but the easing is a literal `ease-in-out` and the
+  1.0s–2.4s across the worked examples — but the easing is a literal `ease-in-out` and the
   reduced-motion resting state is a literal `opacity: 0.7`. No opacity token exists in the
   contract to carry that last one.
 - **The fill is a surface token, and nothing pairs with it.** Skeleton draws

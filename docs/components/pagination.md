@@ -202,13 +202,14 @@ the `<ul>` inside it does all the layout.
 it, `--C-TEXT-ON-ACCENT` — the same pair [Tabs](tabs.md) and [Calendar](calendar.md) use for
 their accent-filled selected states. Pairing them correctly is the whole of what a component
 can do; the ratio that pairing yields is the theme's to set. Measured against
-`@batthewz/response-ui-css` **v0.10.0**, all four bundled themes clear AA's 4.5:1 for
-body-size text: `tech` 14.84:1, `grimdark` 5.69:1, `default` 5.17:1, `events` 5.04:1. Two of
+`@batthewz/response-ui-css` **v0.10.0**, the default theme and all three examples clear AA's
+4.5:1 for body-size text: `tech` 14.84:1, `grimdark` 5.69:1, `default` 5.17:1, `events` 5.04:1. Two of
 them used to fail — `events` at 2.80:1 and `grimdark` at 3.81:1 — and were repaired upstream
 in the palette rather than here, `events` by darkening `--C-ACCENT` and `grimdark` by
 inverting `--C-TEXT-ON-ACCENT` to dark ink on its lit red. That is the fix working as
-intended: retinting the theme repairs every accent-filled control at once. If you ship your
-own theme, this pair is yours to check.
+intended: retinting the theme repairs every accent-filled control at once. Measured against
+the default theme and the worked examples; these numbers do not transfer to your own theme —
+re-check them against your values.
 
 **The numbers fade more slowly than the arrows beside them.** A number's hover transition
 runs on `--MOTION-DURATION-SHIFT` — 400ms by default, 250ms in `tech`, 600ms in `grimdark` —

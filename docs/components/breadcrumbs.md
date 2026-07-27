@@ -247,7 +247,7 @@ trail, or if the UI isn't in English.
 - **Muted ink clears AA on the usual surfaces, and one use of it is interactive.** Separators
   and the ellipsis button both paint `--C-TEXT-MUTED`, measured against
   `@batthewz/response-ui-css` **v0.10.1** at **4.85:1–5.23:1** on `--C-SURFACE-0` across the
-  four shipped themes — over AA's 4.5:1, where it read 2.10–2.59 before **v0.10.0** retuned that
+  four measured themes — over AA's 4.5:1, where it read 2.10–2.59 before **v0.10.0** retuned that
   token. **On `--C-SURFACE-3` it still falls short at 3.92:1–4.10:1**, so a trail rendered on the
   most elevated surface is under AA though over AA-large's 3:1. Decorative separators can live
   with that either way; the ellipsis is the one control on the trail a user has to find, so if
@@ -259,6 +259,9 @@ trail, or if the UI isn't in English.
 - **Focus is `:focus-visible` only** on both the link and the ellipsis: a 2px
   `--C-BORDER-FOCUS` outline at 2px offset, which paints outside the box and so never
   reflows the row.
+
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
 
 ## Related
 

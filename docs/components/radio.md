@@ -233,7 +233,7 @@ in the `.tsx`:
 | Focus ring        | `focus:ring-border-focus`         | `--C-BORDER-FOCUS` |
 
 `accent-accent` sets the CSS `accent-color` property, which every current engine honours on
-a native radio, so the selected dot follows `--C-ACCENT` in every theme. The ring is the
+a native radio, so the selected dot follows `--C-ACCENT` in any theme. The ring is the
 library's form-control focus recipe, the same one [Checkbox](checkbox.md), [Input](input.md)
 and [Select](select.md) draw: a 2px `--C-BORDER-FOCUS` ring at `ring-offset-0`, flush against
 the circle, keyed on `focus:` so it shows on a mouse click and not only on Tab. Radio also

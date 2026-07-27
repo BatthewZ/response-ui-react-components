@@ -456,8 +456,8 @@ utilities in `DataTable.tsx`. Change the variable and it re-tints at runtime, no
 so the expander's hit area is identical at every width.
 
 The selected-row highlight is an 8% `--C-ACCENT` wash over the row background *plus* a 3px
-`--C-ACCENT` bar down the row's leading edge. The wash is a very small luminance change on
-any theme (1.07–1.13:1, measured — see [Table](table.md#accessibility)); the bar is what
+`--C-ACCENT` bar down the row's leading edge. The wash is a very small luminance change in
+every theme measured (1.07–1.13:1 — see [Table](table.md#accessibility)); the bar is what
 carries the state visually, and it is drawn as a background layer so selecting a row costs
 no layout.
 
@@ -560,8 +560,10 @@ cells.
   telling assistive tech that rows it cannot select are all unselected.
 - **The selected row is marked, not just tinted.** [Table](table.md) draws a 3px
   `--C-ACCENT` bar down the leading edge of a selected row, because the 8% wash alone
-  measures 1.07–1.13:1 against an unselected row across the four shipped themes. See
-  [Table's accessibility notes](table.md#accessibility) for the full measurements.
+  measures 1.07–1.13:1 against an unselected row across the four measured themes. See
+  [Table's accessibility notes](table.md#accessibility) for the full measurements. Measured
+  against the default theme and the worked examples; these numbers do not transfer to your
+  own theme — re-check them against your values.
 - **The loading state announces itself once, on the table.** The skeleton cells are
   `aria-hidden` — one `role="status"` per cell was `rows × columns` polite live regions all
   saying "Loading" — and the `<table>` carries `aria-busy="true"` while `loading` is set.

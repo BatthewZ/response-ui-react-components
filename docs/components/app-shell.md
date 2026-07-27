@@ -350,8 +350,8 @@ copy is removable — the stylesheet's block is what keeps the pre-hydration ren
 showing the inline sidebar on a phone. Nothing automated checks that the two stay equal.
 Both files say so; change one and you must change the other by hand.
 
-**Measured contrast**, across the four shipped themes (`default`, `events`, `tech`,
-`grimdark`):
+**Measured contrast**, across the default theme and the three worked examples (`events`,
+`tech`, `grimdark`):
 
 - Resting link ink `--C-TEXT-SECONDARY` on `--C-SURFACE-0`: **5.76–7.56:1** — AA everywhere.
 - Active link ink `--C-TEXT-PRIMARY` on its own wash: **15.44** default · **15.37** `events` ·
@@ -362,12 +362,15 @@ Both files say so; change one and you must change the other by hand.
   colour on its own — which is why the state is carried by the 1px inset `--C-ACCENT` edge
   rather than by the wash or the ink colour.
 - Section titles in `--C-TEXT-MUTED`: **4.95** default · **4.85** `events` · **4.87** `tech` ·
-  **5.23** `grimdark` against the sidebar's `--C-SURFACE-0`, clearing AA in every theme. They
+  **5.23** `grimdark` against the sidebar's `--C-SURFACE-0`, clearing AA in every theme measured. They
   used to measure 2.10–2.59:1; `@batthewz/response-ui-css` **v0.10.0** retuned that token.
 - `--C-BORDER-FOCUS` against `--C-SURFACE-0`: **3.68** default · **3.39** `events` ·
-  **14.84** `tech` · **3.66** `grimdark`, clearing the 3:1 non-text floor in every theme.
+  **14.84** `tech` · **3.66** `grimdark`, clearing the 3:1 non-text floor in every theme measured.
   `events` and `grimdark` read 2.72 and 2.96 until **v0.10.1** — they had copied their
   *pre-retune* accent into the focus token, and that release corrected it.
+
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
 
 ## Gotchas
 
@@ -460,7 +463,7 @@ One gap you have to close yourself:
 Section headings paint `--C-TEXT-MUTED` on the sidebar's `--C-SURFACE-0`. This page used to
 put that at 2.10–2.59:1; re-measured against the shipped `@batthewz/response-ui-css` v0.10.0
 it is **4.95 default / 4.85 events / 4.87 tech / 5.23 grimdark**, so it clears 4.5:1 in every
-theme. The old figures predate that palette retune.
+theme measured. The old figures predate that palette retune.
 
 Two more things worth knowing: the active link is marked with `aria-current="page"`, so its
 state is *not* colour-only for assistive tech — and for sighted users the accent now draws a

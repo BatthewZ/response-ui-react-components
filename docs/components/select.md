@@ -239,7 +239,7 @@ The chevron is a real `lucide` element positioned over the control, not a backgr
 its ink is `text-fg-secondary` and follows the theme like everything else. (As a data-URI
 background it could not: an SVG referenced as a background image is its own document, and the
 `fill="currentColor"` inside it resolved against *that* document's initial colour — black on
-every theme, 1.06:1 on `tech`.)
+any theme, 1.06:1 against the `tech` worked example.)
 
 The gutter that keeps text clear of the chevron is `pr-r1`, the same rung
 [DatePicker](date-picker.md) reserves for its icon cluster. It used to be `pr-10` — a frozen

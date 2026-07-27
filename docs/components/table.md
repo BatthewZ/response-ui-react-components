@@ -460,7 +460,9 @@ from the component.
   are the same luminance to the pixel. That is why a selected row also paints a 3px
   `--C-ACCENT` bar down its inline-start edge: present-or-absent rather than a hue shift, and
   measured at **4.65 / 4.38 / 13.08 / 5.30** against the washed row, clearing the 3:1 WCAG
-  1.4.11 asks of a non-text indicator in all four themes. The bar is a `background-image`, so
+  1.4.11 asks of a non-text indicator in all four measured themes. Measured against the default theme and the
+  worked examples; these numbers do not transfer to your own theme — re-check them against
+  your values. The bar is a `background-image`, so
   it costs no layout and selecting a row reflows nothing. Under `dir="rtl"` it moves to the
   other edge.
 - **A visible cue is still worth adding for a table you drive yourself.** The marker and

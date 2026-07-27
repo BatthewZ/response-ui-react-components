@@ -274,12 +274,14 @@ lucide icon, not CSS.
 Two measured contrast notes. The chip label clears AA comfortably —
 `--C-TEXT-SECONDARY` on `--C-SURFACE-2` is 6.87:1 in the default and `events` themes, 5.32:1 in
 `tech`, 5.11:1 in `grimdark`. The remove **glyph** is quieter but also clears its floor: `--C-TEXT-MUTED` on
-`--C-SURFACE-2` measures **4.50:1 in all four themes** — each was tuned to land exactly on
+`--C-SURFACE-2` measures **4.50:1 in all four measured themes** — each was tuned to land exactly on
 that floor — so it clears the 3:1 WCAG 1.4.11 sets for a control's graphical affordance with
 room to spare, though it has none as body text. It still reaches `--C-TEXT-PRIMARY` on hover.
-Ratios computed from the shipped OKLCH token values in `@batthewz/response-ui-css` **v0.10.1**; the same token puts the
-placeholder at 4.85–5.23:1 on `--C-SURFACE-0`. Both read 1.94–2.59 before that release. See the [theme contract](../theme-contract.md) for what the tokens do and do
-not promise.
+Ratios computed from the OKLCH token values in `@batthewz/response-ui-css` **v0.10.1**; the same token puts the
+placeholder at 4.85–5.23:1 on `--C-SURFACE-0`. Both read 1.94–2.59 before that release.
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values. See the
+[theme contract](../theme-contract.md) for what the tokens do and do not promise.
 
 ## Gotchas
 

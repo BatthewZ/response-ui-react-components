@@ -5,15 +5,15 @@
 Every visual decision — colour, spacing, type, radii, shadows, motion — comes from a framework-agnostic [CSS token contract](https://github.com/BatthewZ/response-ui-css), not from the components. Flip one attribute and the whole app re-skins, at runtime, with no rebuild:
 
 ```tsx
-// The whole idea: same components, different theme, zero component edits.
-<html data-theme="grimdark">
+// The whole idea: same components, your theme, zero component edits.
+<html data-theme="aurora">
   {" "}
-  {/* try: default · events · tech · grimdark */}
+  {/* "aurora" is yours — one CSS file, ~30 custom properties */}
   <Button variant="primary">Continue</Button>
 </html>
 ```
 
-> **See it live:** [ai-website-starter.benmatthews-it.workers.dev/demo](https://ai-website-starter.benmatthews-it.workers.dev/demo) — every component, every theme, every responsive scale, in one place. The theme switcher is the whole pitch: same components, one-file theme swaps, live.
+> **See it live:** [ai-website-starter.benmatthews-it.workers.dev/demo](https://ai-website-starter.benmatthews-it.workers.dev/demo) — every component, several themes, every responsive scale, in one place. The theme switcher is the whole pitch: same components, one-file theme swaps, live.
 
 _Also: zero CSS-in-JS, router-agnostic, headless where it counts, RSC-friendly._
 
@@ -21,7 +21,7 @@ _Also: zero CSS-in-JS, router-agnostic, headless where it counts, RSC-friendly._
 
 The headline reason is **reskinnability**. In most libraries the look is welded to the components — a large JS theme object (MUI, Chakra), per-component source you fork and own forever (shadcn/ui), or a styled-components runtime. Re-skinning means editing components, wrangling a theme config, or a rebuild. Here the look lives _outside_ the components, in a framework-agnostic CSS token contract — and everything below follows from that one decision:
 
-- **Re-skin the entire library from ~1 page of CSS.** Override ~30 custom properties — colours, spacing, fonts, radii, shadows, motion timing — and every component re-tunes at once. Flip `data-theme` and the whole app changes _at runtime_: no rebuild, no JS theme object, no component edits. Four themes (`default`, `events`, `grimdark`, `tech`) ship as proof.
+- **Re-skin the entire library from ~1 page of CSS.** Override ~30 custom properties — colours, spacing, fonts, radii, shadows, motion timing — and every component re-tunes at once. Flip `data-theme` and the whole app changes _at runtime_: no rebuild, no JS theme object, no component edits. The design system defines exactly one theme, `default`; **yours is not a second-class citizen next to some built-in set, because there isn't one.** Three worked examples ship as sample code you can read, copy, or delete.
 - **The same theme re-skins more than React.** Because the design language is pure CSS, one theme file restyles your React components _and_ your Astro / Rails / Phoenix / plain-HTML pages alike. The brand is a single source of truth across your whole stack, not duplicated per framework.
 - **Responsive tokens, not breakpoint soup.** `text-h2`, `gap-r3`, `p-r4` each carry both breakpoints — and headings/body carry their paired line-height and weight step-ups too. You stop hand-writing `sm:` variants and `leading-*`.
 - **Zero CSS-in-JS, zero runtime styling cost.** Styling is co-located plain CSS that self-registers with Tailwind v4. Nothing computes styles at render time; presentational primitives carry no `"use client"` and stay server-renderable (RSC-friendly out of the box).
@@ -41,7 +41,7 @@ bun add @batthewz/response-ui-react-components @batthewz/response-ui-css \
 bun add -D tailwindcss @tailwindcss/vite
 ```
 
-Then two CSS imports in your app's CSS entry — foundation (tokens, themes, responsive scales, animations) first, then per-component styles:
+Then two CSS imports in your app's CSS entry — foundation (tokens, the `default` theme, responsive scales, animations) first, then per-component styles:
 
 ```css
 /* src/app.css */
@@ -78,7 +78,7 @@ Every component renders with `var(--…)` tokens defined by `response-ui-css` �
 
 ```tsx
 // a Next.js root layout, your index.html, your top-level App — wherever <html> lives
-<html data-theme="grimdark">
+<html data-theme="aurora">
 ```
 
 Reach for `useTheme` only when you want a theme _switcher_: it reads that same attribute reactively (`useSyncExternalStore` over a `MutationObserver` — it keeps no React state of its own) and gives you a typed `setTheme` and the theme list.
@@ -88,13 +88,18 @@ Reach for `useTheme` only when you want a theme _switcher_: it reads that same a
 ```tsx
 import { useTheme } from "@batthewz/response-ui-react-components";
 
-const { theme, setTheme, themes } = useTheme();
-setTheme("grimdark"); // also: "events", "tech", "default"
+// Declare your themes at module scope — the hook memoises on the array's identity.
+const APP_THEMES = ["default", "aurora", "midnight"] as const;
+
+const { theme, setTheme, themes } = useTheme({ themes: APP_THEMES });
+setTheme("aurora"); // `setTheme` is typed to YOUR themes — the library ships no list
 ```
 
-It's pure convenience over the attribute — `document.documentElement.setAttribute("data-theme", "grimdark")` does the same thing.
+It's pure convenience over the attribute — `document.documentElement.setAttribute("data-theme", "aurora")` does the same thing.
 
-> **Scope a theme to a subtree.** The built-in themes target `<html>` via a `:root[data-theme="…"]` selector. Author your own theme with a _bare_ `[data-theme="aurora"]` selector instead, and you can drop `data-theme="aurora"` on **any** element — a single panel, a dark island in a light page — and only that subtree re-skins, because the tokens cascade to its descendants.
+Called with no arguments the hook is registry-free: `theme` is whatever `data-theme` actually says, `setTheme` takes any string, and `themes` reports `["default"]`. Register a list when you want `setTheme` typed and unknown values folded to your default.
+
+> **Scope a theme to a subtree.** A theme authored with a `:root[data-theme="…"]` selector — the convention, and what the worked examples use — only matches `<html>`. Use a _bare_ `[data-theme="aurora"]` selector instead and you can drop `data-theme="aurora"` on **any** element — a single panel, a dark island in a light page — and only that subtree re-skins, because the tokens cascade to its descendants.
 
 **Write your own theme:** copy the template, override the contract in ~1 page of CSS, `@import` it _after_ the foundation, then register its name with the hook:
 
@@ -106,16 +111,39 @@ It's pure convenience over the attribute — `document.documentElement.setAttrib
 ```
 
 ```tsx
-const { setTheme } = useTheme({ themes: ["default", "aurora"] as const });
+const APP_THEMES = ["default", "aurora"] as const; // module scope
+const { setTheme } = useTheme({ themes: APP_THEMES });
 setTheme("aurora");
 ```
 
-The full reskinning surface lives in the foundation package. These are the canonical, live docs on GitHub:
+Two things your theme file owns that the foundation cannot do for you:
 
-- **[Theme contract](https://github.com/BatthewZ/response-ui-css/blob/main/docs/theme-contract.md)** — the authoritative list of every overridable token (colours, spacing, type, radii, shadows, motion) and the contrast contract themes must honour.
-- **[Extending the foundation](https://github.com/BatthewZ/response-ui-css/blob/main/docs/extending.md)** — add your own tokens, responsive/theme-aware values, and register sources with Tailwind.
-- **[Theme template](https://github.com/BatthewZ/response-ui-css/blob/main/src/_theme-template.css)** — a blank theme to copy as your starting point.
-- **[`response-ui-css` README](https://github.com/BatthewZ/response-ui-css#readme)** — the foundation in full: responsive scales, the four built-in themes, subpath exports, and how the token system fits together.
+- **Its fonts.** The foundation's main entry loads only the two families the `default` theme names. Put your `@import url(...)` lines at the **top of your app's CSS entry**, above everything — not inside the theme file, where CSS's "`@import` must come first" rule silently drops them (correct palette, wrong typeface).
+- **Its chart ramp, if it is dark or reuses a colour.** `--C-CHART-1..3` alias `--C-ACCENT` / `--C-STATUS-SUCCESS` / `--C-STATUS-WARNING` so a retuned theme carries the chart with it — but a dark theme needs the whole ramp lifted to ~0.65–0.78 lightness, and a theme that points two of those tokens at the _same_ colour collapses two series into one (measured: OKLab distance 0.000). Override `--C-CHART-1..5` in your own file. [`examples/theme-tuning`](src/examples/example-theme-tuning.css) shows it done.
+
+### Local docs
+
+- **[Theme contract](docs/theme-contract.md)** — the authoritative list of every overridable token and the contrast contract themes must honour, plus the [authoring workflow](docs/theme-contract.md#authoring-workflow).
+- **[Extending](docs/extending.md)** — add your own tokens, responsive/theme-aware values, register sources with Tailwind.
+- **[ThemeSwitcher](docs/components/theme-switcher.md)** — the switcher component, and the traps around registering themes.
+
+The foundation package's own copies are the upstream source of truth: [theme contract](https://github.com/BatthewZ/response-ui-css/blob/main/docs/theme-contract.md), [extending](https://github.com/BatthewZ/response-ui-css/blob/main/docs/extending.md), [theme template](https://github.com/BatthewZ/response-ui-css/blob/main/src/_theme-template.css), [README](https://github.com/BatthewZ/response-ui-css#readme).
+
+### The example themes
+
+`events`, `grimdark` and `tech` are worked examples of the theme contract, living at `@batthewz/response-ui-css/examples/themes/<name>`. **Nothing imports them and nothing depends on them** — the foundation's main entry does not load them, and this package's `styles` entry point names no theme at all — the only file that does is the opt-in `examples/theme-tuning` stylesheet, which nothing imports (`scripts/verify-example-themes.mjs` fails the build if a theme name reaches the styles entry). They sit outside semver. Read them, copy from them, or ignore them.
+
+To run a demo on one, opt in explicitly:
+
+```css
+@import "@batthewz/response-ui-css/examples/themes/grimdark-fonts"; /* fonts must be first */
+@import "@batthewz/response-ui-css";
+@import "@batthewz/response-ui-css/examples/themes/grimdark";
+@import "@batthewz/response-ui-react-components/styles";
+@import "@batthewz/response-ui-react-components/examples/theme-tuning"; /* their chart ramps */
+```
+
+`EXAMPLE_THEMES` (and the type `ExampleTheme`) export those three names plus `default` for demos, docs sites and this repo's dev gallery. Nothing in the library reads it — it is sample data, not a default.
 
 ## What ships
 
@@ -129,7 +157,7 @@ The full reskinning surface lives in the foundation package. These are the canon
 - **Router** (1): RouterAdapterProvider, useLink, usePathname
 - **Hooks**: useActiveSection, useClickOutside, useControllableState, useDebounce, useDocumentTitle, useFloating, useFocusTrap, useMediaQuery, usePrefersReducedMotion, useRovingFocus, useTheme, useVirtualRows
 - **Util**: `cn`, `createCn`, `mergeExtension`, `tailwindMergeExtension`, `twMerge`, `mergeRefs`, `mergeProps`, `composeEventHandlers`, `formatBytes`, plus date helpers (`formatDate`, `parseDateInput`, `buildMonthGrid`, `addDays`, `addMonths`, `toISODate`, `getMonthNames`, …)
-- **Types**: most components deliberately do *not* export a props type — compose with `ComponentPropsWithRef<typeof X>`. What is exported: the generic components' props (`TableProps`, `DataTableProps`, `VirtualizedDataTableProps`, `AvatarUploadProps` / `AvatarUploadResult`, `WizardProps`, `MeterProps`, `RequireAuthProps`), the shapes you hand to or receive from callbacks (`ColumnDef`, `SortState`, `CommandItem`, `MultiSelectOption`, `RangeSliderValue`, `RepeaterItem`, `DateRange`, `FileUploadLabels`, `FileUploadRejection`, `ToastVariant`, `Placement`, `AuthStatus`, `Theme`, `WizardStep`, `Hsv` / `Rgb`), the form kit's types (`FormApi`, `FieldBindings`, `FieldSnapshot`, `FieldArrayItem`, `UseFormOptions`, and friends), the router adapter's (`RouterAdapterValue`, `RouterLinkComponent`, `RouterLinkProps`), and the exported hooks' option/return types (`UseControllableStateParams` / `UseControllableStateReturn`, `UseThemeOptions` / `UseThemeReturn`, `UseVirtualRowsParams` / `UseVirtualRowsReturn`, `UseWizardOptions` / `UseWizardReturn`)
+- **Types**: most components deliberately do *not* export a props type — compose with `ComponentPropsWithRef<typeof X>`. What is exported: the generic components' props (`TableProps`, `DataTableProps`, `VirtualizedDataTableProps`, `AvatarUploadProps` / `AvatarUploadResult`, `WizardProps`, `MeterProps`, `RequireAuthProps`), the shapes you hand to or receive from callbacks (`ColumnDef`, `SortState`, `CommandItem`, `MultiSelectOption`, `RangeSliderValue`, `RepeaterItem`, `DateRange`, `FileUploadLabels`, `FileUploadRejection`, `ToastVariant`, `Placement`, `AuthStatus`, `ExampleTheme`, `WizardStep`, `Hsv` / `Rgb`), the form kit's types (`FormApi`, `FieldBindings`, `FieldSnapshot`, `FieldArrayItem`, `UseFormOptions`, and friends), the router adapter's (`RouterAdapterValue`, `RouterLinkComponent`, `RouterLinkProps`), and the exported hooks' option/return types (`UseControllableStateParams` / `UseControllableStateReturn`, `UseThemeOptions` / `UseThemeReturn`, `UseVirtualRowsParams` / `UseVirtualRowsReturn`, `UseWizardOptions` / `UseWizardReturn`)
 
 ### Composing props and handlers
 

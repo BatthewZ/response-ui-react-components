@@ -163,9 +163,10 @@ The wrapper is presentation-neutral by design, but not perfectly: `.accordion-he
 zeroes the margin and sets `font: inherit`, which strips the theme's heading face, size and
 weight — the trigger keeps its own `--BodyText-2` type. `letter-spacing` and
 `text-transform` are *not* part of the `font` shorthand, though, and `response-ui-css` sets
-both on `h1`–`h6`, so those two still reach the trigger. In the shipped themes only
-`grimdark` sets them to anything visible: triggers render **uppercase** with wide tracking
-there (in the body face, not Cinzel). Check it in your theme.
+both on `h1`–`h6`, so those two still reach the trigger. The default theme leaves both at
+their neutral values; of the worked examples only `grimdark` sets them to anything visible,
+where triggers render **uppercase** with wide tracking (in the body face, not Cinzel). Check
+it in your theme.
 
 Do not wrap the trigger in a heading of your own — that now nests a heading inside a
 heading, which is invalid HTML. Set `headingLevel` instead:

@@ -115,7 +115,7 @@ step up at the 40rem breakpoint with the rest of the spacing system. The type st
 (`--BodyText-*`) are responsive the same way — the list is slightly larger on desktop
 with no breakpoint utilities from you. DescriptionList sets **no background**: it inks
 `--C-TEXT-PRIMARY`/`--C-TEXT-SECONDARY` on whatever surface it is dropped onto. Those are
-the body-text roles the shipped themes are built to keep readable on their own surfaces — a
+the body-text roles the measured themes are built to keep readable on their own surfaces — a
 convention of the themes, not a ratio the [theme contract](../theme-contract.md) measures,
 so on a custom or non-standard surface, check it.
 

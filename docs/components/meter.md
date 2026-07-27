@@ -183,6 +183,9 @@ warning glyph is **below the 3:1 floor of WCAG 1.4.11 on `--C-SURFACE-2`** in th
 and `events` themes — the same shortfall the filled segments already have there, since
 they paint the identical token, but worth knowing before putting a meter on that surface.
 
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
+
 ## Related
 
 [ProgressBar](progress-bar.md) · [ProgressRing](./progress-ring.md) · [Sparkline](./sparkline.md) ·

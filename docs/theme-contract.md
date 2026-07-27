@@ -1,8 +1,10 @@
 # Theme contract
 
-A theme is a CSS rule that overrides design-system tokens under a `data-theme` selector. The contract below is the authoritative list — any custom theme MUST define the **required** variables; **optional** ones inherit from `:root` if omitted.
+A theme is a CSS rule that overrides design-system tokens under a `data-theme` selector. The contract below is the authoritative list. Mechanically **nothing is required** — a `data-theme` block only _overrides_, and any token you omit inherits its `:root` default. But the tokens marked **required** below are semantically **coupled**: set one without the others and you get a provably broken theme (a dark canvas keeping light-theme ink). Treat them as a set you move together, not as a validator.
 
 > Selector convention: `:root[data-theme="<name>"]`. The `default` theme IS `:root` itself (no override layer); switching to `default` removes the `data-theme` attribute.
+
+`default` is the only theme the design system defines, and the only one with any standing here. `events`, `grimdark` and `tech` live at `@batthewz/response-ui-css/examples/themes/<name>` as **worked examples**: opt-in, imported by nothing, outside semver, safe to delete. Where they appear below they are illustrations of this contract, never an authority on it — your theme is the fourth case, not the fourth theme.
 
 ---
 
@@ -107,7 +109,7 @@ nothing about that, so check the contrast yourself.
 | `--HEADING-LETTER-SPACING` | `normal` or a `<length>` like `0.06em` |
 | `--HEADING-TEXT-TRANSFORM` | `none` / `uppercase` / `lowercase` |
 
-If you use a font that's not already loaded by `@batthewz/response-ui-css`, import the font-face yourself before your theme CSS.
+The main `@batthewz/response-ui-css` entry loads the `default` theme's two families and nothing else. Any other family you name here is yours to load — `@font-face` or a provider import, at the very top of your app's CSS entry, above the `@batthewz/response-ui-css` import — not merely before your theme file, which is already too late.
 
 ---
 
@@ -217,9 +219,11 @@ For data-viz / dashboard UIs. All optional.
 | `--C-CHART-4` | `oklch(0.5413 0.2466 293.01)` (purple) |
 | `--C-CHART-5` | `oklch(0.6896 0.1037 218.62)` (cyan) |
 
-The aliasing stops at three **on purpose**: the palette's job is that five series stay tellable apart, and this contract lets one theme give two roles the same value. The default theme sets `--C-STATUS-INFO` equal to `--C-ACCENT`, and `tech` sets `--C-ACCENT` equal to `--C-STATUS-SUCCESS` — so extending the aliases would render two series identically in a shipped theme. A repo-side guard measures the separation in all four themes and fails the build if any pair collapses.
+The aliasing stops at three **on purpose**: the palette's job is that five series stay tellable apart, and this contract lets one theme give two roles the same value. The default theme sets `--C-STATUS-INFO` equal to `--C-ACCENT`, and the `tech` example sets `--C-ACCENT` equal to `--C-STATUS-SUCCESS` — so extending the aliases would render two series identically in a theme that is otherwise perfectly valid. A repo-side guard measures the separation across the default theme plus the worked examples and fails the build if any pair collapses. That is a regression corpus, not a proof: it cannot see your theme, which is why the rule below is written down rather than enforced.
 
-If you define your own theme, the same rule applies to you: **overriding `--C-ACCENT` moves `--C-CHART-1`.** If that puts it near chart-3, chart-4 or chart-5, override the chart tokens too. For dark themes raise the whole ramp's lightness (~0.65–0.78) so series stay legible — `grimdark` and `tech` do exactly this and therefore override all five.
+If you define your own theme, the same rule applies to you: **overriding `--C-ACCENT` moves `--C-CHART-1`.** Two contract tokens pointed at the same colour put two series at OKLab distance **0.000** — measured, and exactly what `tech` does without its override. A dark theme inheriting the light `:root` ramp is the other common failure. Both are fixed the same way: override `--C-CHART-1..5` in your own theme, raising the whole ramp's lightness (~0.65–0.78) if it's dark.
+
+The examples' own chart and media overrides are not in `src/tokens.css` — that file names no theme. They sit in an opt-in stylesheet, `@batthewz/response-ui-react-components/examples/theme-tuning`, which nothing imports for you and which only ever names `events`, `grimdark` and `tech`. Read it as a worked reference; a consumer theme must carry the equivalent block in its own file.
 
 ---
 
@@ -273,14 +277,17 @@ When extending utilities (adding new colors, etc.), expose them via `@theme inli
    ```
 2. Change the selector to `:root[data-theme="aurora"]`.
 3. Customize the required variables. Leave optionals commented out — uncomment only those you actually want to override.
-4. Import after the main package CSS:
+4. Load the fonts you named. The main entry ships only the `default` theme's two families, so every other family in `--DEFAULT-FONT` / `--HEADING-FONT` / `--DEFAULT-MONO-FONT` needs an `@font-face` (or a provider import) of your own, before your theme CSS.
+5. Override `--C-CHART-1..5` if you moved `--C-ACCENT`, `--C-STATUS-SUCCESS` or `--C-STATUS-WARNING`, or if your theme is dark. See [Dashboard — trend & chart](#dashboard--trend--chart) — skipping this is how two series end up the same colour.
+6. Import after the main package CSS:
    ```css
    @import "@batthewz/response-ui-css";
    @import "./themes/aurora.css";
    ```
-5. Register the theme name with `useTheme`:
+7. Register the theme name with `useTheme`:
    ```tsx
-   const { setTheme } = useTheme({ themes: ["default", "aurora"] as const });
+   const APP_THEMES = ["default", "aurora"] as const; // module scope, not inline
+   const { setTheme } = useTheme({ themes: APP_THEMES });
    setTheme("aurora");
    ```
 

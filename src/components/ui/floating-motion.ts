@@ -11,8 +11,9 @@ import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
  * `transition-duration` *inline* — and an inline declaration outranks every
  * stylesheet rule, so the value cannot be supplied from CSS while that hook
  * owns it. It is read here the way `ToastContext` reads `--MOTION-DURATION-EXIT`
- * for the same reason: the shipped themes set these between 120ms and 500ms,
- * and a literal ignores all of them.
+ * for the same reason: a theme owns its tempo, and a literal ignores it. The
+ * spread is real, not theoretical — across the themes measured here the values
+ * run 120ms to 500ms, and a consumer theme may sit anywhere.
  */
 
 /** Used only when the tokens cannot be read (no token layer, or SSR). */

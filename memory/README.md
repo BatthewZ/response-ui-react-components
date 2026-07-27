@@ -16,6 +16,7 @@ to understand.
 | [ledger.md](./ledger.md)   | How a written record goes wrong, and which errors are worst. |
 | [testing.md](./testing.md) | Ways a test here passes for the wrong reason.                |
 | [history.md](./history.md) | Why an inherited claim is worth less than you think.         |
+| [example-themes.md](./example-themes.md) | How sample data becomes API without anyone deciding to, and the one test that catches it. |
 
 ## The short version
 
@@ -35,6 +36,10 @@ to understand.
    documented decision "drift", changed it, and deleted the eight sentences that said otherwise;
    the gates stayed green and the owner reversed the whole thing. Answer the prose or leave it
    standing.
+8. **Green gates cannot see a promise the code stopped keeping.** The example themes became
+   load-bearing across several releases with every gate green, because no gate could observe
+   "the README advertises something a consumer no longer gets". When the thing at risk is a
+   claim rather than a behaviour, write the gate that asserts the claim.
 
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

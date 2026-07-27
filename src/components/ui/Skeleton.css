@@ -6,9 +6,10 @@
      three measure 0px unless the caller passes an explicit `height`. */
   height: 1em;
   /* Tracks the theme's tempo rather than freezing one: --MOTION-DURATION-SHIFT
-     is 400ms in the token layer and 250-600ms across the shipped themes, and a
-     pulse is a slow multiple of that same beat. 400ms x 4 = 1.6s, the 1.5s this
-     always was. */
+     is 400ms in the token layer, and a pulse is a slow multiple of that same
+     beat. 400ms x 4 = 1.6s, the 1.5s this always was. The spread is real — across
+     the themes measured here it runs 250-600ms, and a consumer theme may differ
+     again, which is the point of reading it. */
   animation: skeleton-pulse calc(var(--MOTION-DURATION-SHIFT, 400ms) * 4) ease-in-out infinite;
 }
 

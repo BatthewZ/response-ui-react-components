@@ -14,8 +14,6 @@ export { usePrefersReducedMotion } from "./use-reduced-motion";
 export { useRovingFocus } from "./use-roving-focus";
 export {
   STORAGE_KEY,
-  type Theme,
-  THEMES,
   useTheme,
   type UseThemeOptions,
   type UseThemeReturn,

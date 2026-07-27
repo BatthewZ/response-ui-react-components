@@ -13,7 +13,34 @@ carry when it is cut; it accumulates here rather than under a second `[Unrelease
 heading, because a section for an unreleased version above an unreleased version is a
 distinction with no consumer on the other side of it. The date goes in when it ships.
 
+> **Reading older entries below:** they say "the four shipped themes" and quote per-theme
+> contrast tables. That phrasing predates this release. `default` is the only theme the design
+> system defines; `events`/`grimdark`/`tech` are worked examples that nothing imports. The
+> measurements are still accurate for the themes named — they were never a statement about
+> yours.
+
 ### Breaking
+
+- **The example themes are examples now, everywhere — and a gate keeps them that way.** `events`, `grimdark` and `tech` had quietly become load-bearing in four places, each locally reasonable, together meaning a consumer's own theme got a worse deal than three that happened to ship:
+
+  1. **`src/tokens.css` contained `:root[data-theme="grimdark"|"tech"|"events"]` blocks** carrying lifted chart ramps and tuned `MediaCard` hover physics. A consumer's dark theme inherited the *light* `:root` chart ramp and got neither. Those blocks moved to `src/examples/example-theme-tuning.css`, exported as `@batthewz/response-ui-react-components/examples/theme-tuning` and imported by nothing. **This package's shipped CSS now names no theme at all** — `grep 'data-theme=' dist/styles.css` is empty.
+  2. **The exported type `Theme` was the four example names.** Anyone writing `import type { Theme }` got a union that was simply wrong for their app, under the most authoritative name available. **Removed.** `ExampleTheme` replaces it, and says what it is.
+  3. **`THEMES` was `useTheme`'s runtime default.** Renamed `EXAMPLE_THEMES` and moved to `src/examples/example-themes.ts`; nothing in the library reads it.
+  4. **`ThemeSwitcher`'s `DEFAULT_LABELS` carried `satisfies Record<Theme, string>`**, making the three examples a compile-time obligation of a shipped component. Now `{ default: "Default" }`.
+
+  **`useTheme()` with no arguments no longer filters.** It previously folded any `data-theme` value outside the four example names to `"default"` — which, once the example CSS is no longer auto-loaded, would mis-report *every* app-defined theme (bug #92's failure mode, widened to everyone). It now reports the attribute as it actually is, `setTheme` accepts any string, and `themes` returns `["default"]`. Pass `themes` to get a typed `setTheme` and registry folding, exactly as before.
+
+  **`ThemeSwitcher` with no `themes` prop now offers only `default`** instead of the four example names. A switcher cannot know your themes and will not guess; one lonely option is the intended signal to pass `themes`.
+
+  **Migration.** `import type { Theme }` → declare your own union (`type AppTheme = (typeof APP_THEMES)[number]`). `THEMES` → `EXAMPLE_THEMES`, and only in demos. Anywhere you relied on the four-theme default, pass `themes` explicitly — you almost certainly should have been already (#92). If you use the example themes with charts or `MediaCard`, add `@import "@batthewz/response-ui-react-components/examples/theme-tuning";` after `.../styles`.
+
+  **New gate: `bun run verify:example-themes`** (wired into `prepublishOnly`). It fails the build if an example theme name reaches a CSS selector in shipped styles, a string literal in library code, the built `dist/styles.css`, or the foundation package's public entries. `src/examples/` and test files are the only exemptions. Prose may still discuss the examples — several component CSS files cite contrast measured against them, which is legitimate evidence.
+
+  **`verify:chart-palette` now also reports the untuned case.** It measures what a theme inherits from the aliases alone, with no `--C-CHART-*` override — informational, never failing. That row is the evidence behind the theme-contract rule: `tech` collapses chart-1 and chart-2 to OKLab distance **0.000**, because it points `--C-ACCENT` and `--C-STATUS-SUCCESS` at the same neon green. Any theme reusing a colour across two contract tokens inherits that collision. Two parser bugs were fixed in the same pass: `@import` was stripped only to the first `;`, which a Google Fonts weight list (`wght@300;400;500`) breaks, and the leftover fragment landed in the next selector — silently dropping every token in a file that carries font imports.
+
+  Requires `@batthewz/response-ui-css@^0.11.0`, which stops importing the example themes from its public entries and moves them to `examples/themes/`.
+
+  **Release order is load-bearing:** publish `@batthewz/response-ui-css@0.11.0` first. Until it is on the registry, a clean checkout + install of this package resolves 0.10.1, whose public entry still imports the example themes — and `verify:example-themes` correctly fails on it, taking `prepublishOnly` with it.
 
 - **A sortable `Table.HeaderCell` now renders a real `<button>` inside the `<th>`, and the tab stop moved onto it (#353).** Previously the `<th>` took `tabIndex={0}` and its own Enter/Space handler while keeping `role="columnheader"`, so nothing announced it as activatable. It is now `<th aria-sort aria-labelledby><button type="button">label + arrow</button></th>`. `role="columnheader"` is kept deliberately — ARIA permits `aria-sort` on `columnheader`/`rowheader` and nowhere else.
 

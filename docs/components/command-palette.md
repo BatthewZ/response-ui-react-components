@@ -186,7 +186,7 @@ and the screen always agree.
       label: "Toggle dark mode",
       icon: <Moon size={16} />,
       shortcut: "⌘⇧D",
-      onSelect: () => document.documentElement.setAttribute("data-theme", "grimdark"),
+      onSelect: () => document.documentElement.setAttribute("data-theme", "midnight"),
     },
   ]}
 />
@@ -400,13 +400,14 @@ either side, so the list's own inset never changes. The `--BodyText-*` steps are
 
 **Muted ink is hint-level, and here it carries real content.** `--C-TEXT-MUTED` on
 `--C-SURFACE-0` measures 4.95:1 in the default theme, 4.85:1 in `events`, 5.23:1 in `grimdark`
-and 4.87:1 in `tech` — clearing the 4.5:1 body-text floor in all four since `@batthewz/response-ui-css` **v0.10.1**, where
+and 4.87:1 in `tech` — clearing the 4.5:1 body-text floor in all four measured themes since `@batthewz/response-ui-css` **v0.10.1**, where
 it read 2.10–2.59 before. It is still *visually* hint-level, so prefer the title for anything a
 user must act on; but the group headers and the "No results" message are no longer under the
 floor. Pass an `emptyMessage` node with your own ink if you want more weight than that.
 Disabled rows compound it further — the same token at `opacity: 0.6` lands at 1.46–1.68:1 —
-though an inactive control is exempt from the contrast minimum. See the
-[theme contract](../theme-contract.md).
+though an inactive control is exempt from the contrast minimum. Measured against the default
+theme and the worked examples; these numbers do not transfer to your own theme — re-check
+them against your values. See the [theme contract](../theme-contract.md).
 
 **Off the contract:** the `36rem` cap, the `12vh` offset, the `24rem` list `max-height`, the
 `0.04em` header tracking and the `0.6` disabled opacity are literals, so re-theming changes the
@@ -422,7 +423,7 @@ palette's colour, spacing and timing but not its shape.
   `:focus-visible` because DOM focus never leaves the search input, so no pseudo-class can ever
   match the row. Against that wash the ring measures 3.34 / 3.15 / 13.70 / 3.15:1 (default /
   `events` / `tech` / `grimdark`) against `@batthewz/response-ui-css` **v0.10.1** — over the
-  3:1 floor in every theme. It read 2.52 and 2.55 in `events` and `grimdark` before that
+  3:1 floor in every theme measured. It read 2.52 and 2.55 in `events` and `grimdark` before that
   release retuned `--C-BORDER-FOCUS`, which also carries the search input's own ring, so a
   custom theme retuning that token moves both at once.
 - **Arrow keys walk the rendered order, and the highlight tracks position, not id.**
@@ -477,7 +478,7 @@ needed, and closing returns focus to whatever was focused before — both native
   items. There is no Tab-to-select, no PageUp/PageDown, and no type-ahead beyond the query.
 - **The highlight is drawn as a ring, because focus is virtual.** Its wash is 1.08–1.16:1 and
   carries nothing, so the row's `data-active` rule draws a `--C-BORDER-FOCUS` outline instead —
-  3.15–13.70:1 depending on the theme, over the 3:1 floor in all four since
+  3.15–13.70:1 depending on the theme, over the 3:1 floor in all four measured themes since
   `@batthewz/response-ui-css` v0.10.1 (it was 2.52–2.55 in `events` and `grimdark` before).
   See [Gotchas](#gotchas). The highlight is also gated on
   the same predicate as `aria-activedescendant`, so a palette whose rows are all disabled shows

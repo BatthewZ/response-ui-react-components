@@ -276,19 +276,22 @@ structural navigation Swimlane gives you.
   and only underlines on `:hover` — not on `:focus-visible` — so a keyboard user gets the
   browser's default outline and no underline. Its ink is `--C-ACCENT` at `--BodyText-2`
   (13–14px, so WCAG's 4.5:1 normal-text threshold applies). Measured against surface-0,
-  surface-1 and surface-2 in `@batthewz/response-ui-css` **v0.10.0**, that clears AA in every
-  shipped theme: **5.17–4.70:1** default, **4.89–4.53:1** `events`, **5.69–4.90:1** `grimdark`,
+  surface-1 and surface-2 in `@batthewz/response-ui-css` **v0.10.0**, that clears AA in all four
+  measured themes: **5.17–4.70:1** default, **4.89–4.53:1** `events`, **5.69–4.90:1** `grimdark`,
   **14.84–13.70:1** `tech`. Two edges are worth knowing rather than discovering: on
   `--C-SURFACE-3` it drops to **4.27–4.12:1** and no longer clears AA, and in `grimdark` the
   `:hover` colour sits at **4.50:1** on surface-0 and **4.21:1** on surface-1, so hovering a
   "View all" inside a `Card` takes it under. The colour-alone point stands on its own —
   underline it if that matters to you, regardless of the ratio.
 - **The subtitle now clears AA, with no headroom.** `--C-TEXT-MUTED` measures **4.95–4.50:1**
-  against surfaces 0–2 in every shipped theme; each theme was tuned to land on exactly 4.50
+  against surfaces 0–2 in all four measured themes; each was tuned to land on exactly 4.50
   at surface-2, so there is nothing spare. It still reads as hint-level text visually, so
   prefer not to put load-bearing information in `subtitle` — but it is no longer a
   contrast failure, and the earlier advice to treat it as decorative was written against the
   pre-v0.10.0 palette.
+
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
 
 ## Related
 

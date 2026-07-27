@@ -189,8 +189,8 @@ It defaults to a **text** token rather than `--C-PRIMARY` on purpose. The curren
 ring and the filled rail are strokes drawn straight onto the surface, and the
 [contrast pairing](../theme-contract.md#the-contrast-pairing) only relates a fill to its
 `on-*` text, never to the surface it is stroked onto — and in the `grimdark` and `tech`
-themes `--C-PRIMARY` sits close to the surface, so a
-primary-coloured line would fade out. The done chips *can* fill with `--C-PRIMARY` because
+examples `--C-PRIMARY` sits close to the surface, so a primary-coloured line would fade out.
+Any theme can land there; check yours. The done chips *can* fill with `--C-PRIMARY` because
 they letter and ring themselves in `--C-TEXT-ON-PRIMARY`.
 
 Three spacing tokens step up at the 40rem breakpoint along the responsive `r`-scale: the
@@ -206,7 +206,7 @@ two, so they are fixed rather than themeable. The doubled ring costs no layout b
 `.stepper-indicator` states `box-sizing: border-box` itself rather than inheriting it from
 a reset — under content-box the current marker would grow past `2rem` and pull off the
 rail's centre line, which is positioned from that variable. Measured in Firefox at 1280px:
-every marker is `32 x 32` in all four themes, current `4px` ring against `2px` for done and
+every marker is `32 x 32` in all four measured themes, current `4px` ring against `2px` for done and
 upcoming. The clickable marker's hover transition is likewise a hard-coded `0.15s ease`
 rather than a motion token.
 
@@ -284,7 +284,7 @@ markers are ordinary tab stops in DOM order.
   (`--_stepper-active-line-width`), which is what separates it from an upcoming step for a
   reader who cannot see the tint difference; the progress-ink ring, number and title colour
   reinforce it for everyone else. A width rather than a colour, so it holds under any
-  `--stepper-progress-color` override and in all four themes. Nothing was added to what is
+  `--stepper-progress-color` override and in all four measured themes. Nothing was added to what is
   *announced*: `aria-current="step"` already carried the state, and a hidden word beside it
   would only make the current step announce twice.
 - **`list-style: none` can strip the list role.** The `<ol>` hides its markers in CSS, and in

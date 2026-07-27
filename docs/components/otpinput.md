@@ -206,6 +206,9 @@ from 2.72 and 2.96. They are properties of the [theme contract](../theme-contrac
 rather than of this component's markup, so a custom theme owns them: if you retune
 `--C-BORDER-STRONG` or `--C-BORDER-FOCUS`, re-check both — see [Gotchas](#gotchas).
 
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
+
 ## Gotchas
 
 - **`onComplete` deduplicates, it does not latch.** Each edit that yields a complete code

@@ -263,7 +263,7 @@ variant re-tints at runtime, with no rebuild.
 Like [Alert](alert.md), the border is the variant's own foreground token at `/20` alpha, so it
 tracks the text colour and there is no separate border variable to tune. The tinted
 background is what the [contrast pairing](../theme-contract.md#the-contrast-pairing) puts
-that foreground on, so the defaults are built to stay legible across the shipped themes.
+that foreground on, so the defaults are built to stay legible across the four measured themes.
 
 **The width is a literal.** `w-80` — a fixed `20rem` — is not on the contract and there is no
 prop for it. With the stack's 0.75rem right offset a toast claims 332px, so on a 320px-wide
@@ -280,7 +280,7 @@ are `@theme` animations from `@batthewz/response-ui-css`, built from
 `.slide-*` *classes*, not the `animate-*` utilities — so the component carries
 `motion-reduce:animate-none` itself, and both slides are suppressed for users who ask for
 less motion. The provider's removal delay is read from `--MOTION-DURATION-EXIT` at dismiss
-time rather than hard-coded, so a theme with a longer exit — the shipped `grimdark` sets
+time rather than hard-coded, so a theme with a longer exit — the `grimdark` example sets
 `350ms` — gets its full slide-out instead of being cut off.
 
 The dismiss button is an [IconButton](icon-button.md); its own colour, radius, padding, and
@@ -336,8 +336,9 @@ insertion case screen readers do special-case, because it is the variant that mu
   variant tinted background, the pairing the message text already uses: **success 4.57 ·
   warning 3.07 · error 4.41 · info 4.75** default, `events` the same but info 5.20, `tech`
   13.39 / 11.78 / 5.35 / 8.47, `grimdark` 6.70 / 7.97 / 4.59 / 3.53 — all above the 3:1
-  floor WCAG 1.4.11 sets for a meaningful graphical object. Same treatment on
-  [Alert](alert.md#gotchas) and [Badge](badge.md).
+  floor WCAG 1.4.11 sets for a meaningful graphical object. Measured against the default theme
+  and the worked examples; these numbers do not transfer to your own theme — re-check them
+  against your values. Same treatment on [Alert](alert.md#gotchas) and [Badge](badge.md).
 - **Dismissing returns focus to where it came from.** The toast records what was focused
   before focus entered it and restores that element *before* the unmount, so a keyboard user
   who tabs into a toast and closes it lands back where they were rather than on `<body>`.

@@ -280,7 +280,7 @@ on-accent ink. The 15% weight itself is fixed in the stylesheet.
   is `--C-SURFACE-1` and a Card is now `--C-SURFACE-1` too, so the pairing is exactly
   **1.00:1**. Give the track its own value there (see the override below) until the two
   tokens stop colliding.
-- **The empty part of the track is close to invisible in every shipped theme.** It is
+- **The empty part of the track is close to invisible in every theme measured.** It is
   `--C-SURFACE-1`, measured against `--C-SURFACE-0` at
   **1.05:1 default · 1.03:1 `events` · 1.02:1 `tech` · 1.07:1 `grimdark`**, and against the
   page canvas at 1.05 / 1.03 / 1.08 / 1.17:1 — so a bar at low `value` reads as a stub
@@ -289,12 +289,14 @@ on-accent ink. The 15% weight itself is fixed in the stylesheet.
   needs to be legible. ([ProgressRing](progress-ring.md) uses `--C-SURFACE-2` for the
   equivalent track — still only 1.10:1 on `--C-SURFACE-0` in the default theme, but the two
   siblings do not match out of the box either way.)
-- **The *filled* part now clears its floor in every theme.** The default `accent` fill
+- **The *filled* part now clears its floor in every theme measured.** The default `accent` fill
   measures **4.95 / 4.74 / 14.56 / 5.32:1** on its own track (default / `events` / `tech` /
   `grimdark`), over the 3:1 WCAG 1.4.11 sets for a graphical object that carries meaning. It
   was 2.63 and 2.77 in `events` and `grimdark` until `@batthewz/response-ui-css` **v0.10.0**
   retuned the accent. The *track* is the remaining problem — see the bullet above — so a
-  `ProgressBar.Value` readout is still the reliable way to convey the number.
+  `ProgressBar.Value` readout is still the reliable way to convey the number. Measured against
+  the default theme and the worked examples; these numbers do not transfer to your own theme —
+  re-check them against your values.
 - **`className` reaches the track only, and loses to the track's own rules.** There is no
   prop that classes the inner fill. And because `ProgressBar.css` ships unlayered while
   Tailwind utilities live in `@layer utilities` (measured: the utilities layer ends well

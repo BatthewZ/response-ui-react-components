@@ -203,12 +203,15 @@ of the app at runtime, with no rebuild.
 The selected-day ink is written `var(--C-TEXT-ON-ACCENT, var(--C-TEXT-INVERSE))`, so a
 theme that defines only `--C-TEXT-INVERSE` still gets an ink colour rather than falling
 back to the inherited one. Measured against `--C-ACCENT` in `@batthewz/response-ui-css`
-**v0.10.0**, the selected day's digit clears AA for body-size text in every shipped theme:
-**5.17:1** default, **5.04:1** `events`, **5.69:1** `grimdark`, **14.84:1** `tech`. The
-`events` and `grimdark` values were 2.80:1 and 3.81:1 before that release and were repaired
-in the palette, not here. One edge remains: the `:hover` fill swaps to `--C-ACCENT-HOVER`
-while the ink does not, which lands at **4.49:1** in `grimdark` — a hair under, and a
-reminder that this pair has no headroom in that theme.
+**v0.10.0**, the selected day's digit clears AA for body-size text in the default theme and
+in all three examples: **5.17:1** default, **5.04:1** `events`, **5.69:1** `grimdark`,
+**14.84:1** `tech`. The `events` and `grimdark` values were 2.80:1 and 3.81:1 before that
+release and were repaired in the palette, not here. One edge remains: the `:hover` fill swaps
+to `--C-ACCENT-HOVER` while the ink does not, which lands at **4.49:1** in `grimdark` — a
+hair under, and a reminder that this pair has no headroom there.
+
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
 
 All three spacing tokens sit on the responsive `r`-scale, and two of them step up at
 `40rem`: the panel padding and month gap (`--R-SIZE-4`, `0.75rem` → `1.25rem`) and the
@@ -286,7 +289,7 @@ date — `"June 13, 2026"` — so a screen reader never reads a bare `"13"`.
 - **Today is `aria-current="date"`,** and only ever on the in-month instance, so it is
   announced once even in a multi-month view. Its *visual* marker is a 1px
   `--C-BORDER-STRONG` inset ring, which measures **3.23–3.49:1** against `--C-SURFACE-0`
-  across the four shipped themes in `@batthewz/response-ui-css` **v0.10.0** — clearing the
+  across the four measured themes in `@batthewz/response-ui-css` **v0.10.0** — clearing the
   3:1 floor WCAG 1.4.11 sets for a non-text indicator, where it used to sit at 1.41–1.79:1
   and be effectively invisible. It is a hairline at exactly the floor, not a bold marker, so
   if finding today quickly matters in your product, still add your own.
@@ -302,7 +305,7 @@ date — `"June 13, 2026"` — so a screen reader never reads a bare `"13"`.
   and 2.96 in `events` and `grimdark` — those themes copied their *pre-retune* accent into
   the focus token, and v0.10.1 retuned it. **On `--C-SURFACE-3` it still falls short**
   (2.97 / 2.87 / 12.37 / 2.74), so a calendar rendered on the most elevated surface has a
-  focus ring under the floor in three of the four themes.
+  focus ring under the floor in three of the four measured themes.
 - **The root has no role or name.** It is a bare `<div>`; if the calendar needs to be a
   labelled region, pass `role` and `aria-label` through — they reach the root untouched.
 - Every transition in the stylesheet is switched off under `prefers-reduced-motion: reduce`.

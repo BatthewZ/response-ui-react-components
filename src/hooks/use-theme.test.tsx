@@ -1,56 +1,60 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { STORAGE_KEY, THEMES, useTheme } from "./use-theme";
+import { EXAMPLE_THEMES } from "../examples/example-themes";
+import { STORAGE_KEY, useTheme } from "./use-theme";
 
-describe("useTheme", () => {
+// App-defined names throughout. The hook has no theme list of its own beyond
+// `default`, so testing it against `grimdark`/`tech` would test the example
+// themes rather than the hook, and would quietly re-canonise them.
+const APP_THEMES = ["default", "aurora", "midnight"] as const;
+
+describe("useTheme with a registered theme list", () => {
   beforeEach(() => {
     document.documentElement.removeAttribute("data-theme");
     localStorage.clear();
   });
 
-  it("returns the current theme as 'default' when no data-theme attribute is set", () => {
-    const { result } = renderHook(() => useTheme());
+  it("returns 'default' when no data-theme attribute is set", () => {
+    const { result } = renderHook(() => useTheme({ themes: APP_THEMES }));
     expect(result.current.theme).toBe("default");
   });
 
-  it("returns all available themes", () => {
-    const { result } = renderHook(() => useTheme());
-    expect(result.current.themes).toBe(THEMES);
-    expect(result.current.themes).toEqual(["default", "events", "grimdark", "tech"]);
+  it("returns exactly the themes it was given", () => {
+    const { result } = renderHook(() => useTheme({ themes: APP_THEMES }));
+    expect(result.current.themes).toBe(APP_THEMES);
   });
 
-  it("reads the current theme from data-theme attribute", () => {
-    document.documentElement.setAttribute("data-theme", "grimdark");
-    const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe("grimdark");
+  it("reads an app-registered theme from the data-theme attribute", () => {
+    document.documentElement.setAttribute("data-theme", "aurora");
+    const { result } = renderHook(() => useTheme({ themes: APP_THEMES }));
+    expect(result.current.theme).toBe("aurora");
   });
 
-  it("falls back to 'default' for an unrecognized data-theme value", () => {
+  it("folds a data-theme value outside the registry to the first entry", () => {
     document.documentElement.setAttribute("data-theme", "nonexistent");
-    const { result } = renderHook(() => useTheme());
+    const { result } = renderHook(() => useTheme({ themes: APP_THEMES }));
     expect(result.current.theme).toBe("default");
   });
 
   // NOT "persists": the write is one-way. Nothing in this package reads the key
-  // back, which README.md:86 states as intentional. A title claiming persistence
-  // would assert a feature the docs disclaim — see the read-back test below.
+  // back, which the README states as intentional — see the read-back test below.
   it("setTheme sets data-theme and writes the localStorage key nothing reads back", () => {
-    const { result } = renderHook(() => useTheme());
+    const { result } = renderHook(() => useTheme({ themes: APP_THEMES }));
 
     act(() => {
-      result.current.setTheme("tech");
+      result.current.setTheme("midnight");
     });
 
-    expect(document.documentElement.getAttribute("data-theme")).toBe("tech");
-    expect(localStorage.getItem(STORAGE_KEY)).toBe("tech");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("midnight");
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("midnight");
   });
 
-  it("setTheme('default') removes the data-theme attribute and localStorage entry", () => {
-    document.documentElement.setAttribute("data-theme", "events");
-    localStorage.setItem(STORAGE_KEY, "events");
+  it("setTheme(first entry) removes the data-theme attribute and localStorage entry", () => {
+    document.documentElement.setAttribute("data-theme", "aurora");
+    localStorage.setItem(STORAGE_KEY, "aurora");
 
-    const { result } = renderHook(() => useTheme());
+    const { result } = renderHook(() => useTheme({ themes: APP_THEMES }));
 
     act(() => {
       result.current.setTheme("default");
@@ -60,50 +64,105 @@ describe("useTheme", () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
-  it("updates theme reactively when data-theme attribute changes externally", async () => {
-    const { result } = renderHook(() => useTheme());
+  it("treats the first entry as the default even when it is not named 'default'", () => {
+    const OWN = ["midnight", "aurora"] as const;
+    document.documentElement.setAttribute("data-theme", "aurora");
+    const { result } = renderHook(() => useTheme({ themes: OWN }));
+
+    act(() => {
+      result.current.setTheme("midnight");
+    });
+
+    expect(document.documentElement.getAttribute("data-theme")).toBeNull();
+  });
+
+  it("updates reactively when the data-theme attribute changes externally", async () => {
+    const { result } = renderHook(() => useTheme({ themes: APP_THEMES }));
     expect(result.current.theme).toBe("default");
 
-    // Simulate an external mutation (e.g., from another part of the app)
     act(() => {
-      document.documentElement.setAttribute("data-theme", "events");
+      document.documentElement.setAttribute("data-theme", "aurora");
     });
 
     // MutationObserver is async; flush microtasks
     await vi.waitFor(() => {
-      expect(result.current.theme).toBe("events");
+      expect(result.current.theme).toBe("aurora");
     });
   });
 
-  it("handles localStorage errors gracefully (e.g., private browsing)", () => {
+  it("handles localStorage errors gracefully (e.g. private browsing)", () => {
     const setItemSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("QuotaExceeded");
     });
 
-    const { result } = renderHook(() => useTheme());
+    const { result } = renderHook(() => useTheme({ themes: APP_THEMES }));
 
-    // Should not throw
     act(() => {
-      result.current.setTheme("grimdark");
+      result.current.setTheme("aurora");
     });
 
-    expect(document.documentElement.getAttribute("data-theme")).toBe("grimdark");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("aurora");
 
     setItemSpy.mockRestore();
   });
 });
 
+describe("useTheme with no registered list", () => {
+  beforeEach(() => {
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.clear();
+  });
+
+  it("reports only the one theme the design system defines", () => {
+    const { result } = renderHook(() => useTheme());
+    expect(result.current.themes).toEqual(["default"]);
+  });
+
+  it("falls back to 'default' when the attribute is absent", () => {
+    const { result } = renderHook(() => useTheme());
+    expect(result.current.theme).toBe("default");
+  });
+
+  // The point of registry-free mode. Filtering against a list nobody supplied
+  // would report every app-defined theme as "default" — bug #92's mis-report,
+  // widened to all consumers. Reporting the attribute as-is is the honest read.
+  it("reports an unregistered data-theme value as-is instead of folding it to default", () => {
+    document.documentElement.setAttribute("data-theme", "aurora");
+    const { result } = renderHook(() => useTheme());
+    expect(result.current.theme).toBe("aurora");
+  });
+
+  it("keeps a stable themes identity across re-renders", () => {
+    const { result, rerender } = renderHook(() => useTheme());
+    const first = result.current.themes;
+    rerender();
+    expect(result.current.themes).toBe(first);
+  });
+});
+
 describe("the localStorage write is one-way (#90)", () => {
-  // Guards the documented contract, not a hoped-for one: README.md:86 says
+  // Guards the documented contract, not a hoped-for one: the README says
   // "Persistence is not included." If someone later implements restore-on-init,
   // this fails and forces the README, AGENTS.md and the docblock to move with it.
   it("does not restore a stored theme on mount", () => {
-    localStorage.setItem(STORAGE_KEY, "tech");
+    localStorage.setItem(STORAGE_KEY, "aurora");
     document.documentElement.removeAttribute("data-theme");
 
-    const { result } = renderHook(() => useTheme());
+    const { result } = renderHook(() => useTheme({ themes: APP_THEMES }));
 
-    expect(result.current.theme).not.toBe("tech");
+    expect(result.current.theme).not.toBe("aurora");
     expect(document.documentElement.getAttribute("data-theme")).toBeNull();
+  });
+});
+
+describe("EXAMPLE_THEMES", () => {
+  // It is exported for demos and docs. If anything in the library starts
+  // depending on it, the example themes are load-bearing again.
+  it("is not used as any default — an unregistered hook does not offer them", () => {
+    const { result } = renderHook(() => useTheme());
+    for (const name of EXAMPLE_THEMES) {
+      if (name === "default") continue;
+      expect(result.current.themes).not.toContain(name);
+    }
   });
 });
