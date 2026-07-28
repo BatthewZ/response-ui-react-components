@@ -12,7 +12,7 @@ Machine-readable reference for AI assistants **using** this package — its publ
   @import "@batthewz/response-ui-css";
   @import "@batthewz/response-ui-react-components/styles";
   ```
-  The first provides tokens, themes, responsive scales, animations, base; the second provides per-component CSS (Accordion, Button, etc.) co-located with each `.tsx`. Order matters — per-component CSS reads `var(--…)` from the foundation. Components ship NO CSS-in-JS.
+  The first provides tokens, the `default` theme, responsive scales, animations, base; the second provides per-component CSS (Accordion, Button, etc.) co-located with each `.tsx`. Order matters — per-component CSS reads `var(--…)` from the foundation. Components ship NO CSS-in-JS.
 - Tailwind v4 must be in the consumer's build (e.g. `@tailwindcss/vite`).
 - Peer deps: `react`, `react-dom`, `@floating-ui/react`, `lucide-react`. Regular dep: `@batthewz/response-ui-css` (auto-installed; the consumer still does the `@import` themselves so Tailwind v4 picks it up).
 
@@ -104,8 +104,9 @@ useActiveSection, useClickOutside, useControllableState + type
 UseControllableStateParams + type UseControllableStateReturn, useDebounce,
 useDocumentTitle, useFloating + type Placement, useFocusTrap, useMediaQuery,
 usePrefersReducedMotion, useRovingFocus,
-useTheme + type Theme + type UseThemeOptions + type UseThemeReturn,
-THEMES (= ["default","events","grimdark","tech"]), STORAGE_KEY,
+useTheme + type UseThemeOptions + type UseThemeReturn, STORAGE_KEY,
+EXAMPLE_THEMES + type ExampleTheme (sample data for demos — NOT a default,
+  nothing in the library reads it; see src/examples/example-themes.ts),
 useVirtualRows + type UseVirtualRowsParams + type UseVirtualRowsReturn
 ```
 
@@ -310,18 +311,23 @@ const form = useForm({ defaultValues, schema, mode: "onBlur", onSubmit });
 ### `useTheme` — typed multi-theme
 
 ```ts
-// Default — one of "default" | "events" | "grimdark" | "tech"
-const { theme, setTheme, themes } = useTheme();
+// The normal path — `setTheme` is typed to the union you supply.
+// Declare the array at MODULE SCOPE: the snapshot reader memoises on its identity.
+const APP_THEMES = ["default", "aurora", "midnight"] as const;
+const { theme, setTheme, themes } = useTheme({ themes: APP_THEMES });
 
-// With custom themes — typed as the union of the supplied list
-const { theme, setTheme } = useTheme({
-  themes: ["default", "events", "grimdark", "tech", "aurora"] as const,
-});
+// No arguments — registry-free. `theme` is whatever data-theme actually says
+// ("default" when unset), `setTheme` takes any string, `themes` is ["default"].
+const { theme } = useTheme();
 ```
+
+**This package has no theme list.** `default` is the only theme name the design system defines; `EXAMPLE_THEMES` is sample data for demos and nothing reads it. Never wire it in as a default — `scripts/verify-example-themes.mjs` fails the build on any example theme name in library code or shipped CSS.
 
 `themes[0]` is the fallback / "default" (no `data-theme` attribute when set; `localStorage["theme"]` removed). All others write `data-theme="<name>"` and write `localStorage["theme"]`. That write is **one-way**: nothing in this package reads the key back, so the choice is discarded on reload unless the consumer restores it from a blocking inline `<script>` in `<head>` (not shipped here).
 
-The hook is **optional** — a theme is applied by the `data-theme` attribute alone. `<html data-theme="grimdark">` (declarative, in a root layout / `index.html`) or `document.documentElement.setAttribute("data-theme", "grimdark")` both work with zero JS from this package. Use `useTheme` only when you need a reactive switcher — it holds no React state, just `useSyncExternalStore` over `<html data-theme>` (server snapshot: `themes[0]`, so SSR always ships the default), plus the one-way `localStorage` write above. Scope: built-in themes use a `:root[data-theme="…"]` selector (matches `<html>` only); a theme authored with a **bare** `[data-theme="…"]` selector can be set on any element to re-skin just that subtree (tokens cascade to descendants).
+Registering a list is a **registry**: a `data-theme` value outside it folds to `themes[0]`. That is a mis-report, not a crash — it is why the no-argument form does not filter at all (#92).
+
+The hook is **optional** — a theme is applied by the `data-theme` attribute alone. `<html data-theme="aurora">` (declarative, in a root layout / `index.html`) or `document.documentElement.setAttribute("data-theme", "aurora")` both work with zero JS from this package. Use `useTheme` only when you need a reactive switcher — it holds no React state, just `useSyncExternalStore` over `<html data-theme>` (server snapshot: `themes[0]`, so SSR always ships the default), plus the one-way `localStorage` write above. Scope: a theme using a `:root[data-theme="…"]` selector (the convention, and what the worked examples use) matches `<html>` only; a theme authored with a **bare** `[data-theme="…"]` selector can be set on any element to re-skin just that subtree (tokens cascade to descendants).
 
 ### `useViewTransition` — adapter for any router's navigate
 
@@ -393,6 +399,7 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
 - Don't reach into `node_modules/@batthewz/response-ui-css/src/...` from JS. CSS goes in CSS via `@import`.
 - Don't write CSS-in-JS. The library's styling boundary is Tailwind utilities + design tokens.
 - When a component paints marks directly on a surface, follow the **Contrast contract** in `response-ui-css/AGENTS.md` (Colour): use text tokens (`--C-TEXT-*`) for ink/lines/borders on `--C-SURFACE-*`, and outline filled chips in their `on-*` token. Don't use `--C-PRIMARY` / `--C-ACCENT` as a border/line/text colour on a surface — a theme may set them ≈ the surface.
+- **Don't name an example theme.** `events`, `grimdark` and `tech` are sample code. Never put one in a selector, a type, a default value, a config list, or a test fixture — invent a name (`aurora`, `midnight`) instead. If a rule really needs to vary per theme, express it as a token the consumer also controls, so their theme gets the same deal. `bun run verify:example-themes` fails the build on violations; `src/examples/` is the only exception. The one legitimate use is a demo that has explicitly imported the example CSS — then import `EXAMPLE_THEMES`.
 
 ## Testing
 

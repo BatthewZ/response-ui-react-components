@@ -65,7 +65,7 @@ outline. See [Gotchas](#gotchas).
 descending emphasis. `muted` is not a third rung of that ladder: the
 [theme contract](../theme-contract.md) defines `--C-TEXT-MUTED` as the "most-muted"
 ink — placeholders and hints. Since the `@batthewz/response-ui-css` v0.10.1 retune it
-measures 4.85–5.23:1 against `--C-SURFACE-0` across the shipped themes, clearing WCAG AA
+measures 4.85–5.23:1 against `--C-SURFACE-0` across the four measured themes, clearing WCAG AA
 for body text on the base surface — but the contract names the role, not a ratio. Reach
 for it when the words are decoration; reach for `secondary` when they are information.
 See [Accessibility](#accessibility).
@@ -175,7 +175,7 @@ it retunes the leading without touching the size.
 `0.875rem` → `1rem`. That is why `variant` alone is enough — you never add `sm:` type
 utilities on top. The caveat is that a theme can pin a step to one value, and because a
 theme selector outranks the media query, a pinned step stops stepping. None of the three
-shipped themes touch `--H*`, but all three pin some of the body pair: `tech` pins all
+worked examples touch `--H*`, but all three pin some of the body pair: `tech` pins all
 three `--BodyText-*` sizes *and* all three `--BodyText-*-line-height`s, so body type in
 `tech` does **not** step at 40rem at all; `grimdark` pins all three leadings and `events`
 pins the `--BodyText-1`/`-2` leadings, so in those two the size still grows at 40rem while
@@ -187,8 +187,8 @@ scanner cannot see — so both utilities are guaranteed to exist in the built CS
 this package is a Tailwind source. They
 resolve to `--Semibold-Weight` and `--Bold-Weight`. Neither has a single value: on the
 default scale `--Semibold-Weight` is `500` below 40rem and `600` at or above it, and
-`--Bold-Weight` is `600` → `700`. Each theme re-pins both to one number that holds at
-every width —
+`--Bold-Weight` is `600` → `700`. A theme can re-pin both to one number that holds at every
+width, and each worked example does —
 `tech` 500/600, `events` 600/800, `grimdark` 700/900 (semibold/bold). Treat "semibold"
 as a role, not a number.
 
@@ -203,7 +203,7 @@ as a role, not a number.
   foundation's `h1`–`h6` **element** selectors, not from the `text-h*` utility. So
   `<Text variant="h2" as="p">` is heading-sized body text — different weight, and, in any
   theme that sets `--HEADING-FONT`, a different typeface too. How visible that is depends
-  entirely on the theme: the shipped default sets `--HEADING-FONT: var(--DEFAULT-FONT)`,
+  entirely on the theme: the default sets `--HEADING-FONT: var(--DEFAULT-FONT)`,
   `--HEADING-LETTER-SPACING: normal` and `--HEADING-TEXT-TRANSFORM: none`, so there the
   *only* difference is the weight. In `tech` (Space Grotesk), `events` (Playfair Display)
   and `grimdark` (Cinzel, uppercase, wide tracking) the gap is unmissable. The reverse
@@ -255,10 +255,10 @@ fails WCAG 1.4.1.
 
 `color="muted"` is the hint-level role, not a third body ink. The
 `@batthewz/response-ui-css` v0.10.1 retune lifted `--C-TEXT-MUTED` to 4.85–5.23:1 against
-`--C-SURFACE-0` in the shipped themes — an older copy of this page measured it under
+`--C-SURFACE-0` in the four measured themes — an older copy of this page measured it under
 2.6:1 and said the opposite — so muted copy now clears WCAG AA for body text on the base
 surface. The ranking still holds: measured against all four `surface-*` steps of every
-shipped theme, `--C-TEXT-PRIMARY` never falls below 8.4:1 and `--C-TEXT-SECONDARY` never
+theme measured, `--C-TEXT-PRIMARY` never falls below 8.4:1 and `--C-TEXT-SECONDARY` never
 below 4.4:1, so `primary` is the ink for anything that has to be read, `secondary` the
 one for de-emphasised copy, and `muted` belongs on placeholders and hints that repeat
 something already available elsewhere — the muted figures above are `--C-SURFACE-0` only,

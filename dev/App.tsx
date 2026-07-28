@@ -83,7 +83,16 @@ import {
   useFieldState,
   useForm,
   type StandardSchemaV1,
+  EXAMPLE_THEMES,
 } from "../src";
+
+/** Labels for the example themes this gallery opts into. Gallery-local, as an app's would be. */
+const EXAMPLE_THEME_LABELS = {
+  default: "Default",
+  events: "Events",
+  grimdark: "Grimdark",
+  tech: "Tech",
+};
 // A few doc examples rendered inline in the curated view, so the showcase and the docs
 // agree on the components it highlights. The "Examples" tab covers ALL of them.
 import * as ButtonExamples from "../src/components/ui/Button.examples";
@@ -784,9 +793,9 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-surface-0 text-fg-primary">
-      {/* Top bar: theme switcher (cycles default/events/grimdark/tech via the
-          library's ThemeSwitcher, which is backed by useTheme) + a light/dark
-          note + a viewport constraint toggle. */}
+      {/* Top bar: theme switcher + a light/dark note + a viewport toggle. The
+          switcher is handed EXAMPLE_THEMES because this gallery imports the
+          example theme CSS (see dev/styles.css); an app passes its own list. */}
       <header className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-r4 border-b border-border-default bg-surface-1 px-r3 py-r4">
         <div className="flex flex-col gap-r6">
           <span className="text-h4 font-bold">response-ui gallery</span>
@@ -819,7 +828,7 @@ export function App() {
               Examples
             </Button>
           </div>
-          <ThemeSwitcher />
+          <ThemeSwitcher themes={EXAMPLE_THEMES} labels={EXAMPLE_THEME_LABELS} />
           <div className="flex items-center gap-r6 rounded-md border border-border-default p-r6">
             {(Object.keys(VIEWPORTS) as ViewportKey[]).map((key) => (
               <Button

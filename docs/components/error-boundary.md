@@ -175,10 +175,12 @@ breakpoint like the rest of the library.
 The retry's focus ring is [Button](button.md)'s filled recipe — a 2px `--C-BORDER-FOCUS`
 ring at `ring-offset-2`, keyed on `focus-visible:`. The offset band matters here: the
 button is `bg-primary`, and the ring measures as little as 2.03:1 against that fill
-across the shipped themes but never below 3.39:1 against the `--C-SURFACE-0` band
+across the measured themes but never below 3.39:1 against the `--C-SURFACE-0` band
 (measured against `@batthewz/response-ui-css` **v0.10.1**), so the 2px gap is what keeps
-the ring readable — and the band now clears the 3:1 floor in every theme, where it
-bottomed out at 2.72 before that release.
+the ring readable — and the band now clears the 3:1 floor in every theme measured, where it
+bottomed out at 2.72 before that release. Measured against the default theme and the worked
+examples; these numbers do not transfer to your own theme — re-check them against your
+values.
 
 ## Gotchas
 

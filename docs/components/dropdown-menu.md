@@ -295,9 +295,11 @@ is the menu-button pattern implemented properly — with four things still to kn
   puts a 2px `--C-BORDER-FOCUS` outline back at `-2px` offset. Against that wash it measures
   **3.52 / 3.29 / 14.56 / 3.43:1** (default / `events` / `tech` / `grimdark`) against
   `@batthewz/response-ui-css` **v0.10.1**, clearing the 3:1 that WCAG 2.2 SC 1.4.11 asks of a
-  focus indicator in every shipped theme. `events` and `grimdark` read 2.63 and 2.77 before
-  that release, which retuned `--C-BORDER-FOCUS` in exactly those two. If you ship your own
-  theme, that token is yours to check — re-tint it rather than overriding this rule.
+  focus indicator in all four measured themes. `events` and `grimdark` read 2.63 and 2.77 before
+  that release, which retuned `--C-BORDER-FOCUS` in exactly those two. Measured against the
+  default theme and the worked examples; these numbers do not transfer to your own theme —
+  re-check them against your values. Re-tint `--C-BORDER-FOCUS` rather than overriding this
+  rule.
 - **`Tab` closes the menu, as the APG menu-button pattern asks.** A `Tab` or `Shift+Tab`
   keydown on the trigger or inside the menu closes it rather than leaving it open behind. The
   case that made this matter: a menu opened **with the mouse** has no focused item, so focus

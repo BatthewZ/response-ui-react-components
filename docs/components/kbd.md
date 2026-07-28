@@ -127,7 +127,7 @@ keycap in the app at runtime with no rebuild.
 The keycap's typeface is on the contract too, by a route the table cannot show: `mono-font`
 is a plain class `@batthewz/response-ui-css` ships, not a Tailwind utility, and it sets
 `font-family: var(--DEFAULT-MONO-FONT)` — the same variable [CodeBlock](code-block.md)
-reads, and the one each shipped theme redefines. It is there because Tailwind's Preflight
+reads, and the one each worked example redefines. It is there because Tailwind's Preflight
 styles bare `kbd` with its *own* default mono stack, which a themed keycap has to beat; see
 [Gotchas](#gotchas) for the one thing that costs you.
 
@@ -138,7 +138,7 @@ Three of Kbd's other utilities sit **off** the contract:
   is a paragraph leading rather than a cap height — themes set it anywhere from `1.125rem`
   (`tech`) to `1.75rem` (the default scale), which made the same keycap 30px tall in one
   theme and 18px in another. With it reset, the cap is the glyph plus `p-r6` plus the 1px
-  border, in every theme.
+  border, in any theme.
 - **`min-w-[1.5em]`** names no variable because it does not need one: `em` resolves against
   the cap's own font size, so the floor already tracks `--BodyText-3` through the theme.
 - **`border`** is a plain 1px Tailwind width utility; only the border's *colour* is on the
@@ -151,14 +151,14 @@ though the rest of the scale steps up. `--BodyText-3` does step up
 (`0.75rem` → `0.8125rem`), so the cap grows with its label and nothing else.
 
 `font-semibold` does not mean 600 here: it reads `--Semibold-Weight`, which the default
-scale sets to **500** below 40rem and **600** at and above it, and which each theme pins
-outright (`tech` 500, `events` 600, `grimdark` 700).
+scale sets to **500** below 40rem and **600** at and above it, and which a theme can pin
+outright — each worked example does (`tech` 500, `events` 600, `grimdark` 700).
 
 ## Gotchas
 
 - **The cap's height is its padding, not the theme's leading.** `leading-none` holds the
   line box to the glyph, so the cap is the label plus `p-r6` plus the 1px border on each
-  edge — the same proportion in every theme. If you need a fixed cap, pin it with an `h-*`
+  edge — the same proportion in any theme. If you need a fixed cap, pin it with an `h-*`
   utility in `className`; for a looser one, your own `leading-*` replaces this one.
 - **`mono-font` is the one default a `className` cannot beat.** `.mono-font` is *unlayered*
   CSS from `@batthewz/response-ui-css`, and unlayered author rules outrank every Tailwind

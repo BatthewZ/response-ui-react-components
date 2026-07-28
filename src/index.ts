@@ -29,6 +29,10 @@ export * from "./hooks";
 // Util — cn(), mergeRefs, formatBytes
 export * from "./util";
 
+// Sample data for demos and docs. Not API, not a default, nothing here reads it —
+// see src/examples/example-themes.ts.
+export { EXAMPLE_THEMES, type ExampleTheme } from "./examples/example-themes";
+
 // Re-export the tailwind-merge extension helpers so consumers can extend it.
 // `createCn` is the ergonomic path for apps with custom tokens; `mergeExtension`
 // and `tailwindMergeExtension` are escape hatches for power users.

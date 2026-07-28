@@ -246,7 +246,7 @@ the image. `--OVERLAY-SCRIM-COLOR` ships as:
 Composite each scrim over the brightest thing a photograph can present — a pure-white region
 — and measure `--C-TEXT-ON-PRIMARY` against it. That is the ink behind both
 `Text color="on-primary"` and `Button variant="ghost-inverse"`, and it is the only text
-token that is light in all four shipped themes:
+token that is light in the default theme and all three examples:
 
 | Theme      | Worst case (white region) | Best case (black region) |
 | ---------- | ------------------------- | ------------------------ |
@@ -261,6 +261,9 @@ body-text one, and in `events` it clears neither. The contract only promises
 and nothing in the system checks the pair. Do not assume a hero image is safe because the
 scrim is on.
 
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
+
 Three ways out, in order of how much they actually guarantee:
 
 1. **Put the copy on a fill,** not the photo — the `BrandFill` composition above.
@@ -272,7 +275,7 @@ Three ways out, in order of how much they actually guarantee:
 
 The other two light-ink candidates are worse: `--C-TEXT-PRIMARY` is dark in the default and
 `events` themes, and `--C-TEXT-INVERSE` is dark in `tech` and `grimdark` — either one goes
-dark-on-dark in half the themes you ship.
+dark-on-dark in half the themes measured above.
 
 ## Theme tokens
 

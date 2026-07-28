@@ -189,12 +189,14 @@ class, `.tooltip`, and reads contract variables directly.
 The bubble paints its own background, so unlike most components here it is not at the mercy of
 whatever surface it lands on — and `--C-TEXT-ON-PRIMARY` on `--C-PRIMARY` is precisely the
 pairing the [theme contract](../theme-contract.md) defines for text on a primary fill.
-Measured across the four shipped themes, the tooltip's own text clears WCAG AA comfortably:
-14.6:1 (default), 14.8:1 (tech), 10.2:1 (grimdark), 5.7:1 (events). At every one of those
-sizes this is normal-weight body text, so 4.5:1 is the bar it has to clear.
+Measured across the default theme and the three worked examples, the tooltip's own text
+clears WCAG AA comfortably: 14.6:1 (default), 14.8:1 (tech), 10.2:1 (grimdark), 5.7:1
+(events). At every one of those sizes this is normal-weight body text, so 4.5:1 is the bar it
+has to clear. Measured against the default theme and the worked examples; these numbers do
+not transfer to your own theme — re-check them against your values.
 
 On the base scale `--BodyText-2` is responsive, stepping 0.8125rem → 0.875rem at the 40rem
-breakpoint. Each shipped theme pins the line-height at `:root[data-theme=…]`, which outranks
+breakpoint. Each example theme pins the line-height at `:root[data-theme=…]`, which outranks
 the breakpoint rule, and `tech` pins the size as well — so the step only happens in the
 default theme.
 

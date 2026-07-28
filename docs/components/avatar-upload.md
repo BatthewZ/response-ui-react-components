@@ -206,8 +206,9 @@ The hover scrim is not in that table on purpose: it is written as
 **The scrim is on the contract; its glyph is not.** The overlay reads
 `--OVERLAY-SCRIM-COLOR`, the same token [Drawer](drawer.md), [AppShell](app-shell.md),
 [CommandPalette](command-palette.md) and [Dialog](dialog.md) read, with `rgb(0 0 0 / 0.5)` as
-the fallback for an app that skipped the token layer. The shipped themes set it to 45%
-(events), 50% (default), 70% (tech) and 80% (grimdark), so re-theming it moves this scrim too.
+the fallback for an app that skipped the token layer. The default theme sets it to 50%, and
+the examples to 45% (events), 70% (tech) and 80% (grimdark), so re-theming it moves this
+scrim too.
 
 The camera glyph and the busy spinner's ring are still literal `text-white` / `border-white`,
 and that is deliberate rather than an oversight: the contract has no "ink on an overlay"
@@ -219,6 +220,9 @@ over a white photo, and ≥19:1 over a black one. Note the `events` figure: its 
 scrim puts a white glyph under the 3:1 floor WCAG 1.4.11 sets for a non-text control cue,
 over a light photo. If that matters for your avatars, override the token or the glyph colour
 through `className`.
+
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
 
 The five box sizes are fixed Tailwind spacing rather than the responsive `r`-scale, so the
 circle is the same diameter on mobile and desktop. `--BodyText-3` on the error tooltip *is*

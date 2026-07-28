@@ -307,22 +307,24 @@ A handful of values are **not** on the contract and cannot be themed: the input'
 padding (`0.375rem 0.75rem`), the popup's `min-width: 11.25rem`, `max-height: 16rem` and
 `z-index: 40`, the 2px focus-ring width, and the chevron's `size={16}`. The selected option's
 weight *is* on the contract — it reads `--Semibold-Weight` rather than a frozen `600`, which
-was the wrong number in two of the four shipped themes (`tech` sets `500`, `grimdark` `700`)
+was the wrong number in two of the example themes (`tech` sets `500`, `grimdark` `700`)
 and skipped the default scale's step up at 40rem in all of them.
 
 Three token pairs here are worth measuring before you ship a theme, because the defaults are
 thin. The active-option **wash** is `--C-SURFACE-1` painted on the popup's `--C-SURFACE-0`,
-which is **1.02–1.07:1** across the four shipped themes — invisible, which is why the wash is
+which is **1.02–1.07:1** across the four measured themes — invisible, which is why the wash is
 no longer what marks the option. Measured against `@batthewz/response-ui-css` **v0.10.1**, the
 other two pairs now clear their floors. The **ring** drawn over the wash is `--C-BORDER-FOCUS`
 at **3.52 / 3.29 / 14.56 / 3.43:1** (default / `events` / `tech` / `grimdark`), over the 3:1
-non-text floor in every theme. The **input border** is `--C-BORDER-STRONG` on `--C-SURFACE-0`
+non-text floor in every theme measured. The **input border** is `--C-BORDER-STRONG` on `--C-SURFACE-0`
 at **3.30 / 3.23 / 3.25 / 3.49:1**, and the focus ring on that same fill is
 **3.68 / 3.39 / 14.84 / 3.66:1**. All three were failing until recently and all three were
 fixed upstream rather than here — the border in **v0.10.0** (from 1.41–1.79) and the focus ring
 in **v0.10.1** (from 2.63–2.77 on the wash, 2.72 and 2.96 on the fill). `outline: none` still
 removes the browser's fallback, so if you retune either token in your own theme, these are the
-pairings to re-check. See the [theme contract](../theme-contract.md).
+pairings to re-check. Measured against the default theme and the worked examples; these
+numbers do not transfer to your own theme — re-check them against your values. See the
+[theme contract](../theme-contract.md).
 
 ## Gotchas
 
@@ -341,13 +343,13 @@ pairings to re-check. See the [theme contract](../theme-contract.md).
   text: the value is unchanged and nothing reverts on close or blur. If a committed selection
   matters, compare the two in `onValueChange`/`onInputValueChange` and reconcile them yourself.
 - **The active option is marked by its ring, not its wash.** The `--C-SURFACE-1` background is
-  1.02–1.07:1 on the `--C-SURFACE-0` popup — invisible in every shipped theme — so
+  1.02–1.07:1 on the `--C-SURFACE-0` popup — invisible in all four measured themes — so
   `.combobox-item[data-active]` also draws a 2px `--C-BORDER-FOCUS` outline at `-2px` offset,
   the same ring the rest of the library draws on `:focus-visible`. It has to be drawn from the
   attribute because navigation is virtual: DOM focus never leaves the input, so `:focus-visible`
   can never match an option. That ring measures 3.52 / 3.29 / 14.56 / 3.43:1 against the wash
   (default / `events` / `tech` / `grimdark`) against `@batthewz/response-ui-css` v0.10.1, over
-  the 3:1 floor in every theme — it read 2.63 and 2.77 in `events` and `grimdark` until that
+  the 3:1 floor in every theme measured — it read 2.63 and 2.77 in `events` and `grimdark` until that
   release retuned `--C-BORDER-FOCUS`. A custom theme owns that token, so re-check it there.
 - **Hovering an option makes it the active one,** overwriting whatever the arrow keys had
   selected. Moving the mouse across the list while typing will move the `Enter` target.
@@ -392,8 +394,8 @@ Four things the code does **not** do, and that you may have to work around:
 
 Contrast is no longer the weak point, though it is close to the line. The input border is
 **3.23–3.49:1** and `--C-BORDER-FOCUS` — which carries the keyboard cue on an option as well as
-the focus ring on the input — is **3.29–14.84:1**, both over the 3:1 non-text floor in every
-shipped theme. They measured 1.41–1.79 and 2.63–2.96 respectively before `@batthewz/response-ui-css` **v0.10.1**.
+the focus ring on the input — is **3.29–14.84:1**, both over the 3:1 non-text floor in all
+four measured themes. They measured 1.41–1.79 and 2.63–2.96 respectively before `@batthewz/response-ui-css` **v0.10.1**.
 See [Theme tokens](#theme-tokens) for the numbers. Re-tinting that one variable fixes both
 cues at once, which makes it the first thing to measure when you ship a theme.
 

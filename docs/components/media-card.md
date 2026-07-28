@@ -93,15 +93,15 @@ bottom, transparent at the top. It is `aria-hidden="true"` and `pointer-events: 
 darkens the picture without appearing in the accessibility tree or eating clicks.
 
 **It darkens; it does not guarantee anything.** The end stop is a theme value — black at 70%
-alpha by default, 90% in `grimdark`, a near-black at 85% in `tech`, a warm dark at 65% in
-`events` — laid over an arbitrary photograph. No contrast ratio is computed, and none is
+alpha in the default theme, and across the worked examples 90% in `grimdark`, a near-black at
+85% in `tech`, a warm dark at 65% in `events` — laid over an arbitrary photograph. No contrast ratio is computed, and none is
 promised. If your captions must be legible over user-supplied imagery, check it against your
 real images or darken the gradient in your theme.
 
 `MediaCard.Content` re-declares six ink variables on itself — `--C-TEXT-PRIMARY`,
 `--C-TEXT-SECONDARY`, `--C-TEXT-MUTED`, `--C-TEXT-INVERSE`, `--C-TEXT-ON-PRIMARY`,
 `--C-TEXT-ON-ACCENT` — to white (or white at reduced alpha) in every theme, because the
-scrim is dark in every theme. Anything inside that *reads* one of those variables therefore
+component paints its own dark scrim rather than inheriting one from the theme. Anything inside that *reads* one of those variables therefore
 inks white: a [Text](text.md), or a raw `text-fg-primary` utility. Content also sets
 `color: var(--C-TEXT-PRIMARY)` on itself, so a bare `<h3>` with no class inherits the white it
 re-declares rather than the ambient page ink.
@@ -188,11 +188,13 @@ right-r5` for the corner-chip inset. Everything else in the `.tsx` — `absolute
 
 **`--MEDIA-CARD-HOVER-SCALE`, `--MEDIA-CARD-HOVER-LIFT` and `--MEDIA-ASPECT-POSTER` are
 domain tokens owned by this package**, defined in `src/tokens.css` — not in the
-`@batthewz/response-ui-css` foundation, which owns everything else in the table above. The
-two hover tokens are also re-declared per theme in that same file: the default and `grimdark`
-scale to `1.02`, `tech` and `events` to `1.03`, and the lift ranges from `-0.125rem`
-(`grimdark`) to `-0.25rem` (default, `events`). They cascade by name, so a consumer theme
-overrides them like any other variable.
+`@batthewz/response-ui-css` foundation, which owns everything else in the table above.
+`src/tokens.css` names no theme: it declares the default values and stops there. The
+per-theme retunings of the two hover tokens are opt-in, in
+`@batthewz/response-ui-react-components/examples/theme-tuning`, and cover only the worked
+examples: against the default's `1.02` / `-0.25rem`, `grimdark` lifts only `-0.125rem`,
+`tech` scales `1.03` / `-0.1875rem` and `events` `1.03` / `-0.25rem`. They cascade by name,
+so your own theme overrides them like any other variable — in your own file.
 
 The caption padding rides the responsive `r`-scale: `--R-SIZE-3` is `1rem` and steps up to
 `1.5rem` above the 40rem breakpoint. The corner-chip inset sits on the same scale —

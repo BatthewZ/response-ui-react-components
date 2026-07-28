@@ -154,7 +154,7 @@ rebuild.
 The whole component sits on one type step. `--BodyText-3` is the smallest of the three body
 sizes — 0.75rem, stepping to 0.8125rem at the 40rem breakpoint — and both the header labels
 and the code read it, so you cannot size the code independently of the chip without your own
-CSS. A theme may flatten that step (the shipped `tech` theme pins it to 0.6875rem at every
+CSS. A theme may flatten that step (the `tech` worked example pins it to 0.6875rem at every
 width). `--R-SIZE-5` steps 0.5rem → 0.75rem at the same breakpoint, widening the code padding
 and the number gutter on desktop; `--R-SIZE-6` holds at 0.25rem on both sides of it.
 
@@ -226,7 +226,7 @@ the accessibility tree rather than being collapsed the way they would be in a `<
   and copies, which is the point — but browsers that expose `::before` text to the
   accessibility tree will read the number before its line. They are also inked
   `--C-TEXT-MUTED`, which measures between **4.85:1 and 5.23:1** against `--C-SURFACE-0` across
-  the four shipped themes since `@batthewz/response-ui-css` **v0.10.0** — over AA, where it read
+  the four measured themes since `@batthewz/response-ui-css` **v0.10.0** — over AA, where it read
   2.10–2.59 before. They are legible now, but they are still `aria-hidden` decoration by
   construction, so don't build prose ("see line 12") on a number a screen reader never reads.
 - **The copy button's own behaviour is CopyButton's** — its focus ring and its visually
@@ -234,6 +234,9 @@ the accessibility tree rather than being collapsed the way they would be in a `<
   caveat that the confirmation may not be announced at all. Its *name* is yours: several
   blocks on one page all read "Copy" otherwise, so give each one an
   `copyButtonProps={{ "aria-label": … }}` naming what it copies.
+
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
 
 ## Related
 

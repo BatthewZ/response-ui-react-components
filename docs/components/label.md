@@ -124,7 +124,7 @@ Keep any required marker `aria-hidden` and signal "required" through the control
 `required`/`aria-required`, so the field's name is announced as "Full name" rather than
 "Full name star".
 
-Text is `--C-TEXT-PRIMARY`, the primary body-text role, which the shipped themes are built
+Text is `--C-TEXT-PRIMARY`, the primary body-text role, which the measured themes are built
 to keep legible on their standard surfaces.
 
 ## Related

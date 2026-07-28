@@ -59,6 +59,8 @@ A scrimmed photograph is not a fill either, so the pairing does not carry over a
 image: composited over the shipped scrim on a bright frame, `fg-on-primary` measures
 3.98:1 in the default theme and 2.89:1 in `events` — below the 3:1 large-text floor in the
 latter. See [Hero](hero.md#contrast-over-an-image) if you need the numbers per theme.
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
 
 ## Size
 

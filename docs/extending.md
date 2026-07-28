@@ -176,8 +176,12 @@ have these without defining anything:
 
 For dark themes, raise chart-colour lightness (~0.65–0.78) so series stay legible — see the
 optional dashboard tokens in [docs/theme-contract.md](./theme-contract.md). Because
-`chart-1..3` alias the contract, retinting `--C-ACCENT` also moves `chart-1`: if that lands
-it near another series, override the chart tokens for that theme as `grimdark` and `tech` do.
+`chart-1..3` alias the contract, retinting `--C-ACCENT` also moves `chart-1`: point two
+contract tokens at the same colour and two series land at OKLab distance 0.000. Override
+`--C-CHART-1..5` in your own theme file when that happens. For a worked reference, the
+example themes' overrides live in an opt-in stylesheet,
+`@batthewz/response-ui-react-components/examples/theme-tuning` — nothing imports it for you,
+and it names only the examples, so copy the shape, not the values.
 
 If you wire a charting library (Recharts, visx, D3…), feed it the resolved token values so
 it stays themable, e.g. read `getComputedStyle(el).getPropertyValue("--C-CHART-1")`, or set
@@ -236,14 +240,20 @@ barrel/index file.
 ## Theming
 
 Your components automatically respond to the active theme because they style with tokens.
-To offer custom themes, write a theme CSS file against the contract, import it after
+`default` is the only theme the design system defines — it *is* `:root`. Everything past it
+is yours: write a theme CSS file against the contract, import it after
 `@batthewz/response-ui-css`, then register the name:
 
 ```ts
 import { useTheme } from "@batthewz/response-ui-react-components";
 
-const { theme, setTheme } = useTheme({ themes: ["default", "aurora"] as const });
+const APP_THEMES = ["default", "aurora"] as const; // module scope — the hook memoises on identity
+const { theme, setTheme } = useTheme({ themes: APP_THEMES });
 ```
+
+`events`, `grimdark` and `tech` ship at `@batthewz/response-ui-css/examples/themes/<name>`
+as worked examples — opt-in, outside semver, imported by nothing. Read one to see the
+contract satisfied end to end; don't treat its values as a baseline your theme inherits.
 
 See [docs/theme-contract.md](./theme-contract.md) for the required/optional token schema,
 including the optional dashboard (trend + chart) section.

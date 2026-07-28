@@ -5,7 +5,7 @@
    the css-package foundation first, then this package's per-component styles):
 
    1. Tailwind itself (the utilities the components and gallery use).
-   2. The foundation CSS — tokens, themes, responsive scales, animations, base.
+   2. The foundation CSS — tokens, the default theme, responsive scales, animations, base.
       Imported from the LOCAL SIBLING SOURCE so every token (including the new
       trend/chart tokens) is available without a published build. Path is
       relative to this file: dev/ -> ../ (package root) -> ../ (repo root) ->
@@ -19,8 +19,28 @@
    itself, so we rely on that single Tailwind entry rather than importing it
    twice here. */
 
+/* Example-theme FONTS first. @import must precede all other rules in the flattened
+   stylesheet, so these cannot live inside the theme files (which load after the
+   foundation) — put there, they are dropped and the palettes render in the wrong
+   typeface with no error. */
+@import "../../response-ui-css/src/examples/themes/events-fonts.css";
+@import "../../response-ui-css/src/examples/themes/grimdark-fonts.css";
+@import "../../response-ui-css/src/examples/themes/tech-fonts.css";
+
 @import "../../response-ui-css/src/index.css";
+
+/* The example themes, opted into explicitly — the foundation entry does not load
+   them, and this gallery is exactly the kind of demo they exist for. An app would
+   import its own theme here instead. */
+@import "../../response-ui-css/src/examples/themes/events.css";
+@import "../../response-ui-css/src/examples/themes/grimdark.css";
+@import "../../response-ui-css/src/examples/themes/tech.css";
+
 @import "../src/styles.css";
+
+/* Chart ramps + media-card feel for those example themes. Also opt-in: naming a
+   theme in shipped CSS is what this release removed. */
+@import "../src/examples/example-theme-tuning.css";
 
 /* Make the gallery's own files scannable by Tailwind v4. */
 /* Glob rather than a file list: the generated examples gallery adds dev views without

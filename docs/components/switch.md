@@ -233,7 +233,7 @@ the page. See [Accessibility](#accessibility) — that has measurable consequenc
 ## Gotchas
 
 - **Off, the thumb is all but invisible.** The thumb is `--C-SURFACE-0` on a `--C-SURFACE-2`
-  track: **1.08:1 to 1.16:1** across the four shipped themes, against the 3:1 that WCAG 1.4.11
+  track: **1.08:1 to 1.16:1** across the four measured themes, against the 3:1 that WCAG 1.4.11
   asks of a part you need to see to read the state. The track is only 1.04:1–1.16:1 against a
   `--C-SURFACE-0` or `--C-SURFACE-1` page, and has no border. So an off Switch is in practice a
   faint empty pill — and the on/off difference a user actually perceives is the accent tint,
@@ -307,11 +307,11 @@ holds no matter how the consumer's Tailwind build is configured.
 
 **The one real failure is contrast, and it is now the *off* state only.** Measured against
 `@batthewz/response-ui-css` **v0.10.1**: switched **on**, the `--C-SURFACE-0` thumb against the
-`--C-ACCENT` track clears the 3:1 that WCAG 1.4.11 requires of a state indicator in every theme
-— **5.17** default · **4.89** `events` · **14.84** `tech` · **5.69** `grimdark`. `events` and
+`--C-ACCENT` track clears the 3:1 that WCAG 1.4.11 requires of a state indicator in all four measured
+themes — **5.17** default · **4.89** `events` · **14.84** `tech` · **5.69** `grimdark`. `events` and
 `grimdark` read 2.72 and 2.96 before **v0.10.0** retuned the accent, so that half of this
 finding is closed. Switched **off**, the same thumb sits on a `--C-SURFACE-2` track at
-**1.08:1–1.16:1 in all four themes**, and no palette retune can fix it — the whole surface ramp
+**1.08:1–1.16:1 in all four measured themes**, and no palette retune can fix it — the whole surface ramp
 spans about 1.2 end to end by design. There is no border to fall back on
 either. The consequence is that the moving
 thumb — the non-colour cue that is supposed to keep a switch out of the WCAG 1.4.1
@@ -321,6 +321,9 @@ channel genuinely ships — the thumb does move — and the only thing wrong wit
 is too low-contrast to see, which is 1.4.11's subject. One root cause, one finding. Until the
 tokens change, the practical mitigations are a visible text label per state, or an override
 giving the thumb a border or a higher-contrast fill.
+
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
 
 ## Related
 

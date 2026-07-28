@@ -128,7 +128,7 @@ The border is that variant's foreground token at `/20` alpha, so it always track
 the text colour — there is no separate border token to tune. The tinted background
 (`--C-STATUS-*-BG`) is the background the [contrast pairing](../theme-contract.md#the-contrast-pairing)
 puts each status foreground on, so the default variants are built to stay legible across the
-shipped themes.
+four measured themes.
 
 ## Gotchas
 
@@ -169,7 +169,10 @@ Measured, the glyph is the variant's foreground on the variant's tinted backgrou
 pairing the message text already uses: **success 4.57 · warning 3.07 · error 4.41 · info
 4.75** in the default theme, `events` the same but info 5.20, `tech` 13.39 / 11.78 / 5.35
 / 8.47, `grimdark` 6.70 / 7.97 / 4.59 / 3.53. Every one clears the 3:1 floor WCAG 1.4.11
-sets for a meaningful graphical object. A custom `--C-STATUS-*` pair is yours to measure.
+sets for a meaningful graphical object.
+
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
 
 ## Related
 

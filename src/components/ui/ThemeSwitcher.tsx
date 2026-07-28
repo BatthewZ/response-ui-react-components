@@ -7,18 +7,26 @@ import {
 } from "react";
 
 import { useRovingFocus } from "../../hooks/use-roving-focus";
-import { type Theme, THEMES, useTheme } from "../../hooks/use-theme";
+import { useTheme } from "../../hooks/use-theme";
 import { cn } from "../../util/style";
 
 /** Option text, keyed by theme id. A theme with no entry is labelled by its id. */
 export type ThemeSwitcherLabels = Partial<Record<string, string>>;
 
-const DEFAULT_LABELS: ThemeSwitcherLabels = {
-  default: "Default",
-  events: "Events",
-  grimdark: "Grimdark",
-  tech: "Tech",
-} satisfies Record<Theme, string>;
+/**
+ * Only `default` is labelled here, because it is the only theme name this design
+ * system defines. Your themes get their id as their label until you pass
+ * `labels` — deliberately, so an unlabelled theme looks unfinished rather than
+ * silently borrowing someone else's name.
+ */
+const DEFAULT_LABELS: ThemeSwitcherLabels = { default: "Default" };
+
+/**
+ * What the switcher offers when the app registered nothing. Module scope for a
+ * stable identity (the hook memoises on it). One lonely option is the intended
+ * signal: a theme switcher cannot know your themes, so pass `themes`.
+ */
+const FALLBACK_THEMES = ["default"] as const;
 
 type ThemeSwitcherProps = {
   /**
@@ -26,9 +34,15 @@ type ThemeSwitcherProps = {
    * `useTheme`, so app-registered themes are both selectable and reported
    * correctly. Declare it at module scope: the hook memoises its snapshot reader
    * on the array's identity.
+   *
+   * Effectively required in a real app. Omitted, the switcher offers only
+   * `default`, because this package does not know your themes and will not guess.
    */
   themes?: readonly string[];
-  /** Option text, keyed by theme id. Defaults to the English names above. */
+  /**
+   * Option text, keyed by theme id. A theme with no entry is labelled by its id,
+   * so `aurora` reads as "aurora" until you name it.
+   */
   labels?: ThemeSwitcherLabels;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
@@ -36,7 +50,7 @@ export const ThemeSwitcher = forwardRef<HTMLDivElement, ThemeSwitcherProps>(func
   { themes: themesProp, labels, className, ...props },
   ref
 ) {
-  const { theme, setTheme, themes } = useTheme({ themes: themesProp ?? THEMES });
+  const { theme, setTheme, themes } = useTheme({ themes: themesProp ?? FALLBACK_THEMES });
 
   const { getRovingProps, setFocusedIndex } = useRovingFocus({ orientation: "horizontal" });
 

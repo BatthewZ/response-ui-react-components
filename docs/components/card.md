@@ -50,7 +50,7 @@ card is more generous on desktop than on mobile with no work from you.
 ## Elevation
 
 `shadow` is how a card reads as lifted off the page. It does most of that work on its own:
-`--C-SURFACE-1` is only one rung off `--C-CANVAS` in every shipped theme, so the
+`--C-SURFACE-1` is only one rung off `--C-CANVAS` in all four measured themes, so the
 background change alone is a hint, not an edge.
 
 <!-- example:Elevation -->
@@ -111,13 +111,13 @@ globally.
   the number is a rung on the responsive scale, not a pixel size. There is no zero-padding
   option; the tightest you can go is `r6` (0.25rem).
 - **The background step is small on purpose.** `--C-SURFACE-1` sits one rung off the canvas
-  in every shipped theme — near-white on the default and `events`, a shade lighter than black
-  on `tech` and `grimdark` — so `shadow` still does most of the work of lifting a card off
+  in the default theme and in each worked example — near-white on the default and `events`, a
+  shade lighter than black on `tech` and `grimdark` — so `shadow` still does most of the work of lifting a card off
   the page. What it is *not* any more is zero: on the default theme `--C-SURFACE-0` and
   `--C-CANVAS` are the same pure white, which left a card with no background change at all.
 - **Card sets no text colour.** It paints a surface but leaves the ink to inheritance, and
   the CSS foundation sets no global text colour either — the default `color` stays at the UA
-  `canvastext`. The shipped dark themes stay legible anyway: `grimdark` and `tech` pair their
+  `canvastext`. The dark examples stay legible anyway: `grimdark` and `tech` pair their
   dark surface with `color-scheme: dark`, which flips `canvastext` to a light ink, so even
   unstyled text reads on the dark surface-1. The drop-out risk is narrower — a *custom* dark
   theme that darkens the surface but omits `color-scheme` leaves the ink dark-on-dark, and app

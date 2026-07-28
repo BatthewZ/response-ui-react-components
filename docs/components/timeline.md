@@ -191,7 +191,7 @@ is inset from the centre line above it (`width: calc(50% - …)`), and the gap b
 title and its body — so retinting it for one of those moves the other two. The type steps are
 responsive too — `--BodyText-2` `0.8125rem` → `0.875rem`, `--BodyText-3` `0.75rem` →
 `0.8125rem` — and `--Bold-Weight` is both responsive (`600` → `700`) and themed, running from
-`600` in `tech` to `900` in `grimdark`.
+`600` to `900` across the worked examples (`tech` and `grimdark` are the two ends).
 
 Read the spacing rows together and the rhythm groups by proximity: the gap **between two
 events** is `--R-SIZE-3` (`1rem`, `1.5rem` on desktop), while the gap **between an entry's

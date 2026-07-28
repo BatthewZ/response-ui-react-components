@@ -33,7 +33,6 @@ const SUMMARIZED_NAMES = new Set([
   "EmptyStateDescription",
   "EmptyStateIcon",
   "EmptyStateActions",
-  "THEMES",
   "STORAGE_KEY",
 ]);
 

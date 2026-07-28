@@ -210,6 +210,9 @@ it composites to **1.5–1.7:1** on every light-theme surface, and 2.7–2.9:1 i
 Only `tech` clears 3:1 on both layers. Do not rely on the stars alone to convey the score —
 print the number beside them, as [Read-only display](#read-only-display) does.
 
+Measured against the default theme and the worked examples; these numbers do not transfer to
+your own theme — re-check them against your values.
+
 ## Gotchas
 
 - **Focus and the value are one state machine.** The tab stop is always the star holding the

@@ -22,6 +22,14 @@
       "import": "./dist/index.js"
     },
     "./styles": "./dist/styles.css",
+    "./examples/theme-tuning": {
+      "style": "./src/examples/example-theme-tuning.css",
+      "default": "./src/examples/example-theme-tuning.css"
+    },
+    "./examples/*": {
+      "types": "./dist/examples/*.d.ts",
+      "import": "./dist/examples/*.js"
+    },
     "./components/*": {
       "types": "./dist/components/*.d.ts",
       "import": "./dist/components/*.js"
@@ -54,8 +62,9 @@
     "verify:focus-affordance": "node scripts/verify-focus-affordance.mjs",
     "verify:omit-discipline": "node scripts/verify-omit-discipline.mjs --check",
     "verify:chart-palette": "node scripts/verify-chart-palette.mjs --check",
+    "verify:example-themes": "node scripts/verify-example-themes.mjs --check",
     "verify:bugs": "node scripts/bugs-ledger.mjs --check",
-    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && node scripts/gen-docs.mjs --check && node scripts/verify-component-docs.mjs && node scripts/verify-focus-affordance.mjs && node scripts/verify-omit-discipline.mjs --check && node scripts/verify-chart-palette.mjs --check && bun run lint && bun run typecheck && bun run test"
+    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && node scripts/gen-docs.mjs --check && node scripts/verify-component-docs.mjs && node scripts/verify-focus-affordance.mjs && node scripts/verify-omit-discipline.mjs --check && node scripts/verify-chart-palette.mjs --check && node scripts/verify-example-themes.mjs --check && bun run lint && bun run typecheck && bun run test"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -64,7 +73,7 @@
     "lucide-react": "^0.500.0"
   },
   "dependencies": {
-    "@batthewz/response-ui-css": "^0.10.1",
+    "@batthewz/response-ui-css": "^0.11.0",
     "@batthewz/response-ui-tw-merge": "^0.1.3",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.6.0"

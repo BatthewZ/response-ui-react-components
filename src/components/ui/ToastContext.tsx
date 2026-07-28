@@ -59,8 +59,9 @@ const MAX_VISIBLE = 5;
 
 /**
  * How long a dismissing toast stays mounted, read from the theme rather than
- * frozen: shipped themes set `--MOTION-DURATION-EXIT` between 120ms and 350ms,
- * and a fixed wait truncates the exit animation of the slower ones.
+ * frozen: a theme owns `--MOTION-DURATION-EXIT`, and a fixed wait truncates the
+ * exit animation of any theme slower than the guess. Across the themes measured
+ * here it ranges 120ms to 350ms; a consumer theme may set anything.
  */
 function readExitDurationMs(el: Element | null): number {
   if (!el) return FALLBACK_EXIT_MS;

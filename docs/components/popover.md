@@ -251,7 +251,7 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   [Drawer](drawer.md) — is above all of it regardless of `z-index`.
 - **The fade reads the theme, and is dropped under reduced motion.** The open/close opacity
   transition takes its duration from `--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT`,
-  read from `:root` at runtime (the shipped themes set these between 120ms and 500ms), and
+  read from `:root` at runtime (the measured themes set these between 120ms and 500ms), and
   falls back to 150ms when no token layer is present. Under
   `prefers-reduced-motion: reduce` the duration is `0`, which removes the fade *and* the
   delayed unmount. The value has to be read in JS rather than written in CSS:

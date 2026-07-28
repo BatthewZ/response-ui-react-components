@@ -228,9 +228,9 @@ including, in the dark themes, the page itself — see [Gotchas](#gotchas).
 - **The stack ring assumes a `surface-0` background.** The 2px ring that separates overlapping
   avatars, and the one around the presence dot, always paint `--C-SURFACE-0`. On a `surface-1`
   card, a `surface-2` panel, or a `bg-primary` band it reads as a pale halo rather than a cut-out.
-  The dark themes don't even guarantee the page: `grimdark` and `tech` paint the body
-  `--C-CANVAS`, which diverges from their `--C-SURFACE-0`, so an avatar sitting directly on the
-  page there already gets a visibly lighter ring. The dot's ring sits on an inner element
+  A dark theme need not even guarantee the page: the `grimdark` and `tech` examples paint the
+  body `--C-CANVAS`, which diverges from their `--C-SURFACE-0`, so an avatar sitting directly
+  on the page there already gets a visibly lighter ring. The dot's ring sits on an inner element
   `className` cannot reach, so there is no override path.
 - **`className` merges last.** It is passed through `cn()` after the size class, so a `size-*`
   utility in `className` overrides the `size` prop — that is how [AvatarUpload](avatar-upload.md) stretches an

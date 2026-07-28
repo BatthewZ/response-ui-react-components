@@ -2,11 +2,20 @@ import { useTheme } from "../../hooks/use-theme";
 import { Button } from "./Button";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
-const APP_THEMES = ["default", "grimdark", "aurora"] as const;
+// Your app's themes, declared at module scope so the hook's snapshot reader keeps
+// a stable identity. These names are invented — the library ships no theme list
+// of its own beyond `default`.
+const APP_THEMES = ["default", "aurora", "midnight"] as const;
+const APP_LABELS = { default: "Default", aurora: "Aurora", midnight: "Midnight" };
 
-/** No props, no wiring — it renders the four shipped themes and writes `<html data-theme>`. */
+/** With no `themes`, it offers only `default` — the library will not guess your themes. */
 export function Minimal() {
   return <ThemeSwitcher />;
+}
+
+/** The normal case: hand it the themes your own CSS defines. */
+export function WithAppThemes() {
+  return <ThemeSwitcher themes={APP_THEMES} labels={APP_LABELS} />;
 }
 
 /** Its natural home: the trailing edge of a header bar. */
@@ -14,17 +23,17 @@ export function InANavbar() {
   return (
     <header className="flex items-center justify-between gap-r4 rounded-lg bg-surface-1 px-r4 py-r5">
       <span className="text-h6">Response UI</span>
-      <ThemeSwitcher />
+      <ThemeSwitcher themes={APP_THEMES} labels={APP_LABELS} />
     </header>
   );
 }
 
 /** `useTheme` and `ThemeSwitcher` both read `<html data-theme>`, so the readout tracks the clicks. */
 export function WithLiveReadout() {
-  const { theme } = useTheme();
+  const { theme } = useTheme({ themes: APP_THEMES });
   return (
     <div className="flex items-center gap-r5">
-      <ThemeSwitcher />
+      <ThemeSwitcher themes={APP_THEMES} labels={APP_LABELS} />
       <span className="text-body-3 text-fg-secondary">Active theme: {theme}</span>
     </div>
   );
@@ -43,15 +52,15 @@ export function RestoreThemeBeforeFirstPaint() {
 
 /** `aria-label` is spread after the built-in one, so the group's name is the one string you can change. */
 export function RenameTheGroup() {
-  return <ThemeSwitcher aria-label="Colour theme" />;
+  return <ThemeSwitcher themes={APP_THEMES} labels={APP_LABELS} aria-label="Colour theme" />;
 }
 
-/** App-registered themes and translated option text: `themes` and `labels` keep both inside the component. */
+/** Translated option text: `themes` and `labels` keep both inside the component. */
 export function AppThemesAndLabels() {
   return (
     <ThemeSwitcher
       themes={APP_THEMES}
-      labels={{ default: "Standard", grimdark: "Sombre", aurora: "Aurore" }}
+      labels={{ default: "Standard", aurora: "Aurore", midnight: "Minuit" }}
       aria-label="Thème"
     />
   );
@@ -74,20 +83,20 @@ export function CustomSwitcher() {
       <Button
         type="button"
         size="sm"
-        variant={theme === "grimdark" ? "primary" : "ghost"}
-        aria-pressed={theme === "grimdark"}
-        onClick={() => setTheme("grimdark")}
-      >
-        Grimdark
-      </Button>
-      <Button
-        type="button"
-        size="sm"
         variant={theme === "aurora" ? "primary" : "ghost"}
         aria-pressed={theme === "aurora"}
         onClick={() => setTheme("aurora")}
       >
         Aurora
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={theme === "midnight" ? "primary" : "ghost"}
+        aria-pressed={theme === "midnight"}
+        onClick={() => setTheme("midnight")}
+      >
+        Midnight
       </Button>
     </div>
   );
