@@ -36,16 +36,61 @@ function useTimelineItemContext() {
 
 type HeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
+type TimelineAlign = "left" | "center" | "right";
+
+/** Same vocabulary and same default as `Table`, deliberately. */
+type TimelineDensity = "dense" | "comfortable" | "spacious";
+
 /* ------------------------------------------------------------------ */
 /*  Timeline (root)                                                    */
 /* ------------------------------------------------------------------ */
 
 type TimelineProps = {
   animate?: boolean;
+  /**
+   * Which side of the cards the rail runs down.
+   *
+   * `"center"` is the marketing shape and the default: at `40rem` and up the
+   * rail bisects the list and cards alternate either side of it, collapsing to
+   * the `"left"` layout below that, because a half-width card is unreadable on
+   * a phone. `"left"` and `"right"` are single-column at *every* width — no
+   * reflow at the breakpoint, no half-empty row, which is what a dashboard
+   * wants.
+   *
+   * Emitted as `data-align` and read only by `Timeline.css`; nothing positional
+   * is counted in React, so this cannot desynchronise from the layout (#342).
+   * @default "center"
+   */
+  align?: TimelineAlign;
+  /**
+   * Space between and inside entries — the gap between events, the card's
+   * padding, the dot's size, and the gaps under the date and title. Type sizes
+   * do not change, and neither does the card's border or surface: that is
+   * `card`, which is a separate axis on purpose, so dense-and-carded and
+   * spacious-and-flat are both reachable.
+   * @default "comfortable"
+   */
+  density?: TimelineDensity;
+  /**
+   * Draw each entry on its own bordered surface. `false` strips the border, the
+   * background and the card's padding, hanging the text straight off the rail —
+   * the flat-feed shape, and what stacked entries want once `density` is
+   * `"dense"` and the borders start reading as noise.
+   * @default true
+   */
+  card?: boolean;
 } & ComponentPropsWithRef<"div">;
 
 const TimelineRoot = forwardRef<HTMLDivElement, TimelineProps>(function Timeline(
-  { animate = true, className, children, ...props },
+  {
+    animate = true,
+    align = "center",
+    density = "comfortable",
+    card = true,
+    className,
+    children,
+    ...props
+  },
   ref
 ) {
   // One provider around the whole list, not one per child. The per-child
@@ -54,9 +99,23 @@ const TimelineRoot = forwardRef<HTMLDivElement, TimelineProps>(function Timeline
   // and their own keys — go straight through. That is also what keeps #346
   // closed: a prepend now reconciles against the caller's keys with no wrapper
   // in between to pair a new key with an old provider.
+  //
+  // `align`, `density` and `card` deliberately do NOT join it. They are read
+  // off the root element by CSS descendant selectors, so an item never has to
+  // be told which layout it is in — which is the same reason #342 stays closed:
+  // no wrapper, fragment or `.map` can put an item in a different layout from
+  // the one the rail is drawn for. Attributes sit before the spread, as
+  // elsewhere in the package, so a caller can still override them.
   return (
     <TimelineItemContext.Provider value={{ animate }}>
-      <div ref={ref} className={cn("timeline", className)} {...props}>
+      <div
+        ref={ref}
+        className={cn("timeline", className)}
+        data-align={align}
+        data-density={density}
+        data-card={card ? "true" : "false"}
+        {...props}
+      >
         {children}
       </div>
     </TimelineItemContext.Provider>

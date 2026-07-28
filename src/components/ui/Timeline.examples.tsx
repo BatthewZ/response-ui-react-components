@@ -19,7 +19,60 @@ export function Minimal() {
   );
 }
 
-/** `icon` replaces the dot. Match the 0.875rem dot — 14px — to stay centred on the rail below 40rem. */
+/** `align` puts the rail on one side instead of down the middle. Single-column at every width — no reflow at 40rem. */
+export function RailAlignment() {
+  return (
+    <Timeline align="left" animate={false}>
+      <Timeline.Item date="09:14" title="Build queued">
+        Commit <code>a1b2c3d</code> on <code>main</code>.
+      </Timeline.Item>
+      <Timeline.Item date="09:21" title="Tests passed">
+        1,284 tests, no retries.
+      </Timeline.Item>
+      <Timeline.Item date="09:23" title="Deployed to production" />
+    </Timeline>
+  );
+}
+
+/** `align="right"` mirrors it. Cards sit left of the rail and enter from the left; the text stays ragged-right. */
+export function RailRight() {
+  return (
+    <Timeline align="right" animate={false}>
+      <Timeline.Item date="09:14" title="Build queued" />
+      <Timeline.Item date="09:21" title="Tests passed" />
+      <Timeline.Item date="09:23" title="Deployed to production" />
+    </Timeline>
+  );
+}
+
+/** The dashboard shape: a side rail, tight rhythm, no card chrome and no entrance. Three independent props. */
+export function DenseFeed() {
+  return (
+    <Timeline align="left" density="dense" card={false} animate={false}>
+      <Timeline.Item date="09:14:02" title="Build queued" />
+      <Timeline.Item date="09:21:47" title="Tests passed" />
+      <Timeline.Item date="09:22:10" title="Image pushed" />
+      <Timeline.Item date="09:23:55" title="Deployed to production" />
+      <Timeline.Item date="09:41:08" title="Health check green" />
+    </Timeline>
+  );
+}
+
+/** `density` and `card` are separate axes, so a spacious flat timeline is reachable too. */
+export function SpaciousFlat() {
+  return (
+    <Timeline align="left" density="spacious" card={false} animate={false}>
+      <Timeline.Item date="2019" title="Founded">
+        Two people and a rented server.
+      </Timeline.Item>
+      <Timeline.Item date="2022" title="Series A">
+        Enough runway to stop counting.
+      </Timeline.Item>
+    </Timeline>
+  );
+}
+
+/** `icon` replaces the dot, at any size — the node is centred by a translate, so `density` changing the dot never shifts it. */
 export function CustomIcons() {
   return (
     <Timeline>

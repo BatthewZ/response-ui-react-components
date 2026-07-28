@@ -22,8 +22,15 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(function Radio(
     <input
       ref={ref}
       type="radio"
+      // `appearance-none` is what makes the focus ring round: an engine paints a
+      // native radio's decorations itself and ignores an author `border-radius`,
+      // so the ring — a `box-shadow` — came out square around the circle. Taking
+      // the painting over costs the UA's dot, which `Radio.css` puts back, and
+      // `accent-accent`, which is a no-op once nothing native is drawn.
       className={cn(
-        "size-4 accent-accent",
+        "radio size-4 appearance-none rounded-full",
+        "border border-border-strong bg-surface-0 checked:border-accent",
+        "disabled:opacity-50 disabled:cursor-not-allowed",
         focusOutlineResetControl,
         focusRingControl,
         className

@@ -138,21 +138,33 @@ handler — the same assembly [AppShell](app-shell.md) does by hand around its o
 
 <!-- example:ModalOverlay -->
 ```tsx
-<Portal>
-  <div className="fixed inset-0 z-50 bg-(--OVERLAY-SCRIM-COLOR)" aria-hidden="true" />
-  <div
-    ref={dialogRef}
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="delete-workspace-title"
-    className="fixed inset-0 z-50 m-auto h-fit w-fit rounded-lg bg-surface-0 p-r3 shadow-lg"
-  >
-    <h2 id="delete-workspace-title">Delete workspace?</h2>
-    <p>Every project in Acme Marketing goes with it. This cannot be undone.</p>
-    <Button variant="secondary">Cancel</Button>
-    <Button variant="danger">Delete workspace</Button>
-  </div>
-</Portal>
+<Button variant="danger" onClick={() => setOpen(true)}>
+  Delete workspace
+</Button>
+{open && (
+  <Portal>
+    <div className="fixed inset-0 z-50 bg-(--OVERLAY-SCRIM-COLOR)" aria-hidden="true" />
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-workspace-title"
+      className="fixed inset-0 z-50 m-auto h-fit w-fit rounded-lg bg-surface-0 p-r3 shadow-lg"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setOpen(false);
+      }}
+    >
+      <h2 id="delete-workspace-title">Delete workspace?</h2>
+      <p>Every project in Acme Marketing goes with it. This cannot be undone.</p>
+      <Button variant="secondary" onClick={() => setOpen(false)}>
+        Cancel
+      </Button>
+      <Button variant="danger" onClick={() => setOpen(false)}>
+        Delete workspace
+      </Button>
+    </div>
+  </Portal>
+)}
 ```
 <!-- /example -->
 

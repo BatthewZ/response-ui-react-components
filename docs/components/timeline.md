@@ -1,10 +1,13 @@
 # Timeline
 
 A vertical chronology — order status, a release history, a project's milestones — drawn as
-a connecting rail with one dot and one card per event. Below `40rem` the cards stack in a
-single column beside a left-hand rail; at `40rem` and up the rail moves to the centre and
-the cards alternate left and right of it, each sliding in from its own side as it scrolls
-into view.
+a connecting rail with one dot and one card per event. Three independent props decide how it
+reads: `align` puts the rail down the centre with the cards alternating either side (the
+default), or hard against one edge in a single column; `density` sets the rhythm on the same
+`dense · comfortable · spacious` scale as [Table](table.md); and `card` draws or drops the
+per-entry border and surface. Out of the box it is the marketing shape, animating each card in
+from its own side as it scrolls into view — `align="left" density="dense" card={false}
+animate={false}` is the dashboard one.
 
 <!-- example:Minimal -->
 ```tsx
@@ -32,26 +35,149 @@ Every item then renders the same two boxes — a `timeline-node` holding the dot
 the title and the optional body.
 
 The provider emits no element, so `.timeline-item` stays a **direct child** of `.timeline` —
-which matters, because everything positional is pure CSS `:nth-child(odd)`/`:nth-child(even)`
-and nothing else. **Both** the side a card lands on and the direction it enters from come off
-that one selector: at `40rem` and up an odd item's card sits left and enters from the left, an
-even item's sits right and enters from the right. Below `40rem` every card is on the left, so
-every entrance is uniform. Nothing is counted in React, which is why a fragment, a `.map` or a
-component rendering two items can no longer split the two apart.
+which matters, because everything positional is pure CSS. `align`, `density` and `card` become
+`data-align`, `data-density` and `data-card` on the **root**, and every rule below reads them
+through a descendant selector, so no item is ever handed its own layout. Under `align="center"`
+the alternation is then plain `:nth-child(odd)`/`:nth-child(even)`, and **both** the side a card
+lands on and the direction it enters from come off that one selector: at `40rem` and up an odd
+item's card sits left and enters from the left, an even item's sits right and enters from the
+right. Nothing is counted in React, which is why a fragment, a `.map` or a component rendering
+two items can no longer split the two apart.
 
 | Part            | Renders                                                              | Props                                                            |
 | --------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `Timeline`      | `<div class="timeline">`                                              | `animate?` (+ all `div` props, all of which reach the DOM)        |
+| `Timeline`      | `<div class="timeline" data-align data-density data-card>`            | `align?` · `density?` · `card?` · `animate?` (+ all `div` props, all of which reach the DOM) |
 | `Timeline.Item` | `<div class="timeline-item">`, through a scroll reveal when animating | `title` · `date?` · `icon?` · `children?` — and see the passthrough gotcha |
 
 ## Root props
 
-| Prop        | Type                                                                       | Default |
-| ----------- | -------------------------------------------------------------------------- | ------- |
-| `animate`   | `boolean` — render every item through a scroll reveal                       | `true`  |
-| `className` | `string` — merged after `timeline`                                          | —       |
-| `ref`       | `Ref<HTMLDivElement>`                                                       | —       |
-| …rest       | `div` props — `id`, `role`, `aria-*`, `data-*`, `style`, handlers, all land  | —       |
+| Prop        | Type                                                                       | Default         |
+| ----------- | -------------------------------------------------------------------------- | --------------- |
+| `align`     | `"left" \| "center" \| "right"` — which side of the cards the rail runs down | `"center"`      |
+| `density`   | `"dense" \| "comfortable" \| "spacious"` — the vertical rhythm and dot size  | `"comfortable"` |
+| `card`      | `boolean` — draw each entry on its own bordered surface                     | `true`          |
+| `animate`   | `boolean` — render every item through a scroll reveal                       | `true`          |
+| `className` | `string` — merged after `timeline`                                          | —               |
+| `ref`       | `Ref<HTMLDivElement>`                                                       | —               |
+| …rest       | `div` props — `id`, `role`, `aria-*`, `data-*`, `style`, handlers, all land  | —               |
+
+The four are **orthogonal** — no combination is unreachable and none silently overrides
+another. That is why there is no `variant="dashboard"` preset: `variant` already means a visual
+skin on [Button](button.md), [Badge](badge.md), [Alert](alert.md) and [Tabs](tabs.md), and a
+preset would freeze one taste judgement into the public API. Spell the four out instead.
+
+## Where the rail sits
+
+`align` is the load-bearing one. `"center"` is the marketing shape: at `40rem` and up the rail
+bisects the list and cards alternate either side at `calc(50% - var(--_timeline-gutter))` wide.
+Below `40rem` it **falls through to the `"left"` layout**, because a card inset to half of a
+375px viewport has no room for a sentence.
+
+`"left"` and `"right"` are single-column at **every** width. That is the property that makes
+them the dashboard answer — nothing reflows across the breakpoint, and no row is ever half
+empty. `"right"` is a true mirror: the root's padding, the rail, and the node's `translateX`
+all flip, and cards enter from the left instead of the right.
+
+**Expect the cards to get wider.** Under `align="center"` a card is pinned to
+`calc(50% - var(--_timeline-gutter))`; under `left` and `right` it is in normal flow and takes
+whatever the root gives it, so on a wide viewport a card that was half the width becomes nearly
+all of it. That is the right default for a dashboard panel, which is already narrow, and the
+wrong one for a full-bleed page. There is no `maxWidth` prop — constrain the **root**, which is a
+plain `<div>` that takes your `className` and `style`, rather than the card.
+
+<!-- example:RailAlignment -->
+```tsx
+<Timeline align="left" animate={false}>
+  <Timeline.Item date="09:14" title="Build queued">
+    Commit <code>a1b2c3d</code> on <code>main</code>.
+  </Timeline.Item>
+  <Timeline.Item date="09:21" title="Tests passed">
+    1,284 tests, no retries.
+  </Timeline.Item>
+  <Timeline.Item date="09:23" title="Deployed to production" />
+</Timeline>
+```
+<!-- /example -->
+
+<!-- example:RailRight -->
+```tsx
+<Timeline align="right" animate={false}>
+  <Timeline.Item date="09:14" title="Build queued" />
+  <Timeline.Item date="09:21" title="Tests passed" />
+  <Timeline.Item date="09:23" title="Deployed to production" />
+</Timeline>
+```
+<!-- /example -->
+
+The vocabulary is **physical** — `left`/`right`, not `start`/`end` — because `Timeline.css` is
+physical, as is nearly all of this package. `start` would promise a `dir`-awareness nothing here
+honours. Under `dir="rtl"` an `align="left"` rail stays on the left.
+
+## Density
+
+`density` retunes spacing only — the gap between events, the card's padding, the gaps under the
+date and title, and the dot's diameter. It changes **no type size**, and it does **not** touch
+the card's border or surface; that is `card`.
+
+The rail's own position is deliberately outside the density group, so switching density changes
+the rhythm without sliding the rail sideways.
+
+| | `dense` | `comfortable` | `spacious` |
+| --- | --- | --- | --- |
+| **Between events** | `--R-SIZE-5` | `--R-SIZE-3` | `--R-SIZE-2` |
+| Under the title (within an event) | `--R-SIZE-6` | `--R-SIZE-4` | `--R-SIZE-3` |
+| Under the date (within an event) | `--R-SIZE-6` | `--R-SIZE-6` | `--R-SIZE-6` |
+| Card padding | `--R-SIZE-5` | `--R-SIZE-4` | `--R-SIZE-3` |
+| Dot | `0.5rem` | `0.875rem` | `1rem` |
+
+Read that table remembering the `r` scale is **inverted** — a *higher* number is a *smaller*
+value — so `dense` counts up and `spacious` counts down.
+
+**The rule the table encodes:** both gaps *inside* an event are tighter than the gap *between*
+two events — `title` is always exactly one step tighter than `between events`, and `date` is
+pinned at `--R-SIZE-6`, the tightest step there is (`0.25rem` at every width). That ordering is
+what makes an entry read as one block; invert it and a body paragraph reads as a preamble to the
+next event instead. It is stated as a rule rather than three hand-picked pairs so that adding a
+density step cannot quietly break it.
+
+## Dropping the card chrome
+
+`card={false}` strips the border, the background and the card's padding, hanging the text
+straight off the rail. Losing the padding is what pulls the first line of text up level with its
+dot. Combined with `align`, `density="dense"` and `animate={false}` this is the dashboard feed:
+
+<!-- example:DenseFeed -->
+```tsx
+<Timeline align="left" density="dense" card={false} animate={false}>
+  <Timeline.Item date="09:14:02" title="Build queued" />
+  <Timeline.Item date="09:21:47" title="Tests passed" />
+  <Timeline.Item date="09:22:10" title="Image pushed" />
+  <Timeline.Item date="09:23:55" title="Deployed to production" />
+  <Timeline.Item date="09:41:08" title="Health check green" />
+</Timeline>
+```
+<!-- /example -->
+
+It is a **separate axis from `density` on purpose**. Stacked borders read as noise at `dense`,
+but a flat timeline is just as legitimate at `spacious`, and a dense *carded* timeline is a real
+thing too — coupling them would have made two of those unreachable:
+
+<!-- example:SpaciousFlat -->
+```tsx
+<Timeline align="left" density="spacious" card={false} animate={false}>
+  <Timeline.Item date="2019" title="Founded">
+    Two people and a rented server.
+  </Timeline.Item>
+  <Timeline.Item date="2022" title="Series A">
+    Enough runway to stop counting.
+  </Timeline.Item>
+</Timeline>
+```
+<!-- /example -->
+
+`card={false}` is also the supported way out of the unlayered-CSS trap described in the gotchas:
+restyling `.timeline-card` yourself needs `!important` to beat `Timeline.css`, whereas this prop
+simply wins.
 
 ## Item props
 
@@ -76,10 +202,13 @@ them, so a screenful of events animates together rather than in sequence.
 ## Icons on the rail
 
 `icon` replaces the dot inside the node, at any size: the node is centred on the rail with a
-`translateX(-50%)` at every width, so a 32px glyph and the 14px default dot both land on the
-line. (Until 0.10.1 the mobile offset subtracted half of `--_timeline-dot-size`, which centred
-the *default* dot and nothing else — measured in Firefox at 375px, a 32px icon sat 9px to the
-right of the rail, exactly half the difference.)
+`translateX(-50%)` at every width and every `align`, so a 32px glyph and the default dot both land
+on the line. (Until 0.10.1 the mobile offset subtracted half of `--_timeline-dot-size`, which
+centred the *default* dot and nothing else — measured in Firefox at 375px, a 32px icon sat 9px to
+the right of the rail, exactly half the difference.) That size-agnostic centring is also what lets
+`density` change the dot's diameter — `0.5rem` at `dense`, `0.875rem` at `comfortable`, `1rem` at
+`spacious` — without anything else moving. Your `icon` is **not** resized to match, so pick one
+that suits the density you are rendering at.
 
 <!-- example:CustomIcons -->
 ```tsx
@@ -118,6 +247,11 @@ With `animate` at its default every item renders as a [ScrollReveal](scroll-reve
 therefore starts at `opacity: 0`. `animate={false}` renders plain `<div>`s that are painted
 immediately — the right choice above the fold and for anything that must stay readable when
 the bundle never runs. Item attributes like `id` and `data-*` land on either path:
+
+Two more reasons a dashboard wants it off. Each animating item constructs **its own
+`IntersectionObserver`**, so a 200-row feed is 200 observers; and an entrance is a poor fit for a
+list that re-renders on a poll. `animate` stays `true` by default because changing that would be
+breaking — set it explicitly.
 
 <!-- example:NoAnimation -->
 ```tsx
@@ -158,12 +292,12 @@ contract variables directly, the way Tabs and ActivityFeed do.
 | Rail (per item, `::before`), and the card's 1px border | `--C-BORDER-DEFAULT`              |
 | Default dot fill                            | `--C-ACCENT`                                 |
 | Dot corners                                 | `--RADIUS-FULL`                              |
-| Card surface                                | `--C-SURFACE-1`                              |
+| Card surface (dropped by `card={false}`)    | `--C-SURFACE-1`                              |
 | Card corners                                | `--RADIUS-LG`                                |
-| Card padding                                | `--R-SIZE-4`                                 |
-| Mobile gutter · desktop card inset · space under the title | `--R-SIZE-2`                  |
-| Rail offset from the left edge (mobile)     | `--R-SIZE-5`                                 |
-| Space between two events                    | `--R-SIZE-3`                                 |
+| Card padding · space under the title — `comfortable` | `--R-SIZE-4`                        |
+| Gutter (single-column padding · alternating card inset) | `--R-SIZE-2`                      |
+| Rail offset from the edge                   | `--R-SIZE-5`                                 |
+| Space between two events — `comfortable`    | `--R-SIZE-3`                                 |
 | Space under the date                        | `--R-SIZE-6`                                 |
 | Date ink                                    | `--C-TEXT-MUTED`                             |
 | Date type                                   | `--BodyText-3` · `--BodyText-3-line-height`  |
@@ -171,43 +305,56 @@ contract variables directly, the way Tabs and ActivityFeed do.
 | Body ink                                    | `--C-TEXT-SECONDARY`                         |
 | Title and body type                         | `--BodyText-2` · `--BodyText-2-line-height`  |
 
-Five values are **component-local, not contract tokens**, and are spelled with a leading
-underscore to say so: `--_timeline-gutter` and `--_timeline-line-offset` alias the two
-`--R-SIZE-*` steps above, `--_timeline-dot-size` (`0.875rem`) and `--_timeline-line-width`
-(`2px`) are literals, and `--_timeline-rail-x` is derived
-(`line-offset - gutter`) — the rail's x-position *inside an item*, which the segment and the
-node both read so they cannot drift apart. All five are declared on `.timeline`. The node is
-then centred with `translateX(-50%)` rather than by subtracting half a dot, so the dot's
-centre lands on the rail's centre whatever size the `icon` is. Because they are declared on
-the root element you can still reach them through `style`, but they are outside the contract
-and free to change.
+Nine values are **component-local, not contract tokens**, and are spelled with a leading
+underscore to say so. They fall into two groups, and the split is what makes `density` safe.
+
+**Fixed geometry — where the rail sits.** `--_timeline-gutter` and `--_timeline-line-offset`
+alias the two `--R-SIZE-*` steps above, `--_timeline-line-width` is the literal `2px`, and
+`--_timeline-rail-x` is derived (`line-offset - gutter`) — the rail's x-position *inside an
+item*, which the segment and the node both read so they cannot drift apart. `density` does not
+touch any of these, deliberately: switching density should change the rhythm, not slide the rail
+sideways. (Custom properties resolve lazily, so retuning the gutter *would* move `rail-x` — which
+is precisely why it doesn't.)
+
+**Retuned by `density`.** `--_timeline-dot-size`, `--_timeline-card-padding`,
+`--_timeline-item-gap`, `--_timeline-date-gap` and `--_timeline-title-gap`. Each density is a
+single rule that assigns these and nothing else — no density anywhere changes a selector, an
+offset or a type size, so the layout is identical across all three.
+
+All nine are declared on `.timeline`. The node is then centred with `translateX(-50%)` rather
+than by subtracting half a dot, so the dot's centre lands on the rail's centre whatever size the
+`icon` is — and that is also what lets `density` change the dot's diameter without re-deriving
+anything. Because they are declared on the root element you can still reach them through `style`,
+but they are outside the contract and free to change.
 
 Most of the spacing is on the responsive `r`-scale, where a **lower** number is a **larger**
 value and every step except `--R-SIZE-6` grows at the `40rem` breakpoint: `--R-SIZE-2`
 `1.25rem` → `2rem`, `--R-SIZE-3` `1rem` → `1.5rem`, `--R-SIZE-4` `0.75rem` → `1.25rem`,
-`--R-SIZE-5` `0.5rem` → `0.75rem`, and `--R-SIZE-6` flat at `0.25rem`. `--R-SIZE-2` carries
-three jobs at once: the left padding that clears the rail below `40rem`, the amount each card
-is inset from the centre line above it (`width: calc(50% - …)`), and the gap between a card's
-title and its body — so retinting it for one of those moves the other two. The type steps are
-responsive too — `--BodyText-2` `0.8125rem` → `0.875rem`, `--BodyText-3` `0.75rem` →
-`0.8125rem` — and `--Bold-Weight` is both responsive (`600` → `700`) and themed, running from
-`600` to `900` across the worked examples (`tech` and `grimdark` are the two ends).
+`--R-SIZE-5` `0.5rem` → `0.75rem`, and `--R-SIZE-6` flat at `0.25rem`. `--R-SIZE-2` carries two
+jobs at once: the single-column padding that clears the rail, and the amount each card is inset
+from the centre line under `align="center"` (`width: calc(50% - …)`) — so retinting it for one of
+those moves the other. The type steps are responsive too — `--BodyText-2` `0.8125rem` →
+`0.875rem`, `--BodyText-3` `0.75rem` → `0.8125rem` — and `--Bold-Weight` is both responsive
+(`600` → `700`) and themed, running from `600` to `900` across the worked examples (`tech` and
+`grimdark` are the two ends).
 
-Read the spacing rows together and the rhythm groups by proximity: the gap **between two
-events** is `--R-SIZE-3` (`1rem`, `1.5rem` on desktop), while the gap **between an entry's
-date and its title** is `--R-SIZE-6`, the tightest step on the scale (`0.25rem` at every
-width) — so a date reads as belonging to its own entry rather than floating between two. The
-nearest sibling component, [ActivityFeed](activity-feed.md), spends the same two tokens in
-the same roles.
+Read the spacing rows together and the rhythm groups by proximity: at `comfortable` the gap
+**between two events** is `--R-SIZE-3` (`1rem`, `1.5rem` on desktop), while **both** gaps inside
+an entry are tighter — `--R-SIZE-4` under the title and `--R-SIZE-6` under the date — so a date
+and a body read as belonging to their own event rather than floating between two. `density` moves
+all three in step and preserves that ordering, which is what keeps the grouping intact as the list
+tightens. The nearest sibling component, [ActivityFeed](activity-feed.md), spends the same tokens
+in the same roles.
 
 The card sits on `--C-SURFACE-1`, so inside an ancestor already painted `--C-SURFACE-1` it
-has nothing but its `--C-BORDER-DEFAULT` hairline to separate it. The date is deliberately
-`--C-TEXT-MUTED`, which is hint-level contrast — treat it as supplementary. Nothing in
-`Timeline.css` declares an animation; the entrance comes from the shared `fade-right` class in
-`@batthewz/response-ui-css`, which reads the shared `--MOTION-DURATION-ENTER` and
+has nothing but its `--C-BORDER-DEFAULT` hairline to separate it — `card={false}` drops both. The
+date is deliberately `--C-TEXT-MUTED`, which is hint-level contrast — treat it as supplementary.
+Nothing in `Timeline.css` declares an animation; the entrance comes from the shared `fade-right`
+class in `@batthewz/response-ui-css`, which reads the shared `--MOTION-DURATION-ENTER` and
 `--MOTION-EASE-ENTER`, so retiming those retimes every entrance in the system. `Timeline.css`
-does re-point that class's `animation-name` to `slide-left, fade` on even items at `40rem` and
-up, which is how the entrance direction stays welded to the card's side.
+does re-point that class's `animation-name` to `slide-left, fade` in the two places a card sits
+left of the rail — every item under `align="right"`, and even items under `align="center"` at
+`40rem` and up — which is how the entrance direction stays welded to the card's side.
 
 ## Gotchas
 
@@ -224,29 +371,43 @@ up, which is how the entrance direction stays welded to the card's side.
   `fade-right · fade-left · fade-left · fade-right` against a `left · right · left · right`
   layout and two entries slid in across the rail. Both now come off the same `:nth-child`
   rule, so a fragment, a `.map`, or a component that renders two items cannot separate them.
-- **Items must still be direct children of the root.** Everything positional is
-  `.timeline-item:nth-child(odd|even)`, which counts inside whatever element actually contains
+- **Items must still be direct children of the root — under `align="center"`.** The alternation
+  is `.timeline-item:nth-child(odd|even)`, which counts inside whatever element actually contains
   the items. Give each item its own wrapper and every one is `nth-child(1)` — all on the left,
   all entering the same way. Share one wrapper between several and they alternate inside it,
   against a rail drawn per item inside that wrapper. Since side and direction now move
-  together, a wrapper makes the layout wrong but never *inconsistent*.
+  together, a wrapper makes the layout wrong but never *inconsistent*. `align="left"` and
+  `align="right"` count nothing at all, so a wrapper is harmless there — one more reason they
+  suit generated dashboard markup.
 - **A non-`Item` child is rendered as-is, and now breaks the rail.** The root hands any child
   straight through. A bare `<div>` between two items gets no `.timeline-item` class, no node
   and no dot — and, since the rail is drawn per item, **no rail segment either**, so the line
   has a gap the height of that child. (The old single root-level rail ran behind it; that is
   the one thing the per-item rail gave up to stop overshooting the last dot.) It also occupies
-  an `nth-child` slot, so it flips the alternation of every item after it. Keep non-items out
-  of the root, or accept the break.
+  an `nth-child` slot, so under `align="center"` it flips the alternation of every item after it.
+  Keep non-items out of the root, or accept the break.
 - **The rail ends at the last dot.** Each item draws its own segment as a `::before` spanning
   its full height, and `:last-child::before` is suppressed — so the line stops exactly where
   the final node sits, whatever that card's height. (Before 0.10.1 a single `.timeline::before`
   was pinned `top: 0; bottom: 0` on the root: measured in Firefox at 1280px, the rail ran
   **270px** past the final dot — the full height of the last card — and 214px at 375px.)
-- **Left-hand cards are right-aligned on desktop.** At `40rem` and up,
-  `.timeline-item:nth-child(odd) .timeline-card` sets `text-align: right`, which applies to the
-  date, the title *and* your body content. Alternate entries therefore read ragged-left. There is
-  no prop for it and no `className` hook on the card, so the only way out is your own rule
-  targeting `.timeline-card` — and see the next point about which rule wins.
+- **Under `align="center"`, left-hand cards are right-aligned on desktop.** At `40rem` and up,
+  `.timeline[data-align="center"] .timeline-item:nth-child(odd) .timeline-card` sets
+  `text-align: right`, which applies to the date, the title *and* your body content. Alternate
+  entries therefore read ragged-left. There is no prop for it and no `className` hook on the card,
+  so the only way out is your own rule targeting `.timeline-card` — and see the next point about
+  which rule wins. **`align="left"` and `align="right"` set no `text-align` at all**, so both read
+  ragged-right; a single side rail is perfectly legible that way, and mirroring the typography as
+  well as the geometry would just recreate this complaint on the other edge.
+- **`density` moves spacing, not type.** Font sizes, line-heights and weights are identical across
+  `dense`, `comfortable` and `spacious` — it retunes five spacing/size locals and nothing else. If
+  you want smaller text in a dense feed, that is your own rule on `.timeline-title` /
+  `.timeline-body` (with the `!` caveat below). Note too that `dense` is already at the floor for
+  the date-to-title gap: `--R-SIZE-6` is the tightest step the scale has.
+- **A title with no body loses its trailing space.** `.timeline-title:last-child` zeroes
+  `margin-bottom`, so a `title`-only entry no longer carries dead space beneath it — at `dense`
+  that gap was most of the row. If you were relying on it, it is `--_timeline-title-gap` on your
+  own rule.
 - **A plain Tailwind utility cannot override the component CSS.** `Timeline.css` is unlayered
   while Tailwind's utilities compile into `@layer utilities`, and unlayered author rules outrank
   layered ones before specificity is consulted. Measured in the compiled bundle: the utilities
@@ -262,6 +423,11 @@ up, which is how the entrance direction stays welded to the card's side.
   `animate: true`, so it renders a lone animated card — but the `--_timeline-*` locals it
   positions the node against are declared on `.timeline`, so an orphaned item has no rail to
   sit on and no resolvable offset to sit at.
+- **The layout attributes are overridable, and overriding them is load-bearing.** `data-align`,
+  `data-density` and `data-card` sit *before* the rest-prop spread, matching the rest of the
+  package — so `<Timeline align="left" data-align="right">` renders right-aligned. Handy for a
+  CSS-only responsive override; a silent footgun if you spread an object that happens to carry
+  one of those keys.
 - **Always a client boundary.** `Timeline.tsx` carries `"use client"`, so a server component can
   import it but it always ships JavaScript.
 

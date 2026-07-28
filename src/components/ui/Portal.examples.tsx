@@ -78,27 +78,43 @@ export function ToggleOverlay() {
 }
 
 /**
- * Portal only moves the node. The scrim, the dialog semantics and the focus trap are still
- * yours — `useFocusTrap(dialogRef, true)` sits above this return.
+ * Portal only moves the node. The scrim, the dialog semantics, the focus trap and every way
+ * out are still yours — `useFocusTrap(dialogRef, open)` sits above this return, and closing
+ * is whatever your own handlers do.
  */
 export function ModalOverlay() {
+  const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef, true);
+  useFocusTrap(dialogRef, open);
   return (
-    <Portal>
-      <div className="fixed inset-0 z-50 bg-(--OVERLAY-SCRIM-COLOR)" aria-hidden="true" />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="delete-workspace-title"
-        className="fixed inset-0 z-50 m-auto h-fit w-fit rounded-lg bg-surface-0 p-r3 shadow-lg"
-      >
-        <h2 id="delete-workspace-title">Delete workspace?</h2>
-        <p>Every project in Acme Marketing goes with it. This cannot be undone.</p>
-        <Button variant="secondary">Cancel</Button>
-        <Button variant="danger">Delete workspace</Button>
-      </div>
-    </Portal>
+    <>
+      <Button variant="danger" onClick={() => setOpen(true)}>
+        Delete workspace
+      </Button>
+      {open && (
+        <Portal>
+          <div className="fixed inset-0 z-50 bg-(--OVERLAY-SCRIM-COLOR)" aria-hidden="true" />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-workspace-title"
+            className="fixed inset-0 z-50 m-auto h-fit w-fit rounded-lg bg-surface-0 p-r3 shadow-lg"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setOpen(false);
+            }}
+          >
+            <h2 id="delete-workspace-title">Delete workspace?</h2>
+            <p>Every project in Acme Marketing goes with it. This cannot be undone.</p>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={() => setOpen(false)}>
+              Delete workspace
+            </Button>
+          </div>
+        </Portal>
+      )}
+    </>
   );
 }

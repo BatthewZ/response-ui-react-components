@@ -2,19 +2,73 @@
 /*  Timeline                                                           */
 /* ------------------------------------------------------------------ */
 
+/* Layout is selected by `data-align` on the root and nothing else. Everything
+   below the root reads that attribute through a descendant selector, so no item
+   is ever told which layout it is in — the same reason #342 stays closed. The
+   base rules ARE the `left` layout; `center` and `right` are stated as
+   overrides of it. */
+
 .timeline {
-  /* Component geometry tokens — interdependent, so defined together */
+  /* Component geometry tokens — interdependent, so defined together.
+     Split into two groups: the first is fixed geometry (where the rail sits),
+     the second is what `data-density` retunes. Keeping the rail out of the
+     density group is deliberate — switching density should change the rhythm,
+     not slide the rail sideways. */
   --_timeline-gutter: var(--R-SIZE-2);
   --_timeline-line-offset: var(--R-SIZE-5);
-  --_timeline-dot-size: 0.875rem;
   --_timeline-line-width: 2px;
+
+  --_timeline-dot-size: 0.875rem;
+  --_timeline-card-padding: var(--R-SIZE-4);
+  --_timeline-item-gap: var(--R-SIZE-3);
+  --_timeline-date-gap: var(--R-SIZE-6);
+  /* One step tighter than `--_timeline-item-gap` — see the density block. */
+  --_timeline-title-gap: var(--R-SIZE-4);
+
   /* Where the rail sits inside an ITEM. Items start at the root's content edge,
      so the root-relative offset has the gutter taken back off. Declared once
-     because the rail and the node both have to land on it (#344). */
+     because the rail and the node both have to land on it (#344). Resolves
+     lazily, so a density that retuned the gutter would move this too — which is
+     exactly why density does not touch the gutter. */
   --_timeline-rail-x: calc(var(--_timeline-line-offset) - var(--_timeline-gutter));
 
   position: relative;
   padding-left: var(--_timeline-gutter);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Density — retunes locals only, never geometry or selectors         */
+/* ------------------------------------------------------------------ */
+
+/* The `r` scale is INVERTED: a HIGHER number is a SMALLER value. Dense
+   therefore counts UP and spacious counts DOWN. Getting this backwards is
+   logged as #341, so the direction is spelled out rather than assumed.
+
+   THE INVARIANT EVERY DENSITY MUST HOLD: the gaps INSIDE an entry must both be
+   tighter than the gap BETWEEN two entries, or proximity groups the wrong
+   things and an entry's body reads as a preamble to the next event. Concretely,
+   `title-gap` is always exactly one step tighter than `item-gap`, and `date-gap`
+   is pinned at the tightest step there is. Stated as a rule rather than three
+   hand-picked pairs so a new density step cannot quietly break it.
+
+   `comfortable` violated this before the density axis existed — `--R-SIZE-2`
+   under the title against `--R-SIZE-3` between entries, i.e. 2rem inside an
+   entry and 1.5rem between them at 40rem and up. The card border partly masked
+   it; `card={false}` does not. Same failure as #341, in the pair #341 left
+   alone. */
+
+.timeline[data-density="dense"] {
+  --_timeline-dot-size: 0.5rem;
+  --_timeline-card-padding: var(--R-SIZE-5);
+  --_timeline-item-gap: var(--R-SIZE-5);
+  --_timeline-title-gap: var(--R-SIZE-6);
+}
+
+.timeline[data-density="spacious"] {
+  --_timeline-dot-size: 1rem;
+  --_timeline-card-padding: var(--R-SIZE-3);
+  --_timeline-item-gap: var(--R-SIZE-2);
+  --_timeline-title-gap: var(--R-SIZE-3);
 }
 
 /* ------------------------------------------------------------------ */
@@ -23,7 +77,7 @@
 
 .timeline-item {
   position: relative;
-  padding-bottom: var(--R-SIZE-3);
+  padding-bottom: var(--_timeline-item-gap);
 }
 
 .timeline-item:last-child {
@@ -58,8 +112,8 @@
 /* #344. The offset used to subtract half of `--_timeline-dot-size`, which
    centres the DEFAULT dot on the rail and nothing else — a custom `icon` of any
    other size sat off-centre by half the difference. Centring on the rail's own
-   midpoint with a translate is size-agnostic, and is what the 40rem+ rule below
-   already did. */
+   midpoint with a translate is size-agnostic, which is also what makes
+   `data-density` free to change the dot's size without re-deriving anything. */
 .timeline-node {
   position: absolute;
   left: calc(var(--_timeline-rail-x) + var(--_timeline-line-width) / 2);
@@ -87,7 +141,17 @@
   background-color: var(--C-SURFACE-1);
   border: 1px solid var(--C-BORDER-DEFAULT);
   border-radius: var(--RADIUS-LG);
-  padding: var(--R-SIZE-4);
+  padding: var(--_timeline-card-padding);
+}
+
+/* `card={false}`. A separate axis from density on purpose: stacked borders read
+   as noise at `dense`, but a flat feed is just as legitimate at `spacious`, and
+   a dense carded timeline is a real thing too. Dropping the padding is what
+   pulls the first line of text up level with the dot. */
+.timeline[data-card="false"] .timeline-card {
+  background-color: transparent;
+  border: 0;
+  padding: 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -99,7 +163,7 @@
   font-size: var(--BodyText-3);
   line-height: var(--BodyText-3-line-height);
   color: var(--C-TEXT-MUTED);
-  margin-bottom: var(--R-SIZE-6);
+  margin-bottom: var(--_timeline-date-gap);
 }
 
 /* ------------------------------------------------------------------ */
@@ -111,7 +175,13 @@
   line-height: var(--BodyText-2-line-height);
   font-weight: var(--Bold-Weight);
   color: var(--C-TEXT-PRIMARY);
-  margin-bottom: var(--R-SIZE-2);
+  margin-bottom: var(--_timeline-title-gap);
+}
+
+/* An entry with no body has nothing for the title's trailing space to separate
+   it from, and at `dense` that dead space is most of the row. */
+.timeline-title:last-child {
+  margin-bottom: 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -125,57 +195,101 @@
 }
 
 /* ------------------------------------------------------------------ */
-/*  Desktop: alternating layout (sm breakpoint and up)                 */
+/*  align="right" — the base layout mirrored, at every width           */
 /* ------------------------------------------------------------------ */
 
+/* Physical properties, not logical, matching the rest of the file and the
+   package: there is no RTL story here, so `inset-inline-*` would promise a
+   dir-awareness nothing else honours. Deliberately no `text-align` — unlike the
+   alternating layout, where right-aligning the left-hand cards is what makes
+   the alternation read, a single right-hand rail is perfectly legible with the
+   text ragged-right, and forcing it is the complaint already logged against the
+   centre layout. */
+
+.timeline[data-align="right"] {
+  padding-left: 0;
+  padding-right: var(--_timeline-gutter);
+}
+
+.timeline[data-align="right"] .timeline-item::before {
+  left: auto;
+  right: var(--_timeline-rail-x);
+}
+
+/* `translateX(50%)`, not `-50%`: positioned from its right edge, the node has to
+   be pushed back out over the rail rather than pulled in. */
+.timeline[data-align="right"] .timeline-node {
+  left: auto;
+  right: calc(var(--_timeline-rail-x) + var(--_timeline-line-width) / 2);
+  transform: translateX(50%);
+}
+
+/* Cards sit left of the rail, so they enter from the left. Same mechanism as
+   the alternating layout below: `Timeline.Item` always ships `fade-right` and
+   this replaces only the name list, so the duration and easing still come from
+   the shared class in `@batthewz/response-ui-css`. */
+.timeline[data-align="right"] .timeline-item.fade-right {
+  animation-name: slide-left, fade;
+}
+
+/* ------------------------------------------------------------------ */
+/*  align="center" — alternating, 40rem and up                         */
+/* ------------------------------------------------------------------ */
+
+/* Below 40rem `center` is left unstyled and therefore falls through to the base
+   rules, i.e. it renders as `align="left"`: a card inset to half of a 375px
+   viewport has no room for a sentence. That collapse is why `left` and `right`
+   are the dashboard answer — they are single-column at every width, so nothing
+   reflows across the breakpoint. */
+
 @media (width >= 40rem) {
-  .timeline {
+  .timeline[data-align="center"] {
     padding-left: 0;
   }
 
-  .timeline-item::before {
-    left: 50%;
-    transform: translateX(-50%);
-  }
-
-  .timeline-item {
+  .timeline[data-align="center"] .timeline-item {
     display: flex;
     width: 100%;
   }
 
-  .timeline-node {
+  .timeline[data-align="center"] .timeline-item::before {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .timeline[data-align="center"] .timeline-node {
     left: 50%;
     transform: translateX(-50%);
   }
 
   /* Odd items: card on the left */
-  .timeline-item:nth-child(odd) {
+  .timeline[data-align="center"] .timeline-item:nth-child(odd) {
     justify-content: flex-start;
   }
 
-  .timeline-item:nth-child(odd) .timeline-card {
+  .timeline[data-align="center"] .timeline-item:nth-child(odd) .timeline-card {
     width: calc(50% - var(--_timeline-gutter));
     margin-right: auto;
     text-align: right;
   }
 
   /* Even items: card on the right */
-  .timeline-item:nth-child(even) {
+  .timeline[data-align="center"] .timeline-item:nth-child(even) {
     justify-content: flex-end;
   }
 
-  .timeline-item:nth-child(even) .timeline-card {
+  .timeline[data-align="center"] .timeline-item:nth-child(even) .timeline-card {
     width: calc(50% - var(--_timeline-gutter));
     margin-left: auto;
   }
 
-  /* #342. The card's side and its entrance direction are now decided by the
-     same selector. `Timeline.Item` always ships `fade-right` (from
-     `ScrollReveal`, which is what supplies the duration and easing through the
-     `animation` shorthand); this replaces only the name list, so a right-hand
-     card slides in from the right. Keyed to the class the reveal adds, so it
-     applies exactly while the entrance is playing and goes away with it. */
-  .timeline-item:nth-child(even).fade-right {
+  /* #342. The card's side and its entrance direction are decided by the same
+     selector. `Timeline.Item` always ships `fade-right` (from `ScrollReveal`,
+     which is what supplies the duration and easing through the `animation`
+     shorthand); this replaces only the name list, so a right-hand card slides in
+     from the right. Keyed to the class the reveal adds, so it applies exactly
+     while the entrance is playing and goes away with it. */
+  .timeline[data-align="center"] .timeline-item:nth-child(even).fade-right {
     animation-name: slide-left, fade;
   }
 }

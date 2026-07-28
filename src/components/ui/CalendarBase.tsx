@@ -353,11 +353,18 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
 
   // Opening the calendar inside a popover must land on the grid, not on the
   // first tabbable chrome button — arrow keys are otherwise dead on open.
+  //
+  // `preventScroll` because this fires a commit before the popover has a
+  // position: Floating UI computes asynchronously, so a portalled calendar is
+  // still at the document's top-left here, and scrolling that day into view
+  // means scrolling the page to the top.
   const hasAutoFocusedRef = useRef(false);
   useEffect(() => {
     if (!autoFocus || hasAutoFocusedRef.current) return;
     hasAutoFocusedRef.current = true;
-    rootRef.current?.querySelector<HTMLButtonElement>('.calendar-day[tabindex="0"]')?.focus();
+    rootRef.current
+      ?.querySelector<HTMLButtonElement>('.calendar-day[tabindex="0"]')
+      ?.focus({ preventScroll: true });
   }, [autoFocus]);
 
   function goToMonth(target: Date) {

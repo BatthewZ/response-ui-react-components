@@ -40,6 +40,16 @@ to understand.
    load-bearing across several releases with every gate green, because no gate could observe
    "the README advertises something a consumer no longer gets". When the thing at risk is a
    claim rather than a behaviour, write the gate that asserts the claim.
+9. **A new layout axis belongs on the root element, as an attribute the stylesheet descends to
+   find — never as a value threaded to each child.** One writer cannot disagree with itself; two
+   derivations of one fact eventually will. Prefer variants that assign only custom properties,
+   keep the geometry everything else is measured against out of the variant's reach, and check
+   what a prop name already means in this library before spending it.
+10. **Ask whether the decoration can even reach the effect before promising the effect.** A
+   focus indicator shaped like the control, on a control the engine paints, is not available at
+   any price short of taking the painting over — and taking it over means owning every state the
+   engine was covering, including the high-contrast one. Measure reachability first; the design
+   question is only worth debating once you know what it costs.
 
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

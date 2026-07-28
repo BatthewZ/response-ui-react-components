@@ -1,0 +1,43 @@
+/* The selected dot, and only that: everything else Radio draws is a Tailwind
+   utility in `Radio.tsx`, so a caller's `className` can still out-merge it.
+
+   Why the dot has to be drawn here at all: the round focus ring is what forces
+   `appearance: none`. A native radio's box decorations are painted by the
+   engine, which drops an author `border-radius` — measured in Chrome 144, a
+   `box-shadow` ring, an `outline` and `outline: auto` all render square on one,
+   with or without the radius. `appearance: none` is the only thing that makes
+   the ring follow the circle, and it takes the UA's dot with it. */
+.radio:checked {
+  background-image: radial-gradient(
+    circle closest-side,
+    var(--C-ACCENT) 0 50%,
+    transparent 52%
+  );
+}
+
+/* `closest-side` above keys the dot to the box rather than to a length, so a
+   `size-*` override rescales it; the stops sit 2% apart because a single hard
+   stop aliases the edge. */
+
+@media (forced-colors: active) {
+  /* Forced colours substitute `background-color` and `border-color` but leave
+     background *images* alone, so the dot would go on painting `--C-ACCENT`
+     against a palette that no longer contains it. */
+  .radio:checked {
+    background-image: radial-gradient(circle closest-side, CanvasText 0 50%, transparent 52%);
+  }
+
+  .radio:disabled:checked {
+    background-image: radial-gradient(circle closest-side, GrayText 0 50%, transparent 52%);
+  }
+
+  /* Forced colours also set `box-shadow: none`, which erases the ring recipe —
+     the one focus affordance that survives is an outline. This rule out-weighs
+     the component's own `focus:outline-none` without a specificity trick:
+     both are (0,2,0), and Tailwind's utility is in `@layer utilities` while
+     this file is unlayered. */
+  .radio:focus {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}

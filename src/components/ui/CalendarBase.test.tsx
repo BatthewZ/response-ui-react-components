@@ -174,6 +174,43 @@ describe("CalendarBase", () => {
     expect(screen.getByRole("button", { name: "Mois suivant" })).toBeInTheDocument();
   });
 
+  describe("autoFocus", () => {
+    it("lands on the roving day rather than the chrome", () => {
+      render(
+        <CalendarBase
+          autoFocus
+          defaultMonth={JUNE_2026}
+          focusAnchor={JUNE_2026}
+          getDayStatus={() => ({})}
+          onDaySelect={noop}
+        />,
+      );
+      expect(document.activeElement).toHaveAttribute("data-day", dayKey(JUNE_2026));
+    });
+
+    /**
+     * The popover this opens inside has no position yet — Floating UI computes it
+     * asynchronously, so the portalled calendar is still at the document's top-left
+     * when this focus runs, and a scrolling focus takes the whole page to the top
+     * with it. jsdom implements no scrolling at all, so the option passed is the
+     * only place the guarantee is observable here.
+     */
+    it("does not scroll the day into view", () => {
+      const focus = vi.spyOn(HTMLElement.prototype, "focus");
+      render(
+        <CalendarBase
+          autoFocus
+          defaultMonth={JUNE_2026}
+          focusAnchor={JUNE_2026}
+          getDayStatus={() => ({})}
+          onDaySelect={noop}
+        />,
+      );
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+      focus.mockRestore();
+    });
+  });
+
   // #315
   it("names range membership instead of leaving it to a tint", () => {
     render(

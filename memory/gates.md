@@ -89,6 +89,15 @@ good. These are the ways they have still let defects through.
   steers users away from working features and reads as authoritative while doing it. A fix is
   not landed until the component's spoke — and any neighbouring page citing the behaviour — is
   answered in the same increment; deferring that reconciliation compounds silently.
+- **An example module is a live component, not just doc source, and no gate renders it.** The
+  dev gallery globs every example file and mounts all of them at once on one page, so an example
+  that opens its overlay unconditionally — a scrim, a `role="dialog"`, a focus trap enabled with
+  a literal `true` — takes the entire page hostage the moment that tab loads, and its dead
+  Cancel button has nothing to close. Types, lint, tests and the docs check all stay green,
+  because the generator only ever reads the `return` JSX as text. Any example demonstrating an
+  overlay, a trap, or anything `fixed` and full-viewport must be driven by its own `open` state,
+  with every action that looks like a way out actually wired to one. Load the gallery after
+  touching one.
 - **The docs generator deletes a section when you hand it an *empty* fence.** Adding a new
   example to a component page means writing the `<!-- example:Name -->` marker by hand and
   letting `gen-docs` fill the fence — but its marker pattern treats the fence body as optional

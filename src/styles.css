@@ -60,6 +60,7 @@
 @import "./components/form/ColorPicker.css";
 @import "./components/form/Combobox.css";
 @import "./components/form/MultiSelect.css";
+@import "./components/form/Radio.css";
 @import "./components/form/RangeSlider.css";
 @import "./components/form/SearchInput.css";
 @import "./components/form/Slider.css";

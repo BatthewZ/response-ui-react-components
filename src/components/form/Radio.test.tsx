@@ -171,4 +171,25 @@ describe("focus affordance (#73)", () => {
     expect(cls).toContain("focus:outline-none");
     expect(cls).toContain("focus:ring-border-focus");
   });
+
+  it("rings a circle, which is what `appearance-none` is here to buy", () => {
+    // The ring is a `box-shadow`, so it takes the element's `border-radius` —
+    // but only once the engine has stopped painting the control itself.
+    // Measured in Chrome 144: on a native-appearance radio a `box-shadow`, an
+    // `outline` and `outline: auto` all render square, radius or no radius.
+    // Drop either class and the ring goes back to a box around the circle.
+    render(<Radio aria-label="Choice" value="a" name="g" />);
+    const cls = screen.getByRole("radio").className;
+
+    expect(cls).toContain("appearance-none");
+    expect(cls).toContain("rounded-full");
+  });
+
+  it("carries the `radio` class Radio.css paints the selected dot through", () => {
+    // `appearance-none` costs the UA's dot; the stylesheet puts it back, hooked
+    // on this class. Renaming it silently leaves a radio that never looks
+    // checked, and jsdom applies no CSS, so no rendered assertion can catch it.
+    render(<Radio aria-label="Choice" value="a" name="g" />);
+    expect(screen.getByRole("radio").classList.contains("radio")).toBe(true);
+  });
 });

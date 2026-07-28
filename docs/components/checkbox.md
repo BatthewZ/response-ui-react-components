@@ -121,7 +121,9 @@ resize it with `className="size-…"` rather than a theme variable.
 `accent-color` property, which browsers honour on native checkboxes across the board — so
 the checked fill always follows `--C-ACCENT`. The box itself is the browser's: there is no
 `appearance-none` here, and Checkbox therefore ships no resting `border-*` or `rounded-*`
-utility, matching [Radio](radio.md). It used to carry `border-border-strong` and
+utility. ([Radio](radio.md) took the other road — it draws its own circle, because that is
+the only way to get a focus ring that is round rather than a box around it. A square ring
+around a square box needs no such trade.) It used to carry `border-border-strong` and
 `rounded-sm`, and they never rendered — measured in Firefox 146 and Chrome 144, a native
 checkbox paints byte-for-byte identically with and without them, checked or unchecked,
 while the same declarations under `appearance: none` render fine. A table row for a

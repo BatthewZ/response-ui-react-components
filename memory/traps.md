@@ -531,3 +531,93 @@ collision, left alone because briefs in flight cite the later one by letter.)
   when the redundant pass-through was finally deleted. A test that constructs its reference by
   mirroring the caller encodes the caller's workaround — build the reference from the bare
   component instead, which is the stronger claim anyway.
+- **Focusing anything inside a floating element before it has a position scrolls the page to the
+  top.** Floating UI computes position *asynchronously*, and until it resolves `floatingStyles`
+  is literally `{position, left: 0, top: 0}` — so a portalled popover's first commit paints it at
+  the document's top-left corner. Any `focus()` in a mount effect there is a scroll request
+  aimed at the top of the page, and the user sees the whole page jump before the popover slides
+  into place next to a trigger now far below the fold. It is invisible to every gate in this
+  package: jsdom implements no scrolling whatsoever, so the focus assertion passes and only the
+  option passed to `focus()` is observable in a test. Floating UI's own focus manager passes
+  `preventScroll` for exactly this reason. **A mount-time focus inside a portal takes
+  `{ preventScroll: true }`; a focus driven by later keyboard movement generally should not,
+  because by then the element is positioned and scrolling it into view is the point.**
+
+- **When a component gets a second layout, put the switch on the root and let CSS descend to
+  find it.** A component whose layout is decided by an attribute on its own root element cannot
+  desynchronise the way one that computes per-child values can: there is one writer, and every
+  rule reads it through a descendant selector. This package already learned the opposite lesson
+  the hard way — a layout that derived a child's *position* from CSS sibling-counting while
+  deriving that same child's *entrance direction* from a React-side index produced two answers
+  for one fact the moment a fragment sat between the children, because the React helper does not
+  descend into fragments and the DOM does. The rule that falls out: **a new layout axis is a root
+  attribute plus stylesheet rules, never a value threaded to each child** — and if the axis has to
+  change something per-child, change it in the same selector that already decides that child's
+  position, so the two cannot be edited apart.
+- **Retuning custom properties is a safer variant mechanism than adding selectors.** A density or
+  size axis implemented as one rule per step that assigns *only* custom properties is provably
+  layout-neutral: no step can move an offset, change a selector or resize type, because no step
+  says anything else. It also composes with every other axis for free. The trap to watch is that
+  custom properties resolve **lazily** — a `calc()` local derived from two other locals silently
+  follows whichever of them a variant retunes, so decide explicitly which locals a variant is
+  allowed to touch and say why in the file. Geometry that every other rule is measured against
+  usually wants to be off-limits.
+- **Orthogonal props beat a preset, and the preset's cost is the word.** A request for a "variant"
+  bundling several defaults is usually better served by the individual props, because a preset
+  makes some combinations unreachable and freezes a taste judgement into a public API that
+  outlives the taste. The specific hazard here is vocabulary: `variant` already means *visual
+  skin* across several components in this package, and spending it on "bundle of defaults" would
+  be its third meaning. Check what a prop name already means in the library before you spend it.
+- **For a layout prop, physical naming is a promise you can keep and logical naming usually is
+  not.** `start`/`end` implies the component honours writing direction. Unless the stylesheet is
+  actually written with logical properties — and here the physical-to-logical ratio is roughly
+  six to one, with only a couple of deliberate RTL opt-ins — `left`/`right` is the honest name and
+  says exactly what the CSS does. Pick the vocabulary the implementation can back.
+
+## Q · From the pass that made a native control's focus ring follow its shape
+
+- **A UA-painted control ignores author box decorations, and that includes the ones your focus
+  ring is made of.** On a native-appearance radio, `border-radius` reaches neither `box-shadow`
+  nor `outline` nor `outline: auto` — measured in Chrome 144, all three render square around a
+  circular control, radius set or not. So "themed ring" and "ring shaped like the control" are
+  not independently purchasable on a native widget: the second one costs `appearance: none`.
+  Before promising a shaped indicator on any control the engine draws, check whether the
+  decoration can reach the shape at all; the answer is usually no, and the real decision is
+  whether the shape is worth taking over the painting.
+- **Taking over the painting is never one state.** The engine was drawing rest, checked,
+  disabled *and* the forced-colours substitution, and it stops drawing all four at once. A
+  replacement that only covers the state you were looking at ships a control that looks
+  unselected when selected, or unstyled to a high-contrast user. Enumerate the states the UA
+  was covering before the first line of CSS, and remember that a control which needed no
+  stylesheet now depends on one — that dependency belongs in the docs as a consequence, not as
+  a footnote.
+- **Headless Chrome does not apply `:focus` styling unless focus emulation is switched on.** A
+  screenshot of a "focused" element taken without it shows the resting state and looks like the
+  fix failed; the computed ring colour comes back transparent while `:focus`-keyed rules that
+  *remove* things still appear to have applied, which reads as a specificity bug and is not one.
+  Enable focus emulation over the debugging protocol, then assert on computed style as well as
+  on pixels.
+- **Verify a styling change against the compiled stylesheet, not a hand-written mock of it.** A
+  standalone HTML page proves the *technique* works and proves nothing about this library: it
+  cannot tell you the utility exists, resolves to the token you meant, or wins over the rule
+  next to it. Inject the markup into the running dev app and read `getComputedStyle` back —
+  same cost, and it answers all three.
+- **Prose that contradicts your change may be reporting a measurement, not a stale opinion.**
+  The page here said the component ships no border and no radius *because engines ignore both on
+  a native control* — entirely correct, and still correct after the change. What expired was its
+  conclusion for this one component, because the premise it rested on (the control stays
+  native) is exactly what the change trades away. Answer the sentence and say what you traded;
+  do not delete it as drift.
+
+- **A spacing variant needs an invariant, not three sets of hand-picked values.** Adding a
+  density axis to a component means every step has to keep whatever relationships the original
+  spacing was relying on — and those relationships are usually unwritten, so the new steps break
+  them silently. The one that bites here is Gestalt proximity: **the gaps inside a repeated item
+  must be strictly tighter than the gap between two items**, or the item's own trailing content
+  reads as the start of the next one. Pick the values by a stated rule ("one step tighter than
+  the item gap"), write the rule next to the values, and a step added later cannot quietly
+  violate it. Worth checking the *existing* default while you are there: this component's
+  shipped `comfortable` rhythm already had the relationship inverted, and it had survived because
+  a card border was partly masking it — the density axis did not introduce the bug, it removed
+  the disguise. **A variant axis is a good moment to audit the base case, because putting two
+  steps side by side is the first time anyone actually compares them.**

@@ -1,6 +1,6 @@
 # Radio
 
-A single native `<input type="radio">`, pre-sized and tinted with your accent colour. It is
+A single native `<input type="radio">`, pre-sized and drawn in your accent colour. It is
 the *option*, not the set: radios become one mutually-exclusive group through a shared `name`
 attribute, and this package ships no group component — so the grouping, and the accessible
 name that goes with it, are yours to write.
@@ -224,33 +224,45 @@ from `aria-label` or `aria-labelledby` instead.
 
 ## Theme tokens
 
-Radio has no `.css` file and reads two contract variables, both through Tailwind utilities
-in the `.tsx`:
+Radio draws its own circle, and reads four contract variables doing it — all but the dot
+through Tailwind utilities in the `.tsx`:
 
-| Where             | Utility                           | Override           |
-| ----------------- | --------------------------------- | ------------------ |
-| Selected dot fill | `accent-accent`                   | `--C-ACCENT`       |
-| Focus ring        | `focus:ring-border-focus`         | `--C-BORDER-FOCUS` |
+| Where               | Utility / rule                     | Override           |
+| ------------------- | ---------------------------------- | ------------------ |
+| Resting circle      | `border-border-strong`             | `--C-BORDER-STRONG` |
+| Circle fill         | `bg-surface-0`                     | `--C-SURFACE-0`    |
+| Selected circle     | `checked:border-accent`            | `--C-ACCENT`       |
+| Selected dot fill   | `Radio.css`, `.radio:checked`      | `--C-ACCENT`       |
+| Focus ring          | `focus:ring-border-focus`          | `--C-BORDER-FOCUS` |
 
-`accent-accent` sets the CSS `accent-color` property, which every current engine honours on
-a native radio, so the selected dot follows `--C-ACCENT` in any theme. The ring is the
-library's form-control focus recipe, the same one [Checkbox](checkbox.md), [Input](input.md)
-and [Select](select.md) draw: a 2px `--C-BORDER-FOCUS` ring at `ring-offset-0`, flush against
-the circle, keyed on `focus:` so it shows on a mouse click and not only on Tab. Radio also
-adds `focus:outline-none`, so that ring stands in place of the UA outline rather than beside
-it — [Checkbox](checkbox.md) makes the opposite call and keeps both.
+The ring is the library's form-control focus recipe, the same one [Checkbox](checkbox.md),
+[Input](input.md) and [Select](select.md) draw: a 2px `--C-BORDER-FOCUS` ring at
+`ring-offset-0`, flush against the circle, keyed on `focus:` so it shows on a mouse click
+and not only on Tab. Radio also adds `focus:outline-none`, so that ring stands in place of
+the UA outline rather than beside it — [Checkbox](checkbox.md) makes the opposite call and
+keeps both.
+
+**`appearance-none` is what makes that ring round, and it is the reason Radio paints
+itself.** A ring is a `box-shadow`, so it takes the element's `border-radius` — but only
+once the engine has stopped drawing the control. Measured in Chrome 144 on a
+native-appearance radio: a `box-shadow` ring, an `outline` and `outline: auto` all render
+*square* around the circle, `border-radius: 50%` or not. `appearance: none` is the only
+lever that changes that, and it takes the UA's own painting with it — the circle, the dot,
+the disabled look and `accent-color`, which is why `accent-accent` is gone and
+`border`/`rounded-full`/`bg-surface-0`/`disabled:opacity-50` are there instead.
+
+The element is still a native `<input type="radio">`: only the painting changed, so the
+whole group and keyboard model described under [Accessibility](#accessibility) is untouched.
+[Checkbox](checkbox.md) keeps its native appearance — a square ring around a square box was
+never the problem this solves.
+
+The dot is the one piece no utility can express, so it lives in `Radio.css` as a
+`radial-gradient` keyed to `closest-side` — sized from the box rather than from a length, so
+a `size-*` override rescales it instead of clipping it.
 
 The box is a fixed `size-4` (1rem) — a Tailwind spacing value, not a contract token, so
 resize it with `className="size-…"` rather than a theme variable. The ring's 2px width and
 its transparent rest colour are literals in the same way.
-
-Note what is *absent*: Radio ships no resting `border-*` or `rounded-*` utility. That is the
-honest call rather than an omission — there is no `appearance-none` here, so the circle is
-the browser's own control, and engines ignore an author border or corner radius drawn on
-one. [Checkbox](checkbox.md) used to carry both and no longer does, for the same measured
-reason. The recipe's `focus:border-border-focus` is in the same position: reachable, but on
-a default-appearance radio a no-op, which is why the ring and not the border is what you
-actually see on focus.
 
 ## Gotchas
 
@@ -267,8 +279,10 @@ actually see on focus.
   [OTPInput](otpinput.md) make too, and the one [Checkbox](checkbox.md) does not.
   The ring is a `box-shadow`, which forced-colours mode forces to `none`, and Tailwind v4's
   `outline-none` compiles to `outline-style: none` rather than the transparent outline
-  `outline-hidden` keeps. So in forced colours neither indicator survives: add
-  `forced-colors:outline` at the call site if you support that mode.
+  `outline-hidden` keeps. So neither would survive there — which is why `Radio.css` restores
+  a `Highlight` outline under `@media (forced-colors: active)`, along with a `CanvasText`
+  dot, since forced colours substitutes background *colours* but leaves the gradient that
+  draws the dot alone.
 - **Radio inherits the field's description and not its state.** Inside a
   [Field](field.md) it takes `aria-describedby` from the rendered
   [FieldError](field-error.md), like every other control in the module — but never
@@ -281,13 +295,15 @@ actually see on focus.
   without an `onChange` also makes the input read-only, and React warns about it.
 - **A checked radio with no `value` submits `on`.** The `value` attribute is what a form
   submission carries, so give every option one — the visible label text is not submitted.
-- **The circle is the browser's, and so is the disabled look.** With no `appearance-none` the
-  control keeps its native appearance; only `accent-color` and the 1rem box size come from
-  this component.
+- **The circle is this component's, not the browser's.** `appearance-none` is what lets the
+  focus ring be round, and it hands the whole resting look over: border, fill, selected dot
+  and disabled state all come from here. What stays native is everything behind the paint —
+  the element, the role, the checked state, grouping and the keyboard model.
 - **No built-in label.** Radio renders a bare `<input>` — give it an accessible name yourself
   (see [Accessibility](#accessibility)).
-- **No per-component CSS.** There is no `Radio.css`. The CSS imports from
-  `@batthewz/response-ui-css` are still required — `accent-accent` resolves to its tokens.
+- **The selected dot needs this package's stylesheet.** `Radio.css` paints it, so both CSS
+  imports are load-bearing: `@batthewz/response-ui-css` for the tokens, and this package's
+  `styles.css` for the dot. Skip the second and a selected radio looks unselected.
 - **Client component.** Reading [Field](field.md) context is a hook, so Radio carries
   `"use client"` — the directive draws the boundary itself, so importing it straight from
   a Server Component works. It was server-renderable before it read the field.
@@ -303,20 +319,24 @@ sibling label via `htmlFor`/`id`, or with `aria-label` when the control stands a
 share a `name` get the standard group behaviour free: `Tab` enters the group once, landing on
 the checked option (or the first one when nothing is checked) and skipping the rest; the arrow
 keys move focus *and* the selection between members, wrapping at the ends; `Space` selects the
-focused option. Nothing in `Radio.tsx` implements any of that — a custom-drawn radio group
-would have to build roving tabindex by hand, which is the strongest argument for keeping these
-native.
+focused option. Nothing in `Radio.tsx` implements any of that — a group built out of
+`<div role="radio">`s would have to build roving tabindex by hand, which is the strongest
+argument for keeping the *element* native. Radio takes over the painting only
+(`appearance-none`; see [Theme tokens](#theme-tokens)), and painting is not where any of this
+behaviour lives.
 
 Name the group as well as the options. A `<fieldset>`/`<legend>`, or `role="radiogroup"` with
 `aria-label` / `aria-labelledby`, is what tells a screen-reader user *what* is being chosen;
 without one they hear "Daily summary, radio button, 2 of 3" with no idea it concerns the email
 digest.
 
-**Focus is visible, and themed.** `focus:outline-none` removes the browser's indicator and a
-2px `--C-BORDER-FOCUS` ring replaces it, satisfying WCAG 2.4.7 (Focus Visible) on every
-theme. Being `focus:` rather than `focus-visible:`, it paints on a pointer click as well as
-on keyboard focus — unlike [Button](button.md) and [IconButton](icon-button.md), which are
-focus-visible only. One mode is still uncovered; see [Gotchas](#gotchas).
+**Focus is visible, themed, and round.** `focus:outline-none` removes the browser's indicator
+and a 2px `--C-BORDER-FOCUS` ring replaces it, satisfying WCAG 2.4.7 (Focus Visible) on every
+theme; `appearance-none` plus `rounded-full` is what lets that ring trace the circle instead
+of boxing it (see [Theme tokens](#theme-tokens)). Being `focus:` rather than
+`focus-visible:`, it paints on a pointer click as well as on keyboard focus — unlike
+[Button](button.md) and [IconButton](icon-button.md), which are focus-visible only. Forced
+colours is covered separately, in `Radio.css`; see [Gotchas](#gotchas).
 
 Describing a group is automatic; marking it invalid is not, and the two do not go in the
 same place. `aria-describedby` is global, so it sits on each option — Radio takes the

@@ -198,6 +198,125 @@ describe("Timeline", () => {
     expect(screen.queryByRole("heading", { level: 3 })).toBeNull();
   });
 
+  /* ------------------------------------------------------------------ */
+  /*  Layout axes — align · density · card                               */
+  /* ------------------------------------------------------------------ */
+
+  // `vitest.config.ts` runs with `css: false`, so nothing here can assert a
+  // computed offset. What IS assertable is the contract the stylesheet keys
+  // off: the root carries the three attributes, always, with these defaults.
+  // If one of these names changes, every selector in `Timeline.css` silently
+  // stops matching and the layout falls back to `left` with no error.
+  it("emits the layout attributes with their defaults", () => {
+    const { container } = render(
+      <Timeline animate={false}>
+        <Timeline.Item title="Item" />
+      </Timeline>,
+    );
+    const root = container.querySelector(".timeline") as HTMLElement;
+    expect(root.dataset.align).toBe("center");
+    expect(root.dataset.density).toBe("comfortable");
+    expect(root.dataset.card).toBe("true");
+  });
+
+  it.each(["left", "center", "right"] as const)("puts align=%s on the root", (align) => {
+    const { container } = render(
+      <Timeline animate={false} align={align}>
+        <Timeline.Item title="Item" />
+      </Timeline>,
+    );
+    expect((container.querySelector(".timeline") as HTMLElement).dataset.align).toBe(align);
+  });
+
+  it.each(["dense", "comfortable", "spacious"] as const)(
+    "puts density=%s on the root",
+    (density) => {
+      const { container } = render(
+        <Timeline animate={false} density={density}>
+          <Timeline.Item title="Item" />
+        </Timeline>,
+      );
+      expect((container.querySelector(".timeline") as HTMLElement).dataset.density).toBe(density);
+    },
+  );
+
+  // Stringified rather than the empty-string/undefined flag idiom, because the
+  // selector that strips the chrome has to match on the *false* case.
+  it("emits data-card=false when the card chrome is turned off", () => {
+    const { container } = render(
+      <Timeline animate={false} card={false}>
+        <Timeline.Item title="Item" />
+      </Timeline>,
+    );
+    expect((container.querySelector(".timeline") as HTMLElement).dataset.card).toBe("false");
+  });
+
+  // The three axes are orthogonal: no combination is unreachable, and none of
+  // them silently overrides another.
+  it("keeps the three axes independent", () => {
+    const { container } = render(
+      <Timeline animate={false} align="right" density="spacious" card={false}>
+        <Timeline.Item title="Item" />
+      </Timeline>,
+    );
+    const root = container.querySelector(".timeline") as HTMLElement;
+    expect(root.dataset).toMatchObject({ align: "right", density: "spacious", card: "false" });
+  });
+
+  // Attributes sit before the spread, as everywhere else in the package, so the
+  // documented "rest props reach the DOM" contract still holds over them.
+  it("lets a caller override a layout attribute through rest props", () => {
+    const { container } = render(
+      <Timeline animate={false} align="left" data-align="right">
+        <Timeline.Item title="Item" />
+      </Timeline>,
+    );
+    expect((container.querySelector(".timeline") as HTMLElement).dataset.align).toBe("right");
+  });
+
+  // #342, restated for the new axis. `align` changes the entrance DIRECTION,
+  // and it does so in CSS by re-pointing `animation-name` — React still ships
+  // the identical class on every item. If this ever starts varying per item,
+  // the side and the direction have two sources again and can desynchronise.
+  it("ships the same entrance class whatever the alignment", () => {
+    const reveal: (() => void)[] = [];
+    class StubIO {
+      constructor(private cb: IntersectionObserverCallback) {}
+      observe(node: Element) {
+        reveal.push(() =>
+          this.cb(
+            [{ isIntersecting: true, target: node } as unknown as IntersectionObserverEntry],
+            this as unknown as IntersectionObserver,
+          ),
+        );
+      }
+      unobserve() {}
+      disconnect() {}
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+    }
+    vi.stubGlobal("IntersectionObserver", StubIO);
+
+    const { container } = render(
+      <Timeline align="right" density="dense">
+        <Timeline.Item title="A" />
+        <Timeline.Item title="B" />
+      </Timeline>,
+    );
+    act(() => {
+      for (const fire of reveal) fire();
+    });
+
+    const items = [...container.querySelectorAll(".timeline-item")];
+    expect(items).toHaveLength(2);
+    for (const item of items) {
+      expect(item).toHaveClass("fade-right");
+      expect(item).not.toHaveClass("fade-left");
+    }
+    vi.unstubAllGlobals();
+  });
+
   // #340 — with `animate` at its default the item renders through ScrollReveal,
   // which is the path that used to drop every prop the `<div>` type advertises.
   it("forwards rest props to an item on the default animating path", () => {

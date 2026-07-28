@@ -1,10 +1,13 @@
 import {
+  CheckCircle2,
   Copy,
   FileText,
   GitCommit,
   MessageSquare,
+  Package,
   Settings,
   Trash2,
+  Truck,
   User,
   UserPlus,
 } from "lucide-react";
@@ -1731,6 +1734,58 @@ export function App() {
               </Timeline.Item>
             </Timeline>
           </div>
+
+          {/* The vitest run has `css: false`, so nothing in the suite can assert
+              an offset — these tiles are the only evidence the three layout axes
+              actually land. Drag the window across 40rem: only the centre one
+              should reflow. */}
+          <Tile label="Timeline — align (drag across 40rem)">
+            <div className="flex w-full flex-wrap gap-r3">
+              {(["left", "center", "right"] as const).map((align) => (
+                <div key={align} className="w-full max-w-sm">
+                  <span className="text-body-3 text-fg-muted">align={align}</span>
+                  <Timeline align={align} animate={false}>
+                    <Timeline.Item date="09:14" title="Build queued" />
+                    <Timeline.Item date="09:21" title="Tests passed" />
+                    <Timeline.Item date="09:23" title="Deployed" />
+                  </Timeline>
+                </div>
+              ))}
+            </div>
+          </Tile>
+
+          <Tile label="Timeline — density × card">
+            <div className="flex w-full flex-wrap gap-r3">
+              {(["dense", "comfortable", "spacious"] as const).map((density) =>
+                [true, false].map((card) => (
+                  <div key={`${density}-${String(card)}`} className="w-full max-w-sm">
+                    <span className="text-body-3 text-fg-muted">
+                      {density} · card={String(card)}
+                    </span>
+                    <Timeline align="left" density={density} card={card} animate={false}>
+                      <Timeline.Item date="09:14:02" title="Build queued" />
+                      <Timeline.Item date="09:21:47" title="Tests passed">
+                        1,284 tests, no retries.
+                      </Timeline.Item>
+                      <Timeline.Item date="09:23:55" title="Deployed" />
+                    </Timeline>
+                  </div>
+                )),
+              )}
+            </div>
+          </Tile>
+
+          {/* Icons are centred by a translate, not by subtracting half a dot, so
+              they must stay on the rail at every density and on both edges. */}
+          <Tile label="Timeline — icons on a mirrored rail">
+            <div className="w-full max-w-sm">
+              <Timeline align="right" density="dense" animate={false}>
+                <Timeline.Item icon={<Package size={20} aria-hidden />} title="Packed" />
+                <Timeline.Item icon={<Truck size={20} aria-hidden />} title="In transit" />
+                <Timeline.Item icon={<CheckCircle2 size={20} aria-hidden />} title="Delivered" />
+              </Timeline>
+            </div>
+          </Tile>
 
         </Group>
         </main>
