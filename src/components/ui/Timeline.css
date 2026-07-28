@@ -22,8 +22,6 @@
   --_timeline-card-padding: var(--R-SIZE-4);
   --_timeline-item-gap: var(--R-SIZE-3);
   --_timeline-date-gap: var(--R-SIZE-6);
-  /* One step tighter than `--_timeline-item-gap` — see the density block. */
-  --_timeline-title-gap: var(--R-SIZE-4);
 
   /* Where the rail sits inside an ITEM. Items start at the root's content edge,
      so the root-relative offset has the gutter taken back off. Declared once
@@ -31,6 +29,13 @@
      lazily, so a density that retuned the gutter would move this too — which is
      exactly why density does not touch the gutter. */
   --_timeline-rail-x: calc(var(--_timeline-line-offset) - var(--_timeline-gutter));
+
+  /* `card={false}` only: the height of an entry's FIRST line box, which the dot
+     centres on once there is no card edge to sit on. Declared once for the same
+     reason as `--_timeline-rail-x` (#344) — the node centres inside it and the
+     rail shifts by half of it, so a change to one that missed the other would
+     put every dot back off its own line. */
+  --_timeline-first-line: var(--BodyText-3-line-height);
 
   position: relative;
   padding-left: var(--_timeline-gutter);
@@ -44,14 +49,16 @@
    therefore counts UP and spacious counts DOWN. Getting this backwards is
    logged as #341, so the direction is spelled out rather than assumed.
 
-   THE INVARIANT EVERY DENSITY MUST HOLD: the gaps INSIDE an entry must both be
+   THE INVARIANT EVERY DENSITY MUST HOLD: every gap INSIDE an entry must be
    tighter than the gap BETWEEN two entries, or proximity groups the wrong
-   things and an entry's body reads as a preamble to the next event. Concretely,
-   `title-gap` is always exactly one step tighter than `item-gap`, and `date-gap`
-   is pinned at the tightest step there is. Stated as a rule rather than three
-   hand-picked pairs so a new density step cannot quietly break it.
+   things and an entry's body reads as a preamble to the next event. Only ONE
+   explicit gap now sits inside an entry — `--_timeline-date-gap`, pinned at the
+   scale's tightest step at every density — because the title's separation from
+   the body is left to the type scale's own leading, which is smaller again. So
+   a new density step satisfies the invariant as long as its `item-gap` is
+   looser than `--R-SIZE-6`, which every step on the scale is.
 
-   `comfortable` violated this before the density axis existed — `--R-SIZE-2`
+   `comfortable` violated this before the density axis existed: `--R-SIZE-2`
    under the title against `--R-SIZE-3` between entries, i.e. 2rem inside an
    entry and 1.5rem between them at 40rem and up. The card border partly masked
    it; `card={false}` does not. Same failure as #341, in the pair #341 left
@@ -61,14 +68,12 @@
   --_timeline-dot-size: 0.5rem;
   --_timeline-card-padding: var(--R-SIZE-5);
   --_timeline-item-gap: var(--R-SIZE-5);
-  --_timeline-title-gap: var(--R-SIZE-6);
 }
 
 .timeline[data-density="spacious"] {
   --_timeline-dot-size: 1rem;
   --_timeline-card-padding: var(--R-SIZE-3);
   --_timeline-item-gap: var(--R-SIZE-2);
-  --_timeline-title-gap: var(--R-SIZE-3);
 }
 
 /* ------------------------------------------------------------------ */
@@ -146,12 +151,52 @@
 
 /* `card={false}`. A separate axis from density on purpose: stacked borders read
    as noise at `dense`, but a flat feed is just as legitimate at `spacious`, and
-   a dense carded timeline is a real thing too. Dropping the padding is what
-   pulls the first line of text up level with the dot. */
+   a dense carded timeline is a real thing too. Dropping the padding puts the
+   first line of text at the item's own top edge, which is what the two rules
+   below then align the dot and the rail against. */
 .timeline[data-card="false"] .timeline-card {
   background-color: transparent;
   border: 0;
   padding: 0;
+}
+
+/* With a card, `top: 0` lands the dot on the card's top EDGE, which reads as
+   deliberate. Strip the card and there is no edge left to sit on, so the same
+   `top: 0` leaves the dot floating above the first line of text — by half the
+   difference between the dot and the line box, which is why it was worse at
+   `dense` (a 0.5rem dot against a 1.75rem line: 10px out) than at `comfortable`
+   (0.875rem dot: 7px out).
+
+   Giving the node the height of that first line box and centring inside it is
+   size-agnostic in both directions: it holds for every dot size `density`
+   produces AND for an `icon` of any height, with no offset to re-derive. `top`
+   and the X transform are untouched, so `align="right"` keeps its mirror.
+
+   `--_timeline-first-line` is the DATE's line box. At 40rem and up it and
+   `--BodyText-2-line-height` are both 1.75rem, so this is exact whether or not
+   the entry has a date. Below 40rem the title's box is 1.5rem, so a title-only
+   flat entry sits 2px low there — taking the exact value would mean `:has()`,
+   which nothing in this package uses yet, and that is not a browser-support
+   floor worth moving for 2px on one variant. */
+.timeline[data-card="false"] .timeline-node {
+  height: var(--_timeline-first-line);
+  display: flex;
+  align-items: center;
+}
+
+/* Moving the dot off `top: 0` moves BOTH ends of the rail with it, or the line
+   no longer terminates on a dot. Each item draws its segment across its own box
+   and the last one is suppressed, so the chain runs from item 1's top edge to
+   the last item's top edge — which was the dot's position and no longer is. The
+   whole chain therefore shifts down by half a line box: every segment starts
+   half a line lower, and `bottom` goes NEGATIVE by the same amount so each
+   segment still reaches the next one's new start. The chain then runs first dot
+   centre to last dot centre exactly, at any density and any item height.
+   Without this the rail overshoots above the first dot by half a line box and
+   stops short of the last dot by the same — 14px each at 40rem and up. */
+.timeline[data-card="false"] .timeline-item::before {
+  top: calc(var(--_timeline-first-line) / 2);
+  bottom: calc(var(--_timeline-first-line) / -2);
 }
 
 /* ------------------------------------------------------------------ */
@@ -170,18 +215,17 @@
 /*  Title                                                              */
 /* ------------------------------------------------------------------ */
 
+/* No `margin-bottom`. `--BodyText-2-line-height` is 1.5rem on a 0.8125rem font
+   (1.75rem on 0.875rem at 40rem and up), so the half-leading under the title and
+   over the body already separates them by roughly half a rem — an explicit
+   margin on top of that was double-counting, and it was what made an entry's
+   body drift toward the next event. Nothing here special-cases a title with no
+   body either, because with no margin there is no trailing space to suppress. */
 .timeline-title {
   font-size: var(--BodyText-2);
   line-height: var(--BodyText-2-line-height);
   font-weight: var(--Bold-Weight);
   color: var(--C-TEXT-PRIMARY);
-  margin-bottom: var(--_timeline-title-gap);
-}
-
-/* An entry with no body has nothing for the title's trailing space to separate
-   it from, and at `dense` that dead space is most of the row. */
-.timeline-title:last-child {
-  margin-bottom: 0;
 }
 
 /* ------------------------------------------------------------------ */

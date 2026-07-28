@@ -125,26 +125,45 @@ the rhythm without sliding the rail sideways.
 | | `dense` | `comfortable` | `spacious` |
 | --- | --- | --- | --- |
 | **Between events** | `--R-SIZE-5` | `--R-SIZE-3` | `--R-SIZE-2` |
-| Under the title (within an event) | `--R-SIZE-6` | `--R-SIZE-4` | `--R-SIZE-3` |
-| Under the date (within an event) | `--R-SIZE-6` | `--R-SIZE-6` | `--R-SIZE-6` |
 | Card padding | `--R-SIZE-5` | `--R-SIZE-4` | `--R-SIZE-3` |
+| Under the date (within an event) | `--R-SIZE-6` | `--R-SIZE-6` | `--R-SIZE-6` |
 | Dot | `0.5rem` | `0.875rem` | `1rem` |
 
 Read that table remembering the `r` scale is **inverted** — a *higher* number is a *smaller*
 value — so `dense` counts up and `spacious` counts down.
 
-**The rule the table encodes:** both gaps *inside* an event are tighter than the gap *between*
-two events — `title` is always exactly one step tighter than `between events`, and `date` is
-pinned at `--R-SIZE-6`, the tightest step there is (`0.25rem` at every width). That ordering is
-what makes an entry read as one block; invert it and a body paragraph reads as a preamble to the
-next event instead. It is stated as a rule rather than three hand-picked pairs so that adding a
-density step cannot quietly break it.
+**The rule the table encodes:** every gap *inside* an event is tighter than the gap *between* two
+events. That ordering is what makes an entry read as one block; invert it and a body paragraph
+reads as a preamble to the next event instead. Only one explicit gap sits inside an entry —
+under the date, pinned at `--R-SIZE-6`, the tightest step there is (`0.25rem` at every width) — so
+the invariant holds for any density whose `between events` value is looser than that, which every
+step on the scale is.
+
+**There is no margin under the title.** The gap between a title and its body is the type scale's
+own leading and nothing else: `--BodyText-2-line-height` is `1.5rem` on a `0.8125rem` font
+(`1.75rem` on `0.875rem` at `40rem` and up), so the half-leading below the title and above the
+body already separates them by roughly half a rem. An explicit margin on top of that was
+double-counting — and at `comfortable` it was the thing pushing an entry's body toward the next
+event. Nothing special-cases a title with no body either: with no margin there is no trailing
+space to suppress.
 
 ## Dropping the card chrome
 
 `card={false}` strips the border, the background and the card's padding, hanging the text
-straight off the rail. Losing the padding is what pulls the first line of text up level with its
-dot. Combined with `align`, `density="dense"` and `animate={false}` this is the dashboard feed:
+straight off the rail — and re-centres the dot on the entry's **first line of text**. With a card
+the dot sits at `top: 0`, level with the card's top edge, which reads as deliberate; strip the
+card and there is no edge left to sit on, so the same offset would leave the dot floating above
+the date. The node instead takes the height of that first line box and centres inside it, which
+is exact for every dot size `density` produces and for an `icon` of any height.
+
+**The rail moves with it — both ends.** Each item draws its segment across its own box and the
+last one is suppressed, so the chain runs from the first item's top edge to the last item's top
+edge, which *was* the dot's position and no longer is. The whole chain therefore shifts down half
+a line box, with `bottom` going negative by the same amount so each segment still meets the next.
+Left alone, the rail would overshoot above the first dot and stop short of the last by 14px each
+at `40rem` and up.
+
+Combined with `align`, `density="dense"` and `animate={false}` this is the dashboard feed:
 
 <!-- example:DenseFeed -->
 ```tsx
@@ -294,7 +313,7 @@ contract variables directly, the way Tabs and ActivityFeed do.
 | Dot corners                                 | `--RADIUS-FULL`                              |
 | Card surface (dropped by `card={false}`)    | `--C-SURFACE-1`                              |
 | Card corners                                | `--RADIUS-LG`                                |
-| Card padding · space under the title — `comfortable` | `--R-SIZE-4`                        |
+| Card padding — `comfortable`                | `--R-SIZE-4`                                 |
 | Gutter (single-column padding · alternating card inset) | `--R-SIZE-2`                      |
 | Rail offset from the edge                   | `--R-SIZE-5`                                 |
 | Space between two events — `comfortable`    | `--R-SIZE-3`                                 |
@@ -316,10 +335,17 @@ touch any of these, deliberately: switching density should change the rhythm, no
 sideways. (Custom properties resolve lazily, so retuning the gutter *would* move `rail-x` — which
 is precisely why it doesn't.)
 
-**Retuned by `density`.** `--_timeline-dot-size`, `--_timeline-card-padding`,
-`--_timeline-item-gap`, `--_timeline-date-gap` and `--_timeline-title-gap`. Each density is a
-single rule that assigns these and nothing else — no density anywhere changes a selector, an
-offset or a type size, so the layout is identical across all three.
+**Retuned by `density`.** `--_timeline-dot-size`, `--_timeline-card-padding` and
+`--_timeline-item-gap`. Each density is a single rule that assigns these and nothing else — no
+density anywhere changes a selector, an offset or a type size, so the layout is identical across
+all three. `--_timeline-date-gap` sits in this group by kind but is deliberately constant at
+`--R-SIZE-6`: it is already the tightest step the scale has.
+
+**Used only by `card={false}`.** `--_timeline-first-line` is the height of an entry's first line
+box (`--BodyText-3-line-height`), which the dot centres on once there is no card edge to sit on.
+It is declared once for the same reason as `--_timeline-rail-x`: the node centres *inside* it and
+the rail shifts by *half* of it, so changing one without the other would put every dot back off
+its own line.
 
 All nine are declared on `.timeline`. The node is then centred with `translateX(-50%)` rather
 than by subtracting half a dot, so the dot's centre lands on the rail's centre whatever size the
@@ -339,12 +365,12 @@ those moves the other. The type steps are responsive too — `--BodyText-2` `0.8
 `grimdark` are the two ends).
 
 Read the spacing rows together and the rhythm groups by proximity: at `comfortable` the gap
-**between two events** is `--R-SIZE-3` (`1rem`, `1.5rem` on desktop), while **both** gaps inside
-an entry are tighter — `--R-SIZE-4` under the title and `--R-SIZE-6` under the date — so a date
-and a body read as belonging to their own event rather than floating between two. `density` moves
-all three in step and preserves that ordering, which is what keeps the grouping intact as the list
-tightens. The nearest sibling component, [ActivityFeed](activity-feed.md), spends the same tokens
-in the same roles.
+**between two events** is `--R-SIZE-3` (`1rem`, `1.5rem` on desktop), while the only explicit gap
+inside an entry — `--R-SIZE-6` under the date — is the tightest step there is, and the title-to-body
+gap is looser than neither, being pure leading. So a date and a body read as belonging to their own
+event rather than floating between two. `density` moves the between-events figure and leaves both
+in-entry gaps alone, which is what keeps the grouping intact as the list tightens. The nearest
+sibling component, [ActivityFeed](activity-feed.md), spends the same tokens in the same roles.
 
 The card sits on `--C-SURFACE-1`, so inside an ancestor already painted `--C-SURFACE-1` it
 has nothing but its `--C-BORDER-DEFAULT` hairline to separate it — `card={false}` drops both. The
@@ -402,12 +428,14 @@ left of the rail — every item under `align="right"`, and even items under `ali
 - **`density` moves spacing, not type.** Font sizes, line-heights and weights are identical across
   `dense`, `comfortable` and `spacious` — it retunes five spacing/size locals and nothing else. If
   you want smaller text in a dense feed, that is your own rule on `.timeline-title` /
-  `.timeline-body` (with the `!` caveat below). Note too that `dense` is already at the floor for
-  the date-to-title gap: `--R-SIZE-6` is the tightest step the scale has.
-- **A title with no body loses its trailing space.** `.timeline-title:last-child` zeroes
-  `margin-bottom`, so a `title`-only entry no longer carries dead space beneath it — at `dense`
-  that gap was most of the row. If you were relying on it, it is `--_timeline-title-gap` on your
-  own rule.
+  `.timeline-body` (with the `!` caveat below). Note too that the two in-entry gaps do not move
+  with it at all: the date-to-title gap is pinned at `--R-SIZE-6`, already the tightest step the
+  scale has, and the title-to-body gap is leading rather than margin.
+- **The title carries no bottom margin at all.** Its separation from the body is the type scale's
+  leading, so it is not tunable through a `--_timeline-*` local and does not move with `density`.
+  If you want an explicit gap back, it is `margin-bottom` on your own `.timeline-title` rule —
+  with the `!` caveat below — and remember a `title`-only entry will then carry it as dead space
+  beneath the last line.
 - **A plain Tailwind utility cannot override the component CSS.** `Timeline.css` is unlayered
   while Tailwind's utilities compile into `@layer utilities`, and unlayered author rules outrank
   layered ones before specificity is consulted. Measured in the compiled bundle: the utilities
