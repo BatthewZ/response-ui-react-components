@@ -92,7 +92,12 @@
   height: var(--_stepper-indicator-size);
   border-radius: var(--RADIUS-FULL);
   border: var(--_stepper-line-width) solid var(--C-BORDER-DEFAULT);
-  background-color: var(--C-SURFACE-1);
+  /* "Hollow", but it cannot be `transparent`: the chip masks the connector line
+     running behind it (position: relative; z-index: 1), so it needs an opaque
+     rung. Rung 2 is recessed and reads hollow; rung 1 is raised and would read
+     as a chip sitting on top. Base, active and upcoming must all match — those
+     states differ by ring, not fill. */
+  background-color: var(--C-SURFACE-2);
   color: var(--C-TEXT-MUTED);
   font-size: var(--BodyText-3);
   line-height: var(--BodyText-3-line-height);
@@ -165,13 +170,13 @@ button.stepper-indicator:focus-visible {
 .stepper-step[data-status="active"] .stepper-indicator {
   border-width: var(--_stepper-active-line-width);
   border-color: var(--stepper-progress-color);
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-2);
   color: var(--stepper-progress-color);
 }
 
 .stepper-step[data-status="upcoming"] .stepper-indicator {
   border-color: var(--C-BORDER-DEFAULT);
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-2);
   color: var(--C-TEXT-MUTED);
 }
 

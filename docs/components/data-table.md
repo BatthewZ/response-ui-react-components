@@ -442,7 +442,7 @@ utilities in `DataTable.tsx`. Change the variable and it re-tints at runtime, no
 
 | Where                          | Utility              | Override              |
 | ------------------------------ | -------------------- | --------------------- |
-| Expanded detail-row backdrop   | `bg-surface-1`       | `--C-SURFACE-1`       |
+| Expanded detail-row backdrop   | `bg-surface-3`       | `--C-SURFACE-3`       |
 | Expander chevron ink           | `text-fg-secondary`  | `--C-TEXT-SECONDARY`  |
 | Expander hover wash            | `hover:bg-surface-2` | `--C-SURFACE-2`       |
 | Expander corner radius         | `rounded-md`         | `--RADIUS-MD`         |
@@ -454,6 +454,10 @@ utilities in `DataTable.tsx`. Change the variable and it re-tints at runtime, no
 (`1rem` → `1.5rem`), so the pager sits further below the table on wider screens.
 `--R-SIZE-6` is on the same scale but holds at `0.25rem` on both sides of that breakpoint,
 so the expander's hit area is identical at every width.
+
+The expanded detail row is deliberately on `--C-SURFACE-3`, the deepest rung — a well cut
+into the table sheet, and a step below the zebra band at rung 2, so an expanded row never
+reads as just another stripe.
 
 The selected-row highlight is an 8% `--C-ACCENT` wash over the row background *plus* a 3px
 `--C-ACCENT` bar down the row's leading edge. The wash is a very small luminance change in

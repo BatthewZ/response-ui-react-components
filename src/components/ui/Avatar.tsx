@@ -38,9 +38,14 @@ const statusDotSizeMap: Record<AvatarSize, string> = {
   xl: "size-3",
 };
 
+// `offline` is ink, not a surface: the dot sits on a `ring-surface-0` ring on a
+// rung-0 sheet, and a surface rung is defined relative to the ramp rather than
+// guaranteed to contrast with one — at rung 3 the dot all but disappears on a
+// dark sheet. `--C-BORDER-STRONG` is the ramp's contrast-carrying neutral, so
+// it reads in every theme like its two semantic siblings do.
 const statusColorMap: Record<AvatarStatus, string> = {
   online: "bg-status-success",
-  offline: "bg-surface-3",
+  offline: "bg-border-strong",
   away: "bg-status-warning",
 };
 
@@ -180,7 +185,9 @@ export const AvatarGroup = forwardRef<HTMLDivElement, AvatarGroupProps>(function
       {overflowCount > 0 && (
         <span
           className={cn(
-            "relative inline-flex shrink-0 items-center justify-center rounded-full bg-surface-3 text-fg-secondary font-semibold ring-2 ring-surface-0",
+            // Rung 2, the same fill as an initials fallback above — the +N chip
+            // is one of the faces, so it cannot sit on a different rung.
+            "relative inline-flex shrink-0 items-center justify-center rounded-full bg-surface-2 text-fg-secondary font-semibold ring-2 ring-surface-0",
             sizeClassMap[size],
             initialsTextMap[size]
           )}

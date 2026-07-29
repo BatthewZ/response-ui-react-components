@@ -106,7 +106,7 @@ Same contract either way: override these and Tabs re-tints with the rest of the 
 | Tab label             | `--C-TEXT-SECONDARY` at rest · `--C-TEXT-PRIMARY` on hover · `--C-ACCENT` selected · `--C-TEXT-MUTED` disabled |
 | Indicator             | `--C-ACCENT` (underline, pill) · `--C-SURFACE-0` (enclosed)                                      |
 | Strip border          | `--C-BORDER-DEFAULT`                                                                              |
-| Hover background      | `--C-SURFACE-1` — pill and enclosed only, so it can't obscure the underline indicator            |
+| Hover background      | `--C-SURFACE-2` — pill and enclosed only, so it can't obscure the underline indicator            |
 | Enclosed selected tab | `--C-SURFACE-0` · `--C-BORDER-DEFAULT` · `--C-TEXT-PRIMARY`                                      |
 | Pill selected label   | `--C-TEXT-ON-ACCENT`, falling back to `--C-TEXT-INVERSE`                                         |
 | Focus outline         | `--C-BORDER-FOCUS` · `--RADIUS-SM`                                                                |
@@ -114,6 +114,10 @@ Same contract either way: override these and Tabs re-tints with the rest of the 
 | Spacing               | `--R-SIZE-5` `--R-SIZE-3` (tab padding) · `--R-SIZE-6` (pill inset)                              |
 | Type                  | `--BodyText-2` · `--Semibold-Weight`                                                              |
 | Motion                | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`, both dropped under `prefers-reduced-motion`   |
+
+The hover wash is on the recessed side of the ramp on purpose. The `enclosed` selected tab
+claims `--C-SURFACE-0`, the raised rung, so an unselected tab's hover has to sit at rung 2 to
+read as *not* selected; a raised hover would say the opposite.
 
 ## Gotchas
 

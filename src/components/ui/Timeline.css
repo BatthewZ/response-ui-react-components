@@ -132,10 +132,10 @@
   height: var(--_timeline-dot-size);
   border-radius: var(--RADIUS-FULL);
   background-color: var(--C-ACCENT);
-  /* No surface-coloured border: the filled accent dot already masks the line
-     it sits on. A hardcoded surface-0 border would otherwise read as a
-     mismatched halo whenever the timeline sits on any surface but the page
-     background (e.g. a card) or under a custom theme. */
+  /* No surface-coloured border: the filled accent dot already masks the line it
+     sits on. Hardcoding any one rung would read as a mismatched halo wherever
+     the timeline sits on a different one — rung 0 on a card, the canvas on a
+     bare page — or under a custom theme. */
 }
 
 /* ------------------------------------------------------------------ */
@@ -143,7 +143,7 @@
 /* ------------------------------------------------------------------ */
 
 .timeline-card {
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-0);
   border: 1px solid var(--C-BORDER-DEFAULT);
   border-radius: var(--RADIUS-LG);
   padding: var(--_timeline-card-padding);

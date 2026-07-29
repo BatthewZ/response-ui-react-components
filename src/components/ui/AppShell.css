@@ -12,7 +12,10 @@
   grid-template-rows: auto 1fr;
   grid-template-columns: auto 1fr;
   min-height: 100vh;
-  background: var(--C-SURFACE-1);
+  /* The page floor, so the canvas token — not a rung. The shell's own navbar and
+     sidebar are rung-0 sheets that sit ON this; painting it with a surface would
+     put the floor level with the sheets standing on it. */
+  background: var(--C-CANVAS);
 }
 
 /* ── Navbar ── */

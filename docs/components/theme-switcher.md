@@ -48,7 +48,7 @@ list it does not have. The lonely option is the signal, not a starter set:
 
 <!-- example:InANavbar -->
 ```tsx
-<header className="flex items-center justify-between gap-r4 rounded-lg bg-surface-1 px-r4 py-r5">
+<header className="flex items-center justify-between gap-r4 rounded-lg bg-surface-0 px-r4 py-r5">
   <span className="text-h6">Response UI</span>
   <ThemeSwitcher themes={APP_THEMES} labels={APP_LABELS} />
 </header>
@@ -223,22 +223,24 @@ control that changes your theme is itself fully themed by that theme.
 
 | Where                        | Override                              |
 | ---------------------------- | ------------------------------------- |
-| Track fill · track border    | `--C-SURFACE-2` · `--C-BORDER-DEFAULT` |
+| Track fill · track border    | `--C-SURFACE-3` · `--C-BORDER-DEFAULT` |
 | Track corners · option corners | `--RADIUS-LG` · `--RADIUS-MD`       |
 | Option label type · weight   | `--BodyText-2` · `--Semibold-Weight`  |
 | Option label at rest         | `--C-TEXT-SECONDARY`                  |
 | Option label hovered / selected | `--C-TEXT-PRIMARY`                 |
-| Hover wash                   | `--C-SURFACE-1`                       |
+| Hover wash                   | `--C-SURFACE-2`                       |
 | Selected option              | `--C-SURFACE-0` · `--SHADOW-SM`       |
 | Option padding               | `--R-SIZE-6` block · `--R-SIZE-4` inline |
 | Focus ring                   | `--C-BORDER-FOCUS`                    |
 | Transition                   | `--DURATION-FAST` · `--MOTION-EASE-SHIFT` |
 
-The three surfaces stack on purpose: the track sits two steps out from the canvas
-(`--C-SURFACE-2`), the hover wash comes back one (`--C-SURFACE-1`), and the selected option
-lands on `--C-SURFACE-0`, the rung nearest the canvas. That fill is a *direction*, not a
-lift — it runs lighter as it climbs in a light theme and darker in a dark one — so
-`--SHADOW-SM` is what makes selection read as raised, and it is the part that holds in both. Of the padding, only the inline side
+The three surfaces stack on purpose, and the group reads as a well with a tile in it: the
+track is `--C-SURFACE-3`, the deepest rung; the hover wash comes back one step to
+`--C-SURFACE-2`; and the selected option lands on `--C-SURFACE-0`, the raised-sheet rung.
+The direction is the same in a light theme and a dark one, but the whole span from track to
+selected option is only **1.13–1.25:1**, so `--SHADOW-SM` is what actually makes selection
+read as raised. Move the track and the hover wash together — a wash on the same rung as the
+track is invisible. Of the padding, only the inline side
 is responsive: `--R-SIZE-4` steps `0.75rem` → `1.25rem` at the 40rem breakpoint while
 `--R-SIZE-6` holds at `0.25rem` block-wise, so the control widens on desktop and grows taller
 only by the label's own type step.
@@ -296,7 +298,7 @@ its options by only `0.125rem`, so an outset ring would sit on the group border 
 on the segment that actually holds focus. It re-tints with the theme like every other focus
 indicator in the library.
 
-The resting label is `--C-TEXT-SECONDARY` at `0.8125rem` on `--C-SURFACE-2`. No guard in
+The resting label is `--C-TEXT-SECONDARY` at `0.8125rem` on `--C-SURFACE-3`. No guard in
 this repo measures contrast pairs, so check that one against your own theme's values.
 
 ## Related

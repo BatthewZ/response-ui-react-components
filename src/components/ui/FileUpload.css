@@ -15,7 +15,7 @@
   padding: var(--R-SIZE-3);
   border: 2px dashed var(--C-BORDER-DEFAULT);
   border-radius: var(--RADIUS-MD);
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-2);
   cursor: pointer;
   transition:
     border-color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT),
@@ -35,7 +35,7 @@
 /* Drag-over state */
 .file-upload--drag-over {
   border-color: var(--C-BORDER-FOCUS);
-  background-color: var(--C-SURFACE-2);
+  background-color: var(--C-SURFACE-3);
 }
 
 /* Uploading state — the controls carry `disabled`, which a keyboard also
@@ -175,7 +175,7 @@
   height: 1.75rem;
   border: none;
   border-radius: var(--RADIUS-FULL);
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-0);
   color: var(--C-TEXT-MUTED);
   cursor: pointer;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
@@ -237,7 +237,7 @@
   height: 1.5rem;
   border: none;
   border-radius: var(--RADIUS-FULL);
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-0);
   color: var(--C-TEXT-MUTED);
   cursor: pointer;
   opacity: 0;

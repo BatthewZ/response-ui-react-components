@@ -179,7 +179,7 @@ directly — there is not a single Tailwind utility in `Pagination.tsx`.
 | Where                                    | Override                                          |
 | ---------------------------------------- | ------------------------------------------------- |
 | Page number and compact readout ink      | `--C-TEXT-SECONDARY`                              |
-| Page number hover                        | `--C-SURFACE-1` · `--C-TEXT-PRIMARY`              |
+| Page number hover                        | `--C-SURFACE-2` · `--C-TEXT-PRIMARY`              |
 | Current page fill · ink · weight         | `--C-ACCENT` · `--C-TEXT-ON-ACCENT` · `--Semibold-Weight` |
 | Page number focus ring                   | `--C-BORDER-FOCUS`                                |
 | Page number corners                      | `--RADIUS-SM`                                     |

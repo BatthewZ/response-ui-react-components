@@ -43,7 +43,7 @@
 }
 
 .accordion-trigger:hover:not(:disabled) {
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-2);
 }
 
 .accordion-trigger:disabled {

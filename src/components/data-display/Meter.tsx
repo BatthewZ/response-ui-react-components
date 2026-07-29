@@ -135,7 +135,7 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
           aria-hidden="true"
           className={cn(
             "h-r3 rounded-sm",
-            i < filled ? filledColor[status] : "bg-surface-2"
+            i < filled ? filledColor[status] : "bg-surface-3"
           )}
         />
       ))}

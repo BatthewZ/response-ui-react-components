@@ -120,7 +120,7 @@ export const BarChart = forwardRef<HTMLDivElement, BarChartProps>(function BarCh
   align-items: flex-end;
   gap: var(--R-SIZE-5);
   padding: var(--R-SIZE-3);
-  background: var(--C-SURFACE-1);
+  background: var(--C-SURFACE-0);
   border: 1px solid var(--C-BORDER-DEFAULT);
   border-radius: var(--RADIUS-MD);
 }
@@ -133,7 +133,7 @@ export const BarChart = forwardRef<HTMLDivElement, BarChartProps>(function BarCh
 Conventions worth keeping (the same ones this package enforces on itself):
 
 - Spacing `p-r3 gap-r4`, not `p-4 gap-6`. Text `text-h2 text-body-2`, not `text-3xl`.
-  Colour `bg-surface-1 text-fg-primary border-border-default`, not `bg-gray-100`.
+  Colour `bg-surface-0 text-fg-primary border-border-default`, not `bg-gray-100`.
 - Always wrap `className` with `cn(...)` so consumer overrides merge cleanly.
 - Components are `forwardRef`; type props as `ComponentPropsWithRef<"div">` (or the right
   element). Prefer semantic HTML over generic `<div>`.

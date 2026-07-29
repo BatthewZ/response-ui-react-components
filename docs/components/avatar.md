@@ -98,7 +98,8 @@ avatar lands flush on that component's connector rail. The initials step with th
 ## Presence
 
 `status` adds a dot to the bottom-right corner — `online` (success), `away` (warning),
-`offline` (a neutral surface tint). The dot element itself is unlabelled, but `status` folds
+`offline` (`--C-BORDER-STRONG`, the contract's contrast-carrying neutral — not a surface
+rung). The dot element itself is unlabelled, but `status` folds
 a label into the avatar's accessible name — `"Ada Lovelace, Online"` — and `statusLabel`
 replaces the English default. On screen the dot is still only a colour, so pair it with
 visible text wherever presence carries meaning.
@@ -173,13 +174,13 @@ change at runtime.
 
 | Where                        | Utility                                             | Override                                                     |
 | ---------------------------- | --------------------------------------------------- | ------------------------------------------------------------ |
-| Fallback circle fill         | `bg-surface-2`                                      | `--C-SURFACE-2`                                              |
+| Fallback circle · `+N` chip fill | `bg-surface-2`                                  | `--C-SURFACE-2`                                              |
 | Initials · `+N` ink          | `text-fg-secondary`                                 | `--C-TEXT-SECONDARY`                                         |
 | Initials · `+N` weight       | `font-semibold`                                     | `--Semibold-Weight`                                          |
 | Initials · `+N` type (`xs`–`xl`) | `text-body-3` `text-body-2` `text-body-1` `text-h3` | `--BodyText-3` `--BodyText-2` `--BodyText-1` `--H3`      |
 | Circle corners               | `rounded-full`                                      | `--RADIUS-FULL`                                              |
 | Presence — online · away     | `bg-status-success` `bg-status-warning`             | `--C-STATUS-SUCCESS` `--C-STATUS-WARNING`                    |
-| Presence — offline · `+N` chip | `bg-surface-3`                                    | `--C-SURFACE-3`                                              |
+| Presence — offline           | `bg-border-strong`                                  | `--C-BORDER-STRONG`                                          |
 | Ring behind dot and stack    | `ring-surface-0`                                    | `--C-SURFACE-0`                                              |
 
 Geometry is deliberately **not** on the responsive `r`-scale: the box sizes, the dot sizes and
@@ -190,8 +191,14 @@ thicken inside a circle that doesn't. Every size reads a type token, `xs` includ
 `text-body-3` with `sm` rather than pinning a literal.
 
 The ring around the presence dot and around each stacked avatar is hard-coded to
-`--C-SURFACE-0`. That is correct on a `surface-0` backdrop and wrong anywhere else —
-including, in the dark themes, the page itself — see [Gotchas](#gotchas).
+`--C-SURFACE-0`, the raised-sheet rung. That is correct on a rung-0 backdrop and wrong
+anywhere else — including the page itself, which paints `--C-CANVAS` and is not a rung —
+see [Gotchas](#gotchas).
+
+The offline dot is `--C-BORDER-STRONG`, not a surface rung. A rung is defined by its place
+in the ramp, not by contrast against anything, so a dot painted from one is not guaranteed
+to be visible; `--C-BORDER-STRONG` is the contract's contrast-carrying neutral and reads in
+every theme the way its `success` / `warning` siblings do.
 
 ## Gotchas
 
@@ -225,13 +232,14 @@ including, in the dark themes, the page itself — see [Gotchas](#gotchas).
   it; one without inherits the group's. Anything that is not a direct `Avatar` element is left
   alone — wrap your avatars in a component of your own and they size themselves again, so pass
   `size` explicitly there.
-- **The stack ring assumes a `surface-0` background.** The 2px ring that separates overlapping
-  avatars, and the one around the presence dot, always paint `--C-SURFACE-0`. On a `surface-1`
-  card, a `surface-2` panel, or a `bg-primary` band it reads as a pale halo rather than a cut-out.
-  A dark theme need not even guarantee the page: the `grimdark` and `tech` examples paint the
-  body `--C-CANVAS`, which diverges from their `--C-SURFACE-0`, so an avatar sitting directly
-  on the page there already gets a visibly lighter ring. The dot's ring sits on an inner element
-  `className` cannot reach, so there is no override path.
+- **The stack ring assumes a rung-0 sheet.** The 2px ring that separates overlapping avatars,
+  and the one around the presence dot, always paint `--C-SURFACE-0`. That is a clean cut-out on
+  a [Card](card.md), a [Dialog](dialog.md), a [Drawer](drawer.md) or a menu — all rung 0 — and a
+  pale halo on a nested `surface-1` panel, on a recessed `surface-2`/`surface-3` fill, or on a
+  `bg-primary` band. The page is not an exception you can design around either: `--C-CANVAS` is
+  the page floor and sits between rungs 1 and 2, so an avatar dropped straight onto the page
+  gets a ring **1.05–1.16:1** off its backdrop in every theme. The dot's ring sits on an inner
+  element `className` cannot reach, so there is no override path.
 - **`className` merges last.** It is passed through `cn()` after the size class, so a `size-*`
   utility in `className` overrides the `size` prop — that is how [AvatarUpload](avatar-upload.md) stretches an
   avatar to fill its own frame.

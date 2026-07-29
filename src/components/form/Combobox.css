@@ -80,12 +80,12 @@
 
 /* Virtual focus: DOM focus stays on the input, so `:focus-visible` never
    matches an option and the keyboard cursor has to be drawn from the attribute
-   instead. The --C-SURFACE-1 step alone is 1.02–1.07:1 against the listbox fill
-   across the four themes — a fill-vs-fill cue no re-tint can rescue — so the
-   ring, not the wash, is what marks the option. Same ring the rest of the
-   library draws on :focus-visible. */
+   instead. The recessed wash reads at 1.08–1.21:1 against the rung-0 listbox
+   fill — enough to be seen, still short of the 3:1 a non-text cue has to clear
+   on its own — so the ring carries the cue and the wash reinforces it. Same
+   ring the rest of the library draws on :focus-visible. */
 .combobox-item[data-active] {
-  background: var(--C-SURFACE-1);
+  background: var(--C-SURFACE-2);
   outline: 2px solid var(--C-BORDER-FOCUS);
   outline-offset: -2px;
 }

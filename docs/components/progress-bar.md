@@ -205,7 +205,7 @@ one and every bar in the app re-tints at runtime, no rebuild.
 
 | Where                              | CSS class                        | Override                                        |
 | ---------------------------------- | -------------------------------- | ----------------------------------------------- |
-| Track background                   | `.progress-bar`                  | `--C-SURFACE-1`                                 |
+| Track background                   | `.progress-bar`                  | `--C-SURFACE-3`                                 |
 | Track and fill corners             | `.progress-bar`                  | `--RADIUS-FULL`                                 |
 | Height — `sm` · `md` · `lg`        | `.progress-bar--sm` `.progress-bar--md` `.progress-bar--lg` | `--R-SIZE-6` · `--R-SIZE-5` · `--R-SIZE-4`      |
 | Fill — `accent` (default)          | `.progress-bar__fill--accent`    | `--C-ACCENT`                                    |
@@ -276,27 +276,23 @@ on-accent ink. The 15% weight itself is fixed in the stylesheet.
   `aria-valuemax` are all omitted — ARIA's indeterminate progressbar. A status
   `statusLabel` is then announced on its own, without a percentage. Keep `max` positive
   if you want a number announced.
-- **Inside a [Card](card.md) the empty track is not merely faint — it is gone.** The track
-  is `--C-SURFACE-1` and a Card is now `--C-SURFACE-1` too, so the pairing is exactly
-  **1.00:1**. Give the track its own value there (see the override below) until the two
-  tokens stop colliding.
-- **The empty part of the track is close to invisible in every theme measured.** It is
-  `--C-SURFACE-1`, measured against `--C-SURFACE-0` at
-  **1.05:1 default · 1.03:1 `events` · 1.02:1 `tech` · 1.07:1 `grimdark`**, and against the
-  page canvas at 1.05 / 1.03 / 1.08 / 1.17:1 — so a bar at low `value` reads as a stub
-  floating on nothing, and the total it is measured against cannot be seen. Override
-  `--C-SURFACE-1`, or pass an inline `style={{ backgroundColor: … }}`, when the total
-  needs to be legible. ([ProgressRing](progress-ring.md) uses `--C-SURFACE-2` for the
-  equivalent track — still only 1.10:1 on `--C-SURFACE-0` in the default theme, but the two
-  siblings do not match out of the box either way.)
-- **The *filled* part now clears its floor in every theme measured.** The default `accent` fill
-  measures **4.95 / 4.74 / 14.56 / 5.32:1** on its own track (default / `events` / `tech` /
-  `grimdark`), over the 3:1 WCAG 1.4.11 sets for a graphical object that carries meaning. It
-  was 2.63 and 2.77 in `events` and `grimdark` until `@batthewz/response-ui-css` **v0.10.0**
-  retuned the accent. The *track* is the remaining problem — see the bullet above — so a
-  `ProgressBar.Value` readout is still the reliable way to convey the number. Measured against
-  the default theme and the worked examples; these numbers do not transfer to your own theme —
-  re-check them against your values.
+- **The empty part of the track is faint even at the ramp's limit.** The track is
+  `--C-SURFACE-3`, the deepest rung there is, and against a rung-0 sheet — a
+  [Card](card.md), a [Dialog](dialog.md), the [AppShell](app-shell.md) chrome — that is
+  **1.13–1.25:1** across the measured themes. That is the widest separation the surface ramp
+  offers and it is still well short of a visible edge, so a bar at low `value` reads as a
+  stub on a barely-there total. Override `--C-SURFACE-3`, or pass an inline
+  `style={{ backgroundColor: … }}`, when the total needs to be legible. There is no longer a
+  collision case: the track can no longer land on the same rung as a Card.
+  ([ProgressRing](progress-ring.md) uses `--C-SURFACE-3` for the equivalent track, so the
+  two siblings now match out of the box.)
+- **The *filled* part carries the signal; the track does not.** The default `accent` fill
+  cleared the 3:1 floor WCAG 1.4.11 sets for a meaningful graphical object in every theme
+  measured — it read 2.63 in `events` and 2.77 in `grimdark` until
+  `@batthewz/response-ui-css` **v0.10.0** retuned the accent. Those figures were taken while
+  the track was a rung-1 surface and have not been re-measured against `--C-SURFACE-3`, so a
+  `ProgressBar.Value` readout remains the reliable way to convey the number, and you should
+  re-check the pairing against your own theme's values.
 - **`className` reaches the track only, and loses to the track's own rules.** There is no
   prop that classes the inner fill. And because `ProgressBar.css` ships unlayered while
   Tailwind utilities live in `@layer utilities` (measured: the utilities layer ends well

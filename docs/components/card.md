@@ -50,9 +50,9 @@ card is more generous on desktop than on mobile with no work from you.
 ## Elevation
 
 `shadow` is how a card reads as *lifted*; `--C-BORDER-DEFAULT` is what makes it a bounded
-region at all. The fill does neither — `--C-SURFACE-1` is one rung off `--C-CANVAS` in all
-four measured themes, which is a hint, and it is nothing whatsoever against a backdrop on
-the same rung. Both cues survive a theme flip; the fill does not.
+region at all. The fill does neither — `--C-SURFACE-0` lifts **1.05–1.16:1** off `--C-CANVAS`
+across the four measured themes, which is a hint, and it is nothing whatsoever against a
+backdrop on the same rung.
 
 <!-- example:Elevation -->
 ```tsx
@@ -94,38 +94,37 @@ re-tints at runtime, with no per-component CSS in the loop.
 
 | Where     | Utility                                              | Override                                                             |
 | --------- | ---------------------------------------------------- | ------------------------------------------------------------------- |
-| Surface   | `bg-surface-1`                                       | `--C-SURFACE-1`                                                     |
+| Surface   | `bg-surface-0`                                       | `--C-SURFACE-0`                                                     |
 | Border    | `border` `border-border-default`                     | `--C-BORDER-DEFAULT`                                                |
 | Corners   | `rounded-lg`                                         | `--RADIUS-LG`                                                       |
 | Elevation | `shadow-sm` `shadow-md` `shadow-lg`                  | `--SHADOW-SM` `--SHADOW-MD` `--SHADOW-LG`                          |
 | Padding   | `p-r1` `p-r2` `p-r3` `p-r4` `p-r5` `p-r6`            | `--R-SIZE-1` `--R-SIZE-2` `--R-SIZE-3` `--R-SIZE-4` `--R-SIZE-5` `--R-SIZE-6` |
 
-Card fixes the surface at `--C-SURFACE-1`, the rung the
-[theme contract](../theme-contract.md#surfaces-layered-backgrounds) names for cards and the
-navbar. `--C-SURFACE-0` is the rung nearest the canvas — floating panels and resting input
-fills — and in the default theme it is byte-identical to `--C-CANVAS`, so a card painted
-with it had no background step at all. Override the token, not the component, if you want
-cards to sit on a different surface globally.
+Card fixes the surface at `--C-SURFACE-0`, the raised-sheet rung the
+[theme contract](../theme-contract.md#surfaces-layered-backgrounds) names for cards,
+dialogs, menus and the app-shell chrome. Surface `0→3` runs raised → recessed, so a panel
+nested *inside* a card belongs on `--C-SURFACE-1`, and `--C-CANVAS` is not a rung at all —
+it is the page floor, and sits between rungs 1 and 2. Override the token, not the
+component, if you want cards to sit on a different surface globally.
 
 ## Gotchas
 
 - **The `r`-scale is inverted.** `padding="r1"` is the *largest* inset, `r6` the smallest —
   the number is a rung on the responsive scale, not a pixel size. There is no zero-padding
   option; the tightest you can go is `r6` (0.25rem).
-- **The border is the boundary; the fill is not.** `--C-SURFACE-1` sits one rung off the
-  canvas in the default theme and in each worked example — near-white on the default and
-  `events`, a shade lighter than black on `tech` and `grimdark` — a hint at best, and exactly
-  nothing when the backdrop is on the same rung. [AppShell](app-shell.md) paints its body
-  `--C-SURFACE-1`, so that case is not hypothetical: without the border a card inside the
-  shell is bounded only by `shadow`, which on a dark theme is black on near-black. Both the
-  border and the shadow point the same way in every theme. The fill does not — it climbs
-  lighter in a light theme and darker in a dark one — so it can only ever say how far the
-  card is nested from the page, never that it is a card.
+- **The border is the boundary; the fill is not.** `--C-SURFACE-0` is the raised-sheet rung —
+  the lightest of the four surfaces in every theme, light or dark — but it lifts only
+  **1.05–1.16:1** off `--C-CANVAS`, a hint at best, and exactly nothing when the backdrop is
+  on the same rung. That case is not hypothetical: dialogs, popovers, menus and drawers are
+  all rung 0, so a card dropped into any of them is sheet-on-sheet, and without the border it
+  is bounded only by `shadow`, which on a dark theme is black on near-black. Border, shadow
+  and fill now all point the same way in every theme, but a 1.05–1.16:1 step can only say the
+  card is raised, never where it ends.
 - **Card sets no text colour.** It paints a surface but leaves the ink to inheritance, and
   the CSS foundation sets no global text colour either — the default `color` stays at the UA
   `canvastext`. The dark examples stay legible anyway: `grimdark` and `tech` pair their
   dark surface with `color-scheme: dark`, which flips `canvastext` to a light ink, so even
-  unstyled text reads on the dark surface-1. The drop-out risk is narrower — a *custom* dark
+  unstyled text reads on the dark sheet. The drop-out risk is narrower — a *custom* dark
   theme that darkens the surface but omits `color-scheme` leaves the ink dark-on-dark, and app
   content that hardcodes a light-theme text colour keeps it when it inherits into the card.
   Colour the card's own content with `text-fg-primary` / `text-fg-secondary` (the examples

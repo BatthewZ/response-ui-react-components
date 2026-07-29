@@ -80,9 +80,10 @@
   color: var(--C-TEXT-SECONDARY);
   /* No background-coloured ring: the filled 2rem circle already masks the
      connector line, and the line starts at the marker's edge — same treatment
-     as a real Avatar. A surface-0 ring would otherwise show as a mismatched
-     halo whenever the feed sits on any surface but the page background (e.g. a
-     card) or under a custom theme. */
+     as a real Avatar. Any hardcoded ring colour names one layer of the ramp,
+     and the feed does not know which layer it was dropped onto — a rung-0 ring
+     shows as a mismatched halo the moment the feed sits on the canvas, on a
+     nested rung-1 panel, or under a custom theme. */
 }
 
 /* The dot owns its glyph size so consumers don't have to hand-tune an icon

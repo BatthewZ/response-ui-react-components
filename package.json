@@ -1,6 +1,6 @@
 {
   "name": "@batthewz/response-ui-react-components",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "type": "module",
   "description": "React component library for the response-ui design system. Pairs with @batthewz/response-ui-css.",
   "sideEffects": false,
@@ -73,7 +73,7 @@
     "lucide-react": "^0.500.0"
   },
   "dependencies": {
-    "@batthewz/response-ui-css": "^0.12.0",
+    "@batthewz/response-ui-css": "^0.13.0",
     "@batthewz/response-ui-tw-merge": "^0.1.3",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.6.0"

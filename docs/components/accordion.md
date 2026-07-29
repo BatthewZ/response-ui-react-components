@@ -200,7 +200,7 @@ app, at runtime, with no rebuild.
 | --------------------- | ---------------------------------------------------------------- |
 | Item divider          | `--C-BORDER-DEFAULT`                                             |
 | Trigger label         | `--C-TEXT-PRIMARY` · `--C-TEXT-MUTED` when disabled              |
-| Trigger hover fill    | `--C-SURFACE-1`                                                  |
+| Trigger hover fill    | `--C-SURFACE-2`                                                  |
 | Chevron & panel copy  | `--C-TEXT-SECONDARY`                                             |
 | Focus outline         | `--C-BORDER-FOCUS` · `--RADIUS-SM`                               |
 | Type                  | `--BodyText-2` · `--BodyText-2-line-height` · `--Semibold-Weight` |

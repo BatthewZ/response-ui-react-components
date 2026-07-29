@@ -43,8 +43,11 @@ export class ErrorBoundary extends Component<Props, State> {
     // Sized by its own content, not by the viewport: a boundary around a card
     // or a table cell is the common case, and `min-h-screen` made the fallback
     // taller than the thing that failed.
+    //
+    // Rung 0 because this stands in for the card that failed and draws no
+    // border — the raised sheet is the only thing giving it an edge on canvas.
     return (
-      <div className="flex items-center justify-center bg-surface-1 p-r2">
+      <div className="flex items-center justify-center bg-surface-0 p-r2">
         <div className="text-center">
           <h1 className="text-h3 font-bold mb-r5">Something went wrong</h1>
           <p className="text-fg-secondary mb-r3">An unexpected error occurred.</p>

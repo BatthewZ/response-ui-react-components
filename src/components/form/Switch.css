@@ -13,7 +13,7 @@
   padding: 2px;
   cursor: pointer;
   border-radius: var(--RADIUS-FULL);
-  background-color: var(--C-SURFACE-2);
+  background-color: var(--C-SURFACE-3);
   transition: background-color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
 }
 

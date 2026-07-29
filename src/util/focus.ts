@@ -16,8 +16,11 @@
  *   and the eight doc sentences that recorded the intent were deleted with it.
  * - **`ring-offset-0`.** Tailwind's ring offset paints a solid band of
  *   `--tw-ring-offset-color` — themed to `--C-SURFACE-0` by
- *   `response-ui-css/src/base.css:41-48` — so a non-zero offset is correct only
- *   where the control sits on surface-0, and reads as a halo anywhere else. The
+ *   `response-ui-css/src/base.css` — so a non-zero offset is correct where the
+ *   control sits on surface-0 and reads as a halo anywhere else. That is now the
+ *   common case rather than the rare one: surface-0 is the raised-sheet rung, so
+ *   cards, dialogs, menus and resting input fills all match it. Directly on the
+ *   page canvas it still mismatches, which is the case this offset avoids. The
  *   CSS layer never paints a gap: its box-shadow rings are flush
  *   (`box-shadow: 0 0 0 2px var(--C-BORDER-FOCUS)`) and its outline rings use
  *   `outline-offset`, which is transparent. Offset 0 asks nothing of the offset
@@ -50,8 +53,9 @@ export const focusRingButton =
  * Measured across the four themes, the ring sits at 1.31:1 against
  * `--C-STATUS-ERROR` and 1.76:1 against `--C-SECONDARY`, but never below 2.72:1
  * against the band. A fill therefore needs the separation; a transparent control
- * is already clear of its surface (2.52:1 at worst) and would only gain a halo,
- * since the band is surface-0 wherever the control actually sits.
+ * is already clear of its surface (2.52:1 at worst) and would only gain a halo.
+ * The band matches wherever the control sits on a rung-0 sheet — cards, dialogs,
+ * menus, input fills — and that is where filled buttons overwhelmingly live.
  */
 export const focusRingButtonFilled =
   "ring-2 ring-transparent focus-visible:ring-border-focus focus-visible:ring-offset-2";

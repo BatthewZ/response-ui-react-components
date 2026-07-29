@@ -29,7 +29,7 @@
 }
 
 .pagination__page:hover:not(.pagination__page--current) {
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-2);
   color: var(--C-TEXT-PRIMARY);
 }
 

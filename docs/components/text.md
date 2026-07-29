@@ -66,7 +66,7 @@ descending emphasis. `muted` is not a third rung of that ladder: the
 [theme contract](../theme-contract.md) defines `--C-TEXT-MUTED` as the "most-muted"
 ink — placeholders and hints. Since the `@batthewz/response-ui-css` v0.10.1 retune it
 measures 4.85–5.23:1 against `--C-SURFACE-0` across the four measured themes, clearing WCAG AA
-for body text on the base surface — but the contract names the role, not a ratio. Reach
+for body text on a rung-0 sheet — but the contract names the role, not a ratio. Reach
 for it when the words are decoration; reach for `secondary` when they are information.
 See [Accessibility](#accessibility).
 
@@ -256,8 +256,8 @@ fails WCAG 1.4.1.
 `color="muted"` is the hint-level role, not a third body ink. The
 `@batthewz/response-ui-css` v0.10.1 retune lifted `--C-TEXT-MUTED` to 4.85–5.23:1 against
 `--C-SURFACE-0` in the four measured themes — an older copy of this page measured it under
-2.6:1 and said the opposite — so muted copy now clears WCAG AA for body text on the base
-surface. The ranking still holds: measured against all four `surface-*` steps of every
+2.6:1 and said the opposite — so muted copy now clears WCAG AA for body text on a rung-0
+sheet. The ranking still holds: measured against all four `surface-*` steps of every
 theme measured, `--C-TEXT-PRIMARY` never falls below 8.4:1 and `--C-TEXT-SECONDARY` never
 below 4.4:1, so `primary` is the ink for anything that has to be read, `secondary` the
 one for de-emphasised copy, and `muted` belongs on placeholders and hints that repeat

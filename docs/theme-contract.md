@@ -91,7 +91,7 @@ This page used to restate the base contract in full. It no longer does: two copi
 
 ### Surfaces (layered backgrounds)
 
-The surface ramp is **separation from `--C-CANVAS`, ascending** — `0` nearest the page background, `3` furthest — and it is not an elevation: its lightness direction reverses between light and dark themes, so elevation belongs to `--SHADOW-*` and `--C-BORDER-DEFAULT` instead. Full section: [css contract → Surfaces](https://github.com/BatthewZ/response-ui-css/blob/main/docs/theme-contract.md#surfaces-layered-backgrounds).
+The surface ramp runs **raised → recessed**, in the **same lightness direction in every theme**: `0` is the lightest of the four in a light theme and in a dark one, `3` the darkest in both. `--C-CANVAS` is not an end of the scale — it is the page floor and sits **between rungs 1 and 2**, so `0`–`1` are raised above the page (cards, dialogs, popovers, sidebars, input fills) and `2`–`3` are recessed into it (hover washes, chips, tracks, disabled fills). A rung is still not an elevation: two things on the same rung are meant to look alike, and separating them is the job of `--SHADOW-*` and `--C-BORDER-DEFAULT`. Full section: [css contract → Surfaces](https://github.com/BatthewZ/response-ui-css/blob/main/docs/theme-contract.md#surfaces-layered-backgrounds).
 
 ### The contrast pairing
 

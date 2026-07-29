@@ -140,14 +140,16 @@
   color: var(--C-TEXT-PRIMARY);
 }
 
-/* Enclosed variant: background on hover is safe (uses border-based indication) */
+/* Enclosed variant: background on hover is safe (uses border-based indication).
+   Rung 2 (recessed), not 0 — the selected tab below claims rung 0, so an
+   unselected hover has to sit on the recessed side to read as "not selected". */
 .tabs-list--enclosed .tabs-tab:hover:not(:disabled):not([aria-selected="true"]) {
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-2);
 }
 
 /* Pill variant: subtle hover bg on unselected tabs only (preserves the pill indicator on the selected tab) */
 .tabs-list--pill .tabs-tab:hover:not(:disabled):not([aria-selected="true"]) {
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-2);
   border-radius: var(--RADIUS-MD);
 }
 

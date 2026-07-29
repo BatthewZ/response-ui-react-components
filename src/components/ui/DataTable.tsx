@@ -579,7 +579,9 @@ function ExpandableDetailRow({
 
   return (
     <Table.Row className="data-table-expanded-row">
-      <Table.Cell colSpan={colSpan} className="data-table-expanded-cell bg-surface-1">
+      {/* Rung 3: a well cut into the sheet, and deeper than the zebra band at
+          rung 2 so an expanded row never reads as just another band. */}
+      <Table.Cell colSpan={colSpan} className="data-table-expanded-cell bg-surface-3">
         <div
           ref={contentRef}
           className="data-table-expanded-content"

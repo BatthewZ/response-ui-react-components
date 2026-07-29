@@ -196,7 +196,8 @@ That is the whole contract surface, and three things are deliberately *outside* 
   it is dropped onto. Inside a `--C-SURFACE-2` container it is the same colour as its
   backdrop and disappears; mid-pulse, at `opacity: 0.4`, it fades toward the backdrop
   everywhere. Put skeletons on `--C-SURFACE-0`/`--C-SURFACE-1` — a
-  [Card](card.md) is `--C-SURFACE-0` and works — or override the fill.
+  [Card](card.md) is `--C-SURFACE-0` and works — or override the fill. Even there the step
+  is small: **1.08–1.21:1** on rung 0 and **1.04–1.11:1** on rung 1.
 
 ## Gotchas
 

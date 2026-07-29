@@ -113,7 +113,7 @@ in one file and every healthy meter in the app re-tints at runtime, no rebuild.
 | Fill, below thresholds        | `bg-accent`         | `--C-ACCENT`         |
 | Fill, at/above `warningAt`    | `bg-status-warning` | `--C-STATUS-WARNING` |
 | Fill, at/above `criticalAt`   | `bg-status-error`   | `--C-STATUS-ERROR`   |
-| Empty segment track           | `bg-surface-2`      | `--C-SURFACE-2`      |
+| Empty segment track           | `bg-surface-3`      | `--C-SURFACE-3`      |
 | Segment corners               | `rounded-sm`        | `--RADIUS-SM`        |
 | Gap between segments          | `gap-r6`            | `--R-SIZE-6`         |
 | Warning glyph                 | `text-status-warning` | `--C-STATUS-WARNING` |
@@ -123,9 +123,11 @@ Segment thickness is `h-r3` and the gap is `gap-r6`, both on the `--R-SIZE-*` sc
 only the thickness actually scales: `--R-SIZE-3` grows from `1rem` to `1.5rem` above the
 40rem breakpoint, so bars get taller with no work from you. The gap (`gap-r6` /
 `--R-SIZE-6`) is a constant `0.25rem` at both the base and the ≥40rem breakpoint, so
-segments never move further apart. There is no dedicated empty-vs-filled contrast token: the fill (accent or status)
-against `bg-surface-2` is the only thing distinguishing painted from unpainted, so a
-theme that makes accent or a status colour close to `--C-SURFACE-2` will flatten the
+segments never move further apart. The empty segment is `bg-surface-3`, the deepest rung —
+the same track [ProgressBar](progress-bar.md) and [Slider](slider.md) use, so the three read
+alike. There is no dedicated empty-vs-filled contrast token: the fill (accent or status)
+against `bg-surface-3` is the only thing distinguishing painted from unpainted, so a
+theme that makes accent or a status colour close to `--C-SURFACE-3` will flatten the
 meter.
 
 ## Gotchas
@@ -180,8 +182,9 @@ Measured against the surfaces a meter is likely to sit on, the glyph ink is: war
 default theme; `events` 3.09 / 3.00 / 2.87 and 4.68 / 4.54 / 4.35; `tech` 13.16 / 12.91 /
 12.15 and 5.55 / 5.44 / 5.12; `grimdark` 9.99 / 9.35 / 8.59 and 5.09 / 4.76 / 4.38. The
 warning glyph is **below the 3:1 floor of WCAG 1.4.11 on `--C-SURFACE-2`** in the default
-and `events` themes — the same shortfall the filled segments already have there, since
-they paint the identical token, but worth knowing before putting a meter on that surface.
+and `events` themes, so it is worth knowing before putting a meter on that surface. The
+empty track has since moved to `--C-SURFACE-3` and those figures do not cover that rung —
+re-measure the fill-against-track pairing before relying on it.
 
 Measured against the default theme and the worked examples; these numbers do not transfer to
 your own theme — re-check them against your values.

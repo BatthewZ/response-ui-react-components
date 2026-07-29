@@ -2,12 +2,13 @@
 /*  ProgressBar                                                        */
 /* ------------------------------------------------------------------ */
 
-/* Track (outer container) */
+/* Track (outer container) — rung 3, the deepest recession, matching every other
+   track in the system. */
 .progress-bar {
   position: relative;
   width: 100%;
   overflow: hidden;
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-3);
   border-radius: var(--RADIUS-FULL);
 }
 

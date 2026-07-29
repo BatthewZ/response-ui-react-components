@@ -37,12 +37,14 @@
 
 .dropdown-menu-item:hover,
 .dropdown-menu-item:focus-visible {
-  background: var(--C-SURFACE-1);
+  background: var(--C-SURFACE-2);
 }
 
-/* The wash above is the same in both states and measures 1.02–1.07:1 against the
-   panel, so on its own it left roving keyboard focus with no perceptible cue. Inset
-   ring, as `.app-shell-sidebar-link` uses for the same full-width-row shape. */
+/* The wash above is identical in both states, so it can never distinguish focus
+   from hover however large the step gets; and at rung 2 against the rung-0 panel
+   it measures 1.08–1.21:1, still an order below the 3:1 a state indicator owes.
+   The ring, not the fill, carries focus. Inset, as `.app-shell-sidebar-link`
+   uses for the same full-width-row shape. */
 .dropdown-menu-item:focus-visible {
   outline: 2px solid var(--C-BORDER-FOCUS);
   outline-offset: -2px;

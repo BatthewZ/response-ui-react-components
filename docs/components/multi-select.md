@@ -297,7 +297,7 @@ at runtime with the rest of the app.
 | Chevron ink                        | `--C-TEXT-SECONDARY`                         |
 | Listbox fill · border · shadow     | `--C-SURFACE-0` · `--C-BORDER-DEFAULT` · `--SHADOW-LG` |
 | Option ink                         | `--C-TEXT-PRIMARY`                           |
-| Highlighted option — wash · ring   | `--C-SURFACE-1` · `--C-BORDER-FOCUS`         |
+| Highlighted option — wash · ring   | `--C-SURFACE-2` · `--C-BORDER-FOCUS`         |
 | Disabled option ink · empty text   | `--C-TEXT-MUTED`                             |
 | Selected-option check              | `--C-ACCENT`                                 |
 | Query, option & empty-row type     | `--BodyText-2`                               |
@@ -322,13 +322,14 @@ like [TagInput](tag-input.md) reaches through a utility, so they track the theme
 **Measured contrast**, from the OKLCH values in `@batthewz/response-ui-css`, in
 default / `events` / `tech` / `grimdark`:
 
-- The **highlighted option**'s wash is `--C-SURFACE-1` on the listbox's `--C-SURFACE-0` —
-  **1.05 / 1.03 / 1.02 / 1.07:1**, invisible in all four measured themes, which is why it is no
-  longer the marker. The 2px `--C-BORDER-FOCUS` ring drawn over it measures **3.52 / 3.29 /
-  14.56 / 3.43:1** against that wash, clearing the 3:1 WCAG 1.4.11 asks of a focus indicator
-  in all four measured themes. It read 2.63 and 2.77 in `events` and `grimdark` until
-  `@batthewz/response-ui-css` **v0.10.1** retuned `--C-BORDER-FOCUS`.
-  See [Accessibility](#accessibility).
+- The **highlighted option**'s wash is `--C-SURFACE-2` — one rung recessed — on the listbox's
+  rung-0 `--C-SURFACE-0`: **1.08–1.21:1**, invisible in all four measured themes, which is why
+  it is no longer the marker. The 2px `--C-BORDER-FOCUS` ring drawn over it measures **3.52 /
+  3.29 / 14.56 / 3.43:1** against that wash, clearing the 3:1 WCAG 1.4.11 asks of a focus
+  indicator in all four measured themes. It read 2.63 and 2.77 in `events` and `grimdark` until
+  `@batthewz/response-ui-css` **v0.10.1** retuned `--C-BORDER-FOCUS`. Those ring figures were
+  taken while the wash was a rung-1 surface and have not been re-measured since it moved to
+  rung 2. See [Accessibility](#accessibility).
 - The **remove glyph** on a chip is `--C-TEXT-MUTED` on `--C-SURFACE-2`: **4.50:1 in all four measured
   themes** — each theme was tuned to land exactly on the floor there, so it clears 3:1 for a
   graphical affordance with room to spare but has no headroom as body text. It was 1.94–2.31
@@ -340,8 +341,8 @@ default / `events` / `tech` / `grimdark`:
   clearing 3:1 in every theme measured; it was 2.72 and 2.96 in `events` and `grimdark` before
   **v0.10.0**. Selection is also carried by the chip and by the option's heavier weight, so
   the check is corroboration rather than the only signal.
-- Chip fill against the control fill is **1.08–1.16:1**, so a chip is delimited by its
-  radius and its ink weight far more than by its background.
+- Chip fill (`--C-SURFACE-2`) against the control fill (`--C-SURFACE-0`) is **1.08–1.21:1**,
+  so a chip is delimited by its radius and its ink weight far more than by its background.
 
 Chip label ink is the one pairing with margin to spare: `--C-TEXT-SECONDARY` on
 `--C-SURFACE-2` measures **6.87 / 6.87 / 5.32 / 5.11:1**.
@@ -403,8 +404,8 @@ Four things to plan around:
 - **Every chip's × is a tab stop.** `Tab` walks the chips before reaching the input, so any
   chip can be removed from the keyboard, not just the last one via Backspace. Removing a chip
   moves focus to the next chip's ×, or to the input when the last one goes.
-- **The highlighted option is marked by a ring, not by its wash.** The `--C-SURFACE-1`
-  background is 1.02–1.07:1 and carries nothing on its own, so `.multiselect-item[data-active]`
+- **The highlighted option is marked by a ring, not by its wash.** The `--C-SURFACE-2`
+  background is 1.08–1.21:1 on the rung-0 popup and carries nothing on its own, so `.multiselect-item[data-active]`
   also draws a 2px `--C-BORDER-FOCUS` outline at `-2px` offset. It has to come from the
   attribute rather than `:focus-visible`, because DOM focus never leaves the input and that
   pseudo-class can never match an option. The ring measures 3.52 / 3.29 / 14.56 / 3.43:1

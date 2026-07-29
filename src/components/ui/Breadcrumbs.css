@@ -71,7 +71,7 @@
 
 .breadcrumbs__ellipsis:hover {
   color: var(--C-TEXT-SECONDARY);
-  background-color: var(--C-SURFACE-1);
+  background-color: var(--C-SURFACE-2);
 }
 
 .breadcrumbs__ellipsis:focus-visible {

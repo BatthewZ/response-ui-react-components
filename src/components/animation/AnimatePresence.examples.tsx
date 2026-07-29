@@ -37,7 +37,7 @@ export function WrapperProps() {
   return (
     <>
       <button onClick={() => setSaved(true)}>Save settings</button>
-      <AnimatePresence show={saved} role="status" className="rounded-md bg-surface-1 p-r3">
+      <AnimatePresence show={saved} role="status" className="rounded-md bg-surface-2 p-r3">
         Settings saved.
       </AnimatePresence>
     </>

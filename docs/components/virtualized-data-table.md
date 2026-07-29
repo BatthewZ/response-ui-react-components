@@ -345,7 +345,7 @@ everywhere else too:
   2px `--C-BORDER-DEFAULT` rule and, when sticky, casts `--SHADOW-SM` from each header cell.
   Header and body text ink `--C-TEXT-PRIMARY`, and cell type is `--BodyText-2` at `dense`,
   `--BodyText-1` otherwise. Rows are separated by 1px of `--C-BORDER-DEFAULT`; a striped row
-  fills `--C-SURFACE-1`, and a selected row an 8% `--C-ACCENT` wash plus a 3px `--C-ACCENT`
+  fills `--C-SURFACE-2`, and a selected row an 8% `--C-ACCENT` wash plus a 3px `--C-ACCENT`
   bar down its leading edge (the wash alone measures 1.07–1.13:1 — see
   [Table](table.md#accessibility)). A sortable header hovers to
   `--C-SURFACE-2`, presses to `--C-SURFACE-3`, and focuses with a 2px `--C-BORDER-FOCUS`

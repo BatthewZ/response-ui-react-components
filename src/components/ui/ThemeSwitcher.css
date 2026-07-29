@@ -3,7 +3,7 @@
   gap: 0.125rem;
   padding: 0.125rem;
   border-radius: var(--RADIUS-LG);
-  background: var(--C-SURFACE-2);
+  background: var(--C-SURFACE-3);
   border: 1px solid var(--C-BORDER-DEFAULT);
 }
 
@@ -28,9 +28,11 @@
   outline-offset: -2px;
 }
 
+/* Ladder: well 3 / hover 2 / active 0. The hover wash must stay a rung above the
+   group's own fill or it is invisible — move the two together. */
 .theme-switcher__option:hover {
   color: var(--C-TEXT-PRIMARY);
-  background: var(--C-SURFACE-1);
+  background: var(--C-SURFACE-2);
 }
 
 .theme-switcher__option--active {

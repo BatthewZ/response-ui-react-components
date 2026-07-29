@@ -258,8 +258,9 @@ these re-tints it at runtime with no rebuild.
 
 | Where                                        | Override                                        |
 | -------------------------------------------- | ----------------------------------------------- |
-| Dropzone fill · overlay remove buttons        | `--C-SURFACE-1`                                 |
-| Drag-over fill · thumbnail & glyph wells      | `--C-SURFACE-2`                                 |
+| Dropzone fill · thumbnail & glyph wells       | `--C-SURFACE-2`                                 |
+| Drag-over fill                                | `--C-SURFACE-3`                                 |
+| Overlay remove buttons                        | `--C-SURFACE-0`                                 |
 | Dashed border · row separators · action bar   | `--C-BORDER-DEFAULT`                            |
 | Hover + drag-over border · glyph · focus ring | `--C-BORDER-FOCUS`                              |
 | Prompt · hint · size · glyphs · Clear all     | `--C-TEXT-MUTED`                                |
@@ -315,17 +316,18 @@ so the component is doing the right thing and the fix belongs upstream.
 **Row two is the other one still failing, and it is not text.** The dashed border is the entire
 affordance that says "you can drop here", and at 1.18–1.26:1 it is far under the 3:1 WCAG 1.4.11
 asks of a graphical object, in every theme measured. Unlike row four this one cannot be fixed in the
-palette either: it pairs `--C-BORDER-DEFAULT` against the zone fill, and the whole surface ramp
-spans about 1.2 end to end by design. Retint through `--C-BORDER-DEFAULT` or `className` if it
-matters for your audience.
+palette either: it pairs `--C-BORDER-DEFAULT` against the zone fill, and the whole surface
+ramp — rung 0 to rung 3 — spans **1.13–1.25:1** by design. Retint through
+`--C-BORDER-DEFAULT` or `className` if it matters for your audience.
 
 The contract promises a ratio for none of these pairings, which is exactly why they are worth
-measuring — and why two of the four moved without this component changing. Measured against
-the default theme and the worked examples; these numbers do not transfer to your own theme —
-re-check them against your values.
+measuring — and why two of the four moved without this component changing. The two "zone fill"
+rows were measured while the dropzone was a rung-1 surface and have not been re-taken since it
+moved to rung 2. Measured against the default theme and the worked examples; these numbers do
+not transfer to your own theme — re-check them against your values.
 
-Drag-over feedback rests on the same arithmetic: the fill moves `--C-SURFACE-1` →
-`--C-SURFACE-2`, a 1.04–1.09:1 change nobody can see, so the whole signal is the border going
+Drag-over feedback rests on the same arithmetic: the fill drops one rung deeper,
+`--C-SURFACE-2` → `--C-SURFACE-3`, a **1.02–1.13:1** change nobody can see, so the whole signal is the border going
 `--C-BORDER-FOCUS`. Measured against `@batthewz/response-ui-css` **v0.10.1**, that border
 clears the 3:1 floor on the drag-over fill in every theme measured — **3.34** default · **3.15**
 `events` · **13.70** `tech` · **3.15** `grimdark`. The two low values used to be 2.52 and

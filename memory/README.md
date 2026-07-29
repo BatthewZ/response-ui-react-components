@@ -61,5 +61,12 @@ to understand.
    an unmeasured rationale, and the rationale is usually the part that sized the change. Rigour
    in a row is a reason to check *which claim* the evidence bears on, not a reason to stop.
 
+13. **When a contracted token is unusable in the role the contract gives it, suspect the token
+   before rewriting its consumers.** Cards were moved off the raised rung because that rung was
+   byte-identical to the page canvas and left them with no boundary — a real defect, fixed in the
+   wrong layer, and it cost every card in the library its intended colour. The tell is that the
+   fix makes the component look *worse* in order to satisfy a rule. A rule that can only be
+   obeyed by degrading the thing it governs is usually the part that is wrong.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

@@ -131,7 +131,10 @@ code. The gates stayed green throughout. The owner reversed it.
   actually global.** §D hoisted the focus ring into `src/util/focus.ts` and, with it,
   settled `ring-offset` to `0` everywhere. The reasoning was sound and is still in the
   docblock: the offset paints a band of `--tw-ring-offset-color`, themed to
-  `--C-SURFACE-0`, so on a control sitting on surface-1/2 it reads as a halo. What
+  `--C-SURFACE-0`, so on a control sitting on another rung it reads as a halo. (Since the
+  2026-07-29 ramp change that mismatch is rarer — rung 0 is now the sheet colour that
+  cards, dialogs, menus and input fills all share — but the page canvas is no longer rung
+  0 in any theme, so the case still exists.) What
   nobody measured was the case where the band is *load-bearing* rather than decorative
   — a control that paints its **own fill**. Measured across the four themes, the ring
   sits at **1.31:1** against `--C-STATUS-ERROR` and **1.76:1** against `--C-SECONDARY`,
@@ -624,15 +627,20 @@ collision, left alone because briefs in flight cite the later one by letter.)
 
 ## R · From the pass that asked whether cards read lighter than the page
 
-- **A surface ramp is a nesting depth, not an elevation, and the two only agree in light
-  themes.** The token numbers ascend as a region gets further from the page background, so a
-  light theme runs light → dark across them and a dark theme runs dark → light. Elevation is a
-  *fixed* order — a dialog is always above a card — and the ramp is not: give the more-elevated
-  thing the lower number and it renders lighter than its backdrop in one theme and darker in
-  the other, so the same composition reads as a raised tile and as a hole punched in a panel
-  depending on the theme. Every component that expresses "on top of" through a fill step has
-  this bug and it is invisible in whichever theme you developed in. Elevation belongs to the
-  shadow and border tokens, which point the same way in every theme.
+- **SUPERSEDED 2026-07-29 — the ramp was redefined, and the lesson this pass drew was the wrong
+  one.** This pass asked why cards read lighter than the page, correctly established that the
+  ramp's lightness direction reversed between light and dark themes, and then concluded that the
+  *components* were misusing it — moving `Card` and `StatCard` down a rung so they stopped
+  colliding with the canvas. That treated a symptom. The actual defect was in the token layer:
+  the canvas sat at an *endpoint* of the ramp and was byte-identical to rung 0 in both shipped
+  light themes, so nothing could paint the raised rung without vanishing, and the free direction
+  meant light-theme surfaces sank while dark-theme surfaces lifted from the same token. Both are
+  now fixed at source — the ramp runs raised → recessed in one lightness direction in every
+  theme, and the canvas sits *between* rungs 1 and 2 — and the components moved back.
+  **The transferable lesson is the one this pass missed:** when a token is unusable in the role
+  the contract assigns it, suspect the token's own definition before rewriting every consumer to
+  avoid it. The give-away was that the fix made the component look worse (a faded card) to satisfy
+  a rule, which is what a symptom fix feels like from the inside.
 - **A container whose only boundary is its fill has no boundary.** One step on the surface ramp
   measures barely over 1:1 in every shipped theme, and a container will eventually be dropped
   onto a backdrop the design system itself paints on the container's own rung — at which point

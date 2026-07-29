@@ -109,9 +109,13 @@
 /* The class is emitted only on the rows that are actually banded — parity is
    decided from the data index in Table.tsx, not from DOM position, so a detail
    row or a virtualiser spacer between two data rows cannot flip the bands below
-   it (#365, #368). */
+   it (#365, #368).
+
+   Rung 2: a band is a mild recession within the rung-0 sheet, not a raised
+   panel. Against the sheet that measures 1.08–1.21:1 across the themes — a
+   band, not a block. */
 .table-row--striped {
-  background: var(--C-SURFACE-1);
+  background: var(--C-SURFACE-2);
 }
 
 /* #351. The 8% wash is not a signal: measured from rendered pixels in Firefox
@@ -122,7 +126,9 @@
    The leading marker is what carries the state visually; the wash is
    reinforcement. --C-ACCENT painted over the washed row measures
    4.65 / 4.38 / 13.08 / 5.30 in the same run, clearing the 3:1 WCAG 1.4.11 asks
-   of a non-text indicator in all four themes.
+   of a non-text indicator in all four themes. (The selected-vs-striped figures
+   were measured while the band was rung 1; it is rung 2 now, so treat them as
+   indicative until remeasured. The selected-vs-unselected pair is unaffected.)
 
    Painted as a background-image, not a border: in the collapsed border model a
    `border-inline-start` on a `<tr>` joins border-conflict resolution and moves

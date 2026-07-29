@@ -21,7 +21,7 @@ export function WithAppThemes() {
 /** Its natural home: the trailing edge of a header bar. */
 export function InANavbar() {
   return (
-    <header className="flex items-center justify-between gap-r4 rounded-lg bg-surface-1 px-r4 py-r5">
+    <header className="flex items-center justify-between gap-r4 rounded-lg bg-surface-0 px-r4 py-r5">
       <span className="text-h6">Response UI</span>
       <ThemeSwitcher themes={APP_THEMES} labels={APP_LABELS} />
     </header>

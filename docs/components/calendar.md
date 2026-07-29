@@ -304,7 +304,7 @@ date — `"June 13, 2026"` — so a screen reader never reads a bare `"13"`.
   `--C-SURFACE-0`, and 3.34 / 3.15 / 13.70 / 3.15 on `--C-SURFACE-2`. It used to read 2.72
   and 2.96 in `events` and `grimdark` — those themes copied their *pre-retune* accent into
   the focus token, and v0.10.1 retuned it. **On `--C-SURFACE-3` it still falls short**
-  (2.97 / 2.87 / 12.37 / 2.74), so a calendar rendered on the surface furthest from the canvas
+  (2.97 / 2.87 / 12.37 / 2.74), so a calendar rendered on the deepest surface rung
   has a focus ring under the floor in three of the four measured themes.
 - **The root has no role or name.** It is a bare `<div>`; if the calendar needs to be a
   labelled region, pass `role` and `aria-label` through — they reach the root untouched.

@@ -28,7 +28,7 @@ export function Sizes() {
  *  The same wrapping gives you a landmark: `<main><Container>…</Container></main>`. */
 export function FullBleedBackground() {
   return (
-    <div className="bg-surface-1">
+    <div className="bg-surface-0">
       <Container size="lg">
         <h2>Trusted by teams everywhere</h2>
         <p>The band stretches edge to edge; the text stays within the measure.</p>

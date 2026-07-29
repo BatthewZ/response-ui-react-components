@@ -155,7 +155,7 @@ runtime, with no rebuild.
 | Current ring weight                | `--_stepper-active-line-width`, `1.5 x --_stepper-line-width` |
 | Done chip fill · ring and glyph    | `--C-PRIMARY` · `--C-TEXT-ON-PRIMARY`         |
 | Unfilled rail · upcoming ring      | `--C-BORDER-DEFAULT`                          |
-| Marker background                  | `--C-SURFACE-1`                               |
+| Marker background                  | `--C-SURFACE-2`                               |
 | Upcoming number                    | `--C-TEXT-MUTED`                              |
 | Marker hover border (clickable)    | `--C-BORDER-STRONG`                           |
 | Focus outline                      | `--C-BORDER-FOCUS`                            |

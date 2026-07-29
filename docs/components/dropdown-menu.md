@@ -210,7 +210,7 @@ rebuild.
 | ------------------------- | ----------------------------------------------------------------- |
 | Menu surface              | `--C-SURFACE-0` · `--C-BORDER-DEFAULT` · `--RADIUS-MD` · `--SHADOW-LG` |
 | Item label                | `--C-TEXT-PRIMARY` · `--BodyText-2`                               |
-| Item hover / focus wash   | `--C-SURFACE-1`                                                   |
+| Item hover / focus wash   | `--C-SURFACE-2`                                                   |
 | Item focus ring           | `--C-BORDER-FOCUS`                                                |
 | Item icon                 | `--C-TEXT-SECONDARY`                                              |
 | Disabled item label       | `--C-TEXT-MUTED`                                                  |
@@ -290,16 +290,18 @@ Items are skipped by the arrow keys when `aria-disabled`, which is Floating UI's
 is the menu-button pattern implemented properly — with four things still to know:
 
 - **The focus ring is real, but thin in two themes.** `.dropdown-menu-item` resets the UA
-  outline and paints the same `--C-SURFACE-1` wash it uses for hover — **1.02:1 to 1.07:1**
-  against `--C-SURFACE-0`, which on its own is no indicator at all — so a `:focus-visible` rule
-  puts a 2px `--C-BORDER-FOCUS` outline back at `-2px` offset. Against that wash it measures
+  outline and paints the same `--C-SURFACE-2` wash it uses for hover — a recessed step of
+  **1.08–1.21:1** against the menu's rung-0 `--C-SURFACE-0`, which on its own is no indicator
+  at all — so a `:focus-visible` rule puts a 2px `--C-BORDER-FOCUS` outline back at `-2px`
+  offset. Against that wash it measures
   **3.52 / 3.29 / 14.56 / 3.43:1** (default / `events` / `tech` / `grimdark`) against
   `@batthewz/response-ui-css` **v0.10.1**, clearing the 3:1 that WCAG 2.2 SC 1.4.11 asks of a
   focus indicator in all four measured themes. `events` and `grimdark` read 2.63 and 2.77 before
-  that release, which retuned `--C-BORDER-FOCUS` in exactly those two. Measured against the
-  default theme and the worked examples; these numbers do not transfer to your own theme —
-  re-check them against your values. Re-tint `--C-BORDER-FOCUS` rather than overriding this
-  rule.
+  that release, which retuned `--C-BORDER-FOCUS` in exactly those two. Those ring figures were
+  taken while the wash was a rung-1 surface and have not been re-measured since it moved to
+  rung 2. Measured against the default theme and the worked examples; these numbers do not
+  transfer to your own theme — re-check them against your values. Re-tint `--C-BORDER-FOCUS`
+  rather than overriding this rule.
 - **`Tab` closes the menu, as the APG menu-button pattern asks.** A `Tab` or `Shift+Tab`
   keydown on the trigger or inside the menu closes it rather than leaving it open behind. The
   case that made this matter: a menu opened **with the mouse** has no focused item, so focus

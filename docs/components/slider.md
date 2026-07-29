@@ -167,7 +167,7 @@ so overriding one re-tints every slider in the app at runtime, with no rebuild.
 | Where                                  | Override             |
 | -------------------------------------- | -------------------- |
 | Filled part of the track, and the thumb | `--C-ACCENT`         |
-| Unfilled part of the track              | `--C-SURFACE-2`      |
+| Unfilled part of the track              | `--C-SURFACE-3`      |
 | Thumb ring                              | `--C-SURFACE-0`      |
 | Focus ring                              | `--C-BORDER-FOCUS`   |
 | Outline when invalid                    | `--C-STATUS-ERROR`   |
@@ -193,8 +193,8 @@ a flat `0.5` opacity. None of them sit on the responsive `r`-scale, so a slider 
 the same size on mobile and desktop while the layout around it steps up at the 40rem
 breakpoint.
 
-The thumb's 2px ring is hard-wired to `--C-SURFACE-0`, the *base* surface — see
-[Gotchas](#gotchas) before dropping a slider on a card. The focus ring needs no
+The thumb's 2px ring is hard-wired to `--C-SURFACE-0`, the *raised-sheet* rung — see
+[Gotchas](#gotchas) before dropping a slider on the page canvas. The focus ring needs no
 backdrop-coloured gap: it lands flush on that ring, so it carries no surface guess of its
 own.
 
@@ -226,11 +226,12 @@ own.
   negative range rather than dividing by zero, so the track reads as empty no matter what
   `value` is. The browser separately treats a `max` below `min` as `min`, pinning the
   thumb.
-- **The thumb ring assumes the base surface.** The 2px thumb border is `--C-SURFACE-0`. On
-  any other layer — a `--C-SURFACE-1` card, a tinted panel — that ring is a visible halo in
-  the wrong colour. (The focus ring no longer adds a surface-coloured gap of its own; the
-  border is the only place the guess lives.) Restyle it through `className`, or keep
-  sliders on the base surface.
+- **The thumb ring assumes a rung-0 sheet.** The 2px thumb border is `--C-SURFACE-0`, so it
+  disappears cleanly on a [Card](card.md), a [Dialog](dialog.md), a [Drawer](drawer.md) or the
+  [AppShell](app-shell.md) chrome — all rung 0. On the page canvas, on a `--C-SURFACE-1` panel
+  nested inside a sheet, or on a tinted one, it is a visible halo in the wrong colour. (The
+  focus ring no longer adds a surface-coloured gap of its own; the border is the only place
+  the guess lives.) Restyle it through `className`, or keep sliders on a rung-0 sheet.
 - **Your `style` wins over the fill.** The component writes `--slider-fill` first and
   spreads your `style` after it, so `style={{ "--slider-fill": "…" }}` overrides the
   computed fill and desynchronises it from the thumb.

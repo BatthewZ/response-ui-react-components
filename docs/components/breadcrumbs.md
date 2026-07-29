@@ -142,7 +142,7 @@ rest of the app, at runtime, with no rebuild.
 | Non-link crumb ink        | `--C-TEXT-SECONDARY`                                                 |
 | Current crumb             | `--C-TEXT-PRIMARY` · `--Semibold-Weight`                             |
 | Separator ink             | `--C-TEXT-MUTED`                                                     |
-| Ellipsis button           | `--C-TEXT-MUTED` at rest · `--C-TEXT-SECONDARY` and `--C-SURFACE-1` on hover |
+| Ellipsis button           | `--C-TEXT-MUTED` at rest · `--C-TEXT-SECONDARY` and `--C-SURFACE-2` on hover |
 | Focus outline             | `--C-BORDER-FOCUS`                                                   |
 | Corners                   | `--RADIUS-SM`                                                        |
 | Item gap · ellipsis inset | `--R-SIZE-6`                                                         |
@@ -249,7 +249,7 @@ trail, or if the UI isn't in English.
   `@batthewz/response-ui-css` **v0.10.1** at **4.85:1–5.23:1** on `--C-SURFACE-0` across the
   four measured themes — over AA's 4.5:1, where it read 2.10–2.59 before **v0.10.0** retuned that
   token. **On `--C-SURFACE-3` it still falls short at 3.92:1–4.10:1**, so a trail rendered on the
-  surface furthest from the canvas is under AA though over AA-large's 3:1. Decorative separators can live
+  deepest surface rung is under AA though over AA-large's 3:1. Decorative separators can live
   with that either way; the ellipsis is the one control on the trail a user has to find, so if
   you place breadcrumbs on `--C-SURFACE-3`, give it its own ink.
 - **Nothing marks a crumb as clickable at rest.** A link and a plain text crumb are both

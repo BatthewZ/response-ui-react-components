@@ -11,9 +11,10 @@
   display: block;
 }
 
-/* Track (muted background ring) */
+/* Track (muted background ring) — rung 3, the deepest recession, shared by
+   every track in the system (ProgressBar, Meter, Slider). */
 .progress-ring__track {
-  stroke: var(--C-SURFACE-2);
+  stroke: var(--C-SURFACE-3);
 }
 
 /* Indicator (progress arc) */

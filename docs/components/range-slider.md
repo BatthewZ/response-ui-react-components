@@ -242,7 +242,7 @@ app at runtime, with no rebuild.
 | Where                                             | Override           |
 | ------------------------------------------------- | ------------------ |
 | Selected segment between the thumbs, and both thumbs | `--C-ACCENT`    |
-| Unselected rail                                   | `--C-SURFACE-2`    |
+| Unselected rail                                   | `--C-SURFACE-3`    |
 | Segment and thumbs when invalid                   | `--C-STATUS-ERROR` |
 | Ring around each thumb                            | `--C-SURFACE-0`    |
 | Focus ring on the focused thumb                   | `--C-BORDER-FOCUS` |
@@ -262,8 +262,8 @@ A handful of measurements are **not** on the contract and are not themeable: the
 around it steps up at the 40rem breakpoint. Width comes from the parent — this control always
 fills it.
 
-Each thumb's 2px ring is hard-wired to `--C-SURFACE-0`, the *base* surface — see
-[Gotchas](#gotchas) before dropping one on a card. The focus ring lands flush on that ring,
+Each thumb's 2px ring is hard-wired to `--C-SURFACE-0`, the *raised-sheet* rung — see
+[Gotchas](#gotchas) before dropping one on the page canvas. The focus ring lands flush on that ring,
 with no backdrop-coloured gap of its own.
 
 ## Gotchas
@@ -300,10 +300,12 @@ with no backdrop-coloured gap of its own.
   since the inputs are stretched across the rail — and the focused thumb paints its own
   `--C-BORDER-FOCUS` ring instead, valid or invalid alike, so the indicator is consistent
   between the two states.
-- **The thumb ring assumes the base surface.** The 2px thumb border is `--C-SURFACE-0`. On
-  any other layer — a `--C-SURFACE-1` card, a tinted panel — that ring reads as a halo in the
-  wrong colour. (The focus ring adds no surface-coloured gap of its own.) Restyle it through
-  `className`, or keep range sliders on the base surface.
+- **The thumb ring assumes a rung-0 sheet.** The 2px thumb border is `--C-SURFACE-0`, so it
+  vanishes into a [Card](card.md), a [Dialog](dialog.md) or the [AppShell](app-shell.md)
+  chrome — all rung 0. On the page canvas, on a `--C-SURFACE-1` panel nested inside a sheet,
+  or on a tinted one, it reads as a halo in the wrong colour. (The focus ring adds no
+  surface-coloured gap of its own.) Restyle it through `className`, or keep range sliders on
+  a rung-0 sheet.
 - **Both CSS imports are required.** The `.range-slider` rules live in this package's `styles`
   entry and read `--C-*` / `--RADIUS-*` from `@batthewz/response-ui-css` — import the
   foundation first, then this package's `styles`. Without them you get two unstyled native

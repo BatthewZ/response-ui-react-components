@@ -339,7 +339,7 @@ rebuild.
 | Sort button focus outline      | `--C-BORDER-FOCUS`                                        |
 | Sort arrow                     | `--C-TEXT-MUTED` unsorted · `--C-ACCENT` sorted           |
 | Row divider                    | `--C-BORDER-DEFAULT`                                      |
-| Striped row                    | `--C-SURFACE-1`                                           |
+| Striped row                    | `--C-SURFACE-2`                                           |
 | Selected row wash              | `--C-ACCENT`, mixed to 8% in oklch                        |
 | Selected row marker            | `--C-ACCENT` at full strength · width `--_table-selected-marker-width` (3px, private) |
 | Cell ink                       | `--C-TEXT-PRIMARY`                                        |
@@ -349,6 +349,12 @@ rebuild.
 
 The transition is dropped entirely under `prefers-reduced-motion: reduce`; nothing else in
 the component animates.
+
+The rungs are chosen to read as one sheet with things cut into and standing on it. The table
+itself is `--C-SURFACE-0`, the raised rung; the header band is `--C-SURFACE-1`, a secondary
+raised panel on that sheet; and a zebra row is `--C-SURFACE-2`, a *mild recession* rather
+than a raised block — **1.08–1.21:1** against the sheet across the measured themes. A
+sortable header presses one rung deeper still, to `--C-SURFACE-3`.
 
 Two things are **not** on the contract, and are worth knowing before you theme:
 
@@ -457,7 +463,9 @@ from the component.
   **1.11:1** against an unselected row in the default theme, **1.12:1** in `events`,
   **1.13:1** in `tech` and **1.07:1** in `grimdark` — and against a *striped* neighbour
   **1.06 / 1.08 / 1.11 / 1.00**, so in `grimdark` a selected row and an ordinary banded row
-  are the same luminance to the pixel. That is why a selected row also paints a 3px
+  are the same luminance to the pixel. (Those striped-neighbour figures were taken while the
+  zebra band was a rung-1 surface and have not been re-measured since it moved to rung 2; the
+  unselected-row figures are unaffected.) That is why a selected row also paints a 3px
   `--C-ACCENT` bar down its inline-start edge: present-or-absent rather than a hue shift, and
   measured at **4.65 / 4.38 / 13.08 / 5.30** against the washed row, clearing the 3:1 WCAG
   1.4.11 asks of a non-text indicator in all four measured themes. Measured against the default theme and the

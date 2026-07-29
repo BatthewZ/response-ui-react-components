@@ -13,7 +13,7 @@
   background: linear-gradient(
     to right,
     var(--C-ACCENT) var(--slider-fill, 0%),
-    var(--C-SURFACE-2) 0
+    var(--C-SURFACE-3) 0
   );
 }
 

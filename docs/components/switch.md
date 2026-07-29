@@ -204,7 +204,7 @@ runtime, with no rebuild.
 
 | Where                       | Override                  |
 | --------------------------- | ------------------------- |
-| Track, off                  | `--C-SURFACE-2`           |
+| Track, off                  | `--C-SURFACE-3`           |
 | Track, on                   | `--C-ACCENT`              |
 | Thumb                       | `--C-SURFACE-0`           |
 | Track & thumb corners       | `--RADIUS-FULL`           |
@@ -227,15 +227,15 @@ that positions the thumb, the thumb's `1.25rem`/`1rem` travel distance, the disa
 is track width minus thumb width minus padding — so they are fixed rather than themeable.
 
 Note what is **not** in the table: there is no border token. `all: unset` strips the button's
-border and nothing adds one back, so the track's only edge is where its `--C-SURFACE-2` meets
+border and nothing adds one back, so the track's only edge is where its `--C-SURFACE-3` meets
 the page. See [Accessibility](#accessibility) — that has measurable consequences.
 
 ## Gotchas
 
-- **Off, the thumb is all but invisible.** The thumb is `--C-SURFACE-0` on a `--C-SURFACE-2`
-  track: **1.08:1 to 1.16:1** across the four measured themes, against the 3:1 that WCAG 1.4.11
-  asks of a part you need to see to read the state. The track is only 1.04:1–1.16:1 against a
-  `--C-SURFACE-0` or `--C-SURFACE-1` page, and has no border. So an off Switch is in practice a
+- **Off, the thumb is all but invisible.** The thumb is `--C-SURFACE-0` on a `--C-SURFACE-3`
+  track — the ramp's two ends, and still only **1.13–1.25:1** across the measured themes,
+  against the 3:1 that WCAG 1.4.11 asks of a part you need to see to read the state. The track
+  is the same 1.13–1.25:1 against a rung-0 sheet, and has no border. So an off Switch is in practice a
   faint empty pill — and the on/off difference a user actually perceives is the accent tint,
   not the thumb's position. See [Accessibility](#accessibility).
 - **The mode locks at mount.** `useControllableState` records `checked !== undefined` on the
@@ -310,10 +310,10 @@ holds no matter how the consumer's Tailwind build is configured.
 `--C-ACCENT` track clears the 3:1 that WCAG 1.4.11 requires of a state indicator in all four measured
 themes — **5.17** default · **4.89** `events` · **14.84** `tech` · **5.69** `grimdark`. `events` and
 `grimdark` read 2.72 and 2.96 before **v0.10.0** retuned the accent, so that half of this
-finding is closed. Switched **off**, the same thumb sits on a `--C-SURFACE-2` track at
-**1.08:1–1.16:1 in all four measured themes**, and no palette retune can fix it — the whole surface ramp
-spans about 1.2 end to end by design. There is no border to fall back on
-either. The consequence is that the moving
+finding is closed. Switched **off**, the same thumb sits on a `--C-SURFACE-3` track at
+**1.13–1.25:1 in all four measured themes**, and no palette retune can fix it — rung 0 against
+rung 3 *is* the full span of the surface ramp, and that span is 1.13–1.25:1 by design. There
+is no border to fall back on either. The consequence is that the moving
 thumb — the non-colour cue that is supposed to keep a switch out of the WCAG 1.4.1
 "colour alone" trap — is not reliably perceivable, leaving the accent tint doing the work by
 itself. That is deliberately filed as 1.4.11 and not also as 1.4.1: the second, non-colour

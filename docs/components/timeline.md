@@ -311,7 +311,7 @@ contract variables directly, the way Tabs and ActivityFeed do.
 | Rail (per item, `::before`), and the card's 1px border | `--C-BORDER-DEFAULT`              |
 | Default dot fill                            | `--C-ACCENT`                                 |
 | Dot corners                                 | `--RADIUS-FULL`                              |
-| Card surface (dropped by `card={false}`)    | `--C-SURFACE-1`                              |
+| Card surface (dropped by `card={false}`)    | `--C-SURFACE-0`                              |
 | Card corners                                | `--RADIUS-LG`                                |
 | Card padding — `comfortable`                | `--R-SIZE-4`                                 |
 | Gutter (single-column padding · alternating card inset) | `--R-SIZE-2`                      |
@@ -372,8 +372,11 @@ event rather than floating between two. `density` moves the between-events figur
 in-entry gaps alone, which is what keeps the grouping intact as the list tightens. The nearest
 sibling component, [ActivityFeed](activity-feed.md), spends the same tokens in the same roles.
 
-The card sits on `--C-SURFACE-1`, so inside an ancestor already painted `--C-SURFACE-1` it
-has nothing but its `--C-BORDER-DEFAULT` hairline to separate it — `card={false}` drops both. The
+The card sits on `--C-SURFACE-0`, the raised-sheet rung, so inside an ancestor already on that
+rung — a [Card](card.md), a [Dialog](dialog.md), a [Drawer](drawer.md) — it has nothing but its
+`--C-BORDER-DEFAULT` hairline to separate it; `card={false}` drops both. On the page floor the
+fill is a **1.05–1.16:1** lift off `--C-CANVAS`, so the hairline is doing most of the work there
+too. The
 date is deliberately `--C-TEXT-MUTED`, which is hint-level contrast — treat it as supplementary.
 Nothing in `Timeline.css` declares an animation; the entrance comes from the shared `fade-right`
 class in `@batthewz/response-ui-css`, which reads the shared `--MOTION-DURATION-ENTER` and

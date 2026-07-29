@@ -158,7 +158,7 @@ There is no `ErrorBoundary.css` — the built-in fallback is styled with utiliti
 
 | Where             | Utility             | Override                                        |
 | ----------------- | ------------------- | ----------------------------------------------- |
-| Fallback backdrop | `bg-surface-1`      | `--C-SURFACE-1`                                 |
+| Fallback backdrop | `bg-surface-0`      | `--C-SURFACE-0`                                 |
 | Fallback padding  | `p-r2`              | `--R-SIZE-2`                                    |
 | Heading type      | `text-h3`           | `--H3` (and its `-line-height` pair)            |
 | Heading weight    | `font-bold`         | `--Bold-Weight`                                 |
@@ -166,6 +166,10 @@ There is no `ErrorBoundary.css` — the built-in fallback is styled with utiliti
 | Body copy ink     | `text-fg-secondary` | `--C-TEXT-SECONDARY`                            |
 | Body gap          | `mb-r3`             | `--R-SIZE-3`                                    |
 | Retry button      | —                   | everything [Button](button.md#theme-tokens) reads (`primary`, `md`) |
+
+The fallback is rung 0 because it stands in for the card that failed, and it draws no
+border of its own — the raised sheet is the only thing giving it an edge against
+`--C-CANVAS`, and that edge is a **1.05–1.16:1** lift.
 
 The heading sets **no** colour of its own, so it inherits whatever `color` the boundary
 lands in rather than `--C-TEXT-PRIMARY`. Type and spacing sit on the library's `text-h*`
@@ -190,7 +194,7 @@ values.
   spread to restyle them. A localized or restyled error screen means passing `fallback`;
   use the function form to keep a retry, since it receives `reset`.
 - **The built-in fallback holds no footprint.** It is sized by its content — two lines and
-  a button on a `bg-surface-1` panel — so a crashed viewport-height region collapses to a
+  a button on a `bg-surface-0` sheet — so a crashed viewport-height region collapses to a
   short panel and the content below it shifts up. Pass a `fallback` (or wrap the boundary)
   with an explicit `min-height` when the layout must hold.
 - **The caught error is thrown away.** State is `{ hasError: boolean }`, the static handler

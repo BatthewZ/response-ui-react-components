@@ -309,7 +309,7 @@ rebuild.
 
 | Where                          | Override                                                        |
 | ------------------------------ | --------------------------------------------------------------- |
-| Page background behind content | `--C-SURFACE-1`                                                  |
+| Page background behind content | `--C-CANVAS`                                                     |
 | Navbar · sidebar · drawer fill | `--C-SURFACE-0`                                                  |
 | Every hairline                 | `--C-BORDER-DEFAULT`                                             |
 | Brand text                     | `--C-TEXT-PRIMARY` · `--Bold-Weight`                             |
@@ -323,6 +323,10 @@ rebuild.
 | Drawer elevation               | `--SHADOW-LG`                                                    |
 | Hover · scrim fade · drawer slide | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER`             |
 | Collapse width animation       | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`                |
+
+The root paints `--C-CANVAS` — the page floor, not a surface rung. Navbar, sidebar and
+drawer are rung-0 sheets standing on it, a lift of **1.05–1.16:1**, so the hairlines are
+what actually bound the chrome; the fill only says it is raised.
 
 The width transition and both drawer animations are dropped under
 `prefers-reduced-motion: reduce`; the hover colour transitions are not.

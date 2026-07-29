@@ -51,7 +51,7 @@ fill on a wrapping element and let the Container hold the content to the measure
 
 <!-- example:FullBleedBackground -->
 ```tsx
-<div className="bg-surface-1">
+<div className="bg-surface-0">
   <Container size="lg">
     <h2>Trusted by teams everywhere</h2>
     <p>The band stretches edge to edge; the text stays within the measure.</p>

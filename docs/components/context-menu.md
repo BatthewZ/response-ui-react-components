@@ -258,7 +258,7 @@ ContextMenu has no CSS file of its own, and its `.tsx` uses no Tailwind utilitie
 — and doing so retints **both** components at once. The full table lives with [DropdownMenu](dropdown-menu.md); in
 summary, that stylesheet reads `--C-SURFACE-0` and `--C-BORDER-DEFAULT` for the panel with
 `--RADIUS-MD` and `--SHADOW-LG`, `--C-TEXT-PRIMARY` at `--BodyText-2` for item labels,
-`--C-SURFACE-1` for the hover/focus row with a 2px `--C-BORDER-FOCUS` ring on
+`--C-SURFACE-2` for the hover/focus row with a 2px `--C-BORDER-FOCUS` ring on
 `:focus-visible`, `--C-TEXT-SECONDARY` for item icons, and `--C-TEXT-MUTED` for disabled items
 and for the `--BodyText-3` group label.
 

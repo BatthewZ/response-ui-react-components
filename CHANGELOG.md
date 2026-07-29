@@ -4,6 +4,63 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.11.0] — 2026-07-29
+
+Requires `@batthewz/response-ui-css@^0.13.0`, which redefines the surface ramp. Read that
+package's 0.13.0 entry first — everything here follows from it.
+
+### Breaking
+
+- **Cards are now the lightest surface in the theme, not a grey step below the page.** `Card`,
+  `StatCard` and `Timeline.Card` move from `--C-SURFACE-1` to `--C-SURFACE-0`, which under the new
+  ramp is the raised sheet — "white paper on a grey page" in a light theme, the lifted panel in a
+  dark one.
+
+  This reverts a change that had gone the other way for a real reason: rung 0 used to be
+  byte-identical to `--C-CANVAS` in both shipped light themes, so a rung-0 card had no boundary
+  against the page and was darkened to compensate. The CSS package has now separated the canvas from
+  the ramp, so the boundary exists at the source and the card no longer has to pay for it by looking
+  faded.
+
+- **`AppShell` paints `--C-CANVAS`, not `--C-SURFACE-1`.** The shell root is the page floor, and
+  under the new model the floor is not a rung at all. Painting it with a surface put it level with —
+  and, once cards moved to rung 0, *above* — the navbar, sidebar and cards standing on it.
+
+- **Rungs reassigned across the library** to match raised/recessed semantics. Anything overriding
+  these by class or CSS should be re-checked:
+  - → rung 0 (raised): `ErrorBoundary` fallback panel; `FileUpload`'s two floating remove buttons.
+  - → rung 2 (recessed): every hover and active wash that sat on rung 1 — `DropdownMenu`, `Combobox`,
+    `MultiSelect`, `Tabs` (enclosed + pill), `Accordion`, `Breadcrumbs`, `Pagination`,
+    `ThemeSwitcher`; plus `Table` zebra rows, `Stepper` indicator chips, the `FileUpload` dropzone
+    resting fill, and `AvatarGroup`'s `+N` overflow chip.
+  - → rung 3 (deepest): every track — `ProgressBar`, `ProgressRing`, `Slider`, `RangeSlider`,
+    `Switch`, `Meter`; the `ThemeSwitcher` group well; `FileUpload`'s drag-over state; and the
+    `DataTable` expanded-row cell.
+
+### Fixed
+
+- **`Avatar`'s `offline` status dot no longer uses a surface rung.** Its siblings are semantic ink
+  (`bg-status-success`, `bg-status-warning`) while it was `bg-surface-3`. That was survivable while
+  rung 3 was the *lightest* rung in dark themes; once the ramp direction was pinned it would have
+  become the darkest colour available, nearly invisible on a dark card and ringed by the lightest.
+  A surface rung is never contrast-guaranteed against another surface — a border/text token is.
+- **A `ProgressBar` inside a `Card` or `StatCard` is visible again.** Both painted `--C-SURFACE-1`,
+  putting the track at exactly 1.00:1 against its container — the total the bar is measured against
+  could not be seen at all. The track moved to rung 3 and the containers to rung 0, so the pair now
+  measures 1.13–1.25:1.
+
+### Changed
+
+- Contrast figures quoted in source comments and component docs were re-measured against the new
+  ramp geometry rather than reworded. The hover-wash step in particular improves from 1.02–1.07:1 to
+  1.08–1.21:1, which retires the "no re-tint can rescue this" conclusion three of those comments
+  carried — the wash now genuinely reinforces the ring instead of being a no-op, though it is still
+  short of the 3:1 a non-text cue must clear on its own.
+
+> **Note.** `0.10.0` is published but was never documented here, and the `[0.9.0] — unreleased`
+> section below still describes itself as unpublished. This entry does not attempt to reconstruct
+> either; the gap is pre-existing.
+
 ## [0.9.0] — unreleased
 
 `package.json` is at `0.9.0`, but **nothing has been published**: `npm view

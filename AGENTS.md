@@ -135,7 +135,7 @@ Always use `cn()` from this package, not raw `clsx` or `tailwind-merge`. The exp
 ```ts
 import { cn } from "@batthewz/response-ui-react-components";
 const className = cn(
-  "p-r3 bg-surface-1",
+  "p-r3 bg-surface-0",
   customClass,
   isActive && "bg-primary",
 );
@@ -384,7 +384,7 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
 - Use Tailwind utilities backed by the design system's tokens, not raw values:
   - Spacing: `p-r3 m-r2 gap-r4` not `p-4 m-2 gap-6`
   - Text: `text-h1 text-body-2` not `text-3xl text-sm`
-  - Color: `bg-surface-1 text-fg-primary border-border-default` not `bg-gray-100 text-gray-900 border-gray-200`
+  - Color: `bg-surface-0 text-fg-primary border-border-default` not `bg-gray-100 text-gray-900 border-gray-200`
   - Status: `bg-status-error-bg text-status-error` for error tints
   - Radius/shadow: `rounded-md shadow-sm` (resolves to design-system tokens)
 - Always wrap classNames with `cn(...)` from this package.

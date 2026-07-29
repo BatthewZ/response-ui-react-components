@@ -91,7 +91,7 @@ hues. Override one and every ring in the app re-tints, at runtime, with no rebui
 
 | Where                         | CSS class                            | Override                                  |
 | ----------------------------- | ------------------------------------ | ----------------------------------------- |
-| Track (background ring)       | `.progress-ring__track`              | `--C-SURFACE-2`                           |
+| Track (background ring)       | `.progress-ring__track`              | `--C-SURFACE-3`                           |
 | Indicator — `accent` (default)| `.progress-ring__indicator--accent`  | `--C-ACCENT`                              |
 | Indicator — `success`         | `.progress-ring__indicator--success` | `--C-STATUS-SUCCESS`                      |
 | Indicator — `warning`         | `.progress-ring__indicator--warning` | `--C-STATUS-WARNING`                      |
@@ -124,8 +124,8 @@ responsive breakpoint the way padding does.
   `aria-valuenow` clamps to `max`, so it lands *below* `aria-valuemin` (`0`), an inverted
   range. Keep `max` positive.
 - **The default `accent` arc rides on the track, not the page.** It reads against
-  `--C-SURFACE-2` (the track), not the surface behind the whole ring. In a theme where
-  `--C-ACCENT` lands close to `--C-SURFACE-2` the arc can wash out against its own track;
+  `--C-SURFACE-3` (the track), not the surface behind the whole ring. In a theme where
+  `--C-ACCENT` lands close to `--C-SURFACE-3` the arc can wash out against its own track;
   the semantic `success`/`warning`/`error` colors are safer when contrast matters.
 - **Client component.** It carries `"use client"` (it reads `usePrefersReducedMotion`), so
   it renders on the client — fine as a leaf in an RSC tree, but it is not itself server-only.

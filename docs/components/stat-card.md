@@ -137,7 +137,7 @@ the one place utilities are used, on the [Sparkline](sparkline.md) it wraps.
 
 | Where                         | Utility / class                                       | Override                                                                          |
 | ----------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Card fill, border, corners    | `.stat-card`                                          | `--C-SURFACE-1` `--C-BORDER-DEFAULT` `--RADIUS-LG`                                 |
+| Card fill, border, corners    | `.stat-card`                                          | `--C-SURFACE-0` `--C-BORDER-DEFAULT` `--RADIUS-LG`                                 |
 | Card padding + row gap        | `.stat-card`                                          | `--R-SIZE-5` `--R-SIZE-2`                                                          |
 | Icon chip                     | `.stat-card__icon`                                    | `--C-SURFACE-2` `--C-ACCENT` `--RADIUS-MD` `--R-SIZE-2`                            |
 | Value                         | `.stat-card__value`                                   | `--C-TEXT-PRIMARY` `--H3` `--H3-line-height` `--Bold-Weight`                       |
@@ -157,12 +157,12 @@ badge will *not* follow; it stays on status. Override both if you want them in s
 
 ## Gotchas
 
-- **The tile is bounded by its border, not its fill.** `.stat-card` sits on `--C-SURFACE-1`,
-  the same rung as [Card](card.md) and the [AppShell](app-shell.md) body, so a tile dropped
-  into either has no fill contrast with its backdrop at all — `--C-BORDER-DEFAULT` is the
-  whole edge. That is deliberate: the rung says how far the tile is nested from the page and
-  it climbs in opposite lightness directions in light and dark themes, so it can never be the
-  boundary. See [Surfaces](../theme-contract.md#surfaces-layered-backgrounds).
+- **The tile is bounded by its border, not its fill.** `.stat-card` sits on `--C-SURFACE-0`,
+  the raised-sheet rung — the same one [Card](card.md) and the [AppShell](app-shell.md)
+  chrome use — so a tile dropped into a Card is sheet-on-sheet with no fill contrast at all,
+  and `--C-BORDER-DEFAULT` is the whole edge. That is deliberate: the rung says the tile is
+  raised, not where it stops. Against the page floor it is only a **1.05–1.16:1** lift off
+  `--C-CANVAS`. See [Surfaces](../theme-contract.md#surfaces-layered-backgrounds).
 - **`animateValue` re-animates when `to` changes.** The count-up latches per *target*, not
   once for the component's life: reaching `to` stops the run, and a new `to` starts another
   one from the figure on screen (not back at `from`) the next time the card is in view. A
