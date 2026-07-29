@@ -152,7 +152,7 @@ runtime, with no rebuild.
 | Where                              | Override                                      |
 | ---------------------------------- | --------------------------------------------- |
 | Progress ink (current ring, filled rail) | `--stepper-progress-color`, defaulting to `--C-TEXT-PRIMARY` |
-| Current ring weight                | `--_stepper-active-line-width`, `2 x --_stepper-line-width` |
+| Current ring weight                | `--_stepper-active-line-width`, `1.5 x --_stepper-line-width` |
 | Done chip fill · ring and glyph    | `--C-PRIMARY` · `--C-TEXT-ON-PRIMARY`         |
 | Unfilled rail · upcoming ring      | `--C-BORDER-DEFAULT`                          |
 | Marker background                  | `--C-SURFACE-1`                               |
@@ -200,15 +200,26 @@ vertical rail inset (`--R-SIZE-6`) holds at `0.25rem` on both sides, so the two 
 do not inset their rails by the same amount. The `--BodyText-*` steps are responsive too.
 
 Three geometry values are **not** on the contract: the marker diameter (`2rem`), the rail
-thickness (`2px`), and the current marker's doubled ring (`4px`), held in
+thickness (`2px`), and the current marker's heavier ring (`3px`), held in
 component-internal `--_stepper-*` locals. Every connector offset is derived from the first
-two, so they are fixed rather than themeable. The doubled ring costs no layout because
+two, so they are fixed rather than themeable. The heavier ring costs no layout because
 `.stepper-indicator` states `box-sizing: border-box` itself rather than inheriting it from
 a reset — under content-box the current marker would grow past `2rem` and pull off the
-rail's centre line, which is positioned from that variable. Measured in Firefox at 1280px:
-every marker is `32 x 32` in all four measured themes, current `4px` ring against `2px` for done and
-upcoming. The clickable marker's hover transition is likewise a hard-coded `0.15s ease`
-rather than a motion token.
+rail's centre line, which is positioned from that variable. That mechanism was measured in
+Firefox at 1280px, with the multiplier then at `2`: every marker `32 x 32` in all four
+measured themes, current ring `4px` against `2px` for done and upcoming. Border-box holds
+the diameter at any border width, so the `1.5` multiplier changes the ring to `3px` and
+leaves the `32 x 32` measurement standing.
+
+The multiplier scales ring **ink**, not diameter, and `2` overshot. At `2rem` across, a
+`2px` ring is ~188px² of stroke, `3px` is ~273px² and `4px` is ~352px² — so doubling the
+width nearly doubles the ink. That reads as heavy-handed in any theme where `--C-PRIMARY`
+is a visible fill, because the neighbouring done steps are then solid discs rather than
+sibling rings, and the current marker ends up the highest-contrast object in the component
+— outweighing the steps already completed. Where `--C-PRIMARY` sits near the surface the
+done chip renders as a ring instead, the three markers read as one family, and the same
+`4px` looked deliberate. `1.5` is the value that holds in both cases. The clickable
+marker's hover transition is likewise a hard-coded `0.15s ease` rather than a motion token.
 
 Upcoming numbers and titles are deliberately `--C-TEXT-MUTED` (hint-level contrast), so
 treat what is still ahead as supplementary rather than load-bearing text.
@@ -243,9 +254,12 @@ treat what is still ahead as supplementary rather than load-bearing text.
 ## Accessibility
 
 The track is a semantic `<ol>` of `<li>` items and the current step's `<li>` carries
-`aria-current="step"`, so "you are here" is exposed as real state rather than tint alone —
-and the current marker's ring is drawn at double weight, so it is not tint alone on screen
-either.
+`aria-current="step"`, so "you are here" is exposed as real state rather than a visual cue
+only. On screen the current marker is separated from an upcoming one twice over: the ring
+ink is the primary text colour against a border token close to the surface, a large
+lightness gap that greyscale preserves on its own, and the ring is drawn heavier, which is
+what remains if `--stepper-progress-color` is overridden to a value isoluminant with
+`--C-BORDER-DEFAULT`.
 There is no roving focus or arrow-key model as in [Tabs](tabs.md) — in clickable mode the
 markers are ordinary tab stops in DOM order.
 
@@ -280,7 +294,7 @@ markers are ordinary tab stops in DOM order.
   current step's hidden channel and from nowhere else; `done` and `upcoming` are written in both
   modes.
 - **Every status reads without colour.** A completed step changes shape — filled chip,
-  check glyph. The current step keeps the hollow ring but draws it at **double weight**
+  check glyph. The current step keeps the hollow ring but draws it **heavier**
   (`--_stepper-active-line-width`), which is what separates it from an upcoming step for a
   reader who cannot see the tint difference; the progress-ink ring, number and title colour
   reinforce it for everyone else. A width rather than a colour, so it holds under any

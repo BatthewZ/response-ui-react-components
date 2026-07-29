@@ -59,3 +59,15 @@ The generalisable lessons:
   commit, read what it deleted, not what it wrote** — `git show <sha> -- docs/` and look at the
   `-` lines first. Deleted prose that argued against the change is the refutation the pass
   chose not to answer.
+- **A verified measurement launders the unverified premise sitting next to it.** Every failure
+  above is an unchecked claim that was simply wrong. This one is subtler and harder to see: a
+  pass measured its fix properly — four themes, exact pixel values, a greyscale render, a
+  negative control — and wrote the numbers into the record beside a *rationale* it had never
+  tested. The numbers were all correct. The rationale ("these two states differed by tint alone,
+  so this cue is the only thing that survives greyscale") was false on tokens either pass could
+  have read, and it was the rationale, not the numbers, that set the size of the change. It was
+  then copied into the component's CSS comment and four places in its doc page, because a claim
+  carrying that much measurement does not look like somewhere to start doubting. **Rigour is not
+  transitive.** Ask which sentence in the
+  record the evidence actually bears on; in a well-measured row it is usually the narrow one,
+  and the load-bearing claim beside it was reasoned in someone's head.

@@ -69,3 +69,12 @@ validator over it. These are the ways the record itself has failed, independent 
   attached. It measured the reasoning, found an in-package route the premise had excluded, said
   so, and did it anyway. Write briefs so the premise is visible and challengeable, and treat
   "your instruction was wrong" as a successful outcome rather than a deviation.
+- **A control that proves the fix works is not a control that proves the fix was needed.** The
+  most rigorously evidenced row in the archive shipped a visual cue with a browser measurement
+  across four themes, a greyscale screenshot, and a negative control that reproduced the defect
+  on demand and restored it. All of it was sound, and all of it tested *sufficiency* — that the
+  new cue reads without colour. None of it tested the row's premise, that the two states had
+  previously been distinguishable by colour alone; the two tokens involved were ~15:1 apart in
+  luminance, so that premise was false and a weaker cue would always have sufficed. The
+  screenshot could not have caught this, because it was taken *after* the fix. When a row
+  justifies a change by what the old state lacked, the control has to be run on the old state.

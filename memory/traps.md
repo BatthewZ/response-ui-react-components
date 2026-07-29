@@ -621,3 +621,37 @@ collision, left alone because briefs in flight cite the later one by letter.)
   a card border was partly masking it — the density axis did not introduce the bug, it removed
   the disguise. **A variant axis is a good moment to audit the base case, because putting two
   steps side by side is the first time anyone actually compares them.**
+
+## S · From the pass that asked why the current-step ring looked heavy
+
+- **Where the brand fill sits near the surface, a component silently changes *form*, not just
+  colour — and a cue calibrated in one theme is then miscalibrated in the other for a structural
+  reason.** The contrast pairing makes a filled chip letter and ring itself in its `on-*` token,
+  so in a theme whose primary is close to the surface the fill disappears and the chip renders as
+  a *ring*. Every marker in that component becomes the same shape, a weight difference between
+  them reads as one deliberate axis, and it can be pushed hard. Give the same component a theme
+  where primary is a visible fill and the neighbours are solid discs: the same weight difference
+  now competes with filled mass instead of harmonising with sibling rings, and the emphasised
+  element can end up outweighing the elements it is meant to rank below. Nothing in the CSS
+  changed. Check an emphasis cue against a theme of each polarity *and* each fill behaviour
+  before calling it tuned — the polarity is the obvious variable and the fill behaviour is not.
+- **"Survives greyscale" is almost always claimed about a lightness difference, which is the
+  greyscale channel.** A comment asserted that a width cue was the only thing separating two
+  states without colour, and that they had previously differed "by tint alone" — while the two
+  states were the palette's darkest ink and a border token a hair off the surface, ~15:1 apart in
+  luminance. Greyscale preserves that by definition. The real justification for the cue was much
+  narrower (it is the fallback when a consumer overrides the ink to something isoluminant with
+  the border token), and the narrower justification supports a *smaller* cue. Compute the two
+  lightness values before writing a 1.4.1 rationale; the inflated version gets used to defend a
+  size the design does not need.
+- **A multiplier on a border width scales ring ink, not diameter.** Under border-box, doubling a
+  ring's width on a small round marker nearly doubles the stroke area while the element stays the
+  same size — so "2x" understates the visual jump and reviewers approve it as a linear change.
+  Reason in area when the shape is an annulus, and prefer the smallest multiplier that still
+  discharges the cue's actual job.
+- **When an emphasis cue reads wrong, check the ink against every theme before changing it.**
+  The instinct was that the ring's colour was too strong; measuring each theme's alternative
+  token showed the proposed softer ink dropped the emphasised state *below* the states it
+  outranks in three of four examples. The ink was right and the geometry was wrong. A one-token
+  swap that fixes the theme in front of you is the easiest way to break the three you are not
+  looking at.

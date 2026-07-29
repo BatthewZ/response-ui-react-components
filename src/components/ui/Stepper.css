@@ -6,13 +6,17 @@
   /* Component geometry tokens — interdependent, defined together */
   --_stepper-indicator-size: 2rem;
   --_stepper-line-width: 2px;
-  /* The current step's ring, doubled. This is the ONLY thing separating active
-     from upcoming that survives greyscale: both are hollow rings with the same
-     numeral at the same weight, and before this they differed by tint alone
-     (WCAG 1.4.1). A width, not a colour, so it holds in all four themes and
-     under any --stepper-progress-color override. It costs no layout because
-     .stepper-indicator is border-box — see there. */
-  --_stepper-active-line-width: calc(var(--_stepper-line-width) * 2);
+  /* The current step's ring, thickened. Active and upcoming are both hollow
+     rings carrying the same numeral, so this is what separates them when
+     --stepper-progress-color is overridden to something isoluminant with
+     --C-BORDER-DEFAULT and the luminance cue is gone (WCAG 1.4.1). A width, not
+     a colour, so it survives greyscale under any override.
+     1.5x, not 2x: the indicator is border-box, so the multiplier scales ring
+     INK, not diameter — 2x nearly doubles it (188px² -> 352px²), which reads as
+     heavy-handed wherever --C-PRIMARY is a visible fill and the neighbouring
+     done steps are solid discs rather than sibling rings. 1.5x lands at 273px²
+     and still holds the width cue. It costs no layout — see .stepper-indicator. */
+  --_stepper-active-line-width: calc(var(--_stepper-line-width) * 1.5);
   --_stepper-gap: var(--R-SIZE-4);
 
   /* The progress ink: colours the active step's ring/number and the completed
@@ -152,9 +156,9 @@ button.stepper-indicator:focus-visible {
 
 /* Active (current): "you are here" — NOT yet covered, so it stays an UNFILLED
    ring rather than a brand chip. The hollow (surface) fill sets it apart from
-   the filled done steps; the DOUBLE-WEIGHT ring sets it apart from the thin
-   upcoming ones without asking anyone to see a colour, and the progress-ink
-   ring/number reinforces it for those who can. Uses a text token
+   the filled done steps; the HEAVIER ring sets it apart from the thin upcoming
+   ones without asking anyone to see a colour, and the progress-ink ring/number
+   reinforces it for those who can. Uses a text token
    (--stepper-progress-color), not --C-PRIMARY, because the ring is a stroke on
    the surface — see the contrast contract note on --stepper-progress-color
    above. */

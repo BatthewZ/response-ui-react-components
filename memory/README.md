@@ -51,5 +51,15 @@ to understand.
    engine was covering, including the high-contrast one. Measure reachability first; the design
    question is only worth debating once you know what it costs.
 
+11. **A theme can change a component's *shape*, not just its palette — so an emphasis cue tuned
+   in one theme is miscalibrated in another for a structural reason.** Where the brand fill sits
+   near the surface, a filled chip renders as a ring instead, and a component whose markers were
+   discs becomes a family of rings. Weight, contrast and hierarchy all re-rank. Check a visual
+   cue against a theme of each polarity *and* each fill behaviour; the polarity is the obvious
+   variable and the fill behaviour is not.
+12. **Measurement is not transitive to the sentence beside it.** A well-measured record can carry
+   an unmeasured rationale, and the rationale is usually the part that sized the change. Rigour
+   in a row is a reason to check *which claim* the evidence bears on, not a reason to stop.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.
