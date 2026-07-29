@@ -123,7 +123,7 @@ Two things your theme file owns that the foundation cannot do for you:
 
 ### Local docs
 
-- **[Theme contract](docs/theme-contract.md)** — the authoritative list of every overridable token and the contrast contract themes must honour, plus the [authoring workflow](docs/theme-contract.md#authoring-workflow).
+- **[Theme contract — component layer](docs/theme-contract.md)** — only what _this_ package adds on top of the foundation's contract: the trend/chart ramp, `MediaCard`'s hover physics, and the [`useTheme` registration step](docs/theme-contract.md#authoring-workflow). Every base token is documented upstream, not mirrored here.
 - **[Extending](docs/extending.md)** — add your own tokens, responsive/theme-aware values, register sources with Tailwind.
 - **[ThemeSwitcher](docs/components/theme-switcher.md)** — the switcher component, and the traps around registering themes.
 

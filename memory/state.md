@@ -49,3 +49,15 @@ whether a safeguard is needed at all, and the two duplications that are load-bea
   VirtualizedDataTable keeps the loading/empty early returns that DataTable collapsed —
   `use-virtual-rows` expects `scrollRef.current` to be null in those branches, and attaching it
   perturbs `endIndex` → `nearBottom` → `onEndReached`.
+- **The dependency direction is the ownership rule for docs, not just for code.** The foundation
+  package owns the design language; this package owns only what exists *because components
+  exist*. When a doc here restates the foundation's contract, that copy is not a convenience —
+  it is a second source that will drift, and it drifts in both directions at once: this copy went
+  stale on an upstream deletion while simultaneously holding a load-bearing rule the upstream doc
+  had never been given. Neither gap was visible from inside either package. Before writing any
+  token-level prose here, ask whether the token is defined here; if it is not, link upstream and
+  write nothing.
+- **Preserve the headings when you delete duplicated doc sections.** The link-integrity gate
+  checks every `#anchor`, and roughly a hundred component pages point at the contract. A heading
+  kept with one sentence of substance and a link upstream costs three lines and keeps every
+  caller correct; repointing the callers puts the same fact back in every one of them.

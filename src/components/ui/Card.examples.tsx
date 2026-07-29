@@ -1,6 +1,6 @@
 import { Card } from "./Card";
 
-/** A surface for grouping related content: a themed background, rounded corners, a shadow, and padding. */
+/** A surface for grouping related content: a themed background, a border, rounded corners, a shadow, and padding. */
 export function Minimal() {
   return (
     <Card>

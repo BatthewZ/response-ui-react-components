@@ -10,11 +10,20 @@ describe("Card", () => {
     const card = screen.getByTestId("card");
     expect(card.tagName).toBe("DIV");
     // #4 — the theme contract designates `--C-SURFACE-1` for cards; Card sat on
-    // `--C-SURFACE-0`, the most-elevated step, which in the default theme is also
-    // the canvas colour.
+    // `--C-SURFACE-0`, the rung nearest the canvas, which in the default theme
+    // is the canvas colour exactly.
     expect(card.className).toContain("bg-surface-1");
     expect(card.className).not.toContain("bg-surface-0");
     expect(card.className).toContain("rounded-lg");
+  });
+
+  it("draws a border, not just a shadow", () => {
+    // AppShell paints its own body `--C-SURFACE-1`, and one surface step is
+    // 1.02–1.07:1, so fill can never be the card's boundary. Shadow alone does
+    // not carry it either: on a dark theme it is black on near-black.
+    render(<Card data-testid="card">Bordered</Card>);
+    const card = screen.getByTestId("card");
+    expect(card.className).toContain("border-border-default");
   });
 
   it("renders children content", () => {

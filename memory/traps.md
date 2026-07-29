@@ -622,6 +622,45 @@ collision, left alone because briefs in flight cite the later one by letter.)
   the disguise. **A variant axis is a good moment to audit the base case, because putting two
   steps side by side is the first time anyone actually compares them.**
 
+## R · From the pass that asked whether cards read lighter than the page
+
+- **A surface ramp is a nesting depth, not an elevation, and the two only agree in light
+  themes.** The token numbers ascend as a region gets further from the page background, so a
+  light theme runs light → dark across them and a dark theme runs dark → light. Elevation is a
+  *fixed* order — a dialog is always above a card — and the ramp is not: give the more-elevated
+  thing the lower number and it renders lighter than its backdrop in one theme and darker in
+  the other, so the same composition reads as a raised tile and as a hole punched in a panel
+  depending on the theme. Every component that expresses "on top of" through a fill step has
+  this bug and it is invisible in whichever theme you developed in. Elevation belongs to the
+  shadow and border tokens, which point the same way in every theme.
+- **A container whose only boundary is its fill has no boundary.** One step on the surface ramp
+  measures barely over 1:1 in every shipped theme, and a container will eventually be dropped
+  onto a backdrop the design system itself paints on the container's own rung — at which point
+  the step is exactly zero. Shadow does not rescue it either: a dark theme's shadow is black on
+  near-black. Any component that claims to be a bounded region needs a border, and the moment
+  to notice is when you write "the background step is small on purpose" in its docs.
+- **Prose carrying a metaphor propagates further than the value it describes.** A single wrong
+  word in the token contract — calling the ramp an elevation — had been copied into component
+  pages that then reasoned from it and reached conclusions no measurement supported, including
+  two that described the *deepest* surface as the most elevated one. Grep the metaphor, not just
+  the token name: the token name was right in all of those places and the sentence around it
+  was not.
+- **When one design-system fact lives in two packages' docs, expect both copies to be stale —
+  in opposite directions — rather than one being a superset.** Two files with the same name and
+  the same purpose had grown different intros and different required/optional splits; the
+  downstream copy documented a CLI the upstream package had deleted nine minor versions
+  earlier, while a load-bearing rule cited by six component pages existed only downstream, so
+  the upstream doc a theme author actually reads never mentioned it. Neither drift was
+  detectable from inside one package. The ownership rule that resolves it is the dependency
+  direction: the foundation owns the design language, and the component layer documents only
+  the tokens that exist *because components exist*. Anything else it restates will drift.
+- **A redirect section is a cheaper fix than repointing every inbound link.** Deleting duplicated
+  doc sections breaks every `#anchor` aimed at them, and the link-integrity gate is right to
+  fail. Keeping the headings with one sentence of substance and a link upstream preserves
+  ~100 inbound links untouched, and each stub teaches the ownership rule at exactly the moment a
+  reader would otherwise have learned the wrong thing. Deleting the heading and editing the
+  callers spreads the same fact across every caller again.
+
 ## S · From the pass that asked why the current-step ring looked heavy
 
 - **Where the brand fill sits near the surface, a component silently changes *form*, not just

@@ -33,7 +33,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
     <div
       ref={ref}
       className={cn(
-        "bg-surface-1 rounded-lg overflow-hidden min-w-0",
+        "bg-surface-1 border border-border-default rounded-lg overflow-hidden min-w-0",
         shadowMap[shadow],
         paddingMap[padding],
         className

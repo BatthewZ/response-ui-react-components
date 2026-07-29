@@ -7,7 +7,12 @@
   flex-direction: column;
   gap: var(--R-SIZE-2);
   padding: var(--R-SIZE-5);
-  background-color: var(--C-SURFACE-0);
+  /* The contract's card rung, same as `Card` (#4). It was `--C-SURFACE-0`, which
+     is the canvas colour exactly in the default theme — and on a dark theme
+     sits BELOW `--C-SURFACE-1`, so a tile nested in a `Card` read as a hole
+     punched in it rather than a tile on it. The border, not the fill, is what
+     bounds the tile; the fill only says how far it is nested from the page. */
+  background-color: var(--C-SURFACE-1);
   border: 1px solid var(--C-BORDER-DEFAULT);
   border-radius: var(--RADIUS-LG);
 }
@@ -20,7 +25,9 @@
   width: var(--R-SIZE-2);
   height: var(--R-SIZE-2);
   border-radius: var(--RADIUS-MD);
-  background-color: var(--C-SURFACE-1);
+  /* One rung further out than the tile, whichever rung the tile is on — the
+     chip has no border, so the step is all it has. */
+  background-color: var(--C-SURFACE-2);
   color: var(--C-ACCENT);
 }
 

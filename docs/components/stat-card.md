@@ -137,9 +137,9 @@ the one place utilities are used, on the [Sparkline](sparkline.md) it wraps.
 
 | Where                         | Utility / class                                       | Override                                                                          |
 | ----------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Card fill, border, corners    | `.stat-card`                                          | `--C-SURFACE-0` `--C-BORDER-DEFAULT` `--RADIUS-LG`                                 |
+| Card fill, border, corners    | `.stat-card`                                          | `--C-SURFACE-1` `--C-BORDER-DEFAULT` `--RADIUS-LG`                                 |
 | Card padding + row gap        | `.stat-card`                                          | `--R-SIZE-5` `--R-SIZE-2`                                                          |
-| Icon chip                     | `.stat-card__icon`                                    | `--C-SURFACE-1` `--C-ACCENT` `--RADIUS-MD` `--R-SIZE-2`                            |
+| Icon chip                     | `.stat-card__icon`                                    | `--C-SURFACE-2` `--C-ACCENT` `--RADIUS-MD` `--R-SIZE-2`                            |
 | Value                         | `.stat-card__value`                                   | `--C-TEXT-PRIMARY` `--H3` `--H3-line-height` `--Bold-Weight`                       |
 | Label                         | `.stat-card__label`                                   | `--C-TEXT-SECONDARY` `--BodyText-2` `--BodyText-2-line-height` `--Semibold-Weight` |
 | Trend up / down / neutral     | `.stat-card__trend`                                   | `--C-STATUS-SUCCESS` `--C-STATUS-ERROR` `--C-TEXT-SECONDARY` `--BodyText-2` `--BodyText-2-line-height` `--Semibold-Weight` `--R-SIZE-6` |
@@ -157,6 +157,12 @@ badge will *not* follow; it stays on status. Override both if you want them in s
 
 ## Gotchas
 
+- **The tile is bounded by its border, not its fill.** `.stat-card` sits on `--C-SURFACE-1`,
+  the same rung as [Card](card.md) and the [AppShell](app-shell.md) body, so a tile dropped
+  into either has no fill contrast with its backdrop at all — `--C-BORDER-DEFAULT` is the
+  whole edge. That is deliberate: the rung says how far the tile is nested from the page and
+  it climbs in opposite lightness directions in light and dark themes, so it can never be the
+  boundary. See [Surfaces](../theme-contract.md#surfaces-layered-backgrounds).
 - **`animateValue` re-animates when `to` changes.** The count-up latches per *target*, not
   once for the component's life: reaching `to` stops the run, and a new `to` starts another
   one from the figure on screen (not back at `from`) the next time the card is in view. A

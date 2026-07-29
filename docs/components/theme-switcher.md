@@ -234,10 +234,11 @@ control that changes your theme is itself fully themed by that theme.
 | Focus ring                   | `--C-BORDER-FOCUS`                    |
 | Transition                   | `--DURATION-FAST` · `--MOTION-EASE-SHIFT` |
 
-The three surfaces stack on purpose: the track sits one step *into* the page
-(`--C-SURFACE-2`), the hover wash lifts one step (`--C-SURFACE-1`), and the selected option
-lands on `--C-SURFACE-0`, the most-elevated surface, plus `--SHADOW-SM` — so selection reads
-as raised without needing a border or an accent colour. Of the padding, only the inline side
+The three surfaces stack on purpose: the track sits two steps out from the canvas
+(`--C-SURFACE-2`), the hover wash comes back one (`--C-SURFACE-1`), and the selected option
+lands on `--C-SURFACE-0`, the rung nearest the canvas. That fill is a *direction*, not a
+lift — it runs lighter as it climbs in a light theme and darker in a dark one — so
+`--SHADOW-SM` is what makes selection read as raised, and it is the part that holds in both. Of the padding, only the inline side
 is responsive: `--R-SIZE-4` steps `0.75rem` → `1.25rem` at the 40rem breakpoint while
 `--R-SIZE-6` holds at `0.25rem` block-wise, so the control widens on desktop and grows taller
 only by the label's own type step.
