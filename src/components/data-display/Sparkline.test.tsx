@@ -102,6 +102,80 @@ describe("Sparkline", () => {
     expect(container.querySelectorAll("rect")).toHaveLength(5);
   });
 
+  /* ------------------------------------------------------------------ */
+  /*  Bars measure magnitude, so their domain contains zero               */
+  /* ------------------------------------------------------------------ */
+
+  const barHeights = (container: HTMLElement) =>
+    [...container.querySelectorAll("rect")].map((r) => Number(r.getAttribute("height")));
+
+  it("no bar is invisible just for being the smallest value", () => {
+    // The old domain started at min(values), so the smallest datum collapsed to
+    // a zero-height rect and silently vanished from the chart.
+    const { container } = render(<Sparkline values={[8, 9, 7, 11, 10]} variant="bar" />);
+    for (const h of barHeights(container)) expect(h).toBeGreaterThan(0);
+  });
+
+  it("a near-flat series reads as near-flat rather than full-scale swings", () => {
+    // Uptime 99.8–100 is a 0.2pt spread; anchored at the data min it rendered as
+    // zero-to-full bars, which reads as a wildly unstable service.
+    const { container } = render(
+      <Sparkline values={[100, 99.9, 99.8, 100, 99.95]} variant="bar" />
+    );
+    const heights = barHeights(container);
+    const spread = (Math.max(...heights) - Math.min(...heights)) / Math.max(...heights);
+    expect(spread).toBeLessThan(0.01);
+  });
+
+  it("bar heights stay proportional to value, measured from zero", () => {
+    const { container } = render(<Sparkline values={[10, 5]} variant="bar" />);
+    const [full, half] = barHeights(container);
+    expect(half / full).toBeCloseTo(0.5, 2);
+  });
+
+  it("a zero value renders no bar, because zero magnitude is no bar", () => {
+    const { container } = render(<Sparkline values={[0, 5, 10]} variant="bar" />);
+    expect(barHeights(container)[0]).toBe(0);
+  });
+
+  it("negative bars hang below the zero line", () => {
+    const { container } = render(<Sparkline values={[-5, 5]} variant="bar" />);
+    const [neg, pos] = [...container.querySelectorAll("rect")];
+    const negTop = Number(neg.getAttribute("y"));
+    const posTop = Number(pos.getAttribute("y"));
+    const posBottom = posTop + Number(pos.getAttribute("height"));
+    // The positive bar's floor is the zero line; the negative bar starts there.
+    expect(negTop).toBeCloseTo(posBottom, 1);
+    expect(Number(neg.getAttribute("height"))).toBeGreaterThan(0);
+  });
+
+  it("an explicit domain that excludes zero still gets a floor, not an off-canvas baseline", () => {
+    const height = 32;
+    const { container } = render(
+      <Sparkline values={[99.8, 100]} variant="bar" min={99.5} max={100} height={height} />
+    );
+    for (const rect of container.querySelectorAll("rect")) {
+      const y = Number(rect.getAttribute("y"));
+      const h = Number(rect.getAttribute("height"));
+      expect(h).toBeGreaterThan(0);
+      expect(y + h).toBeLessThanOrEqual(height);
+    }
+  });
+
+  it("the area fill bottoms out on the same baseline the bars stand on", () => {
+    const strokeWidth = 2;
+    const height = 32;
+    const { container } = render(
+      <Sparkline values={[1, 5, 2]} variant="area" height={height} strokeWidth={strokeWidth} />
+    );
+    const d = container.querySelector("path.sparkline-area")?.getAttribute("d") ?? "";
+    // Closes on the drawing area's floor (height - pad), not the viewBox edge.
+    // Asserted as the exact closing segment: a bare `toContain("30")` also matches
+    // the y of a datum sitting on that floor, so it would pass either way.
+    const floor = height - strokeWidth;
+    expect(d.endsWith(`L 120 ${floor} L 0 ${floor} Z`)).toBe(true);
+  });
+
   it("empty values renders no path and does not throw", () => {
     const { container } = render(<Sparkline values={[]} />);
     expect(screen.getByRole("img")).toBeInTheDocument();

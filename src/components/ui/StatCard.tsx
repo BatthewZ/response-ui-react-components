@@ -176,15 +176,38 @@ const StatCardLabel = forwardRef<HTMLSpanElement, StatCardLabelProps>(function S
 /*  StatCard.Trend                                                     */
 /* ------------------------------------------------------------------ */
 
+/** Which way the number moved — a fact about the data. Drives the arrow and sign. */
+type TrendDirection = "up" | "down" | "neutral";
+
+/**
+ * Whether that movement is good news — a judgement about the metric, which only
+ * the caller can make. Drives the colour. Falling churn is `down` + `positive`;
+ * rising error rate is `up` + `negative`.
+ */
+type TrendSentiment = "positive" | "negative" | "neutral";
+
+const impliedSentiment: Record<TrendDirection, TrendSentiment> = {
+  up: "positive",
+  down: "negative",
+  neutral: "neutral",
+};
+
 type StatCardTrendProps = {
   value: number;
-  direction: "up" | "down" | "neutral";
+  direction: TrendDirection;
+  sentiment?: TrendSentiment;
   format?: (value: number) => string;
 } & Omit<ComponentPropsWithRef<"span">, "children">;
 
-const directionClass: Record<string, string> = {
+const directionClass: Record<TrendDirection, string> = {
   up: "stat-card__trend--up",
   down: "stat-card__trend--down",
+  neutral: "stat-card__trend--flat",
+};
+
+const sentimentClass: Record<TrendSentiment, string> = {
+  positive: "stat-card__trend--positive",
+  negative: "stat-card__trend--negative",
   neutral: "stat-card__trend--neutral",
 };
 
@@ -201,7 +224,7 @@ const TrendArrow = () => (
 );
 
 const StatCardTrend = forwardRef<HTMLSpanElement, StatCardTrendProps>(function StatCardTrend(
-  { value, direction, format, className, ...props },
+  { value, direction, sentiment, format, className, ...props },
   ref
 ) {
   const sign = direction === "down" ? "-" : direction === "up" ? "+" : "";
@@ -209,7 +232,12 @@ const StatCardTrend = forwardRef<HTMLSpanElement, StatCardTrendProps>(function S
   return (
     <span
       ref={ref}
-      className={cn("stat-card__trend", directionClass[direction], className)}
+      className={cn(
+        "stat-card__trend",
+        directionClass[direction],
+        sentimentClass[sentiment ?? impliedSentiment[direction]],
+        className
+      )}
       {...props}
     >
       {direction !== "neutral" && <TrendArrow />}
@@ -236,22 +264,28 @@ const StatCardIcon = forwardRef<HTMLDivElement, StatCardIconProps>(function Stat
 /* ------------------------------------------------------------------ */
 
 type StatCardSparklineProps = {
-  direction?: "up" | "down" | "neutral";
+  direction?: TrendDirection;
+  sentiment?: TrendSentiment;
 } & ComponentProps<typeof Sparkline>;
 
-const sparklineDirectionClass: Record<string, string> = {
-  up: "text-trend-up",
-  down: "text-trend-down",
+const sparklineSentimentClass: Record<TrendSentiment, string> = {
+  positive: "text-trend-up",
+  negative: "text-trend-down",
   neutral: "text-fg-muted",
 };
 
 const StatCardSparkline = forwardRef<SVGSVGElement, StatCardSparklineProps>(
-  function StatCardSparkline({ direction, className, ...props }, ref) {
+  function StatCardSparkline({ direction, sentiment, className, ...props }, ref) {
+    // Tint follows sentiment, matching the Trend beside it. `direction` alone
+    // still implies one, so the common "up is good" case needs neither prop
+    // spelled out twice.
+    const tint = sentiment ?? (direction && impliedSentiment[direction]);
+
     return (
       <div className="stat-card__sparkline">
         <Sparkline
           ref={ref}
-          className={cn(direction && sparklineDirectionClass[direction], className)}
+          className={cn(tint && sparklineSentimentClass[tint], className)}
           {...props}
         />
       </div>

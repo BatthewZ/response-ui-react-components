@@ -5,7 +5,7 @@
 .stat-card {
   display: flex;
   flex-direction: column;
-  gap: var(--R-SIZE-2);
+  gap: var(--R-SIZE-5);
   padding: var(--R-SIZE-5);
   /* The raised-sheet rung, same as `Card` — the two must not diverge. A tile
      nested in a `Card` is therefore sheet-on-sheet: the border below, not the
@@ -55,11 +55,15 @@
   line-height: var(--BodyText-2-line-height);
 }
 
-.stat-card__trend--up {
+/* Two independent axes. Colour is *sentiment* — whether the movement is good
+   news, which only the caller knows: falling churn is `--down --positive`. The
+   `--up`/`--down`/`--flat` classes carry *direction* and are styling hooks for
+   consumers; only the arrow reads them. */
+.stat-card__trend--positive {
   color: var(--C-STATUS-SUCCESS);
 }
 
-.stat-card__trend--down {
+.stat-card__trend--negative {
   color: var(--C-STATUS-ERROR);
 }
 
@@ -78,11 +82,28 @@
   transform: rotate(180deg);
 }
 
-/* Sparkline slot */
+/* Sparkline slot.
+   `margin-top: auto` pins the chart to the tile's floor so a row of tiles lines
+   its charts up regardless of how tall each one's text runs. No `max-height`:
+   the svg carries its own `height` attribute, so capping the wrapper clamped the
+   box while the chart kept drawing past it — the overflow ate the tile's whole
+   bottom padding. Height belongs to the `height` prop. */
 .stat-card__sparkline {
   display: block;
-  margin-top: var(--R-SIZE-2);
-  max-height: var(--R-SIZE-4);
+  margin-top: auto;
+}
+
+/* Fill the tile rather than sitting at the svg's intrinsic 120px, which left the
+   chart covering ~60% of a 4-up tile and reading as a mistake.
+   `preserveAspectRatio="none"` stretches the drawing to match; the stroke
+   stretches with it, which is invisible at the shallow slopes a sparkline
+   actually draws. It must NOT be given `vector-effect: non-scaling-stroke` to
+   compensate — that computes the dash pattern in screen space, which breaks the
+   `pathLength=1` normalisation the draw-in animation relies on and leaves the
+   line rendered in disconnected fragments. */
+.stat-card__sparkline .sparkline {
+  display: block;
+  width: 100%;
 }
 
 /* ------------------------------------------------------------------ */

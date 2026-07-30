@@ -19,31 +19,36 @@ type SparklineProps = {
 } & Omit<ComponentPropsWithRef<"svg">, "children" | "values">;
 
 /**
- * Maps each value into an SVG coordinate within the padded drawing area.
+ * Maps a value onto the vertical axis of the padded drawing area.
  * `pad` keeps the stroke from clipping at the top/bottom edges.
  */
+function makeProjectY(height: number, pad: number, domainMin: number, domainMax: number) {
+  const innerH = height - pad * 2;
+  const span = domainMax - domainMin;
+
+  return (value: number) => {
+    // span === 0 (max === min) → flat centreline, avoids divide-by-zero.
+    const t = span === 0 ? 0.5 : (value - domainMin) / span;
+    return pad + (1 - t) * innerH;
+  };
+}
+
 function buildPoints(
   values: number[],
   width: number,
-  height: number,
-  pad: number,
-  domainMin: number,
-  domainMax: number
+  projectY: (value: number) => number
 ): Array<{ x: number; y: number }> {
   const n = values.length;
-  const innerH = height - pad * 2;
-  const span = domainMax - domainMin;
   const stepX = n > 1 ? width / (n - 1) : 0;
 
-  return values.map((value, i) => {
+  return values.map((value, i) => ({
     // Single point → centre it horizontally; otherwise spread across width.
-    const x = n > 1 ? i * stepX : width / 2;
-    // span === 0 (max === min) → flat centreline, avoids divide-by-zero.
-    const t = span === 0 ? 0.5 : (value - domainMin) / span;
-    const y = pad + (1 - t) * innerH;
-    return { x, y };
-  });
+    x: n > 1 ? i * stepX : width / 2,
+    y: projectY(value),
+  }));
 }
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
 const round = (v: number) => Math.round(v * 100) / 100;
 
@@ -105,24 +110,35 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(function Spar
 
   if (n > 0) {
     const pad = strokeWidth;
-    const domainMin = min ?? Math.min(...values);
-    const domainMax = max ?? Math.max(...values);
-    const points = buildPoints(values, width, height, pad, domainMin, domainMax);
+    // A bar's *length* encodes magnitude, so its domain has to contain zero.
+    // Anchored at the data minimum instead, the smallest datum always rendered
+    // as a zero-height — invisible — rect, and a near-flat series (uptime at
+    // 99.8–100%) was stretched into full-scale swings. Line/area encode
+    // position rather than magnitude, so they still scale to the data.
+    const zeroAnchored = variant === "bar";
+    const domainMin = min ?? (zeroAnchored ? Math.min(0, ...values) : Math.min(...values));
+    const domainMax = max ?? (zeroAnchored ? Math.max(0, ...values) : Math.max(...values));
+    const projectY = makeProjectY(height, pad, domainMin, domainMax);
+    const points = buildPoints(values, width, projectY);
 
     if (variant === "bar") {
       const slot = width / n;
       const barWidth = Math.max(1, slot * 0.75);
       const gap = (slot - barWidth) / 2;
-      const baseline = height - pad;
+      // Bars grow from the zero line, which is clamped into the drawing area so
+      // an explicit domain that excludes zero (`min={99.5}`) still gets a
+      // baseline at the floor rather than one off-canvas. Negative values hang
+      // below it.
+      const baseline = clamp(projectY(0), pad, height - pad);
 
       content = points.map((p, i) => (
         <rect
           key={i}
           className="sparkline-bar"
           x={round(i * slot + gap)}
-          y={round(p.y)}
+          y={round(Math.min(p.y, baseline))}
           width={round(barWidth)}
-          height={Math.max(0, round(baseline - p.y))}
+          height={round(Math.abs(baseline - p.y))}
         />
       ));
     } else if (n === 1) {
@@ -146,9 +162,12 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(function Spar
       content = (
         <>
           {variant === "area" && (
+            // Closes on the floor of the drawing area, not the viewBox: filling
+            // to `height` painted into the gutter `pad` reserves, putting the
+            // area's baseline `strokeWidth` below every other variant's.
             <path
               className="sparkline-area"
-              d={`${linePath} L ${round(width)} ${round(height)} L 0 ${round(height)} Z`}
+              d={`${linePath} L ${round(width)} ${round(height - pad)} L 0 ${round(height - pad)} Z`}
             />
           )}
           <path

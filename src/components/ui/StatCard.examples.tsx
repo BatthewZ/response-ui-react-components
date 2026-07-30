@@ -87,3 +87,31 @@ export function SparklineTint() {
     </StatCard>
   );
 }
+
+/** `direction` is which way the number moved; `sentiment` is whether that is good news. For metrics where down is good — churn, latency, error rate — pass both: the arrow still points down, the colour goes green. */
+export function TrendSentiment() {
+  return (
+    <>
+      <StatCard>
+        <StatCard.Label>Monthly churn</StatCard.Label>
+        <StatCard.Value>2.4%</StatCard.Value>
+        <StatCard.Trend value={0.6} direction="down" sentiment="positive" />
+        <StatCard.Sparkline
+          direction="down"
+          sentiment="positive"
+          values={[3.4, 3.1, 3.2, 2.9, 2.7, 2.5, 2.4]}
+        />
+      </StatCard>
+      <StatCard>
+        <StatCard.Label>API error rate</StatCard.Label>
+        <StatCard.Value>1.8%</StatCard.Value>
+        <StatCard.Trend value={0.9} direction="up" sentiment="negative" />
+        <StatCard.Sparkline
+          direction="up"
+          sentiment="negative"
+          values={[0.7, 0.8, 0.9, 1.1, 1.4, 1.6, 1.8]}
+        />
+      </StatCard>
+    </>
+  );
+}

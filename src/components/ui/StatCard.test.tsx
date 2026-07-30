@@ -351,19 +351,61 @@ describe("StatCard", () => {
       expect(el.textContent).toContain("0%");
     });
 
-    it("applies direction-specific class for up", () => {
-      render(<StatCard.Trend value={10} direction="up" data-testid="trend" />);
-      expect(screen.getByTestId("trend").className).toContain("stat-card__trend--up");
+    // Direction (which way the number moved) and sentiment (whether that is good
+    // news) are separate class axes: `up`/`down`/`flat` vs
+    // `positive`/`negative`/`neutral`. Asserted together so neither can drift
+    // into the other's vocabulary unnoticed.
+    it.each([
+      ["up", "stat-card__trend--up", "stat-card__trend--positive"],
+      ["down", "stat-card__trend--down", "stat-card__trend--negative"],
+      ["neutral", "stat-card__trend--flat", "stat-card__trend--neutral"],
+    ] as const)("direction %s emits its own class and the implied sentiment", (
+      direction,
+      directionClass,
+      sentimentClass
+    ) => {
+      render(<StatCard.Trend value={10} direction={direction} data-testid="trend" />);
+      const el = screen.getByTestId("trend");
+      expect(el).toHaveClass(directionClass);
+      expect(el).toHaveClass(sentimentClass);
     });
 
-    it("applies direction-specific class for down", () => {
-      render(<StatCard.Trend value={3} direction="down" data-testid="trend" />);
-      expect(screen.getByTestId("trend").className).toContain("stat-card__trend--down");
+    /* ---------------------------------------------------------------- */
+    /*  sentiment — colour decoupled from direction                      */
+    /* ---------------------------------------------------------------- */
+
+    it("sentiment overrides the direction-implied colour without touching the arrow", () => {
+      // Churn falling is a *good* drop: down arrow, minus sign, green.
+      render(
+        <StatCard.Trend value={2.4} direction="down" sentiment="positive" data-testid="trend" />
+      );
+      const el = screen.getByTestId("trend");
+
+      expect(el).toHaveClass("stat-card__trend--down");
+      expect(el).toHaveClass("stat-card__trend--positive");
+      expect(el).not.toHaveClass("stat-card__trend--negative");
+      // The arrow still reports the direction, and the sign still reads off it.
+      expect(el.querySelector("svg")).toBeInTheDocument();
+      expect(el.textContent).toContain("-2.4%");
     });
 
-    it("applies direction-specific class for neutral", () => {
-      render(<StatCard.Trend value={0} direction="neutral" data-testid="trend" />);
-      expect(screen.getByTestId("trend").className).toContain("stat-card__trend--neutral");
+    it("a rising metric can be bad news", () => {
+      render(<StatCard.Trend value={8} direction="up" sentiment="negative" data-testid="trend" />);
+      const el = screen.getByTestId("trend");
+
+      expect(el).toHaveClass("stat-card__trend--up");
+      expect(el).toHaveClass("stat-card__trend--negative");
+      expect(el).not.toHaveClass("stat-card__trend--positive");
+      expect(el.textContent).toContain("+8%");
+    });
+
+    it("sentiment can mute a movement that is neither good nor bad", () => {
+      render(<StatCard.Trend value={3} direction="up" sentiment="neutral" data-testid="trend" />);
+      const el = screen.getByTestId("trend");
+
+      expect(el).toHaveClass("stat-card__trend--up");
+      expect(el).toHaveClass("stat-card__trend--neutral");
+      expect(el).not.toHaveClass("stat-card__trend--positive");
     });
 
     it("renders a trend arrow for up/down but not neutral", () => {
@@ -464,6 +506,18 @@ describe("StatCard", () => {
       expect(cls).not.toContain("text-trend-up");
       expect(cls).not.toContain("text-trend-down");
       expect(cls).not.toContain("text-fg-muted");
+    });
+
+    it("sentiment drives the tint, so a good drop is not painted red", () => {
+      render(<StatCard.Sparkline values={[3, 2, 1]} direction="down" sentiment="positive" />);
+      const cls = screen.getByRole("img").getAttribute("class") ?? "";
+      expect(cls).toContain("text-trend-up");
+      expect(cls).not.toContain("text-trend-down");
+    });
+
+    it("sentiment alone tints without a direction", () => {
+      render(<StatCard.Sparkline values={[1, 2, 3]} sentiment="negative" />);
+      expect(screen.getByRole("img").getAttribute("class")).toContain("text-trend-down");
     });
 
     it("forwards ref to the svg element", () => {

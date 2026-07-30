@@ -13,7 +13,14 @@
   --sparkline-color: currentColor;
 }
 
-/* Line / area stroke */
+/* Line / area stroke.
+   Deliberately NOT `vector-effect: non-scaling-stroke`. A CSS-sized chart scales
+   non-uniformly under `preserveAspectRatio="none"`, and the stroke scales with
+   it — the obvious correction is to opt the stroke out. Doing so computes the
+   dash pattern in screen space, which contradicts the `pathLength=1`
+   normalisation the draw-in below relies on, and the settled line renders in
+   disconnected fragments. Measured, not theorised. The distortion it would fix
+   is imperceptible at the shallow slopes a sparkline actually draws. */
 .sparkline-line {
   stroke: var(--sparkline-color, currentColor);
   fill: none;

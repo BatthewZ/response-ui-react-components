@@ -25,9 +25,9 @@ context, the sub-parts also render fine outside a `StatCard` root (they are just
 | `StatCard`          | `div`    | — (plus `div` props)                                                      |
 | `StatCard.Value`    | `span`   | `animateValue?` · `from?` · `to?` · `format?` · `duration?`              |
 | `StatCard.Label`    | `span`   | — (plus `span` props)                                                     |
-| `StatCard.Trend`    | `span`   | `value` · `direction` · `format?` (no `children`)                        |
+| `StatCard.Trend`    | `span`   | `value` · `direction` · `sentiment?` · `format?` (no `children`)         |
 | `StatCard.Icon`     | `div`    | — (plus `div` props)                                                      |
-| `StatCard.Sparkline`| `svg`    | `direction?` · all `Sparkline` props (`values` required)                 |
+| `StatCard.Sparkline`| `svg`    | `direction?` · `sentiment?` · all `Sparkline` props (`values` required)  |
 
 All parts spread the props of the element they render, so `className`, `id`, and
 `aria-*` pass through.
@@ -89,10 +89,10 @@ of this prop.
 
 ## Trend
 
-`direction` — not the sign of `value` — drives the arrow, the leading sign, and the
-colour. `up` is green with an up arrow, `down` is red with the same arrow rotated 180°,
-`neutral` is grey with no arrow. `value` is always rendered as its magnitude (`+12.5%`,
-`-0.8%`, `0%`); pass `format` to replace that text entirely.
+`direction` — not the sign of `value` — drives the arrow and the leading sign. `up` is an
+up arrow and `+`, `down` is the same arrow rotated 180° and `-`, `neutral` has no arrow and
+no sign. `value` is always rendered as its magnitude (`+12.5%`, `-0.8%`, `0%`); pass
+`format` to replace that text entirely.
 
 <!-- example:TrendDirections -->
 ```tsx
@@ -114,10 +114,51 @@ colour. `up` is green with an up arrow, `down` is red with the same arrow rotate
 ```
 <!-- /example -->
 
+## Sentiment
+
+**Colour is a separate axis from direction.** `direction` states which way the number
+moved — a fact about the data. `sentiment` states whether that is good news — a judgement
+only you can make. `positive` is green, `negative` red, `neutral` grey.
+
+Left off, `sentiment` is implied from `direction` (`up` → `positive`, `down` → `negative`,
+`neutral` → `neutral`), so the common "up is good" metric needs nothing extra. Metrics
+where the mapping inverts — churn, latency, error rate, cost, refunds — pass both, and the
+arrow and the colour stop having to agree.
+
+<!-- example:TrendSentiment -->
+```tsx
+<StatCard>
+  <StatCard.Label>Monthly churn</StatCard.Label>
+  <StatCard.Value>2.4%</StatCard.Value>
+  <StatCard.Trend value={0.6} direction="down" sentiment="positive" />
+  <StatCard.Sparkline
+    direction="down"
+    sentiment="positive"
+    values={[3.4, 3.1, 3.2, 2.9, 2.7, 2.5, 2.4]}
+  />
+</StatCard>
+<StatCard>
+  <StatCard.Label>API error rate</StatCard.Label>
+  <StatCard.Value>1.8%</StatCard.Value>
+  <StatCard.Trend value={0.9} direction="up" sentiment="negative" />
+  <StatCard.Sparkline
+    direction="up"
+    sentiment="negative"
+    values={[0.7, 0.8, 0.9, 1.1, 1.4, 1.6, 1.8]}
+  />
+</StatCard>
+```
+<!-- /example -->
+
+The two axes are separate CSS classes too: `--up`/`--down`/`--flat` carry direction (only
+the arrow reads them; they are otherwise styling hooks for you), and
+`--positive`/`--negative`/`--neutral` carry the colour.
+
 ## Sparkline
 
-`StatCard.Sparkline` wraps the [Sparkline](sparkline.md) component in a height-capped slot and adds a
-`direction` prop that tints the line to match the trend.
+`StatCard.Sparkline` wraps the [Sparkline](sparkline.md) component in a slot pinned to the
+bottom of the tile — so a row of tiles lines its charts up however tall each one's text
+runs — and adds `direction`/`sentiment` props that tint the line to match the trend.
 
 <!-- example:SparklineTint -->
 ```tsx
@@ -138,14 +179,15 @@ the one place utilities are used, on the [Sparkline](sparkline.md) it wraps.
 | Where                         | Utility / class                                       | Override                                                                          |
 | ----------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------- |
 | Card fill, border, corners    | `.stat-card`                                          | `--C-SURFACE-0` `--C-BORDER-DEFAULT` `--RADIUS-LG`                                 |
-| Card padding + row gap        | `.stat-card`                                          | `--R-SIZE-5` `--R-SIZE-2`                                                          |
+| Card padding + row gap        | `.stat-card`                                          | `--R-SIZE-5`                                                                       |
 | Icon chip                     | `.stat-card__icon`                                    | `--C-SURFACE-2` `--C-ACCENT` `--RADIUS-MD` `--R-SIZE-2`                            |
 | Value                         | `.stat-card__value`                                   | `--C-TEXT-PRIMARY` `--H3` `--H3-line-height` `--Bold-Weight`                       |
 | Label                         | `.stat-card__label`                                   | `--C-TEXT-SECONDARY` `--BodyText-2` `--BodyText-2-line-height` `--Semibold-Weight` |
-| Trend up / down / neutral     | `.stat-card__trend`                                   | `--C-STATUS-SUCCESS` `--C-STATUS-ERROR` `--C-TEXT-SECONDARY` `--BodyText-2` `--BodyText-2-line-height` `--Semibold-Weight` `--R-SIZE-6` |
+| Trend text metrics            | `.stat-card__trend`                                   | `--BodyText-2` `--BodyText-2-line-height` `--Semibold-Weight` `--R-SIZE-6`         |
+| Trend colour (sentiment)      | `.stat-card__trend--positive` `--negative` `--neutral` | `--C-STATUS-SUCCESS` `--C-STATUS-ERROR` `--C-TEXT-SECONDARY`                      |
 | Trend arrow motion            | `.stat-card__trend-icon`                              | `--MOTION-DURATION-SHIFT` `--MOTION-EASE-SHIFT`                                    |
-| Sparkline tint (up/down/flat) | `text-trend-up` `text-trend-down` `text-fg-muted`     | `--C-TREND-UP` `--C-TREND-DOWN` `--C-TEXT-MUTED`                                   |
-| Sparkline slot                | `.stat-card__sparkline`                               | `--R-SIZE-2` `--R-SIZE-4`                                                          |
+| Sparkline tint (sentiment)    | `text-trend-up` `text-trend-down` `text-fg-muted`     | `--C-TREND-UP` `--C-TREND-DOWN` `--C-TEXT-MUTED`                                   |
+| Sparkline slot                | `.stat-card__sparkline`                               | — (pinned with `margin-top: auto`; the chart fills the tile's width)               |
 
 **Trend text and sparkline read different tokens for the same idea.** The trend
 arrow/label ink themselves with the **status** tokens (`--C-STATUS-SUCCESS` /
@@ -171,10 +213,13 @@ badge will *not* follow; it stays on status. Override both if you want them in s
 - **`animateValue` needs `to`.** With `animateValue` set but no `to`, the animation
   silently no-ops and `children` render instead. It is `to`, not `animateValue`, that
   switches the value into number mode.
-- **`Trend`'s colour is not derived from the number.** `direction` alone picks the
-  arrow, sign, and colour, so `value={-5} direction="up"` renders a green **`+5%`**, and
-  a genuinely good drop (churn falling, `direction="down"`) still shows red. Map your
-  metric's "good/bad" to `direction` yourself.
+- **`Trend`'s arrow is not derived from the number, and its colour is not derived from the
+  arrow.** `direction` alone picks the arrow and sign, so `value={-5} direction="up"`
+  renders **`+5%`** with an up arrow. Colour comes from `sentiment`, which defaults to the
+  `direction`-implied one — so a genuinely good drop is `direction="down"
+  sentiment="positive"`: down arrow, `-`, green. (Before 0.12.0 there was no `sentiment`
+  and colour rode `direction`, so the only way to green a falling metric was to claim it
+  rose, which corrupted the arrow and the sign.)
 - **`Trend` takes no `children`.** Its text is generated from `value` (and `format`);
   the prop type omits `children`, so you can't inject your own node.
 - **[Sparkline](sparkline.md)'s `values` is required.** `StatCard.Sparkline` forwards to [Sparkline](sparkline.md),

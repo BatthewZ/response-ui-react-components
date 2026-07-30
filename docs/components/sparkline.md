@@ -17,8 +17,8 @@ single text-colour utility tints it to match the surrounding text.
 | `width`       | `number`                      | `120`                    |
 | `height`      | `number`                      | `32`                     |
 | `strokeWidth` | `number`                      | `2`                      |
-| `min`         | `number`                      | `Math.min(...values)`    |
-| `max`         | `number`                      | `Math.max(...values)`    |
+| `min`         | `number`                      | `Math.min(...values)` — `bar`: `Math.min(0, ...values)` |
+| `max`         | `number`                      | `Math.max(...values)` — `bar`: `Math.max(0, ...values)` |
 | `aria-label`  | `string`                      | a description of the series (below) |
 | `ref`         | `Ref<SVGSVGElement>`          | —                        |
 | …rest         | `svg` props (minus `children`, `values`) | —             |
@@ -79,14 +79,38 @@ sets `color` — tints the whole chart. The `area` fill is the same hue at reduc
 
 ## Shared scale
 
-By default each Sparkline scales to its own min and max, so two charts with different
-ranges look identical. Pass the same `min`/`max` to both to make their heights
-comparable — and to give a `bar` chart headroom so its lowest bar isn't zero-height.
+By default a `line` or `area` scales to its own min and max, so two charts with different
+ranges look identical. Pass the same `min`/`max` to both to make their heights comparable.
 
 <!-- example:FixedScale -->
 ```tsx
 <Sparkline min={0} max={100} values={[41, 44, 43, 48, 52]} aria-label="Team A, 0–100" />
 <Sparkline min={0} max={100} values={[62, 60, 65, 63, 68]} aria-label="Team B, 0–100" />
+```
+<!-- /example -->
+
+## Bars measure from zero
+
+A bar's *length* is its value, so the `bar` variant widens its default domain to include
+zero rather than starting at `min(values)`. That is what makes the columns comparable to
+each other — but it also means a series that lives in a narrow band far from zero draws as
+a row of near-identical full-height bars. That is the chart telling the truth: the metric
+really is flat. Reach for a `line` and an explicit domain to show variation *within* the
+band.
+
+<!-- example:NarrowBand -->
+```tsx
+<Sparkline
+  variant="bar"
+  values={[99.9, 100, 99.8, 100, 99.95]}
+  aria-label="Uptime as bars — honest, but every column is full height"
+/>
+<Sparkline
+  min={99.5}
+  max={100}
+  values={[99.9, 100, 99.8, 100, 99.95]}
+  aria-label="Uptime against a 99.5–100% domain"
+/>
 ```
 <!-- /example -->
 
@@ -123,9 +147,16 @@ falls back to `currentColor`.
   (`pad`) that stops a thick line clipping at the edges, so a larger `strokeWidth`
   compresses the drawing area. For the `bar` variant, where there's no stroke, it *only*
   pads — a wider `strokeWidth` shortens the bars.
-- **The lowest `bar` is zero-height by default.** Bars measure from the domain minimum,
-  which defaults to the smallest value, so the smallest bar collapses to nothing. Give a
-  `min` below your data (e.g. `min={0}`) for a visible baseline.
+- **`bar` measures from zero; `line`/`area` scale to the data.** A bar's *length* reads as
+  magnitude, so its default domain is widened to include zero and bars grow from the zero
+  line (negative values hang below it). Line and area encode *position*, not magnitude, so
+  they still fit themselves to `min(values)`–`max(values)`. An explicit `min`/`max`
+  overrides either; if it excludes zero, the bar baseline clamps to the floor of the
+  drawing area. **Consequence:** a series in a narrow band far from zero (uptime at
+  99.8–100%) draws as near-identical full-height bars — that is honest, and it is a sign
+  the data wants a `line` with an explicit domain instead. (Before 0.12.0 bars measured
+  from `min(values)`, which rendered the smallest datum as an invisible zero-height rect
+  and inflated a 0.2pt spread into full-scale swings.)
 - **`values` is required and shadows the SVG attribute.** `svg` has a native `values`
   presentation attribute (typed `string`); the prop type omits it so `values: number[]`
   wins. There's also no `children` — content is generated from `values`.

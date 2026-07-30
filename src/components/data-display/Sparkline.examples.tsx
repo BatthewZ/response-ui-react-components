@@ -57,3 +57,22 @@ export function FixedScale() {
     </>
   );
 }
+
+/** A `line` scales to its data; a `bar` measures from zero, because bar length reads as magnitude. For a series that lives in a narrow band far from zero, that makes bars all-but-identical — say so with an explicit domain and a line. */
+export function NarrowBand() {
+  return (
+    <>
+      <Sparkline
+        variant="bar"
+        values={[99.9, 100, 99.8, 100, 99.95]}
+        aria-label="Uptime as bars — honest, but every column is full height"
+      />
+      <Sparkline
+        min={99.5}
+        max={100}
+        values={[99.9, 100, 99.8, 100, 99.95]}
+        aria-label="Uptime against a 99.5–100% domain"
+      />
+    </>
+  );
+}
