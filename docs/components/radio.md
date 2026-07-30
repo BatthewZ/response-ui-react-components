@@ -273,16 +273,24 @@ its transparent rest colour are literals in the same way.
 - **There is no `RadioGroup`.** The package exports `Radio` alone — no group component, no
   `options` prop, no set-level `value`/`onChange`, no roving-tabindex helper. Every group on
   this page is hand-built, and that is the supported path.
-- **The focus ring replaces the UA outline rather than joining it.** `focus:outline-none`
-  removes the browser's own indicator and the 2px `--C-BORDER-FOCUS` ring stands in for it —
-  the trade [Input](input.md), [Select](select.md), [Textarea](textarea.md) and
-  [OTPInput](otpinput.md) make too, and the one [Checkbox](checkbox.md) does not.
+- **The focus ring replaces the UA outline rather than joining it — except in forced
+  colours, where the reset stands down.** The reset is
+  `not-forced-colors:focus:outline-none`: outside forced colours it removes the browser's own
+  indicator and the 2px `--C-BORDER-FOCUS` ring stands in for it — the trade
+  [Input](input.md), [Select](select.md), [Textarea](textarea.md) and [OTPInput](otpinput.md)
+  make too, and the one [Checkbox](checkbox.md) does not.
   The ring is a `box-shadow`, which forced-colours mode forces to `none`, and Tailwind v4's
   `outline-none` compiles to `outline-style: none` rather than the transparent outline
   `outline-hidden` keeps. So neither would survive there — which is why `Radio.css` restores
   a `Highlight` outline under `@media (forced-colors: active)`, along with a `CanvasText`
   dot, since forced colours substitutes background *colours* but leaves the gradient that
   draws the dot alone.
+  The `not-forced-colors:` half is what keeps that restored outline painting. This package's
+  CSS is in `@layer components`, which sits **below** `@layer utilities`, so an unqualified
+  `outline-none` utility would delete `Radio.css`'s own replacement — our utility beating our
+  own rule, and no focus indicator at all for exactly the users the rule was written for.
+  Keying the reset off forced colours makes the two stop competing, without an `!important`
+  and without a cascade carve-out.
 - **Radio inherits the field's description and not its state.** Inside a
   [Field](field.md) it takes `aria-describedby` from the rendered
   [FieldError](field-error.md), like every other control in the module — but never
@@ -330,13 +338,17 @@ Name the group as well as the options. A `<fieldset>`/`<legend>`, or `role="radi
 without one they hear "Daily summary, radio button, 2 of 3" with no idea it concerns the email
 digest.
 
-**Focus is visible, themed, and round.** `focus:outline-none` removes the browser's indicator
-and a 2px `--C-BORDER-FOCUS` ring replaces it, satisfying WCAG 2.4.7 (Focus Visible) on every
-theme; `appearance-none` plus `rounded-full` is what lets that ring trace the circle instead
-of boxing it (see [Theme tokens](#theme-tokens)). Being `focus:` rather than
+**Focus is visible, themed, and round.** `not-forced-colors:focus:outline-none` removes the
+browser's indicator and a 2px `--C-BORDER-FOCUS` ring replaces it, satisfying WCAG 2.4.7 (Focus
+Visible) on every theme; `appearance-none` plus `rounded-full` is what lets that ring trace the
+circle instead of boxing it (see [Theme tokens](#theme-tokens)). Being `focus:` rather than
 `focus-visible:`, it paints on a pointer click as well as on keyboard focus — unlike
-[Button](button.md) and [IconButton](icon-button.md), which are focus-visible only. Forced
-colours is covered separately, in `Radio.css`; see [Gotchas](#gotchas).
+[Button](button.md) and [IconButton](icon-button.md), which are focus-visible only.
+
+**In forced-colours mode the ring is gone and an outline replaces it**, and the reset stands
+down so that outline actually paints: `Radio.css` draws `2px solid Highlight`, and the
+`not-forced-colors:` variant on the reset is what stops the library's own `outline-none`
+deleting it. See [Gotchas](#gotchas).
 
 Describing a group is automatic; marking it invalid is not, and the two do not go in the
 same place. `aria-describedby` is global, so it sits on each option — Radio takes the

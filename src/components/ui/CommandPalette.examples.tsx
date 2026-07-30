@@ -256,8 +256,11 @@ export function CustomEmptyMessage() {
 }
 
 /**
- * The panel's 36rem cap lives in unlayered component CSS, so a plain `max-w-*` utility loses
- * to it. The `!` modifier is what makes the override stick.
+ * Narrowing the panel is now a plain utility. The 36rem cap lives in
+ * `CommandPalette.css`, which is in `@layer components` — below `@layer utilities`
+ * — so `max-w-[28rem]` wins on its own. It used to need the `!` modifier, because
+ * this package's CSS was unlayered and out-ranked every utility whatever the
+ * specificity; that is the defect Phase 1 removed.
  */
 export function NarrowerPanel() {
   const [open, setOpen] = useState(false);
@@ -269,7 +272,7 @@ export function NarrowerPanel() {
       <CommandPalette
         open={open}
         onClose={() => setOpen(false)}
-        className="max-w-[28rem]!"
+        className="max-w-[28rem]"
         items={[
           {
             id: "new-project",

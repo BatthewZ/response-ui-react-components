@@ -201,8 +201,18 @@
    for the same reason as the link label above: it used to be `display: none`
    here, which removes a heading from the accessibility tree — so the rail hid
    the very groups #395 gave headings to. This rule survives only to surrender
-   the padding, because this file is unlayered and would otherwise outrank
-   `sr-only`'s own `padding: 0` whatever the utility's specificity. */
+   the padding. Before Phase 1 this file was unlayered and would have outranked
+   `sr-only`'s own `padding: 0` whatever the utility's specificity; the file is now
+   in `@layer components`, below `@layer utilities`, so `sr-only` would win on its
+   own. The rule is therefore redundant rather than load-bearing — measured, it
+   makes no difference to the computed padding either way.
+
+   DO NOT DELETE IT AS DEAD CODE HERE. It is also `probe:cascade-layer`'s
+   `control-sronly-sectiontitle-padding` control, and it is what makes that row
+   able to redden: `sr-only` is applied to this element iff the sidebar is
+   collapsed (AppShell.tsx:333) and `[data-collapsed]` is present iff the same
+   (:303), so this rule is always in play alongside it and the pairing has no
+   other observable. Delete it in Phase 4, with the row. */
 .app-shell-sidebar[data-collapsed] .app-shell-sidebar-section-title {
   padding: 0;
 }

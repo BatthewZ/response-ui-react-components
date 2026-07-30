@@ -189,3 +189,47 @@ good. These are the ways they have still let defects through.
   heading list afterwards. This also fires across component boundaries: the generator rewrites
   every doc on every run, so an empty fence another agent has just added in a page you do not
   own gets eaten by *your* run.
+- **A gate that reads only one of a file's two doors is green about the wrong thing.** The cascade
+  probe derives its stylesheet list from `src/styles.css` and builds no JS graph — so when one
+  component *also* imported its own `.css` from its `.tsx`, the bundler injected a second,
+  **unlayered** copy that out-ranked the layered one, and the probe reported the whole layering
+  move healthy while that one component was still unoverridable in every source consumer,
+  including this repo's own dev app. Measured in the real dev bundle: two `.rui-grid{` copies,
+  one in `@layer components` and one outside, collapsing to one after the import was deleted; and
+  `<div class="rui-grid grid-cols-2">` computed three columns before and two after. When an
+  instrument reads *source*, ask what the *bundler* does with the same files. The guard that
+  closes it is one grep with no allowlist, which is the profile worth reaching for: it cannot be
+  satisfied by a lie.
+- **A probe capability that is set up and then torn down measures the un-set-up state.** Forcing
+  `:hover` over the devtools protocol and then **detaching the session** clears the forced state
+  immediately, so the read that follows is the unhovered value — and the row reports INERT while
+  looking like a real measurement. It read as "the engine cannot see hovered scrollbar
+  pseudo-elements", and that conclusion was wrong: keeping one session alive per page and clearing
+  the state explicitly afterwards reproduced the hovered value exactly. Before concluding an
+  instrument *cannot* observe something, prove the instrument observes a value you planted on
+  purpose. A distinctive sentinel colour settled it in one run.
+- **Widening a guard's vocabulary is how it goes blind, not how it goes red.** Adding
+  `not-forced-colors:` to a focus reset made `verify:focus-affordance` stop recognising the reset
+  at all, so it dropped every site using it out of coverage — and still printed OK. The number
+  that showed it was the coverage count in its own headline: **18 covered controls fell to 11**,
+  with the exit code unchanged at 0. A guard's summary line is evidence only if you compare it
+  against the run before. After widening, make it fail on purpose *through the widened path*, not
+  through some other one.
+- **An instrument that supplies the condition it is testing cannot test it.** The cascade probe
+  builds an A/B by reading the import list out of `src/styles.css`, **stripping** whatever `layer()`
+  is written there, and adding its own — which is right for measuring *what layering does*, and
+  makes it structurally blind to *whether the shipped file is layered at all*. Delete
+  `layer(components)` from one real import and the probe still compares "no layer" against "layer",
+  reports every row unchanged, and exits 0; types, lint and every test agree, because jsdom applies
+  no stylesheets. A whole phase whose result was one keyword repeated on 45 lines had no gate
+  reading those lines. The fix was ~100 lines of `@import` parsing with no allowlist, where an
+  import it cannot classify is a *failure* rather than a skip. **Ask of any A/B instrument: does it
+  construct the "before" or the "after" side itself? Whatever it constructs, it cannot observe.**
+- **A row whose competitor sets the same value as the foundation can never have teeth, and that
+  is the finding.** A component's `:hover` scrollbar-thumb colour was byte-identical to the rule
+  it was beating, so no reading could distinguish "our rule won" from "theirs did". Once the
+  component's CSS was layered it could not win in any state — inert everywhere, which is the shape
+  that gets cited as safe. The honest resolution was to **delete the declaration** and re-point
+  the row at the foundation's own values, so the row still reddens if anyone re-adds a rule. An
+  `accepted` row whose underlying rule has been deleted goes INERT, so "accept it" and "leave the
+  CSS in place" cannot both be done.

@@ -330,9 +330,17 @@ to 50% black rather than vanishing.
   `Hero.css`, scoped to `.hero__content .stagger-item`: a plain `fade` over
   `--MOTION-DURATION-ENTER`, held off until the reveal drops its hidden class. Two
   consequences. Any Stagger *you* nest inside `Hero.Content` picks up the same fade. And
-  `animation-name` on `.hero__content .stagger-item` is not overridable from a
-  `className` — the rule is unlayered component CSS, which outranks every Tailwind
-  utility; write your own unlayered rule after this package's stylesheet instead.
+  the plain fade is a **default you can outrank**: put a foundation entrance class such as
+  `fade-up` on a stagger item in hand-written markup, or write your own rule at `.stagger-item`,
+  and yours wins — this package's CSS is in `@layer components`, which both your unlayered rules
+  and Tailwind's `@layer utilities` out-rank. That is deliberate; Hero's plain fade is an
+  aesthetic default, not a guard.
+- **The one thing in Hero you cannot outrank is its sequencing guard.** While the reveal is
+  still hidden, `.hero__content .scroll-reveal-hidden .stagger-item` forces
+  `animation-name: none !important`, so an entrance you supplied does not run and get spent
+  before anyone can see it — it starts when the reveal fires instead. The guard is transient:
+  the hidden class is removed once, on first intersection, and never comes back, so it stops
+  applying for the life of the page. It is the only `!important` in `Hero.css`.
 - **`animate` hides the content until an observer fires.** ScrollReveal starts at
   `opacity: 0` and clears it on intersection — and a hero is usually the page's `<h1>`.
   Three environments never get an intersection, and only two are covered: no
@@ -346,10 +354,11 @@ to 50% black rather than vanishing.
 - **`size="full"` is `dvh`, the rest are `vh`.** `.hero--full` declares `100vh` and then
   `100dvh`, so a browser that understands the dynamic unit tracks a retracting URL bar and one
   that does not falls back to the large viewport. `sm`/`md`/`lg` are still `vh` fractions.
-  Overriding any of them needs the important modifier or your own unlayered rule: `cn` will
-  not dedupe `hero--full` against a `min-h-*` class, and `.hero--full` is unlayered component
-  CSS while Tailwind v4 puts utilities in `@layer utilities` — unlayered outranks layered
-  outright, whatever the specificity or the source order.
+  Overriding any of them is now a plain `min-h-*` utility: `cn` still will not dedupe
+  `hero--full` against a `min-h-*` class, so both land on the element, and the utility wins
+  because `.hero--full` is in `@layer components` and Tailwind orders that below
+  `@layer utilities`. It used to lose and need the important modifier, when this package's CSS
+  was unlayered.
 - **Both stylesheets are required.** Hero is almost entirely CSS: `.../styles` from this
   package supplies the layering, the scrim and the padding rules, and
   `@batthewz/response-ui-css` supplies the variables they read. Miss the first and you get an

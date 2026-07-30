@@ -132,9 +132,12 @@ the border and ring colour; pair it with a visible [FieldError](field-error.md) 
 perceive the colour still learn what's wrong.
 
 Focus shows a 2px ring in `--C-BORDER-FOCUS` plus a matching border; it is a `focus:` ring,
-not `focus-visible:`, so it appears on click as well as keyboard focus. `focus:outline-none`
-removes the browser's own outline, which is why the ring has to be there — every native form
-control in the library is keyed this way, and [Button](button.md) is not.
+not `focus-visible:`, so it appears on click as well as keyboard focus.
+`not-forced-colors:focus:outline-none` removes the browser's own outline, which is why the ring
+has to be there — every native form control in the library is keyed this way, and
+[Button](button.md) is not.
+
+**In forced-colours mode the reset stands down and the browser's own outline stays.** The reset is `not-forced-colors:focus:outline-none`. It has to be: the ring is a `box-shadow`, which forced colours forces to `none`, so an unqualified reset would leave the control with no focus indicator at all in exactly the mode where indicators matter most (WCAG 2.4.7). Standing the reset down there is new — this control previously had no forced-colours affordance.
 
 ## Related
 

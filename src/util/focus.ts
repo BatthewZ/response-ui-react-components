@@ -67,8 +67,24 @@ export const focusOutlineResetButton = "focus-visible:outline-none";
 export const focusRingControl =
   "ring-2 ring-transparent focus:ring-border-focus focus:ring-offset-0 focus:border-border-focus";
 
-/** Outline reset for a `focusRingControl` site, keyed to match it. */
-export const focusOutlineResetControl = "focus:outline-none";
+/**
+ * Outline reset for a `focusRingControl` site, keyed to match it.
+ *
+ * `not-forced-colors:` is load-bearing, not decoration. The ring this resets is
+ * a `box-shadow`, and forced-colours mode forces `box-shadow: none` — so in that
+ * mode the reset deletes the UA outline and nothing replaces it. Since
+ * `@layer components` sits below `@layer utilities` (Phase 1), this utility also
+ * beats `Radio.css`'s own `forced-colors` replacement outline, which is WCAG
+ * 2.4.7 for exactly the users the rule was written for. Standing the reset down
+ * in forced colours is what makes the two stop competing: no `!important`, no
+ * carve-out, and the deliberate `Highlight` colour in `Radio.css` survives.
+ *
+ * This closes the same gap for every other `focusRingControl` site — `Input`,
+ * `Select`, `Textarea`, `OTPInput`, `Combobox`, `ColorPicker` — which reset the
+ * UA outline and had no forced-colours replacement at all. They now keep the UA
+ * outline in that mode instead of having none.
+ */
+export const focusOutlineResetControl = "not-forced-colors:focus:outline-none";
 
 /** Invalid state for `focusRingControl` — recolours border and ring together. */
 export const focusRingControlError =

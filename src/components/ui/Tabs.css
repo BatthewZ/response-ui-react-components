@@ -8,22 +8,37 @@
   gap: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: thin;
 }
 
-/* Hide scrollbar when not hovering for cleaner appearance */
-.tabs-list::-webkit-scrollbar {
-  height: 0.1875rem;
-}
+/* SCROLLBAR APPEARANCE IS THE FOUNDATION'S, DELIBERATELY. There were three
+   rules here — a 3px `::-webkit-scrollbar` height, a `transparent`
+   `::-webkit-scrollbar-thumb`, and a `:hover` thumb colour — and Phase 1 deleted
+   all three rather than defending them.
 
-.tabs-list::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: 999px;
-}
+   `response-ui-css/src/base.css` styles `*::-webkit-scrollbar*` universally and
+   unlayered, so from `@layer components` none of the three can win in ANY state:
+   the height falls through to the foundation's `0.625rem`, the resting thumb to
+   `--C-BORDER-DEFAULT`, and the hovered thumb to `--C-BORDER-STRONG` (the hover
+   rule was the worst of the three — inert in both hover states, since the
+   foundation's base rule supplies the identical colour in one and its own
+   `:hover` rule wins the other). Keeping them would have needed `!important` on
+   a pseudo-element, which closes the override route COMPLETELY: no consumer
+   stylesheet at any specificity, no `!important`, and not even inline `style`,
+   which cannot target a pseudo-element at all. Dead declarations that look live
+   are worse than the appearance change, and the owner ruled that the foundation
+   owns scrollbar appearance app-wide.
 
-.tabs-list:hover::-webkit-scrollbar-thumb {
-  background-color: var(--C-BORDER-DEFAULT);
-}
+   The component's real overflow affordance is the mask gradient below, not the
+   hairline. `probe:cascade-layer`'s three `tabs-*` rows are now controls that
+   read the foundation's values in both builds, and they redden if a Tabs
+   scrollbar rule is re-added.
+
+   `scrollbar-width: thin` went with them, even though the foundation never
+   declares it and so it faced no collision. Keeping it would have left Tabs thin
+   on Firefox and 0.625rem on Chromium — a divergence this change would have
+   introduced, since the deleted webkit rules were what kept the two engines
+   agreeing. "The foundation owns scrollbar appearance" is only true if it owns
+   the width on both. */
 
 /* When tab content overflows, mask the overflowing edges so the tabs
    fade to transparent. Using mask-image (not a color overlay) means

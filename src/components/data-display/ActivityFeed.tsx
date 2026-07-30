@@ -40,8 +40,11 @@ type ActivityFeedItemProps = {
    * with `--activity-feed-highlight-ink`, and gains a ring in the fill colour so
    * it reads bigger — the cue that survives greyscale and a theme whose accent
    * sits near the surface, where hue alone would not. Both are public custom
-   * properties; a `className` cannot reach the marker, and even reaching it would
-   * lose to this package's unlayered CSS.
+   * properties, and that is what makes them reachable at all: a `className` on
+   * the row lands on the `<li>` and nothing inside it, while one write of these
+   * inherits to markers the consumer never renders. (Precedence is no longer the
+   * reason — this package's CSS is in `@layer components`, so a caller's utility
+   * does beat it wherever a caller can put one.)
    *
    * The ring is a `box-shadow`, so it costs no layout — the 2rem marker column is
    * a fixed grid track that the connector's origin is measured from, and growing

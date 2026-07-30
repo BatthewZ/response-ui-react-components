@@ -121,6 +121,13 @@ read as *not* selected; a raised hover would say the opposite.
 
 ## Gotchas
 
+- **The tab strip's scrollbar is the app's, not the component's.** `Tabs.css` used to shrink it
+  to a 3px hairline and hide the thumb until hover; those rules are gone. `response-ui-css`
+  styles `*::-webkit-scrollbar*` universally and unlayered, so from `@layer components` none of
+  them could win in any state, and keeping them would have meant `!important` on a
+  pseudo-element — which no consumer stylesheet, and not even an inline `style`, can beat. The
+  overflow cue is the mask gradient that fades the strip's edges, which is unchanged. Restyle the
+  scrollbar app-wide from your own CSS if you want it narrower.
 - **Sub-components must be inside `<Tabs>`.** `Tabs.Tab` and `Tabs.Panel` read context
   and throw `"Tabs compound components must be used within <Tabs>"` if they can't find
   it. Wrapping them in your own component is fine; rendering them outside the root

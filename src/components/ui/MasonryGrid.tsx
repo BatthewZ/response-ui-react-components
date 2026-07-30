@@ -134,8 +134,9 @@ const MasonryGridItem = forwardRef<HTMLDivElement, MasonryGridItemProps>(functio
 
   // `last:mb-0` is (0,1,1) and the block gap is (0,1,0), both in
   // `@layer utilities` — so the trailing-gap reset wins on specificity. It used
-  // to need a rule in `MasonryGrid.css` only because that file is unlayered and
-  // out-ranked any `mb-0` utility; removing the declaration removes the reason.
+  // to need a rule in `MasonryGrid.css` only because that file out-ranked any
+  // `mb-0` utility, first by being unlayered and now not at all; removing the
+  // declaration removed the reason twice over.
   const spacing = cn(blockGapMap[gap], "last:mb-0");
 
   if (!animate) {

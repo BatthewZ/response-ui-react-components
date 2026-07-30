@@ -1,9 +1,16 @@
 # Plan — "sensible defaults, overridable"
 
-**Phase 1 is unblocked and ready to start. Both owner decisions are settled (§3).**
-`scripts/probe-cascade-layer.mjs` measures **8 must-fix regressions, 1 accepted delta and 2 holding
-controls**. One piece of Phase 2 has landed ahead of Phase 1 because it needed no layering:
-`--masonry-gap` is gone (§3b).
+**✔ PHASE 1 IS CLOSED. Phase 2 is next and is unblocked.** This package's component CSS is in
+`@layer components`, so `<StatCard className="flex-row">` works today on every component.
+`scripts/probe-cascade-layer.mjs` measures **0 regressions, 0 inert rows, 3 accepted deltas and 16
+verified rows** across 19 rows. Phase 1's lessons are in `memory/gates.md` and `memory/README.md`;
+its settled outcomes are rows in §13. One piece of Phase 2 landed ahead of Phase 1 because it needed
+no layering: `--masonry-gap` is gone (§3b).
+
+```
+bun run probe:cascade-layer     # regressions: 0  inert: 0  accepted: 3  verified: 16
+bun run verify:css-layering     # 45 component imports, all layer(components); tokens.css unlayered
+```
 
 ## How to read this document
 
@@ -17,8 +24,8 @@ struck-out text to step around.
   number quoted bare is how this plan previously sized work off a figure no method reproduces.
 - **`◆ DECISION` marks something the owner must settle.** They block. They are collected in §3.
 - **`▲ ONE-WAY DOOR` marks a choice that becomes permanent public API.** Freeze it before fan-out.
-- Refuted claims are not kept here. §10 lists what has been settled and where the reasoning lives,
-  so nobody re-derives it. `bugs/ARCHIVE.md` #497/#498 own the Phase 0 detail in full.
+- Refuted claims are not kept here. **§13 lists what has been settled** and where the reasoning
+  lives, so nobody re-derives it. `bugs/ARCHIVE.md` #497/#498 own the Phase 0 detail in full.
 
 ---
 
@@ -30,29 +37,44 @@ struck-out text to step around.
 bun run probe:cascade-layer
 ```
 
-It fails: **8 regressions, 1 accepted delta, 2 controls holding**, plus a build error proving
-`@import "./styles.css" layer(components)` cannot compile. That single output teaches this problem
-faster than the rest of this document, and it is the only instrument in the repo that can see this
-class of bug — `vitest` stubs CSS to `""` and jsdom applies no stylesheets, so every other gate is
+**It passes** — `regressions: 0, inert: 0, accepted: 3, verified: 16` — and reading its 19 rows is
+still the fastest way into this problem, because each row's `note` carries the collision it
+reproduces and how to make it come back red. It is the only instrument in the repo that can see this
+class of bug: `vitest` stubs CSS to `""` and jsdom applies no stylesheets, so every other gate is
 blind to the cascade.
 
-Read the accepted row's reason before you read anything else: it is the one row whose green means
-"decided", not "safe" (§3a).
+Two things in that output a newcomer will misread:
+
+- **The first section still prints a build error, and that is the *pass* condition.** It proves
+  `@import "./styles.css" layer(components)` cannot compile — `@source` may not be nested — which is
+  why the 45 per-component imports each carry `layer()` instead. It is a measurement, not a failure.
+- **`accepted: 3` is not `verified: 3`.** An accepted row is a *changed* value the owner signed off,
+  pinned to that value. Read each one's reason before anything else: they are the rows whose green
+  means "decided", not "safe" (§3a, and the two `hero-*` rows).
+
+**Then run `bun run verify:css-layering`.** It is ~130 lines, half of them the reason why, and it
+asserts the one thing Phase 1 actually did — `layer(components)` on every component import, and none
+on `tokens.css`. The probe **cannot** assert that: it re-derives the import list from
+`src/styles.css` and adds `layer()` *itself* to build its layered variant, so deleting
+`layer(components)` from a real import leaves the probe green and every other gate silent.
 
 ### The four things that will bite you
 
-1. **Phase 1 gates everything, and it is not mechanical.** Seven measured regressions, three of them
-   WCAG-bearing. Six share one shape: a rule here that must beat an *unlayered* rule in
-   `response-ui-css`. Each needs an explicit decision. The seventh is a policy question (§3a).
-2. **`classNames` is an invalid API until Phase 1 lands.** Before it, every slot is a prop that
-   appears in the DOM, changes nothing, and reports no error — because this package's CSS is
-   unlayered and outranks `@layer utilities` at any specificity. Do **not** start Phase 3 early on
-   the grounds that it is "additive and low-risk." That is the failure `memory/affordances.md`
-   describes, and it describes it about this exact API.
-3. **Phase 1 must edit `src/styles.css`, the one file lanes are otherwise forbidden to touch.**
-   `@source` cannot be nested, so the aggregate import cannot carry `layer()`; the 46 individual
-   imports must each take it. Phase 1 is a single serial commit that owns that file. No lane starts
-   until it has landed.
+1. **Phase 1 is closed, and it was not mechanical.** The eight measured regressions are gone, and
+   *how* is the part to read before touching anything CSS-shaped. **Five of the eight were fixed by
+   stopping the collision rather than winning it** — `Timeline` stopped emitting the foundation's
+   entrance class, `Stagger`'s stylesheet was deleted outright, `Tabs` deleted three scrollbar
+   declarations across two rows, and `Radio`'s competing utility was taught to stand down. **Two took
+   an `!important`**, which `AGENTS.md` fences with an explicit admission test. **One was accepted.**
+   `memory/README.md` §22 is the generalisation; §13 carries the outcomes row by row.
+2. **`classNames` is now a valid API, and it was not before.** Before Phase 1 every slot would have
+   been a prop that appears in the DOM, changes nothing, and reports no error. That premise is
+   deleted, which is what unblocks Phase 3 — see §4a for why `memory/affordances.md`'s objection to
+   this exact API dissolved rather than being mistaken.
+3. **`src/styles.css` is owned, and stays owned.** Phase 1 was the single serial commit that layered
+   the **45** individual imports; Phase 5 prunes the file. `@source` cannot be nested, so the
+   aggregate import can never carry `layer()`. No lane edits it, and `verify:css-layering` now fails
+   the build if a lane silently un-layers an entry.
 4. **Do not "fix" the house rule into symmetry.** `className` → outermost element; `...props` stays
    on the focusable control. This was reversed once and had to be withdrawn: `<label for>` binds
    only to labelable elements, `div.focus()` is a no-op so `focusFirstError()` dies silently, and an
@@ -63,13 +85,13 @@ Read the accepted row's reason before you read anything else: it is the one row 
 
 ```
 Phase 1  ──►  Phase 2  ──►  Phase 3  ──►  Phase 5 (release)
-(serial,      (2 files)     (lanes,        
- owns                        fan-out)      Phase 4 is not a project — it is a
+✔ CLOSED      (2 files)     (lanes,        
+(owned                       fan-out)      Phase 4 is not a project — it is a
  styles.css)                               standing convention. No lanes, no
                                            completion criterion.
 ```
 
-**The prize is Phases 1–3.** Phase 1 alone makes `<StatCard className="flex-row">` work. Stop after
+**The prize is Phases 1–3.** Phase 1 alone made `<StatCard className="flex-row">` work. Stop after
 3 and the package is coherent and the feature is delivered.
 
 ---
@@ -84,9 +106,10 @@ visual decision it makes without reaching for a stylesheet:
 <StatCard className="flex-row items-center border-0 bg-surface-2">…</StatCard>
 ```
 
-Today the first works everywhere and the second works only on components that have no `.css` file.
-**That inconsistency — not the CSS itself — is the defect.** Phase 4 exists to reduce the CSS;
-Phases 1–3 exist to remove the inconsistency, and they do it without deleting much CSS at all.
+Before Phase 1 the first worked everywhere and the second worked only on components with no `.css`
+file. **That inconsistency — not the CSS itself — was the defect.** Phase 1 removed it for
+`className`; Phase 3 removes it for internals via `classNames`. Phase 4 exists to reduce the CSS —
+a separate, optional goal that neither phase depends on.
 
 ### Guiding principle
 
@@ -106,9 +129,9 @@ breaks the API.
 
 | Fact | Re-check with |
 | --- | --- |
-| This package's component CSS is imported **unlayered**, so it outranks every Tailwind utility regardless of specificity. `@layer components;` is declared by Tailwind and is **empty**. | `grep -c 'layer(' src/styles.css` → `0`. Then `node scripts/probe-cascade-layer.mjs --keep` and walk the built CSS: `.flex-col` and `.sr-only` resolve inside `@layer utilities`; `.stat-card`, `.timeline-item` and `.scroll-reveal-hidden` resolve **unlayered**. |
-| The foundation is **almost entirely unlayered too** — 2 `@layer` blocks across 29 files (`base.css`, `responsive/text.css`). So the property-intersection surface is the whole of `response-ui-css`, not just its animation files. | `grep -rn '@layer' ../response-ui-css/src/` |
-| **7 rules in 4 files** name a class the foundation owns, and every one inverts when this package moves into a layer. | `grep -rn 'stagger-item\|scroll-reveal-hidden\|\.fade-\|\.scale-in\|\.scale-out' src --include=*.css` → rule lines `Timeline.css:465,526`, `Hero.css:91,97`, `ScrollReveal.css:13`, `Stagger.css:18,26`. |
+| This package's component CSS is imported **in `@layer components`**, which Tailwind orders **below** `@layer utilities` — so a caller's utility beats a component rule at any specificity. `tokens.css` is deliberately the one unlayered import: it carries `@theme inline`. | `bun run verify:css-layering` → `45 component imports, all layer(components); tokens.css unlayered`. Then `node scripts/probe-cascade-layer.mjs --keep` and walk the built CSS: `.flex-col` and `.sr-only` resolve inside `@layer utilities`; `.stat-card` and `.timeline-item` resolve inside `@layer components`; the foundation's `.scroll-reveal-hidden` resolves **unlayered**. (`grep -c 'layer(' src/styles.css` is **not** the check — it returns 48, counting three mentions in the file's own header prose. Count the imports, not the token.) |
+| The foundation is **almost entirely unlayered** — 2 `@layer` blocks, both `@layer base`, across the whole package. So it out-ranks everything this package writes, and the property-intersection surface is the whole of `response-ui-css`, not just its animation files. | `grep -rn '@layer' ../response-ui-css/src/` → `base.css:48`, `responsive/text.css:114` (the third hit, `base.css:44`, is the comment explaining the first). |
+| **3 rules in 2 files** still name a class the foundation owns, down from 7 in 4. Each was left deliberately and is measured by a probe row; the other four were deleted, because a rule that can never win again is dead CSS that looks live. | `grep -rn 'stagger-item\|scroll-reveal-hidden\|\.fade-\|\.scale-in\|\.scale-out' src --include=*.css` → **rule** lines `Hero.css:99` and `:119`, `ScrollReveal.css:32`. Method: every other hit in that output is a comment. `Stagger.css` no longer exists and `Timeline.css`'s two entrance rules are keyed on `[data-entering]`, an attribute this package emits, not on a foundation class. |
 | Token-backed utilities compile to `var()`, so **runtime re-theming survives inlining**. | `.bg-surface-0{background-color:var(--C-SURFACE-0)}` in the built CSS. |
 | Arbitrary custom properties generate, land in `@layer utilities`, and dedupe per property name. | `cn("[--X:a]","[--X:b]")` → `[--X:b]`; `cn("[--A:1]","[--B:2]")` → both. |
 | A token override and the utility reading it coexist. | `cn("[--C-TEXT-PRIMARY:red]","text-fg-primary")` → both retained. |
@@ -123,34 +146,46 @@ command that recomputes the answer.
 
 ### 2b. Payload size — method-dependent, so state the method
 
-Two legitimate denominators: **all of `src`** (49 `.css` files, 5,971 lines) and **component
-siblings only** (46 files, 5,784 lines). The all-`src` reading includes `styles.css`, `tokens.css`
+Two legitimate denominators: **all of `src`** (48 `.css` files, 6,087 lines) and **component
+siblings only** (45 files, 5,886 lines). The all-`src` reading includes `styles.css`, `tokens.css`
 and `examples/example-theme-tuning.css`.
 
 ```
-find src -name '*.css' | wc -l                      # 49
-cat $(find src -name '*.css') | wc -l               # 5971
+find src -name '*.css' | wc -l                      # 48
+cat $(find src -name '*.css') | wc -l               # 6087
+grep -c '^@import "\./components' src/styles.css    # 45  — the components-only denominator
 ```
+
+**The components-only file count is the same number `verify:css-layering` asserts**, which is what
+keeps the two from drifting: a file that is not imported from `src/styles.css` is not in the
+cascade, so it is not in this table either. `Stagger.css` left both when Phase 1 deleted it.
 
 | Measure | Value | Caveat |
 | --- | --- | --- |
-| Declarations | **2,257** all-`src` / **2,215** components-only | Method: strip `/* */`, count `;` at brace depth ≥ 1. Verified exact for this codebase — no block omits its trailing `;`, no `;` inside `url()`/`content`. |
-| Rules | **690** selector rules, or **706** counting `@keyframes` steps | Never quote 706 bare. |
-| Comments / blank | **22.4%** / **12.5%** | Blank share swings to 13.1% if blanks inside comment blocks count as blank. Combined ~35% of the payload is not CSS — that is the point that survives either method. |
-| Fully deletable by inlining | **~9–10 files** = **~6% of lines**, **~8% of declarations** | Tooltip 12, Popover 27, Wizard 23, ThemeSwitcher 42, DropdownMenu 78, Button 1 (comment only), Collapsible 35, Grid 56, MasonryGrid 81 (now 21 column-scale declarations + `break-inside: avoid`), ScrollReveal 16. **ScrollReveal is a candidate only — its `@media (scripting: none)` block is a confirmed Phase 1 regression site (§3a context) and must not be inlined.** Quote lines *or* declarations, never mixed. |
-| Convert mechanically | **~1,805 of 2,257 (80%)** | Bucket A 1,565 + B 240. **These two are estimates, not measurements** — the bucketing is a judgement call and is not derivable from the repo. Robust to the denominator; do not present as measured. |
+| Declarations | **2,247** all-`src` / **2,205** components-only | Method: strip `/* */`, count `;` at brace depth ≥ 1. Verified exact for this codebase — no block omits its trailing `;`, no `;` inside `url()`/`content`. Reproduce components-only by iterating the `@import` list with `/@import\s+"(\.\/[^"]+\.css)"[^;\n]*;/` — **`"\s*;` matches nothing now the imports carry `layer(components)`, and prints a silent `0`.** |
+| Rules | **685** selector rules, or **701** counting `@keyframes` steps | Never quote 701 bare. |
+| Comments / blank | **23.3%** / **13.1%** | Method: mask `/* */` spans, then count lines that retain any masked character as comment and lines blank outside a comment as blank. The old "swings to 13.1% if blanks inside comment blocks count as blank" caveat is now **inert** — there are zero blank lines inside comment blocks, so both readings give 13.1%. Combined **36.4%** of the payload is not CSS, and Phase 1 pushed that up: it added explanation faster than it removed rules. |
+| Fully deletable by inlining | **9 files** = **355 lines (5.8%)**, **168 declarations (7.5%)** | Tooltip 12, Popover 27, Wizard 23, ThemeSwitcher 42, DropdownMenu 78, Button 1 (comment only), Collapsible 35, Grid 56, MasonryGrid 81 (21 column-scale declarations + `break-inside: avoid`). **`ScrollReveal.css` has come off this list** and must not go back on it: it is 35 lines of which exactly **one** is a declaration — `opacity: 1 !important` inside `@media (scripting: none)` — and no utility can replace it, because `noscript:opacity-100` lands in `@layer utilities` and loses to the foundation's unlayered `.scroll-reveal-hidden`. Quote lines *or* declarations, never mixed. |
+| Convert mechanically | **~80%** | Bucket A + B. **An estimate, not a measurement** — the bucketing is a judgement call and is not derivable from the repo. Robust to the denominator; do not present as measured, and do not restate it as a count of declarations, which is what made the previous figure look measured. |
 
-`Timeline.css` is the cleanest illustration of why lines mislead: **529 lines, 114 declarations,
-50.9% comment** — a layout contract that would not survive being spread across six class strings.
+`Timeline.css` is the cleanest illustration of why lines mislead: **582 lines, 115 declarations,
+50.3% comment** — a layout contract that would not survive being spread across six class strings. It
+grew by 53 lines in Phase 1 while gaining one declaration, which is the same point from the other
+direction.
 
 ### 2c. Component counts — reading-dependent, and the old numbers were not reproducible
 
 ```
 # .tsx under src/components, excluding *.test.tsx and *.examples.tsx
-281 total − 96 test − 90 examples = 95;  46 have a sibling .css, 49 do not
+281 total − 96 test − 90 examples = 95;  45 have a sibling .css, 50 do not
 # excluding three non-components (use-form, router-adapter, menu-internals)
-92;  46 with CSS, 46 without   ← a 50/50 split, not 52%
+92;  45 with CSS, 47 without
 ```
+
+**The 50/50 split is gone, and it was never the finding.** Deleting one stylesheet (`Stagger.css`)
+moved it to 45/47 — which is exactly how much weight a "50/50" observation could ever bear. The
+durable statement is the absolute one: **just under half** of this package's components have a
+sibling stylesheet, and Phase 1 made that fact stop mattering for `className`.
 
 **There is no reading of this repo that yields ~155 components.** The ceiling is 105 (exported
 PascalCase symbols); the plausible range is 92–105. Any percentage built on ~155 is unmeasurable —
@@ -228,22 +263,32 @@ grep -rln 'outline: 2px solid var(--C-BORDER-FOCUS)' src | wc -l     # across 21
 beating our ring.** The probe now records it as `accepted (owner decision)` with that scope written
 into the row itself.
 
-**It does not cover `radio-forced-colors-focus-outline`, which is still a must-fix.** That row looks
-identical in the output (2px → 0px) and is a completely different mechanism: the competitor is **our
-own `focus:outline-none` utility**, not a consumer's. `Radio.css:35-38` states it at source — *"both
-are (0,2,0), and Tailwind's utility is in `@layer utilities` while this file is unlayered."* After
-Phase 1 `@layer components` sits **below** `@layer utilities`, so our own utility deletes our own
-forced-colors outline. That is WCAG 2.4.7 for high-contrast users, caused entirely in-package, and
-nobody has accepted it.
+**It did not cover `radio-forced-colors-focus-outline`, and that row was fixed rather than
+accepted.** It looked identical in the output (2px → 0px) and was a completely different mechanism:
+the competitor was **our own `focus:outline-none` utility**, not a consumer's. `@layer components`
+sits **below** `@layer utilities`, so our own utility deleted our own forced-colors outline — WCAG
+2.4.7 for high-contrast users, caused entirely in-package.
 
-> **Two rows, same numbers, opposite dispositions.** A lane reading "focus rings are layered, the
-> consumer wins, accepted" and stopping there will leave Radio broken. The distinction is the
-> mechanism, not the measurement.
+**The fix was to stop the two rules competing, not to rank one over the other.**
+`focusOutlineResetControl` (`src/util/focus.ts`) is now `not-forced-colors:focus:outline-none`, so
+the reset stands down in the one mode where the outline is the only affordance left. No `!important`,
+no carve-out — and it closed the same gap for the six other controls sharing the recipe, which had no
+forced-colours indicator at all. `Radio.css` states the whole thing at source; find it by content,
+not by line number:
 
-#### Consequences to carry out
+```
+grep -n 'Nothing competes with this rule' src/components/form/Radio.css
+grep -n 'not-forced-colors' src/util/focus.ts
+```
 
-1. **Record the decision in `AGENTS.md`** with its reason, so the next reader does not re-litigate it
-   from the leftover asymmetry.
+> **Two rows, same numbers, opposite dispositions.** A reader taking "focus rings are layered, the
+> consumer wins, accepted" and stopping there would have left Radio broken. The distinction is the
+> mechanism, not the measurement — `memory/gates.md` carries it as a lesson.
+
+#### Consequences, all discharged
+
+1. **Recorded in `AGENTS.md`** with its reason, under *"Decision: focus rings are layered, and a
+   consumer's reset may win"* — status flipped from "decided, not yet in effect" to **in effect**.
 2. **The gate needed extending, and has been.** The probe's only pass state used to be
    `before === after`, which would have left this row red for ever and made "probe green"
    unsatisfiable. It now supports `expectAfter` + `accepted`, with two guards that refuse to run:
@@ -255,6 +300,25 @@ nobody has accepted it.
 4. **`verify:focus-affordance` cannot see any of this.** It checks *source pairing* — a reset implies
    a replacement — so it stays green while the replacement stops painting. Do not add a focus-ring
    assertion to it and believe the ring is covered.
+
+   **Measured counter-case, and it inverts the shape of the warning.** The guard *did* need
+   extending — not with a focus assertion, but with a **variant it could no longer parse**. The
+   `Radio` fix made `focusOutlineResetControl` read `not-forced-colors:focus:outline-none`, and
+   `STATE_NEUTRAL_VARIANT` did not list `not-forced-colors`, so the guard stopped recognising the
+   string as a reset at all and silently dropped all seven `focusRingControl` sites out of coverage.
+   Un-widen it and measure:
+
+   ```
+   node scripts/verify-focus-affordance.mjs                       # OK — 18 focusable control(s) … exit 0
+   # delete `forced-colors|not-forced-colors` from STATE_NEUTRAL_VARIANT, then:
+   node scripts/verify-focus-affordance.mjs                       # OK — 11 focusable control(s) … exit 0
+   ```
+
+   **Green and blind, not red.** The exit code is 0 both times; the only signal is the coverage count
+   in the headline, and only if you compare it against the run before. So the rule is not "never
+   touch this guard" — it is: **a guard's summary line is evidence only against its previous value,
+   and after widening a guard's vocabulary you make it fail on purpose *through the widened path*.**
+   `memory/gates.md` carries it as a lesson.
 
 ### 3b. ✔ DECIDED and DONE: `--masonry-gap` is deleted, the gap is utilities
 
@@ -288,11 +352,13 @@ docs' own examples were passing raw `rem` values. The replacement is strictly be
 tokens, and **either half is independently overridable from the call site** (`className="gap-r1"` on
 the root, `className="mb-r1"` on an item), which a single custom property could never offer.
 
-> **Refines the §4c token rule.** "Parent sets, child reads" is *not* on its own a reason to keep a
-> token. Ask first whether the **same component renders both elements** — if it does, it can apply
-> both utilities and the token is buying nothing but indirection. The fan-out argument only holds
-> where the children are ones the consumer renders and the component never sees
-> (`--timeline-highlight-fill` and friends, which stay).
+> **This is where §4c's token rule comes from — the rule lives there, not here.** "Parent sets, child
+> reads" is *not* on its own a reason to keep a token. `--masonry-gap` fails §4c because the
+> **component** was its only writer: `MasonryGrid` renders both elements *and* takes a `gap` prop, so
+> the value already had a channel and the token was pure indirection. Read §4c for the rule; this
+> section is only the worked example that produced it. Do **not** restate it here as "the same
+> component renders both elements" — that reading deletes `--timeline-highlight-fill`, which
+> `TimelineItem` also renders both ends of (`grep -n 'timeline-icon\\|timeline-dot\\|timeline-card' src/components/ui/Timeline.tsx`) and which stays.
 
 ---
 
@@ -365,9 +431,11 @@ That file says of this exact design that a `classNames={{…}}` object *"is an A
 it works here"*, because the component CSS is unlayered and so `bg-*` and `border-*` *"land in the
 DOM, change nothing, and report no error."*
 
-**It is right, and it is still right today.** Its premise is precisely the fact Phase 1 deletes. The
-objection does not dissolve because it was mistaken — it dissolves only once Phase 1 has landed.
-Hence constraint 2 in §0: **`classNames` is an invalid API until Phase 1 ships.**
+**It was right, and its premise is precisely the fact Phase 1 deleted.** The objection did not
+dissolve because it was mistaken — it dissolved when the CSS moved into `@layer components`. **That
+has now happened, so `classNames` is a valid API and Phase 3 is unblocked.** Leave the note in
+`memory/affordances.md` standing with its premise named: it is a correct account of what the API is
+worth *when the component CSS is unlayered*, which is the state any future package here starts in.
 
 ### 4b. The house rule
 
@@ -402,20 +470,69 @@ written refutation of the symmetric reading, not evidence for it.
 
 ### 4c. The token rule
 
-> A component-specific token that is a **single-use alias** of a baseline token is deleted. Use the
-> baseline utility.
+> **Ask who writes the token, not how many times it is read.**
+>
+> **Delete** it when the **component is the only writer**: its definition is a bare baseline token,
+> and every element that reads it is one this component renders. It renders them, so it can put the
+> utility on each one — the token is buying nothing but indirection. Skip the middle man:
+> `--stat-card-gap: var(--R-SIZE-5)` then `gap: var(--stat-card-gap)` is `gap-r5`.
+>
+> **Keep** it when it is a **consumer write channel** — one write by the caller has to reach elements
+> the caller cannot put a class on, and no prop already carries the value — **or** when a `calc()`
+> reads it, because there is no property there for a utility to set.
 
-`--stat-card-gap: var(--R-SIZE-5)` → `gap-r5`. Aliasing the baseline scale adds a name, a lookup and
-a divergence risk for nothing.
+**This applies forward, not just to the list below.** Do not author a new component-scoped custom
+property whose definition is a bare baseline token and whose only readers are elements the component
+itself renders. That is the `--masonry-gap` shape (§3b), and it is cheaper to not write than to
+delete. The same question decides both cases, so ask it at the point of writing.
 
-**Delete (single-use baseline alias):** `--_activity-feed-gutter`, `--_activity-feed-gap`,
-`--_timeline-date-gap`, `--MEDIA-CAROUSEL-GAP`, `--calendar-col-gap`, `--calendar-month-gap`.
+**"Single-use alias" was the previous wording, and use-count is not the discriminator.** It spares
+`--masonry-gap` (1 def / 2 uses), which §3b deleted, and it deletes `--calendar-month-gap` (1 def /
+2 uses), which the rule above keeps. §13 carries the row.
 
-**Keep — these are not aliases:**
+**Delete — component is the only writer, and every read is a property a utility can set.** Each is
+1 def / 1 use, verified individually rather than counted:
 
-- `--_stepper-gap` — 1 def / **2** uses, both inside `calc()` for the connector inset
-  (`Stepper.css:242,243`). No utility exists for a value inside a pseudo-element's `left`/`right`
-  calc; deleting it inlines `var(--R-SIZE-4)` twice.
+```
+grep -rn -- '--_activity-feed-gutter\|--_activity-feed-gap\|--_timeline-date-gap\|--MEDIA-CAROUSEL-GAP' src
+```
+
+| Token | Sole read | Becomes |
+| --- | --- | --- |
+| `--_activity-feed-gutter` | `ActivityFeed.css` — the `column-gap` on `.activity-feed-item` | `gap-x-r5` |
+| `--_activity-feed-gap` | `ActivityFeed.css` — the `padding-bottom` on the same rule | `pb-r3` |
+| `--_timeline-date-gap` | `Timeline.css` — the `margin-bottom` on `.timeline-date` | `mb-r6` |
+| `--MEDIA-CAROUSEL-GAP` | `Carousel.css:26` — `gap` | `gap-r5` |
+
+(`--spacing-r1`…`-r6` bridge the scale, so every `r*` utility above resolves to the same
+`var(--R-SIZE-n)` the token held: `../response-ui-css/src/responsive/spacing.css:30-37`.)
+
+**`--MEDIA-CAROUSEL-GAP` needs its own justification, because it looks like a keep and is not.** It
+is SCREAMING_CASE, it lives in `tokens.css`, and `docs/components/carousel.md:199,212` documents it
+to consumers as a theme token — three signals that say "consumer write channel". It fails anyway, on
+the part of the test that matters: the element reading it is **directly addressable**.
+`Carousel.Track` is a compound subcomponent that merges an incoming class
+(`Carousel.tsx:338` — `cn("carousel-track", className)`), so the caller already writes
+`<Carousel.Track className="gap-r3">` and needs no token to reach it. **That route works now** —
+before Phase 1 the unlayered `.carousel-track` beat the utility, which is why this was blocked; it is
+not any more, so the only thing still holding it is that deleting the token is Phase 3/4 work.
+Deleting it edits those two doc lines; per-component contract item 8, answer the prose, do not
+delete it.
+
+**Keep — consumer channels, `calc()` inputs, and computed values.** Several of these *are* baseline
+aliases; that is why the alias test had to go.
+
+- **`calc()` inputs — `--_stepper-gap`, `--calendar-col-gap`, `--calendar-month-gap`.** A value read
+  by a `calc()` has no property to convert to, so deleting it inlines the baseline `var()` at each
+  call site and the shared value stops being shared.
+  - `--_stepper-gap` — 1 def / 2 uses, both in the connector-inset calc (`Stepper.css:242,243`).
+  - `--calendar-col-gap` — 1 def / 1 use, and that use is **inside `--calendar-month-width`'s calc**
+    (`Calendar.css:19,22`). It is never applied as a `column-gap` anywhere, so there was never a
+    utility to convert it to.
+  - `--calendar-month-gap` — 1 def / 2 uses, **split across both kinds**: the `--calendar-ideal-width`
+    calc (`Calendar.css:27`) and a real `gap` property (`:111`). **A token with even one `calc()`
+    reader is not convertible piecemeal** — writing `gap-r4` at `:111` while the calc keeps reading
+    the token forks one value into two sources, which is `CLAUDE.md` rule 3. Convert both or neither.
 - `--_timeline-card-padding`, `--_timeline-item-gap` — **3 defs each, 1 use each.** These are the
   **density axis**: three values selected by `[data-density]` on the root, applied to a descendant.
   Convertible via `in-[[data-density=dense]]:p-r5` but that is 6 variant-scoped classes, not "use
@@ -423,12 +540,46 @@ a divergence risk for nothing.
 - **Computed:** the Timeline derivation chain, `--_stepper-active-line-width` (`calc(× 1.5)`),
   `--calendar-month-width`/`-ideal-width` (`--calendar-months` is set by JS),
   `--progress-bar-fill-end` (`color-mix`), `--_table-selected-marker-side` (gradient flipped by
-  `:dir(rtl)`), `--stagger-delay` (`inherit` as a mechanism), `--sparkline-color` (`currentColor`).
-- **Public contract with inherited fan-out:** `--timeline-highlight-fill`/`-ink`/`-border`,
-  `--activity-feed-highlight-fill`/`-ink`, `--stepper-progress-color`. They set a value once on the
-  root and reach N children the consumer never renders — something a per-element slot cannot do.
-  **Rewrite their comments:** all three currently claim to be "the only override route that works,"
-  which stops being true after Phase 1.
+  `:dir(rtl)`), `--sparkline-color` (`currentColor`).
+
+  **`--stagger-delay` is no longer on this list, and the reason is instructive.** It was kept for
+  *"`inherit` as a mechanism"* — `Stagger.css` declared `--stagger-delay: inherit` so an ancestor's
+  value could reach `animation-delay`. That declaration won only because this package was unlayered;
+  from `@layer components` it lost to the foundation's own `.stagger-item`, and the mechanism died.
+  It was **deleted, not defended**: `Stagger.tsx` writes a private `--_stagger-step` on the
+  container, whose value is the reference `var(--stagger-delay, var(--MOTION-STAGGER-DELAY))`, and
+  each item carries an inline `--stagger-delay: var(--_stagger-step)`. `Stagger.css` no longer
+  exists. **The token survives as a consumer write channel; what died was the `inherit` trick.** A
+  mechanism that depends on a precedence accident is not a mechanism, and this is the worked example
+  (`memory/README.md` §22).
+
+  ```
+  grep -rn -- '--_stagger-step' src/components/animation/Stagger.tsx
+  ```
+- **Consumer write channels:** `--timeline-highlight-fill`/`-ink`/`-border`,
+  `--activity-feed-highlight-fill`/`-ink`, `--stepper-progress-color`, and now `--stagger-delay`
+  (above). The **consumer** writes once, on the root or an item, and the value reaches internals the
+  consumer has no way to put a class on — `--timeline-highlight-fill` 1 def / 2 reads,
+  `--activity-feed-highlight-fill` 1 def / 2 reads, `--stepper-progress-color` 1 def / 3 reads. No
+  prop carries any of them.
+
+  **The discriminator is who writes it, not who renders it.** These components *do* render the
+  elements that read these tokens — `TimelineItem` renders `.timeline-dot`/`.timeline-icon`/
+  `.timeline-card` itself (`grep -n 'timeline-icon\\|timeline-dot\\|timeline-card' src/components/ui/Timeline.tsx`). Rendering them would let the component apply its
+  own default as a utility; it would not give the **caller** one write that lands on all of them. A
+  per-element slot cannot do that either — it is N writes, and the caller has to know the anatomy.
+
+  **✔ Their comments are rewritten — this item is discharged, and §13 carries the outcome.** Four
+  sites, not three, and the fourth was never on this list: `Timeline.css`, `Timeline.tsx`,
+  `ActivityFeed.css` and `ActivityFeed.tsx`. **`Stepper.css` needed no change** — it never made the
+  layering claim; it says *"override per instance to re-skin the track"*, and the false sentence
+  lived in the two files that *cite* `--stepper-progress-color` as sharing their contract. The two
+  `.tsx` sites are JSDoc on public props, so they ship to consumers through the generated `.d.ts`,
+  which is why a prose error there is worse than one in a stylesheet.
+
+  ```
+  grep -rn 'only override route that works' src docs   # 0 — the claim is gone from all four
+  ```
 - **Domain token layer:** `tokens.css` is kept **for its semantic indirections and its `@theme
   inline` bridge** — not automatically for every line in it. `--C-TREND-UP: var(--C-STATUS-SUCCESS)`
   is a semantic indirection (a trend is not a status); `--MEDIA-CAROUSEL-GAP` living there does not
@@ -477,7 +628,7 @@ is not a per-instance derivation and does not qualify.**
 | Site | Mechanism | Effect |
 | --- | --- | --- |
 | `NumberInput.tsx:171-175` | inline `style` custom property from `CHEVRON_SIZE`, a **module constant** (`:44`) | A frozen default wearing a computed value's clothes: unthemeable and un-overridable. Move the default to CSS, or write the padding as a utility. |
-| `Skeleton.tsx:34,44` | inline `style` **geometry** — `width = "100%"` defaulted, then `style={{ width, height, ...style }}` | **`<Skeleton className="w-20" />` silently loses.** `...style` is last, so a caller's `style` *does* win — `className` is the only thing that cannot. Fix: `w-full` + an `h-*` map. |
+| `Skeleton.tsx:34,44` | inline `style` **geometry** — `width = "100%"` defaulted, `height` **not** defaulted, then `style={{ width, height, ...style }}` | **`<Skeleton className="w-20" />` silently loses**, and always will: an inline declaration outranks every class at every layer. `...style` is last, so a caller's `style` *does* win — `className` is the only thing that cannot. Fix: `w-full` instead of the inline default. **The `height` half has already closed** — no default means no inline height, so `h-48` now beats the layered `.skeleton { height: 1em }`. §13 carries the split. |
 | `ProgressBar.css:35-37` | declares `--progress-bar-fill`/`-fill-end` **on `.progress-bar__fill`** | A consumer theme at `:root` loses permanently; variants at `:49-66` redeclare on the same element, compounding it. Move to `.progress-bar`. |
 | `Sparkline.css:10-13` | declares `--sparkline-color` on `.sparkline` | Same — **and `docs/components/sparkline.md:133-134` already documents the consequence as a limitation.** The doc is evidence somebody noticed, not evidence it is right. |
 
@@ -536,7 +687,7 @@ Two hard constraints found at source, both of which a lane would otherwise break
   `:366`) driving focus management, plus a third query at `:348` keyed on `[data-day]`. These are
   *behavioural markers*: append to them, never replace them.
 - **`Calendar.css` has no owning component.** It styles `CalendarBase`'s markup entirely, yet only
-  `src/styles.css:22` imports it — neither `Calendar.tsx` nor `RangeCalendar.tsx` does. Rename to
+  `src/styles.css` imports it (`grep -n Calendar.css src/styles.css`) — neither `Calendar.tsx` nor `RangeCalendar.tsx` does. Rename to
   `CalendarBase.css` in the same lane or the ownership stays invisible.
 
 **`FileUpload` is a (d), but not as 27 slots.** Its internals mostly live inside **three already-
@@ -570,61 +721,65 @@ re-inflate it.
 Each phase is independently shippable, and **Phases 1–3 deliver nearly all the consumer-facing value
 before a single component's CSS is inlined.**
 
-### Phase 1 — `@layer components`
+### Phase 1 — `@layer components` — ✔ CLOSED
 
-Wrap this package's component CSS in `@layer components` by adding `layer(components)` to the **46
-individual imports** in `src/styles.css`. The aggregate import cannot carry it:
+This package's component CSS is in `@layer components`: **45 individual imports** in `src/styles.css`
+each carry `layer(components)`, and `tokens.css` deliberately carries none. The aggregate import
+cannot carry it, and that is measured rather than asserted:
 
 ```
-node scripts/probe-cascade-layer.mjs      # first section proves it
+node scripts/probe-cascade-layer.mjs      # first section proves it — the build error IS the pass
   @import "./styles.css" layer(components);  →  Error: `@source` cannot be nested
+grep -c '^@import "\./components' src/styles.css      # 45
+bun run verify:css-layering                           # asserts the layer keyword on every one
 ```
 
-(`src/styles.css:75` is `@source "../src/**/*.{ts,tsx}"`.) **This is one serial commit that owns
-that file. No lane starts until it lands.** Phase 2 needs the same file: `Grid.css` is imported
-twice, at `styles.css:57` and `Grid.tsx:5` — uniquely in the package.
+(The `@source "../src/**/*.{ts,tsx}"` at the end of `src/styles.css` is what cannot be nested —
+`grep -n '@source' src/styles.css`.) **One serial commit owned that file**, and it also owned
+`Grid.tsx`'s `import "./Grid.css"` — the only CSS import in the JS graph, which the bundler injected
+**unlayered** where it out-ranked the layered copy. `verify:no-css-imports` now gates that half;
+`verify:css-layering` gates this one.
 
-**Why this must precede Phase 4 and cannot follow it.** Partial inlining is *not order-neutral*:
+**Why this had to precede Phase 4 and could not follow it.** Partial inlining is *not order-neutral*:
 every declaration moved into a utility drops out of unlayered precedence into `@layer utilities`,
 i.e. **below** the rules still in the same file. A file going from 53 rules to 9 doesn't just shrink
 — its remaining 9 start winning fights they used to lose. Phase 1 collapses three interacting
 precedence axes (unlayered-vs-layered, specificity, source order) down to one, which is what makes
 incremental conversion safe.
 
-#### The eight must-fix regressions, one accepted delta, two holding controls
+#### What the probe says now, and what it said then
+
+The row set was **9 hand-written rows, then 11, then 19** — the growth is the finding, not a
+bookkeeping detail (see the `Hero.css` note below). Re-run it rather than reading this block:
 
 ```
-timeline-even-animation            default          slide-left, fade  →  slide-right, fade
-stagger-ancestor-inherit           default          0.999s            →  0.05s
-radio-forced-colors-focus-outline  forced-colors    2px               →  0px      WCAG 2.4.7 — NOT covered by §3a
-scrollreveal-no-js-opacity         scripting-none   1                 →  0        WCAG
-tabs-scrollbar-height              default          3px               →  10px
-tabs-scrollbar-thumb-color         default          transparent       →  visible
-hero-stagger-animation-name        default          fade              →  slide-up, fade
-hero-reveal-hidden-animation-none  default          none              →  slide-up, fade
-switch-ring-vs-consumer-reset      consumer-reset   2px               →  0px      ACCEPTED — §3a
-switch-ring-baseline               default          2px               →  2px      control, held
-control-sronly-padding             default          0px               →  0px      control, held
+bun run probe:cascade-layer
+   regressions: 0
+   inert:       0
+   accepted:    3
+   verified:    16
 ```
 
-- **Timeline** — alternating entrance direction inverts. `Timeline.tsx:17-26` (#342) is why the
-  component keys direction to `:nth-child`. The competing rules are `Timeline.css:465` at (0,4,0)
-  and `:526` at (0,5,0) — *not* (0,3,0), and `:526` is inside a `min-width: 40rem` query. Direction
-  of the inversion holds regardless: the foundation's `.fade-right` is (0,1,0) and unlayered, so it
-  wins on layer, not specificity.
-- **Stagger** — the `--stagger-delay: inherit` mechanism dies (`Stagger.css:19`); an ancestor's value
-  stops reaching `animation-delay`.
-- **Radio** — the forced-colors replacement outline is lost. The rule is `Radio.css:39-42` inside the
-  `@media (forced-colors: active)` opened at `:22`.
-- **ScrollReveal** — with scripting off, content is **permanently invisible**, "including the page's
-  `<h1>` when the reveal wraps a Hero." Inlining does **not** fix this: a `noscript:opacity-100`
-  utility lands in `@layer utilities` and still loses.
-- **Tabs** — the scrollbar track triples and the thumb becomes permanently visible. Note the
-  regression is **asymmetric**: the foundation sets `width` *and* `height` at `0.625rem`
-  (`../response-ui-css/src/base.css:67-70`) while `Tabs.css:15-17` sets only `height`, so the
-  vertical dimension was never won. Relevant if the fix is "re-specify" rather than "move."
-- **Switch / all focus rings** — §3a. The baseline control is the point: the ring survives layering
-  fine; what changes is that a consumer's reset now beats it.
+**19 rows** (3 + 16). The eight original regressions and their dispositions, each with a §13 row:
+
+| Original regression | Disposition |
+| --- | --- |
+| `timeline-even-animation` — alternating entrance direction inverted | **Fixed by deleting the collision.** `Timeline` stopped emitting the foundation's `.fade-right` (`ScrollReveal animation="none"`) and owns the whole `animation` shorthand, keyed on `[data-entering]` — an attribute `ScrollReveal` emits for exactly the entrance window. `:nth-child` stays the single source of side *and* direction (#342). Three new rows pin the base direction, the timing and the reduced-motion guard, because Timeline now owns all three. |
+| `stagger-ancestor-inherit` — the `--stagger-delay: inherit` mechanism died | **Fixed by deleting the collision.** `Stagger.tsx` writes `--_stagger-step` on the container and an inline `--stagger-delay: var(--_stagger-step)` on each item. `Stagger.css` is gone. |
+| `radio-forced-colors-focus-outline` — WCAG 2.4.7, our own utility beating our own rule | **Fixed by standing the utility down.** `not-forced-colors:focus:outline-none`. No `!important`, no carve-out — §3a. |
+| `scrollreveal-no-js-opacity` — content permanently invisible with scripting off | **`!important`**, one declaration, inside `@media (scripting: none)`. Passes the `AGENTS.md` admission test: a visibility invariant, gated behind an environment nobody styles into. |
+| `tabs-scrollbar-height`, `tabs-scrollbar-thumb-color` | **Accepted, and the losing rules deleted.** §13. |
+| `hero-stagger-animation-name` | **Accepted** — the colliding class is hand-authored, and a consumer's explicit entrance is right to beat Hero's aesthetic default. |
+| `hero-reveal-hidden-animation-none` | **`!important`** — a *timing* guard, not an opinion, which is why it takes one and the row above does not. |
+
+**Three probe rows to hand-check rather than skip, and two of them are new.**
+`switch-ring-vs-consumer-reset` is joined by `hero-stagger-animation-name` and
+`hero-reveal-shown-animation-name`. All three are accepted, so all three are pinned to a *changed*
+value — the only shape of green a fixture error and a correct measurement both produce. The two
+`hero-*` acceptances also carry a **forward dependency, written into the row itself**: their premise
+is *"nothing this package renders can put a class on a `.stagger-item`"*, and the moment Phase 3
+gives `Stagger` a `classNames.item` that premise stops holding. **Revisit them in the same commit
+that ships it.**
 
 #### The search is property-intersection, not class-name overlap
 
@@ -638,85 +793,109 @@ everywhere, so `tokens/`, `themes/`, `responsive/` and the rest of `base.css` ar
 #### `Hero.css` — found by search, not by the original row list
 
 The probe's first nine rows were hand-listed and missed these. They were found by grepping the source
-for foundation-owned class names, which returns **7 rules in 4 files** (§2a) — two of them in
-`Hero.css`, inside `@media (prefers-reduced-motion: no-preference)`:
+for foundation-owned class names — which returned **7 rules in 4 files** then and returns **3 rules
+in 2 files** now (§2a). Four of the seven stopped naming a foundation class: `Stagger.css`'s two went
+with the file, and `Timeline.css`'s two were re-keyed onto `[data-entering]`, an attribute this
+package emits. Two of the original seven are Hero's, inside
+`@media (prefers-reduced-motion: no-preference)`, and **both are still there**:
 
-```css
-.hero__content .stagger-item { animation-name: fade; … }                      /* :91  (0,2,0) */
-.hero__content .scroll-reveal-hidden .stagger-item { animation-name: none }    /* :97  (0,3,0) */
+```
+grep -n 'hero__content .stagger-item\|scroll-reveal-hidden .stagger-item' src/components/ui/Hero.css
 ```
 
-**The collision is conditional, and worth understanding before fixing it.** The foundation's own
-`.stagger-item` ships **no `animation-name`** — only `animation-delay` and `animation-fill-mode`. So
-Hero's rules invert only when the item *also* carries a foundation `.fade-*` class, whose `animation`
-shorthand does set the name. That is exactly the case `Hero.css:88-89` documents: *"any Stagger you
-nest yourself inside `Hero.Content` picks up the same fade."*
+```css
+.hero__content .stagger-item { animation-name: fade; … }                     /* (0,2,0) */
+.hero__content .scroll-reveal-hidden .stagger-item { animation-name: none !important }   /* (0,3,0) */
+```
 
-Measured with a `.fade-up` on the item, both rows regress, and **`:97` is worse than `:91`**:
+**The collision is conditional, and that is what decided the two opposite dispositions.** The
+foundation's own `.stagger-item` ships **no `animation-name`** — only `animation-delay` and
+`animation-fill-mode`. So Hero's rules invert only when the item *also* carries a foundation
+`.fade-*` class, whose `animation` shorthand does set the name — and **nothing this package renders
+can put a class on a `.stagger-item`**, so that markup is hand-authored. Find the reasoning at
+source: `grep -n 'THE CONSUMER PICKS THE ENTRANCE' src/components/ui/Hero.css`.
 
-- `:91` — `fade` → `slide-up, fade`. Hero's deliberate "plain fade" for staggered items is lost; they
-  now slide too.
-- `:97` — `none` → `slide-up, fade`. **The entrance now runs while the reveal is still hidden**,
-  which is the precise failure `Hero.css:82-86` explains the keying exists to prevent: *"ScrollReveal
-  drops the entrance class on `animationend` — which would cut a later item's animation off
-  mid-flight."*
+- The **plain fade** is an aesthetic default. `fade` → `slide-up, fade` when a consumer writes an
+  explicit `.fade-up`, and an explicit instruction beating a default *is* the Phase 1 prize.
+  **Accepted**, with a third row (`hero-reveal-shown-animation-name`) added so the pair state the
+  whole contract instead of drifting into disagreeing.
+- The **hidden-state null** is a timing guard. `none` → `slide-up, fade` would run the entrance while
+  the content is still `opacity: 0`, spending it before the reveal fires — the precise failure the
+  keying exists to prevent, since `ScrollReveal` drops the entrance class on `animationend` while the
+  hidden class is removed once and stays removed. **`!important`**, and the comment beside it says
+  why this one and not the sibling rule above it.
 
-**The lesson for the rest of Phase 1's search:** a hand-written row list is an allowlist, and the rows
-nobody thought of are the ones that ship. Derive the row set from a search over source and assert its
-count. `memory/gates.md`: a new gate's exemptions are where the next bug lives.
+**The lesson that outlived the rows:** a hand-written row list is an allowlist, and the rows nobody
+thought of are the ones that ship. Derive the row set from a search over source and assert its count.
+`memory/gates.md`: a new gate's exemptions are where the next bug lives.
 
-#### Of the nine "deliberate precedence" sites, only two carry a converting rule
+#### Of the nine "deliberate precedence" sites, what each turned into
 
-**All eight originally-cited lines are comments, not rules** — the honest framing is *nine places
-documenting reliance on being unlayered*, and the probe shows what each actually does:
+**All eight originally-cited lines were comments, not rules** — the honest framing was *nine places
+documenting reliance on being unlayered*. Line numbers are omitted deliberately: four of these files
+were rewritten, and `memory/ledger.md` records that adjusting a rotted number is the wrong repair.
+Grep for the content.
 
-| Site | What is really there |
+| Site | Outcome |
 | --- | --- |
-| `Radio.css:37` | comment → **real inverting rule** at `:39-42`. Probe-confirmed. |
-| `Stagger.css:8` | comment → **real inverting rule** at `:19-20`. Probe-confirmed. |
-| `Combobox.css:29`, `ColorPicker.css:217` | document a deliberate **absence** ("do not declare `border` here again"). Nothing to convert. |
-| `Timeline.css:70`, `ActivityFeed.css:31` | custom-property fan-out notes. Custom properties resolve per element; layering does not affect the mechanism. |
-| `MasonryGrid.css:11` | **No longer exists.** The rule it annotated was deleted with `--masonry-gap` (§3b); the trailing-gap reset is `last:mb-0` on the item. One fewer site for Phase 1 to convert. |
-| `AppShell.css:205` | probe measured `control-sronly-padding` **held**, 0px → 0px. Not a regression. |
-| `ScrollReveal.css` | was missing from the original list, and is the a11y/no-JS one. |
+| `Radio.css` | comment → real inverting rule. **Fixed** — `not-forced-colors:` on the reset; the comment now explains that nothing competes with the outline *by arrangement*. |
+| `Stagger.css` | comment → real inverting rule. **File deleted**; the mechanism moved inline into `Stagger.tsx`. |
+| `Combobox.css`, `ColorPicker.css` | documented a deliberate **absence** ("do not declare `border` here again"). Nothing to convert; comments answered. |
+| `Timeline.css`, `ActivityFeed.css` | custom-property fan-out notes. Custom properties resolve per element, so layering never affected the mechanism — but both claimed the token was *"the only override route that works"*, which layering falsified. **Comments rewritten** (§4c), together with the two `.tsx` docblocks that ship the same claim to consumers. |
+| `MasonryGrid.css` | **Already gone** — the rule it annotated was deleted with `--masonry-gap` (§3b). |
+| `AppShell.css` | not a regression, and the control that said so had no teeth. Replaced by `control-sronly-sectiontitle-padding`, which **can** move: it reddens if the `[data-collapsed]` rule is deleted as dead code, or if the `sr-only` ⟺ `collapsed` coupling in the TSX breaks. |
+| `ScrollReveal.css` | missing from the original list, and the a11y/no-JS one. **`!important`**, with the admission test written beside it. |
 
-**So four of the eight need no code change at all — only comment rewriting.** That shrinks the serial
-commit noticeably from what "converting the eight sites" implies.
+#### Two regressions had a cheaper foundation-side fix — and it was not taken
 
-#### Two regressions have a foundation-side fix — and taking it crosses a boundary
+Both remain **out of bounds** and are recorded in §11 as follow-ups, not as work. `memory/README.md`
+§6: scope is this package only, *not even to add a script*, and that boundary was crossed once and
+reverted in full.
 
-`Stagger.css:11-14` records the option itself: *"Delete both declarations once
-`animations/stagger.css` there reads `var(--stagger-delay, var(--MOTION-STAGGER-DELAY))` itself"* —
-and `../response-ui-css/src/animations/stagger.css:4` currently has no fallback. Likewise
-`.scroll-reveal-hidden{opacity:0}` is owned by **`response-ui-css`**
-(`src/animations/scroll-reveal.css:2`), not by this package, and that file already carries a
-`prefers-reduced-motion` escape at `:7-10`, so adding a `scripting: none` sibling there is ~3 lines.
+```
+grep -n 'stagger-delay' ../response-ui-css/src/animations/stagger.css   # no fallback in the var()
+grep -n 'prefers-reduced-motion' ../response-ui-css/src/animations/scroll-reveal.css
+```
 
-**Both are out of scope.** `memory/README.md` §6: scope is this package only, *not even to add a
-script*, and that boundary was crossed once and reverted in full. Record them as foundation
-follow-ups; fix in-package. But do not claim ScrollReveal "has to be re-specified" without recording
-that a cheaper fix exists on the other side of a boundary we have chosen not to cross.
+The second is the sharper one: `.scroll-reveal-hidden { opacity: 0 }` is owned by `response-ui-css`,
+and that file already carries a `prefers-reduced-motion` escape, so a `@media (scripting: none)`
+sibling beside it is ~4 lines — **and would let `ScrollReveal.css` and its `!important` be deleted
+outright.** That trade is written into `ScrollReveal.css` itself, so nobody reads the `!important` as
+the only possible answer.
 
-**Precedent to read first:** `../response-ui-css/CHANGELOG.md:263` and `src/base.css:44-48` record
-the foundation package making this exact decision deliberately, *"Verified by walking the CSSOM for
-the rule and asserting its enclosing layer."* It is the closest thing to a worked example that
-exists.
+**Precedent worth reading:** `../response-ui-css/CHANGELOG.md:263` and the `@layer base` block in
+`../response-ui-css/src/base.css` record the foundation package making this exact decision
+deliberately, *"Verified by walking the CSSOM for the rule and asserting its enclosing layer."*
 
 **Gate:** `bun run probe:cascade-layer`. Two CSS builds differing only by `layer(components)`, diffed
-by `getComputedStyle` across four emulated environments. It exits non-zero on any change **and on any
-inert row**, because a probe that measured nothing is worse than one that failed.
+by `getComputedStyle` across four emulated environments. It exits non-zero on any unexplained change
+**and on any inert row**, because a probe that measured nothing is worse than one that failed.
+
+**Plus `bun run verify:css-layering`, which is the gate the probe cannot be.** The probe strips
+whatever `layer()` `src/styles.css` carries and re-adds its own, so it compares "no layer" against
+"layer" regardless of the real file — delete `layer(components)` from a component import and the
+probe stays green, `typecheck`, `lint` and 2079 tests stay green, and the component silently goes
+back to beating every caller utility. **Phase 1's whole result was one token repeated on 45 lines,
+and until this script nothing read those lines.** Made to fail on purpose three ways before being
+trusted: a component import with the keyword removed, `tokens.css` with the keyword added, and the
+unmodified tree.
 
 **What would prove Phase 1 wrong, and how to make it go red:** flip one converted rule back and
-confirm its probe row reddens. If a row cannot come back red it is not evidence. Two traps in reading
-the output:
+confirm its probe row reddens. Every row's `note` says which edit does it — and for the rows that are
+now controls over deleted declarations, the edit is *re-adding* the rule. Three traps in reading the
+output:
 
 - The probe counts `unmeasurable` (engine reports nothing for a pseudo-element) into `inert`. **Never
   read either as safe** — an inert row is a failure *of the probe*, and it is worse than a red one
   because it gets cited.
-- **The accepted row is the one to re-check by hand, not the one to skip.** It is the only row whose
-  pass state is a changed value, so it is the only place where a fixture error and a correct
-  measurement produce the same green. Confirm its `before` precondition still holds after any edit to
-  `Switch`'s ring recipe.
+- **The three accepted rows are the ones to re-check by hand, not the ones to skip.** They are the
+  only rows whose pass state is a changed value, so they are the only place where a fixture error and
+  a correct measurement produce the same green.
+- **An edit to a `.tsx` cannot redden any probe row.** The fixture is hand-authored HTML in the
+  script; no row renders React. A `Timeline.tsx` or `Stagger.tsx` regression shows up in
+  `Timeline.test.tsx` / `Stagger.test.tsx`, which assert the emitted `data-entering` and the inline
+  custom properties — that is the *other* half of the gate, and it exists because these fixes moved
+  behaviour out of CSS and into markup.
 
 ### Phase 2 — the two column-scale files
 
@@ -729,7 +908,7 @@ Tailwind's own source:
 - Breakpoints **match exactly** — `tailwindcss/theme.css:327-330` = 40/48/64/80rem vs
   `Grid.css:19,29,39,49`, and nothing in `response-ui-css` overrides `--breakpoint-*`.
 
-**`Grid.css` is fully deletable.** Required change: `columnClasses` (`Grid.tsx:21-29`) must become a
+**`Grid.css` is fully deletable.** Required change: `columnClasses` (`columnClasses` in `Grid.tsx`) must become a
 static lookup — Tailwind cannot scan `` `rui-grid--${bp}-${count}` `` — which forces `columns` from
 `number` to a bounded union. Note it is currently a **function** that pushes template strings into an
 array, not an object literal, so **there is no static map to swap; the lookup table has to be
@@ -756,7 +935,10 @@ finding. A lane that "fixes" a non-gap costs more than one that misses a real on
 lands in public API. In particular, confirm a caller's `className` can actually *arrive* at the
 element: **a bare static class on an element no caller `className` reaches is not a defect.**
 
-**Do not start this before Phase 1.** §0 constraint 2.
+**Its Phase 1 precondition is met** (§0 constraint 2), so the blocker is now the slot vocabulary
+(§10), not the cascade. One carry-over: the two accepted `hero-*` probe rows are pinned on the
+premise that nothing this package renders can put a class on a `.stagger-item`. **Giving `Stagger` a
+`classNames.item` falsifies that premise**, so re-examine those two rows in the same commit.
 
 **Gate:** one slot-override test per slot-bearing component, plus the re-scoped
 `verify:slot-annotations` (§7).
@@ -794,12 +976,18 @@ Prune dead `@import`s from `src/styles.css`, reconcile the docs, ship.
 that do not hold:
 
 ```
-grep -rliE 'unlayered|no Tailwind utilit' docs AGENTS.md | wc -l     # 38 files (all docs/components/*)
-# of those, occurrences inside a "## Gotchas" section:               # 14 files, 28 occurrences
+grep -rliE 'unlayered|no Tailwind utilit' docs AGENTS.md | wc -l     # 36 files
+# of those, occurrences inside a "## Gotchas" section:               # re-derive; the 14/28 reading
+#   below was taken before Phase 1 rewrote 20 of these pages
 ```
 
-**14, not 21** — the 21 was the count of files mentioning `unlayered` at all, and the two got
-conflated. And **"~20 more are falsified and contain no CSS at all, so a CSS-shaped sweep cannot find
+**36, not 38** — Phase 1's doc sweep answered the clause in 20 component pages, so the *population*
+moved and the sub-count with it. Re-derive the Gotchas half before sizing anything from it: the
+remaining mentions are now mostly *correct* prose about the foundation being unlayered, which is the
+opposite of the drift the 14/28 reading was measuring. The historical note stands: **14, not 21** —
+the 21 was the count of files mentioning `unlayered` at all, and the two got conflated.
+
+And **"~20 more are falsified and contain no CSS at all, so a CSS-shaped sweep cannot find
 them" does not hold**: only **2 of 91** component docs contain zero CSS mention (`field.md`,
 `parallax.md`), and neither is on the change list. The real falsified-and-CSS-free set is small
 enough to **enumerate**, and starts with `repeater.md` (0 CSS mentions, 5 internals to restructure)
@@ -828,7 +1016,7 @@ breakage actually is.
 
 | Phase | Done when | Shippable alone? |
 | --- | --- | --- |
-| **1** | §3a recorded in `AGENTS.md`; `probe:cascade-layer` shows **zero regressions and zero inert rows** (accepted deltas are allowed, and each must still match its pinned `expectAfter`); the property-intersection search recorded with direction per rule; `src/styles.css` owned by this one commit | yes — and it alone makes `<StatCard className="flex-row">` work |
+| **1 ✔ CLOSED** | §3a recorded in `AGENTS.md`; `probe:cascade-layer` shows **zero regressions and zero inert rows** (accepted deltas allowed, each pinned to its `expectAfter`); the property-intersection search recorded with direction per rule; `src/styles.css` owned by this one commit — **and with it `Grid.tsx`'s `import "./Grid.css"`**, because a stylesheet reached through the JS graph is injected unlayered and defeats the file's entire purpose for that one component; **and the two gates that make the result assertable**, `verify:no-css-imports` (the JS door) and `verify:css-layering` (the registry door) | yes — and it alone made `<StatCard className="flex-row">` work |
 | **2** | `Grid.css` deleted; `MasonryGrid.css` deleted (its gap already landed — §3b); `columns={7}` proven to be a type error rather than a silent 1-column fallback | yes |
 | **3** | items 1–9 below, per component; slot vocabulary frozen first (§8) | yes, per family |
 | **4** | items 1–5 below, per file; the CSS/utility boundary written down with its reason | yes, per file — **and abandonable at any point** |
@@ -901,9 +1089,19 @@ you have established what that tab does on a clean checkout.
 
 | Gate | Asserts | Status |
 | --- | --- | --- |
-| `probe:cascade-layer` | Two CSS builds differing only by `layer(components)` produce identical computed styles across four emulated environments — **except** rows carrying an owner-accepted `expectAfter`, which are pinned to their decided value | **Built**, 11 rows. Not in `prepublishOnly` — it needs Playwright and two vite builds; run on demand and in the Phase 1 PR. |
+| `probe:cascade-layer` | Two CSS builds differing only by `layer(components)` produce identical computed styles across four emulated environments — **except** rows carrying an owner-accepted `expectAfter`, which are pinned to their decided value | **Built**, **19 rows** (3 accepted + 16 verified). Not in `prepublishOnly` — it needs Playwright and two vite builds; run on demand and in any PR touching CSS. **It cannot see whether `src/styles.css` still says `layer(components)`** — see the two rows below. |
+| `verify:css-layering` | Every `@import "./components/*.css"` in `src/styles.css` carries `layer(components)`, `tokens.css` carries none, and an import it cannot classify is a failure rather than a skip | **Built**, in `prepublishOnly`. ~130 lines, no allowlist. It exists because Phase 1's entire result is one keyword repeated on 45 lines and **nothing read those lines**: the probe strips whatever `layer()` is there and adds its own, and jsdom applies no stylesheets, so a one-line deletion reverted the phase with every other gate green. Made to fail on purpose three ways. |
+| `verify:no-css-imports` | No `.ts`/`.tsx` under `src/` imports a `.css` file | **Built**, in `prepublishOnly`. The other door into the same invariant: a stylesheet reached through the JS graph is injected **unlayered**, out-ranks `@layer components`, and the probe — which builds no JS — reports the layering healthy while the real bundle disagrees. That was live in `Grid.tsx`. |
 | `verify:token-mirror` | Every `@theme inline` name in `tokens.css` appears in `createCn`'s list in `src/util/style.ts` | To build, ~20 lines. The one remaining silent-drift risk: tailwind-merge's arbitrary-property and standard class groups are generic, so a **named token value** added to `tokens.css` and not to `createCn` is the only real drift. Gate that and nothing more. |
 | `verify:slot-annotations` | *"A literal annotated `(c)` has a corresponding slot, and a slot is merged with `cn()`."* | To build, after Phase 3 ships `classNames`. |
+
+> **The two built rows above are the same lesson twice, and it is worth naming.** Both gates guard
+> one invariant — *this package's CSS reaches the bundle exactly once, through `src/styles.css`, in
+> `@layer components`* — and neither was written until after a defect in its half had already
+> shipped or nearly shipped. Both have the profile §8 asks for below: small, no allowlist, cannot be
+> satisfied by a lie. They are deliberately **two scripts**, because they fail for unrelated reasons
+> and are fixed in unrelated files, and `memory/gates.md` says to split a red gate's failures before
+> fixing any of them.
 
 ### Why `verify:slot-reachability` was re-scoped
 
@@ -1050,6 +1248,21 @@ three words for two things.
 
 ### Recorded follow-ups (do not fix here)
 
+- **▲ Two foundation-side fixes for Phase 1, both cheaper than what shipped, both out of bounds.**
+  Recorded so nobody reads the in-package answers as the only possible ones — and so nobody takes
+  them without a decision, because `memory/README.md` §6's boundary was crossed once and reverted in
+  full.
+  - `../response-ui-css/src/animations/stagger.css` reads `var(--stagger-delay)` with **no fallback**.
+    Writing `var(--stagger-delay, var(--MOTION-STAGGER-DELAY))` there would have made the whole
+    `--_stagger-step` indirection in `Stagger.tsx` unnecessary.
+  - `../response-ui-css/src/animations/scroll-reveal.css` owns `.scroll-reveal-hidden { opacity: 0 }`
+    and already carries a `prefers-reduced-motion` escape. A `@media (scripting: none)` sibling
+    beside it is ~4 lines — **and would let `ScrollReveal.css` and its `!important` be deleted
+    outright.** That is one of the package's two `!important` declarations removed by a change on the
+    other side of a boundary we chose not to cross.
+
+  Both would need a `response-ui-css` release and a dependency bump here (`CLAUDE.md`'s one-way
+  dependency rule), which is the real price and is not a design input.
 - **One rule-width scale** (~5 sites, the rail family: `--_timeline-line-width`,
   `--_timeline-highlight-ring`, `--_stepper-line-width`, `--_activity-feed-line-width`,
   `--_activity-feed-highlight-ring`, plus `3px` for the table marker) **and, separately, a
@@ -1105,13 +1318,22 @@ Costs nothing — the strings are already there — and buys:
 | "We need a gate asserting tw-merge knows every utility" | **Mostly unnecessary.** Only a *named token value* can drift. | §8 `verify:token-mirror` |
 | "A component needing 15–27 slots is really a compound" | **Refuted by `CalendarBase`.** High slot count means the element tree is the API, but the resolution may be (d), (e), or a mix. | §5 |
 | "`arrowRef` is dead code; delete it" | **Refuted.** It is exported, documented public API. | §10 |
-| "`Hero.css` is a cross-package collision site" | **Confirmed by measurement**, and `:97` is worse than predicted — the entrance fires while the reveal is still hidden. Found by grepping for foundation-owned class names, not by the hand-written probe list. | §6 Phase 1 |
-| "`Hero.css:91` loses to any foundation `.fade-*` class" | **Imprecise as stated.** The foundation's `.stagger-item` sets no `animation-name`, so the collision needs a `.fade-*` class *on the item* — real, but conditional on markup a consumer controls. | §6 Phase 1 |
+| "`Hero.css` is a cross-package collision site" | **Confirmed by measurement**, and the hidden-state rule is worse than predicted — the entrance fires while the reveal is still hidden, so it is spent before the content appears. Found by grepping for foundation-owned class names, not by the hand-written probe list. It is the one that took an `!important`; its sibling four lines above was accepted instead. | §6 Phase 1 |
+| "Hero's plain-fade rule loses to any foundation `.fade-*` class" | **Imprecise as stated, and the precision decided the disposition.** The foundation's `.stagger-item` sets no `animation-name`, so the collision needs a `.fade-*` class *on the item* — real, but conditional on markup **a consumer authors**, since nothing this package renders can put a class there. That is why it was accepted rather than fixed: an explicit consumer instruction beating an aesthetic default is the feature. The acceptance is scoped to that premise and must be revisited when `Stagger` gains a slot. | §6 Phase 1 |
 | Byte offsets into compiled CSS as evidence for the unlayered claim | **Self-invalidating.** The claim survives re-checking; every offset moved with the build. Cite the command. | §2a |
-| "`--masonry-gap` is a genuine inherited fan-out, so the token rule spares it" | **Refuted.** The fan-out was real but the *same component renders both elements*, so it applies both utilities. Deleted. | §3b |
+| "`--masonry-gap` is a genuine inherited fan-out, so the token rule spares it" | **Refuted.** The fan-out was real, but the *component* was the token's only writer — `MasonryGrid` renders both elements and takes a `gap` prop — so the value already had a channel. Deleted. | §3b |
+| A token is deleted when it is a **single-use alias** of a baseline token | **Refuted — the wording could not decide its own lists.** Use-count is not the discriminator. It spares `--masonry-gap` (1 def / 2 uses), which was deleted, and it deletes `--calendar-month-gap` (1 def / 2 uses), which is kept. It also gave opposite verdicts to two tokens of one shape: `--_stepper-gap` kept as a `calc()` input while `--calendar-col-gap` — whose *only* reader is a `calc()` — sat on the delete list. Replaced by "who writes it". | §4c |
+| The fan-out keep-clause turns on **who renders** the reading elements | **Refuted, and stated in two inverted forms.** §4c said "children the consumer never renders"; §3b said "children the consumer renders and the component never sees". Neither survives `--timeline-highlight-fill`: `TimelineItem` renders `.timeline-dot`/`.timeline-icon`/`.timeline-card` itself (`grep -n 'timeline-icon\\|timeline-dot\\|timeline-card' src/components/ui/Timeline.tsx`), so the §3b form deletes a token both sections keep. The clause turns on **who writes** — a consumer channel stays, a component-only default goes. | §4c |
+| `--calendar-col-gap` and `--calendar-month-gap` are deletable baseline aliases | **Re-verdicted to keep.** `--calendar-col-gap`'s only reader is `--calendar-month-width`'s calc (`Calendar.css:19,22`) — it is never applied as `column-gap`, so there is no utility to convert it to. `--calendar-month-gap` is read by a calc *and* a `gap` property, and converting only the property forks one value into two sources. Shrinks the calendar lane's token work to zero. | §4c |
 | "`MasonryGrid`'s trailing-gap reset must stay in CSS because unlayered beats `mb-0`" | **True only while the sibling declaration was unlayered.** Once the margin became a utility too, `last:mb-0` at (0,1,1) beats it at (0,1,0) in the same layer. Deleting the competitor beat layering it. | §3b |
 | `masonry-grid.md`'s "`className="mb-0"` loses, use `mb-0!`" | **Inverted by §3b, and it cited compiled byte offsets.** A *false cannot* — the worst doc-rot shape, because it steers consumers away from something that now works. | §3b |
 | The `...props` half of the house rule should move to the outermost element | **Withdrawn.** It traded WCAG-load-bearing wiring for API symmetry. | §4b |
+| `Tabs`' 3px scrollbar hairline should be defended with `!important` | **Refuted, and the rules deleted.** All three `Tabs.css` scrollbar declarations — the `::-webkit-scrollbar` height, the `transparent` `::-webkit-scrollbar-thumb`, and the `:hover` thumb colour — could not win in any state from `@layer components` against the foundation's universal, unlayered `*::-webkit-scrollbar*`. Defending them needed `!important` on a **pseudo-element**, which closes the override route completely: no consumer stylesheet at any specificity, no `!important`, and not even inline `style`, which cannot target a pseudo-element at all. The owner ruled **accept**, and an accepted regression and a live rule cannot coexist — the three probe rows are now controls reading the foundation's own values, and they redden if a Tabs scrollbar rule is re-added. `grep -i scrollbar src/components/ui/Tabs.css` returns only the comment. | §6 Phase 1; `memory/README.md` §22 |
+| `Tabs` should keep `scrollbar-width: thin`, since the foundation never declares it | **Refuted, and it was the deletion the analysis missed.** It faced no collision, so every argument in the file spared it — and keeping it would have left Tabs **thin on Firefox and `0.625rem` on Chromium**, a cross-engine divergence *this change introduced*, because the deleted webkit rules were what kept the two engines agreeing. `Tabs.css` now carries **no scrollbar declaration at all**. "The foundation owns scrollbar appearance" is only true if it owns the width on both engines. | §6 Phase 1 |
+| "Phase 1 needs no `!important` anywhere" | **False, twice — and the count is the contract.** The package ships exactly two: `ScrollReveal.css` (`opacity: 1` under `@media (scripting: none)` — a *visibility* invariant) and `Hero.css` (`animation-name: none` on a stagger item inside a still-hidden reveal — a *timing* invariant). `AGENTS.md` carries the admission test that governs them: the declaration must guarantee a visibility or timing invariant rather than a design decision, **and** be gated behind a condition a consumer would not style into, **and** carry a comment saying why this one and not the next one. `Tabs`' hairline is the worked example that **fails** it, because an appearance is not an invariant. `grep -rn '!important;' src --include=*.css` → exactly 2. | §6 Phase 1; `AGENTS.md` |
+| `Skeleton`'s `h-48` is inert, like its `w-20` | **Half refuted — the halves came apart, and the reason is in the TSX, not the CSS.** `Skeleton.tsx` defaults `width` but **not** `height`. So a `<Skeleton>` with no `height` prop emits no inline height at all, `.skeleton { height: 1em }` is now layered, and `h-48` beats it — that half is fixed by Phase 1 with no code change. `width` is unchanged and still unbeatable by `className`, because the inline `width: "100%"` default is always emitted and an inline declaration outranks every class at every layer. **§4d's row still stands for `width` and no longer stands for `height`**, which is why the row is split here rather than closed. | §4d |
+| `Grid.css` can be layered by editing `src/styles.css` | **Refuted.** `Grid.tsx` imported it a second time through the JS graph, where the bundler injects it **unlayered** and it out-ranks the layered copy — the only such import in the package, and invisible to every gate: the probe builds no JS. Measured in the real dev bundle: two `.rui-grid{` copies, one in `@layer components` and one outside, collapsing to one after the import was deleted, with `<div class="rui-grid grid-cols-2">` computing three columns before and two after. The import is gone and `verify:no-css-imports` guards it. | §6 Phase 1; `memory/gates.md` |
+| `probe:cascade-layer` can tell you whether the CSS is actually layered | **Refuted, and this was the largest remaining hole.** It re-derives the import list from `src/styles.css`, **strips** whatever `layer()` is written there, and adds its own to build the layered variant — so it measures "unlayered vs layered" whatever the file says. Delete `layer(components)` from a real import and the probe stays green, along with `typecheck`, `lint` and every test, because jsdom applies no stylesheets. Phase 1's whole result was one keyword on 45 lines that no gate read. `verify:css-layering` reads them. | §8 |
 
 > **The lesson that governs Phase 3.** The first two rows were the `className` audit's *only* two
 > active-defect claims — its highest-confidence output — and both dissolved on contact with the

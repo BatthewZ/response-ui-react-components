@@ -96,3 +96,20 @@ validator over it. These are the ways the record itself has failed, independent 
   "components"), state the method beside the number or it will be quoted bare and size real work.
   Same pass: a lane-sizing figure of "67 test files" turned out to be unreproducible under seven
   different definitions spanning 34–99.
+- **A rule stated as a count instead of a criterion cannot decide its own lists, and the lists hide
+  it.** One rule read "delete a token that is a *single-use alias* of a baseline token" and shipped
+  with a delete list and a keep list beside it. Both lists were right; the sentence above them was
+  not. It spared the token the same document had already deleted, deleted one the keep list kept,
+  and gave opposite verdicts to two tokens of identical shape sitting six lines apart. Nobody
+  noticed for as long as the lists were the thing being read — the lists encoded a criterion the
+  author held and never wrote down, so the rule only failed on the first case not already listed,
+  which is exactly the case a fan-out lane hits. **When a rule and its worked examples disagree,
+  the examples are usually right and the rule is the artifact to fix.** Re-derive the sentence from
+  the lists, then check it decides every row unaided.
+- **Two sections stating one rule will drift into stating it inverted, and both can look
+  authoritative.** The same pass had the keep-clause written as "children the consumer never
+  renders" in the rules section and "children the consumer renders and the component never sees" in
+  the decision record that produced it — exact opposites, neither flagged, each reachable on its
+  own. The decision record's version was falsified by the very example it named as protected. A
+  refinement recorded next to the case that produced it is a *derivation*, not a second home for
+  the rule: state the rule once, and have the worked example point at it rather than restate it.

@@ -3,10 +3,18 @@
 //
 // WHY THIS EXISTS, AND WHY IT IS NOT A SCREENSHOT TEST
 //
-// Wrapping this package's component CSS in `@layer components` changes which
-// declaration wins wherever an unlayered rule in `@batthewz/response-ui-css` and a
-// rule here touch the same property. Today specificity or source order decides and we
-// win; afterwards the layer decides and we lose — regardless of specificity.
+// PHASE 1 HAS LANDED: `src/styles.css` carries `layer(components)` on every component
+// import, and this script no longer measures a proposal. It builds the SAME source two
+// ways — with and without the `layer()` — and asserts that the shipped, layered build
+// still computes what the unlayered one did, everywhere the two packages touch the same
+// property. The counterfactual is now the "before" side.
+//
+// Wrapping this package's component CSS in `@layer components` changes which declaration
+// wins wherever an unlayered rule in `@batthewz/response-ui-css` and a rule here touch the
+// same property: unlayered, specificity or source order decided and we won; layered, the
+// layer decides and we lose regardless of specificity. Eight rows measured that. Six were
+// fixed by removing the collision or, twice, with a fenced `!important`; two are pinned
+// `accepted` deltas. The rows below are what keeps those fixes from silently coming undone.
 //
 // No existing gate can see that. `vitest` stubs CSS to `""` (`test.css: false`) and
 // jsdom applies no stylesheets, so every assertion in this repo is blind to the
@@ -24,8 +32,18 @@
 //     fires once and cannot be replayed
 //   - it can hold environment states the dev gallery structurally cannot show —
 //     `forced-colors: active`, `prefers-reduced-motion: reduce`, `scripting: none`
-//   - three of the four known regressions have NO possible signal in the gallery,
+//   - the environment-dependent regressions have NO possible signal in the gallery,
 //     because the gallery is a JS app at one media state
+//
+// WHAT IT STILL CANNOT SEE, AND WHICH GATE COVERS IT INSTEAD
+//   - the JS module graph. This derives its stylesheet list from `src/styles.css` and
+//     builds no JS, so a `.css` imported from a `.tsx` — injected UNLAYERED by the
+//     bundler, where it beats `@layer components` — is invisible here and the probe goes
+//     green with that component still unoverridable. `verify:no-css-imports` is the gate
+//     for that; do not read a green run as covering it.
+//   - what any React component actually emits. Fixtures are hand-written markup, so a
+//     component that starts emitting a foundation class again passes here. The jsdom
+//     tests are the gate for that half (`Timeline.test.tsx`, `Stagger.test.tsx`).
 //
 // WHAT IT CANNOT SEE
 //   - anything that is genuinely paint (gradients, blend, sub-pixel geometry)
@@ -63,11 +81,15 @@ const PLAYWRIGHT = join(
 // src/styles.css and this reads it, so the probe cannot drift from the package.
 function deriveEntries() {
   const src = readFileSync(join(ROOT, "src", "styles.css"), "utf8");
-  const imports = [...src.matchAll(/@import\s+"(\.\/[^"]+\.css)"\s*;/g)].map((m) => m[1]);
+  // The trailing `[^;]*` swallows the `layer(components)` Phase 1 added to every
+  // component import. Without it this matches nothing and the guard below fires,
+  // which is the intended failure — a silent zero here would build two identical
+  // stylesheets and report every row `unchanged`.
+  const imports = [...src.matchAll(/@import\s+"(\.\/[^"]+\.css)"[^;]*;/g)].map((m) => m[1]);
   const componentImports = imports.filter((p) => !p.endsWith("tokens.css"));
   if (componentImports.length < 40) {
     throw new Error(
-      `expected ~46 component imports in src/styles.css, found ${componentImports.length} — the parser has drifted`
+      `expected ~45 component imports in src/styles.css, found ${componentImports.length} — the parser has drifted`
     );
   }
 
@@ -112,25 +134,48 @@ const FIXTURE = `<!doctype html>
 <link rel="stylesheet" href="./probe.css">
 </head><body>
 
-<!-- Timeline: .timeline[data-align=center] .timeline-item:nth-child(even).fade-right
-     overrides animation-name against .fade-right, which response-ui-css defines
-     UNLAYERED. -->
+<!-- Timeline. Markup mirrors what Timeline.Item emits AFTER Phase 1: no
+     foundation .fade-* class, and data-entering from ScrollReveal for the
+     entrance window. Timeline.css owns the whole animation shorthand and picks
+     the direction from data-align + :nth-child, so nothing in the foundation
+     competes and the row is a control that holds.
+     Two alignments, because there are TWO direction rules and the probe used to
+     cover one: [data-align="right"] needs no media query and no :nth-child,
+     so it is the broader of the two and regressed at every viewport width.
+     PUT A fade-right CLASS BACK ON EITHER ITEM AND BOTH ROWS GO RED — that is
+     the fail-on-purpose for this fix, because it reproduces exactly what
+     Timeline.Item emitting a foundation class again would do. -->
 <div class="timeline" data-align="center">
-  <div class="timeline-item fade-right" id="tl-1"></div>
-  <div class="timeline-item fade-right" id="tl-2"></div>
-  <div class="timeline-item fade-right" id="tl-3"></div>
-  <div class="timeline-item fade-right" id="tl-4"></div>
+  <div class="timeline-item" data-entering id="tl-1"></div>
+  <div class="timeline-item" data-entering id="tl-2"></div>
+  <div class="timeline-item" data-entering id="tl-3"></div>
+  <div class="timeline-item" data-entering id="tl-4"></div>
+</div>
+<div class="timeline" data-align="right">
+  <div class="timeline-item" data-entering id="tr-1"></div>
 </div>
 
-<!-- Stagger: this package sets --stagger-delay: inherit so an ANCESTOR value
-     reaches animation-delay. The foundation re-declares the var on the same
-     element. Equal specificity -> source order today. -->
+<!-- Stagger. Markup mirrors what Stagger.tsx emits AFTER Phase 1: the container
+     resolves the step into --_stagger-step and each item carries an inline
+     --stagger-delay REFERENCING it. Inline is the only declaration the
+     foundation's own .stagger-item { --stagger-delay: … } cannot shadow;
+     Stagger.css is deleted, so nothing here duplicates the foundation.
+     #sg-1 is the regressing path (an ancestor sets the value); #sg-2 is the
+     token default, which is what an invalid var() would silently destroy. -->
 <div id="stagger-host" style="--stagger-delay: 999ms">
-  <div class="stagger-item" id="sg-1" style="--stagger-index: 1"></div>
+  <div style="--_stagger-step: var(--stagger-delay, var(--MOTION-STAGGER-DELAY))">
+    <div class="stagger-item" id="sg-1" style="--stagger-index: 1; --stagger-delay: var(--_stagger-step)"></div>
+  </div>
+</div>
+<div style="--_stagger-step: var(--stagger-delay, var(--MOTION-STAGGER-DELAY))">
+  <div class="stagger-item" id="sg-2" style="--stagger-index: 2; --stagger-delay: var(--_stagger-step)"></div>
 </div>
 
-<!-- Radio: forced-colors replacement outline vs Tailwind's focus:outline-none. -->
-<input type="radio" class="radio focus:outline-none" id="rd-1">
+<!-- Radio: forced-colors replacement outline vs the component's own outline
+     reset. The reset now carries not-forced-colors:, so in forced colours it
+     does not apply and there is nothing to out-rank. Spell it back as plain
+     focus:outline-none to redden the row. -->
+<input type="radio" class="radio not-forced-colors:focus:outline-none" id="rd-1">
 
 <!-- ScrollReveal: @media (scripting: none) { .scroll-reveal-hidden { opacity: 1 } }
      against the foundation's unlayered opacity: 0. -->
@@ -157,14 +202,40 @@ const FIXTURE = `<!doctype html>
   <div class="scroll-reveal-hidden">
     <div class="stagger-item fade-up" id="hr-2" style="--stagger-index: 1"></div>
   </div>
+  <!-- #hr-3 is #hr-2's nesting with the hidden class removed — the steady state
+       after first intersection. The guard on #hr-2 is !important, so the pair
+       is what proves it is TRANSIENT: without this row the guard could be
+       permanently applied and #hr-2 would still pass, having deleted the
+       consumer's entrance instead of deferring it. -->
+  <div>
+    <div class="stagger-item fade-up" id="hr-3" style="--stagger-index: 1"></div>
+  </div>
 </div>
 
 <!-- Switch: a real unlayered focus ring, for the consumer-reset probe. -->
 <button class="switch" id="sw-1">switch</button>
 
 <!-- Controls, expected NOT to change. A control that moves means the probe or the
-     understanding is wrong. -->
-<span class="app-shell-sidebar-link-label sr-only" id="ct-1">label</span>
+     understanding is wrong.
+
+     #ct-3/#ct-4 replace an earlier #ct-1 row that measured padding-top on
+     .app-shell-sidebar-link-label — an element that DECLARES NO PADDING, so it
+     read 0px for a trivial reason and could not have come back red under any
+     layering scheme. It was cited as evidence that the sr-only interaction is
+     safe, which it never was.
+
+     #ct-3 is the real pairing, in the only markup AppShell can render:
+     sr-only is applied iff collapsed (AppShell.tsx:333) and the sidebar
+     carries [data-collapsed] iff collapsed (:303), so
+     .app-shell-sidebar[data-collapsed] .app-shell-sidebar-section-title at
+     (0,3,0) is ALWAYS in play alongside it and has already forced the padding to
+     0. It reddens if that rule is deleted as "dead code", or if the TSX coupling
+     is broken. #ct-4 is the same declaration unopposed, which proves the
+     fixture is wired up at all. -->
+<div class="app-shell-sidebar" data-collapsed>
+  <h3 class="app-shell-sidebar-section-title sr-only" id="ct-3">section</h3>
+</div>
+<h3 class="app-shell-sidebar-section-title" id="ct-4">section, no sr-only</h3>
 <div class="masonry-grid"><div class="masonry-grid__item" id="ct-2">a</div></div>
 
 </body></html>
@@ -202,7 +273,57 @@ const PROBES = [
     sel: "#tl-2",
     prop: "animation-name",
     expectBefore: "slide-left, fade",
-    note: "Timeline alternating entrance direction (#342)",
+    note:
+      "Timeline alternating entrance direction (#342), align=center + :nth-child(even). " +
+      "Timeline owns the whole shorthand keyed on data-entering, so no foundation rule " +
+      "competes and this holds. Add `fade-right` to #tl-2 in the fixture to redden it.",
+  },
+  {
+    id: "timeline-right-animation",
+    state: "default",
+    sel: "#tr-1",
+    prop: "animation-name",
+    expectBefore: "slide-left, fade",
+    note:
+      "The BROADER of Timeline's two direction rules: align=right needs no media query " +
+      "and no :nth-child, so it regressed at every width and on every item. The probe " +
+      "had no fixture for it — a row list is an allowlist.",
+  },
+  {
+    id: "timeline-odd-animation",
+    state: "default",
+    sel: "#tl-1",
+    prop: "animation-name",
+    expectBefore: "slide-right, fade",
+    note:
+      "The BASE entrance direction — a card right of the rail travels rightward, away from it " +
+      "(`slide-right` starts at translateX(-30%), so the name is the travel, not the edge). It used to " +
+      "come from the foundation's .fade-right class; Timeline now declares it. Pinned because " +
+      "the two direction overrides only set `animation-name`, so deleting the base shorthand " +
+      "would leave them reading the right name with no duration and nothing would move.",
+  },
+  {
+    id: "timeline-entrance-duration",
+    state: "default",
+    sel: "#tl-2",
+    prop: "animation-duration",
+    expectBefore: "0.3s, 0.3s",
+    note:
+      "CONTROL — the timing half of the shorthand Timeline took over, still read from " +
+      "--MOTION-DURATION-ENTER. Two entries because the shorthand declares two animations. " +
+      "Asserts that re-stating the contract tokens actually reproduces what .fade-right gave.",
+  },
+  {
+    id: "timeline-entrance-reduced-motion",
+    state: "reduced-motion",
+    sel: "#tr-1",
+    prop: "animation-name",
+    expectBefore: "none",
+    note:
+      "CONTROL — the entrance rules are wrapped in `no-preference`, so under `reduce` " +
+      "Timeline declares no animation at all. Timeline used to inherit this guard from " +
+      "the foundation's .fade-* reduced-motion rule; owning the shorthand means owning " +
+      "the guard too, and this asserts it rather than assuming it.",
   },
   {
     id: "stagger-ancestor-inherit",
@@ -211,6 +332,19 @@ const PROBES = [
     prop: "animation-delay",
     expectBefore: "0.999s",
     note: "ancestor --stagger-delay (999ms) must reach animation-delay",
+  },
+  {
+    id: "stagger-token-default",
+    state: "default",
+    sel: "#sg-2",
+    prop: "animation-delay",
+    expectBefore: "0.1s",
+    note:
+      "CONTROL — nobody sets --stagger-delay, so the contract token default " +
+      "(--MOTION-STAGGER-DELAY, 50ms) x index 2 must survive. This is the row a fixture " +
+      "error would silently pass: the whole risk of carrying the fallback inside the " +
+      "var() reference is that an invalid var() invalidates the foundation's calc() and " +
+      "50ms becomes 0ms with nothing to show for it.",
   },
   {
     id: "radio-forced-colors-focus-outline",
@@ -235,8 +369,15 @@ const PROBES = [
     sel: "#tb-1",
     pseudo: "::-webkit-scrollbar",
     prop: "height",
-    expectBefore: "3px",
-    note: "vs the foundation's universal *::-webkit-scrollbar (0.625rem)",
+    expectBefore: "10px",
+    note:
+      "CONTROL, and it used to be a regression. Tabs' 3px hairline could not win from " +
+      "@layer components against the foundation's universal *::-webkit-scrollbar, and " +
+      "defending it would have needed !important on a pseudo-element — which closes the " +
+      "override route completely, with not even an inline style left. The rule was " +
+      "DELETED instead: the foundation owns scrollbar appearance app-wide, and Tabs' real " +
+      "overflow affordance is the mask gradient. Both builds now read the foundation's " +
+      "0.625rem. Re-add a Tabs ::-webkit-scrollbar height rule and this row stops holding.",
   },
   {
     id: "tabs-scrollbar-thumb-color",
@@ -244,8 +385,29 @@ const PROBES = [
     sel: "#tb-1",
     pseudo: "::-webkit-scrollbar-thumb",
     prop: "background-color",
-    expectBefore: "rgba(0, 0, 0, 0)",
-    note: "thumb should be transparent until hover",
+    expectBefore: "oklch(0.9276 0.0058 264.53)",
+    note:
+      "CONTROL, same deletion as the row above — the resting `transparent` thumb is gone " +
+      "and both builds read the foundation's --C-BORDER-DEFAULT. THEME-DEPENDENT VALUE: " +
+      "it is pinned as a literal, so a palette retune re-pins it (and reports INERT, not " +
+      "a silent pass, in the meantime).",
+  },
+  {
+    id: "tabs-thumb-hover-inert",
+    state: "default",
+    sel: "#tb-1",
+    pseudo: "::-webkit-scrollbar-thumb",
+    prop: "background-color",
+    hover: "#tb-1",
+    expectBefore: "oklch(0.6446 0.0093 258.34)",
+    note:
+      "CONTROL — the third deleted declaration, and the one that was worst. Tabs' " +
+      "`:hover` thumb colour could not win in EITHER hover state after layering: over " +
+      "the track the foundation's base rule supplies the identical colour, over the thumb " +
+      "its own :hover rule supplies --C-BORDER-STRONG. A rule inert in every state is the " +
+      "shape that gets cited as safe. Forcing :hover on the host satisfies both " +
+      "selectors, so this pins the THUMB-hover reading (--C-BORDER-STRONG). " +
+      "Theme-dependent, like the row above.",
   },
   {
     id: "hero-stagger-animation-name",
@@ -253,7 +415,25 @@ const PROBES = [
     sel: "#hr-1",
     prop: "animation-name",
     expectBefore: "fade",
-    note: "Hero.css:91 vs a foundation .fade-up on the same item",
+    expectAfter: "slide-up, fade",
+    accepted:
+      "OWNER DECISION: this row measures a CONSUMER's explicit foundation `.fade-*` " +
+      "class on a `.stagger-item` inside `.hero__content` beating Hero's own " +
+      "`animation-name: fade`. Nothing this package renders can produce that markup — " +
+      "`Stagger.tsx` writes a bare className=\"stagger-item\" with no merge and no " +
+      "parameter, so no React API here can put a class on that element, and `Hero.tsx` " +
+      "puts `.fade-*` on the ScrollReveal wrapper, never on an item. The colliding class " +
+      "is therefore hand-authored, and after Phase 1 the author's own class wins — which " +
+      "is exactly the override Phase 1 exists to deliver (PLAN §1). Hero's plain fade is " +
+      "an aesthetic default, not a correctness guard, so it is right for an explicit " +
+      "instruction to beat it. Scope of this decision is EXACTLY this row. It does NOT " +
+      "cover `hero-reveal-hidden-animation-none`, which is a guard rather than an opinion " +
+      "and is a must-fix. FORWARD DEPENDENCY, AND IT IS LOAD-BEARING: the premise is " +
+      "\"nothing this package renders can produce that markup\". The moment Phase 3 gives " +
+      "`Stagger` a `classNames.item`, this package CAN put a class on a `.stagger-item` " +
+      "and the premise stops holding. Revisit this row in the same commit that ships it — " +
+      "do not carry the acceptance across that change unexamined.",
+    note: "Hero.css vs a foundation .fade-up on the same item — accepted, not fixed",
   },
   {
     id: "hero-reveal-hidden-animation-none",
@@ -261,7 +441,33 @@ const PROBES = [
     sel: "#hr-2",
     prop: "animation-name",
     expectBefore: "none",
-    note: "Hero.css:97 nulls the entrance while the reveal is still hidden",
+    note:
+      "Hero nulls the entrance while the reveal is still hidden — a TIMING GUARD, not " +
+      "an opinion, which is why it takes an `!important` and the row above is accepted " +
+      "instead. INVARIANT TO PRESERVE: the rule keys off the ABSENCE of the reveal's " +
+      "hidden class, never the presence of its entrance class, because the entrance " +
+      "class is dropped on `animationend` and would cut a later item off mid-flight " +
+      "while the hidden class is removed once and stays removed. A future " +
+      "'simplification' that re-keys it onto the entrance class must fail here rather " +
+      "than pass review. Delete the `!important` from Hero.css to redden it.",
+  },
+  {
+    id: "hero-reveal-shown-animation-name",
+    state: "default",
+    sel: "#hr-3",
+    prop: "animation-name",
+    expectBefore: "fade",
+    expectAfter: "slide-up, fade",
+    accepted:
+      "OWNER DECISION: the other half of the same contract as " +
+      "`hero-stagger-animation-name`, and accepted for the same reason and with the same " +
+      "scope. Same markup as `#hr-2` but with the reveal's hidden class removed, i.e. " +
+      "the steady state after first intersection. Together the two rows state the whole " +
+      "contract: THE CONSUMER PICKS THE ENTRANCE, HERO PICKS WHEN IT PLAYS. Without this " +
+      "row the pair can drift into disagreeing — `hero-reveal-hidden-animation-none` " +
+      "would still pass with the guard permanently applied, which would delete the " +
+      "consumer's entrance entirely rather than deferring it.",
+    note: "the guarded item once the reveal has fired — the consumer's class must run then",
   },
   {
     id: "switch-ring-vs-consumer-reset",
@@ -291,12 +497,32 @@ const PROBES = [
     note: "CONTROL for the row above — the ring with no consumer reset present",
   },
   {
-    id: "control-sronly-padding",
+    id: "control-sronly-sectiontitle-padding",
     state: "default",
-    sel: "#ct-1",
-    prop: "padding-top",
+    sel: "#ct-3",
+    prop: "padding-left",
     expectBefore: "0px",
-    note: "CONTROL — claimed safe",
+    note:
+      "CONTROL WITH TEETH, and the replacement for a row that had none. AppShell.css's " +
+      ".app-shell-sidebar-section-title padding (0,1,0) vs Tailwind's .sr-only (0,1,0) in " +
+      "@layer utilities is a genuine in-package inversion that Phase 1 flips — but it has " +
+      "no reachable observable, because the [data-collapsed] rule at (0,3,0) has already " +
+      "forced the padding to 0 in the only state AppShell renders (sr-only implies " +
+      "[data-collapsed] — AppShell.tsx:303,333). This pins THAT. It reddens if the " +
+      "[data-collapsed] rule is removed as dead code, or if the TSX coupling changes. " +
+      "Deliberately not an expectAfter row: nothing user-visible moves, and pinning an " +
+      "unreachable state would be a gate asserting behaviour that does not exist.",
+  },
+  {
+    id: "control-sectiontitle-padding-unopposed",
+    state: "default",
+    sel: "#ct-4",
+    prop: "padding-left",
+    expectBefore: "12px",
+    note:
+      "CONTROL — the same declaration with no .sr-only present, so it is unopposed in " +
+      "both builds. Proves the declaration is live and the fixture is wired up. If this " +
+      "moves, the fixture or the understanding is wrong, not the layering.",
   },
 ];
 
@@ -404,6 +630,23 @@ function serve(dir) {
   });
 }
 
+/**
+ * Force (or clear) `:hover` on one element, over CDP. See the call site.
+ *
+ * Takes the session rather than making one, because it must be the SAME session
+ * for the set and the clear and must not be detached in between: detaching drops
+ * the forced state immediately, so a set-detach-read sequence reads the
+ * unhovered value and the row goes inert while looking like a measurement.
+ * Verified by making a hover rule with a distinctive colour show up under this
+ * path and not under the detaching one.
+ */
+async function forceHover(cdp, selector, on) {
+  const { root } = await cdp.send("DOM.getDocument", { depth: -1 });
+  const { nodeId } = await cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector });
+  if (!nodeId) throw new Error(`hover target "${selector}" not found in the fixture`);
+  await cdp.send("CSS.forcePseudoState", { nodeId, forcedPseudoClasses: on ? ["hover"] : [] });
+}
+
 async function measure(chromium, htmlDir) {
   const out = {};
   const site = await serve(htmlDir);
@@ -457,8 +700,32 @@ async function measure(chromium, htmlDir) {
     }
     if (__consumerCss) await page.addStyleTag({ content: __consumerCss });
 
+    // One CDP session per page, created on first use and kept alive — see
+    // `forceHover`.
+    let hoverCdp = null;
+    const hoverSession = async () => {
+      if (!hoverCdp) {
+        hoverCdp = await ctx.newCDPSession(page);
+        await hoverCdp.send("DOM.enable");
+        await hoverCdp.send("CSS.enable");
+      }
+      return hoverCdp;
+    };
+
     for (const probe of PROBES.filter((p) => p.state === stateName)) {
       if (probe.focus) await page.evaluate((s) => document.querySelector(s)?.focus(), probe.sel);
+      // `hover` forces `:hover` on an element over the devtools protocol rather
+      // than moving the mouse. A real pointer move was tried first and is not
+      // usable: whether it lands on the scroll track, the thumb or the content
+      // depends on the box's height, which the very rule under test changes — so
+      // the two builds would be measured in different states. `forcePseudoState`
+      // is deterministic and applies to both.
+      //
+      // The limit it does NOT remove, and which decides what a hovered scrollbar
+      // row is pinning: forcing `:hover` on the HOST satisfies both
+      // `.host:hover::-webkit-scrollbar-thumb` and `*::-webkit-scrollbar-thumb:hover`,
+      // so a row using this must say in its note which of the two it means.
+      if (probe.hover) await forceHover(await hoverSession(), probe.hover, true);
       if (probe.keyboardFocus) {
         // `:focus-visible` needs the engine's last-interaction heuristic to say
         // "keyboard". A bare .focus() does not satisfy it on a <button>, so press a
@@ -476,6 +743,9 @@ async function measure(chromium, htmlDir) {
         },
         { sel: probe.sel, pseudo: probe.pseudo ?? null, prop: probe.prop }
       );
+      // Forced states are sticky, so leaving one set would silently apply it to
+      // every later row measured in the same page.
+      if (probe.hover) await forceHover(await hoverSession(), probe.hover, false);
     }
     await ctx.close();
   }
@@ -514,8 +784,8 @@ if (agg.ok) {
         .slice(0, 6)
         .join("\n   ")
   );
-  console.log("   => Phase 1 must layer the 46 individual imports IN src/styles.css,");
-  console.log("      which is the file PLAN §5 rule 10 forbids lanes from touching.\n");
+  console.log("   => which is why the individual imports IN src/styles.css each carry it,");
+  console.log("      and why that file is owned by one commit rather than by lanes.\n");
 }
 
 const a = build("unlayered", entries.unlayered);

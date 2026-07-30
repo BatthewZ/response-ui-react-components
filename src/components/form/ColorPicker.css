@@ -212,9 +212,12 @@
 
 /* No border and no focus rule here: both are `src/util/focus.ts` recipes
    applied in ColorPicker.tsx (`border border-border-strong` +
-   `focusOutlineResetControl` + `focusRingControl`). The border has to be a
-   utility for the recipe's border swap to reach it at all — this stylesheet is
-   unlayered, and unlayered CSS outranks every Tailwind utility. */
+   `focusOutlineResetControl` + `focusRingControl`). Keeping the border in the
+   utility keeps one writer for one property, which is why it moved. The original
+   reason — this stylesheet was unlayered and outranked every utility — expired
+   with Phase 1; the file is now in `@layer components`, below `@layer utilities`.
+   The arrangement is still correct and now also lets a caller's `className` reach
+   the border, which is the point. */
 
 /* Presets */
 .colorpicker-presets {

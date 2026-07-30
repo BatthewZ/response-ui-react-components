@@ -57,8 +57,11 @@ export function AnnounceOnce() {
   );
 }
 
-/** The `h-48` is deliberately inert — the page uses it to show utilities lose to the
- *  unlayered base `height`; size with the `width`/`height` props instead. */
+/** The `h-48` is LIVE, and Phase 1 is why. `height` is the one dimension `Skeleton`
+ *  leaves to CSS when the prop is omitted — `.skeleton { height: 1em }` — and that
+ *  rule is now in `@layer components`, below `@layer utilities`, so the utility wins.
+ *  `width` is the opposite: it defaults to `"100%"` and always ships as an inline
+ *  `style`, which no class beats at any layer, so `w-64` stays inert. */
 export function SizedFromClassName() {
   return <Skeleton variant="rounded" width="18rem" className="h-48" />;
 }

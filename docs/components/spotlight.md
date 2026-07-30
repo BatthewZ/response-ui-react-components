@@ -107,8 +107,10 @@ image-then-copy in DOM order, whatever `reversed` says.
 puts the image on the right. On row 2 or 4 — already flipped by `:nth-child(even)` — a
 dedicated cancelling rule puts the image back on the *left*. There is no prop that pins a row
 to a fixed side — but because the alternation is positional, putting `reversed` on rows 1,
-3 and 5 lands every row image-right. An `order-*` utility will not do it: the component's
-own rules outrank Tailwind's (see [Gotchas](#gotchas)).
+3 and 5 lands every row image-right. An `order-*` utility on a slot will also do it now, since
+this package's CSS is in `@layer components` below `@layer utilities` (see
+[Gotchas](#gotchas)) — but it pins one slot rather than the row, so `reversed` is still the
+prop that keeps image and copy in step.
 
 ## Images
 
@@ -221,11 +223,11 @@ borrows read `--MOTION-DURATION-ENTER` and `--MOTION-EASE-ENTER` from
 
 ## Gotchas
 
-- **`className` cannot re-space it.** `.spotlight` and `.spotlight-item` are unlayered
-  component CSS, while Tailwind utilities compile into `@layer utilities`, and unlayered
-  author rules outrank layered ones outright — no matter the specificity. So
-  `<Spotlight className="gap-r1">` leaves the gap at `--R-SIZE-2`. Use the important
-  modifier (`gap-r1!`), an inline `style`, or your own unlayered rule on `.spotlight`.
+- **`className` re-spaces it.** `<Spotlight className="gap-r1">` sets the gap:
+  `.spotlight` and `.spotlight-item` are in `@layer components`, which Tailwind orders below
+  `@layer utilities`. It used to leave the gap at `--R-SIZE-2` and need the important modifier
+  (`gap-r1!`), because this package's CSS was unlayered and out-ranked layered rules whatever
+  the specificity.
 - **The copy starts invisible, and by default stays that way without JS.** With `animate`
   at its default, the server-rendered HTML is
   `<div class="scroll-reveal-hidden"><div class="spotlight-content">…` — `opacity: 0`. It

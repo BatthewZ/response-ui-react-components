@@ -143,6 +143,46 @@ describe("ScrollReveal", () => {
     expect(el.style.animationDelay).toBe("200ms");
   });
 
+  // Phase 1. The entrance window is published as `data-entering` as well as a
+  // class, because a component whose entrance direction has to beat the
+  // foundation's `.fade-*` rules cannot emit those classes at all — from
+  // `@layer components` they win on layer at any specificity. `Timeline.css`
+  // keys its whole `animation` shorthand off this attribute, so it is public
+  // surface and not an implementation detail.
+  describe("data-entering marks the entrance window", () => {
+    it("is present exactly while the entrance class is", () => {
+      stubIntersectingObserver();
+      const { container } = render(<ScrollReveal>Content</ScrollReveal>);
+      const el = container.firstElementChild as HTMLElement;
+      expect(el.className).toContain("fade-up");
+      expect(el).toHaveAttribute("data-entering");
+
+      fireAnimationEnd(el);
+
+      expect(el.className).not.toContain("fade-up");
+      expect(el).not.toHaveAttribute("data-entering");
+    });
+
+    it('animation="none" reveals with the marker and no entrance class', () => {
+      stubIntersectingObserver();
+      const { container } = render(<ScrollReveal animation="none">Content</ScrollReveal>);
+      const el = container.firstElementChild as HTMLElement;
+      // The point of the option: the caller owns the animation, so no foundation
+      // class is emitted for a layered rule to lose to.
+      expect(el.className).not.toMatch(/\bfade-|\bscale-/);
+      expect(el).toHaveAttribute("data-entering");
+      expect(screen.getByText("Content")).toBeVisible();
+    });
+
+    it("is absent before the reveal fires and when animate is off", () => {
+      const { container, rerender } = render(<ScrollReveal animate={false}>Content</ScrollReveal>);
+      const el = container.firstElementChild as HTMLElement;
+      expect(el).not.toHaveAttribute("data-entering");
+      rerender(<ScrollReveal animate={false} animation="none">Content</ScrollReveal>);
+      expect(container.firstElementChild).not.toHaveAttribute("data-entering");
+    });
+  });
+
   it("composes a caller `onAnimationEnd` with its own without losing either", () => {
     stubIntersectingObserver();
     const onAnimationEnd = vi.fn();

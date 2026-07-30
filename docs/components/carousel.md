@@ -218,11 +218,10 @@ the 40rem breakpoint, taking the track's vertical padding with it.
 
 Two of the arrow rows overlap on purpose. `Carousel.css` restates the hover background as
 `--C-SURFACE-2` at 75% opacity through `color-mix`, so a slide stays faintly visible behind
-a hovered arrow; because the component stylesheet is unlayered and Tailwind's utilities sit
-in `@layer utilities`, that rule wins over IconButton's opaque `hover:bg-surface-2` — the
-compiled bundle puts the utilities layer at bytes 7974–30370 and `.carousel-arrow:hover` at
-62975, outside it, and an unlayered author rule outranks a layered one before specificity is
-consulted. Both read the same variable, so re-tinting is a one-line change either way.
+a hovered arrow. That rule used to beat IconButton's opaque `hover:bg-surface-2` because the
+component stylesheet was unlayered; it is now in `@layer components`, **below** `@layer utilities`,
+so a `hover:bg-*` utility on the arrow wins instead. Both read the same variable, so re-tinting is
+a one-line change either way.
 
 `--carousel-item-width` is lowercase because it is a component-internal local, not part of
 the theme contract: it is per-instance layout, the thing you set at the call site, not
@@ -235,9 +234,9 @@ something a theme should decide for you.
   <kbd>←</kbd>/<kbd>→</kbd> do nothing. `Carousel.Item`s dropped straight into the root render,
   but nothing scrolls them.
 - **One slide per view until you say otherwise.** `.carousel-item` sets `width` from
-  `--carousel-item-width` with a `100%` fallback, and because the component stylesheet is
-  unlayered it also beats a Tailwind `w-*` utility on the same item. Set the variable, or use
-  an inline `style={{ width: … }}`, which does win.
+  `--carousel-item-width` with a `100%` fallback. Set the variable, an inline
+  `style={{ width: … }}`, or — since this package's CSS moved into `@layer components`, below
+  `@layer utilities` — a plain `w-*` utility on the item, which now wins on its own.
 - **Your `onKeyDown` composes with the arrow-key handler.** `<Carousel onKeyDown={…}>` runs
   your handler first and still scrolls the rail; call `preventDefault()` to suppress the
   scroll. (Before this was fixed the spread sat after the internal handler and silently turned

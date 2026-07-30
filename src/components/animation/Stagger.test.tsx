@@ -49,13 +49,24 @@ describe("Stagger", () => {
   // container-set `300ms` resolved to `50ms` on the item (animation-delay 0.1s at
   // index 2); item-set `300ms` resolved to `300ms` (animation-delay 0.6s).
   //
-  // The rest of #17 — a *consumer* setting `--stagger-delay` on an ancestor — is
-  // closed by `Stagger.css` in this package (`--stagger-delay: inherit` plus an
-  // `animation-delay` that reads the token as a fallback). Nothing below can
-  // assert it: vitest runs `css: false`, so no test here reads a stylesheet at
-  // all. Measured in Firefox 146 against the real components: an ancestor set to
-  // `300ms` moved items 1 and 2 from 0.05s/0.1s to 0.3s/0.6s, while the
-  // `staggerDelay` prop and the bare-token default were unchanged.
+  // WHAT CHANGED IN PHASE 1, AND WHY THESE TESTS GOT STRONGER. The rest of #17 —
+  // a *consumer* setting `--stagger-delay` on an ancestor — used to be closed by
+  // `Stagger.css` (`--stagger-delay: inherit`), which won only because this
+  // package's CSS was unlayered; from `@layer components` it loses to the
+  // foundation's rule at any specificity. `Stagger.css` is therefore deleted and
+  // the whole mechanism is inline: the CONTAINER resolves the step once into
+  // `--_stagger-step`, and every ITEM carries an inline
+  // `--stagger-delay: var(--_stagger-step)`. Inline is the only declaration the
+  // foundation's rule cannot shadow, which is the same #17 conclusion reached a
+  // second way — the value must land on the element that consumes it.
+  //
+  // Because the mechanism moved from CSS into inline style, jsdom can see it for
+  // the first time: vitest runs `css: false`, so the ancestor path had no
+  // assertion at all before and only a Firefox measurement in this comment.
+  // Re-measured against the layered build with `bun run probe:cascade-layer`:
+  // `stagger-ancestor-inherit` (ancestor 999ms, index 1) reads 0.999s and
+  // `stagger-token-default` (nobody sets it, index 2) reads 0.1s, in both the
+  // layered and unlayered builds.
   describe("#17 · staggerDelay reaches the element that consumes it", () => {
     it("writes --stagger-delay on every item wrapper", () => {
       const { container } = render(
@@ -68,7 +79,12 @@ describe("Stagger", () => {
         container.querySelectorAll<HTMLElement>(".stagger-item"),
         (item) => item.style.getPropertyValue("--stagger-delay")
       );
-      expect(delays).toEqual(["100ms", "100ms"]);
+      // A reference, not the literal: the value itself is resolved once on the
+      // container. What #17 requires is that the DECLARATION is on the item,
+      // which is what makes it unshadowable — and that is what this asserts.
+      expect(delays).toEqual(["var(--_stagger-step)", "var(--_stagger-step)"]);
+      const el = container.firstElementChild as HTMLElement;
+      expect(el.style.getPropertyValue("--_stagger-step")).toBe("100ms");
     });
 
     it("does not leave the variable on the container, where it is shadowed", () => {
@@ -78,17 +94,29 @@ describe("Stagger", () => {
         </Stagger>
       );
       const el = container.firstElementChild as HTMLElement;
+      // `--_stagger-step` deliberately, never `--stagger-delay`: writing the
+      // consumed name here would re-open #17, because `.stagger-item` re-declares
+      // it and the inherited value would be shadowed again.
       expect(el.style.getPropertyValue("--stagger-delay")).toBe("");
     });
 
-    it("writes no delay variable at all when the prop is omitted", () => {
+    it("carries the fallback chain when the prop is omitted", () => {
       const { container } = render(
         <Stagger>
           <span>A</span>
         </Stagger>
       );
+      const el = container.firstElementChild as HTMLElement;
+      // The two remaining delay sources, in priority order, resolved on the
+      // container: an ancestor's `--stagger-delay`, then the contract token. The
+      // fallback lives INSIDE the reference on purpose — an inline
+      // `animation-delay` carrying it would have made the foundation's own
+      // reduced-motion guard inert.
+      expect(el.style.getPropertyValue("--_stagger-step")).toBe(
+        "var(--stagger-delay, var(--MOTION-STAGGER-DELAY))"
+      );
       const item = container.querySelector<HTMLElement>(".stagger-item")!;
-      expect(item.style.getPropertyValue("--stagger-delay")).toBe("");
+      expect(item.style.getPropertyValue("--stagger-delay")).toBe("var(--_stagger-step)");
       expect(item.style.getPropertyValue("--stagger-index")).toBe("0");
     });
   });
@@ -138,16 +166,32 @@ describe("Stagger", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves a caller `style` on the container untouched by the delay", () => {
+  it("merges its own container variable with a caller `style`, caller last", () => {
     const { container } = render(
       <Stagger staggerDelay="100ms" style={{ marginTop: "8px" }}>
         <span>A</span>
       </Stagger>
     );
     const el = container.firstElementChild as HTMLElement;
+    // The container `style` is no longer handed over untouched — `--_stagger-step`
+    // is merged in first, so every key of the caller's still wins.
     expect(el.style.marginTop).toBe("8px");
+    expect(el.style.getPropertyValue("--_stagger-step")).toBe("100ms");
     const item = container.querySelector<HTMLElement>(".stagger-item")!;
-    expect(item.style.getPropertyValue("--stagger-delay")).toBe("100ms");
+    expect(item.style.getPropertyValue("--stagger-delay")).toBe("var(--_stagger-step)");
+  });
+
+  it("lets a caller `style` override the container variable", () => {
+    const { container } = render(
+      <Stagger
+        staggerDelay="100ms"
+        style={{ "--_stagger-step": "40ms" } as React.CSSProperties}
+      >
+        <span>A</span>
+      </Stagger>
+    );
+    const el = container.firstElementChild as HTMLElement;
+    expect(el.style.getPropertyValue("--_stagger-step")).toBe("40ms");
   });
 
   it("collapses every stagger index to 0 under reduced motion", () => {

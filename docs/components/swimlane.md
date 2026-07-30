@@ -233,11 +233,11 @@ the spacing inside your scroller is entirely yours to pick.
 - **The heading defaults to `<h2>`.** `titleAs` takes any of `h1`–`h6`, so a lane nested under
   an existing `<h2>` can be `titleAs="h3"` rather than skipping a level. `title` accepts a
   `ReactNode`; only the element around it comes from `titleAs`.
-- **The bottom margin is unconditional, and a utility won't clear it.** Every lane, including
-  the last on the page, carries `margin-bottom: var(--R-SIZE-2)`. `.swimlane` is unlayered
-  component CSS, so it outranks Tailwind's layered utilities no matter the specificity: a
-  `className="mb-0"` loses. Use the important modifier (`mb-0!`), your own unlayered rule, or
-  retint `--R-SIZE-2`.
+- **The bottom margin is unconditional, but a utility clears it.** Every lane, including the
+  last on the page, carries `margin-bottom: var(--R-SIZE-2)`; `className="mb-0"` removes it,
+  because `.swimlane` is in `@layer components` and Tailwind orders that below
+  `@layer utilities`. It used to lose and need the important modifier (`mb-0!`), when this
+  package's CSS was unlayered.
 - **Always a client boundary.** Swimlane itself has no `"use client"` and can be called from
   a server component, but the reveal it always renders is a client component with an effect
   and an observer — so a Swimlane always ships JS.

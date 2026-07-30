@@ -25,12 +25,13 @@
      marker that actually grew would move the rail. */
   --_activity-feed-highlight-ring: 2px;
 
-  /* Public — no leading underscore, so an instance may re-point them. This is the
-     only override route that works: `className` reaches the `<li>` and nothing
-     inside it, and even inside, this package's CSS is imported unlayered from
-     `styles.css` and outranks `@layer utilities` whatever the specificity. A
-     custom property set on the row has no unlayered declaration competing with it
-     there, so it lands and inherits inward. Same contract as
+  /* Public — no leading underscore, so an instance may re-point them. THEY REACH
+     ELEMENTS A PER-ELEMENT OVERRIDE CANNOT: `className` reaches the `<li>` and
+     nothing inside it, and the value is set once on the row and inherits to
+     markers the consumer never renders. That is what a per-element slot cannot
+     do, and it is the reason these stay — not precedence. (Before Phase 1 this
+     file was unlayered and outranked every utility; it is now in
+     `@layer components`, below `@layer utilities`.) Same contract as
      `--stepper-progress-color`; `Timeline` exposes the matching pair.
 
      A FILL token inked with its paired `on-*`, per the contrast contract — the

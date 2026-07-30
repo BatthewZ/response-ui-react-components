@@ -392,16 +392,101 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
 - Components are forwardRef, with four generic exceptions — `DataTable`, `VirtualizedDataTable`, `Repeater` and `AvatarUpload` are plain function components taking React 19's `ref` prop, because `forwardRef` erases a type parameter. When composing, type props as `ComponentPropsWithRef<"div">` (or appropriate element) — correct for all of them either way.
 - **Uniform card grids → `Grid`, not `Row wrap` or `MasonryGrid`.** `Grid columns={{ base: 1, md: 3 }}` gives equal-width columns and equal-height rows (cells share the row height, so footer buttons line up). `Row wrap` sizes children to content (uneven widths); `MasonryGrid` is CSS multi-column (uneven heights *by design* — reach for it only when you want Pinterest-style masonry). `Grid` cells are `minmax(0, 1fr)`, so long words wrap instead of overflowing.
 
+## This package's CSS is in `@layer components`, so `className` wins
+
+**Every component's stylesheet is layered.** All 45 per-component imports in `src/styles.css`
+carry `layer(components)`, and Tailwind orders `@layer components` **below** `@layer utilities`.
+The consequence is the headline capability of this library:
+
+```tsx
+<StatCard className="flex-row items-center border-0 bg-surface-2">…</StatCard>
+```
+
+A caller's utility beats the component's own rule **at any specificity**, on every component,
+whether or not it has a sibling `.css`. So does a consumer's own unlayered stylesheet, without
+needing to be ordered after ours. Before this, a utility touching any property a component
+stylesheet already set was silently inert — the class landed in the DOM, changed nothing, and
+reported no error — and the documented workaround was the important modifier (`p-r1!`). **Do not
+write that workaround into new code or new docs.** If you find a page still recommending it, the
+page is wrong.
+
+`src/tokens.css` is deliberately **not** layered: it carries `@theme inline`, which registers
+utilities and belongs in Tailwind's own `theme` layer. `bun run probe:cascade-layer` is the only
+instrument in the repo that can see the *effect* of any of this — `vitest` stubs CSS to `""` and
+jsdom applies no stylesheets, so every other gate is blind to the cascade.
+
+**Two guards keep the arrangement itself true, and both are in `prepublishOnly`:**
+
+- **`bun run verify:css-layering`** — every `@import "./components/*.css"` carries
+  `layer(components)`, `tokens.css` carries none, and an import it cannot classify fails the run
+  rather than being skipped. **The probe cannot do this job**: it re-derives the import list from
+  `src/styles.css`, strips whatever `layer()` is written there, and adds its own — so deleting
+  `layer(components)` from a real import leaves the probe green along with every other gate, and
+  silently reverts this whole section for that one component.
+- **`bun run verify:no-css-imports`** — no `.ts`/`.tsx` imports a `.css`. A stylesheet reached
+  through the JS graph is injected **unlayered** by the bundler, where it out-ranks
+  `@layer components`. `src/styles.css` is the only place layering is decided; if a component needs
+  new CSS, register it there.
+
+Three things a `className` still cannot beat, so nobody reads a leftover as drift:
+
+- **Anything written as an inline `style`.** `Skeleton`'s `width`, `ScrollReveal`'s `delay`, and
+  floating-surface fade durations are inline; an inline declaration beats every class at every
+  layer. That is a different defect with a different fix, not a layering question. Check the
+  emitted `style` rather than assuming: `Skeleton`'s `height` has no default, so a Skeleton
+  without the prop emits none and `h-48` now *does* win against `.skeleton { height: 1em }`.
+- **Unlayered rules in `@batthewz/response-ui-css`.** The foundation is unlayered almost
+  everywhere, so `.mono-font`, the `.fade-*` entrance classes and the universal
+  `*::-webkit-scrollbar*` rules out-rank everything this package writes. Where that mattered we
+  stopped colliding rather than shouting louder — `Timeline` emits no `.fade-*` class, `Stagger`
+  writes its delay inline, `Tabs` deleted its scrollbar rules.
+- **The two `!important` declarations below.**
+
+## When a narrowly-scoped `!important` is legitimate here, and when it is not
+
+This package contains exactly **two** `!important` declarations, and the count is the point —
+`grep -rn '!important;' src --include=*.css` should return exactly these two lines (the bare
+`!important` grep also matches the comments explaining them). Both were argued for individually:
+
+- `ScrollReveal.css` — `opacity: 1` under `@media (scripting: none)`.
+- `Hero.css` — `animation-name: none` on a stagger item inside a still-hidden reveal.
+
+**A carve-out and an `!important` are different exceptions, and only one creates a second
+precedence regime.** Leaving a file unlayered re-introduces the three interacting axes Phase 1
+collapsed (unlayered-vs-layered, specificity, source order); that was refused everywhere, for
+focus rings included. An `!important` inside `@layer components` keeps one regime and raises one
+declaration within it.
+
+**What it costs, measured, so nobody thinks it is mild.** Important declarations reverse the layer
+order. An `!important` in `@layer components` beats an `!important` in `@layer utilities`, beats a
+consumer's **unlayered `!important`**, and beats a consumer's inline `style` normal declaration.
+The only consumer route left is inline `style` **with** `!important` — and for a pseudo-element
+target, not even that exists. It is not "the consumer has to shout louder"; it is "the consumer is
+out of options."
+
+**The admission test.** A declaration may take `!important` only if **both** hold:
+
+1. It guarantees a **visibility or timing invariant**, not a design decision. "Content is not
+   permanently invisible" and "an entrance does not play while its content is hidden" qualify. "The
+   scrollbar is a 3px hairline" does not — that is an appearance, and `Tabs.css`'s three scrollbar
+   declarations were **deleted** rather than defended for exactly that reason.
+2. It is gated behind a condition a consumer would not be styling into — `scripting: none`, a
+   transient state removed once and never restored.
+
+And it must carry a comment saying **why this one and not the next one**. Without that sentence
+the next reader reads the leftover as licence, tidies it away, or copies it.
+
+**Focus rings are not on this list.** They are not carved out and are not `!important` — see
+below. The one focus-shaped fix Phase 1 needed was `not-forced-colors:` on
+`focusOutlineResetControl` (`src/util/focus.ts`), which needs no `!important` at all: it stops the
+two rules competing instead of ranking one over the other. That is the preferred shape of fix
+everywhere, and it is why there are two `!important`s rather than five.
+
 ## Decision: focus rings are layered, and a consumer's reset may win
 
-**Status: decided, not yet in effect.** It takes effect with the `@layer components` move
-(`PLAN-overridability.md` Phase 1). Until that lands, this package's CSS is unlayered and the
-behaviour below is the *intended future*, not what ships today. Do not describe it to consumers as
-current.
-
-This package's component CSS moves into `@layer components` in full. **Focus rings are not carved
-out, and are not `!important`.** A consumer's unlayered `*:focus { outline: none }` therefore beats
-our focus ring at any specificity.
+**Status: in effect.** Focus rings are in `@layer components` with the rest of this package's CSS.
+**They are not carved out, and are not `!important`.** A consumer's unlayered
+`*:focus { outline: none }` therefore beats our focus ring at any specificity.
 
 That is deliberate. Writing a global focus reset is an opt-out of focus visibility, and the design
 system does not fight it with a precedence trick — one cascade regime with no exceptions is worth
@@ -414,15 +499,24 @@ exception existed.
 - ✔ **Covered:** a *consumer-authored* reset out-ranking a ring we ship.
 - ✘ **Not covered:** *our own* utilities out-ranking *our own* CSS. `@layer components` sits below
   `@layer utilities`, so a `focus:outline-none` utility on an element whose `.css` file paints a
-  replacement outline now deletes it. `Radio.css`'s `forced-colors` outline is the live case and is a
-  **must-fix** — WCAG 2.4.7, caused entirely in-package, and nobody has accepted it.
+  replacement outline would delete it. `Radio.css`'s `forced-colors` outline was the live case —
+  WCAG 2.4.7, caused entirely in-package, and nobody accepted it. **Fixed, not accepted:**
+  `focusOutlineResetControl` is now `not-forced-colors:focus:outline-none`, so the reset stands
+  down in the one mode where the outline is the only affordance left. That closed the same gap for
+  the six other controls sharing the recipe (`Input`, `Select`, `Textarea`, `OTPInput`, `Combobox`,
+  `ColorPicker`), which had no forced-colours indicator at all — announced here because it is a
+  behaviour change nobody asked for alongside the one that was.
 
 Both cases measure identically (`2px → 0px`). The mechanism is what separates them, so check which
 side authored the winning rule before concluding anything is accepted.
 
 `bun run probe:cascade-layer` records the accepted case as a pinned `expectAfter` row with the
 decision text attached. **`verify:focus-affordance` cannot see any of this** — it checks source
-pairing, so it stays green while a replacement outline stops painting.
+pairing, so it stays green while a replacement outline stops painting. It *was* taught the
+`not-forced-colors` variant, because without that entry it stopped recognising the reset at all
+and silently dropped all seven `focusRingControl` sites out of its coverage: measured, 18 covered
+controls fell to 11 while the script still printed OK. Widening a guard's vocabulary is how a
+guard goes blind rather than red — make it fail on purpose after every such change.
 
 ## Don'ts for AI-generated code
 

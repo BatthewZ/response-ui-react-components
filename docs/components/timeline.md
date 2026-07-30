@@ -204,9 +204,9 @@ thing too — coupling them would have made two of those unreachable:
 ```
 <!-- /example -->
 
-`card={false}` is also the supported way out of the unlayered-CSS trap described in the gotchas:
-restyling `.timeline-card` yourself needs `!important` to beat `Timeline.css`, whereas this prop
-simply wins.
+`card={false}` removes the surface rather than restyling it, which is usually what you want when
+the card is in the way. Restyling `.timeline-card` from a `className` is also possible now that
+this package's CSS is layered — see the gotchas.
 
 ## Item props
 
@@ -324,11 +324,11 @@ only below `40rem`, where the `--R-SIZE-*` steps are tight enough for it to bind
 
 The two colours are **public** custom properties — no leading underscore. That is the override
 route that works, and the reason there is no `markerClassName`: a `className` on the item reaches
-`.timeline-item` and nothing inside it, and even if it did, this package's CSS is imported
-**unlayered** from `styles.css` and outranks `@layer utilities` whatever the specificity, so
-`bg-accent` and `border-*` would silently no-op against the rules they are trying to beat (the
-same trap documented under [Skeleton](skeleton.md)). A custom property set on the item has no
-unlayered declaration competing with it *there*, so it lands and inherits inward.
+`.timeline-item` and **nothing inside it**, so it cannot address the marker or the card at all,
+whatever the cascade says. One write of a custom property on the item inherits inward to every
+one of them. (Precedence used to be a second reason — this package's CSS was unlayered and
+out-ranked `@layer utilities` whatever the specificity. It is now in `@layer components`, so a
+utility you *can* place does win. Reach is what is left, and reach is the real reason.)
 
 <!-- example:ChampionInAnotherKey -->
 ```tsx
@@ -517,12 +517,22 @@ rung — a [Card](card.md), a [Dialog](dialog.md), a [Drawer](drawer.md) — it 
 fill is a **1.05–1.16:1** lift off `--C-CANVAS`, so the hairline is doing most of the work there
 too. The
 date is deliberately `--C-TEXT-MUTED`, which is hint-level contrast — treat it as supplementary.
-Nothing in `Timeline.css` declares an animation; the entrance comes from the shared `fade-right`
-class in `@batthewz/response-ui-css`, which reads the shared `--MOTION-DURATION-ENTER` and
-`--MOTION-EASE-ENTER`, so retiming those retimes every entrance in the system. `Timeline.css`
-does re-point that class's `animation-name` to `slide-left, fade` in the two places a card sits
-left of the rail — every item under `align="right"`, and even items under `align="center"` at
-`40rem` and up — which is how the entrance direction stays welded to the card's side.
+`Timeline.css` owns the entrance outright. It declares the whole `animation` shorthand, still
+reading the shared `--MOTION-DURATION-ENTER` and `--MOTION-EASE-ENTER`, so retiming those retimes
+every entrance in the system; the `@keyframes` themselves (`slide-right`, `slide-left`, `fade`)
+still come from `@batthewz/response-ui-css` by name. The direction flips to `slide-left, fade` in
+the two places a card sits left of the rail — every item under `align="right"`, and even items
+under `align="center"` at `40rem` and up — which is how the entrance direction stays welded to
+the card's side.
+
+It is keyed on `data-entering`, the attribute [ScrollReveal](scroll-reveal.md) sets for exactly
+the interval the entrance is playing, and `Timeline.Item` passes `animation="none"` so no
+foundation `fade-*` class is emitted at all. **This changed.** Items used to carry `fade-right`
+and `Timeline.css` re-pointed that class's `animation-name` — which worked only while this
+package's CSS was unlayered. From `@layer components` the foundation's own `.fade-right` wins on
+layer at any specificity, and every card would enter from the same side, sliding across the rail.
+If you were keying CSS or a test off `.timeline-item.fade-right`, key it off
+`.timeline-item[data-entering]` instead.
 
 ## Gotchas
 
@@ -535,10 +545,11 @@ left of the rail — every item under `align="right"`, and even items under `ali
   reveal contributes no `style` of its own and yours lands as written.
 - **Fragments are safe now.** Side and entrance direction used to come from two different
   counts — CSS `:nth-child` over the DOM, and the React index over `Children.toArray`, which
-  does not descend into fragments — so `Item · <>Item Item</> · Item` emitted
-  `fade-right · fade-left · fade-left · fade-right` against a `left · right · left · right`
-  layout and two entries slid in across the rail. Both now come off the same `:nth-child`
-  rule, so a fragment, a `.map`, or a component that renders two items cannot separate them.
+  does not descend into fragments — so `Item · <>Item Item</> · Item` entered
+  `right · left · left · right` against a `left · right · left · right` layout and two entries
+  slid in across the rail. Both now come off the same `:nth-child` rule and every item ships
+  identical markup, so a fragment, a `.map`, or a component that renders two items cannot
+  separate them.
 - **Items must still be direct children of the root — under `align="center"`.** The alternation
   is `.timeline-item:nth-child(odd|even)`, which counts inside whatever element actually contains
   the items. Give each item its own wrapper and every one is `nth-child(1)` — all on the left,
@@ -570,20 +581,21 @@ left of the rail — every item under `align="right"`, and even items under `ali
 - **`density` moves spacing, not type.** Font sizes, line-heights and weights are identical across
   `dense`, `comfortable` and `spacious` — it retunes five spacing/size locals and nothing else. If
   you want smaller text in a dense feed, that is your own rule on `.timeline-title` /
-  `.timeline-body` (with the `!` caveat below). Note too that the two in-entry gaps do not move
+  `.timeline-body` (which needs no `!` any more — see the cascade bullet below). Note too that
+  the two in-entry gaps do not move
   with it at all: the date-to-title gap is pinned at `--R-SIZE-6`, already the tightest step the
   scale has, and the title-to-body gap is leading rather than margin.
 - **The title carries no bottom margin at all.** Its separation from the body is the type scale's
   leading, so it is not tunable through a `--_timeline-*` local and does not move with `density`.
   If you want an explicit gap back, it is `margin-bottom` on your own `.timeline-title` rule —
-  with the `!` caveat below — and remember a `title`-only entry will then carry it as dead space
+  no `!` needed any more, see the cascade bullet below — and remember a `title`-only entry will
+  then carry it as dead space
   beneath the last line.
-- **A plain Tailwind utility cannot override the component CSS.** `Timeline.css` is unlayered
-  while Tailwind's utilities compile into `@layer utilities`, and unlayered author rules outrank
-  layered ones before specificity is consulted. Measured in the compiled bundle: the utilities
-  layer ends at byte 30370, `.timeline-item` sits at 100794. So `className="pb-r3"` on an item
-  loses to `.timeline-item`'s `padding-bottom`; the important form `pb-r3!` wins, because for
-  important declarations the layer order is reversed.
+- **A plain Tailwind utility now overrides the component CSS.** `Timeline.css` compiles into
+  `@layer components`, which Tailwind orders **below** `@layer utilities`, so `className="pb-r3"`
+  on an item beats `.timeline-item`'s `padding-bottom` at any specificity. It used to lose and
+  need the important form `pb-r3!`, because this package's CSS was unlayered and out-ranked
+  layered rules before specificity was consulted.
 - **Key your children.** Items are rendered straight into the root with no wrapper of their
   own, so React reconciles them against your keys: a keyed list survives a prepend or a
   reorder, the entries move rather than unmounting, and component state and the entrance

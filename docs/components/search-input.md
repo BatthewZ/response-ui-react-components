@@ -200,8 +200,9 @@ renders, styled entirely with Tailwind utilities.
 [Input's own table](input.md#theme-tokens) lists one more row that SearchInput cancels:
 that component sets its horizontal padding with `px-r4`, but `SearchInput.css` overrides
 it with literal `2.25rem` gutters (`2rem` at `size="sm"`) to make room for the icon and
-the clear button. Tailwind's utilities compile into `@layer utilities` while the component
-CSS is unlayered, so the literals win regardless of import order. The consequence:
+the clear button. Those literals out-specify `Input`'s own `px-r4` on the same element and
+still apply — but a `px-*` utility in your `className` beats them, because the component CSS
+is in `@layer components` and Tailwind orders that below `@layer utilities`. The consequence:
 overriding `--R-SIZE-4` re-pads a plain [Input](input.md) and steps it up at the 40rem
 breakpoint, but leaves a SearchInput's gutters fixed at every viewport. The `sm` step is
 complete, by contrast: `SearchInput.css` overrides font size, line-height and vertical

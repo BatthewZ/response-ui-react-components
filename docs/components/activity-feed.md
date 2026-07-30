@@ -188,9 +188,10 @@ overriding it away would leave rank conveyed by hue alone.
 Two variables **are** public, and are the only supported way to restyle the highlight:
 `--activity-feed-highlight-fill` and `--activity-feed-highlight-ink`. No leading underscore says
 so, the same convention [Stepper](stepper.md)'s `--stepper-progress-color` follows. A `className`
-is not an alternative — it reaches the `<li>` and nothing inside it, and this package's CSS is
-imported unlayered from `styles.css`, so a utility would lose to the rules it is trying to beat
-whatever its specificity.
+is not an alternative — it reaches the `<li>` and nothing inside it, while one write of these
+inherits to markers you never render. (Precedence is no longer the reason: this package's CSS is
+in `@layer components`, below `@layer utilities`, so a utility you *can* place does now win. The
+reason these tokens stay is reach, not rank.)
 
 ## Gotchas
 

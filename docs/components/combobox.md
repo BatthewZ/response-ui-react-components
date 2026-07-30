@@ -293,14 +293,22 @@ the field and the popup re-tint at runtime.
 The spinner has no colour of its own: it is drawn with `border-current`, so it takes the
 `--C-TEXT-SECONDARY` that the loading row sets.
 
+**In forced-colours mode the outline reset stands down and the browser's own outline stays.**
+The reset is `not-forced-colors:focus:outline-none`. It has to be: the ring is a `box-shadow`,
+which forced colours forces to `none`, so an unqualified reset would leave the input with no
+focus indicator at all in exactly the mode where indicators matter most (WCAG 2.4.7). This is
+new — the input previously had no forced-colours affordance.
+
 The input's border is written as a utility rather than as a rule in `Combobox.css` — the same
-split [ColorPicker](color-picker.md)'s hex field uses — because this package's stylesheets are
-unlayered, and unlayered CSS outranks every Tailwind utility whatever the specificity. Declared
-in the stylesheet, the border could never be swapped by `focusRingControl`'s
-`focus:border-border-focus` or repainted by `focusRingControlError`'s `border-status-error`:
-measured in Firefox 146, a focused `.combobox-input` kept `--C-BORDER-STRONG` while its ring
-painted `--C-BORDER-FOCUS`, and the invalid border never appeared at all. Re-declare `border`
-in your own unlayered CSS and you take that consequence back on.
+split [ColorPicker](color-picker.md)'s hex field uses — so that one property has one writer.
+It had to move: while this package's stylesheets were unlayered they out-ranked every Tailwind
+utility whatever the specificity, so the border could never be swapped by `focusRingControl`'s
+`focus:border-border-focus` or repainted by `focusRingControlError`'s `border-status-error`.
+Measured in Firefox 146 at the time, a focused `.combobox-input` kept `--C-BORDER-STRONG` while
+its ring painted `--C-BORDER-FOCUS`, and the invalid border never appeared at all. This package's
+CSS is now in `@layer components`, below `@layer utilities`, so that particular trap is gone — but
+a `border` declared in the stylesheet would still be a second writer for one property, so do not
+put it back.
 
 A handful of values are **not** on the contract and cannot be themed: the input's padding
 (`0.5rem 2.25rem 0.5rem 0.75rem`, the right side reserving the chevron's gutter), the option

@@ -239,19 +239,20 @@ transfer to your own theme — re-check them against your values. See the
   `"EmptyState compound components must be used within <EmptyState>"` when it is missing.
   Wrapping them in your own component is fine — context crosses any depth — but rendering
   one standalone takes down the tree rather than degrading.
-- **The icon slot sizes the glyph, so a `width`/`height` you set in CSS loses to it.**
+- **The icon slot sizes the glyph, so the SVG's own `width`/`height` attributes lose to it.**
   `.empty-state__icon svg` is `1em` square — the same answer [ActivityFeed](activity-feed.md)
   and [Stepper](stepper.md) give their markers — because `font-size` alone moves nothing on
   an SVG carrying its own attributes, and `lucide-react` renders `width="24" height="24"` on
-  every icon. A caller who wants a different size sets it inline (`style`), which outranks the
-  stylesheet, or changes the slot's `font-size`.
-- **A Tailwind padding utility never wins here, at any size.** `cn` cannot dedupe the pair —
-  `empty-state` is not a Tailwind class — so `p-r1` and `empty-state` both land on the
-  element. This package's stylesheet declares no cascade layer while Tailwind v4 puts
-  utilities in `@layer utilities`, and unlayered author rules outrank layered ones outright,
-  before specificity is ever consulted. So the component's padding wins at `md` (plain
-  `.empty-state`) exactly as it does at `sm` and `lg`. Override it with the important
-  modifier (`p-r1!`), or with your own unlayered rule on `.empty-state`.
+  every icon; a presentation attribute loses to any author rule whatever its layer. A caller
+  who wants a different size puts a `size-*` utility on the icon they pass — `@layer utilities`
+  beats this package's `@layer components` — or sets it inline, or changes the slot's
+  `font-size`.
+- **A Tailwind padding utility wins here, at every size.** `cn` cannot dedupe the pair —
+  `empty-state` is not a Tailwind class — so `p-r1` and `empty-state` both land on the element,
+  and the utility takes the padding: this package's stylesheet is in `@layer components`, which
+  Tailwind orders below `@layer utilities`. It used to lose at every size, needing the important
+  modifier (`p-r1!`), because the stylesheet was unlayered and out-ranked layered rules before
+  specificity was consulted.
 - **The description is capped at 22.5rem and centred**, at every size and in every
   container width, so long copy wraps to roughly 360px no matter how wide the panel is.
 - **Client component.** `EmptyState.tsx` opens with `"use client"` because the root creates

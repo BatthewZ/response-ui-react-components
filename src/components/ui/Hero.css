@@ -86,7 +86,15 @@
    while the hidden class is removed once and stays removed.
 
    This is the whole of Hero's stagger: any Stagger you nest yourself inside
-   `Hero.Content` picks up the same fade. */
+   `Hero.Content` picks up the same fade.
+
+   The two rules below now express one contract: THE CONSUMER PICKS THE ENTRANCE,
+   HERO PICKS WHEN IT PLAYS. Nothing this package renders can put a class on a
+   `.stagger-item`, so a foundation `.fade-*` on one is hand-authored markup — and
+   since `@layer components` sits below an unlayered consumer rule, that explicit
+   class deliberately beats the plain fade below. The plain fade is an aesthetic
+   default, not a guard, and an explicit instruction is right to win over it.
+   `probe:cascade-layer` pins that as an accepted delta. */
 @media (prefers-reduced-motion: no-preference) {
   .hero__content .stagger-item {
     animation-name: fade;
@@ -94,7 +102,21 @@
     animation-timing-function: var(--MOTION-EASE-ENTER);
   }
 
+  /* The sequencing guard, and the one place here that is NOT an opinion — hence
+     the `!important`, which the rule above deliberately does not take.
+
+     Admission test (AGENTS.md, "When a narrowly-scoped `!important` is
+     legitimate"): it guarantees a TIMING invariant, and it is gated behind a
+     transient state — the hidden class is removed once, on first intersection,
+     and never returns — so the steady state is untouched and the declaration
+     stops matching for the life of the page. Without it a hand-authored
+     `.fade-up` runs while the content is still `opacity: 0` and is spent before
+     the reveal fires: the items then appear instantly, with no stagger, which is
+     precisely what keying off the *absence* of the hidden class exists to
+     prevent. Every animation longhand route was measured dead — the foundation's
+     `.fade-*` rules use the `animation` shorthand, so they reset every longhand
+     they omit. */
   .hero__content .scroll-reveal-hidden .stagger-item {
-    animation-name: none;
+    animation-name: none !important;
   }
 }

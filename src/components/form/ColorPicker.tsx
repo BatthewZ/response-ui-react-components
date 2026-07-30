@@ -373,10 +373,10 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   <input
                     type="text"
                     // The border is a utility rather than a rule in
-                    // `ColorPicker.css` so that `focusRingControl`'s border
-                    // swap can reach it: this package's stylesheets are
-                    // unlayered, and unlayered CSS outranks every Tailwind
-                    // utility whatever the specificity.
+                    // `ColorPicker.css` so that one property has one writer and
+                    // `focusRingControl`'s border swap reaches it. It moved
+                    // because the stylesheet was unlayered; that reason expired
+                    // with Phase 1 and the arrangement is still right.
                     className={cn(
                       "colorpicker-hex duration-fast",
                       "border border-border-strong",

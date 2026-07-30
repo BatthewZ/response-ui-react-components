@@ -26,11 +26,14 @@
 
    The `border` itself is written in Combobox.tsx as `border border-border-strong`
    for the same reason, and this is the only control in the family that needed
-   moving: this package's stylesheets are unlayered, and unlayered author CSS
-   outranks every Tailwind utility whatever the specificity — so a `border`
-   declared here silently defeated both `focusRingControl`'s
-   `focus:border-border-focus` and `focusRingControlError`'s
-   `border-status-error`. Do not declare `border` (or `border-color`) on
+   moving. Before Phase 1 this package's stylesheets were unlayered and outranked
+   every Tailwind utility whatever the specificity, so a `border` declared here
+   silently defeated both `focusRingControl`'s `focus:border-border-focus` and
+   `focusRingControlError`'s `border-status-error`. This file is now in
+   `@layer components`, which sits *below* `@layer utilities`, so the utilities
+   would win — but the rule stands: a `border` here would still be a second writer
+   for one property (`CLAUDE.md` rule 3), and the recipes in `src/util/focus.ts`
+   are the single source. Do not declare `border` (or `border-color`) on
    `.combobox-input` again. */
 
 .combobox-input:disabled {

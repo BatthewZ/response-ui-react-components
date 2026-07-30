@@ -8,6 +8,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Breaking
 
+- **This package's component CSS is now in `@layer components`, so `className` overrides
+  work.** All 45 per-component imports in `src/styles.css` carry `layer(components)`, and
+  Tailwind orders that layer **below** `@layer utilities`. `<StatCard className="flex-row
+  border-0 bg-surface-2">` now does what it looks like it does, on every component — previously
+  a utility touching any property a component stylesheet already set landed in the DOM, changed
+  nothing and reported no error, and the documented workaround was the important modifier
+  (`p-r1!`). Roughly 20 component pages said "a `className` cannot …"; all of them are answered.
+  `src/tokens.css` stays unlayered: it carries `@theme inline`.
+
+  **What you give up.** Your own unlayered stylesheet now beats ours without needing to be
+  ordered after it — including a global `*:focus { outline: none }`, which will delete the
+  library's focus rings. That is deliberate and there is no carve-out: writing that reset is an
+  opt-out of focus visibility. The important modifier still works everywhere it did, and is now
+  unnecessary nearly everywhere it was recommended.
+
+- **`Timeline.Item` no longer emits the shared `fade-right` class.** Items carry
+  `data-entering` instead — set by `ScrollReveal` for exactly the interval the entrance plays —
+  and `Timeline.css` owns the whole `animation` shorthand, reading the same
+  `--MOTION-DURATION-ENTER` / `--MOTION-EASE-ENTER` tokens and the same `@keyframes`. It had to:
+  the foundation's `.fade-right` is unlayered, so from `@layer components` no rule here could
+  re-point its `animation-name` and every card would have entered from the same side, sliding
+  across the rail. If you key CSS or a test off `.timeline-item.fade-right`, key it off
+  `.timeline-item[data-entering]`.
+
+- **`Tabs` no longer styles its own scrollbar.** The 3px `::-webkit-scrollbar` height, the
+  resting `transparent` thumb and the `:hover` thumb colour are deleted. From
+  `@layer components` none of the three could win against `response-ui-css`'s universal
+  `*::-webkit-scrollbar*` rules in any state, and defending them would have needed `!important`
+  on a pseudo-element — which closes the override route completely, with not even an inline
+  `style` left. Scrollbar appearance is the foundation's, app-wide; a scrollable tab strip now
+  shows the same scrollbar as everything else, and the mask gradient remains the overflow cue.
+
 - **`MasonryGrid`'s `gap` takes a spacing token, not a CSS length, and `--masonry-gap` is
   deleted.** `gap?: string` becomes `gap?: "r1" … "r6"` (default `"r4"`), the same `Gap` union
   `Grid`, `Row` and `Stack` already take — so `gap="1rem"` is now a compile error rather than a
@@ -45,6 +77,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **`ScrollReveal` publishes `data-entering` and accepts `animation="none"`.** The attribute
+  marks the entrance window — added on intersection, removed on `animationend` — so a stylesheet
+  can key an animation off it without depending on a foundation class it cannot out-rank.
+  `animation="none"` reveals with the marker and no entrance class, leaving the animation
+  entirely to the caller.
+
+- **`verify:css-layering` — a publish gate for "the CSS is still actually layered".** Every
+  `@import "./components/*.css"` in `src/styles.css` must carry `layer(components)`, `tokens.css`
+  must carry none, and an import the script cannot classify fails the run rather than being
+  skipped. No allowlist. It exists because the entire `@layer components` change is one keyword
+  repeated on 45 lines and **nothing read those lines**: `probe:cascade-layer` re-derives the
+  import list from that file, strips whatever `layer()` is written there and adds its own, so it
+  compares "unlayered" against "layered" whatever the file says; `tsc` cannot read CSS; and vitest
+  stubs CSS imports to an empty string. Deleting the keyword from one import left all ten gates
+  green while that component went back to out-ranking every caller utility. Made to fail on
+  purpose three ways before being trusted. ([`scripts/verify-css-layering.mjs`](./scripts/verify-css-layering.mjs))
+- **Forced-colours focus indicators for six more controls.** `focusOutlineResetControl` is now
+  `not-forced-colors:focus:outline-none`, so in forced-colours mode the reset stands down and
+  the browser's own outline survives. `Radio` keeps its `Highlight` outline (which the
+  library's own `outline-none` utility would otherwise have deleted once layered — WCAG 2.4.7);
+  `Input`, `Select`, `Textarea`, `OTPInput`, `Combobox` and `ColorPicker` gain an indicator they
+  never had in that mode.
+
 - **`highlight` on `Timeline.Item` and `ActivityFeed.Item`** — champions one entry so it reads
   first. The marker fills with the accent inked with its paired `on-*`, and gains a ring in the
   fill colour so it reads *bigger*: the fill carries which entry at a glance, the ring carries it
@@ -57,8 +112,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
   The colours are **public custom properties** — `--timeline-highlight-fill` / `-ink` /
   `-border` and `--activity-feed-highlight-fill` / `-ink` — because a `className` cannot do this
-  job: it reaches the item and nothing inside it, and this package's CSS is imported unlayered,
-  so a utility loses to the rules it is trying to beat whatever its specificity. The ring's
+  job: it reaches the item and nothing inside it, while one write of these inherits to markers
+  the caller never renders. (Precedence is not the reason: with this package's CSS in
+  `@layer components`, a caller's utility does beat it wherever a caller can put one.) The ring's
   *width* is deliberately private, so the non-colour half of the cue cannot be overridden away.
 
 - **`sentiment` on `StatCard.Trend` and `StatCard.Sparkline`** — `"positive" | "negative" |
@@ -77,6 +133,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   click opts a press out.
 
 ### Fixed
+
+- **`Grid` was importing its own stylesheet from `Grid.tsx` as well as from `src/styles.css`.**
+  The JS-side copy was injected unlayered, where it out-ranked `@layer components`, so
+  `<Grid className="grid-cols-2">` kept losing for any consumer resolving this package from
+  source. Measured in the dev bundle: two `.rui-grid{` copies before, one after; three computed
+  columns before, two after. `bun run verify:no-css-imports` now fails the build on any `.css`
+  imported from a `.ts`/`.tsx`.
+
+- **`Stagger` writes its delay inline instead of duplicating a foundation rule.** The container
+  resolves the step once into `--_stagger-step` and each item carries
+  `--stagger-delay: var(--_stagger-step)`; `Stagger.css` is deleted. The old
+  `--stagger-delay: inherit` rule won only on source order while this package was unlayered.
+  All three documented delay sources still work in the same order, both reduced-motion
+  mechanisms survive, and a change to the foundation's own `animation-delay` on `.stagger-item`
+  now takes effect instead of being silently out-ranked.
+
+- **`ScrollReveal` keeps its scripting-off cover.** `@media (scripting: none) { opacity: 1 }`
+  now carries `!important`; without it the foundation's unlayered `opacity: 0` would win on
+  layer and every reveal — including a hero's `<h1>` — would stay invisible for the life of the
+  page with scripting off.
+
+- **`Hero` keeps its stagger sequencing guard.** `animation-name: none` on a stagger item inside
+  a still-hidden reveal is now `!important`, so an entrance supplied by hand-written markup does
+  not run and get spent while the content is at `opacity: 0`. These two are the only
+  `!important` declarations in the package; `AGENTS.md` records the test they had to pass.
 
 - **A `Timeline` `icon` no longer has the rail running through it.** The rail is drawn *behind*
   the node, so a bare glyph with transparent gaps showed the line through itself, and the line

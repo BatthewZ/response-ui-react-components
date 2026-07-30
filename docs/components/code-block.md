@@ -184,13 +184,12 @@ only if `@batthewz/response-ui-css` was never imported.
   behind, not to trim whitespace. Interior blank lines are untouched in both modes.
 - **`filename=""` is the same as no filename.** The empty string names nothing, so the block
   renders no filename span and is not a landmark. Pass an `aria-label` if it needs a name.
-- **Utility classes lose to the stylesheet for anything it already sets.** The root's rule
-  sets the background, border, radius, overflow and `min-width`; this package's CSS declares
-  no cascade layer while Tailwind v4 puts utilities in `@layer utilities`, and unlayered
-  author styles outrank layered ones outright. So `className="bg-surface-2 rounded-lg"` does
-  nothing here. Utilities for properties the stylesheet never touches — width, margin,
-  shadow — still apply. Re-tint through the variables above, or write your own unlayered
-  rule.
+- **Utility classes now win over the stylesheet.** The root's rule sets the background,
+  border, radius, overflow and `min-width`, and `className="bg-surface-2 rounded-lg"` replaces
+  the first two: this package's CSS is in `@layer components`, which Tailwind orders **below**
+  `@layer utilities`, so a utility beats a component rule at any specificity. It used to lose,
+  because this package's CSS was unlayered. Re-tinting through the variables above is still the
+  way to move every block at once.
 - **The copy button is configured through one bag, not through CodeBlock props.**
   `copyButtonProps` goes straight to [CopyButton](copy-button.md), so `aria-label`,
   `copiedLabel`, `timeout` and `onCopyError` are all reachable per block — without CodeBlock

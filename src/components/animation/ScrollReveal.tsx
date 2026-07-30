@@ -15,7 +15,7 @@ import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn } from "../../util/style";
 
-type Animation = "fade-up" | "fade-in" | "fade-left" | "fade-right" | "scale";
+type Animation = "fade-up" | "fade-in" | "fade-left" | "fade-right" | "scale" | "none";
 
 const animationClassMap: Record<Animation, string> = {
   "fade-up": "fade-up",
@@ -23,9 +23,26 @@ const animationClassMap: Record<Animation, string> = {
   "fade-left": "fade-left",
   "fade-right": "fade-right",
   scale: "scale-in",
+  // Reveal without an entrance class. The caller owns the animation and keys it
+  // off `data-entering`; see the prop docs below.
+  none: "",
 };
 
 type ScrollRevealProps = {
+  /**
+   * Which shared entrance class from `@batthewz/response-ui-css` to apply while
+   * the reveal is playing.
+   *
+   * `"none"` reveals with no entrance class at all, leaving the animation to the
+   * caller's own stylesheet keyed on `data-entering`. That is how `Timeline`
+   * drives its alternating direction: the foundation's `.fade-*` classes are
+   * unlayered, so from `@layer components` no rule here can re-point their
+   * `animation-name`, and a component that needs to has to stop emitting them.
+   *
+   * Under `"none"`, `data-entering` clears only if that stylesheet actually
+   * animates — no animation means no `animationend`, so the marker latches on for
+   * the element's life. Nothing here reads it, so it is inert rather than wrong.
+   */
   animation?: Animation;
   threshold?: number;
   delay?: number;
@@ -130,6 +147,13 @@ export const ScrollReveal = forwardRef<HTMLElement, ScrollRevealImplProps>(funct
         isAnimating && animationClassMap[animation],
         className
       )}
+      // The entrance window as an attribute, not only as a class. It marks
+      // exactly the same interval `animationClassMap[animation]` does — set on
+      // intersection, cleared on `animationend` — so a stylesheet can key an
+      // entrance off it without this component having to emit a foundation
+      // `.fade-*` class it cannot out-rank. Public: `Timeline.css` depends on it.
+      // After the spread, because it is derived state, not a caller's to set.
+      data-entering={isAnimating || undefined}
       style={delayStyle || style ? { ...style, ...delayStyle } : undefined}
       onAnimationEnd={handleAnimationEnd}
     >

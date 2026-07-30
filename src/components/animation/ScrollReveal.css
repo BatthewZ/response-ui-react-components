@@ -4,13 +4,32 @@
    would hide its content permanently — including the page's `<h1>` when the
    reveal wraps a Hero.
 
-   Unlayered author CSS at equal specificity, imported after the css package, so
-   this wins on source order. It does not reach a page whose scripting is
-   *enabled* but whose bundle never executes: the browser reports
-   `scripting: enabled` either way. `animate={false}` is still the only cover for
-   that case. */
+   WHY THIS ONE DECLARATION IS `!important`, AND THE NEXT ONE IS NOT.
+
+   This file is in `@layer components`. The foundation's `.scroll-reveal-hidden`
+   is unlayered, so it wins on layer at any specificity and a media query buys
+   nothing — no selector we can write and no Tailwind utility (`noscript:opacity-100`
+   lands in `@layer utilities`, which also loses) can beat it. The remaining moves
+   are `!important` or renaming the class, and renaming splits a vocabulary
+   `response-ui-css` owns and that Astro/Rails consumers target directly.
+
+   The admission test this passes (see AGENTS.md, "When a narrowly-scoped
+   `!important` is legitimate"): it guarantees a VISIBILITY invariant, not a design
+   choice, and it is gated behind an environment nobody styles into. What a
+   consumer loses is exactly `opacity` on this one class while scripting is off —
+   a state whose only alternative is that their content is invisible. It is not a
+   licence for the next declaration.
+
+   The cheaper fix is four lines in `response-ui-css` — a `@media (scripting: none)`
+   sibling beside the `prefers-reduced-motion` escape that file already carries —
+   and it would let this file be deleted outright. It is recorded as a foundation
+   follow-up and deliberately not taken: scope is this package only.
+
+   None of this reaches a page whose scripting is *enabled* but whose bundle never
+   executes: the browser reports `scripting: enabled` either way. `animate={false}`
+   is still the only cover for that case. */
 @media (scripting: none) {
   .scroll-reveal-hidden {
-    opacity: 1;
+    opacity: 1 !important;
   }
 }

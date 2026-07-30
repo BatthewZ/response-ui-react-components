@@ -133,10 +133,10 @@ describe("Timeline", () => {
   /*  #342 · one source for the side and the entrance direction          */
   /* ------------------------------------------------------------------ */
 
-  it("gives every item the same entrance class, fragment children included", () => {
+  it("gives every item the same entrance marker, fragment children included", () => {
     // jsdom ships no IntersectionObserver, and ScrollReveal now reveals
-    // statically without one — with no entrance class at all. Stub one that can
-    // be told the elements are visible, so the class is reachable here.
+    // statically without one — with no entrance marker at all. Stub one that can
+    // be told the elements are visible, so the marker is reachable here.
     const reveal: (() => void)[] = [];
     class StubIO {
       constructor(private cb: IntersectionObserverCallback) {}
@@ -175,8 +175,14 @@ describe("Timeline", () => {
     // exactly how the index and the `:nth-child` layout came apart.
     expect(items).toHaveLength(4);
     for (const item of items) {
-      expect(item).toHaveClass("fade-right");
-      expect(item).not.toHaveClass("fade-left");
+      // The claim is unchanged and is the whole of #342: EVERY ITEM SHIPS THE
+      // SAME ENTRANCE MARKER, and direction is CSS-only. What changed is the
+      // marker. Items used to carry the foundation's `fade-right` class and
+      // `Timeline.css` re-pointed its `animation-name`; that worked only while
+      // this package's CSS was unlayered, so Timeline now emits no foundation
+      // class at all and owns the shorthand, keyed on `data-entering`.
+      expect(item).toHaveAttribute("data-entering");
+      expect(item.className).not.toMatch(/\bfade-/);
     }
     vi.unstubAllGlobals();
   });
@@ -275,10 +281,10 @@ describe("Timeline", () => {
   });
 
   // #342, restated for the new axis. `align` changes the entrance DIRECTION,
-  // and it does so in CSS by re-pointing `animation-name` — React still ships
-  // the identical class on every item. If this ever starts varying per item,
-  // the side and the direction have two sources again and can desynchronise.
-  it("ships the same entrance class whatever the alignment", () => {
+  // and it does so entirely in CSS — React still ships the identical markup on
+  // every item. If this ever starts varying per item, the side and the direction
+  // have two sources again and can desynchronise.
+  it("ships the same entrance marker whatever the alignment", () => {
     const reveal: (() => void)[] = [];
     class StubIO {
       constructor(private cb: IntersectionObserverCallback) {}
@@ -311,8 +317,8 @@ describe("Timeline", () => {
     const items = [...container.querySelectorAll(".timeline-item")];
     expect(items).toHaveLength(2);
     for (const item of items) {
-      expect(item).toHaveClass("fade-right");
-      expect(item).not.toHaveClass("fade-left");
+      expect(item).toHaveAttribute("data-entering");
+      expect(item.className).not.toMatch(/\bfade-/);
     }
     vi.unstubAllGlobals();
   });

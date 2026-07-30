@@ -15,7 +15,7 @@ approach. It watches the element with an `IntersectionObserver`, honours
 
 | Prop         | Type                                                                  | Default   |
 | ------------ | --------------------------------------------------------------------- | --------- |
-| `animation`  | `"fade-up" \| "fade-in" \| "fade-left" \| "fade-right" \| "scale"`      | `"fade-up"` |
+| `animation`  | `"fade-up" \| "fade-in" \| "fade-left" \| "fade-right" \| "scale" \| "none"` | `"fade-up"` |
 | `threshold`  | `number` — fraction of the element visible before it fires            | `0.1`     |
 | `delay`      | `number` — milliseconds to offset the start                           | `0`       |
 | `once`       | `boolean` — reveal once, or replay on every re-entry                   | `true`    |
@@ -140,6 +140,14 @@ ScrollReveal hard-codes no colour and reads no token of its own. It works by tog
 animation classes from `@batthewz/response-ui-css` onto its element: the transient
 `fade-up` / `fade-in` / `fade-left` / `fade-right` / `scale-in` class while it plays,
 and `scroll-reveal-hidden` (a bare `opacity: 0`, no token) while it waits to be revealed.
+It also sets `data-entering` for exactly the interval the entrance class is present — added on
+intersection, removed on `animationend` — so a stylesheet can key an animation off the entrance
+window without depending on the class. `animation="none"` reveals with the marker and **no**
+entrance class, which is how [Timeline](timeline.md) owns its own alternating entrance. With
+`animation="none"` the attribute is only self-clearing if your stylesheet actually animates
+`[data-entering]`: with no animation there is no `animationend`, so the marker stays set for the
+life of the element. Harmless — nothing else reads it — but do not treat it as "currently
+animating" unless you supplied the animation.
 
 Because the timing lives in those shared classes, the only variables to override are
 the two the enter animations read — `--MOTION-DURATION-ENTER` (how long the reveal
@@ -154,10 +162,17 @@ flashes before a delayed start), not a token.
 governs when the reveal fires.
 
 `ScrollReveal.css` in this package holds exactly one rule and no token: a
-`@media (scripting: none)` block that returns `scroll-reveal-hidden` to `opacity: 1`. It
-is unlayered and imported after the css package, so it wins on source order. If you
-override `.scroll-reveal-hidden` yourself, order your rule after
-`@batthewz/response-ui-react-components/styles`, not just after the foundation.
+`@media (scripting: none)` block that returns `scroll-reveal-hidden` to `opacity: 1`.
+
+Two things about that one rule are worth knowing, and they pull in opposite directions.
+Everywhere else, your own stylesheet now beats this package's without any ordering at all —
+this package's CSS is in `@layer components`, and an unlayered rule of yours out-ranks a layered
+one whatever the specificity and whatever the import order. **This declaration is the
+exception:** it carries `!important`, so while scripting is off you cannot set `opacity` on
+`.scroll-reveal-hidden` from a stylesheet at any specificity. It has to, because the foundation's
+own unlayered `opacity: 0` would otherwise win on layer and the content would be invisible for
+the life of the page — an environment where no override is meaningful. It is the only
+`!important` in this component.
 
 ## Gotchas
 

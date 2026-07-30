@@ -188,11 +188,10 @@ at runtime, with no rebuild.
 
 Both star layers are painted from `currentColor`, and `color` is set once on the root, so
 one variable tints the whole control. To re-tint a **single** instance, set `color` on it
-inline or scope `--C-STATUS-WARNING` to an ancestor — a Tailwind `text-*` class on the root
-will not take, because `Rating.css` is unlayered while Tailwind's utilities sit in
-`@layer utilities`, and unlayered rules beat layered ones whatever the specificity. Measured
-in the compiled bundle: `.text-fg-secondary` sits at byte 22449 inside a utilities layer
-spanning 7974–30370, `.rating` at 86374 outside it.
+inline, scope `--C-STATUS-WARNING` to an ancestor, or put a Tailwind `text-*` class on the
+root — which now takes, because `Rating.css` is in `@layer components` and Tailwind orders
+that below `@layer utilities`. It used to lose: this package's CSS was unlayered, and an
+unlayered rule beats a layered one whatever the specificity.
 
 `--R-SIZE-6` is on the responsive `r`-scale but holds at `0.25rem` on both sides of the
 40rem breakpoint, so the star gap does not reflow. The fill transition animates the clip

@@ -158,9 +158,18 @@ const FOCUS_VARIANTS = new Set(["focus", "focus-visible", "focus-within"]);
  * reset carrying one still applies while the element is focused. Anything outside this
  * set (`hover:`, `disabled:`, `group-*`, `peer-*`, `data-*`) may exclude the focused
  * state, and a reset carrying one is not read as a focus-state reset.
+ *
+ * `forced-colors` / `not-forced-colors` are here for the same reason as `dark` and
+ * `print`: they select an ENVIRONMENT, never an interaction state, so a reset carrying
+ * one is still a focus reset wherever it applies at all. Without this entry
+ * `focusOutlineResetControl` — which is `not-forced-colors:focus:outline-none` — stops
+ * being recognised as a reset, and this guard drops `Radio` and the six other
+ * `focusRingControl` sites out of its coverage entirely: green, and blind. That is
+ * `memory/gates.md`'s "a new gate's exemptions are where the next bug lives" arriving
+ * on schedule, so it was made to fail on purpose once before being trusted.
  */
 const STATE_NEUTRAL_VARIANT =
-  /^(?:sm|md|lg|xl|2xl|dark|light|print|rtl|ltr|portrait|landscape|motion-safe|motion-reduce|min-\[.*\]|max-.*|supports-.*|\[.*\])$/;
+  /^(?:sm|md|lg|xl|2xl|dark|light|print|rtl|ltr|portrait|landscape|motion-safe|motion-reduce|forced-colors|not-forced-colors|min-\[.*\]|max-.*|supports-.*|\[.*\])$/;
 
 /** Per family: what counts as a ring WIDTH, and which members of that family are zero. */
 const RING_WIDTH = {

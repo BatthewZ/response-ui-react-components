@@ -312,7 +312,10 @@ Focus shows a 2px ring in `--C-BORDER-FOCUS` plus a matching border; it is a `fo
 not `focus-visible:`, so it appears on click as well as on keyboard focus. That matters more
 here than on a text field: browsers grant a clicked text input an indicator unconditionally
 but judge a clicked `<select>` for themselves, so plain `:focus` is what makes the ring
-certain. `focus:outline-none` removes the UA outline, leaving the ring as the indicator.
+certain. `not-forced-colors:focus:outline-none` removes the UA outline, leaving the ring as the
+indicator.
+
+**In forced-colours mode the reset stands down and the browser's own outline stays.** The reset is `not-forced-colors:focus:outline-none`. It has to be: the ring is a `box-shadow`, which forced colours forces to `none`, so an unqualified reset would leave the control with no focus indicator at all in exactly the mode where indicators matter most (WCAG 2.4.7). Standing the reset down there is new — this control previously had no forced-colours affordance.
 
 Two things to watch. The chevron is `aria-hidden`, so it is correctly never announced — but it
 is also the only visual cue that the control is a dropdown, because `appearance-none` strips

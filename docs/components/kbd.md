@@ -164,8 +164,10 @@ outright — each worked example does (`tech` 500, `events` 600, `grimdark` 700)
   CSS from `@batthewz/response-ui-css`, and unlayered author rules outrank every Tailwind
   utility whatever the merge does — so `<Kbd className="font-sans">` keeps the mono face
   (measured), while every other utility in `className` replaces its default as documented in
-  [Restyling](#restyling). To change the keycap's family, retheme `--DEFAULT-MONO-FONT`, or
-  set `font-family` in a style attribute or your own rule.
+  [Restyling](#restyling). This is the **foundation** package's rule, not this one's: this
+  package's own CSS is in `@layer components` and a utility beats it. To change the keycap's
+  family, retheme `--DEFAULT-MONO-FONT`, or set `font-family` in a style attribute or your own
+  rule.
 - **No props of its own, by design.** No `variant`, `size`, or `as`. If you want a second
   look, wrap it — see [Extending components](../extending.md) — rather than waiting for a
   prop.

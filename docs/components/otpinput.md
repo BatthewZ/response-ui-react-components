@@ -266,9 +266,12 @@ wins over the built-in `aria-label` default.
   The group itself receives neither.
 - **Focus is `focus:`, not `focus-visible:`,** so the ring appears on mouse clicks as well as
   keyboard focus — the keying every native form control in the library uses, and the opposite
-  of [Button](button.md)'s. `focus:outline-none` removes the UA outline, leaving the
-  token-coloured ring as the only indicator — which is why the `events` and `grimdark` ratios
-  in [Theme tokens](#theme-tokens) matter.
+  of [Button](button.md)'s. `not-forced-colors:focus:outline-none` removes the UA outline,
+  leaving the token-coloured ring as the only indicator — which is why the ratios in
+  [Theme tokens](#theme-tokens) matter.
+- **Forced colours keeps the UA outline instead.** The reset carries `not-forced-colors:`, so in
+  that mode the browser's own indicator survives rather than being removed and replaced by a
+  `box-shadow` ring the mode nulls. Previously the box had no focus indicator there at all.
 
 ## Related
 

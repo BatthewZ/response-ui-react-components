@@ -244,12 +244,16 @@ the page. See [Accessibility](#accessibility) — that has measurable consequenc
 - **Controlled means *nothing* moves on click.** In controlled mode the click only calls
   `onCheckedChange`; internal state is not touched. Forget to feed the value back into
   `checked` and the switch is inert while still reporting every click.
-- **`className` cannot repaint the track.** `.switch` is unlayered component CSS and outranks
-  Tailwind's `@layer utilities`, and `cn` (tailwind-merge) can't help because `switch` is not
-  a utility it knows how to dedupe. `className="bg-red-500 w-16"` loses on both properties —
+- **`className` repaints the track.** `className="bg-red-500 w-16"` wins on both properties,
   as does anything else `.switch` sets (`display`, `width`, `height`, `padding`,
-  `border-radius`, `background-color`, `cursor`, `transition`). Use Tailwind's important
-  modifier (`bg-red-500!`), your own unlayered rule, or restyle `.switch` directly.
+  `border-radius`, `background-color`, `cursor`, `transition`): `.switch` is in
+  `@layer components`, which Tailwind orders below `@layer utilities`. `cn` (tailwind-merge)
+  still cannot dedupe the pair, because `switch` is not a utility it knows — both classes land
+  on the element and the utility wins in the cascade. It used to lose, and needed the important
+  modifier (`bg-red-500!`), when this package's CSS was unlayered.
+- **Your own global focus reset now beats the switch's focus ring.** That is deliberate: this
+  package's CSS is layered with no carve-out, so an unlayered `*:focus { outline: none }` in
+  your app wins. Writing that reset is an opt-out of focus visibility.
 - **The switch's own state attributes can no longer be overridden.** `role`, `aria-checked`,
   `data-state` and `data-size` are derived from `checked`/`size` and are now written *after*
   `{...props}`, so passing your own is ignored rather than making assistive tech report a state

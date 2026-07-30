@@ -65,12 +65,14 @@
     )
   );
 
-  /* Public — no leading underscore, so an instance may re-point them, and the
-     only override route that works: a `className` on the item cannot reach the
-     marker or the card, because this package's CSS is imported unlayered from
-     `styles.css` and outranks `@layer utilities` whatever the specificity. A
-     custom property set on the item has no unlayered declaration competing with
-     it there, so it lands and inherits inward. Same contract as
+  /* Public — no leading underscore, so an instance may re-point them. THEY REACH
+     ELEMENTS A PER-ELEMENT OVERRIDE CANNOT: these three values are set once on
+     the item and inherit to descendants the consumer never renders, so a
+     `className` on the item — even now that this file is in `@layer components`
+     and a utility in `@layer utilities` does beat it — cannot address the marker
+     or the card at all. That is the reason they stay, not precedence: "parent
+     sets, child reads" is not on its own a reason to keep a token, and these
+     survive it because the children are ours, not the caller's. Same contract as
      `--stepper-progress-color`.
 
      `--fill` is a FILL token inked with its paired `on-*`, per the contrast
@@ -458,13 +460,9 @@
   transform: translateX(50%);
 }
 
-/* Cards sit left of the rail, so they enter from the left. Same mechanism as
-   the alternating layout below: `Timeline.Item` always ships `fade-right` and
-   this replaces only the name list, so the duration and easing still come from
-   the shared class in `@batthewz/response-ui-css`. */
-.timeline[data-align="right"] .timeline-item.fade-right {
-  animation-name: slide-left, fade;
-}
+/* The entrance direction for this layout is in the Entrance section at the foot
+   of this file, with the other two. It is one contract stated three times and it
+   reads better together than split across the layout sections. */
 
 /* ------------------------------------------------------------------ */
 /*  align="center" — alternating, 40rem and up                         */
@@ -517,13 +515,68 @@
     margin-left: auto;
   }
 
-  /* #342. The card's side and its entrance direction are decided by the same
-     selector. `Timeline.Item` always ships `fade-right` (from `ScrollReveal`,
-     which is what supplies the duration and easing through the `animation`
-     shorthand); this replaces only the name list, so a right-hand card slides in
-     from the right. Keyed to the class the reveal adds, so it applies exactly
-     while the entrance is playing and goes away with it. */
-  .timeline[data-align="center"] .timeline-item:nth-child(even).fade-right {
+  /* The alternating entrance direction is in the Entrance section below, inside
+     its own copy of this same `width >= 40rem` query. */
+}
+
+/* ------------------------------------------------------------------ */
+/*  Entrance                                                           */
+/* ------------------------------------------------------------------ */
+
+/* #342. THE CARD'S SIDE AND ITS ENTRANCE DIRECTION ARE DECIDED BY THE SAME
+   SELECTORS — `data-align` on the root and `:nth-child` on the item, never a
+   value threaded to each item in React. Every item ships identical markup; DOM
+   position is the only source of both facts, so no wrapper (a fragment, a
+   `.map`, a component rendering two items) can desynchronise them.
+
+   `Timeline.Item` used to ship the foundation's `.fade-right` class and this
+   file re-pointed its `animation-name`. That relied on being unlayered: from
+   `@layer components` the foundation's `.fade-right` wins on layer whatever the
+   specificity, and every card would enter from the same side. So Timeline stops
+   emitting the class (`ScrollReveal animation="none"`) and owns the whole
+   shorthand here, keyed on `data-entering` — the attribute `ScrollReveal` sets
+   for exactly the interval the class used to mark: added on intersection,
+   removed on `animationend`. Keying on the class was never about the class; it
+   was about that interval.
+
+   The `@keyframes` still come from `@batthewz/response-ui-css` by name — keyframes
+   are not subject to cascade layers, so nothing is duplicated. What is restated
+   is the two motion tokens, which is what a contract token is for.
+
+   Wrapped in `no-preference` rather than nulled under `reduce`: a rule that
+   declares nothing cannot lose a specificity race to the two overrides below,
+   and `ScrollReveal` independently never sets `data-entering` when the user
+   asks for reduced motion.
+
+   DIRECTION NAMES ARE THE DIRECTION OF TRAVEL, not the edge come from — the
+   keyframes in `@batthewz/response-ui-css` start `slide-right` at
+   `translateX(-30%)` and `slide-left` at `translateX(30%)`. So `slide-right`
+   enters from the left and `slide-left` enters from the right, and every note
+   below is phrased as travel to keep the two readings from swapping. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Base layout (and `left`): the rail is on the left and the card to its right,
+     so the card travels rightward, away from the rail. */
+  .timeline .timeline-item[data-entering] {
+    animation:
+      slide-right var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER),
+      fade var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER);
+  }
+
+  /* `right`: the rail is on the right and the card to its left, so the card
+     travels leftward — mirrored, and away from the rail again. */
+  .timeline[data-align="right"] .timeline-item[data-entering] {
     animation-name: slide-left, fade;
+  }
+
+  @media (width >= 40rem) {
+    /* `center` alternates around a middle rail, so the cards converge on it
+       rather than spreading from it: an even item puts its card right of the
+       rail — the same `:nth-child(even)` that does so above — and travels
+       leftward, inward. Odd items fall through to the base rule, which travels
+       rightward, inward from the other side. Below 40rem `center` falls through
+       to the base layout, and so does this. */
+    .timeline[data-align="center"] .timeline-item[data-entering]:nth-child(even) {
+      animation-name: slide-left, fade;
+    }
   }
 }

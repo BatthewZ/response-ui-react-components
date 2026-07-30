@@ -349,11 +349,18 @@ are a `--C-SURFACE-0` fill with a 1px `--C-BORDER-STRONG` border — the same re
 [Input](input.md) uses — so on a page that is also `--C-SURFACE-0` that border is the only
 thing drawing the control.
 
+**In forced-colours mode the hex field's outline reset stands down and the browser's own
+outline stays.** The reset is `not-forced-colors:focus:outline-none`. It has to be: the ring is a
+`box-shadow`, which forced colours forces to `none`, so an unqualified reset would leave the
+field with no focus indicator at all in exactly the mode where indicators matter most
+(WCAG 2.4.7). This is new — the field previously had no forced-colours affordance.
+
 Two details of that split are worth knowing if you restyle the component. The hex field's
 **border** is written as a utility (`border border-border-strong`) rather than a rule in
-`ColorPicker.css`, because this package's stylesheets are unlayered and unlayered CSS outranks
-every Tailwind utility whatever the specificity — declared in the stylesheet, the border could
-never be swapped by `focusRingControl`'s `focus:border-border-focus`. And the trigger, being a
+`ColorPicker.css`, so that one property has one writer and `focusRingControl`'s
+`focus:border-border-focus` can swap it. It moved there when this package's stylesheets were
+unlayered and out-ranked every utility; that reason expired when they moved into
+`@layer components`, and the arrangement is still the right one. And the trigger, being a
 `<button>`, takes the **button** recipe: it rings on `:focus-visible` only (so a mouse press
 does not ring it) and the recipe never repaints a border, which is what leaves the invalid
 border standing while the control is focused.

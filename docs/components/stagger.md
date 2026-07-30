@@ -91,14 +91,15 @@ is for the container tag, not for changing what each item is.
 
 ## Theme tokens
 
-Stagger sets no colour and uses no Tailwind utility. It stamps each child with the
-`.stagger-item` class from `@batthewz/response-ui-css` and writes two custom properties
-that the class reads — both on the item wrapper, because that is the element the
-`.stagger-item` rule resolves them on:
+Stagger sets no colour, uses no Tailwind utility and ships no stylesheet of its own. It stamps
+each child with the `.stagger-item` class from `@batthewz/response-ui-css` and writes three
+custom properties inline — two on each item, because that is the element the `.stagger-item`
+rule resolves them on, and one on the container:
 
 | Where             | Property           | Purpose                                                                                                  |
 | ----------------- | ------------------ | -------------------------------------------------------------------------------------------------------- |
-| Each item wrapper | `--stagger-delay`  | the per-item delay step — written only when you pass `staggerDelay`, otherwise inherited or the token     |
+| The container     | `--_stagger-step`  | the delay step, resolved once: the `staggerDelay` prop, else `var(--stagger-delay, var(--MOTION-STAGGER-DELAY))`. Private — the underscore says so |
+| Each item wrapper | `--stagger-delay`  | always written, always as `var(--_stagger-step)`; inline is the only place the foundation's own declaration on this element cannot shadow it |
 | Each item wrapper | `--stagger-index`  | the item's ordinal, multiplied by the delay step to space entrances; forced to `0` under reduced motion   |
 
 There are three places the delay step can come from, in the order they win:
@@ -108,14 +109,19 @@ There are three places the delay step can come from, in the order they win:
 3. **`--MOTION-STAGGER-DELAY`** (default `50ms`), the contract token in the CSS
    foundation — every staggered group in the app.
 
-The middle one only works because `Stagger.css` in *this* package resets
-`--stagger-delay` to `inherit` on `.stagger-item` and re-reads it as
-`var(--stagger-delay, var(--MOTION-STAGGER-DELAY))`. The foundation's own
-`animations/stagger.css` re-declares the variable on the item — the element that consumes
-it — where no ancestor value can reach it. That duplicate rule is deliberate and
-temporary: it is unlayered and imported after the foundation, so it wins on source order,
-and it should be deleted here once the foundation reads the fallback itself. Until then a
-change to the foundation's `animation-delay` on `.stagger-item` will not take effect.
+The middle one works because the container resolves the whole chain once into
+`--_stagger-step` and every item carries an inline `--stagger-delay: var(--_stagger-step)`.
+The foundation's `animations/stagger.css` re-declares `--stagger-delay` on the item — the
+element that consumes it — where no *inherited* value can reach it; an inline declaration is the
+one thing that out-ranks it, whatever the layering.
+
+This used to be a CSS rule in `Stagger.css` (`--stagger-delay: inherit`) that won on source
+order because this package's stylesheets were unlayered. That file is **deleted**: from
+`@layer components` it would have lost to the foundation's rule at any specificity, and the
+inline form needs no stylesheet at all. Two things improve with it. This package no longer
+duplicates a rule that lives in another package — so a change to the foundation's
+`animation-delay` on `.stagger-item` **does** now take effect. And because the mechanism is
+inline rather than in CSS, it is visible to the test suite for the first time.
 
 ## Gotchas
 
@@ -127,21 +133,22 @@ change to the foundation's `animation-delay` on `.stagger-item` will not take ef
   hook, that rule has to target the global `.stagger-item` class. [Hero](hero.md) is a
   worked example: it scopes an `animation-name: fade` to `.hero__content .stagger-item`
   in its own CSS, which is why `Hero.Content animate` cascades and a bare Stagger does not.
-- **`staggerDelay` writes to the items, not the container.** The prop stamps each item
-  wrapper inline, where nothing in either stylesheet can shadow it. A `--stagger-delay`
-  you set from your own CSS on an ancestor now reaches the items too — but only with
-  *this* package's stylesheet loaded; the foundation alone shadows it on `.stagger-item`.
+- **The delay always reaches the item inline, whichever source it came from.** Items are
+  stamped with `--stagger-delay: var(--_stagger-step)` and the container holds the resolved
+  step, so a `--stagger-delay` you set on an ancestor reaches the items too. This is React's
+  doing, not CSS's — it works with this package's components regardless of which stylesheets
+  are loaded, whereas the foundation on its own shadows an ancestor value on `.stagger-item`.
   See [Theme tokens](#theme-tokens) for the three sources and their order.
 - **Every child gains an extra wrapper `<div>`.** A `.stagger-item` block element is
   inserted between the container and each child. That means `as="ul"`/`as="ol"` produce
   invalid markup (a `<div>` between the list and its `<li>`s), and any direct-child
   selector, `flex`/`grid`, or `gap` on the container targets the wrappers, not your nodes.
-- **`style` reaches the container untouched.** Every prop the `as` element accepts (`id`,
-  `aria-label`, `onClick`, `data-*`, `style`, …) is spread onto the outer element and
-  nothing of the component's own is merged into it; `className` lands as given. A
-  `--stagger-delay` you write into `style` yourself sits on the container and inherits
-  down to the items — the `staggerDelay` prop is the same thing, put where it cannot be
-  shadowed and typed.
+- **`style` reaches the container, with `--_stagger-step` merged in first.** Every prop the
+  `as` element accepts (`id`, `aria-label`, `onClick`, `data-*`, `style`, …) is spread onto the
+  outer element, and `className` lands as given. The one thing the component adds to your
+  `style` is `--_stagger-step`; yours is spread **last**, so every key of yours still wins —
+  including that one, if you want to set the step directly. A `--stagger-delay` you write into
+  `style` yourself sits on the container and feeds the same chain.
 - **Children are keyed by array index.** Re-ordering or inserting mid-list can mis-map an
   in-flight animation to the wrong item; keep the list stable, or it is a non-issue for
   static content.
@@ -152,7 +159,9 @@ change to the foundation's `animation-delay` on `.stagger-item` will not take ef
 
 Stagger honours `prefers-reduced-motion` in two independent ways: it sets every
 `--stagger-index` to `0`, so all items share a zero delay and enter together, and the
-`.stagger-item` rule additionally zeroes `animation-delay` under the same query. Either
+foundation's own `.stagger-item` rule zeroes `animation-delay` under the same query. Both
+survive the move to inline delays — deliberately, since this package declares no
+`animation-delay` of its own at all, an inline one would have made the CSS guard inert. Either
 way, a motion-sensitive visitor gets the content without the cascade.
 
 The item wrappers are presentational `<div>`s with no role, so they do not add anything

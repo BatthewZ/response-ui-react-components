@@ -5,66 +5,80 @@
    tokens, themes, and responsive scales are defined before these rules read
    `var(--…)`.                                                                 */
 
+/* Every per-component import below carries `layer(components)`, so this
+   package's CSS sits in `@layer components` — BELOW `@layer utilities`. That is
+   what makes `<StatCard className="flex-row">` work: a caller's utility now
+   beats the component's own rule at any specificity, and so does a consumer's
+   own unlayered stylesheet. The trade is recorded in `AGENTS.md` ("Decision:
+   focus rings are layered, and a consumer's reset may win").
+
+   The `layer()` has to be on each import, not on the aggregate: this file ends
+   in `@source`, which may not be nested inside a layer, so
+   `@import "styles.css" layer(components)` fails to compile. `bun run
+   probe:cascade-layer` measures that rather than asserting it. */
+
 /* This package's domain-token layer (trend + chart + media). Imported FIRST so
    the tokens and their `@theme inline` utilities are defined before the
-   per-component CSS below reads `var(--…)`. */
+   per-component CSS below reads `var(--…)`.
+
+   Deliberately NOT layered: it carries `@theme inline`, which registers
+   utilities and must stay in Tailwind's own `theme` layer. */
 @import "./tokens.css";
 
 /* animation */
-@import "./components/animation/ScrollReveal.css";
-@import "./components/animation/Stagger.css";
+@import "./components/animation/ScrollReveal.css" layer(components);
 
 /* ui */
-@import "./components/ui/Accordion.css";
-@import "./components/ui/AppShell.css";
-@import "./components/ui/Breadcrumbs.css";
-@import "./components/ui/Button.css";
-@import "./components/ui/Calendar.css";
-@import "./components/ui/Carousel.css";
-@import "./components/ui/CodeBlock.css";
-@import "./components/ui/Collapsible.css";
-@import "./components/ui/CommandPalette.css";
-@import "./components/ui/Drawer.css";
-@import "./components/ui/DropdownMenu.css";
-@import "./components/ui/EmptyState.css";
-@import "./components/ui/FileUpload.css";
-@import "./components/ui/Hero.css";
-@import "./components/ui/MasonryGrid.css";
-@import "./components/ui/MediaCard.css";
-@import "./components/ui/Pagination.css";
-@import "./components/ui/Popover.css";
-@import "./components/ui/ProgressBar.css";
-@import "./components/ui/Rating.css";
-@import "./components/ui/Skeleton.css";
-@import "./components/ui/Spotlight.css";
-@import "./components/ui/StatCard.css";
-@import "./components/ui/Stepper.css";
-@import "./components/ui/Swimlane.css";
-@import "./components/ui/Table.css";
-@import "./components/ui/Tabs.css";
-@import "./components/ui/ThemeSwitcher.css";
-@import "./components/ui/Timeline.css";
-@import "./components/ui/Tooltip.css";
-@import "./components/ui/VirtualizedDataTable.css";
-@import "./components/ui/Wizard.css";
+@import "./components/ui/Accordion.css" layer(components);
+@import "./components/ui/AppShell.css" layer(components);
+@import "./components/ui/Breadcrumbs.css" layer(components);
+@import "./components/ui/Button.css" layer(components);
+@import "./components/ui/Calendar.css" layer(components);
+@import "./components/ui/Carousel.css" layer(components);
+@import "./components/ui/CodeBlock.css" layer(components);
+@import "./components/ui/Collapsible.css" layer(components);
+@import "./components/ui/CommandPalette.css" layer(components);
+@import "./components/ui/Drawer.css" layer(components);
+@import "./components/ui/DropdownMenu.css" layer(components);
+@import "./components/ui/EmptyState.css" layer(components);
+@import "./components/ui/FileUpload.css" layer(components);
+@import "./components/ui/Hero.css" layer(components);
+@import "./components/ui/MasonryGrid.css" layer(components);
+@import "./components/ui/MediaCard.css" layer(components);
+@import "./components/ui/Pagination.css" layer(components);
+@import "./components/ui/Popover.css" layer(components);
+@import "./components/ui/ProgressBar.css" layer(components);
+@import "./components/ui/Rating.css" layer(components);
+@import "./components/ui/Skeleton.css" layer(components);
+@import "./components/ui/Spotlight.css" layer(components);
+@import "./components/ui/StatCard.css" layer(components);
+@import "./components/ui/Stepper.css" layer(components);
+@import "./components/ui/Swimlane.css" layer(components);
+@import "./components/ui/Table.css" layer(components);
+@import "./components/ui/Tabs.css" layer(components);
+@import "./components/ui/ThemeSwitcher.css" layer(components);
+@import "./components/ui/Timeline.css" layer(components);
+@import "./components/ui/Tooltip.css" layer(components);
+@import "./components/ui/VirtualizedDataTable.css" layer(components);
+@import "./components/ui/Wizard.css" layer(components);
 
 /* data-display */
-@import "./components/data-display/ActivityFeed.css";
-@import "./components/data-display/ProgressRing.css";
-@import "./components/data-display/Sparkline.css";
+@import "./components/data-display/ActivityFeed.css" layer(components);
+@import "./components/data-display/ProgressRing.css" layer(components);
+@import "./components/data-display/Sparkline.css" layer(components);
 
 /* layout */
-@import "./components/layout/Grid.css";
+@import "./components/layout/Grid.css" layer(components);
 
 /* form */
-@import "./components/form/ColorPicker.css";
-@import "./components/form/Combobox.css";
-@import "./components/form/MultiSelect.css";
-@import "./components/form/Radio.css";
-@import "./components/form/RangeSlider.css";
-@import "./components/form/SearchInput.css";
-@import "./components/form/Slider.css";
-@import "./components/form/Switch.css";
+@import "./components/form/ColorPicker.css" layer(components);
+@import "./components/form/Combobox.css" layer(components);
+@import "./components/form/MultiSelect.css" layer(components);
+@import "./components/form/Radio.css" layer(components);
+@import "./components/form/RangeSlider.css" layer(components);
+@import "./components/form/SearchInput.css" layer(components);
+@import "./components/form/Slider.css" layer(components);
+@import "./components/form/Switch.css" layer(components);
 
 /* Tailwind v4 — register this package's own sources so the utility classes
    used inside the components are generated in the consumer's build. The path

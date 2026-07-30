@@ -225,11 +225,11 @@ rules carry hard-coded fallbacks (`0.2s`, `ease`, `rgb(0 0 0 / 0.5)`) which only
 under an ancestor that sets its own colour — inverse text on a section fill, say — still
 renders the theme's body ink against the panel's `--C-SURFACE-0` background.
 
-That also means a `className` of `text-fg-muted` does **not** re-tint the panel. `.drawer`'s
-`color` is unlayered author CSS, and unlayered styles outrank anything Tailwind puts in
-`@layer utilities` — the same cascade that defeats a width utility in the first
-[gotcha](#gotchas). Recolour with an inline `style={{ color: "…" }}`, or your own unlayered
-rule at `.drawer` specificity or higher. See the [theme contract](../theme-contract.md).
+A `className` of `text-fg-muted` re-tints the panel: `.drawer`'s `color` is in
+`@layer components`, which Tailwind orders below `@layer utilities`, so the utility wins. It
+used to lose — this package's CSS was unlayered and out-ranked anything in `@layer utilities` —
+and that is the cascade the first [gotcha](#gotchas) used to describe too. See the
+[theme contract](../theme-contract.md).
 
 Geometry is not on the contract: the 24rem panel size, the 90vw/90dvh caps, and the full-bleed
 cross axis are literals, so re-theming changes colour, spacing, and timing but not the shape
@@ -237,14 +237,12 @@ of the sheet.
 
 ## Gotchas
 
-- **`className` utilities lose to `Drawer.css`.** A `className` of `w-[32rem] p-0` still
-  computes 24rem wide with full padding. Two reasons stack up: `.drawer[data-side="right"]`
-  out-specifies a single utility class, and — for same-specificity properties like `padding` —
-  this package's stylesheet declares no cascade layer while Tailwind v4 puts utilities inside
-  `@layer utilities`, and unlayered author styles outrank layered ones outright. Resize with
-  `style={{ width: "32rem" }}`, an `!important` utility, or your own rule at `.drawer`
-  specificity or higher. Utilities for properties `Drawer.css` never sets still apply
-  normally, as do all utilities on children.
+- **`className` utilities beat `Drawer.css`.** A `className` of `w-[32rem] p-0` used to
+  computed 24rem wide with full padding, because this package's stylesheet was unlayered and
+  out-ranked every utility whatever the specificity — including `.drawer[data-side="right"]`,
+  which also out-specifies a single class. **That is fixed:** the stylesheet is now in
+  `@layer components`, below `@layer utilities`, and a plain `w-[32rem]` wins at any
+  specificity. `style={{ width: "32rem" }}` still works and still beats both.
 - **Every native close path reaches `onClose`.** The component listens for `cancel` (Escape,
   prevented so your state decides) and for `close` (`<form method="dialog">`, `ref.close()`,
   mirrored into `onClose` while your `open` is still `true`). The remaining trap is an

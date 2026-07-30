@@ -146,10 +146,12 @@ type TimelineItemProps = {
   /**
    * Champion this entry: the marker takes `--timeline-highlight-fill` inked with
    * `--timeline-highlight-ink`, and the card's hairline takes
-   * `--timeline-highlight-border`. All three are public custom properties, so an
-   * instance can re-point them without fighting the cascade — a `className` on
-   * the item cannot, because this package's CSS is imported unlayered and
-   * outranks `@layer utilities` whatever the specificity (see the docs).
+   * `--timeline-highlight-border`. All three are public custom properties, and
+   * they reach elements a per-element override cannot: set once on the item,
+   * they inherit to the marker and the card, which a `className` on the item
+   * never reaches at all. (Precedence is no longer the reason — this package's
+   * CSS is in `@layer components`, so a caller's utility does now beat it. The
+   * reason is the inherited fan-out.)
    *
    * The marker also gains a ring in the fill colour, so it reads *bigger*. That
    * width is the cue that survives greyscale and a theme whose accent sits near
@@ -209,14 +211,23 @@ const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(function Time
     );
   }
 
-  // Always the same entrance class: `Timeline.css` flips `animation-name` on the
-  // even items, in the same `:nth-child` rule that puts their card on the right
+  // No entrance class, and the same markup on every item: `Timeline.css` owns
+  // the whole `animation` shorthand and picks the direction from the same
+  // `:nth-child`/`data-align` selectors that decide which side the card sits on
   // (#342). Below 40rem every card is on the same side, so the direction is
   // uniform there and the override never applies.
+  //
+  // It used to ship `fade-right` and re-point that class's `animation-name`.
+  // That worked only while this package's CSS was unlayered: from
+  // `@layer components` the foundation's `.fade-right` wins on layer at any
+  // specificity, and every card would enter from the same side. `animation="none"`
+  // deletes the competitor instead of trying to out-rank it, and `data-entering`
+  // (set by `ScrollReveal` for exactly the entrance window) is what the
+  // stylesheet keys on.
   return (
     <ScrollReveal
       ref={ref}
-      animation="fade-right"
+      animation="none"
       className={cn("timeline-item", className)}
       data-highlight={highlightAttr}
       {...props}

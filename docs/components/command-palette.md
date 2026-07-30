@@ -335,7 +335,7 @@ link in there is reachable by pointer, or by pressing Tab once from the input.
 <CommandPalette
   open={open}
   onClose={() => setOpen(false)}
-  className="max-w-[28rem]!"
+  className="max-w-[28rem]"
   items={[
     {
       id: "new-project",
@@ -354,11 +354,10 @@ link in there is reachable by pointer, or by pressing Tab once from the input.
 
 The panel is `width: 100%` capped at `36rem`, pinned `12vh` from the top rather than centred.
 Those are literals in `CommandPalette.css`, not tokens. `className` merges through
-`tailwind-merge` and lands on the `<dialog>`, but this package's stylesheet declares no cascade
-layer while Tailwind v4 puts utilities in `@layer utilities` — and unlayered author rules
-outrank layered ones before specificity is consulted. So `max-w-[28rem]` alone loses to
-`.command-palette`; `max-w-[28rem]!`, an inline `style`, or your own unlayered rule wins.
-Utilities for properties the stylesheet never sets (`z-index`, `font-family`) apply normally.
+`tailwind-merge` and lands on the `<dialog>`, and `max-w-[28rem]` on its own now wins:
+this package's CSS is in `@layer components`, which Tailwind orders **below** `@layer utilities`.
+It used to need the important modifier (`max-w-[28rem]!`), because the stylesheet was unlayered
+and out-ranked every utility before specificity was consulted.
 
 ## Theme tokens
 
@@ -432,8 +431,10 @@ palette's colour, spacing and timing but not its shape.
   agree; but the index is positional, so if `items` itself changes while the palette is open,
   the highlight stays on the same *row*, whatever command now occupies it. (It snaps back to
   the first selectable row whenever the query changes.)
-- **`className` utilities lose to `CommandPalette.css`.** Unlayered component CSS outranks
-  Tailwind's layered utilities — see [Sizing the panel](#sizing-the-panel).
+- **`className` utilities beat `CommandPalette.css`.** This package's CSS is in
+  `@layer components`, which Tailwind orders below `@layer utilities`, so a plain utility wins
+  at any specificity. It used to lose and need the important modifier — see
+  [Sizing the panel](#sizing-the-panel).
 - **Light dismiss is handled in React, not by `closedby`.** A press on the scrim is dispatched
   at the `<dialog>` itself, so "outside" is measured as the pointer landing beyond the panel's
   own border box — padding you add in `className` still counts as inside. Both ends of the

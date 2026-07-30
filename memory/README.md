@@ -30,7 +30,9 @@ to understand.
    refutation collapsed on a stale comment in this repo's own CSS; one proposed safeguard was
    dropped after a probe showed it could never fire.
 4. **Refuting a finding is a full outcome** — but write it into the record, not the commit body.
-5. **A claim that counts instances instead of naming them cannot be audited.**
+5. **A claim that counts instances instead of naming them cannot be audited** — and a *rule* stated
+   as a count rather than a criterion cannot decide its own lists. Where a rule ships beside worked
+   examples and the two disagree, the examples are usually right; fix the rule.
 6. **Scope is this package only** — not the CSS package, not the tailwind-merge package, *not
    even to add a script*. That boundary was crossed once and reverted in full.
 7. **Documentation that contradicts your diff is a refutation, not staleness.** One pass called a
@@ -118,6 +120,32 @@ to understand.
    not re-derive* section. Nothing is lost and nothing is re-derived, but the reader stops needing a
    guide. A corollary that is easy to miss: if a refutation already lives somewhere authoritative
    (the findings archive), the plan restating it is a second source of truth, not diligence.
+
+21. **When a precedence premise flips, every sentence resting on it is refuted at once — and they
+   are almost all "cannot" sentences.** Moving this package's CSS into `@layer components`
+   falsified one clause in **20 component doc pages**, and every one of them was a *false cannot*:
+   "a `className` cannot re-space it", "a padding utility never wins here, at any size", "use the
+   important modifier". Those are the worst doc-rot shape (§16) because they steer people away
+   from something that now works, and they read as authoritative while doing it. Two things follow.
+   A one-line change to a stylesheet's *registration* can be a larger documentation change than a
+   feature. And the sweep is findable: the pages all named the mechanism (`unlayered`), so one grep
+   enumerated them — if a mechanism is documented by name, the name is the sweep.
+22. **Deleting the losing declaration beats out-ranking it, and it is usually also the smaller
+   diff.** Every fix in this pass that stopped a collision rather than winning one came out
+   better: `Timeline` stopped emitting the foundation entrance class and gained a consumer
+   override it never had; `Stagger` stopped duplicating a foundation rule and its own stylesheet
+   disappeared; the outline reset stood down in forced colours instead of being beaten with
+   `!important`; `Tabs` deleted three declarations that could not win. Reach for "who else is
+   writing this property, and can we stop" before reaching for precedence. The corollary: **an
+   accepted regression and a live rule cannot coexist.** If a rule can never win again, accepting
+   the outcome means deleting the rule — leaving it in place is dead CSS that looks live, which is
+   what the next reader will "fix".
+23. **A public `data-*` is the cheapest way to publish a state a stylesheet needs, and it survives
+   layering.** A class the foundation owns cannot be re-pointed from a layered stylesheet at any
+   specificity; an attribute this package emits can be keyed on freely. The rule that mattered was
+   never about the class — it was about the *interval* the class marked, and an attribute marks
+   the interval without borrowing anyone's vocabulary. It is also visible to jsdom, so the
+   invariant became assertable in the test suite for the first time.
 
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

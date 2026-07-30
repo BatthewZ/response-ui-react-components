@@ -562,15 +562,18 @@ describe("Combobox", () => {
  * Why the two checks above are class-list assertions and not colour ones:
  * `vitest` runs with `css: false`, so nothing here can read a stylesheet or a
  * computed colour. The defect they guard was a *cascade* one — `Combobox.css`
- * declared `border` unlayered, and unlayered author CSS outranks every Tailwind
- * utility whatever the specificity, so both `focusRingControl`'s
- * `focus:border-border-focus` and `focusRingControlError`'s `border-status-error`
- * were inert while the classes were present all along.
+ * declared `border` while this package's CSS was unlayered, and unlayered author
+ * CSS outranks every Tailwind utility whatever the specificity, so both
+ * `focusRingControl`'s `focus:border-border-focus` and `focusRingControlError`'s
+ * `border-status-error` were inert while the classes were present all along.
+ * Phase 1 moved this package into `@layer components`, so that particular cascade
+ * can no longer happen — but the assertions still hold the invariant that
+ * matters, which is that the border is written where one writer owns it.
  *
  * Measured in Firefox 146 against the dev gallery, with `Input` as the positive
  * control in the same run: focused, the border went `--C-BORDER-STRONG` →
  * `--C-BORDER-FOCUS` (it stayed `--C-BORDER-STRONG` before the fix, and reverts
- * to that the moment the unlayered rule is re-injected), and the invalid border
+ * to that the moment an unlayered rule is re-injected), and the invalid border
  * resolved to `--C-STATUS-ERROR` (it stayed `--C-BORDER-STRONG` before).
  * `scripts/verify-focus-affordance.mjs` covers the reset/ring pairing; nothing
  * in-repo covers the layer question, so these assert the one thing that is

@@ -293,12 +293,12 @@ on-accent ink. The 15% weight itself is fixed in the stylesheet.
   the track was a rung-1 surface and have not been re-measured against `--C-SURFACE-3`, so a
   `ProgressBar.Value` readout remains the reliable way to convey the number, and you should
   re-check the pairing against your own theme's values.
-- **`className` reaches the track only, and loses to the track's own rules.** There is no
-  prop that classes the inner fill. And because `ProgressBar.css` ships unlayered while
-  Tailwind utilities live in `@layer utilities` (measured: the utilities layer ends well
-  before the first `.progress-bar` rule in the compiled sheet), a utility that touches a
-  property the stylesheet already sets on the track — `background-color`, `border-radius`,
-  `width`, `overflow`, or the `height` set by the size modifier — does not win. Utilities
+- **`className` reaches the track only — but it does now win there.** There is no prop that
+  classes the inner fill. `ProgressBar.css` ships in `@layer components`, which Tailwind orders
+  below `@layer utilities`, so a utility touching a property the stylesheet already sets on the
+  track — `background-color`, `border-radius`, `width`, `overflow`, or the `height` set by the
+  size modifier — replaces it. It used to lose, because this package's CSS was unlayered.
+  Utilities
   for properties the stylesheet leaves
   alone (margin, for instance) land normally; for the rest, use inline `style`, which is
   spread through and beats both.

@@ -47,10 +47,24 @@ const EXPECTED = {
   focusRingGroup: { variant: "group-focus-visible", ring: true, border: false, offset: "0" },
 } as const;
 
-/** The reset that belongs with each recipe, spelled out rather than derived. */
+/**
+ * The reset that belongs with each recipe, spelled out rather than derived.
+ *
+ * `pairs` names the recipe whose focus variant this reset must answer to. It is
+ * only an *inclusion* check, not an equality one, because a reset may carry an
+ * environment variant alongside the focus keying: the control reset is
+ * `not-forced-colors:` because forced-colours mode nulls the `box-shadow` ring,
+ * so a reset that still applied there would delete the only affordance left.
+ */
 const EXPECTED_RESETS = {
-  focusOutlineResetButton: { literal: "focus-visible:outline-none", pairs: "focusRingButton" },
-  focusOutlineResetControl: { literal: "focus:outline-none", pairs: "focusRingControl" },
+  focusOutlineResetButton: {
+    literal: "focus-visible:outline-none",
+    pairs: "focusRingButton",
+  },
+  focusOutlineResetControl: {
+    literal: "not-forced-colors:focus:outline-none",
+    pairs: "focusRingControl",
+  },
 } as const;
 
 /** Variant segments of a Tailwind class — everything before the final `:`. */
@@ -114,10 +128,12 @@ describe("focus recipes", () => {
       const want = EXPECTED_RESETS[name as keyof typeof EXPECTED_RESETS];
       expect([name, reset]).toEqual([name, want.literal]);
       // The reset must answer to the same variant as its recipe, or the outline
-      // goes on one interaction and the ring arrives on another.
-      expect([name, variantsOf(reset)]).toEqual([
+      // goes on one interaction and the ring arrives on another. Asserted as
+      // inclusion, not equality, so an environment variant may sit alongside it;
+      // the exact spelling is already pinned by the literal above.
+      expect([name, variantsOf(reset).includes(EXPECTED[want.pairs].variant)]).toEqual([
         name,
-        [EXPECTED[want.pairs].variant],
+        true,
       ]);
     }
   });

@@ -2,7 +2,6 @@ import { type ComponentPropsWithRef, type ElementType, forwardRef } from "react"
 
 import { cn } from "../../util/style";
 
-import "./Grid.css";
 import { type Gap, gapMap } from "./shared";
 
 type ColumnBreakpoints = {

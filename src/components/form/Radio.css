@@ -32,10 +32,17 @@
   }
 
   /* Forced colours also set `box-shadow: none`, which erases the ring recipe —
-     the one focus affordance that survives is an outline. This rule out-weighs
-     the component's own `focus:outline-none` without a specificity trick:
-     both are (0,2,0), and Tailwind's utility is in `@layer utilities` while
-     this file is unlayered. */
+     the one focus affordance that survives is an outline.
+
+     Nothing competes with this rule, and that is arranged rather than assumed.
+     This file is in `@layer components`, which sits BELOW `@layer utilities`, so
+     the component's own outline reset would delete this outline whatever the
+     specificity (both are (0,2,0)) — WCAG 2.4.7, in the one mode where it is the
+     only affordance left. `focusOutlineResetControl` is therefore
+     `not-forced-colors:focus:outline-none` (`src/util/focus.ts`): the reset
+     stands down here instead of being out-ranked, so no `!important` and no
+     carve-out is needed and the deliberate `Highlight` colour survives.
+     `probe:cascade-layer`'s `radio-forced-colors-focus-outline` row measures it. */
   .radio:focus {
     outline: 2px solid Highlight;
     outline-offset: 2px;

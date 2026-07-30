@@ -150,7 +150,7 @@ the user must be told about, render the region up front and change what is insid
 
 `className` is appended through `cn`. None of the base classes are Tailwind utilities, so
 `tailwind-merge` has nothing to collapse and a height utility simply lands on the
-element — but landing is not winning:
+element — and since Phase 1 it also wins:
 
 <!-- example:SizedFromClassName -->
 ```tsx
@@ -158,12 +158,15 @@ element — but landing is not winning:
 ```
 <!-- /example -->
 
-The `h-48` there is dead code. Since every variant gained a default height, `.skeleton`'s
-`height` rule lives in unlayered component CSS, and unlayered author rules outrank
-Tailwind's `@layer utilities` outright — a cascade fact that once bit only
-`variant="text"` and now covers every variant. `width` never even reaches the cascade: it
-always ships as an inline style, which beats any class. So `w-64` and `h-48` are both
-inert on a Skeleton — size it with the `width` and `height` props, or `style`. See
+The `h-48` there is live, and it used to be dead code. `height` is the one dimension the
+component leaves to CSS when you omit the prop, and `.skeleton`'s `height: 1em` is in
+`@layer components` — below Tailwind's `@layer utilities` — so the utility beats it at any
+specificity. That is exactly the override Phase 1 exists to deliver.
+
+`width` is the one that stays inert: it defaults to `"100%"` and always ships as an **inline
+style**, which beats any class in any layer, so `w-64` never applies however this package's
+CSS is layered. Size the width with the `width` prop or `style`; height you can do either
+way, and the `height` prop still wins over a utility because it too goes inline. See
 [Gotchas](#gotchas).
 
 ## Theme tokens
@@ -213,12 +216,11 @@ That is the whole contract surface, and three things are deliberately *outside* 
   overwrites it with nothing and React omits the property, so a Skeleton with no `height` renders
   with no `style` attribute at all. (`max-w-*` is the exception that proves the rule: it sets a
   different property, so it clamps the inline `100%` and does work.)
-- **`height` can't come from a class either — on any variant.** The base
-  `.skeleton { height: 1em }` (and `circular`'s `height: auto`) is unlayered component CSS,
-  and unlayered author rules outrank Tailwind's `@layer utilities` regardless of
-  specificity — so `className="h-48"` loses everywhere and the box stays one line tall.
-  Pass the `height` prop, or `style`, both of which write an inline style that beats the
-  stylesheet.
+- **`height` *can* come from a class — unlike `width`.** There is no default, so a Skeleton
+  without the prop emits no inline `height` and falls through to `.skeleton { height: 1em }`,
+  which is in `@layer components`. A utility sits in `@layer utilities` and beats it, so
+  `className="h-48"` applies. Pass the `height` prop (or `style`) and that goes inline instead,
+  which beats the utility — so the two routes do not compose: pick one.
 - **`style` beats both size props.** The caller's `style` spreads *after* `{ width, height }`,
   so `style={{ height: "2rem" }}` wins. Deliberate, and the escape hatch for `variant="text"`.
 - **A skeleton announces nothing unless you give it `children`.** By default it is
