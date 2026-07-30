@@ -143,18 +143,46 @@ type TimelineItemProps = {
    */
   titleAs?: HeadingLevel;
   icon?: ReactNode;
+  /**
+   * Champion this entry: the marker takes `--timeline-highlight-fill` inked with
+   * `--timeline-highlight-ink`, and the card's hairline takes
+   * `--timeline-highlight-border`. All three are public custom properties, so an
+   * instance can re-point them without fighting the cascade — a `className` on
+   * the item cannot, because this package's CSS is imported unlayered and
+   * outranks `@layer utilities` whatever the specificity (see the docs).
+   *
+   * The marker also gains a ring in the fill colour, so it reads *bigger*. That
+   * width is the cue that survives greyscale and a theme whose accent sits near
+   * the surface, which colour alone does not — the same reason `Stepper` marks
+   * its current step with a ring width rather than a hue. It is deliberately not
+   * a custom property: it cannot be overridden away.
+   *
+   * Emitted as `data-highlight` and read only by `Timeline.css`. The rail
+   * reserves the ring's width whether or not anything is highlighted, so
+   * championing an entry never slides the rail sideways.
+   * @default false
+   */
+  highlight?: boolean;
 } & Omit<ComponentPropsWithRef<"div">, "title">;
 
 const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(function TimelineItem(
-  { date, title, titleAs: Heading = "h3", icon, className, children, ...props },
+  { date, title, titleAs: Heading = "h3", icon, highlight = false, className, children, ...props },
   ref
 ) {
   const ctx = useTimelineItemContext();
   const animate = ctx?.animate ?? true;
 
+  // The icon gets a wrapper the dot does not need. It is what `Timeline.css`
+  // paints the opaque marker disc on — the rail runs *behind* the node, so a
+  // glyph with gaps in it shows the line through itself, and the line reads as
+  // passing over the final marker rather than terminating on it. It is also the
+  // only signal the root has that this timeline carries pucks rather than dots,
+  // which is what the `:has()` rule reserving their width descends to find.
   const inner = (
     <>
-      <div className="timeline-node">{icon ?? <div className="timeline-dot" />}</div>
+      <div className="timeline-node">
+        {icon ? <span className="timeline-icon">{icon}</span> : <div className="timeline-dot" />}
+      </div>
       <div className="timeline-card">
         {date && <span className="timeline-date">{date}</span>}
         <Heading className="timeline-title">{title}</Heading>
@@ -163,9 +191,19 @@ const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(function Time
     </>
   );
 
+  // Absent rather than `"false"` when off, so the stylesheet's selector and the
+  // root's `:has()` can both test for presence. Before the spread, as elsewhere
+  // in the package, so a caller can still override it.
+  const highlightAttr = highlight ? "true" : undefined;
+
   if (!animate) {
     return (
-      <div ref={ref} className={cn("timeline-item", className)} {...props}>
+      <div
+        ref={ref}
+        className={cn("timeline-item", className)}
+        data-highlight={highlightAttr}
+        {...props}
+      >
         {inner}
       </div>
     );
@@ -180,6 +218,7 @@ const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(function Time
       ref={ref}
       animation="fade-right"
       className={cn("timeline-item", className)}
+      data-highlight={highlightAttr}
       {...props}
     >
       {inner}

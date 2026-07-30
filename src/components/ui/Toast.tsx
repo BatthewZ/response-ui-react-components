@@ -21,6 +21,37 @@ export type ToastVariant = "success" | "warning" | "error" | "info";
 const baseClasses =
   "flex items-start gap-r5 rounded-md p-r4 text-body-2 shadow-lg border w-80 pointer-events-auto motion-reduce:animate-none";
 
+/**
+ * Centres a fixed-size control on the message's *first* line rather than on the
+ * row's top edge or on the whole block. `items-start` alone starts a 16px glyph
+ * at the content top while the first line box is a whole `text-body-2` leading
+ * tall, so the glyph reads high and the taller dismiss button reads low — two
+ * different wrongs, visible as the icon and the ✕ sitting at different heights.
+ * `1lh` *is* that leading, so this tracks the theme (which moves it by a third)
+ * and the breakpoint with no second copy of the number, and the icon still stays
+ * on the first line when the message wraps.
+ */
+const firstLineClasses = "flex h-[1lh] shrink-0 items-center";
+
+/**
+ * `IconButton`'s hover and active are the neutral surface steps — right on a
+ * neutral surface, wrong on all four of these, where they flash a patch of the
+ * page's greys over a tinted card. Same problem `Button`'s `ghost-inverse`
+ * exists to solve, answered the same way: the surrounding ink at a low alpha.
+ *
+ * `text-current` is what makes that work and is not itself visible. It resolves
+ * to `inherit`, handing the button the variant's `text-status-*`, which is what
+ * `bg-current` then tints with — so one string covers every variant and every
+ * consumer theme without naming one. The glyph takes `text-fg-secondary` back
+ * on the `<svg>`, because measured across the four example themes the neutral
+ * mark holds 6.9–7.3:1 on these tints where the variant ink would hold 3.1–4.8.
+ *
+ * Alphas are the measured ceiling, not a guess: at `/20` the mark falls to
+ * 3.09:1 in one theme, inside the rounding of the 3:1 floor for a graphical
+ * object. `/10` and `/15` keep the worst case at 3.87 and 3.48.
+ */
+const dismissClasses = "text-current hover:bg-current/10 active:bg-current/15";
+
 const variantClassMap: Record<ToastVariant, string> = {
   success: "bg-status-success-bg text-status-success border-status-success/20",
   warning: "bg-status-warning-bg text-status-warning border-status-warning/20",
@@ -149,25 +180,34 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
       {...ariaMap[variant]}
       {...props}
     >
-      {icon}
+      {icon && <span className={firstLineClasses}>{icon}</span>}
       <div className="flex-1 min-w-0">
         {statusText && <span className="sr-only">{statusText}</span>}
         {title && <p className="font-semibold">{title}</p>}
         <p>{children}</p>
       </div>
-      <IconButton aria-label={dismissText} onClick={handleDismiss} className="shrink-0 -mr-r6 -mt-r6">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
+      {/* The button is taller than one line; centring it overflows into the
+          card's own padding rather than growing the toast past its text. */}
+      <span className={firstLineClasses}>
+        <IconButton
+          aria-label={dismissText}
+          onClick={handleDismiss}
+          className={cn("shrink-0 -mr-r6", dismissClasses)}
         >
-          <path d="M4 4l8 8M12 4l-8 8" />
-        </svg>
-      </IconButton>
+          <svg
+            className="text-fg-secondary"
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+        </IconButton>
+      </span>
     </div>
   );
 });

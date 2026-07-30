@@ -17,6 +17,7 @@ to understand.
 | [testing.md](./testing.md) | Ways a test here passes for the wrong reason.                |
 | [history.md](./history.md) | Why an inherited claim is worth less than you think.         |
 | [example-themes.md](./example-themes.md) | How sample data becomes API without anyone deciding to, and the one test that catches it. |
+| [affordances.md](./affordances.md) | Adding a visual cue or an override hook: why a slot `className` only looks like it works, and how to move a rail without moving everyone's. |
 
 ## The short version
 
@@ -67,6 +68,28 @@ to understand.
    wrong layer, and it cost every card in the library its intended colour. The tell is that the
    fix makes the component look *worse* in order to satisfy a rule. A rule that can only be
    obeyed by degrading the thing it governs is usually the part that is wrong.
+
+14. **A per-component specimen and a whole assembled page are disjoint gates, and only the second
+   one can see composition.** Building one realistic page out of the library found a compound
+   component that unmounts itself for good when its children are collapsed to the active one, and
+   a `className` cap that silently loses to the component's own unlayered CSS. Neither is visible
+   in a tile, because a tile has one panel, never switches it, never caps it, and never stands it
+   in a stretched cell beside a taller neighbour. When a change is to how components *fit
+   together*, a green per-component suite is not evidence about it either way.
+
+15. **A defect that lives in the paint is invisible to the entire suite, and the computed styles
+   will agree with you.** A stroke effect that fragmented a chart's line survived a full green
+   run, a clean typecheck, and every gate — and when probed, its animation name, dash array and
+   finished play-state all read exactly as an assertion would want them. Nothing in the DOM was
+   wrong; only the rendering was. Where a change is to geometry, paint or motion, the browser is
+   not a nicer way to check the tests — it is the only instrument that can see the failure at
+   all. Screenshot it before calling it done, and re-screenshot after a stylesheet edit, because
+   a stale hot reload will happily show you the old pixels.
+16. **Two defects here were shipped and then written up as Gotchas, which is what preserved
+   them.** Prose describing a footgun reads as a decision, and the next reader — human or agent —
+   treats the workaround as the API. §7 above still holds: answer the documentation rather than
+   quietly deleting it. But "it is documented" is evidence that somebody noticed, not evidence
+   that it is right, and a default needing an opt-in to be correct is the wrong default.
 
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

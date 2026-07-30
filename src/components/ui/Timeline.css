@@ -9,25 +9,87 @@
    overrides of it. */
 
 .timeline {
-  /* Component geometry tokens — interdependent, so defined together.
-     Split into two groups: the first is fixed geometry (where the rail sits),
-     the second is what `data-density` retunes. Keeping the rail out of the
-     density group is deliberate — switching density should change the rhythm,
-     not slide the rail sideways. */
-  --_timeline-gutter: var(--R-SIZE-2);
-  --_timeline-line-offset: var(--R-SIZE-5);
+  /* Component geometry tokens — interdependent, so defined together. Three
+     groups: what `data-density` retunes, how far the marker reaches, and the
+     rail position DERIVED from that reach.
+
+     Where the rail sits was two fixed `--R-SIZE-*` steps, on the stated
+     principle that density changes the rhythm and never slides the rail
+     sideways. That principle survives intact for every marker that FITS the
+     clearance those two steps leave — which is every dot size density produces,
+     at both breakpoints, and the `max()`es below are what keep a timeline of
+     dots computing exactly what it computed when these were literals.
+
+     An icon puck does not fit, and cannot be made to: a 2rem disc centred on a
+     rail 0.5rem from the content edge overhangs the root and touches the card.
+     So the rail is placed from the marker's own reach, and a timeline carrying
+     pucks DOES move its rail when density retunes them. The alternative was
+     reserving puck-width room in every timeline, dots included, which moves the
+     rail for everyone who never asked for an icon. */
   --_timeline-line-width: 2px;
 
   --_timeline-dot-size: 0.875rem;
+  --_timeline-marker-size: 1.75rem;
+  --_timeline-glyph-size: 1rem;
   --_timeline-card-padding: var(--R-SIZE-4);
   --_timeline-item-gap: var(--R-SIZE-3);
   --_timeline-date-gap: var(--R-SIZE-6);
 
+  /* The ring a championed marker grows by, and the whole non-colour half of the
+     `highlight` cue: it makes the marker read BIGGER, which greyscale and a
+     theme whose accent sits near the surface both still show. Deliberately not
+     a public custom property — overriding it away would leave `highlight`
+     conveying rank by hue alone (WCAG 1.4.1), which is the same reason
+     `Stepper` marks its current step with a ring width rather than a colour.
+     Reserved in the geometry below whether or not anything is highlighted, so
+     championing an entry never slides the rail. */
+  --_timeline-highlight-ring: 2px;
+
+  /* How far the furthest marker in this timeline reaches from the rail's centre,
+     and how much room to leave between it and the card. The three rules under
+     "Marker reach" state these per marker kind; the derivation below reads them
+     once, so a new marker kind only has to declare how wide it is. */
+  --_timeline-marker-radius: calc(var(--_timeline-dot-size) / 2);
+  --_timeline-marker-clearance: var(--R-SIZE-6);
+
+  /* `max()`, so a marker can only ever push the rail OUTWARD from the two steps
+     this used to state as literals — never pull it in. Both `max()`es resolve to
+     their `--R-SIZE-*` arm for all three dot sizes at both breakpoints, which is
+     what makes the no-icon case byte-identical rather than merely close. */
+  --_timeline-line-offset: max(var(--R-SIZE-5), var(--_timeline-marker-radius));
+  --_timeline-gutter: max(
+    var(--R-SIZE-2),
+    calc(
+      var(--_timeline-line-offset) + var(--_timeline-marker-radius) +
+        var(--_timeline-marker-clearance)
+    )
+  );
+
+  /* Public — no leading underscore, so an instance may re-point them, and the
+     only override route that works: a `className` on the item cannot reach the
+     marker or the card, because this package's CSS is imported unlayered from
+     `styles.css` and outranks `@layer utilities` whatever the specificity. A
+     custom property set on the item has no unlayered declaration competing with
+     it there, so it lands and inherits inward. Same contract as
+     `--stepper-progress-color`.
+
+     `--fill` is a FILL token inked with its paired `on-*`, per the contrast
+     contract — the marker is a filled disc, not a stroke. `--border` is a BORDER
+     token because the card's hairline IS a stroke on the surface, where a fill
+     token guarantees nothing and vanishes wherever the theme puts the accent
+     near the surface. Swapping the two is the mistake the contract exists to
+     catch. */
+  --timeline-highlight-fill: var(--C-ACCENT);
+  --timeline-highlight-ink: var(--C-TEXT-ON-ACCENT);
+  --timeline-highlight-border: var(--C-BORDER-STRONG);
+
   /* Where the rail sits inside an ITEM. Items start at the root's content edge,
      so the root-relative offset has the gutter taken back off. Declared once
      because the rail and the node both have to land on it (#344). Resolves
-     lazily, so a density that retuned the gutter would move this too — which is
-     exactly why density does not touch the gutter. */
+     lazily, which is now load-bearing in the other direction: the marker rules
+     below retune `--_timeline-marker-radius`, both derived values above follow,
+     and this follows them — so the segment and the node cannot drift apart
+     whichever marker the timeline turns out to carry. */
   --_timeline-rail-x: calc(var(--_timeline-line-offset) - var(--_timeline-gutter));
 
   /* `card={false}` only: the height of an entry's FIRST line box, which the dot
@@ -42,7 +104,7 @@
 }
 
 /* ------------------------------------------------------------------ */
-/*  Density — retunes locals only, never geometry or selectors         */
+/*  Density — retunes locals only, never selectors                     */
 /* ------------------------------------------------------------------ */
 
 /* The `r` scale is INVERTED: a HIGHER number is a SMALLER value. Dense
@@ -64,16 +126,62 @@
    it; `card={false}` does not. Same failure as #341, in the pair #341 left
    alone. */
 
+/* Each density assigns locals and nothing else — no selector, no type size. Two
+   of them now feed the rail's position rather than only the rhythm: a dot never
+   reaches past the default clearance so the rail holds still, but a puck defines
+   where the rail is, so retuning `--_timeline-marker-size` moves it. The `.timeline`
+   comment above states why that trade beats the alternative.
+
+   The puck and its glyph step together, and the glyph is a little over half the
+   disc at every step, so the padding around it stays proportional instead of the
+   glyph crowding the edge at `dense` and swimming at `spacious`. */
+
 .timeline[data-density="dense"] {
   --_timeline-dot-size: 0.5rem;
+  --_timeline-marker-size: 1.5rem;
+  --_timeline-glyph-size: 0.875rem;
   --_timeline-card-padding: var(--R-SIZE-5);
   --_timeline-item-gap: var(--R-SIZE-5);
 }
 
 .timeline[data-density="spacious"] {
   --_timeline-dot-size: 1rem;
+  --_timeline-marker-size: 2rem;
+  --_timeline-glyph-size: 1.125rem;
   --_timeline-card-padding: var(--R-SIZE-3);
   --_timeline-item-gap: var(--R-SIZE-2);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Marker reach — what the rail's position is derived from            */
+/* ------------------------------------------------------------------ */
+
+/* Three rules of ascending weight, each naming only how far its marker kind
+   reaches from the rail's centre. The base case (a plain dot) is on `.timeline`
+   itself; these two override it.
+
+   ORDER AND SPECIFICITY BOTH MATTER HERE. `:has()` takes the specificity of its
+   most specific argument, so the highlighted-dot rule is (0,3,0) and would beat
+   a plainer `.timeline:has(.timeline-icon)` at (0,2,0) — a timeline with both a
+   puck and a highlight would then reserve DOT room for a PUCK and the puck would
+   overhang the card. The icon rule is therefore written with the redundant
+   `.timeline-item` descendant to bring it to (0,3,0) too, and placed second so
+   it wins on source order. If you add a marker kind, keep both properties. */
+
+.timeline:has(.timeline-item[data-highlight="true"]) {
+  --_timeline-marker-radius: calc(
+    var(--_timeline-dot-size) / 2 + var(--_timeline-highlight-ring)
+  );
+}
+
+.timeline:has(.timeline-item .timeline-icon) {
+  --_timeline-marker-radius: calc(
+    var(--_timeline-marker-size) / 2 + var(--_timeline-highlight-ring)
+  );
+  /* A puck needs real air between it and the card; `--R-SIZE-6` is the tightest
+     step there is and only sits in the base case because raising it there would
+     move every existing dot timeline's cards. */
+  --_timeline-marker-clearance: var(--R-SIZE-5);
 }
 
 /* ------------------------------------------------------------------ */
@@ -138,6 +246,45 @@
      bare page — or under a custom theme. */
 }
 
+/* The icon puck. Opaque, for exactly the reason `Stepper`'s indicator and
+   `ActivityFeed`'s dot are: the rail runs BEHIND the node, so a glyph with
+   transparent gaps shows the line through itself, and the line reads as running
+   past the final marker rather than terminating on it. A bare `icon` had both
+   faults; this is the fix.
+
+   The rung above rejects hardcoding a surface for the DOT, and this does not
+   contradict it. That rule is about a *halo* — a ring trying to match a backdrop
+   the component cannot know, which mismatches the moment the timeline moves rung.
+   This is a filled marker that reads as itself on any rung, which is why
+   `ActivityFeed`'s dot and `Stepper`'s indicator both spend rung 2 the same way.
+   Rung 2 is recessed, so the puck reads as a well the rail runs into rather than
+   a chip sitting on top of it. */
+.timeline-icon {
+  /* Stated, not inherited: `highlight` draws its ring with `box-shadow`, but a
+     future cue that used a border would grow the disc past
+     `--_timeline-marker-size` under content-box and pull it off the rail, which
+     is positioned from that variable. */
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--_timeline-marker-size);
+  height: var(--_timeline-marker-size);
+  border-radius: var(--RADIUS-FULL);
+  background-color: var(--C-SURFACE-2);
+  color: var(--C-TEXT-SECONDARY);
+}
+
+/* The puck owns its glyph size, so a caller does not hand-tune an icon `size`
+   prop against whichever density it renders at — the same trade `ActivityFeed`
+   makes, and it is what lets `density` step the marker without the glyph
+   drifting off centre. Direct `svg` children only: wrap your icon in anything and
+   you keep control of it. */
+.timeline-icon > svg {
+  width: var(--_timeline-glyph-size);
+  height: var(--_timeline-glyph-size);
+}
+
 /* ------------------------------------------------------------------ */
 /*  Card                                                               */
 /* ------------------------------------------------------------------ */
@@ -197,6 +344,49 @@
 .timeline[data-card="false"] .timeline-item::before {
   top: calc(var(--_timeline-first-line) / 2);
   bottom: calc(var(--_timeline-first-line) / -2);
+}
+
+/* ------------------------------------------------------------------ */
+/*  highlight — champion one entry                                     */
+/* ------------------------------------------------------------------ */
+
+/* Two channels, deliberately. The fill says WHICH entry at a glance; the ring
+   says it again as width, which is what survives greyscale and a theme that puts
+   the accent near the surface — where the fill alone leaves a championed marker
+   indistinguishable from its neighbours, and the cue would be hue-only (WCAG
+   1.4.1). See `--_timeline-highlight-ring` for why that width is not overridable.
+
+   A `box-shadow` ring rather than a bigger `width`/`height`, so the cue costs no
+   layout: the node is positioned from `--_timeline-marker-size` and centred by a
+   translate, and growing the box would re-derive the rail for one item. The
+   geometry reserves the ring's width unconditionally, so the rail sits in the
+   same place whether or not anything is championed.
+
+   Both marker kinds, because the alternative is a prop that silently does nothing
+   on the default one: the dot is ALREADY `--C-ACCENT`, so re-filling it with the
+   accent moves not one pixel and the ring is the whole cue there. */
+.timeline-item[data-highlight="true"] .timeline-dot,
+.timeline-item[data-highlight="true"] .timeline-icon {
+  background-color: var(--timeline-highlight-fill);
+  box-shadow: 0 0 0 var(--_timeline-highlight-ring) var(--timeline-highlight-fill);
+}
+
+/* Ink only on the puck — a dot has no glyph to ink. Stated separately rather than
+   folded into the rule above because `--timeline-highlight-ink` is only
+   guaranteed against `--timeline-highlight-fill`, so it belongs exactly where
+   that fill is what sits behind it. */
+.timeline-item[data-highlight="true"] .timeline-icon {
+  color: var(--timeline-highlight-ink);
+}
+
+/* The card's supporting cue. A BORDER token, never the accent: the hairline is a
+   stroke on the surface, and per the contrast contract a fill token guarantees
+   contrast only with its paired ink — an accent hairline vanishes wherever the
+   theme seats the accent near the surface. `card={false}` sets `border: 0`, so it
+   wins on WIDTH whatever this says about colour, and correctly: a flat entry has
+   no hairline to strengthen and the marker is carrying the cue alone there. */
+.timeline-item[data-highlight="true"] .timeline-card {
+  border-color: var(--timeline-highlight-border);
 }
 
 /* ------------------------------------------------------------------ */

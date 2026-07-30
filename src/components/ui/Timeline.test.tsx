@@ -330,4 +330,79 @@ describe("Timeline", () => {
     expect(item.getAttribute("aria-label")).toBe("Step one");
     expect(item.dataset.analytics).toBe("s1");
   });
+
+  /* ------------------------------------------------------------------ */
+  /*  The icon puck                                                      */
+  /* ------------------------------------------------------------------ */
+
+  // The wrapper is what `Timeline.css` paints the opaque disc on, and the only
+  // signal the root's `:has()` has that this timeline reserves puck-width room
+  // rather than dot-width. A bare `icon` had neither, so the rail showed through
+  // the glyph and ran past the final marker.
+  it("wraps a custom icon in a marker puck instead of the bare node", () => {
+    const { container } = render(
+      <Timeline animate={false}>
+        <Timeline.Item title="Shipped" icon={<span data-testid="glyph">★</span>} />
+      </Timeline>,
+    );
+    const puck = container.querySelector(".timeline-node > .timeline-icon");
+    expect(puck).toBeInTheDocument();
+    expect(puck).toContainElement(screen.getByTestId("glyph"));
+    expect(container.querySelector(".timeline-dot")).not.toBeInTheDocument();
+  });
+
+  it("renders no puck when the item falls back to the default dot", () => {
+    const { container } = render(
+      <Timeline animate={false}>
+        <Timeline.Item title="Default" />
+      </Timeline>,
+    );
+    expect(container.querySelector(".timeline-icon")).not.toBeInTheDocument();
+    expect(container.querySelector(".timeline-node > .timeline-dot")).toBeInTheDocument();
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  highlight                                                          */
+  /* ------------------------------------------------------------------ */
+
+  // Absent rather than "false", because both the stylesheet's own selector and
+  // the root's `:has()` reservation test for presence — `data-highlight="false"`
+  // would match `[data-highlight]` and reserve ring room for every item.
+  it("omits data-highlight entirely when an item is not championed", () => {
+    const { container } = render(
+      <Timeline animate={false}>
+        <Timeline.Item title="Ordinary" />
+      </Timeline>,
+    );
+    const item = container.querySelector(".timeline-item") as HTMLElement;
+    expect(item.hasAttribute("data-highlight")).toBe(false);
+  });
+
+  // Both paths, deliberately: #340 is the standing lesson that a prop verified
+  // only under `animate={false}` can be silently inert in production, where the
+  // default sends the item through ScrollReveal.
+  it.each([
+    ["animate={false}", false],
+    ["the default animating path", true],
+  ])("marks a championed item with data-highlight on %s", (_label, animate) => {
+    const { container } = render(
+      <Timeline animate={animate}>
+        <Timeline.Item title="Champion" highlight icon={<span>★</span>} />
+        <Timeline.Item title="Ordinary" />
+      </Timeline>,
+    );
+    const items = [...container.querySelectorAll(".timeline-item")] as HTMLElement[];
+    expect(items[0].dataset.highlight).toBe("true");
+    expect(items[1].hasAttribute("data-highlight")).toBe(false);
+  });
+
+  it("lets a caller override data-highlight through the rest props", () => {
+    const { container } = render(
+      <Timeline animate={false}>
+        <Timeline.Item title="Forced" highlight data-highlight="false" />
+      </Timeline>,
+    );
+    const item = container.querySelector(".timeline-item") as HTMLElement;
+    expect(item.dataset.highlight).toBe("false");
+  });
 });

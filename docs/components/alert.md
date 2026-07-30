@@ -124,6 +124,12 @@ of that variant re-tints at runtime, with no rebuild.
 | Row gap          | `gap-r5`                                                         | `--R-SIZE-5`                         |
 | Type scale       | `text-body-2`                                                   | `--BodyText-2`                       |
 
+**The glyph aligns to the first line, not to the row.** It sits in a `h-[1lh]` box that
+centres it on the leading of `text-body-2`, so it lines up with the message in any theme and
+at any breakpoint, and stays at the top when the message runs to a second line. There is no
+variable to override here: `1lh` *is* whatever `--BodyText-2-line-height` your theme sets,
+which is why moving that step moves the alignment with it.
+
 The border is that variant's foreground token at `/20` alpha, so it always tracks
 the text colour — there is no separate border token to tune. The tinted background
 (`--C-STATUS-*-BG`) is the background the [contrast pairing](../theme-contract.md#the-contrast-pairing)

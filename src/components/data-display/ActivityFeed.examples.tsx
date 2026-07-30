@@ -37,6 +37,38 @@ export function WithAvatars() {
   );
 }
 
+/** `highlight` champions one row: the marker takes the accent, inked with its paired `on-*`, plus a ring so it reads bigger without relying on hue. */
+export function ChampionARow() {
+  return (
+    <ActivityFeed>
+      <ActivityFeed.Item
+        icon={<GitPullRequest />}
+        actor="Ada Lovelace"
+        action="opened"
+        target="Add OKLCH theming"
+        timestamp="2h ago"
+      />
+      <ActivityFeed.Item
+        highlight
+        icon={<GitMerge />}
+        actor="Deploy bot"
+        action="released"
+        target="v4.12.0"
+        timestamp="1h ago"
+      >
+        Rolled out to 4 regions with no error-budget spend.
+      </ActivityFeed.Item>
+      <ActivityFeed.Item
+        icon={<MessageSquare />}
+        actor="Grace Hopper"
+        action="commented on"
+        target="v4.12.0"
+        timestamp="55m ago"
+      />
+    </ActivityFeed>
+  );
+}
+
 /** Children render as a body block beneath the sentence — a comment, a diff, any detail. */
 export function WithBody() {
   return (

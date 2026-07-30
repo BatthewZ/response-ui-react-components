@@ -35,15 +35,38 @@ type ActivityFeedItemProps = {
   action?: ReactNode;
   target?: ReactNode;
   timestamp?: ReactNode;
+  /**
+   * Champion this row: the marker takes `--activity-feed-highlight-fill` inked
+   * with `--activity-feed-highlight-ink`, and gains a ring in the fill colour so
+   * it reads bigger — the cue that survives greyscale and a theme whose accent
+   * sits near the surface, where hue alone would not. Both are public custom
+   * properties; a `className` cannot reach the marker, and even reaching it would
+   * lose to this package's unlayered CSS.
+   *
+   * The ring is a `box-shadow`, so it costs no layout — the 2rem marker column is
+   * a fixed grid track that the connector's origin is measured from, and growing
+   * the marker would move the rail. `Timeline.Item` takes the same prop and
+   * spends it the same way.
+   * @default false
+   */
+  highlight?: boolean;
 } & ComponentPropsWithRef<"li">;
 
 const ActivityFeedItem = forwardRef<HTMLLIElement, ActivityFeedItemProps>(
   function ActivityFeedItem(
-    { avatar, icon, actor, action, target, timestamp, className, children, ...props },
+    { avatar, icon, actor, action, target, timestamp, highlight = false, className, children, ...props },
     ref,
   ) {
     return (
-      <li ref={ref} className={cn("activity-feed-item", className)} {...props}>
+      // `data-highlight` is absent rather than `"false"` when off, so the
+      // stylesheet tests for presence. Before the spread, as with `role` on the
+      // root, so a caller can still override it.
+      <li
+        ref={ref}
+        className={cn("activity-feed-item", className)}
+        data-highlight={highlight ? "true" : undefined}
+        {...props}
+      >
         <div className="activity-feed-aside">
           {avatar ?? <div className="activity-feed-dot">{icon}</div>}
         </div>

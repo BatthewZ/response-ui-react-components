@@ -193,7 +193,8 @@ describe("ToastContext", () => {
 
     await user.click(screen.getByRole("button", { name: "Add error toast" }));
     const root = screen.getByRole("alert");
-    const svg = Array.from(root.children).find((c) => c.tagName.toLowerCase() === "svg");
+    // Everything but the dismiss button's own hand-rolled glyph.
+    const svg = Array.from(root.querySelectorAll("svg")).find((s) => !s.closest("button"));
     expect(svg).toBeDefined();
     expect(svg).toHaveAttribute("aria-hidden", "true");
     expect(svg).not.toHaveAttribute("aria-label");

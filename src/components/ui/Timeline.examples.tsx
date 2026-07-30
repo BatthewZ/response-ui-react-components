@@ -1,4 +1,5 @@
-import { CheckCircle2, Package, Truck } from "lucide-react";
+import { CheckCircle2, GitCommit, Package, Rocket, Truck } from "lucide-react";
+import type { CSSProperties } from "react";
 
 import { Timeline } from "./Timeline";
 
@@ -72,19 +73,56 @@ export function SpaciousFlat() {
   );
 }
 
-/** `icon` replaces the dot, at any size — the node is centred by a translate, so `density` changing the dot never shifts it. */
+/** `icon` sits in a marker puck — an opaque disc that masks the rail — and the puck sizes your glyph, so no `size` prop to tune per density. */
 export function CustomIcons() {
   return (
     <Timeline>
-      <Timeline.Item icon={<Package size={14} aria-hidden />} date="12 March" title="Order placed">
+      <Timeline.Item icon={<Package aria-hidden />} date="12 March" title="Order placed">
         Three items, paid with the card ending 4242.
       </Timeline.Item>
-      <Timeline.Item icon={<Truck size={14} aria-hidden />} date="13 March" title="Out for delivery">
+      <Timeline.Item icon={<Truck aria-hidden />} date="13 March" title="Out for delivery">
         Handed to the courier in Rotterdam.
       </Timeline.Item>
-      <Timeline.Item icon={<CheckCircle2 size={14} aria-hidden />} date="15 March" title="Delivered">
+      <Timeline.Item icon={<CheckCircle2 aria-hidden />} date="15 March" title="Delivered">
         Signed for by Ada Lovelace.
       </Timeline.Item>
+    </Timeline>
+  );
+}
+
+/** `highlight` champions one entry: the marker takes the accent and a ring so it reads bigger, and the card's hairline strengthens. */
+export function ChampionAnEntry() {
+  return (
+    <Timeline align="left" density="dense" animate={false}>
+      <Timeline.Item icon={<CheckCircle2 aria-hidden />} date="14:02" title="v4.12.0 live">
+        Four regions, no rollbacks.
+      </Timeline.Item>
+      <Timeline.Item highlight icon={<Rocket aria-hidden />} date="13:51" title="Canary promoted">
+        Error rate held at 0.02%.
+      </Timeline.Item>
+      <Timeline.Item icon={<GitCommit aria-hidden />} date="13:30" title="Build queued" />
+    </Timeline>
+  );
+}
+
+/** The highlight's two colours are public custom properties. Re-point them per instance — as a contractual fill-and-ink pair, never a lone fill. */
+export function ChampionInAnotherKey() {
+  return (
+    <Timeline
+      align="left"
+      density="dense"
+      animate={false}
+      style={
+        {
+          "--timeline-highlight-fill": "var(--C-PRIMARY)",
+          "--timeline-highlight-ink": "var(--C-TEXT-ON-PRIMARY)",
+        } as CSSProperties
+      }
+    >
+      <Timeline.Item highlight icon={<Rocket aria-hidden />} date="13:51" title="Canary promoted">
+        Error rate held at 0.02%.
+      </Timeline.Item>
+      <Timeline.Item icon={<GitCommit aria-hidden />} date="13:30" title="Build queued" />
     </Timeline>
   );
 }

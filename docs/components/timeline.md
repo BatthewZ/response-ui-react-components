@@ -30,9 +30,12 @@ own segment of the rail as a `::before` — suppressed on the last one, so the l
 the final dot begins however tall that card is. The root wraps its children in a single
 context provider carrying one value, the root's `animate` setting; `Timeline.Item` reads it
 to decide whether it renders through a [ScrollReveal](scroll-reveal.md) or a plain `<div>`.
-Every item then renders the same two boxes — a `timeline-node` holding the dot or your
-`icon`, absolutely positioned onto the rail, and a `timeline-card` holding the optional date,
-the title and the optional body.
+Every item then renders the same two boxes — a `timeline-node` absolutely positioned onto the
+rail, and a `timeline-card` holding the optional date, the title and the optional body. The
+node holds either the default `timeline-dot` or, when you pass an `icon`, a `timeline-icon`
+puck wrapping it. That wrapper is not cosmetic: it is the opaque disc that hides the rail
+behind the marker, and it is the only signal the root has that this timeline needs
+puck-width room rather than dot-width room.
 
 The provider emits no element, so `.timeline-item` stays a **direct child** of `.timeline` —
 which matters, because everything positional is pure CSS. `align`, `density` and `card` become
@@ -47,7 +50,7 @@ two items can no longer split the two apart.
 | Part            | Renders                                                              | Props                                                            |
 | --------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `Timeline`      | `<div class="timeline" data-align data-density data-card>`            | `align?` · `density?` · `card?` · `animate?` (+ all `div` props, all of which reach the DOM) |
-| `Timeline.Item` | `<div class="timeline-item">`, through a scroll reveal when animating | `title` · `date?` · `icon?` · `children?` — and see the passthrough gotcha |
+| `Timeline.Item` | `<div class="timeline-item" data-highlight?>`, through a scroll reveal when animating | `title` · `date?` · `icon?` · `highlight?` · `children?` — and see the passthrough gotcha |
 
 ## Root props
 
@@ -116,11 +119,16 @@ honours. Under `dir="rtl"` an `align="left"` rail stays on the left.
 ## Density
 
 `density` retunes spacing only — the gap between events, the card's padding, the gaps under the
-date and title, and the dot's diameter. It changes **no type size**, and it does **not** touch
-the card's border or surface; that is `card`.
+date and title, the dot's diameter, and the marker puck with its glyph. It changes **no type
+size**, and it does **not** touch the card's border or surface; that is `card`.
 
-The rail's own position is deliberately outside the density group, so switching density changes
-the rhythm without sliding the rail sideways.
+**Does switching density slide the rail sideways?** For a timeline of **dots, no** — and that is
+now enforced rather than hoped for: the rail's position is a `max()` over the marker's reach
+against the two `--R-SIZE-*` steps it used to be stated as, and every dot size fits inside them
+at both breakpoints, so those `max()`es resolve to the same literals they always did. For a
+timeline of **pucks, yes**, necessarily — a 2rem disc *defines* where the rail can sit, so
+retuning it moves the rail. [Icons on the rail](#icons-on-the-rail) has the measurements and why
+that trade beats the alternative.
 
 | | `dense` | `comfortable` | `spacious` |
 | --- | --- | --- | --- |
@@ -128,6 +136,8 @@ the rhythm without sliding the rail sideways.
 | Card padding | `--R-SIZE-5` | `--R-SIZE-4` | `--R-SIZE-3` |
 | Under the date (within an event) | `--R-SIZE-6` | `--R-SIZE-6` | `--R-SIZE-6` |
 | Dot | `0.5rem` | `0.875rem` | `1rem` |
+| Icon puck | `1.5rem` | `1.75rem` | `2rem` |
+| Glyph inside the puck | `0.875rem` | `1rem` | `1.125rem` |
 
 Read that table remembering the `r` scale is **inverted** — a *higher* number is a *smaller*
 value — so `dense` counts up and `spacious` counts down.
@@ -205,7 +215,8 @@ simply wins.
 | `title`     | `ReactNode` — **required**, rendered inside the `titleAs` element     | —       |
 | `titleAs`   | `"h1" … "h6"` — the element `title` renders in                        | `"h3"`  |
 | `date`      | `string` — a `<span>` above the title, omitted entirely when falsy     | —       |
-| `icon`      | `ReactNode` — replaces the default dot inside the node                | —       |
+| `icon`      | `ReactNode` — replaces the default dot, inside a marker puck           | —       |
+| `highlight` | `boolean` — champion this entry; emits `data-highlight="true"`         | `false` |
 | `children`  | `ReactNode` — the body block under the title; omitted when falsy      | —       |
 | `className` | `string` — merged after `timeline-item`; survives on **both** paths   | —       |
 | `ref`       | `Ref<HTMLDivElement>` — reaches the rendered element on both paths    | —       |
@@ -220,30 +231,133 @@ them, so a screenful of events animates together rather than in sequence.
 
 ## Icons on the rail
 
-`icon` replaces the dot inside the node, at any size: the node is centred on the rail with a
-`translateX(-50%)` at every width and every `align`, so a 32px glyph and the default dot both land
-on the line. (Until 0.10.1 the mobile offset subtracted half of `--_timeline-dot-size`, which
-centred the *default* dot and nothing else — measured in Firefox at 375px, a 32px icon sat 9px to
-the right of the rail, exactly half the difference.) That size-agnostic centring is also what lets
-`density` change the dot's diameter — `0.5rem` at `dense`, `0.875rem` at `comfortable`, `1rem` at
-`spacious` — without anything else moving. Your `icon` is **not** resized to match, so pick one
-that suits the density you are rendering at.
+`icon` replaces the dot, and lands in a **marker puck**: an opaque `--C-SURFACE-2` disc, glyph
+inked `--C-TEXT-SECONDARY`, exactly as [ActivityFeed](activity-feed.md)'s fallback marker and
+[Stepper](stepper.md)'s indicator are. The disc is not decoration. The rail is drawn *behind* the
+node, so a bare glyph with transparent gaps in it shows the line running through itself, and the
+line reads as passing over the final marker rather than terminating on it. Both faults go away the
+moment the marker is opaque.
+
+**The puck sizes your glyph.** `density` steps the disc and the glyph together — `1.5`/`0.875rem`
+at `dense`, `1.75`/`1rem` at `comfortable`, `2`/`1.125rem` at `spacious` — so there is no `size`
+prop to hand-tune against the density you happen to be rendering at, and the padding around the
+glyph stays proportional instead of crowding the edge at one end of the scale and swimming at the
+other. It applies to direct `svg` children only: wrap your icon in anything and you keep control
+of it.
+
+**The rail moves out to make room, and this is the one place `density` shifts it.** A 2rem disc
+centred on a rail `0.5rem` from the content edge would overhang the root and touch the card, so
+`--_timeline-line-offset` and `--_timeline-gutter` are `max()`es over the marker's own reach —
+see [Theme tokens](#theme-tokens). Two consequences worth knowing:
+
+- A timeline of **dots is untouched**. Every dot size fits inside the two `--R-SIZE-*` steps the
+  offset and gutter used to state as literals, at both breakpoints, so those `max()`es resolve to
+  the same values they always did. Measured, not assumed: rail position, gutter, marker edges,
+  card width and card inset are identical across all six density × breakpoint combinations, and
+  across `card={false}`, `align="center"` and `align="right"`.
+- A timeline of **pucks indents its cards further** than one of dots — about 8–10px, which is the
+  room the disc needs. The alternative was reserving puck-width room in every timeline, which
+  moves the rail for everyone who never asked for an icon.
+
+The node itself is still centred by `translateX(-50%)` at every width and every `align`, so the
+disc's centre lands on the rail's centre whatever size it is. (Until 0.10.1 the mobile offset
+subtracted half of `--_timeline-dot-size`, which centred the *default* dot and nothing else —
+measured in Firefox at 375px, a 32px icon sat 9px to the right of the rail, exactly half the
+difference.)
 
 <!-- example:CustomIcons -->
 ```tsx
 <Timeline>
-  <Timeline.Item icon={<Package size={14} aria-hidden />} date="12 March" title="Order placed">
+  <Timeline.Item icon={<Package aria-hidden />} date="12 March" title="Order placed">
     Three items, paid with the card ending 4242.
   </Timeline.Item>
-  <Timeline.Item icon={<Truck size={14} aria-hidden />} date="13 March" title="Out for delivery">
+  <Timeline.Item icon={<Truck aria-hidden />} date="13 March" title="Out for delivery">
     Handed to the courier in Rotterdam.
   </Timeline.Item>
-  <Timeline.Item icon={<CheckCircle2 size={14} aria-hidden />} date="15 March" title="Delivered">
+  <Timeline.Item icon={<CheckCircle2 aria-hidden />} date="15 March" title="Delivered">
     Signed for by Ada Lovelace.
   </Timeline.Item>
 </Timeline>
 ```
 <!-- /example -->
+
+## Championing an entry
+
+`highlight` makes one entry the one you look at first. The marker fills with
+`--timeline-highlight-fill` inked with `--timeline-highlight-ink`, the card's hairline takes
+`--timeline-highlight-border`, and the marker gains a ring in the fill colour so it reads
+*bigger*:
+
+<!-- example:ChampionAnEntry -->
+```tsx
+<Timeline align="left" density="dense" animate={false}>
+  <Timeline.Item icon={<CheckCircle2 aria-hidden />} date="14:02" title="v4.12.0 live">
+    Four regions, no rollbacks.
+  </Timeline.Item>
+  <Timeline.Item highlight icon={<Rocket aria-hidden />} date="13:51" title="Canary promoted">
+    Error rate held at 0.02%.
+  </Timeline.Item>
+  <Timeline.Item icon={<GitCommit aria-hidden />} date="13:30" title="Build queued" />
+</Timeline>
+```
+<!-- /example -->
+
+**Two channels, deliberately.** The fill says *which* entry at a glance. The ring says it again
+as **width**, and that is the half that still works when the hue does not — in greyscale, and
+under a theme that seats its accent near the surface, where a filled disc renders as a ring and
+a colour-only cue would leave the championed marker indistinguishable from its neighbours. A cue
+carried by hue alone would be the colour-only pattern this library has closed rows against in
+[Alert](alert.md), [Badge](badge.md), [Toast](toast.md) and [Meter](meter.md). The ring's width
+is the one part that is **not** a custom property, for exactly that reason — it cannot be
+overridden away.
+
+**It works without an `icon` too.** The default dot is already `--C-ACCENT`, so re-filling it
+with the accent would move nothing; the ring is the entire cue there, which is the reason the
+ring exists rather than a fill alone.
+
+**Championing an entry never slides the rail.** The ring's width is reserved in the geometry
+whether or not anything is highlighted, so the rail sits in the same place either way. The cost
+is that a timeline containing a highlight reserves 2px more than one that does not — visible
+only below `40rem`, where the `--R-SIZE-*` steps are tight enough for it to bind.
+
+### Re-skinning the highlight
+
+The two colours are **public** custom properties — no leading underscore. That is the override
+route that works, and the reason there is no `markerClassName`: a `className` on the item reaches
+`.timeline-item` and nothing inside it, and even if it did, this package's CSS is imported
+**unlayered** from `styles.css` and outranks `@layer utilities` whatever the specificity, so
+`bg-accent` and `border-*` would silently no-op against the rules they are trying to beat (the
+same trap documented under [Skeleton](skeleton.md)). A custom property set on the item has no
+unlayered declaration competing with it *there*, so it lands and inherits inward.
+
+<!-- example:ChampionInAnotherKey -->
+```tsx
+<Timeline
+  align="left"
+  density="dense"
+  animate={false}
+  style={
+    {
+      "--timeline-highlight-fill": "var(--C-PRIMARY)",
+      "--timeline-highlight-ink": "var(--C-TEXT-ON-PRIMARY)",
+    } as CSSProperties
+  }
+>
+  <Timeline.Item highlight icon={<Rocket aria-hidden />} date="13:51" title="Canary promoted">
+    Error rate held at 0.02%.
+  </Timeline.Item>
+  <Timeline.Item icon={<GitCommit aria-hidden />} date="13:30" title="Build queued" />
+</Timeline>
+```
+<!-- /example -->
+
+Re-point them as a **pair**, and as a contractual one. Per the
+[theme contract](../theme-contract.md) a fill token guarantees contrast only with its paired
+`on-*` ink — `--C-PRIMARY` with `--C-TEXT-ON-PRIMARY`, `--C-ACCENT` with `--C-TEXT-ON-ACCENT`.
+Setting `--timeline-highlight-fill` to a status token, or to a raw hex, leaves the glyph's
+contrast to luck. `--timeline-highlight-border` is separate for the same reason inverted: the
+card's hairline is a **stroke on the surface**, where a fill token guarantees nothing at all, so
+it defaults to `--C-BORDER-STRONG` and wants a border or text token if you change it.
 
 ## Leaner entries
 
@@ -314,8 +428,14 @@ contract variables directly, the way Tabs and ActivityFeed do.
 | Card surface (dropped by `card={false}`)    | `--C-SURFACE-0`                              |
 | Card corners                                | `--RADIUS-LG`                                |
 | Card padding — `comfortable`                | `--R-SIZE-4`                                 |
-| Gutter (single-column padding · alternating card inset) | `--R-SIZE-2`                      |
-| Rail offset from the edge                   | `--R-SIZE-5`                                 |
+| Icon puck fill · glyph ink                  | `--C-SURFACE-2` · `--C-TEXT-SECONDARY`       |
+| Puck corners                                | `--RADIUS-FULL`                              |
+| Championed marker fill · glyph ink          | `--C-ACCENT` · `--C-TEXT-ON-ACCENT`          |
+| Championed card hairline                    | `--C-BORDER-STRONG`                          |
+| Gutter **floor** (single-column padding · alternating card inset) | `--R-SIZE-2`    |
+| Rail offset **floor** from the edge         | `--R-SIZE-5`                                 |
+| Air between a puck and its card             | `--R-SIZE-5`                                 |
+| Air between a dot and its card              | `--R-SIZE-6`                                 |
 | Space between two events — `comfortable`    | `--R-SIZE-3`                                 |
 | Space under the date                        | `--R-SIZE-6`                                 |
 | Date ink                                    | `--C-TEXT-MUTED`                             |
@@ -324,34 +444,53 @@ contract variables directly, the way Tabs and ActivityFeed do.
 | Body ink                                    | `--C-TEXT-SECONDARY`                         |
 | Title and body type                         | `--BodyText-2` · `--BodyText-2-line-height`  |
 
-Nine values are **component-local, not contract tokens**, and are spelled with a leading
-underscore to say so. They fall into two groups, and the split is what makes `density` safe.
+**Three of the variables Timeline declares are public**, and they are the only supported way to
+restyle the highlight: `--timeline-highlight-fill`, `--timeline-highlight-ink` and
+`--timeline-highlight-border`, defaulting to `--C-ACCENT`, `--C-TEXT-ON-ACCENT` and
+`--C-BORDER-STRONG`. No leading underscore says so, the same convention
+[Stepper](stepper.md)'s `--stepper-progress-color` follows. See
+[Re-skinning the highlight](#re-skinning-the-highlight) — including why re-pointing the fill
+without its ink breaks the contrast contract.
 
-**Fixed geometry — where the rail sits.** `--_timeline-gutter` and `--_timeline-line-offset`
-alias the two `--R-SIZE-*` steps above, `--_timeline-line-width` is the literal `2px`, and
-`--_timeline-rail-x` is derived (`line-offset - gutter`) — the rail's x-position *inside an
-item*, which the segment and the node both read so they cannot drift apart. `density` does not
-touch any of these, deliberately: switching density should change the rhythm, not slide the rail
-sideways. (Custom properties resolve lazily, so retuning the gutter *would* move `rail-x` — which
-is precisely why it doesn't.)
+Fourteen further values are **component-local, not contract tokens**, and are spelled with a
+leading underscore to say so. They fall into four groups.
 
-**Retuned by `density`.** `--_timeline-dot-size`, `--_timeline-card-padding` and
-`--_timeline-item-gap`. Each density is a single rule that assigns these and nothing else — no
-density anywhere changes a selector, an offset or a type size, so the layout is identical across
-all three. `--_timeline-date-gap` sits in this group by kind but is deliberately constant at
-`--R-SIZE-6`: it is already the tightest step the scale has.
+**Retuned by `density`.** `--_timeline-dot-size`, `--_timeline-marker-size`,
+`--_timeline-glyph-size`, `--_timeline-card-padding` and `--_timeline-item-gap`. Each density is
+a single rule that assigns these and nothing else — no density changes a selector or a type size.
+`--_timeline-date-gap` sits in this group by kind but is deliberately constant at `--R-SIZE-6`:
+it is already the tightest step the scale has.
+
+**The marker's reach.** `--_timeline-marker-radius` is how far the widest marker in *this*
+timeline reaches from the rail's centre, and `--_timeline-marker-clearance` is how much air to
+leave between it and the card. Three rules of ascending weight state them per marker kind — plain
+dot on `.timeline` itself, then `:has()` rules for a highlighted dot and for a puck. Both
+`:has()` rules are written to the same specificity so **source order** decides, deliberately: a
+timeline carrying both a puck and a highlight must reserve puck room, and a plainer selector for
+the puck would have lost to the highlight rule and left the puck overhanging the card.
+
+**Derived — where the rail sits.** `--_timeline-line-offset` and `--_timeline-gutter` used to
+alias the two `--R-SIZE-*` steps above; they are now `max()`es of those steps against the marker's
+reach, so a marker can only ever push the rail *outward*, never pull it in. `--_timeline-rail-x`
+(`line-offset - gutter`) is the rail's x-position *inside an item*, which the segment and the node
+both read so they cannot drift apart, and `--_timeline-line-width` is the literal `2px`. Custom
+properties resolve lazily, which is what makes this hold together: retune the marker's reach and
+the offset, the gutter and `rail-x` all follow in step.
 
 **Used only by `card={false}`.** `--_timeline-first-line` is the height of an entry's first line
-box (`--BodyText-3-line-height`), which the dot centres on once there is no card edge to sit on.
-It is declared once for the same reason as `--_timeline-rail-x`: the node centres *inside* it and
-the rail shifts by *half* of it, so changing one without the other would put every dot back off
-its own line.
+box (`--BodyText-3-line-height`), which the marker centres on once there is no card edge to sit
+on. It is declared once for the same reason as `--_timeline-rail-x`: the node centres *inside* it
+and the rail shifts by *half* of it, so changing one without the other would put every marker
+back off its own line.
 
-All nine are declared on `.timeline`. The node is then centred with `translateX(-50%)` rather
-than by subtracting half a dot, so the dot's centre lands on the rail's centre whatever size the
-`icon` is — and that is also what lets `density` change the dot's diameter without re-deriving
-anything. Because they are declared on the root element you can still reach them through `style`,
-but they are outside the contract and free to change.
+`--_timeline-highlight-ring` is the fourteenth and belongs to none of them: it is the width the
+championed marker's ring adds, held private so the non-colour half of the cue cannot be
+overridden away.
+
+All are declared on `.timeline`. The node is then centred with `translateX(-50%)` rather than by
+subtracting half a dot, so the marker's centre lands on the rail's centre whatever size it is.
+Because they are declared on the root element you can still reach the underscored ones through
+`style`, but they are outside the contract and free to change.
 
 Most of the spacing is on the responsive `r`-scale, where a **lower** number is a **larger**
 value and every step except `--R-SIZE-6` grows at the `40rem` breakpoint: `--R-SIZE-2`

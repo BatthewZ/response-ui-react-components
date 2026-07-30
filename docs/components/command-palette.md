@@ -50,7 +50,8 @@ stacking are the platform's job rather than yours. You supply the commands and t
 
 `open` is required, so the palette is **always** controlled — it opens itself with
 `showModal()` when the boolean flips to `true` and closes when it flips back. `onClose` fires
-on Escape and after any selection; nothing shuts unless that callback moves your state.
+on Escape, on a press that lands on the scrim outside the panel, and after any selection;
+nothing shuts unless that callback moves your state.
 
 ### `CommandItem`
 
@@ -433,16 +434,19 @@ palette's colour, spacing and timing but not its shape.
   the first selectable row whenever the query changes.)
 - **`className` utilities lose to `CommandPalette.css`.** Unlayered component CSS outranks
   Tailwind's layered utilities — see [Sizing the panel](#sizing-the-panel).
-- **Nothing dismisses it but Escape and your own state.** There is no light dismiss, no
-  `closedby` attribute, and no close button. A backdrop click targets the `<dialog>` element
-  and no handler is attached, so it does nothing. Escape is intercepted correctly — the `cancel`
-  listener calls `preventDefault()` first, so the element cannot close behind React's back — but
-  an `onClose` that doesn't flip your boolean leaves the palette stuck open with no way out for
-  a pointer user.
+- **Light dismiss is handled in React, not by `closedby`.** A press on the scrim is dispatched
+  at the `<dialog>` itself, so "outside" is measured as the pointer landing beyond the panel's
+  own border box — padding you add in `className` still counts as inside. Both ends of the
+  press must land there, so dragging a selection out of the input and releasing on the scrim
+  keeps the palette open. It requests the close through `onClose` like everything else; an
+  `onClose` that doesn't flip your boolean still leaves the palette stuck open.
 - **`onClose` occupies the native handler's name.** It is destructured out rather than spread,
   so you cannot subscribe to the DOM `close` event through the props. `onCancel` *is* spread and
   fires, but cannot opt out of the interception. Use the forwarded `ref` and `addEventListener`
   if you need the real `close`.
+- **Your `onClick` / `onPointerDown` are composed, not replaced.** Both run first, and calling
+  `preventDefault()` on the click is the opt-out from light dismiss for that press. Every other
+  `dialog` prop still overwrites the component's own.
 - **Every command is mounted while the palette is closed.** The `<dialog>` and the whole option
   list render on the very first pass, filter included; the browser just hides them with
   `dialog:not([open]) { display: none }`. So a 1000-command array is 1000 option `<div>`s in the

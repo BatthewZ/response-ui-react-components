@@ -166,4 +166,32 @@ describe("ActivityFeed", () => {
     );
     expect(container.querySelector(".activity-feed")).toHaveAttribute("aria-busy", "true");
   });
+
+  /* ------------------------------------------------------------------ */
+  /*  highlight                                                          */
+  /* ------------------------------------------------------------------ */
+
+  // Absent rather than "false" when off, so the stylesheet tests for presence.
+  // Matches `Timeline.Item`, which spends the same prop the same way.
+  it("marks a championed row with data-highlight and leaves the rest alone", () => {
+    const { container } = render(
+      <ActivityFeed>
+        <ActivityFeed.Item highlight icon={<span>★</span>} actor="Deploy bot" />
+        <ActivityFeed.Item icon={<span>·</span>} actor="Grace" />
+      </ActivityFeed>,
+    );
+    const rows = [...container.querySelectorAll(".activity-feed-item")] as HTMLElement[];
+    expect(rows[0].dataset.highlight).toBe("true");
+    expect(rows[1].hasAttribute("data-highlight")).toBe(false);
+  });
+
+  it("lets a caller override data-highlight through the rest props", () => {
+    const { container } = render(
+      <ActivityFeed>
+        <ActivityFeed.Item highlight data-highlight="false" actor="Ada" />
+      </ActivityFeed>,
+    );
+    const row = container.querySelector(".activity-feed-item") as HTMLElement;
+    expect(row.dataset.highlight).toBe("false");
+  });
 });

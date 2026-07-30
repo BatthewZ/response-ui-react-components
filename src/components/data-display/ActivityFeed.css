@@ -16,6 +16,27 @@
   --_activity-feed-dot-size: var(--_activity-feed-aside-width);
   --_activity-feed-icon-size: 1rem;
   --_activity-feed-line-width: 2px;
+  /* The ring a championed marker grows by, and the non-colour half of the
+     `highlight` cue: it makes the marker read BIGGER, which greyscale and a theme
+     whose accent sits near the surface both still show. Private on purpose —
+     overriding it away would leave `highlight` conveying rank by hue alone (WCAG
+     1.4.1). Drawn as a `box-shadow` so it costs no layout: the aside is a fixed
+     2rem grid track and the connector's `top` is measured from that width, so a
+     marker that actually grew would move the rail. */
+  --_activity-feed-highlight-ring: 2px;
+
+  /* Public — no leading underscore, so an instance may re-point them. This is the
+     only override route that works: `className` reaches the `<li>` and nothing
+     inside it, and even inside, this package's CSS is imported unlayered from
+     `styles.css` and outranks `@layer utilities` whatever the specificity. A
+     custom property set on the row has no unlayered declaration competing with it
+     there, so it lands and inherits inward. Same contract as
+     `--stepper-progress-color`; `Timeline` exposes the matching pair.
+
+     A FILL token inked with its paired `on-*`, per the contrast contract — the
+     marker is a filled disc, not a stroke. */
+  --activity-feed-highlight-fill: var(--C-ACCENT);
+  --activity-feed-highlight-ink: var(--C-TEXT-ON-ACCENT);
 
   list-style: none;
   margin: 0;
@@ -91,6 +112,39 @@
 .activity-feed-dot > svg {
   width: var(--_activity-feed-icon-size);
   height: var(--_activity-feed-icon-size);
+}
+
+/* ------------------------------------------------------------------ */
+/*  highlight — champion one row                                      */
+/* ------------------------------------------------------------------ */
+
+/* The ring goes on whatever fills the aside, so it lands on an `avatar` marker as
+   well as the fallback dot. No `border-radius` is stated: the shadow traces the
+   marker's own shape, so a circular Avatar gets a circular ring and a caller's
+   square marker gets a square one, rather than this rule deciding for them.
+
+   The ring overlaps the connector's first 2px — it starts at exactly the aside's
+   width — which reads as the line meeting the ring's edge instead of the marker's,
+   and is what you want. It also overhangs the `<ol>`'s content box by the same
+   2px; nothing in the feed clips, but an ancestor with `overflow: hidden` and no
+   padding would shave it.
+
+   KNOWN LIMIT, and the reason `highlight` is documented against the icon marker:
+   on a dot the ring is the fill colour around a fill-coloured disc, so the cue is
+   "this disc is bigger" and reads in greyscale. On an `avatar` the ring is the
+   ONLY cue and it is a fill token used as a stroke, which the contrast contract
+   does not guarantee against the surface — under a theme that seats the accent
+   near the surface, a championed avatar row is indistinguishable. Re-point
+   `--activity-feed-highlight-fill` to a text token there. */
+.activity-feed-item[data-highlight="true"] .activity-feed-aside > * {
+  box-shadow: 0 0 0 var(--_activity-feed-highlight-ring) var(--activity-feed-highlight-fill);
+}
+
+/* Fill and ink on the dot alone: an avatar carries its own image or initials, and
+   re-inking it would fight whatever the caller put there. */
+.activity-feed-item[data-highlight="true"] .activity-feed-dot {
+  background-color: var(--activity-feed-highlight-fill);
+  color: var(--activity-feed-highlight-ink);
 }
 
 /* ------------------------------------------------------------------ */

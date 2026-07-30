@@ -98,6 +98,14 @@ good. These are the ways they have still let defects through.
   overlay, a trap, or anything `fixed` and full-viewport must be driven by its own `open` state,
   with every action that looks like a way out actually wired to one. Load the gallery after
   touching one.
+- **The consequence for anyone verifying in the browser: on the generated-examples tab, a clean
+  console and a clickable page are not available signals.** Examples are mounted standalone, so
+  one written as a doc snippet that assumes an ambient provider throws the moment it renders —
+  caught by the gallery's boundary, but still a fistful of red in the console that has nothing to
+  do with your change; and one that opens an overlay intercepts every click on the page, so a
+  click that times out is not evidence about the thing you touched either. Establish which errors
+  the tab throws *before* your change, drive that tab from a fresh load, and attribute nothing
+  seen there without checking it against your own diff's file list first.
 - **The docs generator deletes a section when you hand it an *empty* fence.** Adding a new
   example to a component page means writing the `<!-- example:Name -->` marker by hand and
   letting `gen-docs` fill the fence — but its marker pattern treats the fence body as optional

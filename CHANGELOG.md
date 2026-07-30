@@ -4,6 +4,94 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [Unreleased]
+
+### Breaking
+
+- **`StatCard.Trend`'s colour moves off `direction` onto a new `sentiment` axis.** The
+  `.stat-card__trend--up` / `--down` classes no longer carry any colour — they mark
+  direction and drive the arrow only. Colour now comes from
+  `.stat-card__trend--positive` / `--negative` / `--neutral`. Direction's neutral class is
+  renamed `--flat` so the two vocabularies can't alias. Anything overriding trend colour by
+  class must retarget; anything reading `--up`/`--down` for the arrow is unaffected.
+  Rendered output for existing markup is unchanged, because `sentiment` defaults to the
+  direction-implied value.
+
+- **`Sparkline`'s `bar` variant measures from zero.** Its default domain is widened to
+  include zero (`Math.min(0, …)` / `Math.max(0, …)`) instead of starting at `min(values)`.
+  Existing bar charts will re-render: the smallest datum is no longer a zero-height,
+  invisible rect, and series in a narrow band far from zero now read as flat instead of as
+  full-scale swings. `line` and `area` are unchanged — they encode position, not magnitude.
+  Pass an explicit `min`/`max` to restore any previous framing.
+
+### Added
+
+- **`highlight` on `Timeline.Item` and `ActivityFeed.Item`** — champions one entry so it reads
+  first. The marker fills with the accent inked with its paired `on-*`, and gains a ring in the
+  fill colour so it reads *bigger*: the fill carries which entry at a glance, the ring carries it
+  again as width, which is the half that survives greyscale and a theme seating its accent near
+  the surface. Hue alone would have been the colour-only pattern this library has closed rows
+  against in `Alert`, `Badge`, `Toast` and `Meter`. On `Timeline` the card's hairline strengthens
+  to `--C-BORDER-STRONG` as a supporting cue — a border token, because a hairline is a stroke on
+  the surface where a fill token guarantees nothing. It works without an `icon` too: the default
+  dot is already `--C-ACCENT`, so the ring is the entire cue there.
+
+  The colours are **public custom properties** — `--timeline-highlight-fill` / `-ink` /
+  `-border` and `--activity-feed-highlight-fill` / `-ink` — because a `className` cannot do this
+  job: it reaches the item and nothing inside it, and this package's CSS is imported unlayered,
+  so a utility loses to the rules it is trying to beat whatever its specificity. The ring's
+  *width* is deliberately private, so the non-colour half of the cue cannot be overridden away.
+
+- **`sentiment` on `StatCard.Trend` and `StatCard.Sparkline`** — `"positive" | "negative" |
+  "neutral"`, defaulting to the one implied by `direction`. `direction` states which way the
+  number moved; `sentiment` states whether that is good news. Metrics where the two diverge
+  — churn, latency, error rate, cost — can now show a down arrow with a minus sign in green.
+  Previously colour rode `direction`, so the only way to green a falling metric was to claim
+  it rose, which corrupted the arrow and the sign along with it.
+
+- **`CommandPalette` light-dismisses.** A press that starts and ends on the scrim outside the
+  panel calls `onClose`, so the palette is dismissable by pointer and by touch — Escape was the
+  only route out, which is no route at all on a phone. "Outside" is the pointer landing beyond
+  the panel's border box, and both ends of the press must land there, so a text selection dragged
+  out of the search input does not close it. `onClick` and `onPointerDown` passed by a caller are
+  now composed with the component's own rather than replacing them; `preventDefault()` on the
+  click opts a press out.
+
+### Fixed
+
+- **A `Timeline` `icon` no longer has the rail running through it.** The rail is drawn *behind*
+  the node, so a bare glyph with transparent gaps showed the line through itself, and the line
+  read as passing over the final marker rather than terminating on it. An `icon` now lands in a
+  `timeline-icon` **puck** — an opaque `--C-SURFACE-2` disc inked `--C-TEXT-SECONDARY`, exactly
+  as `ActivityFeed`'s fallback marker and `Stepper`'s indicator already were. The puck also sizes
+  the glyph (`density` steps disc and glyph together), so there is no `size` prop to hand-tune
+  per density; direct `svg` children only, so wrapping your icon keeps you in control.
+
+  **The rail moves out to make room, and only for pucks.** A 2rem disc centred on a rail
+  `0.5rem` from the content edge would overhang the root and touch the card, so
+  `--_timeline-line-offset` and `--_timeline-gutter` became `max()`es over the marker's own
+  reach. A timeline of **dots is unchanged** — every dot size fits inside the two `--R-SIZE-*`
+  steps those were stated as, so the `max()`es resolve to the same literals. Verified by browser
+  measurement rather than arithmetic: rail position, gutter, marker edges, card width and card
+  inset are identical across all six density × breakpoint combinations and across
+  `card={false}`, `align="center"` and `align="right"`. A timeline of pucks indents its cards
+  ~8–10px further, which is the room the disc needs; reserving that in every timeline instead
+  would have moved the rail for everyone who never asked for an icon.
+
+- **A `StatCard` sparkline no longer overflows the tile.** The slot capped itself with
+  `max-height`, which clamps the wrapper but cannot resize an `<svg>` carrying its own
+  `height` attribute — so the chart drew past the box and the overflow consumed the tile's
+  entire bottom padding, leaving the line flush against the border. The cap is gone (height
+  belongs to `Sparkline`'s `height` prop) and the slot is pinned with `margin-top: auto`, so
+  a row of tiles lines its charts up regardless of how tall each one's text runs.
+
+- **A `StatCard` sparkline fills the tile's width.** It rendered at the svg's intrinsic
+  120px, covering roughly 60% of a 4-up tile and reading as a layout mistake.
+
+- **The `area` fill bottoms out on the drawing area's floor, not the viewBox edge.** It
+  closed at `height`, painting into the gutter `strokeWidth` reserves and putting the area's
+  baseline `strokeWidth` px below every other variant's.
+
 ## [0.11.0] — 2026-07-29
 
 Requires `@batthewz/response-ui-css@^0.13.0`, which redefines the surface ramp. Read that

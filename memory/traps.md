@@ -696,9 +696,113 @@ collision, left alone because briefs in flight cite the later one by letter.)
   same size — so "2x" understates the visual jump and reviewers approve it as a linear change.
   Reason in area when the shape is an annulus, and prefer the smallest multiplier that still
   discharges the cue's actual job.
+- **`items-start` aligns to the row's top edge, which is not where the first line of text is.**
+  A fixed-size glyph beside a paragraph starts at the content top while the first line box is a
+  whole leading tall, so the glyph reads high; a control taller than one line reads low by the
+  opposite half. Two controls flanking the same sentence therefore land at two different heights
+  and the row looks subtly broken with no single element obviously at fault. Centre each on a box
+  one leading tall rather than nudging either with a negative margin: the margin is a constant,
+  and the leading is a theme variable, so a nudge tuned on one theme at one breakpoint is wrong
+  everywhere else. Measured in the browser rather than argued: the glyph sat 6px high, and the
+  leading it should follow ran 22px / 24px / 26px / 28px across the example themes and the mobile
+  breakpoint — a 27% spread that no single negative margin can satisfy. A control taller than that
+  box should overflow it into the container's existing padding — otherwise the *chrome* sets the
+  container's height and the block is taller than its own text.
+- **A misalignment that is *shared* by two components is a pattern, not an instance.** The
+  reported one was found by arithmetic; its twin was then confirmed live at exactly the predicted
+  offset, in a component nobody had complained about. When a defect comes from how a layout
+  primitive treats text, grep for the other components that lay out the same way before closing
+  it — the second one is free and the report will never mention it.
+- **A derived value has no override row.** The token table's promise is "override this variable
+  and the component follows", so a row is only honest when the utility resolves to the variable by
+  a path the guard can trace. Something that inherits from a step already listed — a leading from
+  its type step — is prose, not a row; claiming it names a second override that does not exist.
 - **When an emphasis cue reads wrong, check the ink against every theme before changing it.**
   The instinct was that the ring's colour was too strong; measuring each theme's alternative
   token showed the proposed softer ink dropped the emphasised state *below* the states it
   outranks in three of four examples. The ink was right and the geometry was wrong. A one-token
   swap that fixes the theme in front of you is the easiest way to break the three you are not
   looking at.
+
+## T · From the pass that assembled a whole page out of the library
+
+- **A compound component whose parts coordinate an exit needs every part to exist, not just
+  the active one.** Tabs animates the *outgoing* panel and clears its own exit flag when that
+  panel reports `animationend`. Render one panel bound to the selected value — the obvious
+  saving when four tabs share one body — and the outgoing element never exists, so nothing
+  ever reports the exit, the flag stays set, and the panel disappears permanently on the
+  first switch. Nothing throws and nothing warns. The general shape: before collapsing N
+  declarative children into one driven by state, check whether the parent's state machine
+  *observes* those children; a lifecycle that is discharged by a child cannot be discharged
+  by its absence.
+- **A component's own unlayered CSS also beats a *caller's* utility, which turns "cap it with
+  a width class" into a silent no-op.** The authoring-side rule is already written down (§L);
+  the consuming side is where it actually bites, because the caller has no reason to suspect
+  the class did nothing. A width or a `hidden` aimed at such a component belongs on a wrapper
+  element, which has no unlayered rule to lose to. The tell is a utility that works everywhere
+  else in the same file and not on that one component.
+- **Composing the library into one realistic page surfaces a class of defect that per-component
+  specimens structurally cannot.** Every trap in this section was invisible in a tile: the tile
+  had one panel, never switched, was never capped, and never sat in a stretched grid cell beside
+  a taller neighbour. A specimen proves a component works; only an assembly proves the
+  components work *together*, and the two gates catch disjoint sets.
+
+## U · From the pass that added light dismiss to a modal `<dialog>`
+
+- **A press on a modal `<dialog>`'s scrim is dispatched at the dialog element itself, so the
+  package's `useClickOutside` cannot guard one.** That hook asks whether the target is contained
+  by the ref, and for a backdrop press the target *is* the ref — it reports "inside" for every
+  press on the scrim and "inside" for every press on the panel, i.e. it can never fire. The only
+  tell is geometry: compare the pointer's coordinates against the panel's own border box. Reaching
+  for the hook first looks right, typechecks, and silently does nothing. The same trap runs the
+  other way for anything the browser puts in the top layer.
+- **Light dismiss keyed on `click` alone closes on a text selection dragged out of the panel.**
+  Press inside the search input, drag past the edge, release: the click's target resolves to the
+  common ancestor — the dialog — and a coordinate test on the release point alone reads "outside"
+  and throws away what the user was editing. Require both ends of the press to land outside.
+  Anything that measures only where a press *ended* has this bug, and a pointer-only manual pass
+  will not find it.
+- **A handler the component needs must be composed around a caller's, and sit after the rest
+  spread.** Placing it before the spread lets `onClick` from a caller replace it, which deletes a
+  behaviour the docs promise with no error anywhere. Composed after the spread — caller's handler
+  first, then the component's, gated on `defaultPrevented` — the caller keeps both a hook and an
+  opt-out. Note it in the docs: it makes those two props behave unlike every other prop on the
+  element.
+
+## V · From the pass that fixed the stat tile's charts
+
+- **A `max-height` on a wrapper cannot resize a child that carries its own intrinsic size, so
+  the cap silently becomes an overflow.** An `<svg>` with a `height` attribute ignores a cap on
+  its parent: the wrapper's box clamps, the child keeps painting past it, and the parent's
+  computed height comes up short by the difference. The overflow then lands in whatever padding
+  the ancestor reserved and eats it — the visible symptom is a child sitting flush against a
+  border, which reads as a missing-padding bug several elements away from the actual cause.
+  Height belongs to whatever owns the intrinsic size; capping from outside is not the same
+  instruction and does not fail loudly.
+- **`vector-effect: non-scaling-stroke` breaks a draw-in animation built on `pathLength`
+  normalisation.** The obvious pairing for a chart stretched by `preserveAspectRatio="none"` is
+  to opt the stroke out of scaling so it doesn't render elliptical. But the dash pattern is then
+  computed in screen space while `pathLength` normalises in user space, and the two disagree:
+  the settled line renders in disconnected fragments. It typechecks, every unit test passes, and
+  the computed styles all read correct — `animationName`, `strokeDasharray` and the finished
+  play-state are all exactly what you'd assert. Only the paint is wrong. In practice the
+  distortion it was meant to fix is invisible anyway, because a sparkline's slopes are shallow.
+- **A default that needs an opt-in to be correct is the wrong default, even when it is
+  documented.** Bars measured from `min(values)`, so the smallest datum was always an invisible
+  zero-height rect and a near-flat series was inflated into full-scale swings. Both behaviours
+  were written up as Gotchas with a workaround, which is what let them survive: prose describing
+  a footgun reads as a decision. §L still applies — answer the prose rather than deleting it —
+  but "it is documented" establishes only that someone noticed, not that it is right.
+- **Direction and sentiment are two axes, and a component that conflates them cannot be fixed by
+  its caller.** Colour keyed to which way a number moved is correct only for metrics where up is
+  good; for churn, latency, error rate or cost it is inverted, and the documented workaround —
+  map good/bad onto the direction prop — corrupts the arrow and the sign along with the colour,
+  because they read the same prop. When one prop drives both a statement of fact and a judgement
+  about it, no value of that prop is right. Split it, and default the judgement to the fact so
+  existing callers are unaffected.
+- **A test can pass on a renamed class by colliding with a different axis's vocabulary.** Moving
+  colour off `--up`/`--down` onto `--positive`/`--negative`/`--neutral` left an assertion for the
+  direction-neutral class green — because it was now matching the *sentiment*-neutral class of
+  the same name. The assertion's name still said "direction". Where two axes share an element,
+  give them non-overlapping vocabularies and assert both together, so neither can drift into the
+  other unnoticed.

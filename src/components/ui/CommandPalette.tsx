@@ -30,6 +30,10 @@ export type CommandItem = {
 
 type CommandPaletteProps = {
   open: boolean;
+  /**
+   * Called on Escape, on selecting a command, and on a pointer press that both
+   * starts and ends on the scrim outside the panel.
+   */
   onClose: () => void;
   items: CommandItem[];
   /** Replaces the default case-insensitive substring filter over label + keywords. */
@@ -97,6 +101,8 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
       listLabel = "Commands",
       statusMessage = defaultStatusMessage,
       className,
+      onClick,
+      onPointerDown,
       ...props
     },
     forwardedRef
@@ -284,6 +290,45 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
       [moveActive, findSelectable, ordered.length, selectActive]
     );
 
+    // Light dismiss. A press on the scrim is dispatched at the `<dialog>` itself,
+    // so `useClickOutside` cannot see it — the target *is* the element it guards.
+    // "Outside" is therefore the pointer landing beyond the panel's own box, which
+    // also keeps a caller's padding on the panel counting as inside.
+    const pressedOutside = useRef(false);
+
+    const isOutsidePanel = useCallback((e: React.MouseEvent<HTMLDialogElement>) => {
+      const dialog = dialogRef.current;
+      if (!dialog || e.target !== dialog) return false;
+      const rect = dialog.getBoundingClientRect();
+      return (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      );
+    }, []);
+
+    const handlePointerDown = useCallback(
+      (e: React.PointerEvent<HTMLDialogElement>) => {
+        onPointerDown?.(e);
+        pressedOutside.current = isOutsidePanel(e);
+      },
+      [onPointerDown, isOutsidePanel]
+    );
+
+    // Both ends of the press are required: dragging a selection out of the input
+    // and releasing on the scrim lands a click on the `<dialog>` too, and closing
+    // there would throw away the query the user was busy editing.
+    const handleClick = useCallback(
+      (e: React.MouseEvent<HTMLDialogElement>) => {
+        onClick?.(e);
+        const startedOutside = pressedOutside.current;
+        pressedOutside.current = false;
+        if (!e.defaultPrevented && startedOutside && isOutsidePanel(e)) onClose();
+      },
+      [onClick, isOutsidePanel, onClose]
+    );
+
     const hasResults = ordered.length > 0;
     const activeId = hasResults && isSelectable(activeIndex) ? optionId(activeIndex) : undefined;
 
@@ -335,6 +380,10 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
         className={cn("command-palette no-body-scroll", className)}
         aria-label="Command palette"
         {...props}
+        // After the spread: a caller's own handler is composed in above rather
+        // than replacing these, so passing one cannot silently kill light dismiss.
+        onPointerDown={handlePointerDown}
+        onClick={handleClick}
       >
         <div className="command-palette-search">
           <input

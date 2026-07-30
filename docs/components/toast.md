@@ -256,9 +256,17 @@ variant re-tints at runtime, with no rebuild.
 | Corner radius   | `rounded-md`                                                            | `--RADIUS-MD`                                |
 | Padding         | `p-r4`                                                                  | `--R-SIZE-4`                                 |
 | Text/button gap | `gap-r5`                                                                | `--R-SIZE-5`                                 |
-| Dismiss inset   | `-mr-r6` `-mt-r6`                                                       | `--R-SIZE-6`                                 |
+| Dismiss inset   | `-mr-r6`                                                                | `--R-SIZE-6`                                 |
 | Type scale      | `text-body-2`                                                           | `--BodyText-2`                               |
 | Title weight    | `font-semibold`                                                         | `--Semibold-Weight`                          |
+
+**The severity glyph and the dismiss button align to the first line, not to the row.** Each
+sits in a `h-[1lh]` box that centres it on the leading of `text-body-2` — so the two line up
+with the message and with each other in any theme, at any breakpoint, and stay at the top when
+the message wraps to a second line. There is no variable to override here: `1lh` *is* whatever
+`--BodyText-2-line-height` your theme sets, which is why moving that step moves the alignment
+with it. The dismiss button is taller than one line and overflows its box into the toast's own
+padding, so it no longer sets the toast's height.
 
 Like [Alert](alert.md), the border is the variant's own foreground token at `/20` alpha, so it
 tracks the text colour and there is no separate border variable to tune. The tinted

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -213,6 +213,106 @@ describe("CommandPalette", () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(cancelEvent.defaultPrevented).toBe(true);
+  });
+
+  describe("light dismiss", () => {
+    // jsdom lays nothing out, so the panel's box has to be supplied for the
+    // inside/outside test to have anything to compare a press against.
+    const PANEL = { left: 100, top: 100, right: 300, bottom: 200 };
+
+    function withPanelRect(dialog: HTMLElement) {
+      dialog.getBoundingClientRect = () =>
+        ({
+          ...PANEL,
+          width: PANEL.right - PANEL.left,
+          height: PANEL.bottom - PANEL.top,
+          x: PANEL.left,
+          y: PANEL.top,
+          toJSON() {},
+        }) as DOMRect;
+    }
+
+    const OUTSIDE = { clientX: 50, clientY: 50 };
+    const INSIDE = { clientX: 200, clientY: 150 };
+
+    it("closes on a press that starts and ends on the scrim", () => {
+      const onClose = vi.fn();
+      renderPalette({ open: true, onClose });
+      const dialog = screen.getByRole("dialog");
+      withPanelRect(dialog);
+
+      fireEvent.pointerDown(dialog, OUTSIDE);
+      fireEvent.click(dialog, OUTSIDE);
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("stays open when the press is inside the panel's own box", () => {
+      const onClose = vi.fn();
+      renderPalette({ open: true, onClose });
+      const dialog = screen.getByRole("dialog");
+      withPanelRect(dialog);
+
+      fireEvent.pointerDown(dialog, INSIDE);
+      fireEvent.click(dialog, INSIDE);
+
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("stays open when a drag that began inside is released on the scrim", () => {
+      const onClose = vi.fn();
+      renderPalette({ open: true, onClose });
+      const dialog = screen.getByRole("dialog");
+      withPanelRect(dialog);
+
+      fireEvent.pointerDown(screen.getByRole("combobox"), INSIDE);
+      fireEvent.click(dialog, OUTSIDE);
+
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("still runs a caller's own onClick and onPointerDown", () => {
+      const onClose = vi.fn();
+      const onClick = vi.fn();
+      const onPointerDown = vi.fn();
+      render(
+        <CommandPalette
+          open
+          onClose={onClose}
+          items={makeItems()}
+          onClick={onClick}
+          onPointerDown={onPointerDown}
+        />
+      );
+      const dialog = screen.getByRole("dialog");
+      withPanelRect(dialog);
+
+      fireEvent.pointerDown(dialog, OUTSIDE);
+      fireEvent.click(dialog, OUTSIDE);
+
+      expect(onPointerDown).toHaveBeenCalledTimes(1);
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("lets a caller opt out by preventing the click", () => {
+      const onClose = vi.fn();
+      render(
+        <CommandPalette
+          open
+          onClose={onClose}
+          items={makeItems()}
+          onClick={(e) => e.preventDefault()}
+        />
+      );
+      const dialog = screen.getByRole("dialog");
+      withPanelRect(dialog);
+
+      fireEvent.pointerDown(dialog, OUTSIDE);
+      fireEvent.click(dialog, OUTSIDE);
+
+      expect(onClose).not.toHaveBeenCalled();
+    });
   });
 
   it("resets activeIndex to the first match when the query changes", async () => {

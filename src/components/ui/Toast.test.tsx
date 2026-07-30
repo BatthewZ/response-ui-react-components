@@ -249,10 +249,11 @@ describe("Toast · severity has a text channel", () => {
 // #104, visual half — the hidden word closed the assistive-tech half and left
 // the tint as the only channel a sighted colour-blind reader has.
 describe("Toast · severity is visible without colour", () => {
-  // The dismiss button's own glyph is a hand-rolled <svg> inside a <button>;
-  // scoping to the root's direct children keeps this about the status icon.
+  // The dismiss button's own glyph is a hand-rolled <svg> inside a <button>, so
+  // excluding what the button owns is what keeps this about the status icon.
+  // Depth-agnostic on purpose: both glyphs sit in an alignment wrapper.
   const icon = (root: HTMLElement) =>
-    Array.from(root.children).find((c) => c.tagName.toLowerCase() === "svg") ?? null;
+    Array.from(root.querySelectorAll("svg")).find((s) => !s.closest("button")) ?? null;
 
   it("renders one glyph per variant, and it is decorative", () => {
     for (const variant of ["success", "warning", "error", "info"] as const) {

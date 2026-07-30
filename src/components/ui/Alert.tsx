@@ -7,6 +7,17 @@ type Variant = "success" | "warning" | "error" | "info";
 
 const baseClasses = "flex gap-r5 rounded-md p-r4 text-body-2";
 
+/**
+ * Centres the glyph on the message's *first* line. A flex row starts a 16px
+ * glyph at the content top while the first line box is a whole `text-body-2`
+ * leading tall, so the glyph reads high — measured at 6px here before this
+ * landed. `1lh` *is* that leading, so it tracks the theme (which moves it by a
+ * third) and the breakpoint, and the glyph stays put when the message wraps.
+ * Deliberately not hoisted next to `Toast`'s twin: the docs guard resolves a
+ * component's utilities textually from its own file and `./` siblings.
+ */
+const firstLineClasses = "flex h-[1lh] shrink-0 items-center";
+
 const variantClassMap: Record<Variant, string> = {
   success: "bg-status-success-bg text-status-success border border-status-success/20",
   warning: "bg-status-warning-bg text-status-warning border border-status-warning/20",
@@ -84,7 +95,7 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
       {...props}
     >
       {statusText && <span className="sr-only">{statusText}</span>}
-      {icon}
+      {icon && <span className={firstLineClasses}>{icon}</span>}
       {children}
     </div>
   );

@@ -5,7 +5,7 @@ import { Group, Tile } from "./gallery-ui";
 /**
  * Every `*.examples.tsx` in the library, rendered automatically.
  *
- * The curated gallery in App.tsx is a designed showcase; this is its exhaustive
+ * CuratedGallery.tsx is a designed showcase; this is its exhaustive
  * counterpart. It globs the same example modules the docs are generated from, so a
  * component appears here the moment its examples file lands — with no edit to this
  * file, or any other. That is the point: dev/ is the one file every component would

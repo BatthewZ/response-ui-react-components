@@ -25,7 +25,7 @@ the marker column from one item to the next, suppressed on the last one.
 | Part                | Renders | Props                                                                            |
 | ------------------- | ------- | -------------------------------------------------------------------------------- |
 | `ActivityFeed`      | `<ol>`  | `aria-busy?` (+ all `ol` props)                                                  |
-| `ActivityFeed.Item` | `<li>`  | `avatar?` · `icon?` · `actor?` · `action?` · `target?` · `timestamp?` · `children?` (+ all `li` props) |
+| `ActivityFeed.Item` | `<li data-highlight?>`  | `avatar?` · `icon?` · `actor?` · `action?` · `target?` · `timestamp?` · `highlight?` · `children?` (+ all `li` props) |
 
 Every slot is a `ReactNode`, and each renders only when it is non-nullish, so you can
 supply just the pieces a given event has. `className`, `id`, `ref`, and `aria-*` pass
@@ -61,6 +61,61 @@ dot sizes the glyph itself, so you don't hand-tune an icon `size` to match the r
 
 `avatar` and `icon` are not additive — the avatar slot short-circuits the dot fallback, so
 passing both silently drops the `icon`. See [Gotchas](#gotchas).
+
+## Championing a row
+
+`highlight` makes one row the one you look at first. The marker fills with
+`--activity-feed-highlight-fill`, inked with `--activity-feed-highlight-ink`, and gains a ring in
+the fill colour so it reads *bigger*:
+
+<!-- example:ChampionARow -->
+```tsx
+<ActivityFeed>
+  <ActivityFeed.Item
+    icon={<GitPullRequest />}
+    actor="Ada Lovelace"
+    action="opened"
+    target="Add OKLCH theming"
+    timestamp="2h ago"
+  />
+  <ActivityFeed.Item
+    highlight
+    icon={<GitMerge />}
+    actor="Deploy bot"
+    action="released"
+    target="v4.12.0"
+    timestamp="1h ago"
+  >
+    Rolled out to 4 regions with no error-budget spend.
+  </ActivityFeed.Item>
+  <ActivityFeed.Item
+    icon={<MessageSquare />}
+    actor="Grace Hopper"
+    action="commented on"
+    target="v4.12.0"
+    timestamp="55m ago"
+  />
+</ActivityFeed>
+```
+<!-- /example -->
+
+**The ring is the point, not decoration.** The fill says which row at a glance; the ring says it
+again as **width**, which is what still reads in greyscale and under a theme that seats its accent
+near the surface. A cue carried by hue alone is the colour-only pattern this library has closed
+rows against elsewhere. The ring's width is held in a private local so it cannot be overridden
+away; the two colours are public custom properties so they can. [Timeline](timeline.md) takes the
+same prop and spends it the same way.
+
+Re-point the colours as a **pair** — per the [theme contract](../theme-contract.md) a fill token
+guarantees contrast only with its paired `on-*` ink (`--C-ACCENT` with `--C-TEXT-ON-ACCENT`,
+`--C-PRIMARY` with `--C-TEXT-ON-PRIMARY`). Setting the fill alone leaves the glyph's contrast to
+luck.
+
+The ring is drawn as a `box-shadow`, so it costs no layout: the 2rem marker column is a fixed grid
+track that the connector's origin is measured from, and a marker that actually grew would move the
+rail. It does overhang the `<ol>`'s box by 2px — nothing in the feed clips, but an ancestor with
+`overflow: hidden` and no padding would shave it. See [Gotchas](#gotchas) for what `highlight`
+does on an `avatar` row.
 
 ## Rich body
 
@@ -102,6 +157,7 @@ feed re-tints with the rest of the app, at runtime, with no rebuild.
 | Connector rail               | `--C-BORDER-DEFAULT`                         |
 | Icon-dot marker fill         | `--C-SURFACE-2`                              |
 | Icon-dot glyph ink           | `--C-TEXT-SECONDARY`                         |
+| Championed marker fill · glyph ink | `--C-ACCENT` · `--C-TEXT-ON-ACCENT`    |
 | Marker corners               | `--RADIUS-FULL`                             |
 | Actor & target               | `--C-TEXT-PRIMARY` · `--Bold-Weight`         |
 | Action & sentence base ink   | `--C-TEXT-SECONDARY`                         |
@@ -121,16 +177,32 @@ dropped onto, and those text tokens are intended to read on any `surface-*` toke
 [theme contract](../theme-contract.md). The timestamp is deliberately `--C-TEXT-MUTED`
 (hint-level contrast), so treat it as supplementary, not load-bearing.
 
-Three geometry values are **not** on the contract: the marker column width (`2rem`), the
-icon glyph size (`1rem`), and the connector thickness (`2px`) are hard literals held in
-component-internal `--_activity-feed-*` locals. They are interdependent — the dot diameter
-is derived from the column width so the fallback dot and a real [Avatar](avatar.md) present the same
-circle — so they are fixed rather than themeable.
+Four geometry values are **not** on the contract: the marker column width (`2rem`), the
+icon glyph size (`1rem`), the connector thickness (`2px`) and the championed marker's ring
+(`2px`) are hard literals held in component-internal `--_activity-feed-*` locals. The first three
+are interdependent — the dot diameter is derived from the column width so the fallback dot and a
+real [Avatar](avatar.md) present the same circle — so they are fixed rather than themeable. The
+ring is private for a different reason: it is the non-colour half of the `highlight` cue, and
+overriding it away would leave rank conveyed by hue alone.
+
+Two variables **are** public, and are the only supported way to restyle the highlight:
+`--activity-feed-highlight-fill` and `--activity-feed-highlight-ink`. No leading underscore says
+so, the same convention [Stepper](stepper.md)'s `--stepper-progress-color` follows. A `className`
+is not an alternative — it reaches the `<li>` and nothing inside it, and this package's CSS is
+imported unlayered from `styles.css`, so a utility would lose to the rules it is trying to beat
+whatever its specificity.
 
 ## Gotchas
 
 - **`avatar` wins over `icon`.** The marker is `avatar ?? <dot>{icon}</dot>`, so if you
   pass both, the avatar renders and the `icon` is silently dropped. Pass one.
+- **`highlight` is weaker on an `avatar` row, and knowingly so.** On the fallback dot it fills the
+  disc *and* rings it, so the cue is "this disc is bigger" and survives greyscale. An avatar
+  carries its own image or initials, so re-inking it would fight whatever you put there — it gets
+  the **ring only**. That leaves the ring as the sole cue, and it is a fill token used as a stroke,
+  which the [theme contract](../theme-contract.md) does not guarantee against the surface: under a
+  theme that seats the accent near the surface, a championed avatar row is indistinguishable.
+  Re-point `--activity-feed-highlight-fill` to a text token there, or champion with an `icon`.
 - **A marker always renders.** An `Item` with neither `avatar` nor `icon` still shows an
   empty filled dot — intentional, so the rail stays unbroken, but you can't get a
   marker-less row.

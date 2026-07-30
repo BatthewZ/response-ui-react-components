@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 /**
- * Presentation shared by the two dev views: the curated gallery (App.tsx) and the
- * generated examples gallery (ExamplesGallery.tsx). Kept here so the tile/section
+ * Presentation shared by the two dev views: the curated gallery (CuratedGallery.tsx)
+ * and the generated examples gallery (ExamplesGallery.tsx). Kept here so the tile/section
  * look has one definition rather than one per view.
  */
 
