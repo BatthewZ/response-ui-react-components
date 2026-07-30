@@ -257,6 +257,7 @@ variant re-tints at runtime, with no rebuild.
 | Padding         | `p-r4`                                                                  | `--R-SIZE-4`                                 |
 | Text/button gap | `gap-r5`                                                                | `--R-SIZE-5`                                 |
 | Dismiss inset   | `-mr-r6`                                                                | `--R-SIZE-6`                                 |
+| Dismiss glyph   | `text-fg-secondary`                                                     | `--C-TEXT-SECONDARY`                         |
 | Type scale      | `text-body-2`                                                           | `--BodyText-2`                               |
 | Title weight    | `font-semibold`                                                         | `--Semibold-Weight`                          |
 
@@ -291,8 +292,22 @@ less motion. The provider's removal delay is read from `--MOTION-DURATION-EXIT` 
 time rather than hard-coded, so a theme with a longer exit — the `grimdark` example sets
 `350ms` — gets its full slide-out instead of being cut off.
 
-The dismiss button is an [IconButton](icon-button.md); its own colour, radius, padding, and
-focus tokens are documented there.
+The dismiss button is an [IconButton](icon-button.md), and takes its radius, padding and focus
+tokens from there — but **not its hover and active fills.** `IconButton` reaches for the neutral
+surface steps, which is correct on a neutral surface and wrong on a tinted card: the same grey
+lands on all four variants, so a success toast gets a patch of the page's chrome with no relation
+to it. Toast replaces them with the variant's own ink at a low alpha (`hover:bg-current/10`,
+`active:bg-current/15`), the treatment [Button](button.md)'s `ghost-inverse` variant uses for the
+same reason. There is no new variable: `currentColor` here *is* the `text-status-*` of the
+variant, so overriding the `--C-STATUS-*` pair re-tints the hover along with everything else, and
+a variant a consumer adds themselves is covered without touching this component.
+
+The glyph stays `text-fg-secondary` rather than joining the tint. Measured across the four
+example themes, the neutral mark holds **6.9–7.3:1** on these backgrounds where the variant ink
+would hold **3.1–4.8:1** — a dismiss control is chrome, and here the neutral is also the legible
+choice. The alphas are the measured ceiling and not a preference: at `/20` the mark drops to
+**3.09:1** in one theme, level with the 3:1 floor for a graphical object, while `/10` and `/15`
+hold the worst case at **3.87** and **3.48**.
 
 ## Gotchas
 

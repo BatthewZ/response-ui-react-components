@@ -32,6 +32,33 @@ Two consequences worth internalising:
   both are overridable, a caller can reduce it to colour alone and reintroduce the very
   colour-only defect the width was there to prevent.
 
+## "The library overwrote my className" — read the prop's *type* before believing it
+
+A report of the form *"the component writes its own class straight onto the node I passed,
+destroying mine"* has two very different mechanisms behind it, and only one of them is a defect:
+
+- The prop is an **element** and the component clones it. `cloneElement` replaces props rather
+  than merging them, so a bare `className` there really does destroy the caller's. Real bug,
+  `cn()` is the fix, and this library's cloning components say so in a comment beside the call.
+- The prop is a **component** and the component invokes it (`icon?: LucideIcon`, then
+  `<Icon className="…" />`). Then the class is *handed over as a prop*, and the caller's own
+  component decides what to do with it. There is nothing for `cn()` to merge — the library cannot
+  see a class it was never given — and the failure runs the other way: a caller icon that drops
+  its `className` prop loses the *library's* class. Not fixable from here.
+
+Two cheap disproofs to reach for before editing anything. `cn("one-static-class")` returns that
+string unchanged, so wrapping a lone literal is a provable no-op — assert it rather than arguing
+about it. And a claim that a *caller's* class is discarded is settled by rendering with one and
+reading the class list: if it landed on the root, the real question is whether the inner element
+has an override path at all, which is a different finding with a different owner.
+
+Which element a caller's `className` addresses is a **per-component** answer, and a non-compound
+component whose sibling is compound will look asymmetric for a legitimate reason: the compound
+sibling's caller addresses the inner element directly through a sub-component, so merging there
+is correct, while a single-root component's `className` belongs to the root. Before filing the
+asymmetry, check whether the component's own doc already states where the class lands — here it
+did, in two places.
+
 ## Geometry: derive the rail from what sits on it, and `max()` against the old literal
 
 A component that positions a rail from a spacing literal and then lets callers drop an

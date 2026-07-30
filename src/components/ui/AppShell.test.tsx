@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { type LucideProps, Star } from "lucide-react";
 import { forwardRef, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { cn } from "../../util/style";
 import {
   RouterAdapterProvider,
   type RouterLinkComponent,
@@ -955,5 +957,72 @@ describe("#394 · aria-controls only names a rendered sidebar", () => {
     );
 
     expectResolvable(screen.getByRole("button", { name: "Collapse sidebar" }));
+  });
+});
+
+/**
+ * Audited claim: `SidebarLink` applies `app-shell-sidebar-link-icon` "directly
+ * onto the consumer-supplied icon, overwriting any className that icon already
+ * had", so `icon={<Star className="text-status-error" />}` loses the class.
+ *
+ * `icon` is a `LucideIcon` — a *component*, not an element — so the class is a
+ * prop handed to the caller's own component, not a value written over one. These
+ * tests pin that: the icon's own classes survive, and a caller that merges keeps
+ * both. Nothing here can be fixed by `cn()` at the call site, because at that
+ * point there is no second class for it to merge with.
+ */
+describe("SidebarLink · the rail class reaches the icon as a prop", () => {
+  function renderIcon(icon: typeof Star) {
+    renderWithRouter(
+      <AppShell>
+        <AppShell.Sidebar>
+          <AppShell.SidebarLink to="/starred" icon={icon}>
+            Starred
+          </AppShell.SidebarLink>
+        </AppShell.Sidebar>
+        <AppShell.Main>Main</AppShell.Main>
+      </AppShell>,
+    );
+    const svg = screen.getByRole("link", { name: "Starred" }).querySelector("svg");
+    expect(svg).not.toBeNull();
+    return svg!;
+  }
+
+  it("keeps a lucide icon's own classes alongside the rail class", () => {
+    const svg = renderIcon(Star);
+
+    expect(svg).toHaveClass("app-shell-sidebar-link-icon");
+    // lucide's own `mergeClasses` put these on the svg; the rail class is added
+    // to them rather than replacing them.
+    expect(svg).toHaveClass("lucide", "lucide-star");
+  });
+
+  it("a caller's icon that merges its className keeps its own class too", () => {
+    const CallerIcon = forwardRef<SVGSVGElement, LucideProps>(function CallerIcon(
+      { className, ...rest },
+      ref,
+    ) {
+      // `rest` carries no className, so the merge is the whole of what decides
+      // the outcome — the same shape every consumer icon wrapper has.
+      return <Star ref={ref} className={cn("text-status-error", className)} {...rest} />;
+    });
+
+    const svg = renderIcon(CallerIcon);
+
+    expect(svg).toHaveClass("text-status-error");
+    expect(svg).toHaveClass("app-shell-sidebar-link-icon");
+  });
+
+  /**
+   * The audited claim's example — a JSX *element* — is not assignable to `icon`
+   * at all, so the "consumer-supplied element gets its className overwritten"
+   * scenario is unreachable. A type-level assertion is checked by
+   * `bun run typecheck`, in both directions, and needs no `@ts-expect-error`.
+   */
+  it("types `icon` as a component, so an element cannot be passed", () => {
+    type IconProp = NonNullable<React.ComponentProps<typeof AppShell.SidebarLink>["icon"]>;
+    const elementIsNotAnIcon: React.ReactElement extends IconProp ? false : true = true;
+
+    expect(elementIsNotAnIcon).toBe(true);
   });
 });

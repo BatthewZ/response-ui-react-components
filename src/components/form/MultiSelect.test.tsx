@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { Field } from "./Field";
 import { MultiSelect, type MultiSelectOption } from "./MultiSelect";
 import { useForm } from "./use-form";
 
@@ -449,6 +450,60 @@ describe("MultiSelect", () => {
 
       const input = screen.getByRole("combobox", { name: "Fruit" });
       expect(input).toHaveAttribute("id", "ms-input");
+    });
+  });
+
+  /**
+   * Audited claim: `className: "multiselect-input"` and
+   * `className: "multiselect-content"` are bare strings inside getProps-style
+   * objects, so "any className arriving from the caller/spread is discarded and
+   * no override is possible".
+   *
+   * These pin where a caller's className actually goes and what the two internal
+   * strings are on the path of. `getReferenceProps`/`getFloatingProps` merge only
+   * event handlers and ARIA props — floating-ui contributes no className — and
+   * `useFieldError`'s `ariaProps`, the one spread that lands *after* the string,
+   * carries only `aria-invalid` and `aria-describedby`.
+   */
+  describe("className routing", () => {
+    it("merges the caller's className onto the root, keeping the base class", () => {
+      render(<Harness className="pinned-by-the-caller" />);
+
+      const root = screen.getByRole("combobox").closest(".multiselect");
+      expect(root).toHaveClass("multiselect", "pinned-by-the-caller");
+    });
+
+    it("keeps the internal input and listbox classes with a caller className present", async () => {
+      const user = userEvent.setup();
+      render(<Harness className="pinned-by-the-caller" />);
+
+      const input = screen.getByRole("combobox");
+      // Exact, not `toHaveClass`: what this pins is that nothing else reaches
+      // this element's className — floating-ui's `mergeProps` contributes event
+      // handlers and ARIA props only. A second class arriving here means the
+      // spread grew a source and the claim above needs re-deriving.
+      expect([...input.classList]).toEqual(["multiselect-input"]);
+      // The caller's class went to the root, not to the search input. Unlike
+      // `Combobox.Input`, whose caller addresses the input itself, MultiSelect's
+      // `className` addresses its root — so there is nothing to merge here.
+      expect(input).not.toHaveClass("pinned-by-the-caller");
+
+      await user.click(input);
+      expect([...screen.getByRole("listbox").classList]).toEqual(["multiselect-content"]);
+    });
+
+    it("keeps multiselect-input when the field-error props spread over it", () => {
+      render(
+        <Field name="picks" error="Pick at least one">
+          <Harness />
+        </Field>,
+      );
+
+      const input = screen.getByRole("combobox");
+      // `...ariaProps` is the only spread after the className, and this is the
+      // state in which it is non-empty.
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(input).toHaveClass("multiselect-input");
     });
   });
 

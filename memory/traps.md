@@ -713,6 +713,33 @@ collision, left alone because briefs in flight cite the later one by letter.)
   offset, in a component nobody had complained about. When a defect comes from how a layout
   primitive treats text, grep for the other components that lay out the same way before closing
   it — the second one is free and the report will never mention it.
+- **A shared control carries its container's assumptions, and a tinted container breaks them.**
+  A neutral icon button is correct on a neutral surface and wrong on a coloured card, where its
+  hover paints a step of the page's chrome that belongs to no variant — the same grey on all
+  four. The library already had the answer and had only applied it once: the inverse ghost
+  variant, which swaps the neutral fill for *the surrounding ink at a low alpha*. When a
+  primitive looks wrong only in one host, check whether a sibling primitive already solved it
+  before inventing a treatment.
+- **`currentColor` is how one string serves every variant *and* every theme a consumer invents.**
+  Deriving a state fill from the inherited ink means no per-variant map, no new token, and no
+  variant name in the source — a status a consumer adds themselves is covered for free. The
+  enabling trick is unobvious: `text-current` resolves to `inherit`, which is what hands the
+  control the ink that `bg-current` then reads. Worth a comment, because it looks like a no-op.
+- **A colour change has two contrast questions, and the mark is the one people forget.** Tinting
+  a control's *background* moves the backdrop of whatever sits on it. Measured, a hover tint
+  drawn from the ink cost 0.3–2.7 of the glyph's ratio and pushed one variant under the 3:1
+  floor for a graphical object — while the *shipped* neutral it replaced already failed the
+  same case, so "it regressed" and "it was fine before" were both wrong. Measure the state you
+  are adding *and* the state you are replacing before calling either a regression.
+- **Keeping one element out of a change can be what makes the change affordable.** Letting the
+  glyph stay neutral while its button tints bought a 2.4× contrast margin over tinting both, and
+  turned an alpha that failed into one with room to spare. When a treatment is too expensive,
+  check whether it needs to apply to every part of the component before weakening it everywhere.
+- **A DOM probe that reads computed style before the node is in the document reads nothing.**
+  Two rounds of visual comparison were judged from screenshots where the "new" colour was
+  actually black at 10% — `getComputedStyle` on a detached subtree returns defaults, silently,
+  and the render looked plausible enough to reason about. Append first, then measure; and when a
+  probe result contradicts a number you already trust, suspect the probe.
 - **A derived value has no override row.** The token table's promise is "override this variable
   and the component follows", so a row is only honest when the utility resolves to the variable by
   a path the guard can trace. Something that inherits from a step already listed — a leading from

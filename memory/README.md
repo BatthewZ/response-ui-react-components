@@ -17,7 +17,7 @@ to understand.
 | [testing.md](./testing.md) | Ways a test here passes for the wrong reason.                |
 | [history.md](./history.md) | Why an inherited claim is worth less than you think.         |
 | [example-themes.md](./example-themes.md) | How sample data becomes API without anyone deciding to, and the one test that catches it. |
-| [affordances.md](./affordances.md) | Adding a visual cue or an override hook: why a slot `className` only looks like it works, and how to move a rail without moving everyone's. |
+| [affordances.md](./affordances.md) | Adding a visual cue or an override hook: why a slot `className` only looks like it works, how to read a "the library overwrote my class" report, and how to move a rail without moving everyone's. |
 
 ## The short version
 
@@ -90,6 +90,20 @@ to understand.
    treats the workaround as the API. §7 above still holds: answer the documentation rather than
    quietly deleting it. But "it is documented" is evidence that somebody noticed, not evidence
    that it is right, and a default needing an opt-in to be correct is the wrong default.
+
+17. **A plan can be rich in evidence and still unfalsifiable, and that is the more expensive
+   failure.** One pass kept visible retractions, demoted its own audit's confidence in writing, and
+   closed its first phase on two refutations — while having declined the single measurement that could
+   have produced a *new* refutation. The objection to that instrument was valid for a different
+   question: an argument about screenshot flake was used against a question that was purely about
+   computed style. Before trusting your own rigour, ask what result would change your mind and whether
+   anything you have built could produce it. See [gates.md](./gates.md).
+18. **Fanning work out to more readers finds more things and makes claims no safer.** A four-way
+   parallel survey produced the sharpest findings of a pass — and most of its inflated numbers. Counts
+   arrived precise-looking and were repeated as support without being re-derived, including counts the
+   coordinator had run itself and not filtered to production code. §12 is the specific mechanism;
+   the scale-up is what makes it likely. Re-measure anything you are about to lean on, especially
+   when it came back looking exact.
 
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

@@ -93,6 +93,32 @@ describe("Toast", () => {
     expect(onDismiss).toHaveBeenCalledOnce();
   });
 
+  // jsdom resolves no pointer state, so the hover treatment can only be asserted as
+  // classes. What matters is the pair: no neutral surface step survives the merge, and
+  // the fills that replace them read `currentColor` — which inside a toast is the
+  // variant's own `text-status-*`, so one string tints correctly for all four.
+  it("dismiss button tints from the variant's ink, never the neutral surfaces", () => {
+    render(<Toast onDismiss={vi.fn()}>Message</Toast>);
+    const btn = screen.getByRole("button", { name: "Dismiss" });
+
+    expect(btn.className).not.toMatch(/bg-surface-\d/);
+    expect(btn).toHaveClass("hover:bg-current/10", "active:bg-current/15");
+    // `text-current` is load-bearing: it resolves to `inherit`, which is what puts the
+    // variant ink on the button for `bg-current` to read. Without it the button keeps
+    // IconButton's own `text-fg-secondary` and every variant would tint the same grey.
+    expect(btn).toHaveClass("text-current");
+    expect(btn).not.toHaveClass("text-fg-secondary");
+  });
+
+  // The glyph deliberately does not join the tint — measured across the four example
+  // themes the neutral mark holds 6.9–7.3:1 on these backgrounds, the variant ink 3.1–4.8.
+  it("keeps the dismiss glyph on the neutral ink", () => {
+    render(<Toast onDismiss={vi.fn()}>Message</Toast>);
+    const glyph = screen.getByRole("button", { name: "Dismiss" }).querySelector("svg");
+
+    expect(glyph).toHaveClass("text-fg-secondary");
+  });
+
   it("has role='alert' for error variant", () => {
     render(
       <Toast variant="error" onDismiss={vi.fn()}>

@@ -11,3 +11,6 @@ coverage/
 
 # Playwright CLI verification artifacts (screenshots/snapshots)
 .playwright-cli/
+
+# cascade-layer probe scratch builds (scripts/probe-cascade-layer.mjs --keep)
+scripts/.cascade-probe/

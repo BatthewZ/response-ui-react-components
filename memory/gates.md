@@ -106,6 +106,41 @@ good. These are the ways they have still let defects through.
   click that times out is not evidence about the thing you touched either. Establish which errors
   the tab throws *before* your change, drive that tab from a fresh load, and attribute nothing
   seen there without checking it against your own diff's file list first.
+- **The instrument you decline is the one that would have contradicted you.** A plan here was built
+  with visible retractions, corrected counts and a note demoting its own audit — and was still
+  unfalsifiable, because the one measurement that could have produced a new refutation had been
+  declined. The reason given was sound *for a different question*: an argument against screenshot
+  baselines (rasterisation flake, sub-pixel contradictions) was applied to a question that was about
+  **computed style**, where there is no baseline store and no rasterisation at all. When declining an
+  instrument, name the question it would answer and check that your objection is about *that*
+  question. Legible evidence discipline is not load-bearing evidence discipline; retractions are cheap
+  when nothing can generate new ones.
+- **A probe that cannot report its own inertness always agrees with you.** Have every measurement
+  assert its **precondition** — the value the "before" side must have if the situation is being
+  reproduced at all — and fail the run on mismatch, not just on a changed "after". Make an inert row
+  exit non-zero: a green probe that measured nothing is worse than a red one, because it gets cited.
+  Measured cost of not doing this: a new cascade probe returned nine rows of "unchanged" against a
+  page whose stylesheet had never loaded.
+- **A static asset path that does not resolve reads exactly like "no regressions".** A bundler's
+  default absolute base, plus a `file://` origin, plus the `crossorigin` attribute it emits, produces
+  a completely unstyled page — and then every computed value is a UA default, identical on both sides
+  of an A/B. Serve the fixture over HTTP rather than working around one `file://` quirk at a time, and
+  **assert that a known design token resolves before trusting any measurement in that page.**
+- **A headless browser does not default to a developer's environment.** Headless Chromium reports
+  `prefers-reduced-motion: reduce` unless told otherwise, which nulls every animation and makes an
+  animation-related comparison agree everywhere for the wrong reason. Pin every media feature the
+  probe depends on explicitly; leaving one unset is not the same as setting it to "no preference".
+- **The media feature you cannot emulate is usually the one that matters.** Not every feature is in
+  the devtools protocol's emulable set — passing an unsupported one silently does nothing rather than
+  erroring. Where the only way to make a query match is to genuinely change the environment (actually
+  disabling scripting, say), page script may no longer be available to measure with; read computed
+  styles over the protocol instead. An environment state the app's own dev harness can never enter is
+  precisely where an untested regression lives.
+- **A control that holds is what turns a difference into a finding.** Measuring the same property
+  with and without the consumer-side condition present is what separated "layering broke our own
+  rule" from "layering let *someone else's* rule win" — two changes with the same symptom and
+  completely different fixes. Include controls you expect not to move; a control that moves means the
+  fixture or the understanding is wrong, and you have learned that before drawing a conclusion.
 - **The docs generator deletes a section when you hand it an *empty* fence.** Adding a new
   example to a component page means writing the `<!-- example:Name -->` marker by hand and
   letting `gen-docs` fill the fence — but its marker pattern treats the fence body as optional
