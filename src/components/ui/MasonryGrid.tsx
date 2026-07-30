@@ -3,13 +3,13 @@ import {
   Children,
   type ComponentPropsWithRef,
   createContext,
-  type CSSProperties,
   forwardRef,
   isValidElement,
   useContext,
 } from "react";
 
 import { ScrollReveal } from "../animation/ScrollReveal";
+import { blockGapMap, type Gap, gapMap } from "../layout/shared";
 import { cn } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
@@ -40,6 +40,10 @@ type MasonryContextValue = {
   animate: boolean;
   animation: Animation;
   index: number;
+  // The root owns the gap and the item spaces itself with it: multi-column has
+  // no row-gap, so the block-direction half of one `gap` prop has to be applied
+  // on the child. One writer, passed down — not a second source of truth.
+  gap: Gap;
 };
 
 const MasonryContext = createContext<MasonryContextValue | null>(null);
@@ -69,33 +73,33 @@ function buildResponsiveClasses(columns: ColumnBreakpoints): string[] {
 
 type MasonryGridProps = {
   columns?: ColumnBreakpoints | ColumnCount;
-  gap?: string;
+  gap?: Gap;
   animate?: boolean;
   animation?: Animation;
 } & ComponentPropsWithRef<"div">;
 
 const MasonryGridRoot = forwardRef<HTMLDivElement, MasonryGridProps>(function MasonryGrid(
-  { columns = 1, gap, animate = true, animation = "fade-up", className, style, children, ...props },
+  {
+    columns = 1,
+    gap = "r4",
+    animate = true,
+    animation = "fade-up",
+    className,
+    children,
+    ...props
+  },
   ref
 ) {
   const resolved: ColumnBreakpoints = typeof columns === "number" ? { base: columns } : columns;
 
   const responsiveClasses = buildResponsiveClasses(resolved);
 
-  const vars: CSSProperties & Record<string, string | number> = {};
-  if (gap) {
-    vars["--masonry-gap"] = gap;
-  }
-
   const items = Children.toArray(children);
 
   return (
     <div
       ref={ref}
-      className={cn("masonry-grid", ...responsiveClasses, className)}
-      // `vars` last: an explicit `gap` prop outranks a `--masonry-gap` that
-      // happens to be sitting in the caller's `style` bag.
-      style={{ ...style, ...vars } as CSSProperties}
+      className={cn("masonry-grid", gapMap[gap], ...responsiveClasses, className)}
       {...props}
     >
       {items.map((child, index) => (
@@ -103,7 +107,7 @@ const MasonryGridRoot = forwardRef<HTMLDivElement, MasonryGridProps>(function Ma
         // React reconcile by slot and remount every item after an insertion.
         <MasonryContext.Provider
           key={isValidElement(child) ? child.key : index}
-          value={{ animate, animation, index }}
+          value={{ animate, animation, index, gap }}
         >
           {child}
         </MasonryContext.Provider>
@@ -126,10 +130,17 @@ const MasonryGridItem = forwardRef<HTMLDivElement, MasonryGridItemProps>(functio
   const animate = ctx?.animate ?? true;
   const animation = ctx?.animation ?? "fade-up";
   const index = ctx?.index ?? 0;
+  const gap = ctx?.gap ?? "r4";
+
+  // `last:mb-0` is (0,1,1) and the block gap is (0,1,0), both in
+  // `@layer utilities` — so the trailing-gap reset wins on specificity. It used
+  // to need a rule in `MasonryGrid.css` only because that file is unlayered and
+  // out-ranked any `mb-0` utility; removing the declaration removes the reason.
+  const spacing = cn(blockGapMap[gap], "last:mb-0");
 
   if (!animate) {
     return (
-      <div ref={ref} className={cn("masonry-grid__item", className)} {...props}>
+      <div ref={ref} className={cn("masonry-grid__item", spacing, className)} {...props}>
         {children}
       </div>
     );
@@ -140,7 +151,7 @@ const MasonryGridItem = forwardRef<HTMLDivElement, MasonryGridItemProps>(functio
       ref={ref}
       animation={animation}
       delay={index * 50}
-      className={cn("masonry-grid__item", className)}
+      className={cn("masonry-grid__item", spacing, className)}
       {...props}
     >
       {children}

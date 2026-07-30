@@ -8,6 +8,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Breaking
 
+- **`MasonryGrid`'s `gap` takes a spacing token, not a CSS length, and `--masonry-gap` is
+  deleted.** `gap?: string` becomes `gap?: "r1" … "r6"` (default `"r4"`), the same `Gap` union
+  `Grid`, `Row` and `Stack` already take — so `gap="1rem"` is now a compile error rather than a
+  raw value slipping past the token scale. The rendered spacing is unchanged at the default:
+  `gap-r4` compiles to `gap: var(--R-SIZE-4)`, which is byte-identical to the
+  `var(--masonry-gap, var(--R-SIZE-4))` it replaces, and still steps up at the 40rem breakpoint.
+
+  The gutter is now a `gap-r*` utility on the root and an `mb-r*` utility on each item, with
+  `last:mb-0` for the trailing edge. One prop drives two properties on two elements because CSS
+  multi-column has **no row-gap** — the space beneath an item was always a margin, and
+  `--masonry-gap` was a single token feeding both halves. Splitting it into utilities means each
+  half is now overridable from the call site (`className="gap-r1"` on the root,
+  `className="mb-r1"` on an item), which the custom property never allowed.
+
+  Two things go away with it. Setting `--masonry-gap` through `style` no longer does anything —
+  pass `gap`, or put a `gap-*`/`mb-*` utility in `className`. And `className="mb-0"` on an item
+  now works directly: the old docs told you it lost to unlayered component CSS and that you
+  needed `mb-0!`, which stopped being true once the margin became a utility.
+
 - **`StatCard.Trend`'s colour moves off `direction` onto a new `sentiment` axis.** The
   `.stat-card__trend--up` / `--down` classes no longer carry any colour — they mark
   direction and drive the arrow only. Colour now comes from

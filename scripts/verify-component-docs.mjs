@@ -111,6 +111,22 @@ const focusRecipe = existsSync(focusRecipePath)
   ? stripComments(readFileSync(focusRecipePath, "utf8"))
   : "";
 
+/**
+ * The gap scale is the second piece of class vocabulary shared across directories.
+ * `layout/shared.ts` maps the `Gap` union to `gap-r*` and `mb-*` so one scale is defined
+ * once; `Grid`/`Row`/`Stack` reach it as `./shared` and `siblingImports` already sees it,
+ * but `MasonryGrid` lives in `ui/` and imports `../layout/shared`, which that function
+ * refuses to follow. Re-attached by name for the same reason the focus recipe is, and with
+ * the same gate: a component that does not import it still cannot claim `gap-r4`.
+ *
+ * Comments stripped for the same reason — the maps carry a docblock explaining why a
+ * second, margin-shaped map exists, and a doc must not satisfy this check against prose.
+ */
+const gapScalePath = join(SRC, "components", "layout", "shared.ts");
+const gapScale = existsSync(gapScalePath)
+  ? stripComments(readFileSync(gapScalePath, "utf8"))
+  : "";
+
 /** Component name -> its source text (own + same-dir siblings), for the utility/token search. */
 const components = new Map();
 for (const file of walk(SRC, (f) => f.endsWith(".tsx") && !/\.(test|examples)\./.test(f))) {
@@ -121,7 +137,10 @@ for (const file of walk(SRC, (f) => f.endsWith(".tsx") && !/\.(test|examples)\./
   const extra = siblingImports(file, own);
   const tsx = own + extra.tsx;
   components.set(name, {
-    tsx: tsx + (tsx.includes("util/focus") ? focusRecipe : ""),
+    tsx:
+      tsx +
+      (tsx.includes("util/focus") ? focusRecipe : "") +
+      (tsx.includes("layout/shared") ? gapScale : ""),
     css: ownCss + extra.css,
   });
 }

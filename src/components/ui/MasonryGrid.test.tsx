@@ -49,24 +49,69 @@ describe("MasonryGrid", () => {
     expect(grid?.className).toContain("masonry-grid--base-3");
   });
 
-  it("sets gap as a CSS variable", () => {
+  // One `gap` prop, two properties on two elements: multi-column has no row-gap,
+  // so the root carries `gap-*` (column-gap) and each item carries `mb-*`.
+  it("puts the gap utility on the root and the block gap on every item", () => {
     const { container } = render(
-      <MasonryGrid gap="1.5rem" animate={false}>
+      <MasonryGrid gap="r6" animate={false}>
         <MasonryGrid.Item>A</MasonryGrid.Item>
+        <MasonryGrid.Item>B</MasonryGrid.Item>
       </MasonryGrid>,
     );
     const grid = container.querySelector(".masonry-grid") as HTMLElement;
-    expect(grid.style.getPropertyValue("--masonry-gap")).toBe("1.5rem");
+    expect(grid.className).toContain("gap-r6");
+    for (const item of container.querySelectorAll(".masonry-grid__item")) {
+      expect(item.className).toContain("mb-r6");
+      expect(item.className).toContain("last:mb-0");
+    }
   });
 
-  it("does not set gap CSS variable when gap is not provided", () => {
+  it("defaults to r4 on both the root and the items", () => {
     const { container } = render(
       <MasonryGrid animate={false}>
         <MasonryGrid.Item>A</MasonryGrid.Item>
       </MasonryGrid>,
     );
+    expect((container.querySelector(".masonry-grid") as HTMLElement).className).toContain("gap-r4");
+    expect((container.querySelector(".masonry-grid__item") as HTMLElement).className).toContain(
+      "mb-r4",
+    );
+  });
+
+  // The gap is a class, not an inline custom property. This is what makes it
+  // overridable — and it is why #183 (a caller's `style` beating the gap prop)
+  // is now structurally impossible rather than merely fixed.
+  it("writes no inline custom property for the gap", () => {
+    const { container } = render(
+      <MasonryGrid gap="r6" animate={false}>
+        <MasonryGrid.Item>A</MasonryGrid.Item>
+      </MasonryGrid>,
+    );
     const grid = container.querySelector(".masonry-grid") as HTMLElement;
     expect(grid.style.getPropertyValue("--masonry-gap")).toBe("");
+    expect(grid.getAttribute("style")).toBeNull();
+  });
+
+  it("lets a caller's gap utility override the prop on the root", () => {
+    const { container } = render(
+      <MasonryGrid gap="r6" className="gap-r1" animate={false}>
+        <MasonryGrid.Item>A</MasonryGrid.Item>
+      </MasonryGrid>,
+    );
+    const grid = container.querySelector(".masonry-grid") as HTMLElement;
+    expect(grid.className).toContain("gap-r1");
+    expect(grid.className).not.toContain("gap-r6");
+  });
+
+  it("lets a caller's margin utility override the block gap on an item", () => {
+    const { container } = render(
+      <MasonryGrid gap="r6" animate={false}>
+        <MasonryGrid.Item className="mb-r1">A</MasonryGrid.Item>
+      </MasonryGrid>,
+    );
+    const item = container.querySelector(".masonry-grid__item") as HTMLElement;
+    expect(item.className).toContain("mb-r1");
+    expect(item.className).not.toContain("mb-r6");
   });
 
   it("applies masonry-grid__item class to items", () => {
@@ -128,25 +173,17 @@ describe("MasonryGrid", () => {
     expect(grid?.className).toContain("masonry-grid--xl-1");
   });
 
-  // #183 — the caller's `style` used to be spread last and beat the gap prop.
-  it("lets the gap prop outrank a --masonry-gap sitting in style", () => {
+  // #183's replacement: the caller's `style` is passed through untouched, and it
+  // no longer competes with the gap for the same channel.
+  it("passes a caller's style through without touching it", () => {
     const { container } = render(
-      <MasonryGrid gap="2rem" style={{ "--masonry-gap": "0.25rem" } as React.CSSProperties} animate={false}>
+      <MasonryGrid gap="r6" style={{ outline: "1px solid red" }} animate={false}>
         <MasonryGrid.Item>A</MasonryGrid.Item>
       </MasonryGrid>,
     );
     const grid = container.querySelector(".masonry-grid") as HTMLElement;
-    expect(grid.style.getPropertyValue("--masonry-gap")).toBe("2rem");
-  });
-
-  it("still honours a --masonry-gap from style when no gap prop is given", () => {
-    const { container } = render(
-      <MasonryGrid style={{ "--masonry-gap": "0.25rem" } as React.CSSProperties} animate={false}>
-        <MasonryGrid.Item>A</MasonryGrid.Item>
-      </MasonryGrid>,
-    );
-    const grid = container.querySelector(".masonry-grid") as HTMLElement;
-    expect(grid.style.getPropertyValue("--masonry-gap")).toBe("0.25rem");
+    expect(grid.style.outline).toBe("1px solid red");
+    expect(grid.className).toContain("gap-r6");
   });
 
   // #179 — the context Provider was keyed by position, defeating the caller's key.

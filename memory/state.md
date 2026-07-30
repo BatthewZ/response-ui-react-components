@@ -61,3 +61,20 @@ whether a safeguard is needed at all, and the two duplications that are load-bea
   checks every `#anchor`, and roughly a hundred component pages point at the contract. A heading
   kept with one sentence of substance and a link upstream costs three lines and keeps every
   caller correct; repointing the callers puts the same fact back in every one of them.
+- **"Parent sets, child reads" is not on its own a reason to keep a custom property.** A token
+  feeding two properties on two elements looks like an irreducible fan-out — and is, if the children
+  are ones the consumer renders and the component never sees. But where **the same component renders
+  both elements**, it can apply both utilities and the token buys nothing but indirection.
+  `--masonry-gap` was exactly that: one value driving `column-gap` on the root and `margin-bottom` on
+  each item, because CSS multi-column has no row-gap. Replacing it with a `gap-r*` on the root and an
+  `mb-r*` on each item (the value passed down through a context the component already had) deleted the
+  token *and* gained an override path per half, which a single property could not offer. Ask who
+  renders the reader before concluding the fan-out is irreducible.
+- **A "this must stay in CSS because unlayered beats a utility" comment expires the moment its
+  neighbour becomes a utility.** MasonryGrid's trailing-gap reset was in CSS because
+  `.masonry-grid__item`'s unlayered `margin-bottom` out-ranked any `mb-0`. Once that margin became a
+  utility, `last:mb-0` at (0,1,1) beat it at (0,1,0) in the same layer, and the reset needed no rule
+  at all. **Deleting the unlayered competitor can be cheaper than layering it** — and such a change
+  needs no cascade-layer migration to be safe, which makes it available earlier than the phase it
+  looks like it belongs to. When a comment justifies a rule by what out-ranks what, re-read it after
+  changing either side.

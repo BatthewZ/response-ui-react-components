@@ -1,17 +1,15 @@
+/* Gap lives in the component, not here: `gapMap[gap]` on the root and
+   `blockGapMap[gap]` + `last:mb-0` on each item (`MasonryGrid.tsx`). Multi-column
+   has no row-gap, which is why one `gap` prop drives two properties on two
+   elements. `--masonry-gap` was deleted — it was a single token feeding that
+   fan-out, and the utilities express it with an override path the token never
+   had. */
 .masonry-grid {
   columns: var(--masonry-columns, 1);
-  column-gap: var(--masonry-gap, var(--R-SIZE-4));
 }
 
 .masonry-grid__item {
   break-inside: avoid;
-  margin-bottom: var(--masonry-gap, var(--R-SIZE-4));
-}
-
-/* No trailing gap under the grid. Unlayered CSS outranks a Tailwind `mb-0`, so
-   the reset has to live here. */
-.masonry-grid__item:last-child {
-  margin-bottom: 0;
 }
 
 /* Base column classes (no media query — override CSS fallback) */

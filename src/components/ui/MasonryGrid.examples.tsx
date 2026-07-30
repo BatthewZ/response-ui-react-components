@@ -5,7 +5,7 @@ import { MasonryGrid } from "./MasonryGrid";
 /** Wrap every child in `MasonryGrid.Item` — that is what keeps a card whole across a column break. */
 export function Minimal() {
   return (
-    <MasonryGrid columns={3} gap="1rem">
+    <MasonryGrid columns={3} gap="r4">
       <MasonryGrid.Item>
         <Card>Ship the OKLCH ramp</Card>
       </MasonryGrid.Item>
@@ -56,10 +56,10 @@ export function ResponsiveColumns() {
   );
 }
 
-/** `gap` is any CSS length. It sets both the column gutter and the space under each item. */
+/** `gap` takes a spacing token. It sets both the column gutter and the space under each item. */
 export function CustomGap() {
   return (
-    <MasonryGrid columns={2} gap="2rem">
+    <MasonryGrid columns={2} gap="r6">
       <MasonryGrid.Item>
         <Card>Weekly metrics</Card>
       </MasonryGrid.Item>

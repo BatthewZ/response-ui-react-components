@@ -7,7 +7,7 @@ by their position in the list.
 
 <!-- example:Minimal -->
 ```tsx
-<MasonryGrid columns={3} gap="1rem">
+<MasonryGrid columns={3} gap="r4">
   <MasonryGrid.Item>
     <Card>Ship the OKLCH ramp</Card>
   </MasonryGrid.Item>
@@ -52,11 +52,11 @@ renders through [ScrollReveal](scroll-reveal.md) instead of a bare `<div>`.
 | Prop        | Type                                                                          | Default     |
 | ----------- | ----------------------------------------------------------------------------- | ----------- |
 | `columns`   | `1 \| 2 \| 3 \| 4`, or `{ base?, sm?, md?, lg?, xl? }` of the same          | `1`     |
-| `gap`       | `string` — any CSS length; written to the element as `--masonry-gap`           | —           |
+| `gap`       | `"r1"…"r6"` — the responsive spacing scale, same as `Grid`/`Row`/`Stack`      | `"r4"`      |
 | `animate`   | `boolean` — wrap every item in a scroll reveal                                 | `true`      |
 | `animation` | `"fade-up" \| "fade-in" \| "fade-left" \| "fade-right" \| "scale"`              | `"fade-up"` |
 | `className` | `string` — merged onto the root                                                | —           |
-| `style`     | `CSSProperties` — spread **before** `gap`, so an explicit `gap` wins           | —           |
+| `style`     | `CSSProperties` — passed through untouched                                     | —           |
 | `ref`       | `Ref<HTMLDivElement>`                                                          | —           |
 | …rest       | `div` props — `id`, `role`, `aria-*`, `data-*`, handlers, all reach the DOM     | —           |
 
@@ -113,7 +113,7 @@ and both fall back to `--R-SIZE-4`.
 
 <!-- example:CustomGap -->
 ```tsx
-<MasonryGrid columns={2} gap="2rem">
+<MasonryGrid columns={2} gap="r6">
   <MasonryGrid.Item>
     <Card>Weekly metrics</Card>
   </MasonryGrid.Item>
@@ -208,21 +208,28 @@ rest props are spread onto the reveal's rendered element. See the first gotcha f
 
 ## Theme tokens
 
-MasonryGrid uses **no Tailwind utilities** — the layout lives in `MasonryGrid.css`, which
-reads exactly one contract variable.
+The column count lives in `MasonryGrid.css`; the spacing is Tailwind utilities driven by the
+`gap` prop.
 
-| Where                                          | Override       |
-| ---------------------------------------------- | -------------- |
-| Column gutter, and the space under every item   | `--R-SIZE-4`   |
+| Where                                        | Override                       |
+| -------------------------------------------- | ------------------------------ |
+| Column gutter (root)                          | `gap-r4` → `--R-SIZE-4`        |
+| Space under every item                        | `mb-r4` → `--R-SIZE-4`         |
 
-It is on the responsive `r`-scale and steps up at the 40rem breakpoint (`0.75rem` →
-`1.25rem`), so the gutter widens on desktop without a breakpoint utility from you. Retint it
-and every other `--R-SIZE-4` consumer moves with it; for a grid-only value use the `gap` prop.
+Both default to `r4` and move together with the `gap` prop. `--R-SIZE-4` is on the responsive
+`r`-scale and steps up at the 40rem breakpoint (`0.75rem` → `1.25rem`), so the gutter widens on
+desktop without a breakpoint utility from you. Retint it and every other `--R-SIZE-4` consumer
+moves with it; for a grid-only value pass `gap`, or override a single half from the call site.
 
-Two variables in the CSS are **component-local, not contract tokens**, and are spelled in
-lowercase to say so. `--masonry-gap` is what the `gap` prop writes inline. `--masonry-columns`
-is what the responsive column classes set; you can also write it yourself through `style` to
-reach a count the classes do not ship.
+One variable in the CSS is **component-local, not a contract token**, and is spelled in
+lowercase to say so: `--masonry-columns`, which the responsive column classes set. You can also
+write it yourself through `style` to reach a count the classes do not ship.
+
+The gap is **not** a variable. `gap` resolves to a `gap-r*` utility on the root and an `mb-r*`
+utility on each item, because CSS multi-column has no row-gap and the block-direction half has
+to be a margin on the child. Both are ordinary utilities, so either half can be overridden from
+the call site — `className="gap-r1"` on the root, `className="mb-r1"` on an item — which a
+single custom property could not offer.
 
 MasonryGrid sets no colour, no background and no radius at all — an item is transparent, and
 whatever you put inside it brings its own surface. The entrance timing is not MasonryGrid's
@@ -255,23 +262,21 @@ which is applied inline and is not themeable.
   by the child's own key, so prepending to a grid mounts only the new item and leaves the rest
   — uncontrolled input values, video playback, component state — intact.
 - **A child that is not a `MasonryGrid.Item` gets no masonry behaviour.** The root accepts any
-  child and only wraps it in a provider — the `break-inside: avoid` and the bottom margin live
-  on `.masonry-grid__item`, which only `MasonryGrid.Item` applies. Drop a bare `<Card>` in and
-  the browser is free to slice it across a column break.
+  child and only wraps it in a provider — `break-inside: avoid` and the bottom margin are applied
+  by `MasonryGrid.Item` and nothing else. Drop a bare `<Card>` in and the browser is free to slice
+  it across a column break, and it will carry no gap either.
 - **A fragment counts as one child.** `Children.toArray` does not flatten fragments, so two
   items inside a `<>…</>` share a single index and therefore a single stagger step.
   Return an array of items, not a fragment of them.
-- **`gap` beats a `--masonry-gap` in `style`.** The variable the `gap` prop derives is spread
-  last, so `<MasonryGrid gap="2rem" style={{ "--masonry-gap": "0.25rem" }}>` renders at `2rem`.
-  With no `gap` prop, the one in `style` still applies.
-- **Every item but the last has a bottom margin.** `.masonry-grid__item:last-child` resets it,
-  so there is no trailing gap under the grid — though exactly which item a multicol box treats
-  as last is engine-nuanced. Clearing the margin from the call site is still the harder half:
-  `.masonry-grid__item` is unlayered component CSS while Tailwind's utilities compile into
-  `@layer utilities` (measured in the compiled bundle: the utilities layer ends at byte
-  30370, `.masonry-grid__item` sits at 80888), and unlayered author rules outrank layered
-  ones before specificity is even consulted — so `className="mb-0"` loses. The important
-  modifier (`mb-0!`) wins, because for important declarations the layer order is reversed.
+- **`gap` drives two properties on two elements.** The root gets `gap-r*` (which multi-column
+  reads as `column-gap`) and every item gets `mb-r*`. Override one and the other keeps the prop's
+  value, so a lopsided gutter is reachable — that is the price of multi-column having no row-gap.
+- **Every item but the last has a bottom margin.** Each item carries `mb-r*` plus `last:mb-0`, so
+  there is no trailing gap under the grid — though exactly which item a multicol box treats as
+  last is engine-nuanced. Both are ordinary utilities in `@layer utilities`, and `last:mb-0` is
+  `(0,1,1)` against the margin's `(0,1,0)`, so the reset wins on specificity. Clearing the margin
+  from the call site works normally: `className="mb-0"` on an item replaces `mb-r*` outright,
+  because `cn()` dedupes them as one class group. No `!` needed.
 - **Always a client boundary.** `MasonryGrid` carries `"use client"`, so a server component can
   import it but the grid always ships JavaScript.
 
