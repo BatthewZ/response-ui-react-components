@@ -105,5 +105,19 @@ to understand.
    the scale-up is what makes it likely. Re-measure anything you are about to lean on, especially
    when it came back looking exact.
 
+19. **Cite the command, not the constant — and if a count depends on how you count, say how.** A
+   plan proved a load-bearing claim with byte offsets into compiled CSS; the claim survived
+   re-checking and every number did not, because the build moves them. Elsewhere in the same
+   document a lane-sizing figure ("67 test files") matched no method out of seven, which spanned
+   34–99, and a component denominator (~155) was unreachable under every reading — the ceiling was
+   105. Numbers arrive precise-looking and get repeated as support; a number nobody can recompute is
+   not evidence. See [ledger.md](./ledger.md).
+20. **Preserving refutations in place is right; fusing them into live prose is not.** Strike-in-place
+   worked until a document needed a separate briefing to explain which of its own sentences to
+   distrust. Keep the plan current-truth-only and imperative, and give refuted claims a *settled, do
+   not re-derive* section. Nothing is lost and nothing is re-derived, but the reader stops needing a
+   guide. A corollary that is easy to miss: if a refutation already lives somewhere authoritative
+   (the findings archive), the plan restating it is a second source of truth, not diligence.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

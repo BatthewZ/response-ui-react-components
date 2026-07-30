@@ -392,6 +392,38 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
 - Components are forwardRef, with four generic exceptions — `DataTable`, `VirtualizedDataTable`, `Repeater` and `AvatarUpload` are plain function components taking React 19's `ref` prop, because `forwardRef` erases a type parameter. When composing, type props as `ComponentPropsWithRef<"div">` (or appropriate element) — correct for all of them either way.
 - **Uniform card grids → `Grid`, not `Row wrap` or `MasonryGrid`.** `Grid columns={{ base: 1, md: 3 }}` gives equal-width columns and equal-height rows (cells share the row height, so footer buttons line up). `Row wrap` sizes children to content (uneven widths); `MasonryGrid` is CSS multi-column (uneven heights *by design* — reach for it only when you want Pinterest-style masonry). `Grid` cells are `minmax(0, 1fr)`, so long words wrap instead of overflowing.
 
+## Decision: focus rings are layered, and a consumer's reset may win
+
+**Status: decided, not yet in effect.** It takes effect with the `@layer components` move
+(`PLAN-overridability.md` Phase 1). Until that lands, this package's CSS is unlayered and the
+behaviour below is the *intended future*, not what ships today. Do not describe it to consumers as
+current.
+
+This package's component CSS moves into `@layer components` in full. **Focus rings are not carved
+out, and are not `!important`.** A consumer's unlayered `*:focus { outline: none }` therefore beats
+our focus ring at any specificity.
+
+That is deliberate. Writing a global focus reset is an opt-out of focus visibility, and the design
+system does not fight it with a precedence trick — one cascade regime with no exceptions is worth
+more than 29 declarations defended by being unlayered. The alternative would leave the package
+shipping two precedence rules, which the next reader would eventually "tidy" without knowing why the
+exception existed.
+
+**The scope of this decision is narrow, and the boundary matters:**
+
+- ✔ **Covered:** a *consumer-authored* reset out-ranking a ring we ship.
+- ✘ **Not covered:** *our own* utilities out-ranking *our own* CSS. `@layer components` sits below
+  `@layer utilities`, so a `focus:outline-none` utility on an element whose `.css` file paints a
+  replacement outline now deletes it. `Radio.css`'s `forced-colors` outline is the live case and is a
+  **must-fix** — WCAG 2.4.7, caused entirely in-package, and nobody has accepted it.
+
+Both cases measure identically (`2px → 0px`). The mechanism is what separates them, so check which
+side authored the winning rule before concluding anything is accepted.
+
+`bun run probe:cascade-layer` records the accepted case as a pinned `expectAfter` row with the
+decision text attached. **`verify:focus-affordance` cannot see any of this** — it checks source
+pairing, so it stays green while a replacement outline stops painting.
+
 ## Don'ts for AI-generated code
 
 - Don't import from deep paths in the main app's source — import from the root barrel: `import { Button } from "@batthewz/response-ui-react-components"`. Subpath imports work but are usually unnecessary.

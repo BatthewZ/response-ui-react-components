@@ -136,6 +136,43 @@ good. These are the ways they have still let defects through.
   disabling scripting, say), page script may no longer be available to measure with; read computed
   styles over the protocol instead. An environment state the app's own dev harness can never enter is
   precisely where an untested regression lives.
+- **When you teach a gate to accept a change, pin the accepted value and require a written reason —
+  or you have built a mute button.** The cascade probe grew an `expectAfter` + `accepted` pair so one
+  owner-signed-off regression could stop failing the run. Two properties are what keep it a gate: the
+  accepted row **still fails if it drifts off the pinned value** (accepting a change is not excusing
+  the row from measurement), and a row declaring `expectAfter` with no `accepted` sentence **refuses
+  to run at all**, because an unexplained exemption is indistinguishable from a silenced regression.
+  A third guard rejects `expectAfter === expectBefore`, which would dress an ordinary stable row as a
+  decision and hide that it is being asserted. Both guards were made to exit non-zero on purpose
+  before being trusted — and the first attempt to check that read `$?` after a pipe into `head`, so it
+  reported success from `head` while the guard's own status was never inspected. That is the same
+  shape as the ledger guard that printed `FAIL` and exited `0` for its entire life: **when you verify
+  an exit code, verify it unpiped.**
+- **Two rows can measure identically and mean opposite things, and the summary line cannot tell you
+  which.** Layering produced `2px → 0px` twice. One was a *consumer's* reset out-ranking our focus
+  ring — a policy question, and accepted. The other was *our own* `focus:outline-none` utility
+  out-ranking our own forced-colors outline, because `@layer components` sits below
+  `@layer utilities` — a WCAG 2.4.7 defect caused entirely in-package that nobody had accepted.
+  Identical numbers, identical direction, different author of the winning rule, opposite dispositions.
+  A decision recorded against "focus rings" rather than against *a named mechanism* would have closed
+  both. **Scope an acceptance to the mechanism, and say in the row what it does not cover.**
+- **A probe whose only pass state is "before equals after" cannot express an accepted change — so a
+  policy decision can silently make its own gate unsatisfiable.** The cascade probe passes a row only
+  when the A and B computed values match. That is the right default: it makes every difference a
+  finding. But one of the seven differences it found is a *policy* question (should a consumer's
+  `*:focus{outline:none}` be able to delete our focus rings?), and if the answer is "yes, accept it",
+  the row stays red for ever and the phase's own definition of done — "probe green" — can never be
+  met. Nobody noticed, because the gate and the decision were written in different sections. When a
+  gate asserts "nothing changed" over a set that includes deliberate changes, it needs an
+  `expectAfter` before the first deliberate change lands, and the DoD has to say which.
+- **A probe's row list is an allowlist, and the rows nobody wrote are the ones that ship.** The same
+  probe enumerates nine hand-written cases and found seven regressions — genuinely the best
+  instrument in the repo. But `Hero.css` has two rules keyed on foundation-owned classes
+  (`.stagger-item`, `.scroll-reveal-hidden`), one of them structurally identical to the case the
+  probe *does* cover, and neither has a row. The gate would have gone green with Hero broken. Derive
+  the row set from a search over the source (here: one grep for foundation-owned class names, which
+  returns 7 rules in 4 files) and assert the count, rather than hand-listing what you happened to
+  think of. A gate that enumerates is only as complete as the enumeration.
 - **A control that holds is what turns a difference into a finding.** Measuring the same property
   with and without the consumer-side condition present is what separated "layering broke our own
   rule" from "layering let *someone else's* rule win" — two changes with the same symptom and

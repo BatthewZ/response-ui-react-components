@@ -78,3 +78,21 @@ validator over it. These are the ways the record itself has failed, independent 
   luminance, so that premise was false and a weaker cue would always have sufficed. The
   screenshot could not have caught this, because it was taken *after* the fix. When a row
   justifies a change by what the old state lacked, the control has to be run on the old state.
+- **Preserving refutations *in place* buys honesty and spends legibility, and past a threshold the
+  document needs a reading guide to be safe.** One plan followed the rule "strike a refuted claim,
+  never delete it" until live prose, struck prose and severity-demoted prose were fully interleaved.
+  Every sentence then had to be read twice — once for content, once to check whether it still
+  applied — and the plan could not be executed without a separate briefing telling the reader which
+  parts to distrust. The rule was right; fusing the genres was the error. Keep a plan in the
+  imperative and current-truth-only, and move refuted claims to a *settled, do not re-derive*
+  section at the bottom with their outcome. Nothing is deleted and nothing has to be re-derived, but
+  the reader no longer needs to be told how to read.
+- **Evidence that cites a generated artifact's byte offsets invalidates itself on the next build.**
+  A plan's headline row proved "component CSS is unlayered" with offsets into compiled CSS
+  (`utilities` spans 8365–30931, `.stat-card` at 91825). The *claim* was still true when re-checked;
+  every *number* was wrong, because the build moved them. A number that cannot be recomputed is not
+  evidence, it is a hostage. **Cite the command, not the constant** — and where a count depends on
+  how you count (declarations vs lines, with or without test files, which files count as
+  "components"), state the method beside the number or it will be quoted bare and size real work.
+  Same pass: a lane-sizing figure of "67 test files" turned out to be unreproducible under seven
+  different definitions spanning 34–99.

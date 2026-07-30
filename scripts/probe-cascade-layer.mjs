@@ -141,6 +141,24 @@ const FIXTURE = `<!doctype html>
      which is why a class-name-based search cannot find it. -->
 <div class="tabs-list" id="tb-1" style="width:60px"><div style="width:400px">tabs</div></div>
 
+<!-- Hero: .hero__content .stagger-item sets animation-name at (0,2,0), and
+     .hero__content .scroll-reveal-hidden .stagger-item nulls it at (0,3,0).
+     The foundation's own .stagger-item ships NO animation-name (it sets only
+     animation-delay + fill-mode), so on its own there is nothing to collide
+     with. The collision needs a foundation .fade-* class on the ITEM, which is
+     what a consumer nesting their own Stagger inside Hero.Content produces —
+     Hero.css:88-89 documents exactly that case. .fade-up sets the animation
+     shorthand at (0,1,0) unlayered, so today Hero's (0,2,0)/(0,3,0) win on
+     specificity and afterwards lose on layer.
+     If these rows come back INERT, Hero is NOT a collision site and the claim
+     that it is must be withdrawn — that is a result, not a fixture bug. -->
+<div class="hero__content">
+  <div class="stagger-item fade-up" id="hr-1" style="--stagger-index: 1"></div>
+  <div class="scroll-reveal-hidden">
+    <div class="stagger-item fade-up" id="hr-2" style="--stagger-index: 1"></div>
+  </div>
+</div>
+
 <!-- Switch: a real unlayered focus ring, for the consumer-reset probe. -->
 <button class="switch" id="sw-1">switch</button>
 
@@ -156,13 +174,27 @@ const FIXTURE = `<!doctype html>
 /*  3. Probes                                                          */
 /* ------------------------------------------------------------------ */
 
-// `expect`: "stable" = this must not change; "regression" = a known/claimed change
-// we are measuring. `state` selects the emulated environment.
+// `state` selects the emulated environment.
+//
 // `expectBefore` is the PRECONDITION, and it is what makes this probe able to fail.
 // If the measured "before" is not this value, the fixture is not reproducing the
 // collision and the row is reported INERT — never `unchanged`. A probe that cannot
 // detect its own inertness is an instrument that always agrees with you, which is the
 // thing this file exists to avoid.
+//
+// `expectAfter` + `accepted` declare a change the OWNER HAS DECIDED TO ACCEPT.
+// Without it this probe's only pass state is `before === after`, which means a
+// deliberate, signed-off behaviour change leaves a row red for ever and the phase
+// gating on "probe green" can never close. Two rules keep this from becoming a
+// rubber stamp:
+//
+//   1. An accepted row STILL FAILS if `after` is not exactly `expectAfter`. It is
+//      pinned to one value, not excused from measurement. "We accepted a change
+//      here" must never decay into "changes here don't count."
+//   2. `accepted` is a sentence naming who decided and what they decided. A row
+//      with `expectAfter` and no `accepted` reason is a config error, and the run
+//      refuses to start — an unexplained exemption is how a gate stops meaning
+//      anything.
 const PROBES = [
   {
     id: "timeline-even-animation",
@@ -216,12 +248,37 @@ const PROBES = [
     note: "thumb should be transparent until hover",
   },
   {
+    id: "hero-stagger-animation-name",
+    state: "default",
+    sel: "#hr-1",
+    prop: "animation-name",
+    expectBefore: "fade",
+    note: "Hero.css:91 vs a foundation .fade-up on the same item",
+  },
+  {
+    id: "hero-reveal-hidden-animation-none",
+    state: "default",
+    sel: "#hr-2",
+    prop: "animation-name",
+    expectBefore: "none",
+    note: "Hero.css:97 nulls the entrance while the reveal is still hidden",
+  },
+  {
     id: "switch-ring-vs-consumer-reset",
     state: "consumer-reset",
     sel: "#sw-1",
     prop: "outline-width",
     keyboardFocus: true,
     expectBefore: "2px",
+    expectAfter: "0px",
+    accepted:
+      "OWNER DECISION: focus rings move into @layer components with everything " +
+      "else. A consumer's unlayered *:focus{outline:none} is allowed to win — " +
+      "writing that reset is an opt-out of focus visibility, and the package " +
+      "does not fight it with a precedence carve-out. Scope of this decision is " +
+      "EXACTLY this row: a CONSUMER-authored reset beating our ring. It does " +
+      "NOT cover radio-forced-colors-focus-outline, which is our own " +
+      "focus:outline-none utility beating our own rule and is a must-fix.",
     note: "does an unlayered consumer *:focus{outline:none} now beat our ring",
   },
   {
@@ -242,6 +299,28 @@ const PROBES = [
     note: "CONTROL — claimed safe",
   },
 ];
+
+// Rule 2 from the PROBES header, enforced rather than documented: an accepted
+// delta without a stated reason is refused. Cheap to write, and it is the only
+// thing standing between "the owner decided this" and "someone silenced a row".
+for (const p of PROBES) {
+  if (p.expectAfter !== undefined && !p.accepted) {
+    console.error(
+      `probe "${p.id}" declares expectAfter but no \`accepted\` reason.\n` +
+        "An accepted delta must name who decided and what they decided, or the\n" +
+        "exemption is indistinguishable from a silenced regression."
+    );
+    process.exit(2);
+  }
+  if (p.expectAfter !== undefined && p.expectAfter === p.expectBefore) {
+    console.error(
+      `probe "${p.id}" has expectAfter === expectBefore. Drop expectAfter — a row\n` +
+        "that is not expected to change is an ordinary stable row, and dressing it\n" +
+        "as an accepted delta hides that it is being asserted at all."
+    );
+    process.exit(2);
+  }
+}
 
 // Every state pins `reducedMotion` explicitly. Headless Chromium reports
 // `prefers-reduced-motion: reduce` BY DEFAULT — which silently nulled every
@@ -453,6 +532,7 @@ const after = await measure(chromium, b.dir);
 
 let regressions = 0;
 let inert = 0;
+let accepted = 0;
 
 console.log("── A/B computed style, unlayered → @layer components\n");
 const pad = (s, n) => String(s).padEnd(n);
@@ -472,6 +552,16 @@ for (const p of PROBES) {
     // The precondition failed: whatever this row measured, it is not the collision.
     verdict = `INERT — expected before=${p.expectBefore}`;
     inert++;
+  } else if (p.expectAfter !== undefined) {
+    // An owner-accepted change. Still pinned to one value — see rule 1 in the
+    // PROBES header. Drifting off it is a regression like any other.
+    if (y === p.expectAfter) {
+      verdict = "accepted (owner decision)";
+      accepted++;
+    } else {
+      verdict = `*** ACCEPTED-DELTA DRIFT *** expected after=${p.expectAfter}`;
+      regressions++;
+    }
   } else if (x === y) {
     verdict = "unchanged";
   } else {
@@ -480,12 +570,14 @@ for (const p of PROBES) {
   }
   console.log(pad(p.id, 36), pad(p.state, 15), pad(x, 20), pad(y, 20), verdict);
   console.log(pad("", 36), `  ${p.note}`);
+  if (p.accepted) console.log(pad("", 36), `  ACCEPTED: ${p.accepted}`);
 }
 
 console.log("\n── Summary");
 console.log(`   regressions: ${regressions}`);
 console.log(`   inert:       ${inert}  <- these measured NOTHING. Never read as safe.`);
-console.log(`   verified:    ${PROBES.length - regressions - inert}`);
+console.log(`   accepted:    ${accepted}  <- CHANGED, and signed off. Not "safe" — decided.`);
+console.log(`   verified:    ${PROBES.length - regressions - inert - accepted}`);
 if (inert > 0) {
   console.log(
     "\n   An inert row is a failure OF THE PROBE. Fix the fixture before drawing any\n" +
