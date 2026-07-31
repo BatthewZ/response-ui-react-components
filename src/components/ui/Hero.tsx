@@ -3,7 +3,7 @@ import { Children, type ComponentPropsWithRef, forwardRef, isValidElement } from
 import { Parallax } from "../animation/Parallax";
 import { ScrollReveal } from "../animation/ScrollReveal";
 import { Stagger } from "../animation/Stagger";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
 /*  Size / alignment maps                                              */
@@ -38,10 +38,17 @@ type HeroProps = {
    */
   overlay?: boolean;
   align?: HeroAlign;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * `<section>`, and `Hero.Background` / `Hero.Content` take their own — so the
+   * scrim is the one element nothing else reaches. The union is written out here
+   * so an unknown key is a type error rather than a silently ignored one.
+   */
+  classNames?: SlotClassNames<"overlay">;
 } & Omit<ComponentPropsWithRef<"section">, "size">;
 
 const HeroRoot = forwardRef<HTMLElement, HeroProps>(function Hero(
-  { size = "md", overlay, align = "end", className, children, ...props },
+  { size = "md", overlay, align = "end", className, classNames, children, ...props },
   ref
 ) {
   const hasBackground = Children.toArray(children).some(
@@ -56,7 +63,9 @@ const HeroRoot = forwardRef<HTMLElement, HeroProps>(function Hero(
       {...props}
     >
       {children}
-      {showOverlay && <div aria-hidden="true" className="hero__overlay" />}
+      {showOverlay && (
+        <div aria-hidden="true" className={cn("hero__overlay", classNames?.overlay)} />
+      )}
     </section>
   );
 });
@@ -70,25 +79,41 @@ type HeroBackgroundProps = {
   alt?: string;
   parallax?: boolean;
   parallaxRate?: number;
+  /**
+   * Props for the `<img>` itself. The rest of the bag lands on the wrapper, so
+   * `loading`, `fetchPriority`, `srcSet`, `sizes`, `width`/`height` and
+   * `decoding` need this — a hero background is usually the page's LCP element
+   * and none of them was reachable before. Its `className` merges after the
+   * component's own, so `object-contain` beats the default `object-cover`.
+   */
+  imgProps?: Omit<ComponentPropsWithRef<"img">, "src" | "alt">;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 const HeroBackground = forwardRef<HTMLDivElement, HeroBackgroundProps>(function HeroBackground(
-  { src, alt, parallax = false, parallaxRate, className, ...props },
+  { src, alt, parallax = false, parallaxRate, imgProps, className, ...props },
   ref
 ) {
   const image = src ? (
     <img
+      {...imgProps}
       src={src}
       alt={alt ?? ""}
       role={alt ? undefined : "presentation"}
-      className="size-full object-cover"
+      className={cn("size-full object-cover", imgProps?.className)}
     />
   ) : null;
 
   // With no `src` there is nothing to drift, so the client Parallax wrapper (an
   // effect, a scroll listener and a compositor layer) does not get mounted.
   const inner = image && parallax ? (
-    <Parallax rate={parallaxRate} className="size-full">
+    <Parallax
+      rate={parallaxRate}
+      // slot:(a) the drift shim. Its one class makes the transformed layer fill
+      // the background box; anything else detaches the photograph from the frame
+      // it is cropped to, and it is present only when `parallax` is set, so a
+      // class routed here would come and go with an unrelated prop.
+      className="size-full"
+    >
       {image}
     </Parallax>
   ) : (

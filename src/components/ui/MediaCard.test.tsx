@@ -145,4 +145,31 @@ describe("MediaCard", () => {
 
     expect(container.querySelector(".media-card__content")?.className).toContain("z-10");
   });
+
+  /**
+   * The pin on `MediaCard.Image`'s triage-(a) ruling for its aspect box.
+   *
+   * `className`, `ref` and every rest prop address the `<img>`, which is what
+   * the component's docs state. The box around it has one variable — the
+   * `orientation` prop on `MediaCard`, which writes the modifier below — so it
+   * gets neither a class slot (that would be a second writer for the same thing)
+   * nor an `imgProps` hatch (the `<img>` already has a complete route). Moving
+   * `className` to the box under the outermost-element house rule would close
+   * the residue, but it is breaking and is not this phase's call to make.
+   *
+   * If that call is ever taken, these two assertions are what must be rewritten
+   * rather than deleted.
+   */
+  it("keeps className on the <img> and the aspect box on its own two classes", () => {
+    const { container } = render(
+      <MediaCard orientation="landscape">
+        <MediaCard.Image src="/a.jpg" alt="A" className="rounded-lg" />
+      </MediaCard>,
+    );
+
+    expect(container.querySelector("img")?.getAttribute("class")).toContain("rounded-lg");
+    expect(container.querySelector(".media-card__image-container")?.getAttribute("class")).toBe(
+      "media-card__image-container media-card__image-container--landscape",
+    );
+  });
 });

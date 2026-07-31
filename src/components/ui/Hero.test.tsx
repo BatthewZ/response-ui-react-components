@@ -241,4 +241,110 @@ describe("Hero", () => {
       expect(screen.getByRole("button", { name: "Get Started" })).toBeInTheDocument();
     });
   });
+
+  describe("slots", () => {
+    it("lands classNames.overlay on the scrim, beside the base class", () => {
+      const { container } = render(
+        <Hero overlay classNames={{ overlay: "bg-status-error" }}>
+          <p>copy</p>
+        </Hero>
+      );
+      const scrim = container.querySelector(".hero__overlay");
+      expect(scrim?.getAttribute("class")).toContain("hero__overlay");
+      expect(scrim?.getAttribute("class")).toContain("bg-status-error");
+    });
+
+    it("leaves the scrim on its base class alone when no slot is passed", () => {
+      const { container } = render(
+        <Hero overlay>
+          <p>copy</p>
+        </Hero>
+      );
+      expect(container.querySelector(".hero__overlay")?.getAttribute("class")).toBe(
+        "hero__overlay"
+      );
+    });
+
+    it("does not put the slot class on the section", () => {
+      render(
+        <Hero overlay data-testid="hero" classNames={{ overlay: "bg-status-error" }}>
+          <p>copy</p>
+        </Hero>
+      );
+      expect(screen.getByTestId("hero").className).not.toContain("bg-status-error");
+    });
+
+    /**
+     * The reason the slot union is written out per component rather than typed
+     * `Record<string, string>`: an unknown key is a *type* error, not a silent
+     * no-op. The `@ts-expect-error` is the assertion — it fails if TypeScript
+     * ever stops rejecting the key. Do not "clean it up".
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        // @ts-expect-error — `scrim` is not this component's word for it.
+        <Hero overlay classNames={{ scrim: "bg-status-error" }}>
+          <p>copy</p>
+        </Hero>
+      );
+      expect(container.querySelector(".hero__overlay")?.getAttribute("class")).toBe(
+        "hero__overlay"
+      );
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      render(
+        <Hero overlay data-testid="hero" classNames={{ overlay: "bg-status-error" }}>
+          <p>copy</p>
+        </Hero>
+      );
+      expect(screen.getByTestId("hero").hasAttribute("classnames")).toBe(false);
+    });
+  });
+
+  describe("Background imgProps", () => {
+    it("merges imgProps.className after the component's own", () => {
+      render(<Hero.Background src="/bg.jpg" alt="Bg" imgProps={{ className: "object-top" }} />);
+      const img = screen.getByRole("img", { name: "Bg" });
+      expect(img.getAttribute("class")).toContain("size-full");
+      expect(img.getAttribute("class")).toContain("object-top");
+    });
+
+    it("carries loading and srcSet to the <img>, not the wrapper", () => {
+      const { container } = render(
+        <Hero.Background
+          src="/bg.jpg"
+          alt="Bg"
+          imgProps={{ loading: "eager", srcSet: "/bg@2x.jpg 2x" }}
+        />
+      );
+      const img = screen.getByRole("img", { name: "Bg" });
+      expect(img).toHaveAttribute("loading", "eager");
+      expect(img).toHaveAttribute("srcset", "/bg@2x.jpg 2x");
+      expect(container.querySelector(".hero__background")).not.toHaveAttribute("loading");
+    });
+
+    it("leaves the <img> on its base classes when no bag is passed", () => {
+      render(<Hero.Background src="/bg.jpg" alt="Bg" />);
+      expect(screen.getByRole("img", { name: "Bg" }).getAttribute("class")).toBe(
+        "size-full object-cover"
+      );
+    });
+
+    /**
+     * `src` and `alt` are the component's own props and are set *after* the
+     * spread, so a bag cannot repoint the image or strip its alternative text.
+     */
+    it("keeps src and alt out of the bag's reach", () => {
+      render(
+        <Hero.Background
+          src="/bg.jpg"
+          alt="Bg"
+          // @ts-expect-error — `src` is Omitted from the bag; only untyped JS gets here.
+          imgProps={{ src: "/other.jpg" }}
+        />
+      );
+      expect(screen.getByRole("img", { name: "Bg" })).toHaveAttribute("src", "/bg.jpg");
+    });
+  });
 });

@@ -228,10 +228,16 @@ zeroed the same way: tabbing in still applies the transform, just untransitioned
 - **The card is only as tall as the image.** `Content` is absolutely positioned and adds no
   height, and the root is `overflow: hidden` — a caption longer than the picture is clipped,
   not scrolled. Keep captions short, or set your own `min-height` on the card.
-- **The ratio box is not addressable.** `Image` renders its own wrapper `<div>` and passes it
-  nothing: your `className`, `style` and `ref` all go to the `<img>`. To change one card's
-  ratio, either pick a different `orientation` or set that orientation's aspect variable in
-  the root's `style` — custom properties inherit, so the box picks it up.
+- **The ratio box is not addressable, and that is a decision rather than an oversight.**
+  `Image` renders its own wrapper `<div>` and passes it nothing: your `className`, `style` and
+  `ref` all go to the `<img>`. To change one card's ratio, either pick a different
+  `orientation` or set that orientation's aspect variable in the root's `style` — custom
+  properties inherit, so the box picks it up. It gets **no class slot** either, because the
+  one thing it expresses is `orientation`, which already writes the box's modifier — a second
+  route would be a second writer for one value. What is left with no route at all is narrow
+  and worth naming: the box's own padding-trick geometry, which is not something a card
+  varies. Re-pointing `className` from the `<img>` to the box would close that, but it breaks
+  a documented prop contract and is an owner's call, not a slot.
 - **`Image` outside a `MediaCard` silently uses `portrait`.** The orientation context has a
   default rather than a guard, so no part of MediaCard throws when rendered outside the root —
   you just get the poster ratio and no card frame.

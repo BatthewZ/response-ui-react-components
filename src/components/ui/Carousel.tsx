@@ -16,7 +16,7 @@ import {
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { composeEventHandlers } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { IconButton } from "./IconButton";
 
@@ -60,10 +60,29 @@ type CarouselProps = {
   prevLabel?: string;
   /** Accessible name of the next-frame arrow. */
   nextLabel?: string;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * root; `Carousel.Track` and `Carousel.Item` take their own — so these four
+   * reach the chrome the root builds around them. The union is written out here
+   * so an unknown key is a type error rather than a silently ignored one.
+   *
+   * `prev` and `next` are separate keys because they are separate roles: hiding
+   * one is a normal thing to want, and a single key for both cannot express it.
+   */
+  classNames?: SlotClassNames<"title" | "viewport" | "prev" | "next">;
 } & Omit<ComponentPropsWithRef<"div">, "title">;
 
 const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel(
-  { title, prevLabel = "Previous", nextLabel = "Next", className, children, onKeyDown, ...props },
+  {
+    title,
+    prevLabel = "Previous",
+    nextLabel = "Next",
+    className,
+    classNames,
+    children,
+    onKeyDown,
+    ...props
+  },
   ref
 ) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -167,17 +186,17 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
         {...props}
       >
         {title && (
-          <div id={titleId} className="carousel-title">
+          <div id={titleId} className={cn("carousel-title", classNames?.title)}>
             {title}
           </div>
         )}
         {/* Viewport wraps the track + arrows so the arrows center on the
             track itself, not the title-inclusive root. */}
-        <div className="carousel-viewport">
+        <div className={cn("carousel-viewport", classNames?.viewport)}>
           {children}
           <IconButton
             aria-label={prevLabel}
-            className="carousel-arrow carousel-arrow--prev"
+            className={cn("carousel-arrow carousel-arrow--prev", classNames?.prev)}
             // Hidden by opacity alone, an end-of-rail arrow stayed in the tab
             // order as an invisible no-op button.
             disabled={!canScrollPrev}
@@ -196,7 +215,7 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
           </IconButton>
           <IconButton
             aria-label={nextLabel}
-            className="carousel-arrow carousel-arrow--next"
+            className={cn("carousel-arrow carousel-arrow--next", classNames?.next)}
             disabled={!canScrollNext}
             data-hidden={!canScrollNext}
             onClick={scrollNext}

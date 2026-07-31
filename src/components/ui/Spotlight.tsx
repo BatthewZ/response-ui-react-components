@@ -99,6 +99,12 @@ type SpotlightImageProps = {
   /**
    * Props for the `<img>` itself. The rest of the bag lands on the wrapper, so
    * `loading`, `width`/`height`, `srcSet`, `sizes` and `decoding` need this.
+   *
+   * Spread raw, with no `cn()` merge, because this `<img>` carries **no class of
+   * its own** — every rule that shapes it hangs off `.spotlight-image` on the
+   * wrapper. A bag whose `className` had nothing to merge with is the one place
+   * a plain spread is right; where the target does carry a class (see
+   * `Hero.Background`'s `imgProps`), the merge is mandatory.
    */
   imgProps?: Omit<ComponentPropsWithRef<"img">, "src" | "alt">;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
@@ -112,7 +118,15 @@ const SpotlightImage = forwardRef<HTMLDivElement, SpotlightImageProps>(function 
   );
 
   const inner = parallax ? (
-    <Parallax rate={parallaxRate} clamp={parallaxClamp} className="size-full">
+    <Parallax
+      rate={parallaxRate}
+      clamp={parallaxClamp}
+      // slot:(a) the drift shim. Its one class makes the transformed layer fill
+      // `.spotlight-image`; anything else detaches the photograph from the frame
+      // it is cropped to, and it is present only when `parallax` is set, so a
+      // class routed here would come and go with an unrelated prop.
+      className="size-full"
+    >
       {image}
     </Parallax>
   ) : (

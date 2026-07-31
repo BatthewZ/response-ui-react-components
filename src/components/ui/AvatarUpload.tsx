@@ -9,7 +9,7 @@ import {
 
 import { matchesAccept } from "../../util/accept";
 import { focusRingGroup } from "../../util/focus";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { Avatar } from "./Avatar";
 
@@ -60,6 +60,29 @@ export type AvatarUploadProps<TResult extends AvatarUploadResult = AvatarUploadR
    * @default 5000
    */
   errorTimeout?: number;
+  /**
+   * Props for the inner [Avatar](Avatar.tsx). This component's own `className`,
+   * `ref` and rest props all land on the pressable root, so without this bag the
+   * avatar underneath had no route of any kind — including to its own
+   * `classNames` slots. `src`, `name` and `size` are omitted because this
+   * component owns them: `src` is the upload preview and `size` also drives the
+   * root's box.
+   *
+   * Its `className` merges after `size-full`, so a caller who wants a square
+   * avatar can say so.
+   */
+  avatarProps?: Omit<ComponentPropsWithRef<typeof Avatar>, "src" | "name" | "size">;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * pressable root and `avatarProps` reaches the avatar, so these three are the
+   * chrome stacked on top of it. The union is written out here so an unknown key
+   * is a type error rather than a silently ignored one.
+   *
+   * `overlay` is the hover scrim — the same concept, and the same word, as
+   * `Hero`'s and `MediaCard`'s. `spinner` and `error` render only while
+   * uploading and only while a message is up, respectively.
+   */
+  classNames?: SlotClassNames<"overlay" | "spinner" | "error">;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 /* ------------------------------------------------------------------ */
@@ -145,7 +168,9 @@ export function AvatarUpload<TResult extends AvatarUploadResult = AvatarUploadRe
   accept,
   maxSize,
   errorTimeout = 5000,
+  avatarProps,
   className,
+  classNames,
   onClick,
   onKeyDown,
   ref,
@@ -264,7 +289,13 @@ export function AvatarUpload<TResult extends AvatarUploadResult = AvatarUploadRe
         {...props}
       >
         {/* Avatar display */}
-        <Avatar src={displaySrc} name={name} size={size} className="size-full" />
+        <Avatar
+          {...avatarProps}
+          src={displaySrc}
+          name={name}
+          size={size}
+          className={cn("size-full", avatarProps?.className)}
+        />
 
         {/* Hover overlay. The scrim reads the contract's own token, spelled the
             way Dialog.tsx spells it (#384); the fallback covers a consumer who
@@ -281,11 +312,17 @@ export function AvatarUpload<TResult extends AvatarUploadResult = AvatarUploadRe
             "opacity-0 transition-opacity duration-fast",
             "group-hover:opacity-100 group-focus-visible:opacity-100",
             uploading && "opacity-100",
+            classNames?.overlay,
           )}
           aria-hidden="true"
         >
           {uploading ? (
-            <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            <span
+              className={cn(
+                "size-4 animate-spin rounded-full border-2 border-white border-t-transparent",
+                classNames?.spinner,
+              )}
+            />
           ) : (
             <CameraIcon />
           )}
@@ -293,6 +330,11 @@ export function AvatarUpload<TResult extends AvatarUploadResult = AvatarUploadRe
 
         {/* Focus ring */}
         <span
+          // slot:(a) the focus-ring shim. Every class on it is the ring itself —
+          // the overlay above would clip a ring drawn on the root, so this
+          // element exists only to carry `focusRingGroup` at full bleed. A route
+          // here is a route to weakening or removing a WCAG 2.4.7 affordance,
+          // and there is no other reason to address it.
           className={cn("pointer-events-none absolute inset-0 rounded-full", focusRingGroup)}
           aria-hidden="true"
         />
@@ -305,7 +347,10 @@ export function AvatarUpload<TResult extends AvatarUploadResult = AvatarUploadRe
             a long `accept` list wrap instead of running off both edges (#386). */}
         {error && (
           <span
-            className="absolute -bottom-8 left-1/2 w-max max-w-[17.5rem] -translate-x-1/2 rounded bg-status-error px-2 py-1 text-center text-body-3 text-fg-inverse"
+            className={cn(
+              "absolute -bottom-8 left-1/2 w-max max-w-[17.5rem] -translate-x-1/2 rounded bg-status-error px-2 py-1 text-center text-body-3 text-fg-inverse",
+              classNames?.error,
+            )}
             aria-hidden="true"
           >
             {error}
@@ -320,6 +365,11 @@ export function AvatarUpload<TResult extends AvatarUploadResult = AvatarUploadRe
           // Our own `input.click()` bubbles to the root; stop it re-entering the handlers.
           onClick={(e) => e.stopPropagation()}
           onChange={(e) => void handleFileChange(e)}
+          // slot:(a) the real file input. `sr-only` is what keeps it off screen
+          // while leaving it in the accessibility tree and clickable
+          // programmatically; anything else either reveals a raw file control
+          // beside the avatar or takes it out of the tree entirely. `accept` and
+          // `disabled` are the props that configure it.
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"
@@ -328,7 +378,14 @@ export function AvatarUpload<TResult extends AvatarUploadResult = AvatarUploadRe
 
       {/* Outside the role="button": a live region nested in one is never
           announced, and the root's aria-label wins the name computation. */}
-      <span className="sr-only" role="alert">
+      <span
+        // slot:(a) the live region. `sr-only` is the whole mechanism — a route
+        // here lets a caller reveal it and print the error twice, beside the
+        // bubble that already shows it. The message itself comes from `accept`,
+        // `maxSize` and `onUploadError`.
+        className="sr-only"
+        role="alert"
+      >
         {error}
       </span>
     </>

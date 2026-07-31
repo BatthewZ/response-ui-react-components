@@ -43,10 +43,44 @@ const statusLabelMap: Record<Variant, string | undefined> = {
  */
 const statusIconMap: Record<Variant, ReactNode> = {
   default: undefined,
-  success: <CircleCheck size={12} aria-hidden="true" className="shrink-0" />,
-  warning: <TriangleAlert size={12} aria-hidden="true" className="shrink-0" />,
-  error: <CircleX size={12} aria-hidden="true" className="shrink-0" />,
-  info: <Info size={12} aria-hidden="true" className="shrink-0" />,
+  success: (
+    <CircleCheck
+      size={12}
+      aria-hidden="true"
+      // slot:(a) default *content*, not an element the component owns —
+      // `statusIcon` replaces the whole node, so a class route here would style
+      // something the caller may have swapped out. `shrink-0` is what stops the
+      // glyph collapsing beside a long label.
+      className="shrink-0"
+    />
+  ),
+  warning: (
+    <TriangleAlert
+      size={12}
+      aria-hidden="true"
+      // slot:(a) as `success` above — replaceable content, and `shrink-0` is the
+      // flex guard that keeps the glyph its own size beside a long label.
+      className="shrink-0"
+    />
+  ),
+  error: (
+    <CircleX
+      size={12}
+      aria-hidden="true"
+      // slot:(a) as `success` above — replaceable content, and `shrink-0` is the
+      // flex guard that keeps the glyph its own size beside a long label.
+      className="shrink-0"
+    />
+  ),
+  info: (
+    <Info
+      size={12}
+      aria-hidden="true"
+      // slot:(a) as `success` above — replaceable content, and `shrink-0` is the
+      // flex guard that keeps the glyph its own size beside a long label.
+      className="shrink-0"
+    />
+  ),
 };
 
 type BadgeProps = {
@@ -75,7 +109,16 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
 
   return (
     <span ref={ref} className={cn(baseClasses, variantClassMap[variant], className)} {...props}>
-      {statusText && <span className="sr-only">{statusText}</span>}
+      {statusText && (
+        <span
+          // slot:(a) the variant word, read ahead of the children. `sr-only` is
+          // the whole mechanism — a route here lets a caller drop it and print
+          // "Success" beside the label. `statusLabel=""` is the supported remover.
+          className="sr-only"
+        >
+          {statusText}
+        </span>
+      )}
       {icon}
       {children}
     </span>

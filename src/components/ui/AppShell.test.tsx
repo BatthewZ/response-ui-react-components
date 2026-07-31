@@ -1026,3 +1026,220 @@ describe("SidebarLink · the rail class reaches the icon as a prop", () => {
     expect(elementIsNotAnIcon).toBe(true);
   });
 });
+
+describe("AppShell slots", () => {
+  beforeEach(() => stubMatchMedia(false));
+  afterEach(() => vi.unstubAllGlobals());
+
+  describe("Sidebar.scrim", () => {
+    function renderMobileDrawer(classNames?: { scrim?: string }) {
+      stubMatchMedia(true);
+      return renderWithRouter(
+        <AppShell defaultOpen>
+          <AppShell.Sidebar classNames={classNames}>
+            <AppShell.SidebarLink to="/a">A</AppShell.SidebarLink>
+          </AppShell.Sidebar>
+          <AppShell.Main>Main</AppShell.Main>
+        </AppShell>,
+      );
+    }
+
+    it("lands classNames.scrim on the dimming layer, beside the base class", () => {
+      const { baseElement } = renderMobileDrawer({ scrim: "backdrop-blur-sm" });
+      const scrim = baseElement.querySelector(".app-shell-scrim");
+      expect(scrim?.getAttribute("class")).toContain("app-shell-scrim");
+      expect(scrim?.getAttribute("class")).toContain("backdrop-blur-sm");
+    });
+
+    it("leaves the scrim on its base class alone when no slot is passed", () => {
+      const { baseElement } = renderMobileDrawer();
+      expect(baseElement.querySelector(".app-shell-scrim")?.getAttribute("class")).toBe(
+        "app-shell-scrim",
+      );
+    });
+
+    it("does not put the slot class on the drawer itself", () => {
+      const { baseElement } = renderMobileDrawer({ scrim: "backdrop-blur-sm" });
+      expect(
+        baseElement.querySelector(".app-shell-sidebar-mobile")?.getAttribute("class"),
+      ).not.toContain("backdrop-blur-sm");
+    });
+
+    /**
+     * The mobile drawer surface takes **no** slot: `className` on `Sidebar`
+     * already lands on it, in both the desktop and the mobile branch. A key for
+     * it would be a second writer for one element.
+     */
+    it("routes Sidebar's own className to the drawer on mobile", () => {
+      stubMatchMedia(true);
+      const { baseElement } = renderWithRouter(
+        <AppShell defaultOpen>
+          <AppShell.Sidebar className="w-80">
+            <AppShell.SidebarLink to="/a">A</AppShell.SidebarLink>
+          </AppShell.Sidebar>
+          <AppShell.Main>Main</AppShell.Main>
+        </AppShell>,
+      );
+      expect(
+        baseElement.querySelector(".app-shell-sidebar-mobile")?.getAttribute("class"),
+      ).toContain("w-80");
+    });
+
+    /**
+     * The reason each slot union is written out per component rather than typed
+     * `Record<string, string>`: an unknown key is a *type* error, not a silent
+     * no-op. The `@ts-expect-error` is the assertion — it fails if TypeScript
+     * ever stops rejecting the key. Do not "clean it up".
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      stubMatchMedia(true);
+      const { baseElement } = renderWithRouter(
+        <AppShell defaultOpen>
+          {/* @ts-expect-error — `backdrop` is banned; the real element is a scrim. */}
+          <AppShell.Sidebar classNames={{ backdrop: "backdrop-blur-sm" }}>
+            <AppShell.SidebarLink to="/a">A</AppShell.SidebarLink>
+          </AppShell.Sidebar>
+          <AppShell.Main>Main</AppShell.Main>
+        </AppShell>,
+      );
+      expect(baseElement.querySelector(".app-shell-scrim")?.getAttribute("class")).toBe(
+        "app-shell-scrim",
+      );
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { baseElement } = renderMobileDrawer({ scrim: "backdrop-blur-sm" });
+      expect(
+        baseElement.querySelector(".app-shell-sidebar-mobile")?.hasAttribute("classnames"),
+      ).toBe(false);
+    });
+  });
+
+  describe("SidebarSection.groupHeader and SidebarLink.itemIcon / itemLabel", () => {
+    function renderSidebar(
+      sectionSlots?: { groupHeader?: string },
+      linkSlots?: { itemIcon?: string; itemLabel?: string },
+      shellProps: { defaultCollapsed?: boolean } = {},
+    ) {
+      return renderWithRouter(
+        <AppShell {...shellProps}>
+          <AppShell.Sidebar>
+            <AppShell.SidebarSection title="Workspace" classNames={sectionSlots}>
+              <AppShell.SidebarLink to="/projects" icon={Star} classNames={linkSlots}>
+                Projects
+              </AppShell.SidebarLink>
+            </AppShell.SidebarSection>
+          </AppShell.Sidebar>
+          <AppShell.Main>Main</AppShell.Main>
+        </AppShell>,
+      );
+    }
+
+    it("lands classNames.groupHeader on the heading, beside the base class", () => {
+      renderSidebar({ groupHeader: "tracking-wide" });
+      const heading = screen.getByRole("heading", { name: "Workspace" });
+      expect(heading.className).toContain("app-shell-sidebar-section-title");
+      expect(heading.className).toContain("tracking-wide");
+    });
+
+    /**
+     * The append rule, which matters here more than usual: collapsed, the
+     * heading's own class list carries `sr-only`, and that is what keeps the
+     * group reachable by heading navigation in an icons-only rail (#395). This
+     * asserts only that the marker *survives* a slot — not that the slot landed,
+     * which is the test above's job. Otherwise deleting the merge would redden
+     * two tests for one defect and the extra red would say nothing.
+     */
+    it("does not let a groupHeader slot displace sr-only in the collapsed rail", () => {
+      renderSidebar({ groupHeader: "tracking-wide" }, undefined, { defaultCollapsed: true });
+      expect(screen.getByRole("heading", { name: "Workspace" }).className).toContain("sr-only");
+    });
+
+    /**
+     * `icon` is a component reference, not an element, so the class is handed
+     * over as its `className` prop and the icon library decides. This asserts the
+     * merged string arrives — it is a route where there was none, not a fix to
+     * the refuted "AppShell overwrites the consumer's className" claim above.
+     */
+    it("lands classNames.itemIcon on the glyph, beside the base class", () => {
+      const { container } = renderSidebar(undefined, { itemIcon: "size-r3" });
+      const svg = container.querySelector("svg") as SVGElement;
+      expect(svg.getAttribute("class")).toContain("app-shell-sidebar-link-icon");
+      expect(svg.getAttribute("class")).toContain("size-r3");
+    });
+
+    it("lands classNames.itemLabel on the label span, beside the base class", () => {
+      renderSidebar(undefined, { itemLabel: "font-semibold" });
+      const label = screen.getByText("Projects");
+      expect(label.className).toContain("app-shell-sidebar-link-label");
+      expect(label.className).toContain("font-semibold");
+    });
+
+    // Same shape as the heading above, and for the same reason (#388): the
+    // marker has to survive a slot, and only the marker is asserted here.
+    it("does not let an itemLabel slot displace sr-only in the collapsed rail", () => {
+      renderSidebar(undefined, { itemLabel: "font-semibold" }, { defaultCollapsed: true });
+      expect(screen.getByText("Projects").className).toContain("sr-only");
+    });
+
+    it("leaves the internals on their base classes when no slot is passed", () => {
+      const { container } = renderSidebar();
+      expect(screen.getByRole("heading", { name: "Workspace" }).className).toBe(
+        "app-shell-sidebar-section-title",
+      );
+      expect(screen.getByText("Projects").className).toBe("app-shell-sidebar-link-label");
+      // The icon library prepends its own two classes and does the merging, which
+      // is the concrete meaning of "handed over as a prop": nothing here rewrites
+      // what the component decides to emit.
+      expect(container.querySelector("svg")?.getAttribute("class")).toBe(
+        "lucide lucide-star app-shell-sidebar-link-icon",
+      );
+    });
+
+    it("does not put a slot class on either subcomponent's own root", () => {
+      const { container } = renderSidebar(
+        { groupHeader: "tracking-wide" },
+        { itemIcon: "size-r3", itemLabel: "font-semibold" },
+      );
+      const section = container.querySelector(".app-shell-sidebar-section") as HTMLElement;
+      const link = container.querySelector(".app-shell-sidebar-link") as HTMLElement;
+      expect(section.className).not.toContain("tracking-wide");
+      expect(link.className).not.toContain("size-r3");
+      expect(link.className).not.toContain("font-semibold");
+    });
+
+    /**
+     * The reason each slot union is written out per component rather than typed
+     * `Record<string, string>`: an unknown key is a *type* error, not a silent
+     * no-op. The `@ts-expect-error` is the assertion — it fails if TypeScript
+     * ever stops rejecting the key. Do not "clean it up".
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      renderWithRouter(
+        <AppShell>
+          <AppShell.Sidebar>
+            {/* @ts-expect-error — `label` is hard-banned as a slot name here. */}
+            <AppShell.SidebarLink to="/projects" classNames={{ label: "font-semibold" }}>
+              Projects
+            </AppShell.SidebarLink>
+          </AppShell.Sidebar>
+          <AppShell.Main>Main</AppShell.Main>
+        </AppShell>,
+      );
+      expect(screen.getByText("Projects").className).toBe("app-shell-sidebar-link-label");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = renderSidebar(
+        { groupHeader: "tracking-wide" },
+        { itemLabel: "font-semibold" },
+      );
+      expect(
+        container.querySelector(".app-shell-sidebar-section")?.hasAttribute("classnames"),
+      ).toBe(false);
+      expect(container.querySelector(".app-shell-sidebar-link")?.hasAttribute("classnames")).toBe(
+        false,
+      );
+    });
+  });
+});

@@ -32,7 +32,7 @@ takes the keyboard: it renders with `tabIndex={0}` and, while that tab stop hold
 
 | Part              | Renders                              | Props                                          |
 | ----------------- | ------------------------------------ | ---------------------------------------------- |
-| `Carousel`        | `<div class="carousel" role="group">` | `title?: ReactNode` · `prevLabel?: string` — default `"Previous"` · `nextLabel?: string` — default `"Next"` (+ all `div` props except the native `title`) |
+| `Carousel`        | `<div class="carousel" role="group">` | `title?: ReactNode` · `prevLabel?: string` — default `"Previous"` · `nextLabel?: string` — default `"Next"` · `classNames?: { title?, viewport?, prev?, next? }` — see [Slots](#slots) (+ all `div` props except the native `title`) |
 | `Carousel.Track`  | `<div role="region">`                | — (+ all `div` props)                          |
 | `Carousel.Item`   | `<div role="group">`                 | — (+ all `div` props)                          |
 
@@ -186,6 +186,36 @@ pass your own:
 </Carousel>
 ```
 <!-- /example -->
+
+## Slots
+
+The rail and the slides are subcomponents, so `Carousel.Track` and `Carousel.Item` take
+their own `className`. `classNames` on the root reaches the chrome it builds around them —
+four elements no other prop addresses.
+
+| Slot       | Element                        | What it addresses                                  |
+| ---------- | ------------------------------ | -------------------------------------------------- |
+| `title`    | `div.carousel-title`           | rendered only when `title` is set                   |
+| `viewport` | `div.carousel-viewport`        | the clipping box the arrows are centred against     |
+| `prev`     | the previous-frame `IconButton` | —                                                  |
+| `next`     | the next-frame `IconButton`     | —                                                  |
+
+```tsx
+<Carousel title="Continue watching" classNames={{ prev: "sm:hidden", next: "sm:hidden" }}>
+  <Carousel.Track>
+    <Carousel.Item>…</Carousel.Item>
+  </Carousel.Track>
+</Carousel>
+```
+
+**`prev` and `next` are two keys, not one.** They are two roles: hiding the arrows on touch
+while keeping them on desktop is one thing to want, and hiding only the one that runs off the
+edge of a layout is another. A single key could express neither.
+
+Both land on an [IconButton](icon-button.md), which merges what it is given, so a class of
+yours sits alongside the button's own — including its `disabled:` and `focus-visible:`
+variants, which the component still owns. The end-of-rail state stays the component's too:
+it is `disabled` plus `data-hidden`, not a class.
 
 ## Theme tokens
 

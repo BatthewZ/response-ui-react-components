@@ -55,9 +55,9 @@ boxes you can wrap freely.
 | `AppShell.Brand`          | `<div>`                                       | — (all `div` props)                                                               |
 | `AppShell.NavbarActions`  | `<div>` with `margin-left: auto`              | — (all `div` props)                                                               |
 | `AppShell.Toggle`         | `<button type="button">`                      | — (all `button` props **except `type`**)                                          |
-| `AppShell.Sidebar`        | `<aside role="navigation" aria-label="Main navigation">`, wrapped on mobile in `<div role="dialog" aria-modal="true">` | — (all `aside` props **except `role`**) |
-| `AppShell.SidebarSection` | `<div>`, with a heading title above its children | `title?: string` · `titleAs?: "h2" \| "h3" \| "h4" \| "h5" \| "h6"` (default `"h2"`) (+ all `div` props) |
-| `AppShell.SidebarLink`    | the router adapter's `Link` — a plain `<a href>` by default | `to: string` · `icon?: LucideIcon` · `children` required (+ all `a` props **except `children`**; `href` is a compile error — see [Gotchas](#gotchas)) |
+| `AppShell.Sidebar`        | `<aside role="navigation" aria-label="Main navigation">`, wrapped on mobile in `<div role="dialog" aria-modal="true">` | `classNames?: { scrim?: string }` — see [Slots](#slots) (+ all `aside` props **except `role`**) |
+| `AppShell.SidebarSection` | `<div>`, with a heading title above its children | `title?: string` · `titleAs?: "h2" \| "h3" \| "h4" \| "h5" \| "h6"` (default `"h2"`) · `classNames?: { groupHeader?: string }` — see [Slots](#slots) (+ all `div` props) |
+| `AppShell.SidebarLink`    | the router adapter's `Link` — a plain `<a href>` by default | `to: string` · `icon?: LucideIcon` · `children` required · `classNames?: { itemIcon?, itemLabel? }` — see [Slots](#slots) (+ all `a` props **except `children`**; `href` is a compile error — see [Gotchas](#gotchas)) |
 | `AppShell.Main`           | `<main>` — the page's main landmark; see [The main landmark](#the-main-landmark) | — (all `main` props)                |
 
 `className`, `id`, `ref`, `data-*` and `aria-*` pass through on every part, and each merges
@@ -299,6 +299,45 @@ are the two that do work.)
 </AppShell>
 ```
 <!-- /example -->
+
+## Slots
+
+Eight of AppShell's nine regions are subcomponents, so their own `className` reaches them.
+`classNames` covers the four elements those subcomponents build *inside* themselves, spread
+across the three parts that render them.
+
+| On                        | Slot          | Element                             | What it addresses                        |
+| ------------------------- | ------------- | ----------------------------------- | ---------------------------------------- |
+| `AppShell.Sidebar`        | `scrim`       | `div.app-shell-scrim`               | the dimming layer behind the mobile drawer |
+| `AppShell.SidebarSection` | `groupHeader` | the `titleAs` heading               | rendered only when `title` is set          |
+| `AppShell.SidebarLink`    | `itemIcon`    | the `icon` component's `<svg>`      | rendered only when `icon` is set           |
+| `AppShell.SidebarLink`    | `itemLabel`   | `span.app-shell-sidebar-link-label` | the link's text                            |
+
+```tsx
+<AppShell.Sidebar classNames={{ scrim: "backdrop-blur-sm" }}>
+  <AppShell.SidebarSection title="Workspace" classNames={{ groupHeader: "tracking-wide" }}>
+    <AppShell.SidebarLink to="/projects" icon={Folder} classNames={{ itemIcon: "size-r3" }}>
+      Projects
+    </AppShell.SidebarLink>
+  </AppShell.SidebarSection>
+</AppShell.Sidebar>
+```
+
+**Three things worth knowing before you use them.**
+
+`scrim` renders only on mobile and only while the drawer is open. The drawer surface itself
+takes no slot: `Sidebar`'s own `className` already lands on it, in both the inline-rail and
+the portaled-drawer branch.
+
+`itemIcon` is handed to your icon **component** as its `className`, not written onto an
+element — `icon` is a `LucideIcon`, a component reference. Lucide merges it with its own two
+classes and emits the result, so what a slot buys here is a route where there was none.
+
+`groupHeader` and `itemLabel` are **appended** to whatever the element already carries. In
+the collapsed rail that includes `sr-only`, which is what keeps the group reachable by
+heading navigation and the link with an accessible name — so a class of yours sits beside it
+rather than replacing it. Passing a `block` or `not-sr-only` will reveal the text; that is
+yours to want, not an accident of the merge.
 
 ## Theme tokens
 

@@ -275,5 +275,42 @@ to understand.
    the element, not merely that the finding is a false positive, or the allowlist becomes the
    place findings go to be forgotten.
 
+45. **A frozen anatomy row can name the right element with the wrong word, and the doc page is
+   where that shows.** One row called an element "the camera badge"; the component's own
+   comment, and every sentence on its doc page, called it the overlay — and "a darkening layer
+   over a sibling" was already a cross-family name two other components spend. Take the
+   *concept* to the cross-family table before taking the family row's word, because a
+   family-local synonym for a shared concept is the exact failure the shared table exists to
+   stop, and a slot key is permanent on first ship.
+46. **The tell that a frozen row is over-enumerated is that the element is already reachable.**
+   A table granted a key for a surface whose own subcomponent `className` lands on it in both
+   of its two rendering branches; shipping the key would have been a second writer. Render with
+   a caller class and read the class list before writing any key — the frozen list says which
+   *name*, never that a gap exists.
+47. **A state modifier is worth mirroring as `data-*`, and it is not a slot.** Six root
+   modifier classes gave a consumer stylesheet a hook but gave `className` nothing, because a
+   variant cannot key off a class the component writes. Emitting `data-<state>` beside each
+   modifier turns every one of them into a `data-drag-over:` variant on the prop that already
+   reaches the element, at no cost to the existing hook — cheaper and smaller than any slot,
+   and it composes with utilities the component never declared.
+48. **Where one slot key addresses two elements, assert it in one test, not two.** The
+   per-slot falsifier wants exactly one red per merge; a key covering both a media grid and a
+   row list, or a message in two states, reddens once per test that touches it. Render both
+   elements inside a single test — several files at once, or two renders in one `it` — and the
+   signal stays one red per defect. The same restructuring is what a companion asserting the
+   marker class needs: assert the marker, never the slot.
+49. **A tailwind-merge slot replaces its base class when they share a utility group, and the
+   test has to expect it.** `cn("object-cover", "object-contain")` returns only the caller's,
+   which is the capability — but a companion written as "base survives, slot arrives" fails on
+   the base half for reasons that have nothing to do with the merge being wired up. Assert the
+   part of the base class that is in a *different* group, and pin the replacement deliberately
+   where it is the point.
+50. **A render prop over an unpredictable dispatch has to hand over the branch it took.**
+   Three private previews selected from the file list and a mode prop are exactly the shape a
+   flat class map cannot serve — but a renderer that is told only "here is a file" cannot tell a
+   lone large preview from one cell of a grid, and will guess. Pass the branch as a field. Pass
+   the index into the *source* array too: a renderer invoked over a partitioned list sees
+   positions that are not the ones the removal callback expects.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

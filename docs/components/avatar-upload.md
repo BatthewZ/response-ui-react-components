@@ -32,7 +32,9 @@ returns — so the only thing you write is the request.
 | `accept`           | `readonly string[]`                        | —       |
 | `maxSize`          | `number` — bytes                           | —       |
 | `errorTimeout`     | `number` — ms; `0` never clears            | `5000`  |
+| `avatarProps`      | props of [Avatar](avatar.md) minus `src` / `name` / `size` — see [Slots](#slots) | — |
 | `className`        | `string`                                   | —       |
+| `classNames`       | `{ overlay?, spinner?, error? }` — see [Slots](#slots) | — |
 | `ref`              | `Ref<HTMLDivElement>`                      | —       |
 | …rest              | props of `div`, minus `children`           | —       |
 
@@ -181,6 +183,46 @@ The root is an `inline-flex` box sized exactly to the circle, so it drops into a
 [Row](row.md) or a form grid without a wrapper. It renders no label of its own — the
 adjacent text is yours to write, and it is the only place your size and format limits get
 stated before the user picks a file.
+
+## Slots
+
+`className`, `ref` and every rest prop land on the pressable root — the element that carries
+`role="button"`, the keyboard handling and the busy state. Everything stacked on top of the
+circle is reached through `classNames`, and the circle itself through `avatarProps`.
+
+| Slot      | Element               | What it addresses                                    |
+| --------- | --------------------- | ---------------------------------------------------- |
+| `overlay` | the hover scrim       | the dimming layer the camera glyph and spinner sit in |
+| `spinner` | the busy ring         | rendered only while `onUpload` is pending            |
+| `error`   | the message bubble    | rendered only while a validation error is up          |
+
+```tsx
+<AvatarUpload
+  name="Ada Lovelace"
+  onUpload={upload}
+  classNames={{ overlay: "backdrop-blur-sm" }}
+  avatarProps={{ className: "rounded-lg" }}
+/>
+```
+
+**`avatarProps` is a props bag, not a slot, because the target is a whole component.** The
+inner `Avatar` had no route of any kind before it: this component's own `className` goes to
+its root, and the avatar's was hardcoded `size-full`. The bag reaches everything Avatar
+takes, including that component's own `classNames`:
+
+```tsx
+<AvatarUpload name="Ada Lovelace" avatarProps={{ classNames: { frame: "rounded-lg" } }} />
+```
+
+`src`, `name` and `size` are omitted from the bag because this component writes them — `src`
+is the live upload preview, and `size` drives the root's own box as well as the avatar's
+initials. Its `className` merges *after* `size-full`, so a class of yours wins the collision.
+
+Two elements take no slot on purpose. The **focus ring** is a full-bleed shim that exists
+only to carry the ring the overlay would otherwise clip, so a route to it is a route to
+weakening a WCAG 2.4.7 affordance. The **live region** and the hidden `<input>` are both
+`sr-only`, and that class *is* the mechanism: a route lets a caller reveal a raw file
+control, or print the error a second time beside the bubble already showing it.
 
 ## Theme tokens
 

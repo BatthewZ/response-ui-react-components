@@ -49,7 +49,15 @@ const MediaCardImage = forwardRef<HTMLImageElement, MediaCardImageProps>(functio
   const orientation = useContext(OrientationContext);
 
   return (
-    <div className={cn("media-card__image-container", orientationClass[orientation])}>
+    <div
+      // slot:(a) the aspect box. Its only variable is the `orientation` prop on
+      // `MediaCard`, which already writes the modifier below — so a class route
+      // here would be a second writer for the one thing it expresses. The
+      // subcomponent's `className`, `ref` and rest props all address the `<img>`
+      // it frames, which is documented; moving them here would be breaking, so
+      // this element ships neither a slot nor a re-point.
+      className={cn("media-card__image-container", orientationClass[orientation])}
+    >
       <img
         ref={ref}
         loading="lazy"

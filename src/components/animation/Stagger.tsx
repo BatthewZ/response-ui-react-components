@@ -73,6 +73,14 @@ export const Stagger = forwardRef<HTMLElement, StaggerImplProps>(function Stagge
       {items.map((child, index) => (
         <div
           key={index}
+          // slot:(a) `.stagger-item` is the foundation's own hook and the whole
+          // mechanism — the animation, its `--stagger-delay` re-declaration and
+          // the reduced-motion guard all hang off it. Two accepted
+          // `probe:cascade-layer` rows are pinned on the premise that nothing
+          // this package renders can put a class on this element, so a route
+          // here is not a slot decision on its own. The delay is the `staggerDelay`
+          // prop; the item's own box is the caller's child, which they class
+          // directly.
           className="stagger-item"
           style={
             {
