@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { beforeEach,describe, expect, it, vi } from "vitest";
 
 import { type ColumnDef,DataTable, type SortState } from "./DataTable";
@@ -1254,5 +1254,166 @@ describe("#463 · defaultPage seeds the uncontrolled page", () => {
     expect(
       screen.getByRole("button", { name: /^page 4$/i }),
     ).toHaveAttribute("aria-current", "page");
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  className + classNames                                           */
+  /* ---------------------------------------------------------------- */
+
+  describe("className and classNames", () => {
+    const expanded = { renderExpanded: (row: Item) => <p>Detail for {row.name}</p> };
+
+    /** Expand the first row so the detail-row internals exist. */
+    async function renderExpanded(props: Partial<ComponentProps<typeof DataTable<Item>>> = {}) {
+      const user = userEvent.setup();
+      const result = render(
+        <DataTable data={data} columns={columns} rowKey={rowKey} {...expanded} {...props} />,
+      );
+      await user.click(screen.getAllByRole("button", { name: "Expand row" })[0]);
+      return result;
+    }
+
+    it("lands className on the outermost element", () => {
+      const { container } = render(
+        <DataTable data={data} columns={columns} rowKey={rowKey} className="sentinel-root" />,
+      );
+      expect(container.firstElementChild!.getAttribute("class")).toBe("sentinel-root");
+    });
+
+    it("lands classNames.expandToggle on the toggle, beside its base classes", async () => {
+      await renderExpanded({ classNames: { expandToggle: "sentinel-slot" } });
+      const toggle = screen.getAllByRole("button", { name: "Collapse row" })[0];
+      expect(toggle.getAttribute("class")).toContain("inline-flex");
+      expect(toggle.getAttribute("class")).toContain("sentinel-slot");
+    });
+
+    it("lands classNames.expandedCell on the detail cell, beside its base classes", async () => {
+      const { container } = await renderExpanded({
+        classNames: { expandedCell: "sentinel-slot" },
+      });
+      const cell = container.querySelector(".data-table-expanded-cell");
+      expect(cell!.getAttribute("class")).toContain("data-table-expanded-cell");
+      expect(cell!.getAttribute("class")).toContain("sentinel-slot");
+    });
+
+    it("lands classNames.expandedBody on the detail body, beside its base classes", async () => {
+      const { container } = await renderExpanded({
+        classNames: { expandedBody: "sentinel-slot" },
+      });
+      const body = container.querySelector(".data-table-expanded-body");
+      expect(body!.getAttribute("class")).toContain("data-table-expanded-body--comfortable");
+      expect(body!.getAttribute("class")).toContain("sentinel-slot");
+    });
+
+    it("leaves every base class alone when no slot is passed", async () => {
+      const { container } = await renderExpanded();
+      // `toBe`, not `toContain`: a merge that drops the library class when the
+      // slot is `undefined` passes `toContain` and fails here.
+      expect(container.querySelector(".data-table-expanded-cell")!.getAttribute("class")).toBe(
+        "table-cell table-cell--comfortable data-table-expanded-cell bg-surface-3",
+      );
+      expect(container.querySelector(".data-table-expanded-body")!.getAttribute("class")).toBe(
+        "data-table-expanded-body data-table-expanded-body--comfortable",
+      );
+    });
+
+    it("does not put a slot class on the root", async () => {
+      const { container } = await renderExpanded({
+        className: "sentinel-root",
+        classNames: { expandedBody: "sentinel-slot" },
+      });
+      expect(container.firstElementChild!.getAttribute("class")).toBe("sentinel-root");
+    });
+
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          // @ts-expect-error — `expandedRow` is not a slot; only untyped JS gets here.
+          classNames={{ expandedRow: "sentinel-slot" }}
+        />,
+      );
+      expect(container.querySelector(".sentinel-slot")).toBeNull();
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          classNames={{ expandToggle: "sentinel-slot" }}
+        />,
+      );
+      expect(container.querySelector("[classnames]")).toBeNull();
+    });
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  tableProps / paginationProps hatches                             */
+  /* ---------------------------------------------------------------- */
+
+  describe("props hatches", () => {
+    it("merges tableProps into the aria-busy it derives from loading", () => {
+      const { container } = render(
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          loading
+          tableProps={{ "aria-label": "Invoices", className: "sentinel-slot" }}
+        />,
+      );
+      const table = container.querySelector("table")!;
+      expect(table).toHaveAttribute("aria-label", "Invoices");
+      expect(table).toHaveAttribute("aria-busy", "true");
+      expect(table.getAttribute("class")).toBe("table sentinel-slot");
+    });
+
+    it("does not erase a caller's aria-busy when it is not loading", () => {
+      const { container } = render(
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          tableProps={{ "aria-busy": true }}
+        />,
+      );
+      expect(container.querySelector("table")).toHaveAttribute("aria-busy", "true");
+    });
+
+    it("reaches Pagination through paginationProps", () => {
+      render(
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          pageSize={1}
+          paginationProps={{ className: "sentinel-slot", variant: "compact" }}
+        />,
+      );
+      const nav = screen.getByRole("navigation", { name: "Pagination" });
+      expect(nav.getAttribute("class")).toContain("pagination");
+      expect(nav.getAttribute("class")).toContain("sentinel-slot");
+    });
+
+    it("cannot use paginationProps to rewrite the page wiring", () => {
+      render(
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          pageSize={1}
+          // @ts-expect-error — `page` is Omitted from the hatch; DataTable owns it.
+          paginationProps={{ page: 99 }}
+        />,
+      );
+      expect(screen.getByRole("button", { name: /^page 1$/i })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+    });
   });
 });

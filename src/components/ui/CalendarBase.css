@@ -1,6 +1,11 @@
 /* ------------------------------------------------------------------ */
-/*  Calendar                                                           */
+/*  CalendarBase                                                       */
 /* ------------------------------------------------------------------ */
+
+/* Every selector here targets markup `CalendarBase` renders. `Calendar`,
+   `RangeCalendar`, `DatePicker` and `DateRangePicker` render none of it — they
+   consume `CalendarBase` — so the file is named after the component that owns
+   it rather than after its most visible consumer. */
 
 .calendar {
   /* Sizing knobs. A month grid is 7 day cells + 6 gaps wide (`--calendar-month-width`);

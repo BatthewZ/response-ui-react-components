@@ -210,11 +210,39 @@ is selectable — feeds it into the same two-click protocol as clicking the cell
 a new range, or completes one mid-pick. If `min`/`max`/`isDateDisabled` rule today out,
 the button still navigates but selects nothing.
 
+## Slots
+
+`className` addresses the calendar root. `classNames` addresses the elements inside it —
+class strings only, and the keys are typed, so a misspelled one is a compile error rather
+than a prop that does nothing.
+
+RangeCalendar renders none of that markup itself: the anatomy is `CalendarBase`'s, and both
+`classNames` and [`renderDay`](calendar.md#renderday) are forwarded straight through. **The
+slot table is [Calendar's](calendar.md#slots)** — the same fifteen keys, unchanged, because
+it is the same element tree.
+
+```tsx
+<RangeCalendar
+  defaultMonth={new Date(2026, 5, 1)}
+  classNames={{ day: "rounded-full", month: "min-w-[18rem]" }}
+/>
+```
+
+Two things worth knowing here specifically:
+
+- **A slot on a repeated element lands on every instance**, and a range calendar shows two
+  months by default — so `classNames.month` styles both grids, not the first.
+- **`day` appends, it never replaces.** `.calendar-day` is the selector the roving-focus
+  effects query, so the base class is written first and yours is added to it. The range
+  band, the endpoints and the hover preview are all `data-*` state on that same button
+  (`data-in-range`, `data-range-start`, `data-range-end`, `data-preview`), so a slot class
+  sits alongside them rather than fighting them — see [Gotchas](#gotchas).
+
 ## Theme tokens
 
 RangeCalendar declares no styling of its own: there is no `RangeCalendar.css`, and its
 source contains no Tailwind utility. It renders `CalendarBase`, whose markup is painted by
-`Calendar.css` — the same sheet behind [Calendar](calendar.md), shipped in this package's `styles.css`.
+`CalendarBase.css` — the same sheet behind [Calendar](calendar.md), shipped in this package's `styles.css`.
 So every override below re-tints the single-date calendar at the same time, and there is no
 per-component variable to reach for here.
 
@@ -254,7 +282,7 @@ and shell widths recompute from it. The day button itself is `width: 100%` with
 `aspect-ratio: 1 / 1`, so cells also grow with the column on a full-width mobile month.
 
 The ‹ › navigation buttons are [IconButton](icon-button.md)s and take their colours from
-that component, not from `Calendar.css`.
+that component, not from `CalendarBase.css`.
 
 ## Gotchas
 

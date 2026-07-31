@@ -66,6 +66,14 @@ function walk(dir, test, out = []) {
  * `./CalendarBase` — so a token/utility a component genuinely uses can live one hop away.
  * We follow only `./` (not `../`): sibling helpers are part of the component; util/lucide
  * are not, and pulling them in would only loosen the check.
+ *
+ * A resolved sibling *module* also contributes its OWN sibling stylesheet. Until
+ * `Calendar.css` was renamed to `CalendarBase.css` — after its real owner, since every
+ * selector in it targets markup `CalendarBase` renders — a component's stylesheet was
+ * always `X.css` beside `X.tsx`, so this half never had a case and was never written. It
+ * is the same one-hop rule the paragraph above states, applied to the CSS: `Calendar`
+ * imports `./CalendarBase`, so `CalendarBase.css` is what paints what `Calendar` renders.
+ * Without it the gate goes *blind* for the whole calendar family rather than strict.
  */
 function siblingImports(file, text) {
   const dir = dirname(file);
@@ -76,8 +84,14 @@ function siblingImports(file, text) {
       const p = join(dir, m[1] + ext);
       if (existsSync(p) && statSync(p).isFile()) {
         const t = readFileSync(p, "utf8");
-        if (p.endsWith(".css")) css += "\n" + t;
-        else tsx += "\n" + t;
+        if (p.endsWith(".css")) {
+          css += "\n" + t;
+        } else {
+          tsx += "\n" + t;
+          // One hop only, and only this module's own stylesheet — not a transitive walk.
+          const sheet = p.replace(/\.tsx?$/, ".css");
+          if (sheet !== p && existsSync(sheet)) css += "\n" + readFileSync(sheet, "utf8");
+        }
         break;
       }
     }

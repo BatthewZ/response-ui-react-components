@@ -208,5 +208,40 @@ to understand.
    not to need. State the blind spots beside the gate; a check described as one that "cannot be
    satisfied by a lie" almost always can be, and the claim is what stops anyone looking.
 
+30. **When a stylesheet has no owning component, name the file after the component that renders
+   its markup — and expect a gate to have been leaning on the old name.** A sheet named after the
+   most visible *consumer* rather than the base component whose elements it paints is invisible
+   ownership: nothing imports it but the aggregate stylesheet, and the two components that look
+   like they own it render none of its selectors. The rename is cheap; what is not is that a
+   doc-token gate had modelled "a component's CSS" as strictly `X.css` beside `X.tsx`, because
+   until then no counter-example existed. Its own docblock already said a component's vocabulary
+   may live one same-directory hop away — the CSS half of that rule simply had never been
+   written. Extending it there is the repair; leaving it makes the gate silently **blind** for the
+   whole family rather than strict, which is the worse failure and the one nothing reports.
+31. **Where four components consume one base component's anatomy, the slot union belongs to the
+   base and is aliased, not re-spelled.** The rule that a slot union is written inline per
+   component protects two things — an unknown key is a type error, and known keys autocomplete —
+   and a single exported alias preserves both while four copies of a fifteen-member union do not.
+   Read "inline" as "written out as a literal union exactly once, where the element tree is", not
+   as "textually duplicated at every prop that forwards it".
+32. **A companion test that asserts the same thing as the override test is not a companion.** The
+   per-slot falsifier's signal is *one* test reddening; two means a companion is duplicating the
+   override assertion and the extra red says nothing. Two written to guard behavioural marker
+   classes did exactly that by asserting the slot landed — the fix is to assert only what they
+   exist for (the marker still resolves by selector; arrow-key focus still moves), so they redden
+   when the base class is dropped and stay green when the merge is.
+33. **A loop-generated element can take a class slot *and* a content render prop without being two
+   writers.** The one-writer rule bites when two APIs address the same *concern*; a slot that
+   appends to the button's class and a render prop that supplies the button's children do not.
+   What makes it safe is the render prop rendering *inside* the element rather than replacing it —
+   the class, the `data-*` state and the roving tab stop stay the component's, which matters most
+   where the element is also found by `querySelector` for focus management. A render prop that
+   returned the whole element would break exactly that and look identical in review.
+34. **A bug-ledger anchor whose code merely moved is not what `--reanchor` always does.** The tool
+   relocates by searching for the stored fingerprint; when the anchored line was itself edited the
+   search finds nothing and it **restamps in place**, silently re-pointing the row at whatever now
+   occupies that line number. It says so — "RE-VERIFY BY HAND" — and the gate then passes. Move
+   the line number to where the described code actually went *first*, then restamp.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

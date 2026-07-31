@@ -427,6 +427,73 @@ table and the pager.
 ```
 <!-- /example -->
 
+## Slots and props hatches
+
+DataTable builds a whole table from data, so most of what it renders belongs to
+[Table](table.md) rather than to DataTable. There are three overlapping routes, and which
+one you want depends on which element you mean.
+
+**`className` is the outermost element** — the block wrapping the table, `footer` and the
+pagination row.
+
+**`classNames` addresses the internals DataTable adds on top of Table.** Class strings only,
+and the keys are typed, so a misspelled one is a compile error rather than a prop that does
+nothing.
+
+| Slot           | Element                              | Rendered                           |
+| -------------- | ------------------------------------ | ---------------------------------- |
+| `expandToggle` | the per-row expander `<button>`      | one per row, with `renderExpanded`  |
+| `expandedCell` | `td.data-table-expanded-cell`        | one per expanded row               |
+| `expandedBody` | `div.data-table-expanded-body`       | one per expanded row               |
+
+```tsx
+<DataTable
+  data={rows}
+  columns={columns}
+  rowKey={(r) => r.id}
+  renderExpanded={(r) => <p>{r.detail}</p>}
+  className="rounded-lg border border-border-default"
+  classNames={{ expandedBody: "text-body-3" }}
+/>
+```
+
+A slot on a repeated element lands on **every** instance — there is no key for "the third
+row's toggle", by design.
+
+**Two `<thing>Props` hatches reach components DataTable constructs**, which a class string
+cannot:
+
+| Prop              | Target                    | Why a hatch                                                     |
+| ----------------- | ------------------------- | --------------------------------------------------------------- |
+| `tableProps`      | the inner `<table>`       | forwarded to [Table](table.md)'s own hatch, and **merged** into the `aria-busy` DataTable derives from `loading` rather than replacing it |
+| `paginationProps` | the [Pagination](pagination.md) block | the pager is constructed here, so this is the only route to it; `page`, `totalPages` and `onPageChange` are `Omit`ted because DataTable owns them |
+
+```tsx
+<DataTable
+  data={rows}
+  columns={columns}
+  rowKey={(r) => r.id}
+  pageSize={10}
+  tableProps={{ "aria-label": "Invoices" }}
+  paginationProps={{ variant: "compact", siblingCount: 2 }}
+/>
+```
+
+**Deliberately not slots.**
+
+- **The detail row's reveal box** (`.data-table-expanded-content`). Its `display: grid` and
+  its `grid-template-rows: 0fr → 1fr` transition *are* the animation, and the resolved
+  duration is read back off that element to schedule the unmount — a class there changes
+  behaviour, not appearance. Its clipping child (`…-inner`) is the same story: `overflow:
+  hidden` and `min-height: 0` are what let the row reach zero height at all.
+- **The detail `<tr>`** (`.data-table-expanded-row`). Nothing in this package styles it —
+  it is a declaration-free marker so your own stylesheet can name the row.
+- **The expander and checkbox column widths** (`w-10`) and **the chevron's `rotate-90`**.
+  The widths are reservations for controls DataTable owns; the rotation *is* the open state.
+  The button around the chevron is `classNames.expandToggle`.
+- **The pagination row's centring shim.** Nothing to vary — the pager it positions is
+  `paginationProps`, and the block around both is `className`.
+
 ## Theme tokens
 
 **DataTable has no stylesheet of its own.** The grid is drawn by [Table](table.md), and its rules —

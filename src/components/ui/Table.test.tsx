@@ -789,4 +789,128 @@ describe("Table", () => {
       expect(onKeyDown).toHaveBeenCalledTimes(1);
     });
   });
+
+  /* ---------------------------------------------------------------- */
+  /*  classNames on Table.HeaderCell                                   */
+  /* ---------------------------------------------------------------- */
+
+  describe("HeaderCell classNames", () => {
+    function renderCell(props: Partial<HeaderCellProps> = {}) {
+      return render(
+        <Table>
+          <Table.Head>
+            <Table.Row>
+              <Table.HeaderCell onSort={vi.fn()} sortDirection="asc" {...props}>
+                Customer
+              </Table.HeaderCell>
+            </Table.Row>
+          </Table.Head>
+          <Table.Body />
+        </Table>,
+      );
+    }
+
+    it("lands classNames.sortButton on the sort button, beside the base class", () => {
+      renderCell({ classNames: { sortButton: "sentinel-slot" } });
+      const button = screen.getByRole("button");
+      expect(button.getAttribute("class")).toContain("table-header-cell__sort-button");
+      expect(button.getAttribute("class")).toContain("sentinel-slot");
+    });
+
+    it("lands classNames.sortIcon on the direction glyph, beside its base classes", () => {
+      const { container } = renderCell({ classNames: { sortIcon: "sentinel-slot" } });
+      const icon = container.querySelector(".table-header-cell__sort-icon");
+      expect(icon!.getAttribute("class")).toContain("table-header-cell__sort-icon--active");
+      expect(icon!.getAttribute("class")).toContain("sentinel-slot");
+    });
+
+    it("leaves both base classes alone when no slot is passed", () => {
+      const { container } = renderCell();
+      // `toBe`, not `toContain`: a merge that drops the library class when the
+      // slot is `undefined` passes `toContain` and fails here.
+      expect(screen.getByRole("button").getAttribute("class")).toBe(
+        "table-header-cell__sort-button",
+      );
+      expect(
+        container.querySelector(".table-header-cell__sort-icon")!.getAttribute("class"),
+      ).toBe("table-header-cell__sort-icon table-header-cell__sort-icon--active");
+    });
+
+    it("does not put the slot classes on the cell itself", () => {
+      renderCell({ classNames: { sortButton: "sentinel-a", sortIcon: "sentinel-b" } });
+      const cell = screen.getByRole("columnheader");
+      expect(cell.className).not.toContain("sentinel-a");
+      expect(cell.className).not.toContain("sentinel-b");
+    });
+
+    it("rejects an unknown slot key at compile time", () => {
+      renderCell({
+        // @ts-expect-error — `sortGlyph` is not a slot; only untyped JS gets here.
+        classNames: { sortGlyph: "sentinel-slot" },
+      });
+      expect(screen.getByRole("button").getAttribute("class")).toBe(
+        "table-header-cell__sort-button",
+      );
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      renderCell({ classNames: { sortButton: "sentinel-slot" } });
+      expect(screen.getByRole("columnheader").hasAttribute("classnames")).toBe(false);
+    });
+
+    it("names the sort-icon modifier statically in both directions", () => {
+      const { container, rerender } = renderCell();
+      expect(
+        container.querySelector(".table-header-cell__sort-icon--active"),
+      ).not.toBeNull();
+
+      rerender(
+        <Table>
+          <Table.Head>
+            <Table.Row>
+              <Table.HeaderCell onSort={vi.fn()}>Customer</Table.HeaderCell>
+            </Table.Row>
+          </Table.Head>
+          <Table.Body />
+        </Table>,
+      );
+      expect(container.querySelector(".table-header-cell__sort-icon--muted")).not.toBeNull();
+    });
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  tableProps hatch                                                 */
+  /* ---------------------------------------------------------------- */
+
+  describe("tableProps", () => {
+    it("merges its className after the component's own base classes", () => {
+      const { container } = render(
+        <Table stickyHeader tableProps={{ className: "sentinel-slot" }}>
+          <Table.Body />
+        </Table>,
+      );
+      const table = container.querySelector("table")!;
+      expect(table.getAttribute("class")).toBe(
+        "table table--sticky-header sentinel-slot",
+      );
+    });
+
+    it("leaves the base classes alone with no bag", () => {
+      const { container } = render(
+        <Table>
+          <Table.Body />
+        </Table>,
+      );
+      expect(container.querySelector("table")!.getAttribute("class")).toBe("table");
+    });
+
+    it("still forwards the rest of the bag", () => {
+      const { container } = render(
+        <Table tableProps={{ className: "sentinel-slot", "aria-label": "Invoices" }}>
+          <Table.Body />
+        </Table>,
+      );
+      expect(container.querySelector("table")).toHaveAttribute("aria-label", "Invoices");
+    });
+  });
 });

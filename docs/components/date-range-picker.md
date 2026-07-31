@@ -280,6 +280,44 @@ parser's business, not this component's.
 ```
 <!-- /example -->
 
+## Slots
+
+`className` addresses the outermost element — the block wrapping the fields, the refusal
+message and the popover. `classNames` addresses the chrome DateRangePicker renders inside
+it — class strings only, and the keys are typed, so a misspelled one is a compile error
+rather than a prop that does nothing.
+
+| Slot      | Element                          | What it addresses                              |
+| --------- | -------------------------------- | ---------------------------------------------- |
+| `control` | the field row                    | both endpoints, the dash and the open button    |
+| `panel`   | the floating surface, when open  | the popover shell the calendar is rendered into |
+
+```tsx
+<DateRangePicker classNames={{ control: "gap-r5", panel: "p-r6" }} />
+```
+
+The slot class is merged after the base classes, and both survive — `cn()` resolves
+conflicts between utilities, so a utility touching a property the base already sets replaces
+it and anything else stacks.
+
+**There is no `actions` slot here, and that is not an omission.** DatePicker overlays its
+icon cluster *inside* the field, so the cluster is its own element; DateRangePicker's open
+button is a sibling of the two inputs in the field row, which is `classNames.control`.
+
+**The calendar inside the popover is not addressed from here.** Its anatomy belongs to
+[RangeCalendar](range-calendar.md#slots), which DateRangePicker renders; there is no route
+to those elements through this component today.
+
+**Deliberately not slots.**
+
+- **The `–` between the fields.** It is an `aria-hidden` en dash carrying one ink utility
+  and no geometry — the lever you actually want is the spacing and arrangement of the pair,
+  which is `classNames.control`.
+- **The refusal message.** Its `sr-only` toggle is the mechanism, not a style: the element
+  is mounted whether or not it holds anything, because a live region created in the same
+  commit as its first text is not reliably announced. See
+  [Saying why a date was refused](#saying-why-a-date-was-refused).
+
 ## Theme tokens
 
 DateRangePicker has no `.css` of its own. Everything it paints comes from Tailwind utilities
@@ -313,7 +351,7 @@ at `0.25rem` on both sides, so the gap between the two fields and the trigger st
 
 **The table stops at the popover's own frame.** The calendar drawn inside it belongs to
 [RangeCalendar](range-calendar.md), which is not a same-directory sibling of this file — its day cells, range
-fill, hover preview and header live in `Calendar.css` and are documented on its own page.
+fill, hover preview and header live in `CalendarBase.css` and are documented on its own page.
 The trigger is an [IconButton](icon-button.md) and carries that component's tokens.
 
 Three popover measurements are deliberately **off** the contract, because they are viewport

@@ -19,7 +19,7 @@ import {
 } from "../../hooks/use-floating";
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { clampDate, formatDate, isBefore, parseDateInput, toISODate } from "../../util/date";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { type DateRange, RangeCalendar } from "../ui/RangeCalendar";
 import { type CalendarLabels } from "../ui/CalendarBase";
 import { IconButton } from "../ui/IconButton";
@@ -119,6 +119,19 @@ type DateRangePickerProps = {
   name?: string;
   className?: string;
   /**
+   * Class overrides for the picker's own chrome. `className` is the root, so
+   * there is no `root` key.
+   *
+   * - `control` — the field row holding both endpoints and the open button; the
+   *   positioning context the popover anchors to.
+   * - `panel` — the floating surface the range calendar is rendered into.
+   *
+   * The calendar's own internals are not addressed from here: they belong to
+   * `CalendarBase`'s anatomy, which this component renders through
+   * `RangeCalendar`.
+   */
+  classNames?: SlotClassNames<"control" | "panel">;
+  /**
    * Not a DateRangePicker prop. Declared `never` rather than only `Omit`ted
    * because a JSX spread performs no excess-property check, so `Omit` alone let a
    * caller's `color` reach the wrapper `<div>` and render as an attribute.
@@ -162,6 +175,7 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
       endInputId,
       form,
       name,
+      classNames,
       className,
       color: _color,
       onKeyDown,
@@ -337,7 +351,10 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
         {/* The field row is the floating anchor, not the wrapper: the message
             below is a sibling of it, so a refusal does not push the calendar
             away from the fields it belongs to. */}
-        <div ref={refs.setReference} className="flex items-center gap-r6">
+        <div
+          ref={refs.setReference}
+          className={cn("flex items-center gap-r6", classNames?.control)}
+        >
           <Input
             type="text"
             id={startInputId}
@@ -357,7 +374,14 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
             onBlur={commit}
             onKeyDown={handleKeyDown}
           />
-          <span aria-hidden="true" className="text-fg-muted">
+          <span
+            aria-hidden="true"
+            // slot:(a) an `aria-hidden` en dash whose whole job is to read the
+            // two fields as one span quietly. It carries one ink utility and no
+            // geometry; the lever a caller actually wants — the spacing and
+            // arrangement of the pair — is `classNames.control` around it.
+            className="text-fg-muted"
+          >
             –
           </span>
           <Input
@@ -397,6 +421,10 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
         <p
           id={messageId}
           aria-live="polite"
+          // slot:(a) the live region, and `sr-only` is the mechanism rather
+          // than a style: the element is mounted whether or not it holds
+          // anything, and the class is what keeps an empty one out of the
+          // visual flow. A route here is a route to dropping it.
           className={cn(rejectMessageClassName, message == null && "sr-only")}
         >
           {message}
@@ -411,7 +439,7 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
                 ref={refs.setFloating}
                 style={floatingStyles}
                 aria-label={label.chooseDateRange}
-                className={datePickerPopoverClassName}
+                className={cn(datePickerPopoverClassName, classNames?.panel)}
                 {...getFloatingProps()}
               >
                 <RangeCalendar

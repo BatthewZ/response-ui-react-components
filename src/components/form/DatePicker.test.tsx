@@ -1,9 +1,10 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { formatDate, getWeekdayNames } from "../../util/date";
+import { datePickerPopoverClassName } from "./date-picker-internals";
 import { DatePicker } from "./DatePicker";
 import { Field } from "./Field";
 import { useForm } from "./use-form";
@@ -680,5 +681,72 @@ describe("DatePicker · popup wiring, i18n and native form behaviour", () => {
     await user.keyboard("{Enter}");
     expect(prevented[prevented.length - 1]).toBe(true);
     expect(input).toHaveValue(fmt(new Date(2026, 11, 25)));
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  classNames                                                       */
+  /* ---------------------------------------------------------------- */
+
+  describe("classNames", () => {
+    /** Open the popover so `panel` exists, and return the container. */
+    async function open(props: Partial<ComponentProps<typeof DatePicker>> = {}) {
+      const user = userEvent.setup();
+      const result = render(<DatePicker clearable defaultValue={new Date(2026, 5, 10)} {...props} />);
+      await user.click(screen.getByRole("button", { name: "Open calendar" }));
+      return result;
+    }
+
+    it("lands classNames.control on the field row, beside its base classes", async () => {
+      const { container } = await open({ classNames: { control: "sentinel-slot" } });
+      const control = container.querySelector(".relative");
+      expect(control!.getAttribute("class")).toContain("relative");
+      expect(control!.getAttribute("class")).toContain("sentinel-slot");
+    });
+
+    it("lands classNames.actions on the icon cluster, beside its base classes", async () => {
+      const { container } = await open({ classNames: { actions: "sentinel-slot" } });
+      const actions = container.querySelector(".sentinel-slot");
+      expect(actions).not.toBeNull();
+      expect(actions!.getAttribute("class")).toContain("absolute");
+      expect(actions!.getAttribute("class")).toContain("items-center");
+    });
+
+    it("lands classNames.panel on the popover surface, beside its base classes", async () => {
+      await open({ classNames: { panel: "sentinel-slot" } });
+      const panel = screen.getByRole("dialog", { name: "Choose date" });
+      expect(panel.getAttribute("class")).toContain("sentinel-slot");
+      expect(panel.getAttribute("class")).toContain("rounded-md");
+    });
+
+    it("leaves every base class alone when no slot is passed", async () => {
+      const { container } = await open();
+      // `toBe`, not `toContain`: a merge that drops the base class when the
+      // slot is `undefined` passes `toContain` and fails here.
+      expect(container.querySelector(".relative")!.getAttribute("class")).toBe("relative");
+      expect(screen.getByRole("dialog", { name: "Choose date" }).getAttribute("class")).toBe(
+        datePickerPopoverClassName,
+      );
+    });
+
+    it("does not put a slot class on the root", async () => {
+      const { container } = await open({
+        className: "root-class",
+        classNames: { control: "sentinel-slot" },
+      });
+      expect(container.firstElementChild!.getAttribute("class")).toBe("root-class");
+    });
+
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        // @ts-expect-error — `field` is not a slot; only untyped JS gets here.
+        <DatePicker classNames={{ field: "sentinel-slot" }} />,
+      );
+      expect(container.querySelector(".sentinel-slot")).toBeNull();
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(<DatePicker classNames={{ control: "sentinel-slot" }} />);
+      expect(container.querySelector("[classnames]")).toBeNull();
+    });
   });
 });

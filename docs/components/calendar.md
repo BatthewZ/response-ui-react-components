@@ -173,9 +173,82 @@ calendar's natural width. Setting it in `style` beats the stylesheet's own decla
 the same element, so the derived `calc()`s recompute from your value. Day cells are
 `aspect-ratio: 1 / 1` and stretch to `1fr`, so they only ever grow past that floor.
 
+## Slots
+
+`className` addresses the calendar root. `classNames` addresses the elements Calendar
+renders *inside* it — class strings only, and the keys are typed, so a misspelled one is a
+compile error rather than a prop that does nothing.
+
+| Slot          | Element                        | Rendered                     |
+| ------------- | ------------------------------ | ---------------------------- |
+| `header`      | `div.calendar-header`          | once                         |
+| `labelButton` | `button.calendar-label-button` | once — the month/year jump   |
+| `months`      | `div.calendar-months`          | once                         |
+| `month`       | `div.calendar-month`           | one per visible month        |
+| `caption`     | `div.calendar-month-caption`   | one per month, multi-month only |
+| `grid`        | `div.calendar-grid`            | one per visible month        |
+| `weekdays`    | `div.calendar-weekdays`        | one per visible month        |
+| `weekday`     | `div.calendar-weekday`         | seven per month              |
+| `row`         | `div.calendar-week`            | six per month                |
+| `cell`        | `div.calendar-cell`            | 42 per month                 |
+| `day`         | `button.calendar-day`          | 42 per month                 |
+| `footer`      | `div.calendar-footer`          | once, with `showToday`       |
+| `todayButton` | `button.calendar-today-button` | once, with `showToday`       |
+| `pickerGrid`  | `div.calendar-picker-grid`     | once, in the month/year view |
+| `pickerCell`  | `button.calendar-picker-cell`  | one per month/year offered   |
+
+A slot on a repeated element lands on **every** instance — there is no key for "the 15th
+cell", by design. For per-day *content* rather than per-day classes, use
+[`renderDay`](#renderday).
+
+```tsx
+<Calendar
+  defaultMonth={new Date(2026, 5, 1)}
+  classNames={{ day: "rounded-full", weekday: "uppercase" }}
+/>
+```
+
+The slot class is merged after the base class, and both survive — `cn()` resolves conflicts
+between utilities, not between a utility and a component class. Your utility still wins the
+cascade, because the base class lives in `@layer components` and yours does not.
+
+**`day` and `pickerCell` append, they never replace.** `.calendar-day` and
+`.calendar-picker-cell` are the selectors the roving-focus effects query, so the base class
+is written first and yours is added to it. Passing a class that *looks* like a replacement
+does not remove them.
+
+**Deliberately not a slot.** The `‹` and `›` navigation buttons are
+[IconButton](icon-button.md)s, not elements Calendar classes; the header row around them
+is `classNames.header`.
+
+## renderDay
+
+The 42 cells in a month grid are generated in a loop, so no key can name one of them — and
+what you usually want there is different *content*, not a different class. `renderDay`
+supplies the content **inside** the day button:
+
+```tsx
+<Calendar
+  defaultMonth={new Date(2026, 5, 1)}
+  renderDay={({ date, selected }) => (
+    <>
+      {date.getDate()}
+      {isBooked(date) && <span aria-hidden="true" className="calendar-dot" />}
+    </>
+  )}
+/>
+```
+
+It is handed `{ date, status, outside, today, disabled, selected }`. The button itself stays
+Calendar's: its class, its `data-*` state, its accessible name and its roving tab stop are
+what keyboard navigation and assistive tech read, and a render prop that replaced them would
+break both. Anything you add is announced only if you give it an accessible name — the
+booked dot above is `aria-hidden`, so pair it with text in the day's own `aria-label` if it
+carries meaning.
+
 ## Theme tokens
 
-Calendar uses **no Tailwind utilities** — every rule lives in `Calendar.css` and reads
+Calendar uses **no Tailwind utilities** — every rule lives in `CalendarBase.css` and reads
 contract variables directly. Override any of these and the calendar re-tints with the rest
 of the app at runtime, with no rebuild.
 

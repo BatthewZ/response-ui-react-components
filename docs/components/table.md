@@ -322,6 +322,46 @@ the table.
 how you give the table an accessible name. `scope` passes through on `Table.HeaderCell`,
 which is also usable inside `Table.Body` to mark the cell that labels a row.
 
+## Slots
+
+Table is a compound, so almost every element is already addressable: `className` on each
+part lands on the element that part renders. Two internals are not parts, and
+`Table.HeaderCell` takes a `classNames` object for them — class strings only, and the keys
+are typed, so a misspelled one is a compile error rather than a prop that does nothing.
+
+| Part                | Slot         | Element                                     | Rendered                                  |
+| ------------------- | ------------ | ------------------------------------------- | ----------------------------------------- |
+| `Table.HeaderCell`  | `sortButton` | `button.table-header-cell__sort-button`     | only with `onSort`                        |
+| `Table.HeaderCell`  | `sortIcon`   | `span.table-header-cell__sort-icon`         | with `onSort` **or** a set `sortDirection` |
+
+```tsx
+<Table.HeaderCell
+  onSort={sortByName}
+  sortDirection="asc"
+  classNames={{ sortIcon: "text-fg-primary" }}
+>
+  Customer
+</Table.HeaderCell>
+```
+
+The glyph also carries `--active` or `--muted`, depending on whether a direction is set —
+see [Sorting](#sorting). Your class is merged after both.
+
+**The `<table>` element takes `tableProps`, not a slot.** Every other prop lands on the
+wrapper `<div>` (which is the scrollport, and wants them), so that bag is the only route to
+the table itself — an `aria-label`, an `aria-rowcount`, a `className`. Its `className`
+merges with the component's own rather than replacing it:
+
+```tsx
+<Table tableProps={{ "aria-label": "Invoices", className: "text-body-3" }}>…</Table>
+```
+
+**Deliberately not a slot.** The sort button's hidden action word ("Sort by") carries
+`sr-only` and nothing else, and that class is the whole mechanism: it reaches the button's
+accessible name through `aria-labelledby` while staying out of the visible cell. Dropping it
+prints the verb beside every column heading. Use `sortLabel` to change or remove the word —
+see [Accessibility](#accessibility).
+
 ## Theme tokens
 
 Apart from `sr-only` on the sort button's hidden action word, `Table.tsx` uses **no Tailwind

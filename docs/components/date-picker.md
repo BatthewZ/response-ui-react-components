@@ -263,6 +263,44 @@ Standalone, drive the same styling from `error`:
 calendar button — so the popover has no way to open. The hidden `name` input is disabled
 too, so a disabled picker submits nothing, like a native disabled control.
 
+## Slots
+
+`className` addresses the outermost element — the block wrapping the field, the refusal
+message and the popover. `classNames` addresses the chrome DatePicker renders inside it —
+class strings only, and the keys are typed, so a misspelled one is a compile error rather
+than a prop that does nothing.
+
+| Slot      | Element                                  | What it addresses                                   |
+| --------- | ---------------------------------------- | --------------------------------------------------- |
+| `control` | the field row (`div.relative`)           | the positioning context the popover anchors to       |
+| `actions` | the icon cluster overlaying the field     | the clear and open-calendar buttons' container       |
+| `panel`   | the floating surface, when open           | the popover shell the calendar is rendered into      |
+
+```tsx
+<DatePicker classNames={{ panel: "p-r6 shadow-lg" }} />
+```
+
+The slot class is merged after the base classes, and both survive — `cn()` resolves
+conflicts between utilities, so a utility touching a property the base already sets replaces
+it and anything else stacks.
+
+**The calendar inside the popover is not addressed from here.** Its anatomy belongs to
+[Calendar](calendar.md#slots), which DatePicker renders; there is no route to those elements
+through this component today.
+
+**Deliberately not slots.**
+
+- **The field's right padding** (`pr-r1`, or `pr-[4rem]` with `clearable`). It reserves
+  exactly the room the icon cluster occupies, so it is derived from `clearable` rather than
+  chosen — a value you set is a value that puts text under the buttons. Move the cluster
+  with `classNames.actions` instead.
+- **The refusal message.** Its `sr-only` toggle is the mechanism, not a style: the element
+  is mounted whether or not it holds anything, because a live region created in the same
+  commit as its first text is not reliably announced. See
+  [Saying why a date was refused](#saying-why-a-date-was-refused).
+- **The clear and open-calendar buttons.** They are [IconButton](icon-button.md)s, not
+  elements DatePicker classes; the cluster around them is `classNames.actions`.
+
 ## Theme tokens
 
 DatePicker has no stylesheet of its own — the field, the popover shell and the icon cluster
