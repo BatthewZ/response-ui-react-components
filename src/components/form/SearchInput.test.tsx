@@ -198,4 +198,94 @@ describe("SearchInput", () => {
       expect(screen.getByRole("searchbox")).not.toHaveAttribute("role");
     });
   });
+
+  describe("classNames slots", () => {
+    /**
+     * One slot-override test per slot, and each is the falsifier for its own
+     * merge: delete that element's `cn()` and exactly this test must go red.
+     */
+    it("lands classNames.icon on the magnifier, beside the base class", () => {
+      const { container } = render(
+        <SearchInput value="" onChange={vi.fn()} classNames={{ icon: "size-r3" }} />,
+      );
+      const icon = container.querySelector("svg");
+      expect(icon?.getAttribute("class")).toContain("search-input__icon");
+      expect(icon?.getAttribute("class")).toContain("size-r3");
+    });
+
+    it("lands classNames.input on the field, beside the base class", () => {
+      render(
+        <SearchInput value="" onChange={vi.fn()} classNames={{ input: "px-r2" }} />,
+      );
+      const input = screen.getByRole("searchbox");
+      expect(input.className).toContain("search-input__input");
+      expect(input.className).toContain("px-r2");
+    });
+
+    it("lands classNames.clear on the clear button, beside the base class", () => {
+      render(
+        <SearchInput value="a" onChange={vi.fn()} classNames={{ clear: "size-r3" }} />,
+      );
+      const clear = screen.getByRole("button", { name: "Clear search" });
+      expect(clear.className).toContain("search-input__clear");
+      expect(clear.className).toContain("size-r3");
+    });
+
+    it("leaves each internal on its base classes alone when no slot is passed", () => {
+      const { container } = render(
+        <SearchInput value="a" onChange={vi.fn()} size="sm" />,
+      );
+      expect(container.querySelector("svg")?.getAttribute("class")).toBe(
+        "lucide lucide-search search-input__icon",
+      );
+      // `toBe` on the tail rather than the whole list: the field is an `Input`,
+      // so the head of its class list is `Input`'s own recipe. The tail is
+      // exactly what SearchInput contributes, and an empty one is the failure
+      // this assertion exists to catch.
+      expect(screen.getByRole("searchbox").className).toMatch(
+        / search-input__input search-input__input--sm$/,
+      );
+      expect(screen.getByRole("button", { name: "Clear search" }).className).toBe(
+        "search-input__clear",
+      );
+    });
+
+    it("does not put a slot class on the wrapper", () => {
+      const { container } = render(
+        <SearchInput
+          value="a"
+          onChange={vi.fn()}
+          classNames={{ icon: "size-r3", input: "px-r2", clear: "gap-r3" }}
+        />,
+      );
+      const wrapper = container.firstElementChild;
+      expect(wrapper?.getAttribute("class")).toBe("search-input");
+    });
+
+    /**
+     * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+     * compile error. It fails if TypeScript ever stops rejecting the key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      render(
+        <SearchInput
+          value=""
+          onChange={vi.fn()}
+          // @ts-expect-error — `field` is not a slot; only untyped JS gets here.
+          classNames={{ field: "px-r2" }}
+        />,
+      );
+      expect(screen.getByRole("searchbox").className).toMatch(
+        / search-input__input$/,
+      );
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(
+        <SearchInput value="" onChange={vi.fn()} classNames={{ icon: "size-r3" }} />,
+      );
+      expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+      expect(screen.getByRole("searchbox").hasAttribute("classnames")).toBe(false);
+    });
+  });
 });

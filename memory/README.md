@@ -208,5 +208,38 @@ to understand.
    not to need. State the blind spots beside the gate; a check described as one that "cannot be
    satisfied by a lie" almost always can be, and the claim is what stops anyone looking.
 
+30. **Where a frozen table and a house rule disagree about one element, shipping neither is the
+   reversible move — and the annotation is what makes that a ruling rather than an oversight.**
+   Three form controls put a caller's `className` on the inner control while an unreachable
+   positioning box sits outside it. One document granted that box an override key; another said
+   to re-point `className` to it instead. The two end-states are mutually exclusive: ship the
+   key and the later re-point has to withdraw public API; re-point now and three documented
+   prop contracts break inside a phase billed as purely additive. Adding is cheaper than
+   removing, and a comment is cheaper than either — so the box got its triage letter and its
+   reason at the element, and the conflict went to the owner named. The general form: when two
+   authorities disagree, ask which choice the *other* one can still be taken from, and take
+   that one.
+31. **A frozen vocabulary is a name list, not a work order, and it will be under-enumerated in
+   both directions.** The form family's table granted a component a key for an element that
+   already had a route (two writers), and omitted a key for one that had none — the same table,
+   the same pass. It also miscounted a component's own triage by one, because a pair of
+   visually-hidden inputs read as "no route" when their whole class *is* the mechanism. Take
+   the *names* from the frozen list and re-derive the *elements* at source every time; a row
+   citing `file:line` is a claim about a file that has since moved.
+32. **A props hatch beats a class slot exactly when the target carries none of the wrapper's
+   own classes.** A chip rendered as a bare `Badge` has no base class for a slot to merge with,
+   so a slot would reach only `className` while the thing callers actually want is the variant —
+   and the prescription to invent a marker class for it to merge against was refuted by the
+   component's own test, which deliberately asserts the chip adds nothing at all. Spread the bag
+   and set back, after it, only the one prop the component owns (here `role`, because the
+   surrounding `list` accepts nothing else as a child). Assert both directions: the caller's
+   class arrives, and the owned prop survives a bag that tries to change it.
+33. **The scanner that polices `Omit` cannot tell a nested prop bag from a component's own props
+   type, and every new `<thing>Props` hatch will trip it.** Two entries already sat in its
+   allowlist for exactly that shape before a third arrived. Adding one is the documented
+   resolution rather than a suppression — but the argument has to say why the key is inert at
+   the element, not merely that the finding is a false positive, or the allowlist becomes the
+   place findings go to be forgotten.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

@@ -27,6 +27,7 @@ and the selected segment are painted underneath from theme tokens.
 | `maxLabel`      | `string`                                                | `"Maximum"`                             |
 | `formatValue`   | `(value: number) => string`                             | — (`aria-valuetext` on both thumbs)     |
 | `className`     | `string`                                                | — (lands on the wrapper)                |
+| `classNames`    | `{ track?, fill?, input? }` — see [Slots](#slots)       | —                                       |
 | `style`         | `CSSProperties`                                         | —                                       |
 | `ref`           | `Ref<HTMLDivElement>`                                   | —                                       |
 | …rest           | `<div>` props except `defaultValue`, `children`; `onChange` is re-typed above | —         |
@@ -232,6 +233,30 @@ The native attribute reaches both inputs, so both drop out of the tab order and 
 responding, and `data-disabled` on the wrapper halves the whole control's opacity. There is
 no read-only mode.
 
+## Slots
+
+`className` addresses the wrapper the two thumbs are positioned inside. `classNames` addresses
+the three elements it paints underneath and on top of them. Class strings only, and the keys
+are typed, so a misspelled one is a compile error rather than a prop that does nothing.
+
+| Slot    | Element                        | What it addresses                                  |
+| ------- | ------------------------------ | -------------------------------------------------- |
+| `track` | `span.range-slider__track`     | the unfilled groove                                 |
+| `fill`  | `span.range-slider__fill`      | the selected span between the thumbs                |
+| `input` | both `input.range-slider__input` | the two native range inputs — one control in two directions, so the key names the pair |
+
+```tsx
+<RangeSlider
+  defaultValue={[20, 80]}
+  classNames={{ input: "[&::-webkit-slider-thumb]:border-surface-1" }}
+/>
+```
+
+The thumbs' *positions* come from `--range-lo` / `--range-hi` on the root, so a class on
+`input` changes appearance and never geometry. Prefer a token where the change is a value —
+the whole rail re-tints from the variables in [Theme tokens](#theme-tokens), and that reaches
+every slider rather than one call site.
+
 ## Theme tokens
 
 `RangeSlider.css` (shipped in this package's `styles` import) paints everything; the `.tsx`
@@ -304,8 +329,9 @@ with no backdrop-coloured gap of its own.
   vanishes into a [Card](card.md), a [Dialog](dialog.md) or the [AppShell](app-shell.md)
   chrome — all rung 0. On the page canvas, on a `--C-SURFACE-1` panel nested inside a sheet,
   or on a tinted one, it reads as a halo in the wrong colour. (The focus ring adds no
-  surface-coloured gap of its own.) Restyle it through `className`, or keep range sliders on
-  a rung-0 sheet.
+  surface-coloured gap of its own.) `classNames.input` is the route to it — the thumb border
+  is a `::-webkit-slider-thumb` rule on the inputs, which `className` on the wrapper never
+  reached. See [Slots](#slots), or keep range sliders on a rung-0 sheet.
 - **Both CSS imports are required.** The `.range-slider` rules live in this package's `styles`
   entry and read `--C-*` / `--RADIUS-*` from `@batthewz/response-ui-css` — import the
   foundation first, then this package's `styles`. Without them you get two unstyled native

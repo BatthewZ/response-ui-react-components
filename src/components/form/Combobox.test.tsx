@@ -556,6 +556,124 @@ describe("Combobox", () => {
       );
     });
   });
+
+  describe("classNames slots", () => {
+    /**
+     * The slot-override test for `Combobox.Input`'s `classNames.toggle`, and the
+     * falsifier for it: delete the `cn()` merge on the disclosure `<button>` and
+     * this must go red.
+     */
+    it("lands classNames.toggle on the disclosure button, beside the base class", () => {
+      render(
+        <Combobox>
+          <Combobox.Input aria-label="Fruit" classNames={{ toggle: "px-r3" }} />
+        </Combobox>,
+      );
+      const toggle = screen.getByRole("button", { name: "Show options" });
+      expect(toggle.className).toContain("combobox-toggle");
+      expect(toggle.className).toContain("px-r3");
+    });
+
+    /**
+     * The slot-override test for `Combobox.Content`'s `classNames.loading`, and
+     * the falsifier for it: delete the `cn()` merge on the loading row and this
+     * must go red. The row only exists while the root is `loading`.
+     */
+    it("lands classNames.loading on the loading row, beside the base class", async () => {
+      const user = userEvent.setup();
+      render(
+        <Combobox loading>
+          <Combobox.Input aria-label="Fruit" />
+          <Combobox.Content classNames={{ loading: "py-r3" }} />
+        </Combobox>,
+      );
+      await user.click(screen.getByRole("button", { name: "Show options" }));
+
+      const row = screen.getByRole("listbox").querySelector(".combobox-loading");
+      expect(row?.getAttribute("class")).toContain("combobox-loading");
+      expect(row?.getAttribute("class")).toContain("py-r3");
+    });
+
+    it("leaves each internal on its base class alone when no slot is passed", async () => {
+      const user = userEvent.setup();
+      render(
+        <Combobox loading>
+          <Combobox.Input aria-label="Fruit" />
+          <Combobox.Content />
+        </Combobox>,
+      );
+      expect(
+        screen.getByRole("button", { name: "Show options" }).className,
+      ).toBe("combobox-toggle");
+
+      await user.click(screen.getByRole("button", { name: "Show options" }));
+      expect(
+        screen
+          .getByRole("listbox")
+          .querySelector(".combobox-loading")
+          ?.getAttribute("class"),
+      ).toBe("combobox-loading");
+    });
+
+    it("does not put a slot class on the element className addresses", async () => {
+      const user = userEvent.setup();
+      render(
+        <Combobox loading>
+          <Combobox.Input aria-label="Fruit" classNames={{ toggle: "px-r3" }} />
+          <Combobox.Content classNames={{ loading: "py-r3" }} />
+        </Combobox>,
+      );
+      expect(getInput().className).not.toContain("px-r3");
+
+      await user.click(screen.getByRole("button", { name: "Show options" }));
+      expect(screen.getByRole("listbox").className).not.toContain("py-r3");
+    });
+
+    /**
+     * The `@ts-expect-error` directives are the assertion — an unknown slot key
+     * must stay a compile error, and the two parts must not share a union. They
+     * fail if TypeScript ever stops rejecting either key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      render(
+        <Combobox>
+          {/* @ts-expect-error — `chevron` is not a slot; the key is `toggle`. */}
+          <Combobox.Input aria-label="Fruit" classNames={{ chevron: "px-r3" }} />
+          {/* @ts-expect-error — `toggle` belongs to Input, not to Content. */}
+          <Combobox.Content classNames={{ toggle: "py-r3" }} />
+        </Combobox>,
+      );
+      expect(screen.getByRole("button", { name: "Show options" }).className).toBe(
+        "combobox-toggle",
+      );
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      render(
+        <Combobox>
+          <Combobox.Input aria-label="Fruit" classNames={{ toggle: "px-r3" }} />
+        </Combobox>,
+      );
+      expect(getInput().hasAttribute("classnames")).toBe(false);
+    });
+
+    /**
+     * The pin on the (a) ruling for `combobox-input-wrap`: `Combobox.Input`'s
+     * `className` addresses the `<input>` (documented in `combobox.md`), and the
+     * wrapper carries only the coupling that keeps the toggle beside the field.
+     */
+    it("leaves the input wrapper on its own class only", () => {
+      const { container } = render(
+        <Combobox>
+          <Combobox.Input aria-label="Fruit" className="w-64" />
+        </Combobox>,
+      );
+      expect(
+        container.querySelector(".combobox-input-wrap")?.getAttribute("class"),
+      ).toBe("combobox-input-wrap");
+      expect(getInput().className).toContain("w-64");
+    });
+  });
 });
 
 /*

@@ -3,7 +3,7 @@ import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { mergeProps } from "../../util/merge-props";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { useFieldErrorProps } from "./Field";
 
@@ -27,6 +27,13 @@ type SwitchProps = {
    * error, and the destructure below keeps the key off the element regardless.
    */
   onChange?: never;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * root — the track `<button>` — so the only slot is the sliding thumb, which no
+   * caller can otherwise reach. The union is written out here so an unknown key
+   * is a type error rather than a silently ignored one.
+   */
+  classNames?: SlotClassNames<"thumb">;
 } & Omit<ComponentPropsWithRef<"button">, "onChange" | "value">;
 
 export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch(
@@ -39,6 +46,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
     name,
     value = "on",
     className,
+    classNames,
     disabled,
     form,
     onClick,
@@ -74,7 +82,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(function Switch
         }}
         className={cn("switch", className)}
       >
-        <span className="switch-thumb" />
+        <span className={cn("switch-thumb", classNames?.thumb)} />
       </button>
       {/* Native checkbox semantics for the form payload: an unchecked switch
           submits nothing at all (so `FormData.has(name)` answers the question it

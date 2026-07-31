@@ -22,6 +22,7 @@ Dropped inside a [Field](field.md) it inherits that field's error state — the 
 | ----------- | ------------------------ | --------------------------- |
 | `error`     | `boolean`                | `Field` state, else `false` |
 | `className` | `string`                 | —                           |
+| `classNames` | `{ chevron?: string }` — see [Slots](#slots) | —          |
 | `ref`       | `Ref<HTMLSelectElement>` | —                           |
 | …rest       | props of `<select>`      | —                           |
 
@@ -201,6 +202,28 @@ Add `value` and `onChange` to drive it from state instead.
 
 These are the native `<select>` props, so React's usual rule applies — a `value` with no
 `onChange` renders a frozen select and warns in development.
+
+## Slots
+
+`className` addresses the `<select>` — the element the ref and every rest prop also address.
+`classNames` addresses the one element Select renders beside it. Class strings only, and the
+keys are typed, so a misspelled one is a compile error rather than a prop that does nothing.
+
+| Slot      | Element                | What it addresses                              |
+| --------- | ---------------------- | ---------------------------------------------- |
+| `chevron` | the `ChevronDown` `svg` | the "I am a dropdown" glyph, absolutely placed |
+
+```tsx
+<Select aria-label="Country" classNames={{ chevron: "text-fg-muted" }}>
+  <option>United Kingdom</option>
+</Select>
+```
+
+**The positioning wrapper takes no class from the call site, deliberately.** Its only
+declaration is `relative`, which is the context the chevron is placed against — change it and
+the glyph detaches from the field. Everything a caller normally wants on the outside of a
+select (width, margin, display) is reachable on the `<select>` itself, which is where
+`className` lands; see [Gotchas](#gotchas).
 
 ## Theme tokens
 

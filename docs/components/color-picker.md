@@ -26,6 +26,7 @@ what leaves the component is always one canonical lowercase `#rrggbb` string.
 | `error`         | `boolean`                 | —                |
 | `disabled`      | `boolean`                 | —                |
 | `className`     | `string`                  | —                |
+| `classNames`    | ten keys — see [Slots](#slots) | —           |
 | `aria-label`    | `string`                  | `"Choose color"` |
 | `panelLabel`    | `string`                  | `"Color picker"` |
 | `areaLabel`     | `string`                  | `"Saturation and brightness"` |
@@ -45,7 +46,8 @@ destructured out so it never reaches an element. The component still renders no 
 input, so a plain `<form>` submits nothing for it — see [Gotchas](#gotchas).
 
 `className` lands on the wrapper `<div>`, not the trigger; `ref` lands on the trigger
-`<button>`. `Placement` is Floating UI's type — `"top"`, `"right"`, `"bottom"`, `"left"`,
+`<button>`. Every other element — the trigger included — is reached through `classNames`, see
+[Slots](#slots). `Placement` is Floating UI's type — `"top"`, `"right"`, `"bottom"`, `"left"`,
 each optionally suffixed `-start` / `-end`.
 
 The six `*Label` props are the panel's whole vocabulary, and they are **accessible names, not
@@ -304,6 +306,43 @@ override does **not** reach the picker's own panel (the general portal caveat th
 [Portal](portal.md) documents), and overriding one variable in isolation can break the
 [pairings](../theme-contract.md#the-contrast-pairing) the theme defines — `--C-PRIMARY` has
 a matching `--C-TEXT-ON-PRIMARY` that does not move with it.
+
+## Slots
+
+`className` addresses the wrapper. `classNames` addresses the trigger and the nine parts of
+the floating panel — class strings only, and the keys are typed, so a misspelled one is a
+compile error rather than a prop that does nothing.
+
+| Slot      | Element                            | What it addresses                            |
+| --------- | ---------------------------------- | -------------------------------------------- |
+| `trigger` | `button.colorpicker-trigger`       | the closed control, error modifier included   |
+| `swatch`  | both `.colorpicker-swatch`         | the trigger's chip **and** the panel's large one |
+| `value`   | `span.colorpicker-trigger__value`  | the hex text on the trigger                   |
+| `panel`   | `div.colorpicker-panel`            | the floating surface                          |
+| `plane`   | `div.colorpicker-sv`               | the saturation/brightness square              |
+| `thumb`   | `span.colorpicker-sv__thumb`       | the handle on that square                     |
+| `hue`     | `input.colorpicker-hue`            | the hue rail                                  |
+| `hex`     | `input.colorpicker-hex`            | the hex text field                            |
+| `presets` | `div.colorpicker-presets`          | the preset row, rendered only with `presets`  |
+| `preset`  | every `button.colorpicker-preset`  | all preset buttons — they are generated from `presets`, so no key names one |
+
+```tsx
+<ColorPicker
+  defaultValue="#3366cc"
+  presets={["#e11d48", "#2563eb"]}
+  classNames={{ panel: "w-72", preset: "rounded-none" }}
+/>
+```
+
+**The panel's position is written as an inline `style`,** so a positioning utility in
+`classNames.panel` is silently dead — pass `placement` instead.
+
+**Three internals take no class from the call site, deliberately.** The two axis `<input
+type="range">` elements carry the visually-hidden clip that lets each axis be named and
+arrow-key operable without painting a second control over the square; un-hiding them is the
+arrangement the class exists to prevent. And the hex row is the fixed two-child layout the
+panel is built from — reflowing it does not produce a different picker, and `classNames.panel`
+is the surface a caller actually restyles.
 
 ## Theme tokens
 

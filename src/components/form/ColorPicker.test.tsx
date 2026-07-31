@@ -542,4 +542,207 @@ describe("ColorPicker", () => {
       expect(document.activeElement).toBe(trigger);
     });
   });
+
+  describe("classNames slots", () => {
+    /**
+     * Opens the panel and hands back its root, so a panel-internal slot can be
+     * read without repeating the click in every test.
+     */
+    async function openPanel(ui: React.ReactElement) {
+      const user = userEvent.setup();
+      render(ui);
+      await user.click(screen.getByRole("button", { name: /^Choose color/ }));
+      return screen.getByRole("dialog");
+    }
+
+    const trigger = () => screen.getByRole("button", { name: /^Choose color/ });
+
+    /*
+     * One slot-override test per slot, and each is the falsifier for its own
+     * merge: delete that element's `cn()` and exactly this test must go red.
+     *
+     * `trigger` and `panel` are the two whose `className` is an object property
+     * rather than a JSX attribute — a props-getter bag, invisible to any walk
+     * over JSX attributes — so their merges are only observable here.
+     */
+    it("lands classNames.trigger on the trigger, beside the base class", () => {
+      render(
+        <ColorPicker defaultValue="#3366cc" classNames={{ trigger: "px-r3" }} />,
+      );
+      expect(trigger().className).toContain("colorpicker-trigger");
+      expect(trigger().className).toContain("px-r3");
+    });
+
+    it("lands classNames.panel on the floating panel, beside the base class", async () => {
+      const panel = await openPanel(
+        <ColorPicker defaultValue="#3366cc" classNames={{ panel: "gap-r3" }} />,
+      );
+      expect(panel.className).toContain("colorpicker-panel");
+      expect(panel.className).toContain("gap-r3");
+    });
+
+    it("lands classNames.swatch on both swatches, beside the base class", async () => {
+      const panel = await openPanel(
+        <ColorPicker defaultValue="#3366cc" classNames={{ swatch: "rounded-none" }} />,
+      );
+      const onTrigger = trigger().querySelector(".colorpicker-swatch");
+      const inPanel = panel.querySelector(".colorpicker-swatch");
+      for (const swatch of [onTrigger, inPanel]) {
+        expect(swatch?.getAttribute("class")).toContain("colorpicker-swatch");
+        expect(swatch?.getAttribute("class")).toContain("rounded-none");
+      }
+      // The panel's is the `--lg` variant; the key names both, not one.
+      expect(inPanel?.getAttribute("class")).toContain("colorpicker-swatch--lg");
+    });
+
+    it("lands classNames.value on the hex readout, beside the base class", () => {
+      render(
+        <ColorPicker defaultValue="#3366cc" classNames={{ value: "tabular-nums" }} />,
+      );
+      const value = trigger().querySelector(".colorpicker-trigger__value");
+      expect(value?.getAttribute("class")).toContain("colorpicker-trigger__value");
+      expect(value?.getAttribute("class")).toContain("tabular-nums");
+    });
+
+    it("lands classNames.plane on the saturation area, beside the base class", async () => {
+      const panel = await openPanel(
+        <ColorPicker defaultValue="#3366cc" classNames={{ plane: "h-40" }} />,
+      );
+      const plane = panel.querySelector(".colorpicker-sv");
+      expect(plane?.getAttribute("class")).toContain("colorpicker-sv");
+      expect(plane?.getAttribute("class")).toContain("h-40");
+    });
+
+    it("lands classNames.thumb on the plane handle, beside the base class", async () => {
+      const panel = await openPanel(
+        <ColorPicker defaultValue="#3366cc" classNames={{ thumb: "size-r3" }} />,
+      );
+      const thumb = panel.querySelector(".colorpicker-sv__thumb");
+      expect(thumb?.getAttribute("class")).toContain("colorpicker-sv__thumb");
+      expect(thumb?.getAttribute("class")).toContain("size-r3");
+    });
+
+    it("lands classNames.hue on the hue rail, beside the base class", async () => {
+      await openPanel(
+        <ColorPicker defaultValue="#3366cc" classNames={{ hue: "h-r3" }} />,
+      );
+      const hue = screen.getByLabelText("Hue");
+      expect(hue.className).toContain("colorpicker-hue");
+      expect(hue.className).toContain("h-r3");
+    });
+
+    it("lands classNames.hex on the hex field, beside the base class", async () => {
+      await openPanel(
+        <ColorPicker defaultValue="#3366cc" classNames={{ hex: "font-mono" }} />,
+      );
+      const hex = screen.getByLabelText("Hex value");
+      expect(hex.className).toContain("colorpicker-hex");
+      expect(hex.className).toContain("font-mono");
+    });
+
+    it("lands classNames.presets on the preset row, beside the base class", async () => {
+      const panel = await openPanel(
+        <ColorPicker
+          defaultValue="#3366cc"
+          presets={["#ff0000", "#00ff00"]}
+          classNames={{ presets: "gap-r3" }}
+        />,
+      );
+      const presets = panel.querySelector(".colorpicker-presets");
+      expect(presets?.getAttribute("class")).toContain("colorpicker-presets");
+      expect(presets?.getAttribute("class")).toContain("gap-r3");
+    });
+
+    it("lands classNames.preset on every preset button, beside the base class", async () => {
+      const panel = await openPanel(
+        <ColorPicker
+          defaultValue="#3366cc"
+          presets={["#ff0000", "#00ff00"]}
+          classNames={{ preset: "rounded-none" }}
+        />,
+      );
+      const buttons = panel.querySelectorAll(".colorpicker-preset");
+      expect(buttons).toHaveLength(2);
+      for (const button of buttons) {
+        expect(button.getAttribute("class")).toContain("colorpicker-preset");
+        expect(button.getAttribute("class")).toContain("rounded-none");
+      }
+    });
+
+    it("leaves every internal on its base class alone when no slot is passed", async () => {
+      const panel = await openPanel(
+        <ColorPicker defaultValue="#3366cc" presets={["#ff0000"]} />,
+      );
+      const exact: Record<string, string> = {
+        ".colorpicker-trigger__value": "colorpicker-trigger__value",
+        ".colorpicker-sv": "colorpicker-sv",
+        ".colorpicker-sv__thumb": "colorpicker-sv__thumb",
+        ".colorpicker-hue": "colorpicker-hue",
+        ".colorpicker-presets": "colorpicker-presets",
+        ".colorpicker-preset": "colorpicker-preset",
+      };
+      for (const [selector, expected] of Object.entries(exact)) {
+        const el = selector === ".colorpicker-trigger__value" ? trigger() : panel;
+        expect(el.querySelector(selector)?.getAttribute("class")).toBe(expected);
+      }
+      expect(panel.className).toBe("colorpicker-panel");
+      expect(trigger().querySelector(".colorpicker-swatch")?.getAttribute("class")).toBe(
+        "colorpicker-swatch",
+      );
+    });
+
+    it("does not put a slot class on the wrapper className addresses", async () => {
+      const user = userEvent.setup();
+      const { container } = render(
+        <ColorPicker
+          defaultValue="#3366cc"
+          className="w-40"
+          classNames={{ trigger: "px-r3", panel: "gap-r3" }}
+        />,
+      );
+      await user.click(trigger());
+
+      const wrapper = container.firstElementChild;
+      expect(wrapper?.getAttribute("class")).toBe("colorpicker w-40");
+      expect(wrapper?.getAttribute("class")).not.toContain("px-r3");
+    });
+
+    /**
+     * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+     * compile error. It fails if TypeScript ever stops rejecting the key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      render(
+        // @ts-expect-error — `control` is not a slot; the root takes `className`.
+        <ColorPicker defaultValue="#3366cc" classNames={{ control: "px-r3" }} />,
+      );
+      expect(trigger().className).not.toContain("px-r3");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(
+        <ColorPicker defaultValue="#3366cc" classNames={{ trigger: "px-r3" }} />,
+      );
+      expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+      expect(trigger().hasAttribute("classnames")).toBe(false);
+    });
+
+    /**
+     * The pin on the two (a) rulings inside the panel: the axis inputs' class is
+     * the visually-hidden clip that lets each axis be named and arrow-key
+     * operable, and the hex row is the fixed two-child layout the panel is built
+     * from. Neither has a route, and neither should.
+     */
+    it("leaves the clipped axis inputs and the hex row on their own classes only", async () => {
+      const panel = await openPanel(
+        <ColorPicker defaultValue="#3366cc" classNames={{ plane: "h-40" }} />,
+      );
+      for (const name of ["Saturation", "Brightness"]) {
+        expect(screen.getByLabelText(name).className).toBe("colorpicker-sv__input");
+      }
+      expect(panel.querySelector(".colorpicker-row")?.getAttribute("class")).toBe(
+        "colorpicker-row",
+      );
+    });
+  });
 });

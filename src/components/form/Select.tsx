@@ -8,16 +8,24 @@ import {
   focusRingControlError,
 } from "../../util/focus";
 import { mergeProps } from "../../util/merge-props";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { useFieldError } from "./Field";
 
 type SelectProps = {
   error?: boolean;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * `<select>` itself — the element every other prop and the `ref` address — so
+   * the only slot is the chevron, which no caller can otherwise reach. The union
+   * is written out here so an unknown key is a type error rather than a silently
+   * ignored one.
+   */
+  classNames?: SlotClassNames<"chevron">;
 } & ComponentPropsWithRef<"select">;
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { error, className, ...props },
+  { error, className, classNames, ...props },
   ref
 ) {
   const { invalid, ariaProps } = useFieldError(error);
@@ -27,7 +35,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
     // `fill="currentColor"` cannot resolve in an SVG-as-image — it painted
     // black on every theme (1.06:1 on `tech`). A real element inherits the
     // themed text colour instead.
-    <div className="relative">
+    <div
+      // slot:(a) `relative` is the positioning context the chevron below is
+      // absolutely placed against, and it is this element's only class. Varying
+      // it detaches the glyph from the field, so it is not a value a consumer
+      // would set. Width and every other box property are reachable on the
+      // `<select>`, which is where `className` lands.
+      className="relative"
+    >
       <select
         ref={ref}
         className={cn(
@@ -63,7 +78,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
       <ChevronDown
         size={16}
         aria-hidden="true"
-        className="pointer-events-none absolute right-r4 top-1/2 -translate-y-1/2 text-fg-secondary"
+        className={cn(
+          "pointer-events-none absolute right-r4 top-1/2 -translate-y-1/2 text-fg-secondary",
+          classNames?.chevron
+        )}
       />
     </div>
   );

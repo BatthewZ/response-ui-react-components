@@ -3,7 +3,7 @@ import { Search, X } from "lucide-react";
 import { type ComponentPropsWithRef, forwardRef, useRef } from "react";
 
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { Input } from "./Input";
 
@@ -20,6 +20,18 @@ type SearchInputProps = {
    * (`style`, `id`, `data-*`, handlers) lands on the `<input>`.
    */
   className?: string;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * wrapper (see above), so these three reach the parts inside it that no prop
+   * otherwise addresses: the magnifier glyph, the `<input>` and the clear
+   * button. The union is written out here so an unknown key is a type error
+   * rather than a silently ignored one.
+   *
+   * Class strings only — `style`, handlers and `aria-*` still land on the
+   * `<input>` through the rest props, which is what keeps `field()`'s `ref` and
+   * the `id` guard below working.
+   */
+  classNames?: SlotClassNames<"icon" | "input" | "clear">;
   /**
    * Not a SearchInput prop — `value` is required, so a `defaultValue` beside it
    * is React's controlled/uncontrolled warning waiting to happen. Declared
@@ -42,6 +54,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       placeholder = "Search...",
       size = "md",
       className,
+      classNames,
       clearLabel = "Clear search",
       disabled,
       readOnly,
@@ -93,7 +106,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       <div className={cn("search-input", className)}>
         <Search
           size={iconSize}
-          className="search-input__icon"
+          className={cn("search-input__icon", classNames?.icon)}
           aria-hidden="true"
         />
         <Input
@@ -110,14 +123,15 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           placeholder={placeholder}
           className={cn(
             "search-input__input",
-            size === "sm" && "search-input__input--sm"
+            size === "sm" && "search-input__input--sm",
+            classNames?.input
           )}
           {...props}
         />
         {value && (
           <button
             type="button"
-            className="search-input__clear"
+            className={cn("search-input__clear", classNames?.clear)}
             onClick={handleClear}
             disabled={locked}
             aria-label={clearLabel}

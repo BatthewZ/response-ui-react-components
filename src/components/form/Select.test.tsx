@@ -148,6 +148,93 @@ describe("Select", () => {
     });
   });
 
+  describe("classNames slots", () => {
+    const options = <option>US</option>;
+
+    /**
+     * The slot-override test for `classNames.chevron`, and the falsifier for it:
+     * delete the `cn()` merge on the `<ChevronDown>` and this must go red.
+     */
+    it("lands classNames.chevron on the glyph, beside the base classes", () => {
+      const { container } = render(
+        <Select aria-label="Country" classNames={{ chevron: "size-r3" }}>
+          {options}
+        </Select>
+      );
+      const chevron = container.querySelector("svg");
+      expect(chevron?.getAttribute("class")).toContain("text-fg-secondary");
+      expect(chevron?.getAttribute("class")).toContain("size-r3");
+    });
+
+    it("leaves the chevron on its base classes alone when no slot is passed", () => {
+      const { container } = render(
+        <Select aria-label="Country">{options}</Select>
+      );
+      // `toBe` against Lucide's own prefix, so a merge that drops the base
+      // classes when the slot is `undefined` cannot hide behind `toContain`.
+      expect(container.querySelector("svg")?.getAttribute("class")).toBe(
+        "lucide lucide-chevron-down pointer-events-none absolute right-r4 top-1/2 -translate-y-1/2 text-fg-secondary"
+      );
+    });
+
+    it("does not put the slot class on the <select> itself", () => {
+      render(
+        <Select aria-label="Country" classNames={{ chevron: "size-r3" }}>
+          {options}
+        </Select>
+      );
+      expect(
+        screen.getByRole("combobox", { name: "Country" }).className
+      ).not.toContain("size-r3");
+    });
+
+    /**
+     * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+     * compile error. It fails if TypeScript ever stops rejecting the key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        // @ts-expect-error — `arrow` is not a slot; only untyped JS gets here.
+        <Select aria-label="Country" classNames={{ arrow: "size-r3" }}>
+          {options}
+        </Select>
+      );
+      expect(container.querySelector("svg")?.getAttribute("class")).not.toContain(
+        "size-r3"
+      );
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      render(
+        <Select aria-label="Country" classNames={{ chevron: "size-r3" }}>
+          {options}
+        </Select>
+      );
+      expect(
+        screen.getByRole("combobox", { name: "Country" }).hasAttribute("classnames")
+      ).toBe(false);
+    });
+
+    /**
+     * The pin on the (a) ruling for the positioning wrapper: `className` goes to
+     * the `<select>` (documented in `select.md`), and the wrapper's `relative` is
+     * the context the chevron is placed against — not a value a caller varies. If
+     * the house rule is ever applied here and `className` is re-pointed to the
+     * wrapper, this is the test to rewrite rather than delete.
+     */
+    it("leaves the positioning wrapper on its own class only", () => {
+      const { container } = render(
+        <Select aria-label="Country" className="w-40">
+          {options}
+        </Select>
+      );
+      expect(container.firstElementChild?.getAttribute("class")).toBe("relative");
+      expect(
+        screen.getByRole("combobox", { name: "Country" }).className
+      ).toContain("w-40");
+    });
+  });
+
   describe("a field() spread cannot erase the invalid state (#455)", () => {
     it("keeps aria-invalid when the caller supplies the key as undefined", () => {
       render(

@@ -8,7 +8,7 @@ import {
 
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { composeEventHandlers, mergeProps } from "../../util/merge-props";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { useFieldErrorProps } from "./Field";
 
@@ -74,6 +74,17 @@ type RangeSliderProps = {
   formatValue?: (value: number) => string;
   className?: string;
   style?: CSSProperties;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * root the two thumbs are positioned inside, so these reach the three parts
+   * it paints underneath and on top of them.
+   *
+   * `input` lands on **both** `<input type="range">` elements — they are one
+   * control in two directions and no key names an individual thumb. Their
+   * geometry is driven by `--range-lo`/`--range-hi` on the root, so a class here
+   * changes appearance, never position.
+   */
+  classNames?: SlotClassNames<"track" | "fill" | "input">;
 } & Omit<
   ComponentPropsWithRef<"div">,
   "onChange" | "defaultValue" | "children"
@@ -107,6 +118,7 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
       maxLabel = "Maximum",
       formatValue,
       className,
+      classNames,
       style,
       "aria-invalid": ariaInvalid,
       "aria-describedby": ariaDescribedBy,
@@ -215,11 +227,17 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
           checkDefaultPrevented: false,
         })}
       >
-        <span className="range-slider__track" aria-hidden="true" />
-        <span className="range-slider__fill" aria-hidden="true" />
+        <span
+          className={cn("range-slider__track", classNames?.track)}
+          aria-hidden="true"
+        />
+        <span
+          className={cn("range-slider__fill", classNames?.fill)}
+          aria-hidden="true"
+        />
         <input
           type="range"
-          className="range-slider__input"
+          className={cn("range-slider__input", classNames?.input)}
           min={min}
           max={max}
           step={step}
@@ -237,7 +255,7 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
         />
         <input
           type="range"
-          className="range-slider__input"
+          className={cn("range-slider__input", classNames?.input)}
           min={min}
           max={max}
           step={step}

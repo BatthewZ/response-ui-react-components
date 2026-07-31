@@ -10,7 +10,7 @@ import {
 
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { composeEventHandlers } from "../../util/merge-props";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { Input } from "./Input";
 
@@ -34,6 +34,15 @@ type NumberInputProps = {
   step?: number;
   precision?: number;
   error?: boolean;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * `<input>` — the element the `ref` and every other prop address — so the only
+   * slot is the stepper pair, which no caller can otherwise reach. It lands on
+   * **both** chevron buttons; they are one control in two directions and no key
+   * names an individual one. The union is written out here so an unknown key is
+   * a type error rather than a silently ignored one.
+   */
+  classNames?: SlotClassNames<"chevron">;
 } & Omit<
   ComponentPropsWithRef<"input">,
   "type" | "value" | "defaultValue" | "onChange"
@@ -75,6 +84,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       precision,
       error,
       className,
+      classNames,
       onKeyDown,
       onBlur,
       disabled,
@@ -167,6 +177,12 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 
     return (
       <div
+        // slot:(a) `relative` is the positioning context the stepper column is
+        // absolutely placed against, and it is this element's only class. It
+        // also carries the reserved stepper width the input's right padding is
+        // measured from, so varying either detaches the chevrons or lets a long
+        // value run under them. `className` lands on the `<input>`, where width
+        // and every other box property remain reachable.
         className="relative"
         style={
           {
@@ -195,7 +211,14 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           // narrower than it — a long value used to render under the chevrons.
           className={cn("pr-[var(--numberinput-stepper)]", className)}
         />
-        <div className="absolute inset-y-0 right-0 flex flex-col">
+        <div
+          // slot:(a) the stepper column is pure reservation geometry: it fills
+          // the exact right-hand strip the input pads for, and every declaration
+          // on it (`absolute inset-y-0 right-0`, the column direction the two
+          // halves split) is what pins the pair to the field. A caller restyling
+          // the steppers wants the buttons, which `classNames.chevron` reaches.
+          className="absolute inset-y-0 right-0 flex flex-col"
+        >
           <button
             type="button"
             tabIndex={-1}
@@ -208,7 +231,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
             className={cn(
               "flex flex-1 items-center justify-center px-r5 text-fg-secondary",
               "hover:bg-surface-2 active:bg-surface-3 rounded-tr-md duration-fast",
-              "disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              "disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
+              classNames?.chevron
             )}
           >
             <ChevronUp size={CHEVRON_SIZE} />
@@ -225,7 +249,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
             className={cn(
               "flex flex-1 items-center justify-center px-r5 text-fg-secondary",
               "hover:bg-surface-2 active:bg-surface-3 rounded-br-md duration-fast",
-              "disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              "disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
+              classNames?.chevron
             )}
           >
             <ChevronDown size={CHEVRON_SIZE} />

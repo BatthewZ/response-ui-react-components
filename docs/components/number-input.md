@@ -24,6 +24,7 @@ never reaches your state as `NaN`.
 | `precision`     | `number`                                                            | — (no rounding)             |
 | `error`         | `boolean`                                                           | [Field](field.md) state, else `false` |
 | `className`     | `string`                                                            | — (lands on the input)      |
+| `classNames`    | `{ chevron?: string }` — see [Slots](#slots)                        | —                           |
 | `ref`           | `Ref<HTMLInputElement>`                                             | —                           |
 | …rest           | `<input>` props except `type`, `value`, `defaultValue`; `onChange` is re-typed above | —           |
 
@@ -162,6 +163,27 @@ and `aria-invalid` applies here unchanged — including inheritance from a surro
 <NumberInput id="locked-quantity" disabled defaultValue={3} />
 ```
 <!-- /example -->
+
+## Slots
+
+`className` addresses the `<input>` — the element the ref and every rest prop also address.
+`classNames` addresses the stepper buttons, which nothing else reaches. Class strings only,
+and the keys are typed, so a misspelled one is a compile error rather than a prop that does
+nothing.
+
+| Slot      | Element                | What it addresses                                     |
+| --------- | ---------------------- | ----------------------------------------------------- |
+| `chevron` | both stepper `button`s | the increment **and** decrement buttons — one control in two directions, so the key names the pair |
+
+```tsx
+<NumberInput aria-label="Quantity" classNames={{ chevron: "text-fg-primary" }} />
+```
+
+**Neither wrapper takes a class from the call site, deliberately.** The outer box carries only
+`relative` plus the reserved stepper width the input's right padding is measured from, and the
+stepper column carries only the geometry that pins the pair to the field's right edge; change
+either and the chevrons detach or a long value runs under them. Width belongs on the wrapper
+you supply — see [Width](#width).
 
 ## Theme tokens
 

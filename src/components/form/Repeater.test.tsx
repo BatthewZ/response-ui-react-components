@@ -431,4 +431,139 @@ describe("Repeater", () => {
       expect(region()).toHaveTextContent("");
     });
   });
+
+  describe("classNames slots", () => {
+    function SlotHarness({
+      classNames,
+      className,
+    }: {
+      classNames?: React.ComponentProps<typeof Repeater<Values, "links">>["classNames"];
+      className?: string;
+    }) {
+      const form = useForm<Values>({
+        defaultValues: { links: [{ url: "a" }, { url: "b" }] },
+      });
+      return (
+        <Repeater
+          form={form}
+          name="links"
+          defaultItem={() => ({ url: "" })}
+          addLabel="Add link"
+          className={className}
+          classNames={classNames}
+        >
+          {({ name, index }) => (
+            <Field name={`${name}.url`}>
+              <Input aria-label={`url-${index}`} {...form.field(`${name}.url`)} />
+            </Field>
+          )}
+        </Repeater>
+      );
+    }
+
+    const rows = () => screen.getAllByRole("listitem");
+
+    /*
+     * One slot-override test per slot, and each is the falsifier for its own
+     * merge: delete that element's `cn()` and exactly this test must go red.
+     * The three row slots are asserted on *every* row, because the rows are
+     * generated from the array field and the keys name all of them.
+     */
+    it("lands classNames.list on the row container, beside the base classes", () => {
+      render(<SlotHarness classNames={{ list: "gap-r6" }} />);
+      const list = screen.getByRole("list");
+      expect(list.className).toContain("flex-col");
+      expect(list.className).toContain("gap-r6");
+    });
+
+    it("lands classNames.item on every row, beside the base classes", () => {
+      render(<SlotHarness classNames={{ item: "items-center" }} />);
+      expect(rows()).toHaveLength(2);
+      for (const row of rows()) {
+        expect(row.className).toContain("gap-r5");
+        expect(row.className).toContain("items-center");
+      }
+    });
+
+    it("lands classNames.fields on every row's fieldset, beside the base classes", () => {
+      const { container } = render(<SlotHarness classNames={{ fields: "pr-r5" }} />);
+      const fieldsets = container.querySelectorAll("fieldset");
+      expect(fieldsets).toHaveLength(2);
+      for (const fieldset of fieldsets) {
+        expect(fieldset.getAttribute("class")).toContain("min-w-0");
+        expect(fieldset.getAttribute("class")).toContain("pr-r5");
+      }
+    });
+
+    it("lands classNames.itemActions on every row's control cluster, beside the base classes", () => {
+      render(<SlotHarness classNames={{ itemActions: "pt-0" }} />);
+      for (const row of rows()) {
+        const actions = row.lastElementChild;
+        expect(actions?.getAttribute("class")).toContain("items-center");
+        expect(actions?.getAttribute("class")).toContain("pt-0");
+      }
+    });
+
+    it("leaves each internal on its base classes alone when no slot is passed", () => {
+      const { container } = render(<SlotHarness />);
+      expect(screen.getByRole("list").className).toBe("flex flex-col gap-r4");
+      expect(rows()[0].className).toBe("flex items-start gap-r5");
+      expect(container.querySelector("fieldset")?.getAttribute("class")).toBe(
+        "flex-1 min-w-0",
+      );
+      expect(rows()[0].lastElementChild?.getAttribute("class")).toBe(
+        "flex items-center gap-r6 pt-r6",
+      );
+    });
+
+    it("does not put a slot class on the outer column", () => {
+      const { container } = render(
+        <SlotHarness
+          className="gap-r3"
+          classNames={{
+            list: "gap-r6",
+            item: "items-center",
+            fields: "pr-r5",
+            itemActions: "pt-0",
+          }}
+        />,
+      );
+      const outer = container.firstElementChild?.getAttribute("class");
+      // `className` merged, and no slot leaked onto it.
+      expect(outer).toContain("gap-r3");
+      for (const leaked of ["gap-r6", "items-center", "pr-r5", "pt-0"]) {
+        expect(outer).not.toContain(leaked);
+      }
+    });
+
+    /**
+     * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+     * compile error. It fails if TypeScript ever stops rejecting the key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      render(
+        // @ts-expect-error — `row` is not a slot; the key is `item`.
+        <SlotHarness classNames={{ row: "items-center" }} />,
+      );
+      expect(rows()[0].className).toBe("flex items-start gap-r5");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(<SlotHarness classNames={{ item: "items-center" }} />);
+      expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+      expect(rows()[0].hasAttribute("classnames")).toBe(false);
+    });
+
+    /**
+     * The pin on the (a) ruling for the live region: `sr-only` is what keeps the
+     * announcements off the screen, and no slot may hand a caller the class that
+     * would print every add, removal and reorder into the layout.
+     */
+    it("leaves the live region on sr-only only", () => {
+      const { container } = render(<SlotHarness classNames={{ list: "gap-r6" }} />);
+      expect(
+        container.querySelector('[role="status"]')?.getAttribute("class"),
+      ).toBe("sr-only");
+    });
+  });
 });
