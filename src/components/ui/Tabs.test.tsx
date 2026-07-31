@@ -554,18 +554,30 @@ describe("Tabs · classNames slots", () => {
     expect(indicator?.getAttribute("class")).toContain("bg-chart-1");
   });
 
+  /**
+   * These two used to assert the class attribute equalled its markers exactly,
+   * which stopped being expressible once the indicator's paint and the strip's
+   * variant border moved out of `Tabs.css` and into utilities. The falsifiers are
+   * unchanged and are what the equality was ever standing in for: an absent slot
+   * appends NOTHING — no `undefined`, no empty token — and a slot lands on its own
+   * element and no other.
+   */
   it("leaves the indicator on its base classes alone when no slot is passed", () => {
     const { container } = renderList();
-    expect(container.querySelector(".tabs-indicator")?.getAttribute("class")).toBe(
-      "tabs-indicator tabs-indicator--underline",
+    const classes = container.querySelector(".tabs-indicator")?.getAttribute("class") ?? "";
+    expect(classes.split(" ")).toEqual(
+      expect.arrayContaining(["tabs-indicator", "tabs-indicator--underline"]),
     );
+    expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
   });
 
   it("does not put the slot class on the list", () => {
     const { container } = renderList({ indicator: "bg-chart-1" });
-    expect(container.querySelector(".tabs-list")?.getAttribute("class")).toBe(
-      "tabs-list tabs-list--underline",
+    const classes = container.querySelector(".tabs-list")?.getAttribute("class") ?? "";
+    expect(classes.split(" ")).toEqual(
+      expect.arrayContaining(["tabs-list", "tabs-list--underline"]),
     );
+    expect(classes).not.toContain("bg-chart-1");
   });
 
   /**
@@ -583,9 +595,9 @@ describe("Tabs · classNames slots", () => {
         </Tabs.List>
       </Tabs>,
     );
-    expect(container.querySelector(".tabs-indicator")?.getAttribute("class")).toBe(
-      "tabs-indicator tabs-indicator--underline",
-    );
+    const classes = container.querySelector(".tabs-indicator")?.getAttribute("class") ?? "";
+    expect(classes.split(" ")).toContain("tabs-indicator");
+    expect(classes).not.toContain("font-bold");
   });
 
   it("does not leak classNames onto the DOM", () => {

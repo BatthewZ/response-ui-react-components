@@ -113,6 +113,15 @@ describe("ProgressRing", () => {
   });
 });
 
+/**
+ * Junk no `cn()` in this package may emit: an absent slot appends NOTHING — no
+ * `undefined`, no `null`, no doubled or edge whitespace.
+ */
+const NO_JUNK = /undefined|null|\s{2,}|^\s|\s$/;
+
+const classesOf = (el: Element | null | undefined) =>
+  (el?.getAttribute("class") ?? "").split(" ");
+
 describe("ProgressRing · classNames slots", () => {
   /**
    * One slot-override test per slot, and each is the falsifier for its own
@@ -153,19 +162,28 @@ describe("ProgressRing · classNames slots", () => {
     expect(center?.getAttribute("class")).toContain("text-body-3");
   });
 
-  it("leaves each internal on its base class alone when no slot is passed", () => {
+  /**
+   * These used to assert each class attribute equalled its marker exactly, which
+   * stopped being expressible once `ProgressRing.css` was deleted and the
+   * elements carried their own utilities. The falsifiers are unchanged and are
+   * what the equality was ever standing in for: an absent slot appends NOTHING,
+   * and each element keeps its own marker.
+   */
+  it("leaves each internal on its base classes alone when no slot is passed", () => {
     const { container } = render(<ProgressRing value={50}>50%</ProgressRing>);
-    expect(container.querySelector(".progress-ring__svg")?.getAttribute("class")).toBe(
+    for (const marker of [
       "progress-ring__svg",
-    );
-    expect(container.querySelector(".progress-ring__track")?.getAttribute("class")).toBe(
       "progress-ring__track",
-    );
-    expect(container.querySelector(".progress-ring__indicator")?.getAttribute("class")).toBe(
-      "progress-ring__indicator progress-ring__indicator--accent",
-    );
-    expect(container.querySelector(".progress-ring__slot")?.getAttribute("class")).toBe(
+      "progress-ring__indicator",
       "progress-ring__slot",
+    ]) {
+      const el = container.querySelector(`.${marker}`);
+      expect(classesOf(el)).toContain(marker);
+      expect(el?.getAttribute("class")).not.toMatch(NO_JUNK);
+    }
+    // The colour marker still rides with the arc's base classes.
+    expect(classesOf(container.querySelector(".progress-ring__indicator"))).toContain(
+      "progress-ring__indicator--accent",
     );
   });
 
@@ -183,7 +201,11 @@ describe("ProgressRing · classNames slots", () => {
         50%
       </ProgressRing>,
     );
-    expect(container.firstElementChild?.getAttribute("class")).toBe("progress-ring");
+    const root = classesOf(container.firstElementChild);
+    expect(root).toContain("progress-ring");
+    for (const slotClass of ["rotate-45", "opacity-50", "opacity-75", "text-body-3"]) {
+      expect(root).not.toContain(slotClass);
+    }
   });
 
   /**
@@ -198,8 +220,8 @@ describe("ProgressRing · classNames slots", () => {
         classNames={{ slot: "text-body-3" }}
       />,
     );
-    expect(container.querySelector(".progress-ring__slot")?.getAttribute("class")).toBe(
-      "progress-ring__slot",
+    expect(classesOf(container.querySelector(".progress-ring__slot"))).not.toContain(
+      "text-body-3",
     );
   });
 

@@ -381,22 +381,35 @@ describe("Stepper · classNames slots", () => {
     expect(connector?.getAttribute("class")).toContain("opacity-50");
   });
 
-  it("leaves each internal on its base class alone when no slot is passed", () => {
+  /**
+   * This used to assert each class attribute equalled its marker exactly, which
+   * stopped being expressible once the marker, the text block and the step's own
+   * box moved out of `Stepper.css` and into utilities. The falsifiers are
+   * unchanged and are what the equality was ever standing in for: an absent slot
+   * appends NOTHING — no `undefined`, no empty token — and each element keeps its
+   * own marker.
+   *
+   * `.stepper-connector` is the one still on its marker alone, because its
+   * geometry could not move: it is `calc()` over `--_stepper-gap` and friends,
+   * whose only read sites are inside that `calc()`.
+   */
+  it("leaves each internal on its base classes alone when no slot is passed", () => {
     const { container } = render(
       <Stepper activeStep={0}>
         <Stepper.Step title="One" description="Detail" />
       </Stepper>,
     );
-    expect(container.querySelector(".stepper-indicator")?.getAttribute("class")).toBe(
+    for (const marker of [
       "stepper-indicator",
-    );
-    expect(container.querySelector(".stepper-content")?.getAttribute("class")).toBe(
       "stepper-content",
-    );
-    expect(container.querySelector(".stepper-title")?.getAttribute("class")).toBe("stepper-title");
-    expect(container.querySelector(".stepper-description")?.getAttribute("class")).toBe(
+      "stepper-title",
       "stepper-description",
-    );
+      "stepper-connector",
+    ]) {
+      const classes = container.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain(marker);
+      expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+    }
     expect(container.querySelector(".stepper-connector")?.getAttribute("class")).toBe(
       "stepper-connector",
     );
@@ -418,7 +431,11 @@ describe("Stepper · classNames slots", () => {
         />
       </Stepper>,
     );
-    expect(container.querySelector(".stepper-step")?.getAttribute("class")).toBe("stepper-step");
+    const step = (container.querySelector(".stepper-step")?.getAttribute("class") ?? "").split(" ");
+    expect(step).toContain("stepper-step");
+    for (const slotClass of ["ring-2", "gap-r6", "font-bold", "italic", "opacity-50"]) {
+      expect(step).not.toContain(slotClass);
+    }
   });
 
   /**
@@ -436,9 +453,12 @@ describe("Stepper · classNames slots", () => {
         />
       </Stepper>,
     );
-    expect(container.querySelector(".stepper-status")?.getAttribute("class")).toBe(
-      "stepper-status",
-    );
+    // `sr-only` is the mechanism, and the reason `status` is not a slot: it is
+    // Tailwind's utility now rather than a hand-rolled clip in `Stepper.css`,
+    // but it is still the only thing keeping the word off the screen.
+    const classes = container.querySelector(".stepper-status")?.getAttribute("class") ?? "";
+    expect(classes.split(" ")).toEqual(expect.arrayContaining(["stepper-status", "sr-only"]));
+    expect(classes).not.toContain("not-sr-only");
   });
 
   it("does not leak classNames onto the DOM", () => {

@@ -18,6 +18,63 @@ import { Sparkline } from "../data-display/Sparkline";
 const defaultFormat = new Intl.NumberFormat();
 
 /* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `StatCard.css` is gone; everything this component draws is here. Every BEM
+ * name survives as a declaration-free marker (AGENTS.md §"Class names outlive
+ * their declarations") beside the utility that now paints it.
+ *
+ * Each constant is one flat string literal because `verify:component-docs` and
+ * `verify:focus-affordance` resolve hoisted constants textually and a composed
+ * one would not resolve.
+ */
+const statCardRootClasses =
+  // `bg-surface-0` is the raised-sheet rung, same as `Card` — the two must not
+  // diverge. A tile nested in a `Card` is therefore sheet-on-sheet: the border,
+  // not the fill, is what bounds it.
+  "flex flex-col gap-r5 p-r5 bg-surface-0 border border-border-default rounded-lg";
+
+/** Recessed into the tile — the chip has no border, so the step is all it has. */
+const statCardIconClasses =
+  "flex items-center justify-center size-r2 rounded-md bg-surface-2 text-accent";
+
+const statCardValueClasses = "text-h3 font-bold text-fg-primary tabular-nums";
+
+const statCardLabelClasses = "text-body-2 font-semibold text-fg-secondary";
+
+const trendClasses = "inline-flex items-center gap-r6 text-body-2 font-semibold";
+
+const trendIconClasses =
+  "size-[1em] transition-transform duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none";
+
+/**
+ * `margin-top: auto` pins the chart to the tile's floor so a row of tiles lines
+ * its charts up regardless of how tall each one's text runs. No `max-height`:
+ * the svg carries its own `height` attribute, so capping the wrapper clamped the
+ * box while the chart kept drawing past it. Height belongs to the `height` prop.
+ */
+const sparklineWrapperClasses = "block mt-auto";
+
+/**
+ * Fill the tile rather than sitting at the svg's intrinsic 120px, which left the
+ * chart covering ~60% of a 4-up tile and reading as a mistake.
+ * `preserveAspectRatio="none"` stretches the drawing to match; the stroke
+ * stretches with it, which is invisible at the shallow slopes a sparkline
+ * actually draws. It must NOT be given `vector-effect: non-scaling-stroke` to
+ * compensate — that computes the dash pattern in screen space, which breaks the
+ * `pathLength=1` normalisation the draw-in animation relies on and leaves the
+ * line rendered in disconnected fragments.
+ *
+ * This was `.stat-card__sparkline .sparkline` in `StatCard.css` — a rule reaching
+ * into an element `Sparkline` renders. It is now handed to `Sparkline` through the
+ * `className` this component already forwards, so the styling stays with the
+ * element that owns it and nothing here selects across a component boundary.
+ */
+const sparklineChartClasses = "block w-full";
+
+/* ------------------------------------------------------------------ */
 /*  StatCard (root)                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -27,7 +84,7 @@ const StatCardRoot = forwardRef<HTMLDivElement, StatCardRootProps>(function Stat
   { className, ...props },
   ref
 ) {
-  return <div ref={ref} className={cn("stat-card", className)} {...props} />;
+  return <div ref={ref} className={cn("stat-card", statCardRootClasses, className)} {...props} />;
 });
 
 /* ------------------------------------------------------------------ */
@@ -160,7 +217,11 @@ const StatCardValue = forwardRef<HTMLSpanElement, StatCardValueProps>(function S
   }
 
   return (
-    <span ref={mergeRefs(ref, innerRef)} className={cn("stat-card__value", className)} {...props}>
+    <span
+      ref={mergeRefs(ref, innerRef)}
+      className={cn("stat-card__value", statCardValueClasses, className)}
+      {...props}
+    >
       {content}
     </span>
   );
@@ -176,7 +237,7 @@ const StatCardLabel = forwardRef<HTMLSpanElement, StatCardLabelProps>(function S
   { className, ...props },
   ref
 ) {
-  return <span ref={ref} className={cn("stat-card__label", className)} {...props} />;
+  return <span ref={ref} className={cn("stat-card__label", statCardLabelClasses, className)} {...props} />;
 });
 
 /* ------------------------------------------------------------------ */
@@ -219,15 +280,22 @@ const directionClass: Record<TrendDirection, string> = {
   neutral: "stat-card__trend--flat",
 };
 
+/**
+ * Colour is *sentiment* — whether the movement is good news, which only the
+ * caller knows: falling churn is `--down --positive`. `directionClass` above
+ * carries *direction* and its three names are §12 markers only: consumer
+ * stylesheets and devtools still select on them, and nothing in this package
+ * paints from them. Only the arrow reads direction, and it does so in JS.
+ */
 const sentimentClass: Record<TrendSentiment, string> = {
-  positive: "stat-card__trend--positive",
-  negative: "stat-card__trend--negative",
-  neutral: "stat-card__trend--neutral",
+  positive: "stat-card__trend--positive text-status-success",
+  negative: "stat-card__trend--negative text-status-error",
+  neutral: "stat-card__trend--neutral text-fg-secondary",
 };
 
 const TrendArrow = ({ className }: { className?: string }) => (
   <svg
-    className={cn("stat-card__trend-icon", className)}
+    className={cn("stat-card__trend-icon", trendIconClasses, className)}
     viewBox="0 0 16 16"
     fill="none"
     aria-hidden="true"
@@ -253,13 +321,22 @@ const StatCardTrend = forwardRef<HTMLSpanElement, StatCardTrendProps>(function S
       ref={ref}
       className={cn(
         "stat-card__trend",
+        trendClasses,
         directionClass[direction],
         sentimentClass[sentiment ?? impliedSentiment[direction]],
         className
       )}
       {...props}
     >
-      {direction !== "neutral" && <TrendArrow className={classNames?.trendIcon} />}
+      {direction !== "neutral" && (
+        // The arrow points down for a falling figure. Keyed off the prop rather
+        // than an `in-[.stat-card__trend--down]:` variant: the class is a §12
+        // marker a consumer may also put on an ancestor, and a variant matching
+        // any ancestor would flip arrows it does not own.
+        <TrendArrow
+          className={cn(direction === "down" && "rotate-180", classNames?.trendIcon)}
+        />
+      )}
       {format ? format(value) : `${sign}${Math.abs(value)}%`}
     </span>
   );
@@ -275,7 +352,7 @@ const StatCardIcon = forwardRef<HTMLDivElement, StatCardIconProps>(function Stat
   { className, ...props },
   ref
 ) {
-  return <div ref={ref} className={cn("stat-card__icon", className)} {...props} />;
+  return <div ref={ref} className={cn("stat-card__icon", statCardIconClasses, className)} {...props} />;
 });
 
 /* ------------------------------------------------------------------ */
@@ -308,11 +385,11 @@ const StatCardSparkline = forwardRef<SVGSVGElement, StatCardSparklineProps>(
         // `className` stays on the wrapped chart (this component's props ARE
         // `Sparkline`'s, and its `ref` is the `<svg>`), so re-pointing it here is a
         // breaking API change and an owner call. See PHASE3-PATTERN.md "The wrapper case".
-        className="stat-card__sparkline"
+        className={cn("stat-card__sparkline", sparklineWrapperClasses)}
       >
         <Sparkline
           ref={ref}
-          className={cn(tint && sparklineSentimentClass[tint], className)}
+          className={cn(sparklineChartClasses, tint && sparklineSentimentClass[tint], className)}
           {...props}
         />
       </div>

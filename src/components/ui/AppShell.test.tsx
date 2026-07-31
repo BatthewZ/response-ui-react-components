@@ -1051,11 +1051,19 @@ describe("AppShell slots", () => {
       expect(scrim?.getAttribute("class")).toContain("backdrop-blur-sm");
     });
 
-    it("leaves the scrim on its base class alone when no slot is passed", () => {
+    /**
+     * This used to assert the class attribute equalled the marker exactly, which
+     * stopped being expressible once the scrim's paint moved out of
+     * `AppShell.css` and into utilities. The falsifiers are unchanged and are
+     * what the equality was ever standing in for: the marker survives, and an
+     * absent slot appends NOTHING — no `undefined`, no empty token.
+     */
+    it("leaves the scrim on its base classes alone when no slot is passed", () => {
       const { baseElement } = renderMobileDrawer();
-      expect(baseElement.querySelector(".app-shell-scrim")?.getAttribute("class")).toBe(
-        "app-shell-scrim",
-      );
+      const classes = baseElement.querySelector(".app-shell-scrim")?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("app-shell-scrim");
+      expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+      expect(classes).not.toContain("backdrop-blur-sm");
     });
 
     it("does not put the slot class on the drawer itself", () => {
@@ -1102,9 +1110,9 @@ describe("AppShell slots", () => {
           <AppShell.Main>Main</AppShell.Main>
         </AppShell>,
       );
-      expect(baseElement.querySelector(".app-shell-scrim")?.getAttribute("class")).toBe(
-        "app-shell-scrim",
-      );
+      const classes = baseElement.querySelector(".app-shell-scrim")?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("app-shell-scrim");
+      expect(classes).not.toContain("backdrop-blur-sm");
     });
 
     it("does not leak classNames onto the DOM", () => {
@@ -1184,28 +1192,43 @@ describe("AppShell slots", () => {
 
     it("leaves the internals on their base classes when no slot is passed", () => {
       const { container } = renderSidebar();
+      // The heading's paint is still a rule in `AppShell.css` — it is
+      // `probe:cascade-layer`'s padding control — so its class attribute really
+      // is the marker alone. The label's is not, since its truncation converted.
       expect(screen.getByRole("heading", { name: "Workspace" }).className).toBe(
         "app-shell-sidebar-section-title",
       );
-      expect(screen.getByText("Projects").className).toBe("app-shell-sidebar-link-label");
+      const label = screen.getByText("Projects").className;
+      expect(label.split(" ")).toContain("app-shell-sidebar-link-label");
+      expect(label).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
       // The icon library prepends its own two classes and does the merging, which
       // is the concrete meaning of "handed over as a prop": nothing here rewrites
       // what the component decides to emit.
-      expect(container.querySelector("svg")?.getAttribute("class")).toBe(
-        "lucide lucide-star app-shell-sidebar-link-icon",
+      const icon = container.querySelector("svg")?.getAttribute("class") ?? "";
+      expect(icon.split(" ")).toEqual(
+        expect.arrayContaining(["lucide", "lucide-star", "app-shell-sidebar-link-icon"]),
       );
+      // The library's own two come FIRST — that ordering is the observable of
+      // "handed over as a prop", and it is what would change if this component
+      // ever started rewriting what lucide emits.
+      expect(icon.startsWith("lucide lucide-star ")).toBe(true);
+      expect(icon).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     it("does not put a slot class on either subcomponent's own root", () => {
+      // Sentinels chosen so none of them is also a class the element paints
+      // itself with: the link's own list carries `font-semibold`, so using that
+      // here would assert against the component's own utility rather than
+      // against a leaked slot.
       const { container } = renderSidebar(
         { groupHeader: "tracking-wide" },
-        { itemIcon: "size-r3", itemLabel: "font-semibold" },
+        { itemIcon: "size-r3", itemLabel: "italic" },
       );
       const section = container.querySelector(".app-shell-sidebar-section") as HTMLElement;
       const link = container.querySelector(".app-shell-sidebar-link") as HTMLElement;
       expect(section.className).not.toContain("tracking-wide");
       expect(link.className).not.toContain("size-r3");
-      expect(link.className).not.toContain("font-semibold");
+      expect(link.className).not.toContain("italic");
     });
 
     /**
@@ -1226,7 +1249,9 @@ describe("AppShell slots", () => {
           <AppShell.Main>Main</AppShell.Main>
         </AppShell>,
       );
-      expect(screen.getByText("Projects").className).toBe("app-shell-sidebar-link-label");
+      const classes = screen.getByText("Projects").className;
+      expect(classes.split(" ")).toContain("app-shell-sidebar-link-label");
+      expect(classes).not.toContain("font-semibold");
     });
 
     it("does not leak classNames onto the DOM", () => {

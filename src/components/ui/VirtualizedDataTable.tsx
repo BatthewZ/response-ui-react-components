@@ -84,9 +84,9 @@ export type VirtualizedDataTableProps<T> = {
   // Overrides
   /**
    * Classes for the outermost element — the `Table` root, which is also the
-   * scroll container. Merged after `table-virtual-scroll`, which is the
-   * selector `VirtualizedDataTable.css` scopes its column and truncation rules
-   * to, so it is appended and never replaced.
+   * scroll container. Merged after `table-virtual-scroll`, which is now a
+   * declaration-free marker: the fixed-layout and truncation rules it used to
+   * scope are utilities on the elements themselves.
    */
   className?: string;
   /**
@@ -109,6 +109,72 @@ export type VirtualizedDataTableProps<T> = {
 
 /** Viewport estimate used until the scroll element can be measured. */
 const DEFAULT_VIEWPORT_HEIGHT = 400;
+
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `VirtualizedDataTable.css` is gone. Its four rules and where each went:
+ *
+ * - `.table-virtual-scroll { overflow-y: auto }` was **dead code**. The same
+ *   element always carries an inline `overflowY: "auto"` (below), which beats a
+ *   class at every layer, and the loading and empty branches never carry the
+ *   class at all. Deleted rather than transposed.
+ * - `table-layout: fixed` on the `<table>` — `tableFixedClass`. `AGENTS.md`
+ *   lists this file under "an element this package does not render"; that is
+ *   imprecise and was verified so. The `<table>` and every cell ARE rendered
+ *   here, through `Table`'s `tableProps` hatch and `Table.Cell`/`.HeaderCell`,
+ *   all of which merge a `className`.
+ * - the truncation rule — `cellClasses`. `truncate` compiles to exactly the
+ *   three declarations it carried (`overflow: hidden`, `text-overflow:
+ *   ellipsis`, `white-space: nowrap`).
+ * - the spacer reset — `spacerClasses`.
+ *
+ * The stylesheet scoped all three live rules to `.table-virtual-scroll`, which
+ * only the data branch emits. `tableFixedClass` and the BODY cells' truncation
+ * keep that scoping — the two static branches have no `rowHeight` for a wrapping
+ * cell to violate, and the empty branch's single cell holds a multi-line
+ * `EmptyState` that must not be clipped. The HEADER does not: it is one shared
+ * block across all three branches and a parity test pins its class attribute, so
+ * truncating it in one state only would be a second copy by another name.
+ */
+
+/**
+ * #377. Without this the columns are negotiated from whatever slice happens to
+ * be mounted, so scrolling a wide value into the window re-lays the whole grid.
+ * Measured in Firefox 146 with a 56-character unbreakable token scrolled into a
+ * four-row window: `table-layout: auto` moved the two columns from 640/606 to
+ * 1129/117, and it did it even with a `width` on the `<th>` (152/1094 →
+ * 679/567) — under auto layout a column `width` is a suggestion the cells can
+ * outvote. Under `fixed` the same test holds 623/623, and `ColumnDef.width`
+ * finally means what the docs say it does.
+ *
+ * The cost is the flip side of the same rule: a column with no `width` takes an
+ * equal share of the table rather than sizing to its content. That is the right
+ * trade for a virtualiser — a grid whose columns move while you scroll is worse
+ * than one that ignores an unusually wide cell — but it is a real difference
+ * from `DataTable`, and it is why only the virtualised branch sets it.
+ */
+const tableFixedClass = "table-fixed";
+
+/**
+ * #376. `rowHeight` is written as a `<tr>` height, which CSS treats as a
+ * MINIMUM, so a cell that wraps grows its row and the spacer arithmetic — which
+ * assumes exactly `rowHeight` per row — drifts by the difference. Measured in
+ * Firefox 146 in a 360px-wide scroller with `rowHeight: 40`: one wrapping
+ * sentence rendered a 93px row and made four rows occupy 213px where the
+ * virtualiser had reserved 160. Truncating instead holds 40/40/40/40 = 160.
+ *
+ * This is what the component's own docs already promise ("cell content must fit
+ * — truncate overflowing text"). `white-space` and `text-overflow` inherit, so a
+ * `render` that genuinely needs to wrap can set `white-space: normal` on its own
+ * element — but its row will be tall again, and the arithmetic will drift again.
+ */
+const cellClasses = "truncate";
+
+/** Spacer rows carry no visible chrome: no padding, no border. */
+const spacerClasses = "p-0 border-0";
 
 // Stable identities so the memo/state below never rebuild an empty value.
 // Never mutated: every selection helper returns a new Set.
@@ -252,8 +318,15 @@ export function VirtualizedDataTable<T>({
 
   const totalColumns = columns.length + (selectable ? 1 : 0);
 
-  // ONE header for every state. The loading and empty branches used to render a
-  // second, sort-less copy of this block (#447).
+  // ONE header for every state, class attribute included (#447) — see the
+  // parity test, which compares whole headers rather than naming today's
+  // divergences. That is why `cellClasses` goes on the header in ALL THREE
+  // branches while the body cells below carry it only in the virtualised one:
+  // the stylesheet scoped header truncation to `.table-virtual-scroll` too, so
+  // the loading and empty headers used to wrap where the data header ellipsed.
+  // BEHAVIOUR CHANGE, and a deliberate one: those two headers now truncate as
+  // well, which is what stops the columns re-laying between the loading state
+  // and the loaded one.
   function renderHeader() {
     return (
       <Table.Head>
@@ -268,8 +341,10 @@ export function VirtualizedDataTable<T>({
               // `Checkbox` under it, a shared primitive rendered with no props
               // hatch, so its footprint is unreachable from the caller's side:
               // a narrower class here clips the control rather than narrowing
-              // the column. Identical ruling to `DataTable`'s two.
-              className="w-10"
+              // the column. Identical ruling to `DataTable`'s two, and
+              // `cellClasses` is this component's own truncation rather than a
+              // caller route, so the annotation still reads (a).
+              className={cn("w-10", cellClasses)}
             >
               <Checkbox
                 checked={allSelected}
@@ -284,6 +359,10 @@ export function VirtualizedDataTable<T>({
           {columns.map((col) => (
             <Table.HeaderCell
               key={col.key}
+              // slot:(a) truncation, not decoration: a wrapping header re-lays
+              // every column under it. A caller reaches the column through
+              // `ColumnDef` (`width`, `align`, `header`).
+              className={cellClasses}
               style={{ width: col.width, textAlign: col.align }}
               sortDirection={
                 col.sortable
@@ -390,9 +469,12 @@ export function VirtualizedDataTable<T>({
       density={density}
       striped={striped}
       stickyHeader={stickyHeader}
-      // `table-virtual-scroll` is what `VirtualizedDataTable.css` scopes its
-      // fixed-layout and truncation rules to, so the base class comes first and
-      // a caller's is appended to it.
+      // `table-virtual-scroll` is now a declaration-free marker (AGENTS.md
+      // §"Class names outlive their declarations"): it used to scope the
+      // fixed-layout and truncation rules, which are utilities on the elements
+      // themselves now. It is kept so a consumer stylesheet, devtools and the
+      // Astro/Rails consumers of `response-ui-css` still have one name for the
+      // virtualised table, and it still marks the branch that is virtualised.
       className={cn("table-virtual-scroll", className)}
       // Caller's `style` last: `height` is prop-derived, and an override on the
       // same key should win rather than be shadowed.
@@ -402,7 +484,14 @@ export function VirtualizedDataTable<T>({
       // below) is what tells assistive tech the size of the real table and
       // where in it the mounted window sits (#372). Header row included, and
       // set after the caller's bag because only this component can compute it.
-      tableProps={{ ...tableProps, "aria-rowcount": sortedData.length + 1 }}
+      // `Table` merges this bag's `className` after its own base classes, and a
+      // caller's `tableProps.className` is merged after ours here, so
+      // `tableProps={{ className: "table-auto" }}` still wins.
+      tableProps={{
+        ...tableProps,
+        className: cn(tableFixedClass, tableProps?.className),
+        "aria-rowcount": sortedData.length + 1,
+      }}
     >
       {renderHeader()}
       <Table.Body>
@@ -411,11 +500,16 @@ export function VirtualizedDataTable<T>({
             aria-hidden
             // slot:(a) an `aria-hidden` height shim. Its whole geometry is the
             // padding `use-virtual-rows` computes and writes inline below, and
-            // the class exists only to zero the padding and border a data row
+            // these classes exist only to zero the padding and border a data row
             // would carry — a caller class here desyncs the scroll arithmetic.
-            className="table-virtual-spacer"
+            className={cn("table-virtual-spacer", spacerClasses)}
           >
-            <td colSpan={totalColumns} style={{ height: paddingTop }} />
+            <td
+              // slot:(a) the shim's own cell, for the same reason as its row.
+              className={spacerClasses}
+              colSpan={totalColumns}
+              style={{ height: paddingTop }}
+            />
           </tr>
         )}
         {windowRows.map((row, i) => {
@@ -433,7 +527,10 @@ export function VirtualizedDataTable<T>({
               style={{ height: rowHeight }}
             >
               {selectable && (
-                <Table.Cell>
+                <Table.Cell
+                  // slot:(a) truncation, not decoration — see `cellClasses`.
+                  className={cellClasses}
+                >
                   <Checkbox
                     checked={selection.has(key)}
                     onChange={() => handleSelectRow(key)}
@@ -442,7 +539,13 @@ export function VirtualizedDataTable<T>({
                 </Table.Cell>
               )}
               {columns.map((col) => (
-                <Table.Cell key={col.key} style={{ textAlign: col.align }}>
+                <Table.Cell
+                  key={col.key}
+                  // slot:(a) truncation, not decoration — see `cellClasses`. A
+                  // caller reaches the cell's content through `ColumnDef.render`.
+                  className={cellClasses}
+                  style={{ textAlign: col.align }}
+                >
                   {col.render
                     ? col.render(row, index)
                     : cellToString((row as Record<string, unknown>)[col.key])}
@@ -456,11 +559,16 @@ export function VirtualizedDataTable<T>({
             aria-hidden
             // slot:(a) an `aria-hidden` height shim. Its whole geometry is the
             // padding `use-virtual-rows` computes and writes inline below, and
-            // the class exists only to zero the padding and border a data row
+            // these classes exist only to zero the padding and border a data row
             // would carry — a caller class here desyncs the scroll arithmetic.
-            className="table-virtual-spacer"
+            className={cn("table-virtual-spacer", spacerClasses)}
           >
-            <td colSpan={totalColumns} style={{ height: paddingBottom }} />
+            <td
+              // slot:(a) the shim's own cell, for the same reason as its row.
+              className={spacerClasses}
+              colSpan={totalColumns}
+              style={{ height: paddingBottom }}
+            />
           </tr>
         )}
       </Table.Body>

@@ -1312,16 +1312,44 @@ describe("#463 · defaultPage seeds the uncontrolled page", () => {
       expect(body!.getAttribute("class")).toContain("sentinel-slot");
     });
 
+    /**
+     * These used to assert each class attribute exactly, which stopped being
+     * expressible once `Table.css`'s density block and the detail row's own rules
+     * became utilities. The falsifiers are unchanged: an absent slot appends
+     * NOTHING — a merge that drops the library class when the slot is `undefined`
+     * passes `toContain` and fails the junk guard — and every marker survives.
+     *
+     * `p-0` is asserted here on purpose. It is the half of a cascade pair that
+     * used to be `.data-table-expanded-cell { padding: 0 }` winning over
+     * `.table-cell--comfortable` by SOURCE ORDER in one stylesheet. It now wins by
+     * ARGUMENT ORDER: `Table.Cell` merges this `className` after its density map,
+     * and tailwind-merge keeps the last of two conflicting padding utilities. If
+     * `p-0` ever stops appearing here, the detail row can no longer collapse to
+     * zero height.
+     */
     it("leaves every base class alone when no slot is passed", async () => {
       const { container } = await renderExpanded();
-      // `toBe`, not `toContain`: a merge that drops the library class when the
-      // slot is `undefined` passes `toContain` and fails here.
-      expect(container.querySelector(".data-table-expanded-cell")!.getAttribute("class")).toBe(
-        "table-cell table-cell--comfortable data-table-expanded-cell bg-surface-2",
+      const cell = container.querySelector(".data-table-expanded-cell")!.getAttribute("class") ?? "";
+      expect(cell.split(" ")).toEqual(
+        expect.arrayContaining([
+          "table-cell",
+          "table-cell--comfortable",
+          "data-table-expanded-cell",
+          "bg-surface-2",
+          "p-0",
+        ]),
       );
-      expect(container.querySelector(".data-table-expanded-body")!.getAttribute("class")).toBe(
-        "data-table-expanded-body data-table-expanded-body--comfortable",
+      expect(cell.split(" ")).not.toContain("px-4");
+      expect(cell).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+
+      const body = container.querySelector(".data-table-expanded-body")!.getAttribute("class") ?? "";
+      expect(body.split(" ")).toEqual(
+        expect.arrayContaining([
+          "data-table-expanded-body",
+          "data-table-expanded-body--comfortable",
+        ]),
       );
+      expect(body).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     it("does not put a slot class on the root", async () => {
@@ -1376,7 +1404,10 @@ describe("#463 · defaultPage seeds the uncontrolled page", () => {
       const table = container.querySelector("table")!;
       expect(table).toHaveAttribute("aria-label", "Invoices");
       expect(table).toHaveAttribute("aria-busy", "true");
-      expect(table.getAttribute("class")).toBe("table sentinel-slot");
+      const classes = (table.getAttribute("class") ?? "").split(" ");
+      expect(classes).toEqual(expect.arrayContaining(["table", "sentinel-slot"]));
+      // The bag's class is LAST — the hatch's whole point.
+      expect(classes[classes.length - 1]).toBe("sentinel-slot");
     });
 
     it("does not erase a caller's aria-busy when it is not loading", () => {

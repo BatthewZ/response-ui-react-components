@@ -1,13 +1,31 @@
 /* ------------------------------------------------------------------ */
-/*  Table                                                             */
+/*  Table — converted to utilities; two things could not move          */
 /* ------------------------------------------------------------------ */
 
-/* Root wrapper */
-.table-wrapper {
-  overflow-x: auto;
-  border: 1px solid var(--C-BORDER-DEFAULT);
-  border-radius: var(--RADIUS-MD);
-}
+/* Everything this component and `DataTable` draw is a Tailwind utility in
+   `Table.tsx` / `DataTable.tsx`, with two exceptions kept here and argued for
+   below. Every BEM class name survives as a declaration-free marker (AGENTS.md
+   §"Class names outlive their declarations").
+
+   1. THE LEADING MARKER. It is one rule shared by an element `Table.tsx`
+      renders (the selected `<tr>`) and one `DataTable.tsx` renders (the
+      expanded detail `<td>`). As a utility it would be a 150-character
+      arbitrary value written out TWICE, in two files — which is exactly the
+      drift the shared rule exists to prevent, and `CLAUDE.md` rule 3. Only the
+      colour differs between the two states, and each state sets it as one
+      custom property below.
+
+   2. THE SORT BUTTON. It is a RESET, and a reset has to LOSE to a caller's
+      class rather than beat it — which is what `@layer components` buys and
+      `@layer utilities` takes away, since Tailwind emits arbitrary-property
+      utilities last (AGENTS.md "The test", questions 3 and 5). Preflight covers
+      most of a `<button>`, but not `text-align: inherit` (Chromium's UA sets
+      buttons to `center`) or `cursor: inherit`, and those two are the whole
+      point of the rule.
+
+   ONE DELETION worth naming so nobody looks for it: `.table-body` was an empty
+   rule holding only a "base styles" placeholder comment. It styled nothing and
+   is gone; `Table.Body` still emits the class as a marker. */
 
 .table {
   /* Geometry of the leading marker painted on the inline-start edge of a row
@@ -15,141 +33,35 @@
      markers cannot drift apart in width or side — only the colour differs, and
      that is `--_table-marker-color`, set by each state's own rule. A
      component dimension rather than page spacing, so a literal — same call as
-     Timeline's dot size. */
+     Timeline's dot size.
+
+     Declared on the `<table>` so both readers inherit it from one writer. */
   --_table-marker-width: 3px;
   --_table-marker-side: to right;
-
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--C-SURFACE-0);
 }
 
-/* Head */
-.table-head {
-  background: var(--C-SURFACE-1);
-  border-bottom: 2px solid var(--C-BORDER-DEFAULT);
-}
-
-/* Header Cell */
-.table-header-cell {
-  text-align: left;
-  font-weight: var(--Semibold-Weight);
-  color: var(--C-TEXT-PRIMARY);
-  white-space: nowrap;
-}
-
-.table-header-cell--sortable {
-  cursor: pointer;
-  user-select: none;
-  transition: background-color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
-}
-
-.table-header-cell--sortable:hover {
-  background: var(--C-SURFACE-2);
-}
-
-/* Still reachable: `tabIndex` passes through the rest spread, so a caller can
-   put focus back on the cell itself. The component no longer does. */
-.table-header-cell--sortable:focus-visible {
-  outline: 2px solid var(--C-BORDER-FOCUS);
-  outline-offset: -2px;
-}
-
-.table-header-cell--sortable:active {
-  background: var(--C-SURFACE-3);
-}
-
-/* The sort control (#353). The <th> keeps `columnheader` and `aria-sort`; this
-   is what announces as activatable and holds the tab stop. Inline-level and
-   unstyled on purpose: `text-align` on the cell still positions it, and the
-   hover/active wash stays the cell's, so the whole header remains the target. */
-.table-header-cell__sort-button {
-  display: inline-flex;
-  align-items: center;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: inherit;
-  cursor: inherit;
-}
-
-.table-header-cell__sort-button:focus-visible {
-  outline: 2px solid var(--C-BORDER-FOCUS);
-  outline-offset: 2px;
-}
-
-.table-header-cell__sort-icon {
-  display: inline-flex;
-  margin-left: 0.25rem;
-  vertical-align: middle;
-}
-
-.table-header-cell__sort-icon--muted {
-  color: var(--C-TEXT-MUTED);
-}
-
-.table-header-cell__sort-icon--active {
-  color: var(--C-ACCENT);
-}
-
-/* Body */
-.table-body {
-  /* base styles */
-}
-
-/* Row */
-.table-row {
-  border-bottom: 1px solid var(--C-BORDER-DEFAULT);
-}
-
-.table-row:last-child {
-  border-bottom: none;
-}
-
-/* The class is emitted only on the rows that are actually banded — parity is
-   decided from the data index in Table.tsx, not from DOM position, so a detail
-   row or a virtualiser spacer between two data rows cannot flip the bands below
-   it (#365, #368).
-
-   Rung 2: a band is a mild recession within the rung-0 sheet, not a raised
-   panel. Against the sheet that measures 1.08–1.21:1 across the themes — a
-   band, not a block. */
-.table-row--striped {
-  background: var(--C-SURFACE-2);
-}
-
-/* #351. The 8% wash is not a signal: measured from rendered pixels in Firefox
-   146 against @batthewz/response-ui-css v0.10.0, a selected row reads
-   1.11 / 1.12 / 1.13 / 1.07 against an unselected one (default / events / tech /
-   grimdark) and 1.06 / 1.08 / 1.11 / 1.00 against a striped one — in grimdark a
-   selected row and an ordinary banded row are literally the same luminance.
-   The leading marker is what carries the state visually; the wash is
-   reinforcement. --C-ACCENT painted over the washed row measures
-   4.65 / 4.38 / 13.08 / 5.30 in the same run, clearing the 3:1 WCAG 1.4.11 asks
-   of a non-text indicator in all four themes. (The selected-vs-striped figures
-   were measured while the band was rung 1; it is rung 2 now, so treat them as
-   indicative until remeasured. The selected-vs-unselected pair is unaffected.)
+/* #351. The 8% wash on a selected row is not a signal: measured from rendered
+   pixels in Firefox 146 against @batthewz/response-ui-css v0.10.0, a selected
+   row reads 1.11 / 1.12 / 1.13 / 1.07 against an unselected one and
+   1.06 / 1.08 / 1.11 / 1.00 against a striped one — in one theme a selected row
+   and an ordinary banded row are literally the same luminance. The leading
+   marker is what carries the state visually; the wash is reinforcement.
+   --C-ACCENT painted over the washed row measures 4.65 / 4.38 / 13.08 / 5.30 in
+   the same run, clearing the 3:1 WCAG 1.4.11 asks of a non-text indicator in all
+   four themes. (The selected-vs-striped figures were measured while the band was
+   rung 1; it is rung 2 now, so treat them as indicative until remeasured. The
+   selected-vs-unselected pair is unaffected.)
 
    Painted as a background-image, not a border: in the collapsed border model a
    `border-inline-start` on a `<tr>` joins border-conflict resolution and moves
    the row's content, so selecting a row would reflow it. A background layer
-   costs no layout.
+   costs no layout — and it composes with the `bg-*` utility each state paints
+   its fill with, since those set `background-color` and this sets
+   `background-image`.
 
-   Declared AFTER .table-row--striped so a selected banded row takes the wash at
-   equal specificity — that is what the separate
-   `.table-row--selected.table-row--striped` rule used to do, and one rule
-   cannot drift from the other. */
-.table-row--selected {
-  background-color: color-mix(in oklch, var(--C-ACCENT) 8%, transparent);
-  --_table-marker-color: var(--C-ACCENT);
-}
-
-/* The marker itself, for every row that carries one. One rule rather than a copy
-   per state: the colour is the only thing that differs, and a second gradient is
-   exactly how the two would drift apart in width or side. */
+   One rule rather than a copy per state: the colour is the only thing that
+   differs, and a second gradient is exactly how the two would drift apart in
+   width or side. */
 .table-row--selected,
 .data-table-expanded-cell {
   background-image: linear-gradient(
@@ -168,47 +80,15 @@
   --_table-marker-side: to left;
 }
 
-/* Cell */
-.table-cell {
-  color: var(--C-TEXT-PRIMARY);
+/* Selection's ink. */
+.table-row--selected {
+  --_table-marker-color: var(--C-ACCENT);
 }
 
-/* Density: dense */
-.table-cell--dense {
-  padding: 0.25rem 0.75rem;
-  font-size: var(--BodyText-2);
-}
-
-/* Density: comfortable */
-.table-cell--comfortable {
-  padding: 0.625rem 1rem;
-  font-size: var(--BodyText-1);
-}
-
-/* Density: spacious */
-.table-cell--spacious {
-  padding: 1rem;
-  font-size: var(--BodyText-1);
-}
-
-/* Sticky header */
-.table--sticky-header .table-head {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.table--sticky-header .table-header-cell {
-  box-shadow: var(--SHADOW-SM);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Expandable detail row — accordion-style reveal                     */
-/* ------------------------------------------------------------------ */
-
-/* Zero the cell padding so the row can collapse to zero height; the visible
-   padding lives on the inner body instead. Declared after the density classes
-   so it overrides their padding at equal specificity.
+/* The detail row's ink. --C-BORDER-STRONG, deliberately not --C-ACCENT: a table
+   can be selectable and expandable at once, and an accent bar here would read as
+   selection. The structural neutral keeps the two states legible when they
+   stack.
 
    The marker, not the fill, is what says "this belongs to the row above". The
    detail row is the largest contiguous block in the table, so depth scales with
@@ -218,60 +98,35 @@
    `.table-row--selected` makes above, and one that survives any theme's ladder
    because it does not depend on the gap between two rungs.
 
-   --C-BORDER-STRONG, deliberately not --C-ACCENT: a table can be selectable and
-   expandable at once, and an accent bar here would read as selection. The
-   structural neutral keeps the two states legible when they stack.
-
-   Painted as a background-image so it composes with the `bg-surface-2` fill the
-   component sets — different properties, so a caller overriding the fill via
-   `classNames.expandedCell` keeps the marker. The gradient itself is the shared
-   rule up in the Table section; only the colour is set here. */
+   Painted as a background-image so it composes with that fill: different
+   properties, so a caller overriding the fill via `classNames.expandedCell`
+   keeps the marker. */
 .data-table-expanded-cell {
-  padding: 0;
   --_table-marker-color: var(--C-BORDER-STRONG);
 }
 
-/* Animate height via grid-template-rows: 0fr (collapsed) -> 1fr (natural). */
-.data-table-expanded-content {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
+/* The sort control (#353). The <th> keeps `columnheader` and `aria-sort`; this
+   is what announces as activatable and holds the tab stop. Inline-level and
+   unstyled on purpose: `text-align` on the cell still positions it, and the
+   hover/active wash stays the cell's, so the whole header remains the target.
+
+   A reset, so it stays here — see note 2 at the top of this file. `display` and
+   `align-items` ride along rather than being split into the class list: half a
+   rule in each home is how the two drift. */
+.table-header-cell__sort-button {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: inherit;
 }
 
-.data-table-expanded-content[data-state="open"] {
-  grid-template-rows: 1fr;
-}
-
-/* The grid item must clip its overflow and allow a zero min-height for the
-   collapse to reach 0. */
-.data-table-expanded-inner {
-  overflow: hidden;
-  min-height: 0;
-}
-
-/* Padding mirrors the cell density so expanded content lines up with the row. */
-.data-table-expanded-body--dense {
-  padding: 0.25rem 0.75rem;
-  font-size: var(--BodyText-2);
-}
-
-.data-table-expanded-body--comfortable {
-  padding: 0.625rem 1rem;
-  font-size: var(--BodyText-1);
-}
-
-.data-table-expanded-body--spacious {
-  padding: 1rem;
-  font-size: var(--BodyText-1);
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .table-header-cell--sortable {
-    transition: none;
-  }
-
-  .data-table-expanded-content {
-    transition: none;
-  }
+.table-header-cell__sort-button:focus-visible {
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: 2px;
 }

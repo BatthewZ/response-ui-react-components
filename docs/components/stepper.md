@@ -179,30 +179,44 @@ track at once, which reaches every step rather than one call site.
 
 ## Theme tokens
 
-Stepper uses **no Tailwind utilities** — the connector rail needs real positioned rules, so
-all styling lives in `Stepper.css` and reads contract variables directly, the way Tabs and
-ActivityFeed do. Override any of these and the track re-tints with the rest of the app, at
-runtime, with no rebuild.
+Stepper splits its styling in two. **The connector rail** stays in `Stepper.css`: its six
+position declarations are `calc()` over `--_stepper-gap` and friends, whose only read sites
+are inside that `calc()`, so there is no property for a utility to set. **Everything else** —
+the marker, the three status recipes, the text block — is Tailwind utilities in `Stepper.tsx`.
+Both read contract variables, so overriding one re-tints the track at runtime with no rebuild;
+and the utilities, sitting in `@layer utilities`, are beaten by any `className` or `classNames`
+you pass.
 
-| Where                              | Override                                      |
-| ---------------------------------- | --------------------------------------------- |
-| Progress ink (current ring, filled rail) | `--stepper-progress-color`, defaulting to `--C-TEXT-PRIMARY` |
-| Current ring weight                | `--_stepper-active-line-width`, `1.5 x --_stepper-line-width` |
-| Done chip fill · ring and glyph    | `--C-PRIMARY` · `--C-TEXT-ON-PRIMARY`         |
-| Unfilled rail · upcoming ring      | `--C-BORDER-DEFAULT`                          |
-| Marker background                  | `--C-SURFACE-2`                               |
-| Upcoming number                    | `--C-TEXT-MUTED`                              |
-| Marker hover border (clickable)    | `--C-BORDER-STRONG`                           |
-| Focus outline                      | `--C-BORDER-FOCUS`                            |
-| Marker corners                     | `--RADIUS-FULL`                              |
-| Step title                         | `--C-TEXT-PRIMARY` · `--Bold-Weight`, `--C-TEXT-MUTED` when upcoming |
-| Step description                   | `--C-TEXT-SECONDARY`                          |
-| Title type                         | `--BodyText-2` · `--BodyText-2-line-height`   |
-| Number and description type        | `--BodyText-3` · `--BodyText-3-line-height`   |
-| Marker → content gap               | `--R-SIZE-5`                                  |
-| Title → description gap · vertical rail inset | `--R-SIZE-6`                       |
-| Horizontal rail inset              | `--R-SIZE-4`                                  |
-| Vertical row spacing               | `--R-SIZE-3`                                  |
+| Where                              | Utility / class                                    | Override                                      |
+| ---------------------------------- | -------------------------------------------------- | --------------------------------------------- |
+| Progress ink (current ring, filled rail) | the marker's border and ink, and `.stepper-connector` | `--stepper-progress-color`, defaulting to `--C-TEXT-PRIMARY` |
+| Current ring weight                | `border-[length:var(--_stepper-active-line-width)]` | `--_stepper-active-line-width`, `1.5 x --_stepper-line-width` |
+| Done chip fill · ring and glyph    | `bg-primary` · `border-fg-on-primary` · `text-fg-on-primary` | `--C-PRIMARY` · `--C-TEXT-ON-PRIMARY`  |
+| Unfilled rail · upcoming ring      | `border-border-default`                            | `--C-BORDER-DEFAULT`                          |
+| Marker background                  | `bg-surface-2`                                     | `--C-SURFACE-2`                               |
+| Upcoming number                    | `text-fg-muted`                                    | `--C-TEXT-MUTED`                              |
+| Marker hover border (clickable)    | `hover:border-border-strong`                       | `--C-BORDER-STRONG`                           |
+| Focus outline                      | `focus-visible:outline-border-focus`               | `--C-BORDER-FOCUS`                            |
+| Marker corners                     | `rounded-full`                                     | `--RADIUS-FULL`                               |
+| Step title                         | `text-fg-primary` · `font-bold`                    | `--C-TEXT-PRIMARY` · `--Bold-Weight`          |
+| Upcoming title                     | `text-fg-muted`                                    | `--C-TEXT-MUTED`                              |
+| Step description                   | `text-fg-secondary`                                | `--C-TEXT-SECONDARY`                          |
+| Title type                         | `text-body-2`                                      | `--BodyText-2` · `--BodyText-2-line-height`   |
+| Number and description type        | `text-body-3`                                      | `--BodyText-3` · `--BodyText-3-line-height`   |
+| Marker → content gap               | `gap-r5`                                           | `--R-SIZE-5`                                  |
+| Title → description gap            | `gap-r6`                                           | `--R-SIZE-6`                                  |
+| Horizontal rail inset              | `.stepper-connector`                               | `--R-SIZE-4`                                  |
+| Vertical rail inset · row spacing  | `.stepper-connector` · `pb-r3`                     | `--R-SIZE-6` · `--R-SIZE-3`                   |
+
+The progress ink reaches the marker as `border-[var(--stepper-progress-color)]` and
+`text-[var(--stepper-progress-color)]`, and the filled rail as a `background-color` in
+`Stepper.css`. Those two are written in the prose rather than the table because
+`verify:component-docs` reads a row's utility against the *contract* variables it resolves
+to, and `--stepper-progress-color` is this component's own hook rather than a contract name.
+
+The BEM class names (`.stepper-indicator`, `.stepper-title`, …) are all still emitted, and
+those the rail does not use are now **declaration-free markers**, so a consumer stylesheet,
+devtools and the Astro/Rails consumers of `response-ui-css` still have one name per part.
 
 **`--stepper-progress-color` is the component's own hook**, and the one override that
 re-skins the track without touching a global theme token. Aim it at the root element, and
@@ -216,7 +230,9 @@ outweigh `.stepper` while you're there:
 
 Both parts matter. `Stepper.css` declares the default **on `.stepper` itself**, not on
 `:root`, so a value set on an ancestor never reaches it — a declaration on the element
-always beats an inherited one. And a lone `.checkout-stepper` rule only ties `.stepper` on
+always beats an inherited one. (It stays a custom property rather than becoming a utility
+for exactly that reach: one write on the root inks every marker and segment below it,
+which no per-element class can do.) And a lone `.checkout-stepper` rule only ties `.stepper` on
 specificity, leaving the winner to stylesheet order. Chaining the two classes, or setting
 the property inline on the root, removes both doubts.
 
@@ -238,8 +254,7 @@ Three geometry values are **not** on the contract: the marker diameter (`2rem`),
 thickness (`2px`), and the current marker's heavier ring (`3px`), held in
 component-internal `--_stepper-*` locals. Every connector offset is derived from the first
 two, so they are fixed rather than themeable. The heavier ring costs no layout because
-`.stepper-indicator` states `box-sizing: border-box` itself rather than inheriting it from
-a reset — under content-box the current marker would grow past `2rem` and pull off the
+the marker carries `box-border` itself rather than inheriting it from a reset — under content-box the current marker would grow past `2rem` and pull off the
 rail's centre line, which is positioned from that variable. That mechanism was measured in
 Firefox at 1280px, with the multiplier then at `2`: every marker `32 x 32` in all four
 measured themes, current ring `4px` against `2px` for done and upcoming. Border-box holds
@@ -254,7 +269,8 @@ sibling rings, and the current marker ends up the highest-contrast object in the
 — outweighing the steps already completed. Where `--C-PRIMARY` sits near the surface the
 done chip renders as a ring instead, the three markers read as one family, and the same
 `4px` looked deliberate. `1.5` is the value that holds in both cases. The clickable
-marker's hover transition is likewise a hard-coded `0.15s ease` rather than a motion token.
+marker's hover transition is likewise a hard-coded `duration-150 ease-[ease]` rather than a
+motion token.
 
 Upcoming numbers and titles are deliberately `--C-TEXT-MUTED` (hint-level contrast), so
 treat what is still ahead as supplementary rather than load-bearing text.

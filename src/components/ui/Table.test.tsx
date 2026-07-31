@@ -185,6 +185,36 @@ describe("Table", () => {
     expect(screen.getAllByRole("row")[0]).toHaveClass("table-row--striped");
   });
 
+  /**
+   * THE ONE INVARIANT THIS CONVERSION RELOCATED. `.table-row--selected` used to
+   * be declared AFTER `.table-row--striped` in `Table.css`, at equal specificity,
+   * so a selected banded row took the selection wash — and the stylesheet said so
+   * in a comment. Both washes are utilities now, so the invariant is ARGUMENT
+   * ORDER in `Table.Row`'s `cn()`: tailwind-merge keeps the last of two
+   * conflicting `bg-*`. Swap the two arguments and selection is lost, silently, on
+   * every banded row. This is the test that reddens.
+   */
+  it("keeps the selection wash on a row that is also banded", () => {
+    render(
+      <Table striped>
+        <Table.Body>
+          <Table.Row index={1} selected>
+            <Table.Cell>Banded and selected</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>,
+    );
+
+    const row = screen.getAllByRole("row")[0];
+    // Both markers survive — a consumer stylesheet targets either.
+    expect(row).toHaveClass("table-row--striped");
+    expect(row).toHaveClass("table-row--selected");
+    // …and exactly one background utility is left, the selection wash.
+    expect(
+      [...row.classList].filter((c) => c.startsWith("bg-")),
+    ).toEqual(["bg-[color-mix(in_oklch,var(--C-ACCENT)_8%,transparent)]"]);
+  });
+
   it("HeaderCell with sortDirection='asc' has aria-sort='ascending'", () => {
     render(
       <Table>
@@ -824,16 +854,28 @@ describe("Table", () => {
       expect(icon!.getAttribute("class")).toContain("sentinel-slot");
     });
 
+    /**
+     * The button's attribute really is its marker alone: its rule is a RESET and
+     * stayed in `Table.css` (a reset has to lose to a caller's class, which is
+     * what `@layer components` buys it). The icon's did not, so its equality is
+     * now a membership check plus the junk-token guard the equality was standing
+     * in for — a merge that drops the library class when the slot is `undefined`
+     * passes `toContain`, and fails the guard.
+     */
     it("leaves both base classes alone when no slot is passed", () => {
       const { container } = renderCell();
-      // `toBe`, not `toContain`: a merge that drops the library class when the
-      // slot is `undefined` passes `toContain` and fails here.
       expect(screen.getByRole("button").getAttribute("class")).toBe(
         "table-header-cell__sort-button",
       );
-      expect(
-        container.querySelector(".table-header-cell__sort-icon")!.getAttribute("class"),
-      ).toBe("table-header-cell__sort-icon table-header-cell__sort-icon--active");
+      const icon =
+        container.querySelector(".table-header-cell__sort-icon")!.getAttribute("class") ?? "";
+      expect(icon.split(" ")).toEqual(
+        expect.arrayContaining([
+          "table-header-cell__sort-icon",
+          "table-header-cell__sort-icon--active",
+        ]),
+      );
+      expect(icon).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     it("does not put the slot classes on the cell itself", () => {
@@ -890,9 +932,13 @@ describe("Table", () => {
         </Table>,
       );
       const table = container.querySelector("table")!;
-      expect(table.getAttribute("class")).toBe(
-        "table table--sticky-header sentinel-slot",
+      const classes = (table.getAttribute("class") ?? "").split(" ");
+      expect(classes).toEqual(
+        expect.arrayContaining(["table", "table--sticky-header", "sentinel-slot"]),
       );
+      // The bag's class is LAST, which is the whole point of the hatch: whatever
+      // it carries out-ranks the component's own on the same tailwind-merge group.
+      expect(classes[classes.length - 1]).toBe("sentinel-slot");
     });
 
     it("leaves the base classes alone with no bag", () => {
@@ -901,7 +947,10 @@ describe("Table", () => {
           <Table.Body />
         </Table>,
       );
-      expect(container.querySelector("table")!.getAttribute("class")).toBe("table");
+      const classes = container.querySelector("table")!.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("table");
+      expect(classes.split(" ")).not.toContain("table--sticky-header");
+      expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     it("still forwards the rest of the bag", () => {

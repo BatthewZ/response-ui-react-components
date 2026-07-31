@@ -486,10 +486,27 @@ describe("StatCard", () => {
       expect(arrow?.getAttribute("class")).toContain("size-r3");
     });
 
-    it("leaves the arrow on its base class alone when no slot is passed", () => {
+    /**
+     * This used to assert the class attribute equalled the marker exactly, which
+     * stopped being expressible once `StatCard.css` was deleted and the arrow
+     * carried its own size and transition. The falsifiers are unchanged and are
+     * what the equality was ever standing in for: an absent slot appends NOTHING
+     * — no `undefined`, no empty token.
+     */
+    it("leaves the arrow on its base classes alone when no slot is passed", () => {
       const { container } = render(<StatCard.Trend value={1} direction="up" />);
-      expect(container.querySelector("svg")?.getAttribute("class")).toBe(
-        "stat-card__trend-icon"
+      const classes = container.querySelector("svg")?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("stat-card__trend-icon");
+      expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+      // `up` does not flip the glyph; `down` does, and that pair is what replaced
+      // the `.stat-card__trend--down .stat-card__trend-icon` rule.
+      expect(classes.split(" ")).not.toContain("rotate-180");
+    });
+
+    it("rotates the arrow for a falling figure and only for one", () => {
+      const down = render(<StatCard.Trend value={1} direction="down" />);
+      expect(down.container.querySelector("svg")?.className.baseVal.split(" ")).toContain(
+        "rotate-180"
       );
     });
 
@@ -516,9 +533,9 @@ describe("StatCard", () => {
         // @ts-expect-error — `trendGlyph` is not a slot; only untyped JS gets here.
         <StatCard.Trend value={1} direction="up" classNames={{ trendGlyph: "size-r3" }} />
       );
-      expect(container.querySelector("svg")?.getAttribute("class")).toBe(
-        "stat-card__trend-icon"
-      );
+      const classes = container.querySelector("svg")?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("stat-card__trend-icon");
+      expect(classes).not.toContain("size-r3");
     });
 
     it("does not leak classNames onto the DOM", () => {
@@ -600,14 +617,27 @@ describe("StatCard", () => {
      * to the wrapper under the §4b house rule is a breaking API change and an
      * owner call — see PHASE3-PATTERN.md "The wrapper case". If that call is
      * taken, this test is the one that must be rewritten rather than deleted.
+     *
+     * IT HAS BEEN REWRITTEN, AND THE RULING IS UNCHANGED. The equality stopped
+     * being expressible when `StatCard.css` was deleted: the wrapper now carries
+     * the `block mt-auto` that `.stat-card__sparkline` used to declare. What the
+     * equality was pinning is the negative — `className` does NOT reach this
+     * element — and that is asserted directly below, alongside the marker and the
+     * pin it carries. The `.sparkline` rule that reached across into `Sparkline`'s
+     * own `<svg>` is gone too: `block w-full` is handed to the chart through the
+     * `className` this component already forwards.
      */
-    it("leaves the pinning wrapper on its own class only", () => {
+    it("leaves the pinning wrapper on its own classes, and className on the chart", () => {
       const { container } = render(
         <StatCard.Sparkline values={[1, 2, 3]} className="extra-spark" />
       );
-      expect(container.querySelector(".stat-card__sparkline")?.getAttribute("class")).toBe(
-        "stat-card__sparkline"
+      const wrapper = container.querySelector(".stat-card__sparkline")?.getAttribute("class") ?? "";
+      expect(wrapper.split(" ")).toEqual(
+        expect.arrayContaining(["stat-card__sparkline", "mt-auto"]),
       );
+      expect(wrapper.split(" ")).not.toContain("extra-spark");
+      const chart = screen.getByRole("img").getAttribute("class") ?? "";
+      expect(chart.split(" ")).toEqual(expect.arrayContaining(["w-full", "extra-spark"]));
     });
   });
 

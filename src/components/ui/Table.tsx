@@ -25,6 +25,13 @@ type Density = "dense" | "comfortable" | "spacious";
 type TableContextValue = {
   density: Density;
   striped: boolean;
+  /**
+   * Read by `Table.Head` and `Table.HeaderCell`, which used to be reached by the
+   * `.table--sticky-header .table-head` descendant selectors in `Table.css`. The
+   * root already knew this; passing it down is what let those two rules become
+   * ordinary utilities on the elements that carry them.
+   */
+  stickyHeader: boolean;
 };
 
 const TableContext = createContext<TableContextValue | null>(null);
@@ -36,13 +43,79 @@ function useTableContext() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Density class helper                                               */
+/*  Classes                                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * `Table.css` keeps two things and says why at source; everything else this
+ * component draws is here. Every BEM name survives as a declaration-free marker
+ * (AGENTS.md §"Class names outlive their declarations"), and each constant is
+ * one flat string literal because `verify:component-docs` and
+ * `verify:focus-affordance` resolve hoisted constants textually.
+ *
+ * `--MOTION-*` is in no Tailwind namespace, so the shift tokens are read as
+ * custom properties in the bracket spelling — `ease-shift` generates nothing.
+ * `hover:` compiles to `@media (hover: hover) { &:hover }`, so the sortable
+ * header's wash no longer paints on a coarse pointer; that matches the rest of
+ * the package.
+ */
+const wrapperClasses = "overflow-x-auto border border-border-default rounded-md";
+
+const tableClasses = "w-full border-collapse bg-surface-0";
+
+const headClasses = "bg-surface-1 border-b-2 border-border-default";
+
+const headerCellClasses = "text-left font-semibold text-fg-primary whitespace-nowrap";
+
+/**
+ * `focus-visible:` is still reachable: `tabIndex` passes through the rest
+ * spread, so a caller can put focus back on the cell itself. The component no
+ * longer does.
+ */
+const headerCellSortableClasses =
+  "cursor-pointer select-none transition-colors duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none hover:bg-surface-2 active:bg-surface-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focus";
+
+const sortIconClasses = "inline-flex ml-1 align-middle";
+
+const rowClasses = "border-b border-border-default last:border-b-0";
+
+/**
+ * The zebra band and the selection wash, in the order they must be passed.
+ *
+ * `.table-row--selected` used to be declared AFTER `.table-row--striped` in
+ * `Table.css` so a selected banded row took the wash at equal specificity, and
+ * the file said so. Converting relocates that invariant into argument order in
+ * the `cn()` below: the striped class is passed first, the selected class
+ * second, and tailwind-merge keeps the last of two conflicting `bg-*`. Swapping
+ * the two arguments silently loses selection on every banded row — that is what
+ * `Table.test.tsx` pins.
+ *
+ * Rung 2 for the band: a mild recession within the rung-0 sheet, not a raised
+ * panel. Against the sheet that measures 1.08–1.21:1 across the themes.
+ */
+const rowStripedClasses = "bg-surface-2";
+const rowSelectedClasses = "bg-[color-mix(in_oklch,var(--C-ACCENT)_8%,transparent)]";
+
+/**
+ * Density. The padding and size that were `.table-cell--dense` and friends.
+ *
+ * Both halves of one cascade pair moved together, and this is the half that
+ * would have inverted alone: `.data-table-expanded-cell { padding: 0 }` beat
+ * these at equal specificity purely by being declared later in `Table.css`, and
+ * `DataTable.tsx` now passes `p-0` in the cell's own `className` — after this
+ * map — so tailwind-merge resolves it at the call site instead.
+ *
+ * `text-[length:…]`, not `text-body-2`: the stylesheet set `font-size` and left
+ * `line-height` to inherit, and `text-body-2` would drag its
+ * `--BodyText-2-line-height` companion in with it. That companion is ~1.85em,
+ * which would grow every row — including the fixed-height rows
+ * `VirtualizedDataTable` reserves space for. The size is what was written, so
+ * the size is what converts.
+ */
 const densityClassMap: Record<Density, string> = {
-  dense: "table-cell--dense",
-  comfortable: "table-cell--comfortable",
-  spacious: "table-cell--spacious",
+  dense: "table-cell--dense px-3 py-1 text-[length:var(--BodyText-2)]",
+  comfortable: "table-cell--comfortable px-4 py-2.5 text-[length:var(--BodyText-1)]",
+  spacious: "table-cell--spacious p-4 text-[length:var(--BodyText-1)]",
 };
 
 /* ------------------------------------------------------------------ */
@@ -85,10 +158,10 @@ const TableRoot = forwardRef<HTMLDivElement, TableProps>(function Table(
   ref
 ) {
   return (
-    <TableContext.Provider value={{ density, striped }}>
+    <TableContext.Provider value={{ density, striped, stickyHeader }}>
       <div
         ref={ref}
-        className={cn("table-wrapper", className)}
+        className={cn("table-wrapper", wrapperClasses, className)}
         style={maxHeight !== undefined ? { maxHeight, ...style } : style}
         {...props}
       >
@@ -96,7 +169,12 @@ const TableRoot = forwardRef<HTMLDivElement, TableProps>(function Table(
             or the raw bag's own `className` overwrites it. */}
         <table
           {...tableProps}
-          className={cn("table", stickyHeader && "table--sticky-header", tableProps?.className)}
+          className={cn(
+            "table",
+            tableClasses,
+            stickyHeader && "table--sticky-header",
+            tableProps?.className
+          )}
         >
           {children}
         </table>
@@ -113,8 +191,18 @@ type TableHeadProps = ComponentPropsWithRef<"thead">;
 
 const TableHead = forwardRef<HTMLTableSectionElement, TableHeadProps>(
   function TableHead({ className, ...props }, ref) {
-    useTableContext();
-    return <thead ref={ref} className={cn("table-head", className)} {...props} />;
+    const { stickyHeader } = useTableContext();
+    return (
+      <thead
+        ref={ref}
+        // The pin is read from context rather than from an
+        // `in-[.table--sticky-header]:` variant: that variant matches ANY
+        // ancestor carrying the class, so a table nested inside a sticky one
+        // would pin its head too.
+        className={cn("table-head", headClasses, stickyHeader && "sticky top-0 z-1", className)}
+        {...props}
+      />
+    );
   }
 );
 
@@ -143,6 +231,8 @@ const TableBody = forwardRef<HTMLTableSectionElement, TableBodyProps>(
     });
 
     return (
+      // `table-body` is a declaration-free marker: the rule it named was an
+      // empty one and has been deleted, not converted.
       <tbody ref={ref} className={cn("table-body", className)} {...props}>
         {numbered}
       </tbody>
@@ -192,8 +282,18 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         ref={ref}
         className={cn(
           "table-row",
-          selected && "table-row--selected",
-          striped && index !== undefined && index % 2 === 1 && "table-row--striped",
+          rowClasses,
+          // Striped BEFORE selected: two `bg-*` in one class list resolve by
+          // argument order, and a selected banded row must take the selection
+          // wash. See `rowSelectedClasses`. The class is emitted only on the rows
+          // that are actually banded — parity is decided from the data index, not
+          // from DOM position, so a detail row or a virtualiser spacer between two
+          // data rows cannot flip the bands below it (#365, #368).
+          striped &&
+            index !== undefined &&
+            index % 2 === 1 &&
+            "table-row--striped " + rowStripedClasses,
+          selected && "table-row--selected " + rowSelectedClasses,
           className
         )}
         aria-selected={selected}
@@ -247,7 +347,7 @@ const TableHeaderCell = forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
     },
     ref
   ) {
-    const { density } = useTableContext();
+    const { density, stickyHeader } = useTableContext();
     const sortId = useId();
     const sortable = !!onSort;
 
@@ -265,9 +365,10 @@ const TableHeaderCell = forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
         <span
           className={cn(
             "table-header-cell__sort-icon",
+            sortIconClasses,
             hasDirection
-              ? "table-header-cell__sort-icon--active"
-              : "table-header-cell__sort-icon--muted",
+              ? "table-header-cell__sort-icon--active text-accent"
+              : "table-header-cell__sort-icon--muted text-fg-muted",
             classNames?.sortIcon,
           )}
         >
@@ -334,8 +435,12 @@ const TableHeaderCell = forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
         ref={ref}
         className={cn(
           "table-header-cell",
+          headerCellClasses,
           densityClassMap[density],
-          sortable && "table-header-cell--sortable",
+          sortable && "table-header-cell--sortable " + headerCellSortableClasses,
+          // Same reasoning as `Table.Head`: read from context, not from an
+          // ancestor-matching variant.
+          stickyHeader && "shadow-sm",
           className
         )}
         onClick={composeEventHandlers(onClick, () => onSort?.())}
@@ -369,7 +474,7 @@ const TableCell = forwardRef<HTMLTableCellElement, TableCellProps>(
     return (
       <td
         ref={ref}
-        className={cn("table-cell", densityClassMap[density], className)}
+        className={cn("table-cell text-fg-primary", densityClassMap[density], className)}
         {...props}
       />
     );

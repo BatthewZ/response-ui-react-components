@@ -364,29 +364,39 @@ see [Accessibility](#accessibility).
 
 ## Theme tokens
 
-Apart from `sr-only` on the sort button's hidden action word, `Table.tsx` uses **no Tailwind
-utilities** — every rule lives in `Table.css` and reads the contract variables directly.
-Override any of these and the table re-tints with the rest of the app, at runtime, with no
-rebuild.
+Table paints in Tailwind utilities written in `Table.tsx` (and `DataTable.tsx` for the
+expanded detail row), each resolving to a contract variable. `Table.css` keeps two things and
+says why at source: **the leading marker**, one rule shared by an element `Table` renders and
+one `DataTable` renders, which as a utility would be a 150-character arbitrary value written
+out twice; and **the sort button's reset**, which has to lose to a class you pass rather than
+beat it. Override a variable and the table re-tints at runtime with no rebuild — and because
+the utilities sit in `@layer utilities`, a `className` or `classNames` of your own beats
+every one of them.
 
-| Where                          | Override                                                  |
-| ------------------------------ | --------------------------------------------------------- |
-| Wrapper border · corners       | `--C-BORDER-DEFAULT` · `--RADIUS-MD`                      |
-| Table background               | `--C-SURFACE-0`                                           |
-| Header band · its 2px underline| `--C-SURFACE-1` · `--C-BORDER-DEFAULT`                    |
-| Header label ink · weight      | `--C-TEXT-PRIMARY` · `--Semibold-Weight`                  |
-| Sortable header hover · active | `--C-SURFACE-2` · `--C-SURFACE-3`                         |
-| Sort button focus outline      | `--C-BORDER-FOCUS`                                        |
-| Sort arrow                     | `--C-TEXT-MUTED` unsorted · `--C-ACCENT` sorted           |
-| Row divider                    | `--C-BORDER-DEFAULT`                                      |
-| Striped row                    | `--C-SURFACE-2`                                           |
-| Selected row wash              | `--C-ACCENT`, mixed to 8% in oklch                        |
-| Selected row marker            | `--C-ACCENT` at full strength · width `--_table-marker-width` (3px, private) |
-| Expanded detail row            | `--C-SURFACE-2` fill · `--C-BORDER-STRONG` leading marker at `--_table-marker-width` |
-| Cell ink                       | `--C-TEXT-PRIMARY`                                        |
-| Cell type step                 | `--BodyText-2` (dense) · `--BodyText-1` (comfortable, spacious) |
-| Sticky header shadow           | `--SHADOW-SM`                                             |
-| Sortable hover transition      | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`         |
+| Where                           | Utility / class                                       | Override                                                  |
+| ------------------------------- | ----------------------------------------------------- | --------------------------------------------------------- |
+| Wrapper border · corners        | `border-border-default` · `rounded-md`                | `--C-BORDER-DEFAULT` · `--RADIUS-MD`                      |
+| Table background                | `bg-surface-0`                                        | `--C-SURFACE-0`                                           |
+| Header band · its 2px underline | `bg-surface-1` · `border-border-default`              | `--C-SURFACE-1` · `--C-BORDER-DEFAULT`                    |
+| Header label ink · weight       | `text-fg-primary` · `font-semibold`                   | `--C-TEXT-PRIMARY` · `--Semibold-Weight`                  |
+| Sortable header hover · active  | `hover:bg-surface-2` · `active:bg-surface-3`          | `--C-SURFACE-2` · `--C-SURFACE-3`                         |
+| Sortable header focus outline   | `focus-visible:outline-border-focus`                  | `--C-BORDER-FOCUS`                                        |
+| Sort button focus outline       | `.table-header-cell__sort-button`                     | `--C-BORDER-FOCUS`                                        |
+| Sort arrow                      | `text-fg-muted` unsorted · `text-accent` sorted       | `--C-TEXT-MUTED` · `--C-ACCENT`                           |
+| Row divider                     | `border-border-default`                               | `--C-BORDER-DEFAULT`                                      |
+| Striped row                     | `bg-surface-2`                                        | `--C-SURFACE-2`                                           |
+| Selected row wash               | `bg-[color-mix(in_oklch,var(--C-ACCENT)_8%,transparent)]` | `--C-ACCENT`, mixed to 8% in oklch                    |
+| Selected row marker             | `.table-row--selected`                                | `--C-ACCENT` at full strength · width `--_table-marker-width` (3px, private) |
+| Expanded detail row             | `bg-surface-2` · `.data-table-expanded-cell`          | `--C-SURFACE-2` fill · `--C-BORDER-STRONG` leading marker at `--_table-marker-width` |
+| Cell ink                        | `text-fg-primary`                                     | `--C-TEXT-PRIMARY`                                        |
+| Cell type step                  | `text-[length:var(--BodyText-2)]` (dense) · `text-[length:var(--BodyText-1)]` (comfortable, spacious) | `--BodyText-2` · `--BodyText-1` |
+| Sticky header shadow            | `shadow-sm`                                           | `--SHADOW-SM`                                             |
+| Sortable hover transition       | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+
+Every BEM class name is still emitted, and those the two surviving rules do not use are now
+**declaration-free markers**, so a consumer stylesheet, devtools and the Astro/Rails consumers
+of `response-ui-css` still have one name per part. `.table-body` is one of them and always
+was — the rule it named was empty and has been deleted rather than converted.
 
 The transition is dropped entirely under `prefers-reduced-motion: reduce`; nothing else in
 the component animates.
@@ -399,13 +409,17 @@ sortable header presses one rung deeper still, to `--C-SURFACE-3`.
 
 Two things are **not** on the contract, and are worth knowing before you theme:
 
-- **Cell padding is hard literals**, not the responsive `r`-scale that most components use.
-  The type steps *are* responsive — `--BodyText-1` goes `0.875rem` → `1rem` at the 40rem
-  breakpoint — so a row gets taller type on desktop inside padding that does not move with
-  it. Override `.table-cell--*` yourself if that matters.
-- **Only the size step is read, not its paired line height.** `Table.css` sets `font-size`
-  from the `--BodyText-*` scale and leaves `line-height` to inherit, so row height tracks
-  whatever the surrounding text is doing.
+- **Cell padding is hard literals** (`px-3 py-1`, `px-4 py-2.5`, `p-4`), not the responsive
+  `r`-scale that most components use. The type steps *are* responsive — `--BodyText-1` goes
+  `0.875rem` → `1rem` at the 40rem breakpoint — so a row gets taller type on desktop inside
+  padding that does not move with it. Pass your own padding on `Table.Cell`'s `className` if
+  that matters; a utility beats the component's own.
+- **Only the size step is read, not its paired line height.** The cells use
+  `text-[length:var(--BodyText-*)]` rather than `text-body-*`, because `text-body-2` would
+  drag its `--BodyText-2-line-height` companion in with it and grow every row — including the
+  fixed-height rows [VirtualizedDataTable](virtualized-data-table.md) reserves space for. Row
+  height therefore tracks whatever the surrounding text is doing, exactly as it did when this
+  was CSS.
 
 ## Gotchas
 

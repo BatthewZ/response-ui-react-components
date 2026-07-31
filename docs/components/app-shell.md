@@ -341,38 +341,62 @@ yours to want, not an accident of the merge.
 
 ## Theme tokens
 
-AppShell uses **no Tailwind utilities** — every rule lives in `AppShell.css` and reads a
-contract variable directly, the way [Tabs](tabs.md) and [ActivityFeed](activity-feed.md) do.
-Override any of these and the chrome re-tints with the rest of the app, at runtime, with no
-rebuild.
+AppShell splits its styling in two. **The page grid** — the root's `grid-template-*`, the
+sidebar's placement and the `<main>` column — stays in `AppShell.css`, because the
+`@media (max-width: 639px)` block that overrides all three cannot become a Tailwind variant:
+`max-sm:` emits `@media (width < 40rem)` and `max-[639px]:` emits `@media (width < 639px)`,
+and neither is `max-width: 639px`. A base in `@layer utilities` would sit above a media
+override in `@layer components` and win at every width, so the two move together or not at
+all. The section heading and the two `@keyframes` stay for their own stated reasons.
+**Everything else** — navbar, brand, toggle, sidebar sections, links, scrim, drawer — is
+Tailwind utilities in `AppShell.tsx`. Both read contract variables, so overriding one re-tints
+the chrome at runtime with no rebuild; and the utilities, sitting in `@layer utilities`, are
+beaten by any `className` or `classNames` you pass.
 
-| Where                          | Override                                                        |
-| ------------------------------ | --------------------------------------------------------------- |
-| Page background behind content | `--C-CANVAS`                                                     |
-| Navbar · sidebar · drawer fill | `--C-SURFACE-0`                                                  |
-| Every hairline                 | `--C-BORDER-DEFAULT`                                             |
-| Brand text                     | `--C-TEXT-PRIMARY` · `--Bold-Weight`                             |
-| Toggle and link ink            | `--C-TEXT-SECONDARY` at rest · `--C-TEXT-PRIMARY` on hover       |
-| Toggle and link hover wash     | `--C-SURFACE-2`                                                  |
-| Active link                    | `--C-TEXT-PRIMARY` ink · `--C-ACCENT` as a 10% `color-mix` wash *and* a 1px inset edge |
-| Section title                  | `--C-TEXT-MUTED` · `--Semibold-Weight`                           |
-| Sidebar link type · weight     | `--BodyText-1` · `--Semibold-Weight`                             |
-| Focus outline                  | `--C-BORDER-FOCUS`                                               |
-| Drawer scrim                   | `--OVERLAY-SCRIM-COLOR`                                          |
-| Drawer elevation               | `--SHADOW-LG`                                                    |
-| Hover · scrim fade · drawer slide | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER`             |
-| Collapse width animation       | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`                |
+| Where                          | Utility / class                                                       | Override                                                        |
+| ------------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Page background behind content | `.app-shell`                                                           | `--C-CANVAS`                                                     |
+| Navbar · drawer fill           | `bg-surface-0`                                                         | `--C-SURFACE-0`                                                  |
+| Sidebar fill                   | `.app-shell-sidebar`                                                   | `--C-SURFACE-0`                                                  |
+| Every hairline                 | `border-border-default` · `.app-shell-sidebar`                         | `--C-BORDER-DEFAULT`                                             |
+| Brand text                     | `text-fg-primary` · `font-bold`                                        | `--C-TEXT-PRIMARY` · `--Bold-Weight`                             |
+| Toggle and link ink            | `text-fg-secondary` · `hover:text-fg-primary`                          | `--C-TEXT-SECONDARY` at rest · `--C-TEXT-PRIMARY` on hover       |
+| Toggle and link hover wash     | `hover:bg-surface-2`                                                   | `--C-SURFACE-2`                                                  |
+| Active link                    | `bg-[color-mix(in_oklch,var(--C-ACCENT)_10%,transparent)]` · `shadow-[inset_0_0_0_1px_var(--C-ACCENT)]` · `text-fg-primary` | `--C-ACCENT` as a 10% wash *and* a 1px inset edge · `--C-TEXT-PRIMARY` ink |
+| Section title                  | `.app-shell-sidebar-section-title`                                     | `--C-TEXT-MUTED` · `--Semibold-Weight`                           |
+| Sidebar link type · weight     | `text-[length:var(--BodyText-1)]` · `font-semibold`                    | `--BodyText-1` · `--Semibold-Weight`                             |
+| Focus outline                  | `focus-visible:outline-border-focus`                                   | `--C-BORDER-FOCUS`                                               |
+| Drawer scrim                   | `bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]`                     | `--OVERLAY-SCRIM-COLOR`                                          |
+| Drawer elevation               | `shadow-lg`                                                            | `--SHADOW-LG`                                                    |
+| Hover · scrim fade · drawer slide | `duration-[var(--MOTION-DURATION-ENTER)]` · `ease-[var(--MOTION-EASE-ENTER)]` | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER`      |
+| Collapse width animation       | `.app-shell-sidebar`                                                   | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`                |
+
+The BEM class names are all still emitted, and those the surviving rules do not use are now
+**declaration-free markers**, so a consumer stylesheet, devtools and the Astro/Rails consumers
+of `response-ui-css` still have one name per part.
+
+The divider between two adjacent sidebar sections is an `[&+&]:` arbitrary variant — it emits
+`.<class> + .<class>`, exactly the selector the stylesheet had, and NOT `not-first:`, which
+would also fire on a section preceded by something else. Its `1rem` inset and hairline are
+hard literals, so it has no row above.
+
+**`hover:` compiles to `@media (hover: hover) { &:hover }`**, so the toggle's and the link's
+hover washes no longer paint on a coarse pointer. That matches the rest of the package.
 
 The root paints `--C-CANVAS` — the page floor, not a surface rung. Navbar, sidebar and
 drawer are rung-0 sheets standing on it, a lift of **1.05–1.16:1**, so the hairlines are
 what actually bound the chrome; the fill only says it is raised.
 
 The width transition and both drawer animations are dropped under
-`prefers-reduced-motion: reduce`; the hover colour transitions are not.
+`prefers-reduced-motion: reduce`; the hover colour transitions now are too, via
+`motion-reduce:transition-none` on the toggle and the link — a small behaviour change the
+conversion made deliberate rather than leaving the two halves inconsistent.
 
 **What is not on the contract.** The whole geometry is literals: the sidebar widths
 (`16.25rem` expanded, `4rem` collapsed, `17.5rem` for the drawer), the corner radius
-(`0.375rem`, not `--RADIUS-*`), the section-title type size (`0.6875rem` — a literal rather
+(`rounded-[0.375rem]`, deliberately not `rounded-md` — this package re-points `--radius-md`
+at `--RADIUS-MD`, so the named utility would be a theme value rather than the 6px the
+component asked for), the section-title type size (`0.6875rem` — a literal rather
 than `--BodyText-3`, which it happens to equal in the `tech` theme and in no other), the
 section title's `line-height: normal` and `font-family: inherit` (deliberate: they hold the
 theme's heading face and `--H2-line-height` off the heading element the title now is), and the
@@ -388,8 +412,8 @@ other component reads it.
 
 The `639px` breakpoint is genuinely written twice, and cannot be otherwise: once as
 `MOBILE_VIEWPORT_QUERY` in `AppShell.tsx` and once as the stylesheet's `@media` block. A
-media query cannot read a custom property, this package has no CSS build step, and neither
-copy is removable — the stylesheet's block is what keeps the pre-hydration render from
+media query cannot read a custom property, no Tailwind `max-*` variant emits `max-width:
+639px`, this package has no CSS build step, and neither copy is removable — the stylesheet's block is what keeps the pre-hydration render from
 showing the inline sidebar on a phone. Nothing automated checks that the two stay equal.
 Both files say so; change one and you must change the other by hand.
 

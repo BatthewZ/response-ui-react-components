@@ -3,6 +3,47 @@ import { type ComponentPropsWithRef, forwardRef, type ReactNode } from "react";
 import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `ActivityFeed.css` keeps the rail — tokens, row grid, connector, marker and
+ * the `highlight` cue — and says why each one could not move at source. The
+ * content column is here. Every BEM name survives as a declaration-free marker
+ * (AGENTS.md §"Class names outlive their declarations"), and each constant is
+ * one flat string literal because `verify:component-docs` resolves hoisted
+ * constants textually.
+ */
+const feedRootClasses =
+  // `role="list"` on the element restores what `list-none` drops in Safari +
+  // VoiceOver (#28); `m-0 p-0` restate what Preflight already gives an `<ol>`,
+  // kept explicit so the row does not depend on Preflight being enabled.
+  "list-none m-0 p-0";
+
+/** The marker column. Its WIDTH is the grid track in the stylesheet, not this. */
+const asideClasses = "relative z-1 flex justify-center";
+
+/**
+ * `min-width: 0` is the whole of it — the one declaration that lets long text
+ * wrap inside the `1fr` track instead of widening it.
+ */
+const mainClasses = "min-w-0";
+
+const sentenceClasses =
+  "flex flex-wrap items-baseline gap-r6 text-body-2 text-fg-secondary";
+
+const actorClasses = "font-bold text-fg-primary";
+
+const actionClasses = "text-fg-secondary";
+
+const targetClasses = "font-bold text-fg-primary";
+
+const timestampClasses =
+  "ml-auto pl-r5 text-body-3 text-fg-muted whitespace-nowrap";
+
+const feedBodyClasses = "mt-r5 text-body-2 text-fg-secondary";
+
+/* ------------------------------------------------------------------ */
 /*  ActivityFeed (root)                                                */
 /* ------------------------------------------------------------------ */
 
@@ -18,7 +59,7 @@ const ActivityFeedRoot = forwardRef<HTMLOListElement, ActivityFeedProps>(functio
     // `role="list"` restores what the stylesheet's `list-style: none` drops in
     // Safari + VoiceOver (#28). Written before the spread, so a caller can
     // still replace it.
-    <ol role="list" ref={ref} className={cn("activity-feed", className)} {...props}>
+    <ol role="list" ref={ref} className={cn("activity-feed", feedRootClasses, className)} {...props}>
       {children}
     </ol>
   );
@@ -99,7 +140,7 @@ const ActivityFeedItem = forwardRef<HTMLLIElement, ActivityFeedItemProps>(
           // slot:(a) a fixed grid track, not decoration: the rail's origin is
           // measured from its width, so a caller class here moves the line down
           // the whole feed rather than restyling one row's marker column.
-          className="activity-feed-aside"
+          className={cn("activity-feed-aside", asideClasses)}
         >
           {avatar ?? (
             <div
@@ -118,26 +159,36 @@ const ActivityFeedItem = forwardRef<HTMLLIElement, ActivityFeedItemProps>(
           // the one declaration that lets long text wrap inside the `1fr` track
           // instead of widening it. Every part a consumer would restyle is a key
           // below.
-          className="activity-feed-main"
+          className={cn("activity-feed-main", mainClasses)}
         >
-          <div className={cn("activity-feed-sentence", classNames?.sentence)}>
+          <div className={cn("activity-feed-sentence", sentenceClasses, classNames?.sentence)}>
             {actor != null && (
-              <span className={cn("activity-feed-actor", classNames?.actor)}>{actor}</span>
+              <span className={cn("activity-feed-actor", actorClasses, classNames?.actor)}>
+                {actor}
+              </span>
             )}
             {action != null && (
-              <span className={cn("activity-feed-action", classNames?.action)}>{action}</span>
+              <span className={cn("activity-feed-action", actionClasses, classNames?.action)}>
+                {action}
+              </span>
             )}
             {target != null && (
-              <span className={cn("activity-feed-target", classNames?.target)}>{target}</span>
+              <span className={cn("activity-feed-target", targetClasses, classNames?.target)}>
+                {target}
+              </span>
             )}
             {timestamp != null && (
-              <span className={cn("activity-feed-timestamp", classNames?.timestamp)}>
+              <span
+                className={cn("activity-feed-timestamp", timestampClasses, classNames?.timestamp)}
+              >
                 {timestamp}
               </span>
             )}
           </div>
           {children != null && (
-            <div className={cn("activity-feed-body", classNames?.body)}>{children}</div>
+            <div className={cn("activity-feed-body", feedBodyClasses, classNames?.body)}>
+              {children}
+            </div>
           )}
         </div>
       </li>

@@ -685,23 +685,33 @@ describe("#368 · the zebra follows the dataset, not the scroll window", () => {
   describe("className, style and tableProps", () => {
     const base = { data: makeData(50), columns, rowKey, rowHeight: 40 };
 
+    /**
+     * These two used to assert the class attribute exactly, which stopped being
+     * expressible once `Table.css`'s wrapper rule became utilities and
+     * `VirtualizedDataTable.css` was deleted outright. The falsifiers are
+     * unchanged: `table-virtual-scroll` survives the merge — it is a marker now,
+     * but consumer stylesheets and devtools still name the virtualised table with
+     * it — a caller's class is appended LAST, and an absent one appends nothing.
+     */
     it("appends className after the scroll-container base class", () => {
       const { container } = render(
         <VirtualizedDataTable {...base} className="sentinel-root" />,
       );
-      // `table-virtual-scroll` is the selector `VirtualizedDataTable.css` scopes
-      // its column and truncation rules to — it must survive the merge.
-      const scroller = container.querySelector(".table-virtual-scroll")!;
-      expect(scroller.getAttribute("class")).toBe(
-        "table-wrapper table-virtual-scroll sentinel-root",
+      const classes =
+        (container.querySelector(".table-virtual-scroll")!.getAttribute("class") ?? "").split(" ");
+      expect(classes).toEqual(
+        expect.arrayContaining(["table-wrapper", "table-virtual-scroll", "sentinel-root"]),
       );
+      expect(classes[classes.length - 1]).toBe("sentinel-root");
     });
 
-    it("leaves the base class alone when no className is passed", () => {
+    it("leaves the base classes alone when no className is passed", () => {
       const { container } = render(<VirtualizedDataTable {...base} />);
-      expect(container.querySelector(".table-virtual-scroll")!.getAttribute("class")).toBe(
-        "table-wrapper table-virtual-scroll",
+      const classes = container.querySelector(".table-virtual-scroll")!.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toEqual(
+        expect.arrayContaining(["table-wrapper", "table-virtual-scroll"]),
       );
+      expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     it("lets a caller's style win on the same key as the derived height", () => {
@@ -725,7 +735,15 @@ describe("#368 · the zebra follows the dataset, not the scroll window", () => {
       expect(table).toHaveAttribute("aria-label", "Rows");
       // 50 data rows + the header row — only this component can compute it.
       expect(table).toHaveAttribute("aria-rowcount", "51");
-      expect(table.getAttribute("class")).toBe("table table--sticky-header sentinel-slot");
+      const classes = (table.getAttribute("class") ?? "").split(" ");
+      // `table-fixed` is #377's column-stability rule, which used to be
+      // `.table-virtual-scroll .table { table-layout: fixed }`. It is merged into
+      // the bag BEFORE the caller's own class, so `tableProps={{ className:
+      // "table-auto" }}` still wins.
+      expect(classes).toEqual(
+        expect.arrayContaining(["table", "table--sticky-header", "table-fixed", "sentinel-slot"]),
+      );
+      expect(classes[classes.length - 1]).toBe("sentinel-slot");
     });
 
     it("reaches the loading and empty roots too", () => {

@@ -1,68 +1,22 @@
 /* ------------------------------------------------------------------ */
-/*  ProgressBar                                                        */
+/*  ProgressBar — converted to utilities; one block could not move     */
 /* ------------------------------------------------------------------ */
 
-/* Track (outer container) — rung 3, the deepest recession, matching every other
-   track in the system. */
-.progress-bar {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  background-color: var(--C-SURFACE-3);
-  border-radius: var(--RADIUS-FULL);
-}
+/* Everything this component draws is a Tailwind utility in `ProgressBar.tsx`.
+   What is left is a `@keyframes` block, which is the one genuinely immovable
+   thing in the package: a utility sets properties on an element, and there is
+   no variant for a block (AGENTS.md §"What stays", row 1).
 
-/* Size variants */
-.progress-bar--sm {
-  height: var(--R-SIZE-6);
-}
+   The `animation` shorthand that drives it IS a utility —
+   `animate-[progress-bar-stripes_…]` in `ProgressBar.tsx` — and so is the
+   `animation: none` that the `--no-animate` modifier and the reduced-motion
+   media query used to apply. Both sides of that pair were converted together:
+   converting only the base would have put it in `@layer utilities`, above the
+   modifier in `@layer components` that has to beat it (AGENTS.md "The test",
+   question 3).
 
-.progress-bar--md {
-  height: var(--R-SIZE-5);
-}
-
-.progress-bar--lg {
-  height: var(--R-SIZE-4);
-}
-
-/* Fill (inner bar) — paint only, no colour.
-
-   The four `--accent`/`--success`/`--warning`/`--error` modifiers and
-   `--gradient` are still emitted, and they are deliberately absent here: they
-   are §12 marker classes, and their paint is now a utility written in
-   `ProgressBar.tsx`. `--progress-bar-fill`/`-fill-end` are gone with them —
-   both were declared on THIS element, which a consumer's `:root` can never
-   outrank, so the pair advertised a theme route that could not work. `bg-*`
-   reads `--C-ACCENT`/`--C-STATUS-*` instead of shadowing them, so the theme
-   reaches it. Do not re-add a `background-color` here as a "default" either:
-   `color` defaults to `accent`, so every instance already carries a colour
-   utility, and a utility beats this layer — the declaration would be inert in
-   every state the component can render. */
-.progress-bar__fill {
-  height: 100%;
-  border-radius: var(--RADIUS-FULL);
-  transition: width var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
-}
-
-.progress-bar__fill--no-animate {
-  transition: none;
-}
-
-/* The stripe ink is the ramp's own on-fill partner, not a hard-coded white:
-   at `oklch(1 0 0 / 0.15)` the stripes vanished on every light-fill theme. */
-.progress-bar__fill--striped {
-  background-image: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 0.5rem,
-    color-mix(in oklch, var(--C-TEXT-ON-ACCENT) 15%, transparent) 0.5rem,
-    color-mix(in oklch, var(--C-TEXT-ON-ACCENT) 15%, transparent) 1rem
-  );
-  background-size: 200% 100%;
-  animation: progress-bar-stripes var(--MOTION-DURATION-SHIFT) linear infinite;
-}
-
-/* Without this the `background-size: 200% 100%` above scrolled nothing. */
+   Without this block the `background-size: 200% 100%` on the striped fill
+   scrolls nothing. */
 @keyframes progress-bar-stripes {
   from {
     background-position: 0 0;
@@ -70,40 +24,5 @@
 
   to {
     background-position: 200% 0;
-  }
-}
-
-.progress-bar__fill--no-animate.progress-bar__fill--striped {
-  animation: none;
-}
-
-/* Label / Value sub-components */
-.progress-bar__label {
-  display: block;
-  font-size: var(--BodyText-2);
-  font-weight: var(--Semibold-Weight);
-  line-height: var(--BodyText-2-line-height);
-  color: var(--C-TEXT-SECONDARY);
-  margin-bottom: var(--R-SIZE-6);
-}
-
-.progress-bar__value {
-  display: block;
-  font-size: var(--BodyText-2);
-  font-weight: var(--Bold-Weight);
-  line-height: var(--BodyText-2-line-height);
-  color: var(--C-TEXT-PRIMARY);
-  font-variant-numeric: tabular-nums;
-  margin-bottom: var(--R-SIZE-6);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Reduced motion                                                     */
-/* ------------------------------------------------------------------ */
-
-@media (prefers-reduced-motion: reduce) {
-  .progress-bar__fill {
-    transition: none;
-    animation: none;
   }
 }

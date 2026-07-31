@@ -29,12 +29,34 @@ type ProgressRingProps = {
 
 type ProgressRingColor = NonNullable<ProgressRingProps["color"]>;
 
+/**
+ * `ProgressRing.css` is gone; everything this component draws is here. Each
+ * BEM name survives as a declaration-free marker (AGENTS.md §"Class names
+ * outlive their declarations") beside the utility that now paints it.
+ *
+ * `stroke-*` resolves through the same `--color-*` namespace as `bg-*`, so a
+ * theme re-pointing `--C-ACCENT` still reaches the arc.
+ */
 const colorClass: Record<ProgressRingColor, string> = {
-  accent: "progress-ring__indicator--accent",
-  success: "progress-ring__indicator--success",
-  warning: "progress-ring__indicator--warning",
-  error: "progress-ring__indicator--error",
+  accent: "progress-ring__indicator--accent stroke-accent",
+  success: "progress-ring__indicator--success stroke-status-success",
+  warning: "progress-ring__indicator--warning stroke-status-warning",
+  error: "progress-ring__indicator--error stroke-status-error",
 };
+
+/**
+ * `--MOTION-*` is in no Tailwind namespace, so the shift tokens are read as
+ * custom properties — `ease-shift` generates nothing. The bracket spelling is
+ * the package idiom and the one `verify:component-docs` resolves to a token.
+ *
+ * `motion-reduce:` replaces the stylesheet's `@media (prefers-reduced-motion)`
+ * block; the `--no-animate` marker below is the JS-side twin and both convert
+ * together. Converting only the base would have put `transition-…` in
+ * `@layer utilities` and left the modifier that must beat it in
+ * `@layer components` — the Skeleton inversion (AGENTS.md "The test", Q3).
+ */
+const indicatorTransitionClasses =
+  "transition-[stroke-dashoffset] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none";
 
 export const ProgressRing = forwardRef<HTMLDivElement, ProgressRingProps>(function ProgressRing(
   {
@@ -67,18 +89,25 @@ export const ProgressRing = forwardRef<HTMLDivElement, ProgressRingProps>(functi
       aria-valuenow={clampedValue}
       aria-valuemin={0}
       aria-valuemax={max}
-      className={cn("progress-ring", className)}
+      className={cn("progress-ring inline-flex", className)}
+      // `position`/`width`/`height` stay INLINE, and no class here changes that:
+      // `size` is a number prop, and an inline declaration beats every class at
+      // every layer. Converting the stylesheet did not close that gap — it is a
+      // different defect with a different fix (AGENTS.md, "Three things a
+      // `className` still cannot beat").
       style={{ position: "relative", width: size, height: size }}
       {...props}
     >
       <svg
-        className={cn("progress-ring__svg", classNames?.svg)}
+        className={cn("progress-ring__svg block", classNames?.svg)}
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
       >
         <circle
-          className={cn("progress-ring__track", classNames?.track)}
+          // Rung 3, the deepest recession, shared by every track in the system
+          // (ProgressBar, Meter, Slider).
+          className={cn("progress-ring__track stroke-surface-3", classNames?.track)}
           cx={center}
           cy={center}
           r={radius}
@@ -88,8 +117,9 @@ export const ProgressRing = forwardRef<HTMLDivElement, ProgressRingProps>(functi
         <circle
           className={cn(
             "progress-ring__indicator",
+            indicatorTransitionClasses,
             colorClass[color],
-            reducedMotion && "progress-ring__indicator--no-animate",
+            reducedMotion && "progress-ring__indicator--no-animate transition-none",
             classNames?.indicator
           )}
           cx={center}
@@ -103,7 +133,14 @@ export const ProgressRing = forwardRef<HTMLDivElement, ProgressRingProps>(functi
           transform={`rotate(-90 ${center} ${center})`}
         />
       </svg>
-      <div className={cn("progress-ring__slot", classNames?.center)}>{children}</div>
+      <div
+        className={cn(
+          "progress-ring__slot absolute inset-0 flex items-center justify-center",
+          classNames?.center
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 });

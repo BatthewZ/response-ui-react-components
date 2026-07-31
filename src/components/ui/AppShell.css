@@ -1,12 +1,56 @@
-/* ─────────────────────────────────────────────
-   AppShell — responsive sidebar + navbar layout
-   ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────
+   AppShell — converted to utilities; the page grid could not move
+   ───────────────────────────────────────────────────────────────────── */
+
+/* The navbar, brand, toggle, sidebar sections, links, scrim and mobile drawer
+   are Tailwind utilities in `AppShell.tsx`. What is left is THE PAGE GRID and
+   the two things bolted to it. Every BEM class name survives as a
+   declaration-free marker (AGENTS.md §"Class names outlive their
+   declarations"). Each survivor, and why:
+
+   1. THE `@media (max-width: 639px)` BLOCK, and everything it overrides. It
+      restates `AppShell.tsx`'s MOBILE_VIEWPORT_QUERY because a media query
+      cannot read a custom property, and `isMobile` starts false — the effect can
+      only run after the first paint — so this block is what keeps the
+      pre-hydration render from showing the inline sidebar on a phone. Neither
+      copy is removable, and nothing enforces the match: edit both (#397).
+
+      It cannot become `max-sm:` or `max-[639px]:`. Measured: Tailwind emits
+      `@media (width < 639px)` for the arbitrary form and `@media (width < 40rem)`
+      for `max-sm`, and neither is `max-width: 639px` (`width <= 639px`) — they
+      disagree on every fractional viewport between 639 and 640, and one of them
+      disagrees with the JS query this block exists to mirror.
+
+      That decides the three declarations it overrides too. A base in
+      `@layer utilities` would sit ABOVE a media override in `@layer components`
+      and win at every width (AGENTS.md "The test", question 3), so
+      `grid-template-columns` on the root, `display` on the sidebar and
+      `grid-column` on main stay here with it — and the rest of each rule stays
+      with them rather than being split across two files.
+
+   2. `--app-shell-navbar-height`. The navbar's height is also the sidebar's
+      sticky offset and the amount its viewport-height is short by. Stated once
+      here so restyling the navbar carries the sidebar with it (#397); the three
+      readers are `h-[var(…)]`, `top-[var(…)]` and a `calc()` in `AppShell.tsx`.
+
+   3. `.app-shell-sidebar-section-title`, BOTH RULES. `probe:cascade-layer` reads
+      two control rows off this class out of hand-written fixture markup
+      (`control-sronly-sectiontitle-padding` and
+      `control-sectiontitle-padding-unopposed`), and the unopposed one asserts
+      `padding-left: 12px` on an element whose only class is this one. Move the
+      padding into the class list and that row reads 0px and goes red, and the
+      row above it loses the teeth it was rewritten to have. The two pinned-back
+      heading declarations stay with it: they are a reset against the
+      foundation's `@layer base` `h1`–`h6` rules, and a reset has to lose to a
+      caller's class rather than beat it.
+
+   4. THE TWO `@keyframes` BLOCKS. A utility sets properties on an element and
+      there is no variant for a block — the one genuinely immovable thing in the
+      package. The `animation` shorthands that play them ARE utilities, in
+      `AppShell.tsx`. */
 
 /* Root grid */
 .app-shell {
-  /* The navbar's height is also the sidebar's sticky offset and the amount its
-     viewport-height is short by. Stated once so restyling the navbar carries the
-     sidebar with it (#397). */
   --app-shell-navbar-height: 3.5rem;
   display: grid;
   grid-template-rows: auto 1fr;
@@ -16,66 +60,6 @@
      sidebar are rung-0 sheets that sit ON this; painting it with a surface would
      put the floor level with the sheets standing on it. */
   background: var(--C-CANVAS);
-}
-
-/* ── Navbar ── */
-.app-shell-navbar {
-  grid-column: 1 / -1;
-  grid-row: 1;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: var(--app-shell-navbar-height);
-  padding-inline: 1rem;
-  background: var(--C-SURFACE-0);
-  border-bottom: 1px solid var(--C-BORDER-DEFAULT);
-}
-
-.app-shell-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: var(--Bold-Weight);
-  color: var(--C-TEXT-PRIMARY);
-  white-space: nowrap;
-}
-
-.app-shell-navbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
-}
-
-/* ── Toggle button ── */
-.app-shell-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  padding: 0;
-  border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: var(--C-TEXT-SECONDARY);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER),
-    color var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER);
-}
-
-.app-shell-toggle:hover {
-  background: var(--C-SURFACE-2);
-  color: var(--C-TEXT-PRIMARY);
-}
-
-.app-shell-toggle:focus-visible {
-  outline: 2px solid var(--C-BORDER-FOCUS);
-  outline-offset: 2px;
 }
 
 /* ── Sidebar (desktop) ── */
@@ -100,28 +84,24 @@
   width: 4rem;
 }
 
-/* ── Sidebar section ── */
-.app-shell-sidebar-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+/* ── Main content ── */
+.app-shell-main {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  overflow-x: auto;
 }
 
-.app-shell-sidebar-section + .app-shell-sidebar-section {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--C-BORDER-DEFAULT);
-}
-
+/* ── Sidebar section heading ── */
 .app-shell-sidebar-section-title {
   /* This is a heading element since #395, so the CSS package's `h1`–`h6` rules
      now reach it. Two of their declarations are not overridden by anything else
      here and would land on an 11px label: `--H2-line-height` (measured in
      Firefox 146: the row goes 22px → 72px in all four themes) and
-     `--HEADING-FONT` (Poppins → Playfair Display / Space Grotesk / Cinzel in
-     events / tech / grimdark). Both are pinned back so the heading changed the
-     semantics and nothing else. Delete these two only alongside a deliberate
-     decision to give the rail label the theme's heading face. */
+     `--HEADING-FONT` (three different display faces across the example themes).
+     Both are pinned back so the heading changed the semantics and nothing else.
+     Delete these two only alongside a deliberate decision to give the rail label
+     the theme's heading face. */
   line-height: normal;
   font-family: inherit;
   padding: 0.25rem 0.75rem;
@@ -135,63 +115,6 @@
   text-overflow: ellipsis;
 }
 
-/* ── Sidebar link ── */
-.app-shell-sidebar-link {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  text-decoration: none;
-  color: var(--C-TEXT-SECONDARY);
-  font-size: var(--BodyText-1);
-  font-weight: var(--Semibold-Weight);
-  white-space: nowrap;
-  overflow: hidden;
-  transition: background var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER),
-    color var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER);
-}
-
-.app-shell-sidebar-link:hover {
-  background: var(--C-SURFACE-2);
-  color: var(--C-TEXT-PRIMARY);
-}
-
-.app-shell-sidebar-link:focus-visible {
-  outline: 2px solid var(--C-BORDER-FOCUS);
-  outline-offset: -2px;
-}
-
-/* Current page. The accent draws the edge, not the letters: --C-ACCENT ink over
-   its own 10% wash measured 2.46:1 (events) / 2.83:1 (grimdark) against a
-   resting link's 7.40 / 5.95, so marking a link current made it the least
-   legible item in the sidebar. --C-TEXT-PRIMARY reads 10.8–15.4:1 on that same
-   wash in all four themes — the current link is now the most legible one — and
-   the inset accent edge (Calendar's [data-today] marker recipe) carries "you
-   are here" on a channel the 10% wash cannot carry alone. */
-.app-shell-sidebar-link[data-active] {
-  background: color-mix(in oklch, var(--C-ACCENT) 10%, transparent);
-  box-shadow: inset 0 0 0 1px var(--C-ACCENT);
-  color: var(--C-TEXT-PRIMARY);
-}
-
-.app-shell-sidebar-link-icon {
-  flex-shrink: 0;
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.app-shell-sidebar-link-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Collapsed: hide labels, center icons */
-.app-shell-sidebar[data-collapsed] .app-shell-sidebar-link {
-  justify-content: center;
-  padding: 0.5rem;
-}
-
 /* The link label is taken off the screen by `sr-only` in AppShell.tsx, not by a
    rule here. `display: none` removes it from the accessibility tree too, and the
    lucide icon beside it is aria-hidden, which left a collapsed rail as a list of
@@ -201,57 +124,19 @@
    for the same reason as the link label above: it used to be `display: none`
    here, which removes a heading from the accessibility tree — so the rail hid
    the very groups #395 gave headings to. This rule survives only to surrender
-   the padding. Before Phase 1 this file was unlayered and would have outranked
-   `sr-only`'s own `padding: 0` whatever the utility's specificity; the file is now
-   in `@layer components`, below `@layer utilities`, so `sr-only` would win on its
-   own. The rule is therefore redundant rather than load-bearing — measured, it
-   makes no difference to the computed padding either way.
+   the padding. The file is in `@layer components`, below `@layer utilities`, so
+   `sr-only` would win on its own; the rule is therefore redundant rather than
+   load-bearing — measured, it makes no difference to the computed padding either
+   way.
 
    DO NOT DELETE IT AS DEAD CODE HERE. It is also `probe:cascade-layer`'s
    `control-sronly-sectiontitle-padding` control, and it is what makes that row
    able to redden: `sr-only` is applied to this element iff the sidebar is
-   collapsed (AppShell.tsx:333) and `[data-collapsed]` is present iff the same
-   (:303), so this rule is always in play alongside it and the pairing has no
-   other observable. Delete it in Phase 4, with the row. */
+   collapsed and `[data-collapsed]` is present iff the same, so this rule is
+   always in play alongside it and the pairing has no other observable. Delete it
+   in Phase 4, with the row. */
 .app-shell-sidebar[data-collapsed] .app-shell-sidebar-section-title {
   padding: 0;
-}
-
-/* ── Main content ── */
-.app-shell-main {
-  grid-column: 2;
-  grid-row: 2;
-  min-width: 0;
-  overflow-x: auto;
-}
-
-/* ── Mobile overlay sidebar ── */
-.app-shell-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 49;
-  /* Fallback matches Drawer.css / CommandPalette.css: without the token layer
-     the scrim would otherwise be transparent rather than 50% black. */
-  background: var(--OVERLAY-SCRIM-COLOR, rgb(0 0 0 / 0.5));
-  animation: app-shell-fade-in var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER);
-}
-
-.app-shell-sidebar-mobile {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  z-index: 50;
-  width: 17.5rem;
-  max-width: calc(100vw - 3.5rem);
-  background: var(--C-SURFACE-0);
-  border-right: 1px solid var(--C-BORDER-DEFAULT);
-  box-shadow: var(--SHADOW-LG);
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  animation: app-shell-slide-in var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER);
 }
 
 @keyframes app-shell-fade-in {
@@ -273,11 +158,9 @@
 }
 
 /* ── Mobile: hide desktop sidebar, show full-width main ──
-   `isMobile` starts false (the effect can only run after the first paint), so
-   this block is what keeps the pre-hydration render from showing the inline
-   sidebar on a phone — neither this copy nor the JS one is removable. It
-   restates AppShell.tsx's MOBILE_VIEWPORT_QUERY because a media query cannot
-   read a custom property, and nothing enforces the match: edit both (#397). */
+   See note 1 at the top of this file: this block restates
+   AppShell.tsx's MOBILE_VIEWPORT_QUERY, and no Tailwind `max-*` variant emits
+   the same query. Edit both (#397). */
 @media (max-width: 639px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -292,14 +175,11 @@
   }
 }
 
-/* ── Reduced motion ── */
+/* ── Reduced motion ──
+   Only the sidebar's width transition is left here; the scrim's and the mobile
+   drawer's `animation: none` are `motion-reduce:animate-none` in AppShell.tsx. */
 @media (prefers-reduced-motion: reduce) {
   .app-shell-sidebar {
     transition: none;
-  }
-
-  .app-shell-scrim,
-  .app-shell-sidebar-mobile {
-    animation: none;
   }
 }

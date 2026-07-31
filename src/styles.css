@@ -41,17 +41,14 @@
 @import "./components/ui/Popover.css" layer(components);
 @import "./components/ui/ProgressBar.css" layer(components);
 @import "./components/ui/Skeleton.css" layer(components);
-@import "./components/ui/StatCard.css" layer(components);
 @import "./components/ui/Stepper.css" layer(components);
 @import "./components/ui/Table.css" layer(components);
 @import "./components/ui/Tabs.css" layer(components);
 @import "./components/ui/Timeline.css" layer(components);
 @import "./components/ui/Tooltip.css" layer(components);
-@import "./components/ui/VirtualizedDataTable.css" layer(components);
 
 /* data-display */
 @import "./components/data-display/ActivityFeed.css" layer(components);
-@import "./components/data-display/ProgressRing.css" layer(components);
 @import "./components/data-display/Sparkline.css" layer(components);
 
 /* layout — no stylesheets: every layout primitive is utilities only. */

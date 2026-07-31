@@ -58,11 +58,61 @@ type ProgressBarSize = NonNullable<ProgressBarOwnProps["size"]>;
 type ProgressBarColor = NonNullable<ProgressBarOwnProps["color"]>;
 type ProgressBarVariant = NonNullable<ProgressBarOwnProps["variant"]>;
 
+/**
+ * The track. Rung 3, the deepest recession, matching every other track in the
+ * system. `overflow-hidden` is what clips the fill to the pill.
+ *
+ * `ProgressBar.css` keeps only its `@keyframes` block and says why at source;
+ * everything else this component draws is in this file. Each BEM name survives
+ * as a declaration-free marker (AGENTS.md §"Class names outlive their
+ * declarations"), and each constant is one flat string literal because
+ * `verify:component-docs` resolves hoisted constants textually.
+ */
+const progressTrackClasses = "relative w-full overflow-hidden bg-surface-3 rounded-full";
+
 const sizeClass: Record<ProgressBarSize, string> = {
-  sm: "progress-bar--sm",
-  md: "progress-bar--md",
-  lg: "progress-bar--lg",
+  sm: "progress-bar--sm h-r6",
+  md: "progress-bar--md h-r5",
+  lg: "progress-bar--lg h-r4",
 };
+
+/**
+ * The fill's geometry and motion — paint only, no colour.
+ *
+ * Do not add a `background-color` default here: `color` defaults to `accent`, so
+ * every instance already carries a colour utility from `colorClass`, and two
+ * bare utilities in one `cn()` resolve by argument order rather than by anything
+ * a reader can see.
+ *
+ * `--MOTION-*` is in no Tailwind namespace, so the shift tokens are read as
+ * custom properties in the bracket spelling — `ease-shift` generates nothing.
+ */
+const progressFillClasses =
+  "h-full rounded-full transition-[width] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none motion-reduce:animate-none";
+
+/**
+ * The stripe texture and its scroll. The ink is the ramp's own on-fill partner,
+ * not a hard-coded white: at `oklch(1 0 0 / 0.15)` the stripes vanished on every
+ * light-fill theme.
+ *
+ * `animate-[…]` names `progress-bar-stripes`, which is the one block left in
+ * `ProgressBar.css`. The `bg-[length:…]` is what the keyframes scroll.
+ */
+const stripedClasses =
+  "bg-[repeating-linear-gradient(45deg,transparent,transparent_0.5rem,color-mix(in_oklch,var(--C-TEXT-ON-ACCENT)_15%,transparent)_0.5rem,color-mix(in_oklch,var(--C-TEXT-ON-ACCENT)_15%,transparent)_1rem)] bg-[length:200%_100%] animate-[progress-bar-stripes_var(--MOTION-DURATION-SHIFT)_linear_infinite]";
+
+/**
+ * Both halves of the `--no-animate` pair, converted together. The stylesheet
+ * carried this as two rules whose correctness came from source order and from a
+ * compound `.--no-animate.--striped` selector; here it is one string passed
+ * AFTER the base and after `stripedClasses`, so tailwind-merge resolves
+ * `transition` and `animation` the modifier's way at the call site.
+ */
+const noAnimateClasses = "progress-bar__fill--no-animate transition-none animate-none";
+
+const progressLabelClasses = "block text-body-2 font-semibold text-fg-secondary mb-r6";
+
+const progressValueClasses = "block text-body-2 font-bold text-fg-primary tabular-nums mb-r6";
 
 /**
  * The fill's paint. Each entry is a §12 marker class — declaration-free, kept so
@@ -114,11 +164,12 @@ const statusLabelMap: Record<ProgressBarColor, string | undefined> = {
   error: "Error",
 };
 
-// `--gradient` is a marker too; `--striped` still carries its texture in CSS.
+// `--gradient` and `--striped` are both §12 markers now; the texture that used
+// to hang off `--striped` in CSS is `stripedClasses` above.
 const variantFillClass: Record<ProgressBarVariant, string | undefined> = {
   default: undefined,
   gradient: "progress-bar__fill--gradient",
-  striped: "progress-bar__fill--striped",
+  striped: "progress-bar__fill--striped " + stripedClasses,
 };
 
 const ProgressBarRoot = forwardRef<HTMLDivElement, ProgressBarRootProps>(function ProgressBar(
@@ -168,16 +219,17 @@ const ProgressBarRoot = forwardRef<HTMLDivElement, ProgressBarRootProps>(functio
       aria-valuemin={hasRange ? 0 : undefined}
       aria-valuemax={hasRange ? max : undefined}
       aria-valuetext={valueText}
-      className={cn("progress-bar", sizeClass[size], className)}
+      className={cn("progress-bar", progressTrackClasses, sizeClass[size], className)}
       {...props}
     >
       <div
         className={cn(
           "progress-bar__fill",
+          progressFillClasses,
           colorClass[color],
           variantFillClass[variant],
           variant === "gradient" && gradientRampClass[color],
-          !shouldAnimate && "progress-bar__fill--no-animate",
+          !shouldAnimate && noAnimateClasses,
           // Last, so tailwind-merge resolves every collision the caller's way.
           classNames?.fill
         )}
@@ -195,7 +247,9 @@ type ProgressBarLabelProps = ComponentPropsWithRef<"span">;
 
 const ProgressBarLabel = forwardRef<HTMLSpanElement, ProgressBarLabelProps>(
   function ProgressBarLabel({ className, ...props }, ref) {
-    return <span ref={ref} className={cn("progress-bar__label", className)} {...props} />;
+    return (
+      <span ref={ref} className={cn("progress-bar__label", progressLabelClasses, className)} {...props} />
+    );
   }
 );
 
@@ -207,7 +261,9 @@ type ProgressBarValueProps = ComponentPropsWithRef<"span">;
 
 const ProgressBarValue = forwardRef<HTMLSpanElement, ProgressBarValueProps>(
   function ProgressBarValue({ className, ...props }, ref) {
-    return <span ref={ref} className={cn("progress-bar__value", className)} {...props} />;
+    return (
+      <span ref={ref} className={cn("progress-bar__value", progressValueClasses, className)} {...props} />
+    );
   }
 );
 

@@ -237,32 +237,37 @@ how a gradient ends up half-branded. Pass `bg-none` alongside it, or use `color`
 
 ## Theme tokens
 
-Nearly every mark is drawn in `ProgressBar.css` (shipped in this package's `styles` entry)
-reading contract variables directly; the fill's **colour** is the exception and is a
-Tailwind utility. Override a variable and every bar in the app re-tints at runtime, no
-rebuild.
+ProgressBar paints in Tailwind utilities written in `ProgressBar.tsx`, each resolving to a
+contract variable. `ProgressBar.css` is down to one `@keyframes` block — the stripe scroll —
+because a block is the one thing no utility can express. Override a variable and every bar in
+the app re-tints at runtime, no rebuild; and because the utilities sit in `@layer utilities`,
+a `className` or `classNames` of your own beats every one of them.
 
-The four colour classes and `.progress-bar__fill--gradient` still appear in the markup and
-still work as selectors for your own stylesheet — they simply carry no declarations of their
-own any more, so the row below names the utility beside the class it sits on.
+The four colour classes, `.progress-bar__fill--gradient` and `--striped` still appear in the
+markup and still work as selectors for your own stylesheet — they simply carry no
+declarations of their own any more, so each row names the utility beside the class it sits on.
 
-| Where                              | CSS class / utility              | Override                                        |
+| Where                              | Utility                          | Override                                        |
 | ---------------------------------- | -------------------------------- | ----------------------------------------------- |
-| Track background                   | `.progress-bar`                  | `--C-SURFACE-3`                                 |
-| Track and fill corners             | `.progress-bar`                  | `--RADIUS-FULL`                                 |
-| Height — `sm` · `md` · `lg`        | `.progress-bar--sm` `.progress-bar--md` `.progress-bar--lg` | `--R-SIZE-6` · `--R-SIZE-5` · `--R-SIZE-4`      |
-| Fill — `accent` (default), and its `gradient` ramp start | `.progress-bar__fill--accent` · `bg-accent` | `--C-ACCENT`             |
-| Fill — `success`, and its whole `gradient` ramp | `.progress-bar__fill--success` · `bg-status-success` | `--C-STATUS-SUCCESS`   |
-| Fill — `warning`, and its whole `gradient` ramp | `.progress-bar__fill--warning` · `bg-status-warning` | `--C-STATUS-WARNING`   |
-| Fill — `error`, and its whole `gradient` ramp | `.progress-bar__fill--error` · `bg-status-error` | `--C-STATUS-ERROR`         |
+| Track background                   | `bg-surface-3`                   | `--C-SURFACE-3`                                 |
+| Track and fill corners             | `rounded-full`                   | `--RADIUS-FULL`                                 |
+| Height — `sm` · `md` · `lg`        | `h-r6` · `h-r5` · `h-r4`         | the three spacing tokens below                  |
+| Fill — `accent` (default), and its `gradient` ramp start | `bg-accent` | `--C-ACCENT`                          |
+| Fill — `success`, and its whole `gradient` ramp | `bg-status-success` | `--C-STATUS-SUCCESS`                    |
+| Fill — `warning`, and its whole `gradient` ramp | `bg-status-warning` | `--C-STATUS-WARNING`                    |
+| Fill — `error`, and its whole `gradient` ramp | `bg-status-error` | `--C-STATUS-ERROR`                        |
 | `gradient` ramp end — `accent` only | `.progress-bar__fill--gradient` | `--C-ACCENT-HOVER`                              |
 | `gradient` ramp end — `success` · `warning` · `error` | `.progress-bar__fill--gradient` | `--C-CANVAS` (mixed 25% into the colour above) |
 | Stripe ink — `striped`             | `.progress-bar__fill--striped`   | `--C-TEXT-ON-ACCENT` (at 15%)                   |
-| Width transition · stripe scroll   | `.progress-bar__fill`            | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
-| Label ink · weight                 | `.progress-bar__label`           | `--C-TEXT-SECONDARY` · `--Semibold-Weight`      |
-| Value ink · weight                 | `.progress-bar__value`           | `--C-TEXT-PRIMARY` · `--Bold-Weight`            |
-| Label / value type                 | `.progress-bar__label` `.progress-bar__value` | `--BodyText-2` · `--BodyText-2-line-height`     |
-| Label / value bottom margin        | `.progress-bar__label` `.progress-bar__value` | `--R-SIZE-6`                                    |
+| Width transition · stripe scroll   | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+| Label ink · weight                 | `text-fg-secondary` · `font-semibold` | `--C-TEXT-SECONDARY` · `--Semibold-Weight`      |
+| Value ink · weight                 | `text-fg-primary` · `font-bold`  | `--C-TEXT-PRIMARY` · `--Bold-Weight`            |
+| Label / value type                 | `text-body-2`                    | `--BodyText-2` · `--BodyText-2-line-height`     |
+| Label / value bottom margin        | `mb-r6`                          | `--R-SIZE-6`                                    |
+
+**The three heights are `--R-SIZE-6` (`sm`), `--R-SIZE-5` (`md`) and `--R-SIZE-4` (`lg`).**
+They are named here rather than in the table because `verify:component-docs` cannot resolve
+an `h-*` utility to a token — the row would claim something the gate could not check.
 
 Two of the three height tokens are responsive and one is not, which is why the sizes
 don't scale uniformly: `--R-SIZE-4` (`lg`) steps `0.75rem → 1.25rem` and `--R-SIZE-5`
@@ -278,13 +283,13 @@ For a status colour the end is a 75/25 mix of that colour with `--C-CANVAS`, so 
 also means the ramp shortens or lengthens with the theme's canvas rather than staying a fixed
 distance from its head. For `accent` alone the end is `--C-ACCENT-HOVER`, and overriding that
 re-tints the tail without touching the head. Both live inside the fill's `background-image`
-utility rather than in `ProgressBar.css`, which is why their rows name the marker class and
-not a utility: the ramp is one long arbitrary value per colour, and quoting it here would be
-less readable than the class it sits on.
+utility, which is why their rows name the marker class and not a utility: the ramp is one long
+arbitrary value per colour, and quoting it here would be less readable than the class it sits on.
 
 The striped texture is themeable, but only through `--C-TEXT-ON-ACCENT`: the stripes are
 a `color-mix` of that token at 15% over transparent, so they re-tint with the theme's
-on-accent ink. The 15% weight itself is fixed in the stylesheet.
+on-accent ink. The 15% weight itself is fixed in the utility, as is the `45deg` angle and
+the `0.5rem` stripe pitch.
 
 ## Gotchas
 

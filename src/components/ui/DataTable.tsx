@@ -617,8 +617,47 @@ function transitionDurationMs(el: HTMLElement): number {
 }
 
 /**
+ * The expanded detail row's own classes. `Table.css` used to carry these; what is
+ * left there is the leading marker, which is one rule shared with `Table`'s
+ * selected row and cannot be written twice without drifting.
+ *
+ * `expandedCellClasses` carries the half of a cascade pair that moved with
+ * `Table.tsx`'s `densityClassMap`: `.data-table-expanded-cell { padding: 0 }` beat
+ * the density padding at equal specificity purely by being declared later in the
+ * stylesheet. `p-0` is passed in this cell's `className`, which `Table.Cell` merges
+ * AFTER the density map, so tailwind-merge resolves it at the call site — and
+ * `classNames.expandedCell` is merged after that, so a caller can still put padding
+ * back. The zeroing is what lets the row collapse to zero height; the visible
+ * padding lives on the inner body.
+ */
+const expandedCellClasses = "p-0 bg-surface-2";
+
+/** Animate height via grid-template-rows: 0fr (collapsed) -> 1fr (natural). */
+const expandedContentClasses =
+  "grid grid-rows-[0fr] transition-[grid-template-rows] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] data-[state=open]:grid-rows-[1fr] motion-reduce:transition-none";
+
+/**
+ * The grid item must clip its overflow and allow a zero min-height for the
+ * collapse to reach 0.
+ */
+const expandedInnerClasses = "overflow-hidden min-h-0";
+
+/**
+ * Padding mirrors the cell density so expanded content lines up with the row —
+ * the same values, and the same `text-[length:…]` spelling, as `Table.tsx`'s
+ * `densityClassMap`. Written out rather than interpolated: a template-built class
+ * name is invisible to Tailwind's source scan and to any static reader of it.
+ */
+const expandedBodyDensityClass: Record<"dense" | "comfortable" | "spacious", string> = {
+  dense: "data-table-expanded-body--dense px-3 py-1 text-[length:var(--BodyText-2)]",
+  comfortable:
+    "data-table-expanded-body--comfortable px-4 py-2.5 text-[length:var(--BodyText-1)]",
+  spacious: "data-table-expanded-body--spacious p-4 text-[length:var(--BodyText-1)]",
+};
+
+/**
  * Full-width detail row that reveals/hides its content with an accordion-style
- * grid-template-rows transition (see `.data-table-expanded-*` in Table.css).
+ * grid-template-rows transition.
  *
  * To animate BOTH directions the row must outlive the `open=false` flip: it
  * stays mounted while the `1fr -> 0fr` collapse plays, then unmounts once that
@@ -695,7 +734,7 @@ function ExpandableDetailRow({
           depth — see the rationale there. */}
       <Table.Cell
         colSpan={colSpan}
-        className={cn("data-table-expanded-cell bg-surface-2", classNames?.expandedCell)}
+        className={cn("data-table-expanded-cell", expandedCellClasses, classNames?.expandedCell)}
       >
         <div
           ref={contentRef}
@@ -705,19 +744,19 @@ function ExpandableDetailRow({
           // this node to schedule the unmount. A caller class here changes
           // behaviour, not appearance. The padded box inside it is
           // `classNames.expandedBody`.
-          className="data-table-expanded-content"
+          className={cn("data-table-expanded-content", expandedContentClasses)}
           data-state={expanded ? "open" : "closed"}
         >
           <div
             // slot:(a) the grid item that clips the collapse — `overflow:
             // hidden` and `min-height: 0` are what let the row reach zero
             // height at all, so a caller varying them stops it closing.
-            className="data-table-expanded-inner"
+            className={cn("data-table-expanded-inner", expandedInnerClasses)}
           >
             <div
               className={cn(
                 "data-table-expanded-body",
-                `data-table-expanded-body--${density}`,
+                expandedBodyDensityClass[density],
                 classNames?.expandedBody,
               )}
             >

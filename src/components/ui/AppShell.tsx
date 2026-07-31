@@ -49,6 +49,100 @@ const AppShellContext = createContext<AppShellContextValue | null>(null);
  */
 const MOBILE_VIEWPORT_QUERY = "(max-width: 639px)";
 
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `AppShell.css` keeps the page grid, the navbar-height token, the section
+ * heading and two `@keyframes`, and argues each one at source. Everything else
+ * this component draws is here. Every BEM name survives as a declaration-free
+ * marker (AGENTS.md §"Class names outlive their declarations"), and each
+ * constant is one flat string literal because `verify:component-docs` and
+ * `verify:focus-affordance` resolve hoisted constants textually.
+ *
+ * `--MOTION-*` is in no Tailwind namespace, so the enter tokens are read as
+ * custom properties in the bracket spelling — `ease-enter` generates nothing.
+ * `hover:` compiles to `@media (hover: hover) { &:hover }`, so the toggle's and
+ * the link's hover washes no longer paint on a coarse pointer; that matches the
+ * rest of the package.
+ *
+ * `rounded-[0.375rem]`, not `rounded-md`: this package re-points `--radius-md`
+ * at `--RADIUS-MD`, so `rounded-md` is a theme value rather than the 6px the
+ * stylesheet asked for. The literal is what was written, so the literal is what
+ * converts.
+ */
+const navbarClasses =
+  "col-span-full row-start-1 sticky top-0 z-10 flex items-center gap-2 h-[var(--app-shell-navbar-height)] px-4 bg-surface-0 border-b border-border-default";
+
+const brandClasses = "flex items-center gap-2 font-bold text-fg-primary whitespace-nowrap";
+
+const navbarActionsClasses = "flex items-center gap-2 ml-auto";
+
+/**
+ * `padding: 0`, `border: none` and `background: transparent` were in the
+ * stylesheet and are NOT restated: Tailwind Preflight already gives `<button>`
+ * `margin: 0`, `padding: 0`, `border: 0 solid`, `background-color: transparent`
+ * and `background-image: none` — checked against
+ * `node_modules/tailwindcss/preflight.css`, the same reliance `Button.tsx` ships
+ * with no reset at all.
+ */
+const appShellToggleClasses =
+  "inline-flex items-center justify-center size-9 shrink-0 rounded-[0.375rem] text-fg-secondary cursor-pointer transition-[background,color] duration-[var(--MOTION-DURATION-ENTER)] ease-[var(--MOTION-EASE-ENTER)] motion-reduce:transition-none hover:bg-surface-2 hover:text-fg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus";
+
+const sidebarSectionClasses = "flex flex-col gap-0.5";
+
+/**
+ * The divider between adjacent sections. `[&+&]` emits
+ * `.<class> + .<class>`, which is the same selector the stylesheet had — both
+ * siblings carry the class, so it matches exactly the same pairs. It is NOT
+ * `not-first:`, which would also fire on a section preceded by something else.
+ */
+const sidebarSectionAdjacentClasses =
+  "[&+&]:mt-4 [&+&]:pt-4 [&+&]:border-t [&+&]:border-border-default";
+
+/**
+ * `text-[length:…]`, not `text-body-1`: the stylesheet set `font-size` and left
+ * `line-height` to inherit, and `text-body-1` would drag its
+ * `--BodyText-1-line-height` companion in with it and grow every rail row.
+ */
+const sidebarLinkClasses =
+  "flex items-center gap-3 px-3 py-2 rounded-[0.375rem] no-underline text-fg-secondary text-[length:var(--BodyText-1)] font-semibold whitespace-nowrap overflow-hidden transition-[background,color] duration-[var(--MOTION-DURATION-ENTER)] ease-[var(--MOTION-EASE-ENTER)] motion-reduce:transition-none hover:bg-surface-2 hover:text-fg-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focus";
+
+/**
+ * Current page. The accent draws the edge, not the letters: --C-ACCENT ink over
+ * its own 10% wash measured 2.46:1 / 2.83:1 in two of the example themes against
+ * a resting link's 7.40 / 5.95, so marking a link current made it the least
+ * legible item in the sidebar. --C-TEXT-PRIMARY reads 10.8–15.4:1 on that same
+ * wash in all four themes — the current link is now the most legible one — and
+ * the inset accent edge (Calendar's [data-today] marker recipe) carries "you are
+ * here" on a channel the 10% wash cannot carry alone.
+ *
+ * Passed AFTER `sidebarLinkClasses`, so tailwind-merge resolves `color` and
+ * `background` the modifier's way: base-vs-modifier converted as a pair rather
+ * than half of it.
+ */
+const sidebarLinkActiveClasses =
+  "bg-[color-mix(in_oklch,var(--C-ACCENT)_10%,transparent)] shadow-[inset_0_0_0_1px_var(--C-ACCENT)] text-fg-primary";
+
+/** Collapsed: centre the icon and drop the inline padding to a square. */
+const sidebarLinkCollapsedClasses = "justify-center p-2";
+
+const sidebarLinkIconClasses = "shrink-0 size-5";
+
+const sidebarLinkLabelClasses = "overflow-hidden text-ellipsis";
+
+/**
+ * The fallback in the `var()` matches Drawer.css / CommandPalette.css: without
+ * the token layer the scrim would otherwise be transparent rather than 50%
+ * black.
+ */
+const scrimClasses =
+  "fixed inset-0 z-49 bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))] animate-[app-shell-fade-in_var(--MOTION-DURATION-ENTER)_var(--MOTION-EASE-ENTER)] motion-reduce:animate-none";
+
+const sidebarMobileClasses =
+  "fixed top-0 left-0 bottom-0 z-50 w-70 max-w-[calc(100vw-3.5rem)] flex flex-col overflow-y-auto p-2 bg-surface-0 border-r border-border-default shadow-lg animate-[app-shell-slide-in_var(--MOTION-DURATION-ENTER)_var(--MOTION-EASE-ENTER)] motion-reduce:animate-none";
+
 function useAppShell() {
   const ctx = useContext(AppShellContext);
   if (!ctx) throw new Error("AppShell compound components must be used within <AppShell>");
@@ -155,7 +249,14 @@ const AppShellRoot = forwardRef<HTMLDivElement, AppShellRootProps>(function AppS
 
 const AppShellNavbar = forwardRef<HTMLElement, ComponentPropsWithRef<"header">>(
   function AppShellNavbar({ className, ...props }, ref) {
-    return <header ref={ref} className={cn("app-shell-navbar", className)} role="banner" {...props} />;
+    return (
+      <header
+        ref={ref}
+        className={cn("app-shell-navbar", navbarClasses, className)}
+        role="banner"
+        {...props}
+      />
+    );
   }
 );
 
@@ -163,7 +264,7 @@ const AppShellNavbar = forwardRef<HTMLElement, ComponentPropsWithRef<"header">>(
 
 const AppShellBrand = forwardRef<HTMLDivElement, ComponentPropsWithRef<"div">>(
   function AppShellBrand({ className, ...props }, ref) {
-    return <div ref={ref} className={cn("app-shell-brand", className)} {...props} />;
+    return <div ref={ref} className={cn("app-shell-brand", brandClasses, className)} {...props} />;
   }
 );
 
@@ -171,7 +272,13 @@ const AppShellBrand = forwardRef<HTMLDivElement, ComponentPropsWithRef<"div">>(
 
 const AppShellNavbarActions = forwardRef<HTMLDivElement, ComponentPropsWithRef<"div">>(
   function AppShellNavbarActions({ className, ...props }, ref) {
-    return <div ref={ref} className={cn("app-shell-navbar-actions", className)} {...props} />;
+    return (
+      <div
+        ref={ref}
+        className={cn("app-shell-navbar-actions", navbarActionsClasses, className)}
+        {...props}
+      />
+    );
   }
 );
 
@@ -196,7 +303,7 @@ const AppShellToggle = forwardRef<HTMLButtonElement, Omit<ComponentPropsWithRef<
       <button
         ref={ref}
         type="button"
-        className={cn("app-shell-toggle", className)}
+        className={cn("app-shell-toggle", appShellToggleClasses, className)}
         onClick={(e) => {
           onClick?.(e);
           if (!e.defaultPrevented) handleClick();
@@ -283,7 +390,10 @@ const AppShellSidebar = forwardRef<HTMLElement, AppShellSidebarProps>(
       if (!open) return null;
       return (
         <Portal>
-          <div className={cn("app-shell-scrim", classNames?.scrim)} aria-hidden="true" />
+          <div
+            className={cn("app-shell-scrim", scrimClasses, classNames?.scrim)}
+            aria-hidden="true"
+          />
           {/* `aria-modal` is undefined on `navigation`, so AT ignored it and
               browsed behind the scrim while the DOM focus trap said otherwise.
               It belongs on a `dialog`, which the drawer now is — the navigation
@@ -294,7 +404,7 @@ const AppShellSidebar = forwardRef<HTMLElement, AppShellSidebarProps>(
               id={sidebarId}
               role="navigation"
               aria-label="Main navigation"
-              className={cn("app-shell-sidebar-mobile", className)}
+              className={cn("app-shell-sidebar-mobile", sidebarMobileClasses, className)}
               {...props}
             >
               {children}
@@ -355,7 +465,16 @@ const AppShellSidebarSection = forwardRef<HTMLDivElement, SidebarSectionProps>(
     const showCollapsed = collapsed && !isMobile;
 
     return (
-      <div ref={ref} className={cn("app-shell-sidebar-section", className)} {...props}>
+      <div
+        ref={ref}
+        className={cn(
+          "app-shell-sidebar-section",
+          sidebarSectionClasses,
+          sidebarSectionAdjacentClasses,
+          className
+        )}
+        {...props}
+      >
         {/* A heading, not a `<div>` (#395): sidebar groups were unreachable by
             heading navigation. Collapsed, the rail is icons only — but
             `display: none` would take the heading back out of the accessibility
@@ -426,12 +545,26 @@ const AppShellSidebarLink = forwardRef<HTMLAnchorElement, SidebarLinkProps>(
       <Link
         ref={ref}
         to={to}
-        className={cn("app-shell-sidebar-link", className)}
+        className={cn(
+          "app-shell-sidebar-link",
+          sidebarLinkClasses,
+          isActive && sidebarLinkActiveClasses,
+          showCollapsed && sidebarLinkCollapsedClasses,
+          className
+        )}
         data-active={isActive || undefined}
         aria-current={isActive ? "page" : undefined}
         {...props}
       >
-        {Icon && <Icon className={cn("app-shell-sidebar-link-icon", classNames?.itemIcon)} />}
+        {Icon && (
+          <Icon
+            className={cn(
+              "app-shell-sidebar-link-icon",
+              sidebarLinkIconClasses,
+              classNames?.itemIcon
+            )}
+          />
+        )}
         {/* Collapsed, the rail is icons only — but lucide marks its own svg
             aria-hidden, so hiding the label with `display: none` left the link
             with no accessible name at all (#388). `sr-only` keeps it in the
@@ -439,6 +572,7 @@ const AppShellSidebarLink = forwardRef<HTMLAnchorElement, SidebarLinkProps>(
         <span
           className={cn(
             "app-shell-sidebar-link-label",
+            sidebarLinkLabelClasses,
             showCollapsed && "sr-only",
             classNames?.itemLabel
           )}

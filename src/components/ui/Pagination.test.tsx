@@ -461,21 +461,25 @@ describe("Pagination · classNames slots", () => {
     expect(info?.getAttribute("class")).toContain("tabular-nums");
   });
 
-  it("leaves each internal on its base class alone when no slot is passed", () => {
+  /**
+   * This used to assert three of the four class attributes equalled their marker
+   * exactly, which stopped being expressible once `Pagination.css` was reduced to
+   * its `all: unset` and everything else became a utility. The falsifiers are
+   * unchanged and are what the equality was ever standing in for: an absent slot
+   * appends NOTHING — no `undefined`, no empty token — and each element keeps its
+   * own marker.
+   */
+  it("leaves each internal on its base classes alone when no slot is passed", () => {
     const { container } = render(
       <Pagination page={10} totalPages={20} onPageChange={noop} showEdges />,
     );
-    expect(container.querySelector(".pagination__list")?.getAttribute("class")).toBe(
-      "pagination__list",
-    );
-    expect(container.querySelector(".pagination__ellipsis")?.getAttribute("class")).toBe(
-      "pagination__ellipsis",
-    );
+    for (const marker of ["pagination__list", "pagination__ellipsis", "pagination__page"]) {
+      const classes = container.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain(marker);
+      expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+    }
     expect(screen.getByRole("button", { name: "First page" }).className).toContain(
       "pagination__nav",
-    );
-    expect(container.querySelector(".pagination__page")?.getAttribute("class")).toBe(
-      "pagination__page",
     );
   });
 
@@ -498,7 +502,17 @@ describe("Pagination · classNames slots", () => {
         }}
       />,
     );
-    expect(container.firstElementChild?.getAttribute("class")).toBe("pagination");
+    const root = (container.firstElementChild?.getAttribute("class") ?? "").split(" ");
+    expect(root).toContain("pagination");
+    for (const slotClass of [
+      "gap-r4",
+      "rotate-180",
+      "rounded-md",
+      "opacity-50",
+      "tabular-nums",
+    ]) {
+      expect(root).not.toContain(slotClass);
+    }
   });
 
   /**
@@ -516,9 +530,9 @@ describe("Pagination · classNames slots", () => {
         classNames={{ nav: "rotate-180" }}
       />,
     );
-    expect(container.querySelector(".pagination__list")?.getAttribute("class")).toBe(
-      "pagination__list",
-    );
+    const classes = container.querySelector(".pagination__list")?.getAttribute("class") ?? "";
+    expect(classes.split(" ")).toContain("pagination__list");
+    expect(classes).not.toContain("rotate-180");
   });
 
   it("does not leak classNames onto the DOM", () => {

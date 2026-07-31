@@ -115,23 +115,41 @@ style on every layout pass, so a class here changes how it looks and never where
 
 ## Theme tokens
 
-Unlike Button, Tabs uses **no Tailwind utilities at all** — the sliding indicator needs
-real rules, so everything lives in `Tabs.css` and reads the contract variables directly.
-Same contract either way: override these and Tabs re-tints with the rest of the app.
+Tabs paints in Tailwind utilities written in `Tabs.tsx`, each resolving to a contract
+variable. `Tabs.css` keeps two things and says why at source: **the strip's own box**, whose
+`overflow-x: auto` is what `probe:cascade-layer` reads three scrollbar control rows off, and
+which the three edge-fade `mask-image` rules paint on; and **`all: unset` on the tab**, which
+has to come first in its rule and has to lose to a class you pass. Override a variable and
+Tabs re-tints with the rest of the app — and because the utilities sit in `@layer utilities`,
+a `className` or `classNames` of your own beats every one of them.
 
-| Where                 | Override                                                                                        |
-| --------------------- | ----------------------------------------------------------------------------------------------- |
-| Tab label             | `--C-TEXT-SECONDARY` at rest · `--C-TEXT-PRIMARY` on hover · `--C-ACCENT` selected · `--C-TEXT-MUTED` disabled |
-| Indicator             | `--C-ACCENT` (underline, pill) · `--C-SURFACE-0` (enclosed)                                      |
-| Strip border          | `--C-BORDER-DEFAULT`                                                                              |
-| Hover background      | `--C-SURFACE-2` — pill and enclosed only, so it can't obscure the underline indicator            |
-| Enclosed selected tab | `--C-SURFACE-0` · `--C-BORDER-DEFAULT` · `--C-TEXT-PRIMARY`                                      |
-| Pill selected label   | `--C-TEXT-ON-ACCENT`, falling back to `--C-TEXT-INVERSE`                                         |
-| Focus outline         | `--C-BORDER-FOCUS` · `--RADIUS-SM`                                                                |
-| Corners               | `--RADIUS-MD`                                                                                     |
-| Spacing               | `--R-SIZE-5` `--R-SIZE-3` (tab padding) · `--R-SIZE-6` (pill inset)                              |
-| Type                  | `--BodyText-2` · `--Semibold-Weight`                                                              |
-| Motion                | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`, both dropped under `prefers-reduced-motion`   |
+| Where                 | Utility                                                                       | Override                                                                                        |
+| --------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Tab label             | `text-fg-secondary` · `hover:not-disabled:text-fg-primary` · `text-accent` · `disabled:text-fg-muted` | `--C-TEXT-SECONDARY` at rest · `--C-TEXT-PRIMARY` on hover · `--C-ACCENT` selected · `--C-TEXT-MUTED` disabled |
+| Indicator             | `bg-accent` (underline, pill) · `bg-surface-0` (enclosed)                     | `--C-ACCENT` · `--C-SURFACE-0`                                                                   |
+| Strip border          | `border-border-default`                                                       | `--C-BORDER-DEFAULT`                                                                              |
+| Hover background      | `hover:not-disabled:bg-surface-2` — pill and enclosed only, so it can't obscure the underline indicator | `--C-SURFACE-2`                                         |
+| Enclosed selected tab | `bg-surface-0` · `border-border-default` · `text-fg-primary`                  | `--C-SURFACE-0` · `--C-BORDER-DEFAULT` · `--C-TEXT-PRIMARY`                                      |
+| Pill selected label   | `text-[var(--C-TEXT-ON-ACCENT,var(--C-TEXT-INVERSE))]`                        | `--C-TEXT-ON-ACCENT`, falling back to `--C-TEXT-INVERSE`                                         |
+| Focus outline         | `focus-visible:outline-border-focus` · `focus-visible:rounded-sm`             | `--C-BORDER-FOCUS` · `--RADIUS-SM`                                                                |
+| Corners               | `rounded-md`                                                                  | `--RADIUS-MD`                                                                                     |
+| Spacing               | `py-r5` · `px-r3` (tab padding) · `pt-r3` (panel)                             | `--R-SIZE-5` · `--R-SIZE-3`                                                                       |
+| Type                  | `text-body-2` · `font-semibold`                                               | `--BodyText-2` · `--BodyText-2-line-height` · `--Semibold-Weight`                                 |
+| Motion                | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]`, both dropped under `prefers-reduced-motion` | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`     |
+
+Two more, named here rather than in the table because `verify:component-docs` cannot resolve
+a `top-*`/`bottom-*` utility or the `rounded-t-*` corner shorthand to a token — a row would
+claim something the gate could not check. The pill indicator's vertical inset is `top-r6
+bottom-r6`, so `--R-SIZE-6` sets it; the enclosed tab's top corners are `rounded-t-md`, so
+`--RADIUS-MD` rounds them.
+
+The BEM class names (`.tabs-tab`, `.tabs-indicator--pill`, …) are all still emitted, and
+those the two surviving rules do not use are now **declaration-free markers**, so a consumer
+stylesheet, devtools and the Astro/Rails consumers of `response-ui-css` still have one name
+per part.
+
+**`hover:` compiles to `@media (hover: hover) { &:hover }`**, so the hover tints no longer
+paint on a coarse pointer. That matches the rest of the package.
 
 The hover wash is on the recessed side of the ramp on purpose. The `enclosed` selected tab
 claims `--C-SURFACE-0`, the raised rung, so an unselected tab's hover has to sit at rung 2 to

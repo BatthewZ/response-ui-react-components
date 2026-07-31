@@ -1,6 +1,37 @@
 /* ------------------------------------------------------------------ */
-/*  Stepper                                                            */
+/*  Stepper — converted to utilities; three things could not move      */
 /* ------------------------------------------------------------------ */
+
+/* Everything this component draws is a Tailwind utility in `Stepper.tsx` except
+   the three below. Every BEM class name survives as a declaration-free marker
+   (AGENTS.md §"Class names outlive their declarations").
+
+   1. THE GEOMETRY TOKENS. `--_stepper-gap`'s only two read sites are inside a
+      `calc()`, and `--_stepper-active-line-width` is defined from another custom
+      property — AGENTS.md's live instance of "The test" question 2, verified.
+      The four are interdependent (the active ring is a multiple of the line
+      width; the connector's origin is measured from the indicator's size), which
+      is the second reason they are stated together rather than spread across six
+      class strings.
+
+   2. THE CONNECTOR. Its six position declarations are `calc()` over those
+      tokens, and it is a layout contract read as a whole — a judgement call, and
+      labelled as one (AGENTS.md §"What stays", last row). Its `background-color`
+      pair stays with it: the base and the `[data-status="done"]` fill are one
+      base-vs-modifier pair in one layer, and converting only the base would put
+      it in `@layer utilities` above the modifier that has to beat it.
+
+   3. `.stepper-indicator svg`. The svg is `icon ?? <Check />` — a consumer's
+      element in the case that matters. Today a caller's `icon={<X className=
+      "size-6" />}` wins, because their utility out-ranks this layer. As
+      `[&_svg]:size-4` it would emit at 0,1,1 in `@layer utilities` and start
+      beating their 0,1,0 — the silent-no-op defect, arriving from the other
+      direction (memory/css-to-utilities.md, "`> *` is not `*:`").
+
+   `--stepper-progress-color` is PUBLIC API: `Wizard` and `Timeline`'s docs point
+   at it, and one write on the root inherits to every marker and segment below.
+   That is what a per-element slot cannot do, and it is why it stays a custom
+   property rather than becoming a utility. */
 
 .stepper {
   /* Component geometry tokens — interdependent, defined together */
@@ -15,7 +46,8 @@
      INK, not diameter — 2x nearly doubles it (188px² -> 352px²), which reads as
      heavy-handed wherever --C-PRIMARY is a visible fill and the neighbouring
      done steps are solid discs rather than sibling rings. 1.5x lands at 273px²
-     and still holds the width cue. It costs no layout — see .stepper-indicator. */
+     and still holds the width cue. It costs no layout — the indicator is
+     `box-border`, stated in Stepper.tsx. */
   --_stepper-active-line-width: calc(var(--_stepper-line-width) * 1.5);
   --_stepper-gap: var(--R-SIZE-4);
 
@@ -23,193 +55,25 @@
      connector segments (those trailing a "done" step). Both are strokes drawn
      directly on the surface, so per the design-system contrast contract this
      MUST be a text token, never a fill token — --C-PRIMARY is only guaranteed
-     to contrast --C-TEXT-ON-PRIMARY, not the surface (grimdark/tech both set
-     --C-PRIMARY ≈ surface, which would make a primary-coloured line vanish).
+     to contrast --C-TEXT-ON-PRIMARY, not the surface (two of the example themes
+     set --C-PRIMARY ≈ surface, which would make a primary-coloured line vanish).
      The done chips, by contrast, CAN fill with --C-PRIMARY because they letter
      it in on-primary. Defaults to the primary text ink; override per instance
      to re-skin the track without touching global theme tokens. */
   --stepper-progress-color: var(--C-TEXT-PRIMARY);
-
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
 }
 
-.stepper[data-orientation="horizontal"] {
-  flex-direction: row;
-  align-items: flex-start;
-}
-
-.stepper[data-orientation="vertical"] {
-  flex-direction: column;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Step                                                              */
-/* ------------------------------------------------------------------ */
-
-.stepper-step {
-  position: relative;
-  display: flex;
-  gap: var(--R-SIZE-5);
-}
-
-.stepper-step[data-orientation="horizontal"] {
-  flex: 1 1 0;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.stepper-step[data-orientation="vertical"] {
-  flex-direction: row;
-  align-items: flex-start;
-  padding-bottom: var(--R-SIZE-3);
-}
-
-.stepper-step[data-orientation="vertical"]:last-child {
-  padding-bottom: 0;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Indicator                                                         */
-/* ------------------------------------------------------------------ */
-
-.stepper-indicator {
-  position: relative;
-  z-index: 1;
-  flex: none;
-  /* Stated rather than inherited from a reset: the active step thickens the
-     ring, and under content-box that would grow the chip past
-     --_stepper-indicator-size and pull it off the connector's centre line,
-     which is positioned from that variable. */
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--_stepper-indicator-size);
-  height: var(--_stepper-indicator-size);
-  border-radius: var(--RADIUS-FULL);
-  border: var(--_stepper-line-width) solid var(--C-BORDER-DEFAULT);
-  /* "Hollow", but it cannot be `transparent`: the chip masks the connector line
-     running behind it (position: relative; z-index: 1), so it needs an opaque
-     rung. Rung 2 is recessed and reads hollow; rung 1 is raised and would read
-     as a chip sitting on top. Base, active and upcoming must all match — those
-     states differ by ring, not fill. */
-  background-color: var(--C-SURFACE-2);
-  color: var(--C-TEXT-MUTED);
-  font-size: var(--BodyText-3);
-  line-height: var(--BodyText-3-line-height);
-  font-weight: var(--Bold-Weight);
-}
-
-/* Button variant resets */
-button.stepper-indicator {
-  padding: 0;
-  cursor: pointer;
-  font-family: inherit;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-}
-
-button.stepper-indicator:hover {
-  border-color: var(--C-BORDER-STRONG);
-}
-
-button.stepper-indicator:focus-visible {
-  outline: 2px solid var(--C-BORDER-FOCUS);
-  outline-offset: 2px;
-}
-
+/* The dot's glyph. The dot owns its glyph size so consumers don't have to
+   hand-tune an icon `size` prop to match the marker — and see note 3 above for
+   why this is a rule rather than an `[&_svg]:` variant. */
 .stepper-indicator svg {
   width: 1rem;
   height: 1rem;
 }
 
-/* The status word, and the text twin of the marker's shape. A completed marker's
-   only child is an aria-hidden check glyph, so without this it reaches assistive
-   tech as nothing at all while an upcoming one at least reads its numeral.
-   Hidden rather than drawn, because the status IS on screen already — the filled
-   chip and the check say it without colour. Written here rather than as a
-   `sr-only` utility so the component keeps its rule that all of its styling
-   lives in this file. Out of flow, so it costs the 2rem marker no layout. */
-.stepper-status {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border-width: 0;
-}
-
-/* Status colors */
-/* Done: covered ground — a filled --C-PRIMARY brand chip with a check glyph,
-   lettered and ringed in --C-TEXT-ON-PRIMARY. Per the contrast contract a fill
-   token is only guaranteed to contrast its on-* partner, never the surface;
-   pairing the fill with --C-TEXT-ON-PRIMARY (and using it for the ring) keeps
-   the chip legible even where --C-PRIMARY ≈ surface (grimdark/tech) — there the
-   ring/glyph provably contrast the surface, while staying a quiet halo in themes
-   where the fill already pops. */
-.stepper-step[data-status="done"] .stepper-indicator {
-  border-color: var(--C-TEXT-ON-PRIMARY);
-  background-color: var(--C-PRIMARY);
-  color: var(--C-TEXT-ON-PRIMARY);
-}
-
-/* Active (current): "you are here" — NOT yet covered, so it stays an UNFILLED
-   ring rather than a brand chip. The hollow (surface) fill sets it apart from
-   the filled done steps; the HEAVIER ring sets it apart from the thin upcoming
-   ones without asking anyone to see a colour, and the progress-ink ring/number
-   reinforces it for those who can. Uses a text token
-   (--stepper-progress-color), not --C-PRIMARY, because the ring is a stroke on
-   the surface — see the contrast contract note on --stepper-progress-color
-   above. */
-.stepper-step[data-status="active"] .stepper-indicator {
-  border-width: var(--_stepper-active-line-width);
-  border-color: var(--stepper-progress-color);
-  background-color: var(--C-SURFACE-2);
-  color: var(--stepper-progress-color);
-}
-
-.stepper-step[data-status="upcoming"] .stepper-indicator {
-  border-color: var(--C-BORDER-DEFAULT);
-  background-color: var(--C-SURFACE-2);
-  color: var(--C-TEXT-MUTED);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Content                                                           */
-/* ------------------------------------------------------------------ */
-
-.stepper-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--R-SIZE-6);
-}
-
-.stepper-title {
-  font-size: var(--BodyText-2);
-  line-height: var(--BodyText-2-line-height);
-  font-weight: var(--Bold-Weight);
-  color: var(--C-TEXT-PRIMARY);
-}
-
-.stepper-step[data-status="upcoming"] .stepper-title {
-  color: var(--C-TEXT-MUTED);
-}
-
-.stepper-description {
-  font-size: var(--BodyText-3);
-  line-height: var(--BodyText-3-line-height);
-  color: var(--C-TEXT-SECONDARY);
-}
-
 /* ------------------------------------------------------------------ */
 /*  Connector line (Timeline ::before/::after technique)              */
-/*  Filled when this step is done/active; muted when upcoming.        */
+/*  Filled when this step is done; muted otherwise.                   */
 /*  Last step has no trailing connector.                              */
 /* ------------------------------------------------------------------ */
 
@@ -256,14 +120,4 @@ button.stepper-indicator:focus-visible {
   top: calc(var(--_stepper-indicator-size) + var(--R-SIZE-6));
   bottom: var(--R-SIZE-6);
   width: var(--_stepper-line-width);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Reduced motion                                                    */
-/* ------------------------------------------------------------------ */
-
-@media (prefers-reduced-motion: reduce) {
-  button.stepper-indicator {
-    transition: none;
-  }
 }

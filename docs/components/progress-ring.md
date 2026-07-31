@@ -110,24 +110,34 @@ much of it is drawn. Its colour is the `color` prop; prefer that, or a token fro
 
 ## Theme tokens
 
-ProgressRing paints its marks in `ProgressRing.css` (shipped in this package's `styles`
-import) and reads every color and motion value from a contract variable — no hard-coded
-hues. Override one and every ring in the app re-tints, at runtime, with no rebuild.
+ProgressRing ships **no stylesheet**: every mark is a Tailwind utility in
+`ProgressRing.tsx`, each resolving to a contract variable — no hard-coded hues. Override
+one and every ring in the app re-tints, at runtime, with no rebuild. Because the utilities
+sit in `@layer utilities`, a `className` or `classNames` of your own beats every one of
+them.
 
-| Where                         | CSS class                            | Override                                  |
-| ----------------------------- | ------------------------------------ | ----------------------------------------- |
-| Track (background ring)       | `.progress-ring__track`              | `--C-SURFACE-3`                           |
-| Indicator — `accent` (default)| `.progress-ring__indicator--accent`  | `--C-ACCENT`                              |
-| Indicator — `success`         | `.progress-ring__indicator--success` | `--C-STATUS-SUCCESS`                      |
-| Indicator — `warning`         | `.progress-ring__indicator--warning` | `--C-STATUS-WARNING`                      |
-| Indicator — `error`           | `.progress-ring__indicator--error`   | `--C-STATUS-ERROR`                        |
-| Arc sweep animation           | `.progress-ring__indicator`          | `--MOTION-DURATION-SHIFT` `--MOTION-EASE-SHIFT` |
+| Where                          | Utility                                                                       | Override                                          |
+| ------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------- |
+| Track (background ring)        | `stroke-surface-3`                                                            | `--C-SURFACE-3`                                   |
+| Indicator — `accent` (default) | `stroke-accent`                                                               | `--C-ACCENT`                                      |
+| Indicator — `success`          | `stroke-status-success`                                                       | `--C-STATUS-SUCCESS`                              |
+| Indicator — `warning`          | `stroke-status-warning`                                                       | `--C-STATUS-WARNING`                              |
+| Indicator — `error`            | `stroke-status-error`                                                         | `--C-STATUS-ERROR`                                |
+| Arc sweep animation            | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` `--MOTION-EASE-SHIFT`   |
+
+The BEM class names (`.progress-ring__track`, `.progress-ring__indicator--accent`, …) are
+all still emitted as **declaration-free markers**, so a consumer stylesheet, devtools and
+the Astro/Rails consumers of `response-ui-css` still have one name per part.
 
 The arc animates its `stroke-dashoffset` on every `value` change over
 `--MOTION-DURATION-SHIFT`/`--MOTION-EASE-SHIFT` — the same "shift" motion pair the sliding
-Tabs indicator uses. Under `prefers-reduced-motion: reduce` the transition is dropped (the
-CSS media query and a matching `--no-animate` class both zero it), so the ring jumps
-straight to its new fill. The color and radius are set with no unit tokens: `size` and
+Tabs indicator uses. Under `prefers-reduced-motion: reduce` the transition is dropped (a
+`motion-reduce:transition-none` utility and a matching `--no-animate` class both zero it),
+so the ring jumps straight to its new fill.
+
+**The wrapper's `position`, `width` and `height` are inline `style`, not classes**, because
+`size` is a number prop. An inline declaration beats every class at every layer, so
+`className="size-20"` will not resize the ring — pass `size` instead. `size` and
 `thickness` are your pixel numbers, not `--R-SIZE-*`, so the ring does **not** grow at the
 responsive breakpoint the way padding does.
 

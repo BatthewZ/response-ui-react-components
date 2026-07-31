@@ -142,16 +142,89 @@ type TabsListProps = {
   classNames?: SlotClassNames<"indicator">;
 } & ComponentPropsWithRef<"div">;
 
+/**
+ * `Tabs.css` keeps the strip's own box and the tab's `all: unset`, and says why
+ * at source; everything else this component draws is here. Every BEM name
+ * survives as a declaration-free marker (AGENTS.md §"Class names outlive their
+ * declarations"), and each constant is one flat string literal because
+ * `verify:component-docs` and `verify:focus-affordance` resolve hoisted
+ * constants textually.
+ *
+ * `--MOTION-*` is in no Tailwind namespace, so the shift tokens are read as
+ * custom properties in the bracket spelling — `ease-shift` generates nothing.
+ * `hover:` compiles to `@media (hover: hover) { &:hover }`, so the hover tints
+ * no longer paint on a coarse pointer; that matches the rest of the package.
+ *
+ * The variant-scoped rules that were `.tabs-list--enclosed .tabs-tab` and
+ * friends are resolved in JS instead: `Tabs.Tab` already reads `variant` and its
+ * own selected state from context, and an `in-[.tabs-list--pill]:` variant would
+ * match ANY ancestor carrying the class — a Tabs nested inside a pill Tabs would
+ * take the parent's skin.
+ */
 const variantListClass: Record<Variant, string> = {
-  underline: "tabs-list--underline",
+  underline: "tabs-list--underline border-b border-border-default",
   pill: "tabs-list--pill",
-  enclosed: "tabs-list--enclosed",
+  enclosed: "tabs-list--enclosed border-b border-border-default",
 };
 
+/**
+ * The tab, minus the `all: unset` that stays in `Tabs.css`. `box-border` and the
+ * rest rebuild the control the reset clears, each now as a class a caller's
+ * `className` out-ranks individually.
+ *
+ * The focus outline is inset (`-outline-offset-2`) rather than one of
+ * `util/focus.ts`'s ring recipes: tabs sit flush against the strip's bottom
+ * border and each other, so an outward ring would paint over both. Nothing here
+ * resets the UA outline, so there is no reset for `verify:focus-affordance` to
+ * pair — this replaces the UA outline rather than removing it.
+ */
+const tabClasses =
+  "box-border relative z-1 inline-flex items-center justify-center px-r3 py-r5 cursor-pointer text-body-2 font-semibold text-fg-secondary whitespace-nowrap transition-[color,background-color] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none hover:not-disabled:text-fg-primary disabled:text-fg-muted disabled:cursor-not-allowed disabled:pointer-events-none focus-visible:rounded-sm focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focus";
+
+/**
+ * The enclosed tab's chrome: a folder tab whose bottom edge is the strip's own
+ * border, hence `border-x border-t` rather than `border` plus a `border-b-0`
+ * that would depend on Tailwind's emission order to win.
+ */
+const tabEnclosedClasses = "border-x border-t border-transparent rounded-t-md -mb-px";
+
+/**
+ * Selected, per variant. `pill` inverts its ink over the accent fill;
+ * `enclosed` claims rung 0 and rings itself; `underline` and the base take the
+ * accent ink.
+ *
+ * The base `.tabs-tab` sets `color` too, so this is a base-vs-modifier pair —
+ * both halves converted, and the modifier passed AFTER the base so
+ * tailwind-merge resolves it the modifier's way at the call site.
+ */
+const tabSelectedClass: Record<Variant, string> = {
+  underline: "text-accent",
+  pill: "text-[var(--C-TEXT-ON-ACCENT,var(--C-TEXT-INVERSE))]",
+  enclosed: "text-fg-primary bg-surface-0 border-border-default",
+};
+
+/**
+ * The hover wash, unselected tabs only — a selected pill would lose its
+ * indicator and a selected enclosed tab its rung-0 fill. Rung 2 (recessed), not
+ * 0: the selected tab claims rung 0, so an unselected hover has to sit on the
+ * recessed side to read as "not selected". `underline` gets none: a background
+ * there would obscure the sliding marker.
+ */
+const tabHoverClass: Record<Variant, string | undefined> = {
+  underline: undefined,
+  pill: "hover:not-disabled:bg-surface-2 hover:not-disabled:rounded-md",
+  enclosed: "hover:not-disabled:bg-surface-2",
+};
+
+const tabsPanelClasses = "pt-r3";
+
+const tabsIndicatorClasses =
+  "absolute bottom-0 left-0 pointer-events-none transition-[transform,width] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none";
+
 const variantIndicatorClass: Record<Variant, string> = {
-  underline: "tabs-indicator--underline",
-  pill: "tabs-indicator--pill",
-  enclosed: "tabs-indicator--enclosed",
+  underline: "tabs-indicator--underline h-0.5 bg-accent",
+  pill: "tabs-indicator--pill top-r6 bottom-r6 h-auto rounded-md bg-accent",
+  enclosed: "tabs-indicator--enclosed -bottom-px h-0.5 bg-surface-0",
 };
 
 const TabsList = forwardRef<HTMLDivElement, TabsListProps>(function TabsList(
@@ -223,7 +296,12 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(function TabsList(
     >
       {children}
       <span
-        className={cn("tabs-indicator", variantIndicatorClass[variant], classNames?.indicator)}
+        className={cn(
+          "tabs-indicator",
+          tabsIndicatorClasses,
+          variantIndicatorClass[variant],
+          classNames?.indicator
+        )}
         style={indicatorStyle}
         aria-hidden="true"
       />
@@ -244,7 +322,7 @@ const TabsTab = forwardRef<HTMLButtonElement, TabsTabProps>(function TabsTab(
   { value, disabled = false, className, onClick, onKeyDown, ...props },
   ref
 ) {
-  const { activeValue, onValueChange, baseId } = useTabsContext();
+  const { activeValue, onValueChange, baseId, variant } = useTabsContext();
   const isSelected = activeValue === value;
 
   function handleClick() {
@@ -303,7 +381,13 @@ const TabsTab = forwardRef<HTMLButtonElement, TabsTabProps>(function TabsTab(
       aria-controls={`${baseId}-panel-${value}`}
       tabIndex={isSelected ? 0 : -1}
       disabled={disabled}
-      className={cn("tabs-tab", className)}
+      className={cn(
+        "tabs-tab",
+        tabClasses,
+        variant === "enclosed" && tabEnclosedClasses,
+        isSelected ? tabSelectedClass[variant] : tabHoverClass[variant],
+        className
+      )}
       onClick={composeEventHandlers(onClick, handleClick)}
       onKeyDown={composeEventHandlers(onKeyDown, handleKeyDown)}
       {...props}
@@ -354,7 +438,7 @@ const TabsPanel = forwardRef<HTMLDivElement, TabsPanelProps>(function TabsPanel(
       role="tabpanel"
       aria-labelledby={`${baseId}-tab-${value}`}
       tabIndex={0}
-      className={cn(animClass, "tabs-panel", className)}
+      className={cn(animClass, "tabs-panel", tabsPanelClasses, className)}
       // `animationend` is not cancelable, so a caller's `preventDefault()` must not
       // be read as an opt-out — that would strand the exiting panel forever.
       onAnimationEnd={composeEventHandlers(onAnimationEnd, handleAnimationEnd, {

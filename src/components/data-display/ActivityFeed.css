@@ -1,6 +1,31 @@
 /* ------------------------------------------------------------------ */
-/*  ActivityFeed                                                       */
+/*  ActivityFeed — converted to utilities; the rail could not move     */
 /* ------------------------------------------------------------------ */
+
+/* The content column — the sentence, its four spans and the detail block — is
+   Tailwind utilities in `ActivityFeed.tsx`. What is left is the RAIL: the
+   geometry tokens, the row grid the connector is measured from, the connector
+   itself, the marker, and the `highlight` cue. Every BEM class name survives as
+   a declaration-free marker (AGENTS.md §"Class names outlive their
+   declarations"), and each survivor is here for a stated reason:
+
+   - `--_activity-feed-dot-size` is defined from ANOTHER custom property, and
+     `--_activity-feed-line-width` and `--_activity-feed-aside-width` are read
+     inside the connector's `calc()`. AGENTS.md "The test", question 2 — the
+     second live instance of it in the package, alongside `--_stepper-gap`.
+   - `.activity-feed-item::before` is a pseudo-element. A utility has to be put
+     ON something, and there is no element here (question 1).
+   - the row grid is what the connector's origin is measured from, so it is one
+     layout contract with the rule under it rather than two halves in two files.
+   - `.activity-feed-dot > svg` and
+     `[data-highlight="true"] .activity-feed-aside > *` both target the
+     CONSUMER's element — the `icon` node and whatever fills the aside, which may
+     be a caller's `avatar`. As `*:` variants they would emit in
+     `@layer utilities` and start beating the caller's own class, which today
+     they lose to (memory/css-to-utilities.md, "`> *` is not `*:`").
+   - `.activity-feed-dot`'s base fill and ink are the base half of the
+     `[data-highlight]` pair above; converting only the base would put it above
+     the modifier that has to beat it (question 3). Both stay together. */
 
 .activity-feed {
   /* Component geometry tokens — interdependent, so defined together */
@@ -29,23 +54,18 @@
      ELEMENTS A PER-ELEMENT OVERRIDE CANNOT: `className` reaches the `<li>` and
      nothing inside it, and the value is set once on the row and inherits to
      markers the consumer never renders. That is what a per-element slot cannot
-     do, and it is the reason these stay — not precedence. (Before Phase 1 this
-     file was unlayered and outranked every utility; it is now in
-     `@layer components`, below `@layer utilities`.) Same contract as
+     do, and it is the reason these stay — not precedence. Same contract as
      `--stepper-progress-color`; `Timeline` exposes the matching pair.
 
      A FILL token inked with its paired `on-*`, per the contrast contract — the
      marker is a filled disc, not a stroke. */
   --activity-feed-highlight-fill: var(--C-ACCENT);
   --activity-feed-highlight-ink: var(--C-TEXT-ON-ACCENT);
-
-  list-style: none;
-  margin: 0;
-  padding: 0;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Item — two-column grid (avatar column + content column)            */
+/*  and the connector anchored to that column's centre.                */
 /* ------------------------------------------------------------------ */
 
 .activity-feed-item {
@@ -60,11 +80,7 @@
   padding-bottom: 0;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Connector line — anchored to the avatar column center, runs from   */
-/*  below the dot to the bottom of the item. Suppressed on last item.  */
-/* ------------------------------------------------------------------ */
-
+/* Runs from below the dot to the bottom of the item. Suppressed on the last. */
 .activity-feed-item::before {
   content: "";
   position: absolute;
@@ -80,17 +96,16 @@
 }
 
 /* ------------------------------------------------------------------ */
-/*  Aside (avatar / icon-dot column)                                   */
+/*  Marker (avatar / icon-dot column)                                  */
 /* ------------------------------------------------------------------ */
 
-.activity-feed-aside {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  justify-content: center;
-}
-
-/* Icon fallback — token-ringed dot when no avatar is supplied */
+/* Icon fallback — token-ringed dot when no avatar is supplied.
+   No background-coloured ring: the filled 2rem circle already masks the
+   connector line, and the line starts at the marker's edge — same treatment
+   as a real Avatar. Any hardcoded ring colour names one layer of the ramp,
+   and the feed does not know which layer it was dropped onto — a rung-0 ring
+   shows as a mismatched halo the moment the feed sits on the canvas, on a
+   nested rung-1 panel, or under a custom theme. */
 .activity-feed-dot {
   display: inline-flex;
   align-items: center;
@@ -100,12 +115,6 @@
   border-radius: var(--RADIUS-FULL);
   background-color: var(--C-SURFACE-2);
   color: var(--C-TEXT-SECONDARY);
-  /* No background-coloured ring: the filled 2rem circle already masks the
-     connector line, and the line starts at the marker's edge — same treatment
-     as a real Avatar. Any hardcoded ring colour names one layer of the ramp,
-     and the feed does not know which layer it was dropped onto — a rung-0 ring
-     shows as a mismatched halo the moment the feed sits on the canvas, on a
-     nested rung-1 panel, or under a custom theme. */
 }
 
 /* The dot owns its glyph size so consumers don't have to hand-tune an icon
@@ -146,60 +155,4 @@
 .activity-feed-item[data-highlight="true"] .activity-feed-dot {
   background-color: var(--activity-feed-highlight-fill);
   color: var(--activity-feed-highlight-ink);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Main (content column)                                              */
-/* ------------------------------------------------------------------ */
-
-.activity-feed-main {
-  min-width: 0;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Sentence row (actor · action · target · timestamp)                 */
-/* ------------------------------------------------------------------ */
-
-.activity-feed-sentence {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--R-SIZE-6);
-  font-size: var(--BodyText-2);
-  line-height: var(--BodyText-2-line-height);
-  color: var(--C-TEXT-SECONDARY);
-}
-
-.activity-feed-actor {
-  font-weight: var(--Bold-Weight);
-  color: var(--C-TEXT-PRIMARY);
-}
-
-.activity-feed-action {
-  color: var(--C-TEXT-SECONDARY);
-}
-
-.activity-feed-target {
-  font-weight: var(--Bold-Weight);
-  color: var(--C-TEXT-PRIMARY);
-}
-
-.activity-feed-timestamp {
-  margin-left: auto;
-  padding-left: var(--R-SIZE-5);
-  font-size: var(--BodyText-3);
-  line-height: var(--BodyText-3-line-height);
-  color: var(--C-TEXT-MUTED);
-  white-space: nowrap;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Body (optional block below the sentence line)                      */
-/* ------------------------------------------------------------------ */
-
-.activity-feed-body {
-  margin-top: var(--R-SIZE-5);
-  font-size: var(--BodyText-2);
-  line-height: var(--BodyText-2-line-height);
-  color: var(--C-TEXT-SECONDARY);
 }

@@ -1,98 +1,23 @@
-/* Pagination */
+/* ------------------------------------------------------------------ */
+/*  Pagination — converted to utilities; one rule could not move       */
+/* ------------------------------------------------------------------ */
 
-.pagination__list {
-  display: flex;
-  align-items: center;
-  gap: var(--R-SIZE-6);
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
+/* Everything this component draws is a Tailwind utility in `Pagination.tsx`.
+   The survivor is a RESET, and a reset is the one shape that has to LOSE to a
+   caller's class rather than beat it — which is what `@layer components` buys
+   and `@layer utilities` takes away. AGENTS.md "The test", questions 3 and 5.
 
+   Measured: Tailwind emits arbitrary-property utilities LAST inside
+   `@layer utilities`, so `[all:unset]` in the class list would be sorted after
+   `inline-flex`, `rounded-sm`, `text-body-2` and the rest — wiping the fifteen
+   declarations it exists to precede AND beating the caller's `className`, which
+   it currently loses to. Enumerating it away is not available either: this is a
+   `<button>`, and Preflight's button reset covers margin/padding/border/
+   background/font/colour but NOT the UA's `text-align: center` or its
+   `cursor`, which is exactly why `all` is what was written.
+
+   `box-sizing` and everything else the reset clears is restored in the class
+   list, where a caller's utility now out-ranks each one individually. */
 .pagination__page {
   all: unset;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2rem;
-  height: 2rem;
-  padding: 0 var(--R-SIZE-6);
-  border-radius: var(--RADIUS-SM);
-  font-size: var(--BodyText-2);
-  line-height: var(--BodyText-2-line-height);
-  font-variant-numeric: tabular-nums;
-  color: var(--C-TEXT-SECONDARY);
-  cursor: pointer;
-  transition: color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT),
-              background-color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
-}
-
-.pagination__page:hover:not(.pagination__page--current) {
-  background-color: var(--C-SURFACE-2);
-  color: var(--C-TEXT-PRIMARY);
-}
-
-.pagination__page:focus-visible {
-  outline: 2px solid var(--C-BORDER-FOCUS);
-  outline-offset: 2px;
-}
-
-/* ON-ACCENT is the contract's partner for an --C-ACCENT fill. Do not "simplify"
-   it to --C-TEXT-ON-PRIMARY: `tech` sets that byte-identical to --C-ACCENT, so
-   the page number renders at 1.00:1 and disappears.
-   Deliberately no `pointer-events: none` — the current page stays focusable and
-   hit-testable so `aria-current="page"` remains reachable; the click handler is
-   what refuses to re-fire. */
-.pagination__page--current {
-  background-color: var(--C-ACCENT);
-  color: var(--C-TEXT-ON-ACCENT);
-  font-weight: var(--Semibold-Weight);
-  cursor: default;
-}
-
-.pagination__ellipsis {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2rem;
-  height: 2rem;
-  color: var(--C-TEXT-MUTED);
-  font-size: var(--BodyText-2);
-  letter-spacing: 0.1em;
-  user-select: none;
-}
-
-.pagination__info {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 var(--R-SIZE-5);
-  font-size: var(--BodyText-2);
-  line-height: var(--BodyText-2-line-height);
-  color: var(--C-TEXT-SECONDARY);
-  white-space: nowrap;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pagination__page {
-    transition: none;
-  }
-}
-
-/* Touch: grow hit targets to ~44px and widen the gap. */
-@media (pointer: coarse) {
-  .pagination__list {
-    gap: var(--R-SIZE-5);
-  }
-
-  .pagination__page,
-  .pagination__ellipsis {
-    min-width: 2.75rem;
-    height: 2.75rem;
-  }
-
-  .pagination__nav {
-    min-width: 2.75rem;
-    min-height: 2.75rem;
-  }
 }

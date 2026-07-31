@@ -263,12 +263,19 @@ describe("ActivityFeed · classNames slots", () => {
     expect(body?.getAttribute("class")).toContain("text-body-3");
   });
 
-  it("leaves each internal on its base class alone when no slot is passed", () => {
+  /**
+   * This used to assert each class attribute equalled its marker exactly, which
+   * stopped being expressible once the content column moved out of
+   * `ActivityFeed.css` and into utilities. The falsifiers are unchanged and are
+   * what the equality was ever standing in for: an absent slot appends NOTHING —
+   * no `undefined`, no empty token — and each element keeps its own marker.
+   */
+  it("leaves each internal on its base classes alone when no slot is passed", () => {
     const { container } = renderItem();
     for (const stem of ["sentence", "actor", "action", "target", "timestamp", "body"]) {
-      expect(container.querySelector(`.activity-feed-${stem}`)?.getAttribute("class")).toBe(
-        `activity-feed-${stem}`,
-      );
+      const classes = container.querySelector(`.activity-feed-${stem}`)?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain(`activity-feed-${stem}`);
+      expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     }
   });
 

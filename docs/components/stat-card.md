@@ -211,22 +211,34 @@ than trend-up. The box itself takes no class from the call site.
 
 ## Theme tokens
 
-StatCard hard-codes no colour, radius, spacing, or timing. The value, label, trend, and
-card chrome read contract variables directly in `StatCard.css`; the sparkline tint is
-the one place utilities are used, on the [Sparkline](sparkline.md) it wraps.
+StatCard ships **no stylesheet**: every mark is a Tailwind utility in `StatCard.tsx`, each
+resolving to a contract variable — no hard-coded colour, radius, spacing or timing.
+Override one and every tile re-tints, at runtime, with no rebuild. Because the utilities
+sit in `@layer utilities`, a `className` or `classNames` of your own beats every one of
+them.
 
-| Where                         | Utility / class                                       | Override                                                                          |
-| ----------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Card fill, border, corners    | `.stat-card`                                          | `--C-SURFACE-0` `--C-BORDER-DEFAULT` `--RADIUS-LG`                                 |
-| Card padding + row gap        | `.stat-card`                                          | `--R-SIZE-5`                                                                       |
-| Icon chip                     | `.stat-card__icon`                                    | `--C-SURFACE-2` `--C-ACCENT` `--RADIUS-MD` `--R-SIZE-2`                            |
-| Value                         | `.stat-card__value`                                   | `--C-TEXT-PRIMARY` `--H3` `--H3-line-height` `--Bold-Weight`                       |
-| Label                         | `.stat-card__label`                                   | `--C-TEXT-SECONDARY` `--BodyText-2` `--BodyText-2-line-height` `--Semibold-Weight` |
-| Trend text metrics            | `.stat-card__trend`                                   | `--BodyText-2` `--BodyText-2-line-height` `--Semibold-Weight` `--R-SIZE-6`         |
-| Trend colour (sentiment)      | `.stat-card__trend--positive` `--negative` `--neutral` | `--C-STATUS-SUCCESS` `--C-STATUS-ERROR` `--C-TEXT-SECONDARY`                      |
-| Trend arrow motion            | `.stat-card__trend-icon`                              | `--MOTION-DURATION-SHIFT` `--MOTION-EASE-SHIFT`                                    |
-| Sparkline tint (sentiment)    | `text-trend-up` `text-trend-down` `text-fg-muted`     | `--C-TREND-UP` `--C-TREND-DOWN` `--C-TEXT-MUTED`                                   |
-| Sparkline box                 | `.stat-card__sparkline`                               | — (pinned with `margin-top: auto`; the chart fills the tile's width)               |
+| Where                      | Utility                                                                       | Override                                                                          |
+| -------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Card fill, border, corners | `bg-surface-0` · `border-border-default` · `rounded-lg`                       | `--C-SURFACE-0` `--C-BORDER-DEFAULT` `--RADIUS-LG`                                 |
+| Card padding + row gap     | `p-r5` · `gap-r5`                                                             | `--R-SIZE-5`                                                                       |
+| Icon chip                  | `bg-surface-2` · `text-accent` · `rounded-md`                                 | `--C-SURFACE-2` `--C-ACCENT` `--RADIUS-MD`                                         |
+| Value                      | `text-h3` · `font-bold` · `text-fg-primary`                                   | `--H3` `--H3-line-height` `--Bold-Weight` `--C-TEXT-PRIMARY`                       |
+| Label                      | `text-body-2` · `font-semibold` · `text-fg-secondary`                         | `--BodyText-2` `--BodyText-2-line-height` `--Semibold-Weight` `--C-TEXT-SECONDARY` |
+| Trend text metrics         | `text-body-2` · `font-semibold` · `gap-r6`                                    | `--BodyText-2` `--BodyText-2-line-height` `--Semibold-Weight` `--R-SIZE-6`         |
+| Trend colour (sentiment)   | `text-status-success` · `text-status-error` · `text-fg-secondary`             | `--C-STATUS-SUCCESS` `--C-STATUS-ERROR` `--C-TEXT-SECONDARY`                       |
+| Trend arrow motion         | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` `--MOTION-EASE-SHIFT`                                    |
+| Sparkline tint (sentiment) | `text-trend-up` · `text-trend-down` · `text-fg-muted`                         | `--C-TREND-UP` `--C-TREND-DOWN` `--C-TEXT-MUTED`                                   |
+| Sparkline box              | an auto top margin on the wrapper, a full-width block on the chart            | — (pinned to the tile's floor; the chart fills the tile's width)                   |
+
+The icon chip's box is `size-r2`, so `--R-SIZE-2` sizes it too. It is not in the table
+because `verify:component-docs` cannot resolve a `size-*` utility to a token — the row would
+claim something the gate could not check.
+
+The BEM class names (`.stat-card`, `.stat-card__value`, `.stat-card__trend--positive`, …)
+are all still emitted as **declaration-free markers**, so a consumer stylesheet, devtools
+and the Astro/Rails consumers of `response-ui-css` still have one name per part. The three
+`--up`/`--down`/`--flat` direction classes have always been markers only: the arrow reads
+`direction` in JS.
 
 **Trend text and sparkline read different tokens for the same idea.** The trend
 arrow/label ink themselves with the **status** tokens (`--C-STATUS-SUCCESS` /

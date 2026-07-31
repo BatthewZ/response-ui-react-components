@@ -275,18 +275,30 @@ describe("ProgressBar · classNames slots", () => {
     expect(fill?.getAttribute("class")).toContain("rounded-none");
   });
 
+  /**
+   * These used to assert the class attribute equalled its markers exactly, which
+   * stopped being expressible once the fill's geometry and motion moved out of
+   * `ProgressBar.css` and into utilities. The falsifiers are unchanged and are
+   * what the equality was ever standing in for: an absent slot appends NOTHING —
+   * no `undefined`, no empty token — and a slot lands on its own element and no
+   * other. The *paint* is still asserted exactly, in the describe below.
+   */
   it("leaves the fill on its base classes alone when no slot is passed", () => {
     const { container } = render(<ProgressBar value={40} aria-label="Upload" />);
-    expect(container.querySelector(".progress-bar__fill")?.getAttribute("class")).toBe(
-      "progress-bar__fill progress-bar__fill--accent bg-accent",
+    const classes = container.querySelector(".progress-bar__fill")?.getAttribute("class") ?? "";
+    expect(classes.split(" ")).toEqual(
+      expect.arrayContaining(["progress-bar__fill", "progress-bar__fill--accent", "bg-accent"]),
     );
+    expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
   });
 
   it("does not put the slot class on the root", () => {
     const { container } = render(
       <ProgressBar value={40} aria-label="Upload" classNames={{ fill: "rounded-none" }} />,
     );
-    expect(container.firstElementChild?.getAttribute("class")).toBe("progress-bar progress-bar--md");
+    const root = (container.firstElementChild?.getAttribute("class") ?? "").split(" ");
+    expect(root).toEqual(expect.arrayContaining(["progress-bar", "progress-bar--md"]));
+    expect(root).not.toContain("rounded-none");
   });
 
   /**
@@ -302,9 +314,9 @@ describe("ProgressBar · classNames slots", () => {
         classNames={{ track: "bg-surface-2" }}
       />,
     );
-    expect(container.querySelector(".progress-bar__fill")?.getAttribute("class")).toBe(
-      "progress-bar__fill progress-bar__fill--accent bg-accent",
-    );
+    const classes = container.querySelector(".progress-bar__fill")?.getAttribute("class") ?? "";
+    expect(classes.split(" ")).toContain("progress-bar__fill");
+    expect(classes).not.toContain("bg-surface-2");
   });
 
   it("does not leak classNames onto the DOM", () => {
@@ -333,19 +345,36 @@ describe("ProgressBar · classNames slots", () => {
  * Fill class before → after, `variant="default"` (`renderToStaticMarkup`, not
  * retyped): `…--accent` → `…--accent bg-accent`, `…--success` →
  * `…--success bg-status-success`, and likewise `warning`/`error`.
+ *
+ * THE ASSERTION IS NOW ON THE PAINT, NOT ON THE WHOLE ATTRIBUTE, and that is a
+ * strengthening rather than a relaxation. `ProgressBar.css` was reduced to its
+ * `@keyframes` block, so the fill also carries its height, radius, transition and
+ * reduced-motion utilities — none of which the measurement above was about.
+ * `paintTokens()` filters to the `bg-*` group and the expectations below are
+ * still exact ARRAYS, so "exactly one background-colour utility" is asserted
+ * literally instead of being implied by a string nobody could read.
  */
 describe("ProgressBar · colour is a utility, not a shadowing token", () => {
-  const solid: Array<[NonNullable<ComponentProps<typeof ProgressBar>["color"]>, string]> = [
-    ["accent", "progress-bar__fill progress-bar__fill--accent bg-accent"],
-    ["success", "progress-bar__fill progress-bar__fill--success bg-status-success"],
-    ["warning", "progress-bar__fill progress-bar__fill--warning bg-status-warning"],
-    ["error", "progress-bar__fill progress-bar__fill--error bg-status-error"],
+  /** Every class on the fill, as tokens. */
+  const fillTokens = () => (getFill().getAttribute("class") ?? "").split(" ");
+  /** The fill's paint — the `bg-*` group and nothing else. */
+  const paintTokens = () => fillTokens().filter((c) => c.startsWith("bg-"));
+
+  const solid: Array<[NonNullable<ComponentProps<typeof ProgressBar>["color"]>, string, string]> = [
+    ["accent", "progress-bar__fill--accent", "bg-accent"],
+    ["success", "progress-bar__fill--success", "bg-status-success"],
+    ["warning", "progress-bar__fill--warning", "bg-status-warning"],
+    ["error", "progress-bar__fill--error", "bg-status-error"],
   ];
 
-  it.each(solid)("color=%s paints with exactly one background-colour utility", (color, expected) => {
-    render(<ProgressBar value={40} color={color} aria-label="Upload" />);
-    expect(getFill().getAttribute("class")).toBe(expected);
-  });
+  it.each(solid)(
+    "color=%s paints with exactly one background-colour utility",
+    (color, marker, paint) => {
+      render(<ProgressBar value={40} color={color} aria-label="Upload" />);
+      expect(fillTokens()).toEqual(expect.arrayContaining(["progress-bar__fill", marker]));
+      expect(paintTokens()).toEqual([paint]);
+    },
+  );
 
   /**
    * The ramp is `background-image`, a different tailwind-merge group from the
@@ -354,35 +383,51 @@ describe("ProgressBar · colour is a utility, not a shadowing token", () => {
    * because the end stop is a `color-mix` of the start and CSS cannot read the
    * element's own resolved `background-color`.
    */
-  const gradient: Array<[NonNullable<ComponentProps<typeof ProgressBar>["color"]>, string]> = [
-    [
-      "accent",
-      "progress-bar__fill progress-bar__fill--accent bg-accent progress-bar__fill--gradient bg-[linear-gradient(90deg,var(--C-ACCENT),var(--C-ACCENT-HOVER))]",
-    ],
+  const gradient: Array<
+    [NonNullable<ComponentProps<typeof ProgressBar>["color"]>, string, string]
+  > = [
+    ["accent", "bg-accent", "bg-[linear-gradient(90deg,var(--C-ACCENT),var(--C-ACCENT-HOVER))]"],
     [
       "success",
-      "progress-bar__fill progress-bar__fill--success bg-status-success progress-bar__fill--gradient bg-[linear-gradient(90deg,var(--C-STATUS-SUCCESS),color-mix(in_oklch,var(--C-STATUS-SUCCESS)_75%,var(--C-CANVAS)))]",
+      "bg-status-success",
+      "bg-[linear-gradient(90deg,var(--C-STATUS-SUCCESS),color-mix(in_oklch,var(--C-STATUS-SUCCESS)_75%,var(--C-CANVAS)))]",
     ],
     [
       "warning",
-      "progress-bar__fill progress-bar__fill--warning bg-status-warning progress-bar__fill--gradient bg-[linear-gradient(90deg,var(--C-STATUS-WARNING),color-mix(in_oklch,var(--C-STATUS-WARNING)_75%,var(--C-CANVAS)))]",
+      "bg-status-warning",
+      "bg-[linear-gradient(90deg,var(--C-STATUS-WARNING),color-mix(in_oklch,var(--C-STATUS-WARNING)_75%,var(--C-CANVAS)))]",
     ],
     [
       "error",
-      "progress-bar__fill progress-bar__fill--error bg-status-error progress-bar__fill--gradient bg-[linear-gradient(90deg,var(--C-STATUS-ERROR),color-mix(in_oklch,var(--C-STATUS-ERROR)_75%,var(--C-CANVAS)))]",
+      "bg-status-error",
+      "bg-[linear-gradient(90deg,var(--C-STATUS-ERROR),color-mix(in_oklch,var(--C-STATUS-ERROR)_75%,var(--C-CANVAS)))]",
     ],
   ];
 
-  it.each(gradient)("variant=gradient color=%s ramps from the colour to its mix", (color, expected) => {
-    render(<ProgressBar value={40} color={color} variant="gradient" aria-label="Upload" />);
-    expect(getFill().getAttribute("class")).toBe(expected);
-  });
+  it.each(gradient)(
+    "variant=gradient color=%s ramps from the colour to its mix",
+    (color, paint, ramp) => {
+      render(<ProgressBar value={40} color={color} variant="gradient" aria-label="Upload" />);
+      expect(fillTokens()).toContain("progress-bar__fill--gradient");
+      expect(paintTokens()).toEqual([paint, ramp]);
+    },
+  );
 
+  /**
+   * `striped` carries a texture of its own — a `repeating-linear-gradient(45deg`
+   * and the `bg-[length:…]` its keyframes scroll — which used to live in
+   * `ProgressBar.css`. What it must NOT carry is the `90deg` ramp, which belongs
+   * to `variant="gradient"` alone.
+   */
   it("only the gradient variant carries a ramp", () => {
     render(<ProgressBar value={40} color="success" variant="striped" aria-label="Upload" />);
-    expect(getFill().getAttribute("class")).toBe(
-      "progress-bar__fill progress-bar__fill--success bg-status-success progress-bar__fill--striped",
-    );
+    expect(fillTokens()).toContain("progress-bar__fill--striped");
+    expect(paintTokens()).toEqual([
+      "bg-status-success",
+      "bg-[repeating-linear-gradient(45deg,transparent,transparent_0.5rem,color-mix(in_oklch,var(--C-TEXT-ON-ACCENT)_15%,transparent)_0.5rem,color-mix(in_oklch,var(--C-TEXT-ON-ACCENT)_15%,transparent)_1rem)]",
+      "bg-[length:200%_100%]",
+    ]);
+    expect(paintTokens().filter((c) => c.includes("linear-gradient(90deg"))).toEqual([]);
   });
 
   /**
@@ -399,9 +444,10 @@ describe("ProgressBar · colour is a utility, not a shadowing token", () => {
         classNames={{ fill: "bg-status-info" }}
       />,
     );
-    expect(getFill().getAttribute("class")).toBe(
-      "progress-bar__fill progress-bar__fill--success bg-status-info",
+    expect(fillTokens()).toEqual(
+      expect.arrayContaining(["progress-bar__fill", "progress-bar__fill--success"]),
     );
+    expect(paintTokens()).toEqual(["bg-status-info"]);
   });
 
   it("a caller's classNames.fill beats the gradient ramp too", () => {

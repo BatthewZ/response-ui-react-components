@@ -213,28 +213,37 @@ Prefer a token where the change is a value — the whole control re-inks from th
 
 ## Theme tokens
 
-All of Pagination's own styling lives in `Pagination.css` and reads contract variables
-directly — there is not a single Tailwind utility in `Pagination.tsx`.
+Pagination paints in Tailwind utilities written in `Pagination.tsx`, each resolving to a
+contract variable. `Pagination.css` is down to one rule — `all: unset` on the page button —
+because a reset is the one shape that has to *lose* to a class you pass rather than beat it.
+Override a variable and every pager in the app re-tints at runtime, no rebuild; and because
+the utilities sit in `@layer utilities`, a `className` or `classNames` of your own beats
+every one of them.
 
-| Where                                    | Override                                          |
-| ---------------------------------------- | ------------------------------------------------- |
-| Page number and compact readout ink      | `--C-TEXT-SECONDARY`                              |
-| Page number hover                        | `--C-SURFACE-2` · `--C-TEXT-PRIMARY`              |
-| Current page fill · ink · weight         | `--C-ACCENT` · `--C-TEXT-ON-ACCENT` · `--Semibold-Weight` |
-| Page number focus ring                   | `--C-BORDER-FOCUS`                                |
-| Page number corners                      | `--RADIUS-SM`                                     |
-| Number and readout type                  | `--BodyText-2` · `--BodyText-2-line-height`       |
-| Ellipsis ink                             | `--C-TEXT-MUTED`                                  |
-| Row gap · number padding                 | `--R-SIZE-6`                                      |
-| Readout padding · touch row gap          | `--R-SIZE-5`                                      |
-| Hover and ink transition                 | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+| Where                                    | Utility                                                                       | Override                                          |
+| ---------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------- |
+| Page number and compact readout ink      | `text-fg-secondary`                                                           | `--C-TEXT-SECONDARY`                              |
+| Page number hover                        | `hover:bg-surface-2` · `hover:text-fg-primary`                                | `--C-SURFACE-2` · `--C-TEXT-PRIMARY`              |
+| Current page fill · ink · weight         | `bg-accent` · `text-fg-on-accent` · `font-semibold`                           | `--C-ACCENT` · `--C-TEXT-ON-ACCENT` · `--Semibold-Weight` |
+| Page number focus ring                   | `focus-visible:outline-border-focus`                                          | `--C-BORDER-FOCUS`                                |
+| Page number corners                      | `rounded-sm`                                                                  | `--RADIUS-SM`                                     |
+| Number and readout type                  | `text-body-2`                                                                 | `--BodyText-2` · `--BodyText-2-line-height`       |
+| Ellipsis ink · size                      | `text-fg-muted` · `text-[length:var(--BodyText-2)]`                           | `--C-TEXT-MUTED` · `--BodyText-2`                 |
+| Row gap · number padding                 | `gap-r6` · `px-r6`                                                            | `--R-SIZE-6`                                      |
+| Readout padding · touch row gap          | `px-r5` · `pointer-coarse:gap-r5`                                             | `--R-SIZE-5`                                      |
+| Hover and ink transition                 | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+
+The BEM class names (`.pagination__list`, `.pagination__page--current`, …) are all still
+emitted as **declaration-free markers**, so a consumer stylesheet, devtools and the
+Astro/Rails consumers of `response-ui-css` still have one name per part.
 
 **The arrows are not in that table.** They are [IconButton](icon-button.md)s and take their
 colour, radius, padding, and timing from
-[IconButton's own token set](icon-button.md#theme-tokens). The `pagination__nav` class
-Pagination puts on them does exactly one thing: raise `min-width`/`min-height` to `2.75rem`
-under `@media (pointer: coarse)`. On a mouse-driven device that class matches no rule at
-all. The same is true of the root `pagination` class — it is a bare hook for your own CSS;
+[IconButton's own token set](icon-button.md#theme-tokens). Beside `pagination__nav`,
+Pagination adds exactly one thing to them: `pointer-coarse:min-w-11 pointer-coarse:min-h-11`,
+raising the hit target to `2.75rem` under `@media (pointer: coarse)`. On a mouse-driven
+device those two classes match no rule at all. `pagination__nav` itself is now a
+declaration-free marker, as is the root `pagination` class — a bare hook for your own CSS;
 the `<ul>` inside it does all the layout.
 
 **How readable the current page is comes from your theme, not from here.** The fill is
@@ -253,21 +262,25 @@ re-check them against your values.
 
 **The numbers fade more slowly than the arrows beside them.** A number's hover transition
 runs on `--MOTION-DURATION-SHIFT` — 400ms by default, 250ms in `tech`, 600ms in `grimdark` —
-while the chevrons in the same row use IconButton's `--DURATION-FAST` at 100ms. `Pagination.css`
-does ship a `prefers-reduced-motion: reduce` block that kills its own transition — but the
-arrows also carry IconButton's `active:scale-95` press animation, which has no such guard,
-so reduced-motion users still get a shrink on pointer-down.
+while the chevrons in the same row use IconButton's `--DURATION-FAST` at 100ms. The number
+carries `motion-reduce:transition-none`, which kills its own transition — but the arrows also
+carry IconButton's `active:scale-95` press animation, which has no such guard, so
+reduced-motion users still get a shrink on pointer-down.
 
 **Responsive steps.** `--R-SIZE-5` goes `0.5rem → 0.75rem` at the 40rem breakpoint, so the
 compact readout's padding and the touch row gap widen on desktop; `--R-SIZE-6` sits on the
 same scale but holds at `0.25rem`, so the row gap and the number padding do not.
 `--BodyText-2` and `--Semibold-Weight` both step up at 40rem as well.
 
-**The geometry is hard literals, not contract variables.** The slot box (`2rem` min-width
-and height), its touch-device counterpart (`2.75rem`), the focus outline's 2px width and 2px
-offset, and the ellipsis letter-spacing are all fixed. So is `font-variant-numeric:
-tabular-nums` on the numbers, which is load-bearing: equal-width digits plus a constant slot
-count is what actually stops the row twitching as you page from 9 to 10.
+**The geometry is hard literals, not contract variables.** The slot box (`min-w-8 h-8`), its
+touch-device counterpart (`min-w-11 h-11`), the focus outline's 2px width and 2px offset, and
+the ellipsis letter-spacing are all fixed. So is `tabular-nums` on the numbers, which is
+load-bearing: equal-width digits plus a constant slot count is what actually stops the row
+twitching as you page from 9 to 10.
+
+**Hover is now `@media (hover: hover)`-gated**, because that is what Tailwind's `hover:`
+variant compiles to. A number no longer flashes its hover wash on a touch tap — the same
+behaviour the rest of this package has.
 
 ## Gotchas
 
