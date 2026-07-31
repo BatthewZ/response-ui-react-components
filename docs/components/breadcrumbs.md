@@ -24,13 +24,20 @@ and a plain `<span>` if you pass neither.
 
 | Part                    | Renders                    | Props                                                                                  |
 | ----------------------- | -------------------------- | -------------------------------------------------------------------------------------- |
-| `Breadcrumbs`           | `<nav>` around an `<ol>`   | `separator?: ReactNode` = `"/"` · `maxItems?: number` · `itemsBeforeCollapse?: number` = `1` · `itemsAfterCollapse?: number` = `1` · **required** `children` (+ all `nav` props) |
-| `Breadcrumbs.Item`      | `<li>`                     | `href?: string` · `current?: boolean` (+ all `li` props)                                |
-| `Breadcrumbs.Separator` | `<li role="presentation">` | — (all `li` props). Interleaved for you; render one yourself only to override a single gap — see [Gotchas](#gotchas). |
+| `Breadcrumbs`           | `<nav>` around an `<ol>`   | `separator?: ReactNode` = `"/"` · `maxItems?: number` · `itemsBeforeCollapse?: number` = `1` · `itemsAfterCollapse?: number` = `1` · `classNames?: { list?, ellipsis? }` — see [Slots](#slots) · **required** `children` (+ all `nav` props) |
+| `Breadcrumbs.Item`      | `<li>`                     | `href?: string` · `current?: boolean` · `classNames?: { current?, link?, text? }` — see [Slots](#slots) (+ all `li` props) |
+| `Breadcrumbs.Divider`   | `<li role="presentation">` | — (all `li` props). Interleaved for you; render one yourself only to override a single gap — see [Gotchas](#gotchas). |
 
 `className`, `id`, `aria-*` and `ref` pass through on all three — the root's `ref` is an
 `HTMLElement` on the `<nav>`, the parts' an `HTMLLIElement` on the `<li>`. The `<ol>` and
-the inner `<a>`/`<span>` take nothing you pass; see [Gotchas](#gotchas).
+the inner `<a>`/`<span>` take no props, but their **classes** are reachable through
+`classNames`; see [Slots](#slots).
+
+> **`Breadcrumbs.Divider` was `Breadcrumbs.Separator`.** Renamed because the package spends
+> one word on a rule between siblings — `DropdownMenu.Divider`, `ContextMenu.Divider` and the
+> top-level [Divider](divider.md) all used it already, and shipping a second word for one
+> concept is the defect the rename exists to remove. This is breaking: rename the call site.
+> The root's `separator` **prop** is unchanged — it is the glyph, not the element.
 
 ## Separators
 
@@ -129,6 +136,34 @@ This is the same one-time setup `AppShell.SidebarLink` and
 `usePathname` only to reset the ellipsis expansion on navigation — never to decide which
 crumb is current; see [Gotchas](#gotchas).
 
+## Slots
+
+`className` addresses the `<nav>` on the root and the `<li>` on a crumb. `classNames`
+addresses the elements neither of those reaches. Class strings only, and the keys are typed,
+so a misspelled one is a compile error rather than a prop that does nothing.
+
+| On                 | Slot       | Element                        | What it addresses                              |
+| ------------------ | ---------- | ------------------------------ | ---------------------------------------------- |
+| `Breadcrumbs`      | `list`     | `ol.breadcrumbs__list`         | the list itself — the flex row the crumbs sit in |
+| `Breadcrumbs`      | `ellipsis` | `button.breadcrumbs__ellipsis` | the "Show more breadcrumbs" control, present only while `maxItems` is collapsing the trail |
+| `Breadcrumbs.Item` | `current`  | `span.breadcrumbs__current`    | the end crumb, the one carrying `aria-current="page"` |
+| `Breadcrumbs.Item` | `link`     | `a.breadcrumbs__link`          | a crumb rendered with `href`                    |
+| `Breadcrumbs.Item` | `text`     | `span.breadcrumbs__text`       | a crumb with neither `href` nor `current`       |
+
+```tsx
+<Breadcrumbs classNames={{ list: "gap-r4" }}>
+  <Breadcrumbs.Item href="/" classNames={{ link: "no-underline" }}>Home</Breadcrumbs.Item>
+  <Breadcrumbs.Item current classNames={{ current: "font-semibold" }}>Acme</Breadcrumbs.Item>
+</Breadcrumbs>
+```
+
+A crumb renders exactly one of `current`/`link`/`text`, chosen from its own props, so each
+gets its own key rather than one that would silently move as a crumb becomes the last one.
+The rule between crumbs takes no slot — it is `Breadcrumbs.Divider`, with its own `className`.
+
+Prefer a token where the change is a value: the whole trail re-inks from the variables in
+[Theme tokens](#theme-tokens), which reaches every breadcrumb rather than one call site.
+
 ## Theme tokens
 
 Breadcrumbs uses **no Tailwind utilities** — every rule lives in `Breadcrumbs.css` and
@@ -193,22 +228,23 @@ letter-spacing are `em`-relative literals rather than contract variables, tracki
   the pathname is seen only through the crumb keys; and a trail whose crumbs carry no `key` of
   their own falls back to positional keys (`.0`, `.1`, …), which two same-length trails share.
   Key your crumbs and both cases are covered.
-- **Rendering `Breadcrumbs.Separator` yourself overrides one gap.** The root interleaves its
-  own separator between every pair of crumbs, and a `Breadcrumbs.Separator` you place is used
+- **Rendering `Breadcrumbs.Divider` yourself overrides one gap.** The root interleaves its
+  own separator between every pair of crumbs, and a `Breadcrumbs.Divider` you place is used
   *instead of* the automatic one for that gap rather than in addition to it — it is not
   counted as a crumb, so it does not push the trail toward `maxItems`, and it does not come
   out as three separators in a row. A separator with no crumb after it has no gap to sit in
   and is dropped; one that ends up next to the collapsed ellipsis loses to the root's, because
   the gap it was written for is hidden. To change *every* glyph, use the root's `separator`
   prop — this is for the one-off.
-- **The `<ol>` and the inner elements are unreachable.** Everything you pass lands on the
-  `<nav>` or on an `<li>`; nothing you can pass reaches the list itself or the `<a>`/`<span>`
-  inside a crumb. So there is no `role`, `className` or `data-*` on the `<ol>` (see
-  [Accessibility](#accessibility)) and no `target`, `rel` or `download` on a crumb's anchor.
-  The root's own `.breadcrumbs` class carries **no rules at all** — every declaration in
-  `Breadcrumbs.css` targets a `.breadcrumbs__*` descendant — so `className` on the root
-  positions the block but cannot restyle a crumb; use a descendant selector for that.
-- **Both sub-parts throw outside the root.** `Item` and `Separator` call the context hook
+- **The `<ol>` and the inner elements take no *props*, and that half still holds.** Everything
+  you pass lands on the `<nav>` or on an `<li>`, so there is still no `role` or `data-*` on the
+  `<ol>` (see [Accessibility](#accessibility)) and no `target`, `rel` or `download` on a
+  crumb's anchor. **The class half is now answered:** `classNames` reaches the `<ol>`, the
+  expand control, and each of the three shapes a crumb's inner element takes — see
+  [Slots](#slots). The root's own `.breadcrumbs` class still carries **no rules at all** —
+  every declaration in `Breadcrumbs.css` targets a `.breadcrumbs__*` descendant — so
+  `className` on the root positions the block and a slot restyles the part.
+- **Both sub-parts throw outside the root.** `Item` and `Divider` call the context hook
   and throw `"Breadcrumbs compound components must be used within <Breadcrumbs>"`. Neither
   actually *uses* what the context carries — the check is the whole point of it — so wrapping
   them in your own components is fine as long as the root is somewhere above.

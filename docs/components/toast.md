@@ -44,9 +44,11 @@ Three exports, and they are the whole API.
 | `dismissLabel` | `string` — accessible name of the dismiss button | `"Dismiss"` |
 | `duration` | `number` (ms; `0` disables auto-dismiss)      | `5000`   |
 
-`ToastProvider` takes **`children` and nothing else**. Corner, stack limit, gap, width, and
-the default duration are all fixed in the source; there is no prop, no context override, and
-no `className` to reach them.
+`ToastProvider` takes `children` and **one** other prop, `classNames` — see
+[Slots](#slots). It still has no `className`: it renders `children` untouched beside a
+portalled stack, so there is no outermost element for one to land on. Corner, gap and width
+live on that stack and `classNames.list` reaches them. Stack limit and the default duration
+are still fixed in the source, with no prop and no context override.
 
 `Toast` itself is exported too, for when you want the surface without the queue — see
 [Rendering a Toast yourself](#rendering-a-toast-yourself).
@@ -206,6 +208,7 @@ You own placement, the exit animation flag, and removal.
 | `dismissLabel` | `string` — accessible name of the dismiss button   | `"Dismiss"` |
 | `dismissing` | `boolean` — swaps the slide-in animation for slide-out | `false`  |
 | `className`  | `string`                                             | —        |
+| `classNames` | `{ icon?, body?, title?, dismiss? }` — see [Slots](#slots) | —   |
 | `ref`        | `Ref<HTMLDivElement>`                                | —        |
 | …rest        | props of `div`, minus `title`                        | —        |
 
@@ -239,6 +242,41 @@ the message explains a region of the page, must survive a glance away, or has to
 while the user acts on it — a validation summary, a quota warning, a failed payment with a
 retry. Anything the user *must not miss* belongs in neither: five seconds with no pause on
 hover is not a delivery guarantee.
+
+## Slots
+
+Two components carry slots. `ToastProvider` owns the stack; `Toast` owns the card's parts.
+Class strings only, and the keys are typed, so a misspelled one is a compile error rather
+than a prop that does nothing.
+
+| On              | Slot      | Element                              | What it addresses                       |
+| --------------- | --------- | ------------------------------------ | --------------------------------------- |
+| `ToastProvider` | `list`    | the portalled `aria-live` container  | where the stack sits, and how it stacks  |
+| `Toast`         | `icon`    | the severity glyph's first-line box  | the box, not the glyph — the glyph is the `statusIcon` prop |
+| `Toast`         | `body`    | the message column                   | the `flex-1` column holding title and message |
+| `Toast`         | `title`   | the `<p>` carrying `title`           | the title line, when `title` is set      |
+| `Toast`         | `dismiss` | the dismiss `IconButton`             | the ✕ control                            |
+
+```tsx
+<ToastProvider classNames={{ list: "top-r4 bottom-auto right-auto left-r4" }}>
+  <App />
+</ToastProvider>
+```
+
+**`classNames.list` is the route to moving the stack**, which nothing else reached. Its
+`aria-live` and its always-mounted lifetime are not negotiable and no slot touches them: a
+live region inserted with its message already inside it is not announced, which is the whole
+reason the container exists separately from the toasts.
+
+**The visually-hidden severity word takes no slot.** `sr-only` *is* its mechanism — the tint
+is the visible channel and the word is the spoken one — so a route there would print "Error"
+above the caller's own error text. Its wording is the `statusLabel` prop.
+
+`Toast.classNames.dismiss` is a class slot rather than a props bag, even though the target is
+an [IconButton](icon-button.md): the button already carries this component's own classes (the
+tint that keeps its hover off a neutral surface), so there is a base class to merge with, and
+a bag would additionally hand a caller the `onClick` the toast owns. The glyph inside it keeps
+its neutral ink for the contrast reason recorded under [Accessibility](#accessibility).
 
 ## Theme tokens
 

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
+  type ComponentProps,
   createRef,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -590,5 +591,97 @@ describe("Accordion · headings, mode and id safety", () => {
     expect(content).not.toBeNull();
     expect(content).toHaveAttribute("aria-labelledby", trigger.id);
     expect(trigger.id).not.toMatch(/\s/);
+  });
+});
+
+describe("Accordion · classNames slots", () => {
+  type TriggerSlots = ComponentProps<typeof Accordion.Trigger>["classNames"];
+
+  function renderTrigger(classNames?: TriggerSlots) {
+    return render(
+      <Accordion>
+        <Accordion.Item value="a">
+          <Accordion.Trigger classNames={classNames}>Section</Accordion.Trigger>
+          <Accordion.Content>Body</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+  }
+
+  /**
+   * One slot-override test per slot, and each is the falsifier for its own
+   * merge: delete that element's `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.heading on the heading wrapper, beside the base class", () => {
+    const { container } = renderTrigger({ heading: "mb-0" });
+    const heading = container.querySelector(".accordion-heading");
+    expect(heading?.getAttribute("class")).toContain("accordion-heading");
+    expect(heading?.getAttribute("class")).toContain("mb-0");
+  });
+
+  it("lands classNames.triggerText on the label span, beside the base class", () => {
+    const { container } = renderTrigger({ triggerText: "font-bold" });
+    const text = container.querySelector(".accordion-trigger-text");
+    expect(text?.getAttribute("class")).toContain("accordion-trigger-text");
+    expect(text?.getAttribute("class")).toContain("font-bold");
+  });
+
+  it("lands classNames.chevron on the glyph, beside the base class", () => {
+    const { container } = renderTrigger({ chevron: "text-fg-muted" });
+    const chevron = container.querySelector(".accordion-chevron");
+    expect(chevron?.getAttribute("class")).toContain("accordion-chevron");
+    expect(chevron?.getAttribute("class")).toContain("text-fg-muted");
+  });
+
+  it("leaves each internal on its base class alone when no slot is passed", () => {
+    const { container } = renderTrigger();
+    expect(container.querySelector(".accordion-heading")?.getAttribute("class")).toBe(
+      "accordion-heading",
+    );
+    expect(container.querySelector(".accordion-trigger-text")?.getAttribute("class")).toBe(
+      "accordion-trigger-text",
+    );
+    expect(container.querySelector(".accordion-chevron")?.getAttribute("class")).toBe(
+      "accordion-chevron",
+    );
+  });
+
+  it("does not put a slot class on the button, which className still addresses", () => {
+    const { container } = renderTrigger({
+      heading: "mb-0",
+      triggerText: "font-bold",
+      chevron: "text-fg-muted",
+    });
+    expect(container.querySelector(".accordion-trigger")?.getAttribute("class")).toBe(
+      "accordion-trigger",
+    );
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = render(
+      <Accordion>
+        <Accordion.Item value="a">
+          <Accordion.Trigger
+            // @ts-expect-error — the button is `className`, not a slot.
+            classNames={{ trigger: "font-bold" }}
+          >
+            Section
+          </Accordion.Trigger>
+        </Accordion.Item>
+      </Accordion>,
+    );
+    expect(container.querySelector(".accordion-trigger")?.getAttribute("class")).toBe(
+      "accordion-trigger",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = renderTrigger({ chevron: "text-fg-muted" });
+    expect(container.querySelector(".accordion-trigger")?.hasAttribute("classnames")).toBe(false);
+    expect(container.querySelector(".accordion-heading")?.hasAttribute("classnames")).toBe(false);
   });
 });

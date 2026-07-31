@@ -195,3 +195,119 @@ describe("ActivityFeed", () => {
     expect(row.dataset.highlight).toBe("false");
   });
 });
+
+describe("ActivityFeed · classNames slots", () => {
+  type ItemSlots = NonNullable<
+    React.ComponentProps<typeof ActivityFeed.Item>["classNames"]
+  >;
+
+  function renderItem(classNames?: ItemSlots) {
+    return render(
+      <ActivityFeed>
+        <ActivityFeed.Item
+          actor="Ada"
+          action="merged"
+          target="#12"
+          timestamp="2h"
+          classNames={classNames}
+        >
+          detail
+        </ActivityFeed.Item>
+      </ActivityFeed>,
+    );
+  }
+
+  /**
+   * One slot-override test per slot, and each is the falsifier for its own
+   * merge: delete that element's `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.sentence on the sentence row, beside the base class", () => {
+    const { container } = renderItem({ sentence: "gap-r4" });
+    const sentence = container.querySelector(".activity-feed-sentence");
+    expect(sentence?.getAttribute("class")).toContain("activity-feed-sentence");
+    expect(sentence?.getAttribute("class")).toContain("gap-r4");
+  });
+
+  it("lands classNames.actor on the actor span, beside the base class", () => {
+    const { container } = renderItem({ actor: "font-bold" });
+    const actor = container.querySelector(".activity-feed-actor");
+    expect(actor?.getAttribute("class")).toContain("activity-feed-actor");
+    expect(actor?.getAttribute("class")).toContain("font-bold");
+  });
+
+  it("lands classNames.action on the action span, beside the base class", () => {
+    const { container } = renderItem({ action: "italic" });
+    const action = container.querySelector(".activity-feed-action");
+    expect(action?.getAttribute("class")).toContain("activity-feed-action");
+    expect(action?.getAttribute("class")).toContain("italic");
+  });
+
+  it("lands classNames.target on the target span, beside the base class", () => {
+    const { container } = renderItem({ target: "underline" });
+    const target = container.querySelector(".activity-feed-target");
+    expect(target?.getAttribute("class")).toContain("activity-feed-target");
+    expect(target?.getAttribute("class")).toContain("underline");
+  });
+
+  it("lands classNames.timestamp on the timestamp, beside the base class", () => {
+    const { container } = renderItem({ timestamp: "tabular-nums" });
+    const timestamp = container.querySelector(".activity-feed-timestamp");
+    expect(timestamp?.getAttribute("class")).toContain("activity-feed-timestamp");
+    expect(timestamp?.getAttribute("class")).toContain("tabular-nums");
+  });
+
+  it("lands classNames.body on the detail block, beside the base class", () => {
+    const { container } = renderItem({ body: "text-body-3" });
+    const body = container.querySelector(".activity-feed-body");
+    expect(body?.getAttribute("class")).toContain("activity-feed-body");
+    expect(body?.getAttribute("class")).toContain("text-body-3");
+  });
+
+  it("leaves each internal on its base class alone when no slot is passed", () => {
+    const { container } = renderItem();
+    for (const stem of ["sentence", "actor", "action", "target", "timestamp", "body"]) {
+      expect(container.querySelector(`.activity-feed-${stem}`)?.getAttribute("class")).toBe(
+        `activity-feed-${stem}`,
+      );
+    }
+  });
+
+  it("does not put a slot class on the row", () => {
+    const { container } = renderItem({
+      sentence: "gap-r4",
+      actor: "font-bold",
+      action: "italic",
+      target: "underline",
+      timestamp: "tabular-nums",
+      body: "text-body-3",
+    });
+    expect(container.querySelector(".activity-feed-item")?.getAttribute("class")).toBe(
+      "activity-feed-item",
+    );
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = render(
+      <ActivityFeed>
+        <ActivityFeed.Item
+          actor="Ada"
+          // @ts-expect-error — `dot` is reserved and granted to no component;
+          // the marker's route is `--activity-feed-highlight-*`.
+          classNames={{ dot: "bg-chart-1" }}
+        />
+      </ActivityFeed>,
+    );
+    expect(container.querySelector(".activity-feed-dot")?.getAttribute("class")).toBe(
+      "activity-feed-dot",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = renderItem({ body: "text-body-3" });
+    expect(container.querySelector(".activity-feed-item")?.hasAttribute("classnames")).toBe(false);
+  });
+});

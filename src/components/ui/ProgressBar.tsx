@@ -2,7 +2,7 @@
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
 /*  ProgressBar (root)                                                 */
@@ -37,6 +37,16 @@ type ProgressBarOwnProps = {
    * because it names no status.
    */
   statusLabel?: string;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * track, and `.Label`/`.Value` are the bar's siblings with their own
+   * `className`, so the fill is the only element left with no route.
+   *
+   * Its `width` is the percentage and is written as inline style every render,
+   * so a class here changes the paint and never the reading. Prefer
+   * `--progress-bar-fill` / `-fill-end` where the change is a colour.
+   */
+  classNames?: SlotClassNames<"fill">;
 };
 
 type ProgressBarRootProps = ProgressBarOwnProps &
@@ -83,6 +93,7 @@ const ProgressBarRoot = forwardRef<HTMLDivElement, ProgressBarRootProps>(functio
     animate = true,
     statusLabel,
     className,
+    classNames,
     ...props
   },
   ref
@@ -127,7 +138,8 @@ const ProgressBarRoot = forwardRef<HTMLDivElement, ProgressBarRootProps>(functio
           "progress-bar__fill",
           colorClass[color],
           variantFillClass[variant],
-          !shouldAnimate && "progress-bar__fill--no-animate"
+          !shouldAnimate && "progress-bar__fill--no-animate",
+          classNames?.fill
         )}
         style={{ width: `${percentage}%` }}
       />

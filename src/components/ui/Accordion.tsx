@@ -12,7 +12,7 @@ import {
 
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { composeEventHandlers } from "../../util/merge-props";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                            */
@@ -170,10 +170,21 @@ const AccordionItem = forwardRef<HTMLDivElement, AccordionItemProps>(function Ac
 /*  Accordion.Trigger                                                  */
 /* ------------------------------------------------------------------ */
 
-type AccordionTriggerProps = ComponentPropsWithRef<"button">;
+type AccordionTriggerProps = {
+  /**
+   * Class overrides for the parts around the button. `className` and `ref` stay
+   * on the `<button>` — it is the control, the `querySelector` target for arrow
+   * navigation, and what every existing caller addresses — so these reach the
+   * heading it has to sit inside and the two spans it wraps.
+   */
+  classNames?: SlotClassNames<"heading" | "triggerText" | "chevron">;
+} & ComponentPropsWithRef<"button">;
 
 const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
-  function AccordionTrigger({ className, children, onClick, onKeyDown, ...props }, ref) {
+  function AccordionTrigger(
+    { className, classNames, children, onClick, onKeyDown, ...props },
+    ref,
+  ) {
     const { toggle, headingLevel } = useAccordionContext();
     const { value, isOpen, disabled, triggerId, contentId } = useItemContext();
     const Heading = `h${headingLevel}` as const;
@@ -221,7 +232,7 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
       // The trigger has to sit inside a heading or heading navigation skips
       // every section. The wrapper is presentation-only — `.accordion-heading`
       // strips the UA's own font and spacing.
-      <Heading className="accordion-heading">
+      <Heading className={cn("accordion-heading", classNames?.heading)}>
       <button
         ref={ref}
         id={triggerId}
@@ -234,9 +245,9 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
         onKeyDown={composeEventHandlers(onKeyDown, handleKeyDown)}
         {...props}
       >
-        <span className="accordion-trigger-text">{children}</span>
+        <span className={cn("accordion-trigger-text", classNames?.triggerText)}>{children}</span>
         <svg
-          className="accordion-chevron"
+          className={cn("accordion-chevron", classNames?.chevron)}
           width="16"
           height="16"
           viewBox="0 0 16 16"
@@ -280,7 +291,15 @@ const AccordionContent = forwardRef<HTMLDivElement, AccordionContentProps>(
         className={cn("accordion-content", className)}
         {...props}
       >
-        <div className="accordion-content-inner">{children}</div>
+        <div
+          // slot:(a) the clipper, and the class is the whole of it: the outer
+          // box animates `grid-template-rows` and this one only sets
+          // `overflow: hidden`. Varying that is not a restyle — it is the open
+          // and close transition stopping working.
+          className="accordion-content-inner"
+        >
+          {children}
+        </div>
       </div>
     );
   }

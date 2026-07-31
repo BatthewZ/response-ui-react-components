@@ -522,3 +522,74 @@ describe("mode lock", () => {
     expect(screen.queryByText("Panel One Content")).not.toBeInTheDocument();
   });
 });
+
+describe("Tabs · classNames slots", () => {
+  function renderList(classNames?: { indicator?: string }) {
+    return render(
+      <Tabs defaultValue="one">
+        <Tabs.List classNames={classNames}>
+          <Tabs.Tab value="one">One</Tabs.Tab>
+          <Tabs.Tab value="two">Two</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="one">First</Tabs.Panel>
+      </Tabs>,
+    );
+  }
+
+  /**
+   * The slot-override test, and the falsifier for its merge: delete the
+   * indicator's `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.indicator on the marker, beside the base and variant classes", () => {
+    const { container } = render(
+      <Tabs defaultValue="one" variant="pill">
+        <Tabs.List classNames={{ indicator: "bg-chart-1" }}>
+          <Tabs.Tab value="one">One</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>,
+    );
+    const indicator = container.querySelector(".tabs-indicator");
+    expect(indicator?.getAttribute("class")).toContain("tabs-indicator");
+    expect(indicator?.getAttribute("class")).toContain("tabs-indicator--pill");
+    expect(indicator?.getAttribute("class")).toContain("bg-chart-1");
+  });
+
+  it("leaves the indicator on its base classes alone when no slot is passed", () => {
+    const { container } = renderList();
+    expect(container.querySelector(".tabs-indicator")?.getAttribute("class")).toBe(
+      "tabs-indicator tabs-indicator--underline",
+    );
+  });
+
+  it("does not put the slot class on the list", () => {
+    const { container } = renderList({ indicator: "bg-chart-1" });
+    expect(container.querySelector(".tabs-list")?.getAttribute("class")).toBe(
+      "tabs-list tabs-list--underline",
+    );
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = render(
+      <Tabs defaultValue="one">
+        <Tabs.List
+          // @ts-expect-error — `Tabs.Tab` reaches each tab; there is no `tab` slot.
+          classNames={{ tab: "font-bold" }}
+        >
+          <Tabs.Tab value="one">One</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>,
+    );
+    expect(container.querySelector(".tabs-indicator")?.getAttribute("class")).toBe(
+      "tabs-indicator tabs-indicator--underline",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = renderList({ indicator: "bg-chart-1" });
+    expect(container.querySelector(".tabs-list")?.hasAttribute("classnames")).toBe(false);
+  });
+});

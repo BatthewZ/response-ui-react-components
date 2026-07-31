@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { useLink, usePathname } from "../router/router-adapter";
 
@@ -32,6 +32,15 @@ type BreadcrumbsProps = {
   maxItems?: number;
   itemsBeforeCollapse?: number;
   itemsAfterCollapse?: number;
+  /**
+   * Class overrides for the two elements the root renders itself. `className` is
+   * the `<nav>`; the crumbs and the rules between them are `Breadcrumbs.Item`
+   * and `Breadcrumbs.Divider`, which carry their own `className`.
+   *
+   * `ellipsis` is the expand control, which only exists while `maxItems` is
+   * collapsing the trail — a class on it is silent, not wrong, when it is not.
+   */
+  classNames?: SlotClassNames<"list" | "ellipsis">;
 } & Omit<ComponentPropsWithRef<"nav">, "children"> & { children: ReactNode };
 
 const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
@@ -42,6 +51,7 @@ const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
       itemsBeforeCollapse = 1,
       itemsAfterCollapse = 1,
       className,
+      classNames,
       children,
       ...props
     },
@@ -50,7 +60,7 @@ const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
     const pathname = usePathname();
     const childArray = Children.toArray(children);
 
-    // #146: a caller-rendered `Breadcrumbs.Separator` is a per-gap override of
+    // #146: a caller-rendered `Breadcrumbs.Divider` is a per-gap override of
     // the root's own, not another crumb. Pairing it with the crumb it precedes
     // is what makes the exported sub-part usable: the root no longer wraps it
     // in two more separators (`/ › /`), and the collapse arithmetic below
@@ -59,7 +69,7 @@ const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
     const crumbs: { node: ReactNode; separator?: ReactNode }[] = [];
     let pendingSeparator: ReactNode | undefined;
     for (const child of childArray) {
-      if (isValidElement(child) && child.type === BreadcrumbsSeparator) {
+      if (isValidElement(child) && child.type === BreadcrumbsDivider) {
         pendingSeparator = child;
         continue;
       }
@@ -101,10 +111,18 @@ const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
         ...crumbs.slice(0, headCount),
         {
           node: (
-            <li key="__ellipsis" className="breadcrumbs__item">
+            <li
+              key="__ellipsis"
+              // slot:(a) the list-item shell the expand control sits in. It
+              // carries the same layout hook every crumb does, and the crumb's
+              // is reached by `Breadcrumbs.Item`'s own `className` — a second
+              // key spelled `item` here would be that subcomponent's word for
+              // an element it does not render.
+              className="breadcrumbs__item"
+            >
               <button
                 type="button"
-                className="breadcrumbs__ellipsis"
+                className={cn("breadcrumbs__ellipsis", classNames?.ellipsis)}
                 aria-label="Show more breadcrumbs"
                 onClick={() => setExpandedTrail(trailId)}
               >
@@ -127,9 +145,9 @@ const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
       if (i > 0) {
         withSeparators.push(
           own ?? (
-            <BreadcrumbsSeparator key={`sep-${i}`}>
+            <BreadcrumbsDivider key={`sep-${i}`}>
               {separator}
-            </BreadcrumbsSeparator>
+            </BreadcrumbsDivider>
           ),
         );
       }
@@ -147,7 +165,7 @@ const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
           {/* `role="list"` restores what `list-style: none` drops in Safari +
               VoiceOver. Set here because rest props land on the <nav>, so a
               caller has no way to put it back (#145). */}
-          <ol role="list" className="breadcrumbs__list">
+          <ol role="list" className={cn("breadcrumbs__list", classNames?.list)}>
             {withSeparators}
           </ol>
         </nav>
@@ -160,36 +178,42 @@ const BreadcrumbsRoot = forwardRef<HTMLElement, BreadcrumbsProps>(
 type BreadcrumbsItemProps = {
   href?: string;
   current?: boolean;
+  /**
+   * Class overrides for the crumb's inner element. `className` is the `<li>`,
+   * and which of the three renders inside it is decided here from `current` and
+   * `href`, so each gets its own key rather than one that would silently move.
+   */
+  classNames?: SlotClassNames<"current" | "link" | "text">;
 } & ComponentPropsWithRef<"li">;
 
 const BreadcrumbsItem = forwardRef<HTMLLIElement, BreadcrumbsItemProps>(
-  function BreadcrumbsItem({ href, current, className, children, ...props }, ref) {
+  function BreadcrumbsItem({ href, current, className, classNames, children, ...props }, ref) {
     useBreadcrumbsContext();
     const Link = useLink();
 
     return (
       <li ref={ref} className={cn("breadcrumbs__item", className)} {...props}>
         {current ? (
-          <span className="breadcrumbs__current" aria-current="page">
+          <span className={cn("breadcrumbs__current", classNames?.current)} aria-current="page">
             {children}
           </span>
         ) : href ? (
-          <Link to={href} className="breadcrumbs__link">
+          <Link to={href} className={cn("breadcrumbs__link", classNames?.link)}>
             {children}
           </Link>
         ) : (
-          <span className="breadcrumbs__text">{children}</span>
+          <span className={cn("breadcrumbs__text", classNames?.text)}>{children}</span>
         )}
       </li>
     );
   },
 );
 
-// Separator
-type BreadcrumbsSeparatorProps = ComponentPropsWithRef<"li">;
+// Divider
+type BreadcrumbsDividerProps = ComponentPropsWithRef<"li">;
 
-const BreadcrumbsSeparator = forwardRef<HTMLLIElement, BreadcrumbsSeparatorProps>(
-  function BreadcrumbsSeparator({ className, children, ...props }, ref) {
+const BreadcrumbsDivider = forwardRef<HTMLLIElement, BreadcrumbsDividerProps>(
+  function BreadcrumbsDivider({ className, children, ...props }, ref) {
     useBreadcrumbsContext();
 
     return (
@@ -207,5 +231,5 @@ const BreadcrumbsSeparator = forwardRef<HTMLLIElement, BreadcrumbsSeparatorProps
 
 export const Breadcrumbs = Object.assign(BreadcrumbsRoot, {
   Item: BreadcrumbsItem,
-  Separator: BreadcrumbsSeparator,
+  Divider: BreadcrumbsDivider,
 });

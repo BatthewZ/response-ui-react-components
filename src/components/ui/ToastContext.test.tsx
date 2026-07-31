@@ -322,3 +322,67 @@ describe("#476 · dismiss label through the queue", () => {
   });
 });
 
+describe("ToastProvider · classNames slots", () => {
+  const stack = () => document.querySelector<HTMLElement>('[aria-live="polite"]');
+
+  /**
+   * The slot-override test, and the falsifier for its merge: delete the
+   * container's `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.list on the stack, beside the base classes", () => {
+    render(
+      <ToastProvider classNames={{ list: "top-r4 bottom-auto" }}>
+        <div />
+      </ToastProvider>,
+    );
+    expect(stack()?.getAttribute("class")).toContain("flex-col");
+    expect(stack()?.getAttribute("class")).toContain("top-r4");
+  });
+
+  it("leaves the stack on its base classes alone when no slot is passed", () => {
+    render(
+      <ToastProvider>
+        <div />
+      </ToastProvider>,
+    );
+    expect(stack()?.getAttribute("class")).toBe(
+      "fixed bottom-r4 right-r4 z-50 flex flex-col gap-r5 pointer-events-none",
+    );
+  });
+
+  it("keeps the live region's semantics whatever the slot says", () => {
+    render(
+      <ToastProvider classNames={{ list: "top-r4" }}>
+        <div />
+      </ToastProvider>,
+    );
+    expect(stack()).toHaveAttribute("aria-live", "polite");
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    render(
+      // @ts-expect-error — each toast is a `Toast` with its own `classNames`;
+      // the provider only owns the stack.
+      <ToastProvider classNames={{ toast: "w-96" }}>
+        <div />
+      </ToastProvider>,
+    );
+    expect(stack()?.getAttribute("class")).toBe(
+      "fixed bottom-r4 right-r4 z-50 flex flex-col gap-r5 pointer-events-none",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    render(
+      <ToastProvider classNames={{ list: "top-r4" }}>
+        <div />
+      </ToastProvider>,
+    );
+    expect(stack()?.hasAttribute("classnames")).toBe(false);
+  });
+});
+

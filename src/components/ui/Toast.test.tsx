@@ -341,3 +341,90 @@ describe("Toast · severity is visible without colour", () => {
     expect(icon(screen.getByRole("alert"))).toBeNull();
   });
 });
+
+describe("Toast · classNames slots", () => {
+  type ToastSlots = NonNullable<React.ComponentProps<typeof Toast>["classNames"]>;
+
+  function renderToast(classNames?: ToastSlots) {
+    return render(
+      <Toast title="Saved" onDismiss={vi.fn()} classNames={classNames}>
+        All good
+      </Toast>,
+    );
+  }
+
+  /**
+   * One slot-override test per slot, and each is the falsifier for its own
+   * merge: delete that element's `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.icon on the glyph's first-line box, beside the base classes", () => {
+    const { container } = renderToast({ icon: "self-center" });
+    const box = container.querySelector("span.self-center");
+    expect(box?.getAttribute("class")).toContain("h-[1lh]");
+    expect(box?.getAttribute("class")).toContain("self-center");
+  });
+
+  it("lands classNames.body on the message column, beside the base classes", () => {
+    const { container } = renderToast({ body: "text-body-3" });
+    const body = container.querySelector("div.flex-1");
+    expect(body?.getAttribute("class")).toContain("min-w-0");
+    expect(body?.getAttribute("class")).toContain("text-body-3");
+  });
+
+  it("lands classNames.title on the title line, beside the base class", () => {
+    const { container } = renderToast({ title: "text-heading-5" });
+    const title = container.querySelector("p.text-heading-5");
+    expect(title?.getAttribute("class")).toContain("font-semibold");
+    expect(title?.textContent).toBe("Saved");
+  });
+
+  it("lands classNames.dismiss on the dismiss button, beside the base classes", () => {
+    renderToast({ dismiss: "italic" });
+    const button = screen.getByRole("button", { name: "Dismiss" });
+    expect(button.className).toContain("shrink-0");
+    expect(button.className).toContain("italic");
+  });
+
+  it("leaves each internal on its base classes alone when no slot is passed", () => {
+    const { container } = renderToast();
+    expect(container.querySelector("div.flex-1")?.getAttribute("class")).toBe("flex-1 min-w-0");
+    expect(container.querySelector("p.font-semibold")?.getAttribute("class")).toBe("font-semibold");
+    expect(screen.getByRole("button", { name: "Dismiss" }).className).not.toContain("italic");
+  });
+
+  it("does not put a slot class on the card", () => {
+    const { container } = renderToast({
+      icon: "self-center",
+      body: "text-body-3",
+      title: "text-heading-5",
+      dismiss: "italic",
+    });
+    const card = container.firstElementChild?.getAttribute("class") ?? "";
+    for (const slot of ["self-center", "text-body-3", "text-heading-5", "italic"]) {
+      expect(card).not.toContain(slot);
+    }
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = render(
+      <Toast
+        onDismiss={vi.fn()}
+        // @ts-expect-error — the visually-hidden severity word is (a); `announcer`
+        // is a banned key.
+        classNames={{ announcer: "not-sr-only" }}
+      >
+        All good
+      </Toast>,
+    );
+    expect(container.querySelector("span.sr-only")?.getAttribute("class")).toBe("sr-only");
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = renderToast({ body: "text-body-3" });
+    expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+  });
+});

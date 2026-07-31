@@ -1,6 +1,6 @@
 import { type ComponentPropsWithRef, type CSSProperties, forwardRef } from "react";
 
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { CopyButton } from "./CopyButton";
 
 type CodeBlockProps = {
@@ -20,6 +20,19 @@ type CodeBlockProps = {
    * of the block. `className` is merged onto `code-block-copy`, not replacing it.
    */
   copyButtonProps?: Omit<ComponentPropsWithRef<typeof CopyButton>, "value">;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * root, so these reach the header row and the `<pre>`/`<code>` pair beneath it,
+   * none of which a caller can otherwise address. The copy button is not here —
+   * it is another component, so it takes the `copyButtonProps` bag above.
+   *
+   * `line` lands on **every** numbered line, since `showLineNumbers` generates
+   * them and no key can name one. The union is written out so an unknown key is a
+   * type error rather than a silently ignored one.
+   */
+  classNames?: SlotClassNames<
+    "header" | "filename" | "language" | "pre" | "code" | "line"
+  >;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 export const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(function CodeBlock(
@@ -31,6 +44,7 @@ export const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(function Cod
     copyable = true,
     copyButtonProps,
     className,
+    classNames,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
     ...props
@@ -66,9 +80,15 @@ export const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(function Cod
       {...props}
     >
       {showHeader && (
-        <div className="code-block-header">
-          {filename && <span className="code-block-filename">{filename}</span>}
-          {language && <span className="code-block-language">{language.toLowerCase()}</span>}
+        <div className={cn("code-block-header", classNames?.header)}>
+          {filename && (
+            <span className={cn("code-block-filename", classNames?.filename)}>{filename}</span>
+          )}
+          {language && (
+            <span className={cn("code-block-language", classNames?.language)}>
+              {language.toLowerCase()}
+            </span>
+          )}
           {copyable && (
             <CopyButton
               value={code}
@@ -82,17 +102,17 @@ export const CodeBlock = forwardRef<HTMLDivElement, CodeBlockProps>(function Cod
           be able to reach and scroll — a `tabIndex` from the call site lands on
           the `overflow: hidden` root and does nothing (WCAG 2.1.1, #148). */}
       <pre
-        className="code-block-pre"
+        className={cn("code-block-pre", classNames?.pre)}
         tabIndex={0}
         // Widen the gutter past its 2.5ch default once the line count needs
         // more, so line 100 no longer overflows the box into the padding and
         // eventually out of the block (#154).
         style={gutterWidth ? ({ "--_code-block-gutter": gutterWidth } as CSSProperties) : undefined}
       >
-        <code className="code-block-code">
+        <code className={cn("code-block-code", classNames?.code)}>
           {lines
             ? lines.map((line, index) => (
-                <span key={`${index}-${line}`} className="code-block-line">
+                <span key={`${index}-${line}`} className={cn("code-block-line", classNames?.line)}>
                   {line}
                 </span>
               ))

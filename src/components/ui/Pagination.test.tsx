@@ -330,3 +330,201 @@ describe("Pagination", () => {
     }
   });
 });
+
+describe("Pagination · classNames slots", () => {
+  const noop = () => {};
+
+  /**
+   * One slot-override test per slot, and each is the falsifier for its own
+   * merge: delete that element's `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.list on the <ul>, beside the base class", () => {
+    const { container } = render(
+      <Pagination page={2} totalPages={5} onPageChange={noop} classNames={{ list: "gap-r4" }} />,
+    );
+    const list = container.querySelector(".pagination__list");
+    expect(list?.getAttribute("class")).toContain("pagination__list");
+    expect(list?.getAttribute("class")).toContain("gap-r4");
+  });
+
+  it("lands classNames.first on the first-page control alone", () => {
+    render(
+      <Pagination
+        page={2}
+        totalPages={9}
+        onPageChange={noop}
+        showEdges
+        classNames={{ first: "rotate-180" }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "First page" }).className).toContain(
+      "pagination__nav",
+    );
+    expect(screen.getByRole("button", { name: "First page" }).className).toContain("rotate-180");
+    expect(screen.getByRole("button", { name: "Previous page" }).className).not.toContain(
+      "rotate-180",
+    );
+  });
+
+  it("lands classNames.prev on the previous-page control alone", () => {
+    render(
+      <Pagination
+        page={2}
+        totalPages={9}
+        onPageChange={noop}
+        showEdges
+        classNames={{ prev: "rotate-180" }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Previous page" }).className).toContain(
+      "pagination__nav",
+    );
+    expect(screen.getByRole("button", { name: "Previous page" }).className).toContain("rotate-180");
+    expect(screen.getByRole("button", { name: "First page" }).className).not.toContain("rotate-180");
+  });
+
+  it("lands classNames.next on the next-page control alone", () => {
+    render(
+      <Pagination
+        page={2}
+        totalPages={9}
+        onPageChange={noop}
+        showEdges
+        classNames={{ next: "rotate-180" }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Next page" }).className).toContain(
+      "pagination__nav",
+    );
+    expect(screen.getByRole("button", { name: "Next page" }).className).toContain("rotate-180");
+    expect(screen.getByRole("button", { name: "Last page" }).className).not.toContain("rotate-180");
+  });
+
+  it("lands classNames.last on the last-page control alone", () => {
+    render(
+      <Pagination
+        page={2}
+        totalPages={9}
+        onPageChange={noop}
+        showEdges
+        classNames={{ last: "rotate-180" }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Last page" }).className).toContain(
+      "pagination__nav",
+    );
+    expect(screen.getByRole("button", { name: "Last page" }).className).toContain("rotate-180");
+    expect(screen.getByRole("button", { name: "Next page" }).className).not.toContain("rotate-180");
+  });
+
+  it("lands classNames.page on every page button, beside the base class", () => {
+    const { container } = render(
+      <Pagination page={2} totalPages={5} onPageChange={noop} classNames={{ page: "rounded-md" }} />,
+    );
+    const pages = container.querySelectorAll(".pagination__page");
+    expect(pages).toHaveLength(5);
+    for (const button of pages) {
+      expect(button.getAttribute("class")).toContain("pagination__page");
+      expect(button.getAttribute("class")).toContain("rounded-md");
+    }
+  });
+
+  it("lands classNames.ellipsis on every gap marker, beside the base class", () => {
+    const { container } = render(
+      <Pagination
+        page={10}
+        totalPages={20}
+        onPageChange={noop}
+        classNames={{ ellipsis: "opacity-50" }}
+      />,
+    );
+    const gaps = container.querySelectorAll(".pagination__ellipsis");
+    expect(gaps).toHaveLength(2);
+    for (const gap of gaps) {
+      expect(gap.getAttribute("class")).toContain("pagination__ellipsis");
+      expect(gap.getAttribute("class")).toContain("opacity-50");
+    }
+  });
+
+  it("lands classNames.info on the compact readout, beside the base class", () => {
+    const { container } = render(
+      <Pagination
+        page={2}
+        totalPages={5}
+        onPageChange={noop}
+        variant="compact"
+        classNames={{ info: "tabular-nums" }}
+      />,
+    );
+    const info = container.querySelector(".pagination__info");
+    expect(info?.getAttribute("class")).toContain("pagination__info");
+    expect(info?.getAttribute("class")).toContain("tabular-nums");
+  });
+
+  it("leaves each internal on its base class alone when no slot is passed", () => {
+    const { container } = render(
+      <Pagination page={10} totalPages={20} onPageChange={noop} showEdges />,
+    );
+    expect(container.querySelector(".pagination__list")?.getAttribute("class")).toBe(
+      "pagination__list",
+    );
+    expect(container.querySelector(".pagination__ellipsis")?.getAttribute("class")).toBe(
+      "pagination__ellipsis",
+    );
+    expect(screen.getByRole("button", { name: "First page" }).className).toContain(
+      "pagination__nav",
+    );
+    expect(container.querySelector(".pagination__page")?.getAttribute("class")).toBe(
+      "pagination__page",
+    );
+  });
+
+  it("does not put a slot class on the root", () => {
+    const { container } = render(
+      <Pagination
+        page={10}
+        totalPages={20}
+        onPageChange={noop}
+        showEdges
+        classNames={{
+          list: "gap-r4",
+          first: "rotate-180",
+          prev: "rotate-180",
+          next: "rotate-180",
+          last: "rotate-180",
+          page: "rounded-md",
+          ellipsis: "opacity-50",
+          info: "tabular-nums",
+        }}
+      />,
+    );
+    expect(container.firstElementChild?.getAttribute("class")).toBe("pagination");
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = render(
+      <Pagination
+        page={2}
+        totalPages={5}
+        onPageChange={noop}
+        // @ts-expect-error — `nav` is banned: one class, four roles. The keys
+        // are `first`/`prev`/`next`/`last`.
+        classNames={{ nav: "rotate-180" }}
+      />,
+    );
+    expect(container.querySelector(".pagination__list")?.getAttribute("class")).toBe(
+      "pagination__list",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = render(
+      <Pagination page={2} totalPages={5} onPageChange={noop} classNames={{ list: "gap-r4" }} />,
+    );
+    expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+  });
+});

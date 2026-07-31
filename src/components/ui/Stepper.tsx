@@ -9,7 +9,7 @@ import {
 } from "react";
 import { Check } from "lucide-react";
 
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                            */
@@ -122,10 +122,23 @@ type StepProps = {
   title: string;
   description?: string;
   icon?: ReactNode;
+  /**
+   * Class overrides for the parts this step renders. `className` is the `<li>`,
+   * so these reach the marker, its text block and the rule that joins it to the
+   * next step — none of which a caller can otherwise address.
+   *
+   * `indicator` lands on the marker in both of its forms: a `<button>` where the
+   * step is clickable, a `<span>` where it is not. Which one renders is the
+   * root's `onStepClick`/`isStepClickable` decision, not the caller's, so one key
+   * has to cover both or the class disappears when a flow becomes navigable.
+   */
+  classNames?: SlotClassNames<
+    "indicator" | "itemBody" | "title" | "description" | "connector"
+  >;
 } & Omit<ComponentPropsWithRef<"li">, "title">;
 
 const Step = forwardRef<HTMLLIElement, StepProps>(function Step(
-  { title, description, icon, className, ...props },
+  { title, description, icon, className, classNames, ...props },
   ref,
 ) {
   const { activeStep, orientation, onStepClick, isStepClickable, statusLabels } =
@@ -166,25 +179,35 @@ const Step = forwardRef<HTMLLIElement, StepProps>(function Step(
       {clickable && onStepClick ? (
         <button
           type="button"
-          className="stepper-indicator"
+          className={cn("stepper-indicator", classNames?.indicator)}
           aria-label={indicatorLabel}
           onClick={() => onStepClick(index)}
         >
           {indicatorContent}
         </button>
       ) : (
-        <span className="stepper-indicator">
+        <span className={cn("stepper-indicator", classNames?.indicator)}>
           {indicatorContent}
-          {hiddenStatus && <span className="stepper-status">{hiddenStatus}</span>}
+          {hiddenStatus && (
+            <span
+              // slot:(a) the class *is* the visually-hidden mechanism, and
+              // `Stepper.css` hand-rolls the clip rather than using `sr-only`.
+              // A caller utility arriving here would out-rank that clip and
+              // print the status word beside the numeral.
+              className="stepper-status"
+            >
+              {hiddenStatus}
+            </span>
+          )}
         </span>
       )}
-      <span className="stepper-content">
-        <span className="stepper-title">{title}</span>
+      <span className={cn("stepper-content", classNames?.itemBody)}>
+        <span className={cn("stepper-title", classNames?.title)}>{title}</span>
         {description && (
-          <span className="stepper-description">{description}</span>
+          <span className={cn("stepper-description", classNames?.description)}>{description}</span>
         )}
       </span>
-      <span className="stepper-connector" aria-hidden="true" />
+      <span className={cn("stepper-connector", classNames?.connector)} aria-hidden="true" />
     </li>
   );
 });

@@ -11,6 +11,8 @@ import {
   useState,
 } from "react";
 
+import { cn, type SlotClassNames } from "../../util/style";
+
 import { Portal } from "./Portal";
 import { Toast, type ToastVariant } from "./Toast";
 
@@ -108,7 +110,23 @@ export function useToast(): ToastApi {
   return ctx;
 }
 
-export function ToastProvider({ children }: { children: ReactNode }) {
+type ToastProviderProps = {
+  children: ReactNode;
+  /**
+   * Class overrides for the stack this provider renders. It takes no
+   * `className`: the provider wraps the whole app and renders `children`
+   * untouched beside a portalled container, so there is no outermost element for
+   * one to land on.
+   *
+   * `list` is that container — the always-mounted live region every toast is
+   * inserted into. It positions the stack, so this is the route to moving toasts
+   * to another corner. Its `aria-live` and its mounting are not negotiable: a
+   * live region inserted with its message already inside is not announced.
+   */
+  classNames?: SlotClassNames<"list">;
+};
+
+export function ToastProvider({ children, classNames }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -209,7 +227,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <Portal>
         <div
           ref={containerRef}
-          className="fixed bottom-r4 right-r4 z-50 flex flex-col gap-r5 pointer-events-none"
+          className={cn(
+            "fixed bottom-r4 right-r4 z-50 flex flex-col gap-r5 pointer-events-none",
+            classNames?.list
+          )}
           // Mounted for the provider's whole life so a toast arrives as a change
           // *inside* an existing region — the only shape screen readers announce.
           aria-live="polite"

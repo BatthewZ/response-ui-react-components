@@ -18,7 +18,7 @@ import { useControllableState } from "../../hooks/use-controllable-state";
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { composeEventHandlers } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                            */
@@ -129,7 +129,18 @@ const TabsRoot = forwardRef<HTMLDivElement, TabsProps>(function Tabs(
 /*  Tabs.List                                                          */
 /* ------------------------------------------------------------------ */
 
-type TabsListProps = ComponentPropsWithRef<"div">;
+type TabsListProps = {
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * strip itself and `Tabs.Tab` reaches each tab, so the only element left is the
+   * marker sliding under the active tab — which nothing else can address.
+   *
+   * Its `transform` and `width` are measured from the active tab and written as
+   * inline style every layout, so a class here changes appearance and never
+   * position.
+   */
+  classNames?: SlotClassNames<"indicator">;
+} & ComponentPropsWithRef<"div">;
 
 const variantListClass: Record<Variant, string> = {
   underline: "tabs-list--underline",
@@ -144,7 +155,7 @@ const variantIndicatorClass: Record<Variant, string> = {
 };
 
 const TabsList = forwardRef<HTMLDivElement, TabsListProps>(function TabsList(
-  { className, children, ...props },
+  { className, classNames, children, ...props },
   forwardedRef
 ) {
   const { activeValue, variant, baseId } = useTabsContext();
@@ -212,7 +223,7 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(function TabsList(
     >
       {children}
       <span
-        className={cn("tabs-indicator", variantIndicatorClass[variant])}
+        className={cn("tabs-indicator", variantIndicatorClass[variant], classNames?.indicator)}
         style={indicatorStyle}
         aria-hidden="true"
       />

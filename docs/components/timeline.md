@@ -50,7 +50,7 @@ two items can no longer split the two apart.
 | Part            | Renders                                                              | Props                                                            |
 | --------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `Timeline`      | `<div class="timeline" data-align data-density data-card>`            | `align?` · `density?` · `card?` · `animate?` (+ all `div` props, all of which reach the DOM) |
-| `Timeline.Item` | `<div class="timeline-item" data-highlight?>`, through a scroll reveal when animating | `title` · `date?` · `icon?` · `highlight?` · `children?` — and see the passthrough gotcha |
+| `Timeline.Item` | `<div class="timeline-item" data-highlight?>`, through a scroll reveal when animating | `title` · `date?` · `icon?` · `highlight?` · `children?` · `classNames?` — and see the passthrough gotcha |
 
 ## Root props
 
@@ -219,6 +219,7 @@ this package's CSS is layered — see the gotchas.
 | `highlight` | `boolean` — champion this entry; emits `data-highlight="true"`         | `false` |
 | `children`  | `ReactNode` — the body block under the title; omitted when falsy      | —       |
 | `className` | `string` — merged after `timeline-item`; survives on **both** paths   | —       |
+| `classNames`| `{ icon?, card?, timestamp?, title?, body? }` — see [Slots](#slots)   | —       |
 | `ref`       | `Ref<HTMLDivElement>` — reaches the rendered element on both paths    | —       |
 | …rest       | `div` props **minus `title`** — reach the DOM on both paths            | —       |
 
@@ -414,6 +415,41 @@ of the items — `role="listitem"` survives the animating path too:
 </Timeline>
 ```
 <!-- /example -->
+
+## Slots
+
+`className` addresses the entry — the element the rail is drawn against and the reveal
+animates. `classNames` addresses the parts inside it. Class strings only, and the keys are
+typed, so a misspelled one is a compile error rather than a prop that does nothing.
+
+| Slot        | Element                    | What it addresses                                    |
+| ----------- | -------------------------- | ---------------------------------------------------- |
+| `icon`      | `span.timeline-icon`       | the marker puck, when `icon` is set — absent on a dot entry |
+| `card`      | `div.timeline-card`        | the entry's surface: its padding, border and background |
+| `timestamp` | `span.timeline-date`       | the date line above the title, when `date` is set     |
+| `title`     | the `titleAs` heading      | the heading itself, whatever level it renders at      |
+| `body`      | `div.timeline-body`        | the detail block under the title, when `children` is set |
+
+```tsx
+<Timeline.Item
+  date="12 March"
+  title="Order placed"
+  classNames={{ timestamp: "tabular-nums", card: "shadow-lg" }}
+>
+  Two items, express shipping.
+</Timeline.Item>
+```
+
+**The marker has no slot, and that is deliberate.** Its fill, ink and border are the three
+public custom properties documented under [Championing an entry](#championing-an-entry) —
+one write on the entry reaches every part of the marker, which is what a per-element class
+cannot do. Its ring *width* is private for the reason given there: a caller who could re-tint
+the disc without it would reduce the emphasis cue back to colour alone.
+
+`icon` is the exception, because the puck is also the glyph's container and a consumer sizing
+their own glyph has nothing else to reach. Setting a background on it re-tints the disc but
+not the highlight ring, which stays on the token pair — prefer the tokens when the change is
+a colour.
 
 ## Theme tokens
 

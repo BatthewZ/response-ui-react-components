@@ -241,3 +241,61 @@ describe("Wizard · completion, semantics and dead tab stops", () => {
     expect(screen.getByRole("button", { name: "Finish" })).toBeDisabled();
   });
 });
+
+describe("Wizard · classNames slots", () => {
+  /**
+   * One slot-override test per slot, and each is the falsifier for its own
+   * merge: delete that element's `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.body on the step panel, beside the base class", () => {
+    const { container } = render(<Wizard steps={STEPS} classNames={{ body: "min-h-40" }} />);
+    const body = container.querySelector(".wizard__content");
+    expect(body?.getAttribute("class")).toContain("wizard__content");
+    expect(body?.getAttribute("class")).toContain("min-h-40");
+  });
+
+  it("lands classNames.footer on the button row, beside the base class", () => {
+    const { container } = render(<Wizard steps={STEPS} classNames={{ footer: "justify-start" }} />);
+    const footer = container.querySelector(".wizard__footer");
+    expect(footer?.getAttribute("class")).toContain("wizard__footer");
+    expect(footer?.getAttribute("class")).toContain("justify-start");
+  });
+
+  it("leaves each internal on its base class alone when no slot is passed", () => {
+    const { container } = render(<Wizard steps={STEPS} />);
+    expect(container.querySelector(".wizard__content")?.getAttribute("class")).toBe(
+      "wizard__content",
+    );
+    expect(container.querySelector(".wizard__footer")?.getAttribute("class")).toBe("wizard__footer");
+  });
+
+  it("does not put a slot class on the root", () => {
+    const { container } = render(
+      <Wizard steps={STEPS} classNames={{ body: "min-h-40", footer: "justify-start" }} />,
+    );
+    expect(container.firstElementChild?.getAttribute("class")).toBe("wizard");
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = render(
+      <Wizard
+        steps={STEPS}
+        // @ts-expect-error — the header is a `Stepper` with its own surface, not
+        // a slot on `Wizard`.
+        classNames={{ stepper: "gap-r4" }}
+      />,
+    );
+    expect(container.querySelector(".wizard__content")?.getAttribute("class")).toBe(
+      "wizard__content",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = render(<Wizard steps={STEPS} classNames={{ body: "min-h-40" }} />);
+    expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+  });
+});

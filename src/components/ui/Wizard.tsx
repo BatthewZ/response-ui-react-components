@@ -10,7 +10,7 @@ import {
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { Button } from "./Button";
 import { Stepper } from "./Stepper";
@@ -128,6 +128,13 @@ export type WizardProps = {
   finishLabel?: string;
   className?: string;
   /**
+   * Class overrides for the two regions this component renders below the
+   * header. `className` is the root, and the header is a `Stepper` with its own
+   * documented surface, so these are the parts a caller cannot otherwise reach:
+   * the panel holding the active step's `content`, and the Back/Next row.
+   */
+  classNames?: SlotClassNames<"body" | "footer">;
+  /**
    * Not a Wizard prop — the change channel is `onStepChange`.
    *
    * Declared `never` rather than only `Omit`ted because a JSX spread performs no
@@ -157,6 +164,7 @@ export function Wizard({
   nextLabel = "Next",
   finishLabel = "Finish",
   className,
+  classNames,
   onChange: _onChange,
   ...props
 }: WizardProps) {
@@ -225,12 +233,12 @@ export function Wizard({
         role="group"
         aria-label={active?.title}
         tabIndex={-1}
-        className="wizard__content"
+        className={cn("wizard__content", classNames?.body)}
       >
         {active?.content}
       </div>
 
-      <div className="wizard__footer">
+      <div className={cn("wizard__footer", classNames?.footer)}>
         <Button
           type="button"
           variant="ghost"

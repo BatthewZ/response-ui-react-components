@@ -68,12 +68,36 @@ function fillFor(position: number, value: number): number {
   return 0;
 }
 
+// The four classes below implement one mechanism between them: a full-opacity
+// glyph clipped to `fill * 100%` by an overlay stacked on a base glyph. The
+// fraction is the inline `width` and the clipping is `overflow`/`position` split
+// across all four, so no one of them is a value a consumer varies — a class on
+// any of them detunes the fraction the whole component exists to draw.
 function StarIcon({ fill }: { fill: number }) {
   return (
-    <span className="rating-star" aria-hidden="true">
-      <Star className="rating-star-base" strokeWidth={1.5} />
-      <span className="rating-star-fill" style={{ width: `${fill * 100}%` }}>
-        <Star className="rating-star-fill-icon" strokeWidth={1.5} />
+    <span
+      // slot:(a) the positioning context the fill overlay is measured against.
+      className="rating-star"
+      aria-hidden="true"
+    >
+      <Star
+        // slot:(a) the unfilled glyph the overlay is stacked on; it must match
+        // the overlay's glyph exactly or the partial fill shows two outlines.
+        className="rating-star-base"
+        strokeWidth={1.5}
+      />
+      <span
+        // slot:(a) the clip itself — its `width` *is* the fill fraction, so a
+        // caller class competing for width prints the wrong rating.
+        className="rating-star-fill"
+        style={{ width: `${fill * 100}%` }}
+      >
+        <Star
+          // slot:(a) the clipped glyph, sized to the star rather than to the
+          // clip so the visible sliver lines up with the base beneath it.
+          className="rating-star-fill-icon"
+          strokeWidth={1.5}
+        />
       </span>
     </span>
   );
@@ -217,6 +241,9 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
             disabled={disabled}
             tabIndex={disabled ? -1 : roving.tabIndex}
             ref={roving.ref}
+            // slot:(a) a bare hit target around the glyph — it strips the UA
+            // button chrome and nothing else, and the star it wraps is (a) for
+            // the reason above, so there is no appearance here to vary.
             className="rating-button"
             // Deliberately not `roving.onKeyDown` as well: the hook's own key
             // handling is the second state machine this component used to run
@@ -234,7 +261,12 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
                 named for the value actually held — naming every star
                 `position - 0.5` left no radio named `max` and misnamed the
                 checked one whenever the value was a whole star. */}
-            <span className="sr-only">
+            <span
+              // slot:(a) the radio's whole accessible name, and `sr-only` is
+              // the mechanism: a route here lets a caller undo the hiding and
+              // print a column of numerals across the stars.
+              className="sr-only"
+            >
               {nameFor(allowHalf && isChecked ? value : position)}
             </span>
             <StarIcon fill={fillFor(position, display)} />

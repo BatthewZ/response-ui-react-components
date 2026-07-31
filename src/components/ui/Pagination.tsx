@@ -8,7 +8,7 @@ import {
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import { useMediaQuery } from "../../hooks/use-media-query";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { IconButton } from "./IconButton";
 
@@ -68,6 +68,23 @@ type PaginationProps = {
   variant?: "full" | "compact";
   /** Collapse to `compact` below this viewport width. Number (px) or CSS length ("40rem"). */
   compactBelow?: number | string;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * `<nav>`, so everything inside it — the list, the four stepping controls, the
+   * page buttons and the compact readout — is otherwise unreachable.
+   *
+   * The four controls take **four** keys rather than one, because they are four
+   * roles wearing one class today (`pagination__nav`): hiding the edge jumps
+   * while keeping the steps has no route under a single key.
+   *
+   * `page` and `ellipsis` land on **every** instance — both are generated from
+   * `page`/`totalPages` and no key can name one. `first`, `last` and `info`
+   * render conditionally (`showEdges`, `variant`), so a class on them is silent
+   * rather than wrong when the control is not on screen.
+   */
+  classNames?: SlotClassNames<
+    "list" | "first" | "prev" | "next" | "last" | "page" | "ellipsis" | "info"
+  >;
 } & Omit<ComponentPropsWithRef<"nav">, "children">;
 
 export const Pagination = forwardRef<HTMLElement, PaginationProps>(
@@ -81,6 +98,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
       variant = "full",
       compactBelow,
       className,
+      classNames,
       ...props
     },
     ref
@@ -109,7 +127,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
         className={cn("pagination", className)}
         {...props}
       >
-        <ul className="pagination__list">
+        <ul className={cn("pagination__list", classNames?.list)}>
           {/* First page */}
           {edges && (
             <li>
@@ -117,7 +135,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
                 aria-label="First page"
                 disabled={isFirst}
                 onClick={() => onPageChange(1)}
-                className="pagination__nav"
+                className={cn("pagination__nav", classNames?.first)}
               >
                 <ChevronsLeft size={16} />
               </IconButton>
@@ -130,7 +148,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
               aria-label="Previous page"
               disabled={isFirst}
               onClick={() => onPageChange(page - 1)}
-              className="pagination__nav"
+              className={cn("pagination__nav", classNames?.prev)}
             >
               <ChevronLeft size={16} />
             </IconButton>
@@ -142,7 +160,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
               item === "ellipsis" ? (
                 <li
                   key={`ellipsis-${i}`}
-                  className="pagination__ellipsis"
+                  className={cn("pagination__ellipsis", classNames?.ellipsis)}
                   aria-hidden="true"
                 >
                   <span>&hellip;</span>
@@ -153,7 +171,8 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
                     type="button"
                     className={cn(
                       "pagination__page",
-                      item === page && "pagination__page--current"
+                      item === page && "pagination__page--current",
+                      classNames?.page
                     )}
                     aria-current={item === page ? "page" : undefined}
                     aria-label={`Page ${item}`}
@@ -170,7 +189,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
             )
           ) : (
             // Compact: "Page X of Y"
-            <li className="pagination__info">
+            <li className={cn("pagination__info", classNames?.info)}>
               <span>
                 Page <strong>{page}</strong> of <strong>{totalPages}</strong>
               </span>
@@ -183,7 +202,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
               aria-label="Next page"
               disabled={isLast}
               onClick={() => onPageChange(page + 1)}
-              className="pagination__nav"
+              className={cn("pagination__nav", classNames?.next)}
             >
               <ChevronRight size={16} />
             </IconButton>
@@ -196,7 +215,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
                 aria-label="Last page"
                 disabled={isLast}
                 onClick={() => onPageChange(totalPages)}
-                className="pagination__nav"
+                className={cn("pagination__nav", classNames?.last)}
               >
                 <ChevronsRight size={16} />
               </IconButton>

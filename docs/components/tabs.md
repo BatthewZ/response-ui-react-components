@@ -24,7 +24,7 @@ binding them.
 | Part         | Props                                                    |
 | ------------ | -------------------------------------------------------- |
 | `Tabs`       | `defaultValue` · `value?` · `onValueChange?` · `variant?` |
-| `Tabs.List`  | — (plus `div` props)                                      |
+| `Tabs.List`  | `classNames?` — see [Slots](#slots) (plus `div` props)    |
 | `Tabs.Tab`   | `value` · `disabled?`                                     |
 | `Tabs.Panel` | `value`                                                   |
 
@@ -94,6 +94,24 @@ animates between tabs in all three.
 </Tabs>
 ```
 <!-- /example -->
+
+## Slots
+
+Every part of Tabs is a subcomponent with its own `className`, except one: the marker that
+slides under the active tab. `Tabs.List` reaches it through `classNames`. Class strings only,
+and the key is typed, so a misspelled one is a compile error rather than a prop that does
+nothing.
+
+| Slot        | Element                | What it addresses                                       |
+| ----------- | ---------------------- | ------------------------------------------------------- |
+| `indicator` | `span.tabs-indicator`  | the sliding marker, beside its `--underline`/`--pill`/`--enclosed` modifier |
+
+```tsx
+<Tabs.List classNames={{ indicator: "rounded-none" }}>…</Tabs.List>
+```
+
+The marker's `transform` and `width` are measured from the active tab and written as inline
+style on every layout pass, so a class here changes how it looks and never where it is.
 
 ## Theme tokens
 

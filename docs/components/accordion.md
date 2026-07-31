@@ -40,7 +40,7 @@ if rendered outside an `Accordion.Item`. (`Trigger` still accepts the *native* `
 | -------------------- | ---------- | -------------------------------------------------------- |
 | `Accordion`          | `<div>`    | `mode?` · `defaultValue?` · `value?` · `onValueChange?` · `headingLevel?` |
 | `Accordion.Item`     | `<div>`    | `value` (required) · `disabled?`                         |
-| `Accordion.Trigger`  | heading › `<button>` | — (plus `button` props)                         |
+| `Accordion.Trigger`  | heading › `<button>` | `classNames?` — see [Slots](#slots) (plus `button` props) |
 | `Accordion.Content`  | `<div>`    | — (plus `div` props)                                      |
 
 | Root prop       | Type                                    | Default    |
@@ -189,6 +189,32 @@ heading, which is invalid HTML. Set `headingLevel` instead:
 </Accordion>
 ```
 <!-- /example -->
+
+## Slots
+
+`Accordion.Trigger` is the one part with elements a `className` cannot reach. Its own
+`className` and `ref` stay on the `<button>` — that is the control, and it is what arrow-key
+navigation finds by selector — so `classNames` addresses the heading it sits inside and the
+two spans it wraps. Class strings only, and the keys are typed, so a misspelled one is a
+compile error rather than a prop that does nothing.
+
+| Slot          | Element                          | What it addresses                          |
+| ------------- | -------------------------------- | ------------------------------------------ |
+| `heading`     | the `headingLevel` element       | the `<h2>`…`<h6>` wrapper, which exists so heading navigation finds each section |
+| `triggerText` | `span.accordion-trigger-text`    | the label span inside the button            |
+| `chevron`     | `svg.accordion-chevron`          | the disclosure glyph                        |
+
+```tsx
+<Accordion.Trigger classNames={{ chevron: "size-r3", triggerText: "font-semibold" }}>
+  Shipping
+</Accordion.Trigger>
+```
+
+`Accordion.Item` and `Accordion.Content` need no slots — `className` already lands on the
+element each of them is. The one element inside `Content` that a class cannot reach is its
+clipper, and that is deliberate: it carries `overflow: hidden` and nothing else, while the
+box outside it animates `grid-template-rows`. Varying it does not restyle the panel, it stops
+the open and close transition working.
 
 ## Theme tokens
 

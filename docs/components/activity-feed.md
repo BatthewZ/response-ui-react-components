@@ -25,7 +25,7 @@ the marker column from one item to the next, suppressed on the last one.
 | Part                | Renders | Props                                                                            |
 | ------------------- | ------- | -------------------------------------------------------------------------------- |
 | `ActivityFeed`      | `<ol>`  | `aria-busy?` (+ all `ol` props)                                                  |
-| `ActivityFeed.Item` | `<li data-highlight?>`  | `avatar?` · `icon?` · `actor?` · `action?` · `target?` · `timestamp?` · `highlight?` · `children?` (+ all `li` props) |
+| `ActivityFeed.Item` | `<li data-highlight?>`  | `avatar?` · `icon?` · `actor?` · `action?` · `target?` · `timestamp?` · `highlight?` · `children?` · `classNames?` — see [Slots](#slots) (+ all `li` props) |
 
 Every slot is a `ReactNode`, and each renders only when it is non-nullish, so you can
 supply just the pieces a given event has. `className`, `id`, `ref`, and `aria-*` pass
@@ -145,6 +145,39 @@ it on the root to mark the region as updating while newer activity streams in:
 </ActivityFeed>
 ```
 <!-- /example -->
+
+## Slots
+
+`className` addresses the row's `<li>`. `classNames` addresses the parts of the sentence and
+the detail block under it. Class strings only, and the keys are typed, so a misspelled one is
+a compile error rather than a prop that does nothing.
+
+| Slot        | Element                          | What it addresses                            |
+| ----------- | -------------------------------- | -------------------------------------------- |
+| `sentence`  | `div.activity-feed-sentence`     | the wrapping flex row the four spans sit in   |
+| `actor`     | `span.activity-feed-actor`       | who did it, when `actor` is set               |
+| `action`    | `span.activity-feed-action`      | what they did, when `action` is set           |
+| `target`    | `span.activity-feed-target`      | what they did it to, when `target` is set     |
+| `timestamp` | `span.activity-feed-timestamp`   | when, if `timestamp` is set                   |
+| `body`      | `div.activity-feed-body`         | the detail block, when `children` is set      |
+
+```tsx
+<ActivityFeed.Item
+  actor="Ada Lovelace"
+  action="merged"
+  target="#42"
+  timestamp="2h ago"
+  classNames={{ timestamp: "tabular-nums", actor: "text-fg-primary" }}
+/>
+```
+
+**The marker and its column take no slots, and both refusals are load-bearing.** The marker's
+fill and ink are the two public custom properties documented under
+[Championing a row](#championing-a-row) — one write on the row reaches every part of it,
+which a per-element class cannot — and its ring width stays private so the emphasis cue
+cannot be reduced back to colour alone. The column beside it is a fixed grid track that the
+rail's origin is measured from: growing it moves the line down the whole feed, which is not
+an override but a broken rail.
 
 ## Theme tokens
 
