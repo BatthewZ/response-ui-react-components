@@ -509,6 +509,33 @@ to understand.
    Before rewriting a passage that names an escape hatch, measure what the *old* hatch actually
    produced — the honest replacement is often "this never did what it said", and a doc that
    substitutes a new incantation for an old one inherits the original false promise.
+103. **Relocating a shadowing custom property one element up does not unshadow it.** The rule is
+   that a declaration on an element beats an inherited one from `:root` at any layer — and the
+   root of the component is still an element the component renders, so the child inherits the
+   component's value rather than the theme's and the consumer loses exactly as before. Moving a
+   token only helps a consumer who selects the element it moved to. The fix that reaches `:root`
+   is to stop declaring the token and let a utility *read* the contract variable, or to read it
+   with the default in the `var()` fallback so nothing shadows.
+104. **A token whose read site is a property is convertible; a token whose read site is another
+   token's value is not.** The `calc()` carve-out is often quoted as "computed values are kept",
+   which over-reads it — a `color-mix()` sitting inside a `background-image` has a property, so a
+   utility can take the whole declaration and the token goes. What has no property is a value
+   consumed by another custom property's definition. Ask where the read *lands*, not what
+   function surrounds it.
+105. **A raw-source assertion about a stylesheet is inert under vitest, and it passes.** `css:
+   false` stubs every CSS module to `""`, so a static `?raw` import, `import.meta.glob(…,
+   { query: "?raw" })` and a `*.css` glob all hand back the empty string and any `not.toMatch`
+   over it is green against a file that still says the thing. `node:fs` is not the escape hatch
+   either — `tsconfig.types` is an allowlist without `@types/node`, and `import.meta.url` is an
+   http URL under jsdom. The raw-source trick works for `.tsx` and only for `.tsx`; for CSS the
+   instrument is the cascade probe. Fail every new assertion on purpose, including the boring one.
+106. **Tailwind's `bg-linear-to-*` is not a neutral spelling of `linear-gradient(90deg, …)`.** It
+   emits `to right in oklab` behind an `@supports`, so converting a hand-written ramp to the
+   gradient utilities silently changes the interpolation space and the midtones with it. An
+   arbitrary `bg-[linear-gradient(…)]` reproduces the original exactly and, where a `color-mix()`
+   is inside it, Tailwind adds a flat `@supports` fallback the hand-written rule never had. The
+   oxide scanner extracts the whole bracketed value out of a `.tsx` string literal, including
+   nested parens and commas — measured, and it also still cannot see a template literal.
 
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.
