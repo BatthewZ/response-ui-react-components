@@ -167,16 +167,20 @@ Five rows that are decisions about what this package promises, not defects:
   inner status dot that `className` cannot reach, so there is no override path at all.
 - **#490** — `FileUploadRejection` is documented but not exported from the barrel.
 
-### 3 · Two shipped defaults that need an owner, not a measurement
+### 3 · One shipped default that needs an owner, not a measurement
 
 - **#470** — `useRovingFocus` is a *published* hook whose `onKeyDown`, `focusedIndex`, `loop` and
   `orientation` have **no in-package consumer**. The handler is correct code for toolbars and
   menubars and wrong for the two radiogroups that use the hook, and `theme-switcher.md` documents
   that split as intentional. Deleting the unused surface is a breaking change to public API.
-- **#66** — restoring `w-*` on `Skeleton` requires **layering this package's component CSS**, which
-  was measured: unlayered CSS behaves identically to the inline default (1280px both ways), and only
-  `@layer` works (320px). But the unlayered behaviour is a contract stated on ~12 doc pages with
-  documented escape hatches, so layering is a `styles.css`-wide packaging decision plus a doc sweep.
+
+**#66 left this section and is now `fixed` in the archive**, and the shape of its exit is the
+transferable part. Layering was never going to reach an inline *default* — the owner authorised
+the API break, `Skeleton`'s `width`/`height` props were deleted, and the default moved into the
+root class list as `w-full`, where `cn` collapses it against the caller's `w-*` instead of
+out-ranking it. If another row here reads "a class cannot beat this", check whether the inline
+value is a **default** before reaching for the cascade: a default the caller never asked for can
+usually be moved into the class list, and then the caller simply wins.
 
 ### 4 · #8 — decide what a `<dl>` should expose
 

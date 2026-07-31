@@ -322,7 +322,17 @@ export function VirtualizedDataTable<T>({
             <Table.Row key={i}>
               {selectable && (
                 <Table.Cell>
-                  <Skeleton variant="rectangular" width={16} height={16} aria-hidden="true" />
+                  <Skeleton
+                    variant="rectangular"
+                    // slot:(a) the placeholder is 16px because the `Checkbox` it
+                    // stands in for is 16px. A skeleton earns its place by
+                    // reserving the exact space the real control takes, so varying
+                    // this size reintroduces the reflow the loading state exists to
+                    // prevent — and the `Checkbox` under it is a shared primitive
+                    // rendered with no props hatch, so its size has no route either.
+                    className="size-4"
+                    aria-hidden="true"
+                  />
                 </Table.Cell>
               )}
               {columns.map((col) => (

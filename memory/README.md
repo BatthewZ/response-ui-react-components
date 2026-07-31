@@ -472,5 +472,25 @@ to understand.
    about produces a document where two point at one tree and four hundred at another. Verify the
    anchors were right at their baseline before believing either story.
 
+100. **An inline *default* is a different defect from an inline *value*, and only the default is
+   unfixable by layering.** A value the caller asked for should beat their class. A default they
+   never asked for makes the override unreachable for everyone, and no cascade work reaches it —
+   the fix is to move the default into the class list, where the merge helper *collapses* it
+   against the caller's utility instead of racing it. Sort every "a class cannot beat this" claim
+   by that distinction before reaching for `@layer`.
+101. **Two geometry props where one is defaulted and one is not is an asymmetry the API cannot
+   state.** One axis reachable from `className` and the other not, with nothing in the type
+   saying which, is worse than both being closed: the caller's mental model is right half the
+   time and there is no signal for the other half. Prefer both axes on the same mechanism.
+102. **A width utility can look applied and still be geometrically wrong, and only a real engine
+   sees it.** Aspect-ratio, `height: auto` and shrink-to-fit all consume the *computed* width, so
+   moving a width from inline to a class can change a square into a zero-height bar with the
+   class string still perfect. Class-string assertions prove the input to the cascade, never the
+   outcome; keep a throwaway Tailwind + `getComputedStyle` fixture for the claim and delete it.
+103. **"Shrink to fit" on an element with no visible content is 0px, and docs promise it anyway.**
+   Before rewriting a passage that names an escape hatch, measure what the *old* hatch actually
+   produced — the honest replacement is often "this never did what it said", and a doc that
+   substitutes a new incantation for an old one inherits the original false promise.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

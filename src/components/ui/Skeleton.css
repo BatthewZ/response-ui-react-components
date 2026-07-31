@@ -2,8 +2,8 @@
   display: inline-block;
   background: var(--C-SURFACE-2);
   border-radius: var(--RADIUS-MD);
-  /* Every variant needs a height, not just `--text`: without one the other
-     three measure 0px unless the caller passes an explicit `height`. */
+  /* Every variant needs a height, not just `--text`: without one the other three
+     measure 0px. Stays here, not in the class list: `h-*` already outranks it. */
   height: 1em;
   /* Tracks the theme's tempo rather than freezing one: --MOTION-DURATION-SHIFT
      is 400ms in the token layer, and a pulse is a slow multiple of that same
