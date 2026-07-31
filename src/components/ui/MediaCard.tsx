@@ -39,30 +39,36 @@ const MediaCardRoot = forwardRef<HTMLElement, MediaCardProps>(function MediaCard
 /* ------------------------------------------------------------------ */
 
 type MediaCardImageProps = {
+  src?: string;
   alt: string;
-} & Omit<ComponentPropsWithRef<"img">, "alt">;
+  /**
+   * Props for the `<img>` itself. The rest of the bag lands on the aspect box —
+   * the outermost element this subcomponent renders — so `loading`, `srcSet`,
+   * `sizes`, `decoding`, `onLoad` and an image `ref` all need this. Its
+   * `className` merges after the component's own, so `object-contain` beats the
+   * default `object-cover`.
+   */
+  imgProps?: Omit<ComponentPropsWithRef<"img">, "src" | "alt">;
+} & Omit<ComponentPropsWithRef<"div">, "children">;
 
-const MediaCardImage = forwardRef<HTMLImageElement, MediaCardImageProps>(function MediaCardImage(
-  { className, ...props },
+const MediaCardImage = forwardRef<HTMLDivElement, MediaCardImageProps>(function MediaCardImage(
+  { src, alt, imgProps, className, ...props },
   ref
 ) {
   const orientation = useContext(OrientationContext);
 
   return (
     <div
-      // slot:(a) the aspect box. Its only variable is the `orientation` prop on
-      // `MediaCard`, which already writes the modifier below — so a class route
-      // here would be a second writer for the one thing it expresses. The
-      // subcomponent's `className`, `ref` and rest props all address the `<img>`
-      // it frames, which is documented; moving them here would be breaking, so
-      // this element ships neither a slot nor a re-point.
-      className={cn("media-card__image-container", orientationClass[orientation])}
+      ref={ref}
+      className={cn("media-card__image-container", orientationClass[orientation], className)}
+      {...props}
     >
       <img
-        ref={ref}
         loading="lazy"
-        className={cn("size-full object-cover", className)}
-        {...props}
+        {...imgProps}
+        src={src}
+        alt={alt}
+        className={cn("size-full object-cover", imgProps?.className)}
       />
     </div>
   );

@@ -147,29 +147,70 @@ describe("MediaCard", () => {
   });
 
   /**
-   * The pin on `MediaCard.Image`'s triage-(a) ruling for its aspect box.
+   * The pin on `MediaCard.Image`'s two elements. It replaces the pin that held
+   * the reverse: `className` used to address the `<img>` while the aspect box
+   * received nothing at all.
    *
-   * `className`, `ref` and every rest prop address the `<img>`, which is what
-   * the component's docs state. The box around it has one variable — the
-   * `orientation` prop on `MediaCard`, which writes the modifier below — so it
-   * gets neither a class slot (that would be a second writer for the same thing)
-   * nor an `imgProps` hatch (the `<img>` already has a complete route). Moving
-   * `className` to the box under the outermost-element house rule would close
-   * the residue, but it is breaking and is not this phase's call to make.
+   * `className`, `ref` and every rest prop now address the box — the outermost
+   * element the subcomponent renders — and the `<img>` inside is reached through
+   * `imgProps`, as on `Hero.Background`. The box takes no class slot on top of
+   * that: `className` already reaches it, and a slot would be a second writer.
    *
-   * If that call is ever taken, these two assertions are what must be rewritten
-   * rather than deleted.
+   * The exact-string form is deliberate. It pins three things at once — that the
+   * caller's class lands here, that the base class and the orientation modifier
+   * both survive beside it, and that the caller's class merges last.
    */
-  it("keeps className on the <img> and the aspect box on its own two classes", () => {
+  it("routes className to the aspect box, after its base class and orientation modifier", () => {
     const { container } = render(
       <MediaCard orientation="landscape">
         <MediaCard.Image src="/a.jpg" alt="A" className="rounded-lg" />
       </MediaCard>,
     );
 
-    expect(container.querySelector("img")?.getAttribute("class")).toContain("rounded-lg");
     expect(container.querySelector(".media-card__image-container")?.getAttribute("class")).toBe(
-      "media-card__image-container media-card__image-container--landscape",
+      "media-card__image-container media-card__image-container--landscape rounded-lg",
     );
+  });
+
+  it("routes imgProps.className to the <img>, after its base classes", () => {
+    const { container } = render(
+      <MediaCard orientation="landscape">
+        <MediaCard.Image
+          src="/a.jpg"
+          alt="A"
+          className="rounded-lg"
+          imgProps={{ className: "grayscale" }}
+        />
+      </MediaCard>,
+    );
+
+    expect(container.querySelector("img")?.getAttribute("class")).toBe(
+      "size-full object-cover grayscale",
+    );
+  });
+
+  it("gives the box the top-level ref and the <img> the one in imgProps", () => {
+    let box: HTMLDivElement | null = null;
+    let img: HTMLImageElement | null = null;
+
+    const { container } = render(
+      <MediaCard>
+        <MediaCard.Image
+          ref={(el) => {
+            box = el;
+          }}
+          src="/a.jpg"
+          alt="A"
+          imgProps={{
+            ref: (el) => {
+              img = el;
+            },
+          }}
+        />
+      </MediaCard>,
+    );
+
+    expect(box).toBe(container.querySelector(".media-card__image-container"));
+    expect(img).toBe(container.querySelector("img"));
   });
 });

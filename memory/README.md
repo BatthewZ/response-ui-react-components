@@ -472,5 +472,24 @@ to understand.
    about produces a document where two point at one tree and four hundred at another. Verify the
    anchors were right at their baseline before believing either story.
 
+95. **Re-pointing `className` from an inner element to its wrapper is the one half of that change
+   no compiler and no gate can see — so move the rest bag with it and let the type checker carry
+   the rest.** Once the wrapper's props type is the wrapper's element, every other misplaced
+   attribute (`src`, `loading`, `onLoad`) becomes a type error at the call site, and the only
+   thing left that can fail silently is the single class you already knew about. Grep for that
+   one prop across `src/`, `dev/` and `docs/`; do not try to grep for the others.
+96. **A props hatch and a re-point are one change, not two.** Adding `<thing>Props` while the
+   component's rest bag still lands on the same element gives that element two writers, which is
+   the defect the hatch was supposed to close. The hatch is warranted only once the rest bag has
+   moved somewhere else.
+97. **An exact-string class assertion is how you keep a falsifier count honest.** Pinning
+   `toBe("base modifier caller")` in one test covers arrival, survival and merge order at once; a
+   second test asserting any of those separately makes one mutation redden two, and the fix is to
+   delete the companion rather than to explain the pair.
+98. **A gate's allowlist entry outlives the code its justification describes.** The argument in it
+   is prose about a specific spread at a specific element; change that element and the entry goes
+   quietly inert while still reading as current law. Re-run the gate after the change and delete
+   any entry it no longer needs — an exemption nobody can falsify is worse than none.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.
