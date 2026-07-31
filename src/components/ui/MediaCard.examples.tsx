@@ -80,11 +80,15 @@ export function CentredAction() {
   );
 }
 
-/** `Image` sets `loading="lazy"` before spreading your props, so a hero card can opt back out. */
+/** `Image` sets `loading="lazy"` before spreading `imgProps`, so a hero card can opt back out. */
 export function EagerImage() {
   return (
     <MediaCard orientation="landscape">
-      <MediaCard.Image src="/media/tromso-aurora.jpg" alt="Aurora over Tromsø" loading="eager" />
+      <MediaCard.Image
+        src="/media/tromso-aurora.jpg"
+        alt="Aurora over Tromsø"
+        imgProps={{ loading: "eager" }}
+      />
       <MediaCard.Overlay />
       <MediaCard.Content>
         <Text as="h3" variant="h5">

@@ -90,12 +90,6 @@ const CHECK = process.argv.includes("--check");
  */
 const ALLOWLIST = new Map([
   [
-    "src/components/ui/MediaCard.tsx:MediaCardImage.alt",
-    "Re-declares `alt: string` to make it REQUIRED (React's own img type has it optional) " +
-      "and then forwards it through `{...props}` onto the <img>. The Omit exists to " +
-      "strengthen the type, not to strip the value — reaching the DOM is the whole point.",
-  ],
-  [
     "src/components/ui/Swimlane.tsx:Swimlane.href",
     "FALSE POSITIVE, not a forwarded key. The `Omit<ComponentPropsWithRef<\"a\">, \"href\" | " +
       "\"children\">` this fires on is the type of the `viewAllProps` *sub-prop bag* for the " +

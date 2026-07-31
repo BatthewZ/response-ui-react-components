@@ -33,7 +33,7 @@ centres its children over the whole card. The root publishes `orientation` on a 
 | Part                | Renders                | Own props                             |
 | ------------------- | ---------------------- | ------------------------------------- |
 | `MediaCard`         | `<article>`            | `orientation?` (+ all `article` props) |
-| `MediaCard.Image`   | `<img>` in a ratio box | `alt` **(required)** (+ all `img` props) |
+| `MediaCard.Image`   | `<img>` in a ratio box | `src`, `alt` **(required)**, `imgProps` (+ all `div` props) |
 | `MediaCard.Overlay` | `<div>`                | — (+ all `div` props)                 |
 | `MediaCard.Content` | `<div>`                | — (+ all `div` props)                 |
 | `MediaCard.Badge`   | `<div>`                | — (+ all `div` props)                 |
@@ -47,8 +47,10 @@ centres its children over the whole card. The root publishes `orientation` on a 
 | …rest         | `article` props, minus `orientation`        | —            |
 
 Every part spreads its remaining props onto the element it renders, so `className`, `id`,
-`style`, `ref`, handlers, and `aria-*` all pass through. `Image`'s `ref` and `className` land
-on the `<img>`, not on the ratio box around it.
+`style`, `ref`, handlers, and `aria-*` all pass through. `Image` renders two elements, and
+splits them the way [Hero](hero.md) and [Spotlight](spotlight.md) do: its `className`, `ref`
+and rest props address the **ratio box**, which is the outermost element it renders, and the
+`<img>` inside takes an [`imgProps`](#the-images-two-elements) bag.
 
 ## Orientation
 
@@ -71,9 +73,9 @@ applies to every `Image` beneath it — one card, one ratio.
 <!-- /example -->
 
 The `<img>` inside is `size-full object-cover`, so the picture fills the box and crops rather
-than letterboxing. Pass `className="object-contain"` to `Image` if you would rather fit than
-crop — `cn()` runs tailwind-merge, so your `object-*` replaces the default instead of
-colliding with it.
+than letterboxing. Pass `imgProps={{ className: "object-contain" }}` if you would rather fit
+than crop — `cn()` runs tailwind-merge, so your `object-*` replaces the default instead of
+colliding with it. `Image`'s own `className` restyles the box, not the picture.
 
 `Overlay` and `Content` are opt-in. Skip them and the card is a plain framed picture:
 
@@ -148,15 +150,52 @@ Neither slot sits inside `Content`, so the white-ink override does not reach the
 both examples put a filled control in the slot: it brings its own background, whereas bare
 text here is asked to read directly against the photograph.
 
+## The image's two elements
+
+`MediaCard.Image` renders a ratio box wrapping an `<img>`. Its own `className`, `ref` and rest
+props land on the **box** — the outermost element it renders, per the package's house rule —
+and the `<img>` inside takes an `imgProps` bag:
+
+```tsx
+<MediaCard.Image
+  src="/media/tromso-aurora.jpg"
+  alt="Aurora over Tromsø"
+  className="rounded-none"
+  imgProps={{ className: "object-top", loading: "eager", sizes: "(min-width: 40rem) 50vw, 100vw" }}
+/>
+```
+
+`src` and `alt` stay `Image`'s own props — they are set *after* the bag, so it cannot re-point
+the picture or erase the alt text. Everything else about the `<img>` travels in the bag:
+`loading`, `srcSet`, `sizes`, `decoding`, `fetchPriority`, `onLoad`, and a `ref`. The bag's
+`className` merges **after** `size-full object-cover`, so yours wins; `Image`'s own `className`
+merges after `media-card__image-container` and the orientation modifier, so that wins too.
+
+An image `ref` goes in the bag — `imgProps={{ ref: imgRef }}` — which is what you need for
+`onLoad` timing, an `IntersectionObserver`, or reading `naturalWidth`/`naturalHeight`.
+`Image`'s top-level `ref` observes the box instead, which is the element that actually
+occupies flow space.
+
+**Migrating from ≤ 0.x.** `<MediaCard.Image className="…">` used to reach the `<img>`; it now
+reaches the box, silently. Move any picture-shaping class to `imgProps={{ className: … }}`.
+`ref` and every other `img` attribute (`loading`, `srcSet`, `onLoad`, …) moved into `imgProps`
+too, but those are loud — they become type errors against the box's `div` props rather than
+changing behaviour. This matches [`Hero.Background`](hero.md) and
+[`Spotlight.Image`](spotlight.md), which already split the same way.
+
 ## Image loading
 
-`Image` sets `loading="lazy"` **before** spreading your props, so the default is
+`Image` sets `loading="lazy"` **before** spreading `imgProps`, so the default is
 deferred loading and any card can opt back out:
 
 <!-- example:EagerImage -->
 ```tsx
 <MediaCard orientation="landscape">
-  <MediaCard.Image src="/media/tromso-aurora.jpg" alt="Aurora over Tromsø" loading="eager" />
+  <MediaCard.Image
+    src="/media/tromso-aurora.jpg"
+    alt="Aurora over Tromsø"
+    imgProps={{ loading: "eager" }}
+  />
   <MediaCard.Overlay />
   <MediaCard.Content>
     <Text as="h3" variant="h5">
@@ -228,16 +267,16 @@ zeroed the same way: tabbing in still applies the transform, just untransitioned
 - **The card is only as tall as the image.** `Content` is absolutely positioned and adds no
   height, and the root is `overflow: hidden` — a caption longer than the picture is clipped,
   not scrolled. Keep captions short, or set your own `min-height` on the card.
-- **The ratio box is not addressable, and that is a decision rather than an oversight.**
-  `Image` renders its own wrapper `<div>` and passes it nothing: your `className`, `style` and
-  `ref` all go to the `<img>`. To change one card's ratio, either pick a different
-  `orientation` or set that orientation's aspect variable in the root's `style` — custom
-  properties inherit, so the box picks it up. It gets **no class slot** either, because the
-  one thing it expresses is `orientation`, which already writes the box's modifier — a second
-  route would be a second writer for one value. What is left with no route at all is narrow
-  and worth naming: the box's own padding-trick geometry, which is not something a card
-  varies. Re-pointing `className` from the `<img>` to the box would close that, but it breaks
-  a documented prop contract and is an owner's call, not a slot.
+- **The ratio box is addressable, and it is what `Image`'s `className` addresses.** This
+  reversed: the box used to receive nothing while `className`, `ref` and every rest prop went
+  to the `<img>`. `Image`'s `className`, `style`, `ref` and rest props now land on the box —
+  the outermost element it renders — and the `<img>` is reached through
+  [`imgProps`](#the-images-two-elements). A class you wrote for the picture will silently
+  restyle its frame instead until you move it. The box gets **no class slot** on top of that,
+  because `className` already reaches it and a slot would be a second writer for one element.
+  To change one card's ratio you can still pick a different `orientation` or set that
+  orientation's aspect variable in the root's `style` — custom properties inherit, so the box
+  picks it up.
 - **`Image` outside a `MediaCard` silently uses `portrait`.** The orientation context has a
   default rather than a guard, so no part of MediaCard throws when rendered outside the root —
   you just get the poster ratio and no card frame.
