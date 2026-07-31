@@ -231,9 +231,11 @@ class and both survive it: `cn()` resolves conflicts between utilities, not betw
 and a component class. A utility touching a property `.tooltip` already sets replaces it,
 because the base class lives in `@layer components` and yours does not.
 
-**There is no slot for the fade.** `useTransitionStyles` writes `transition-duration` as an
-inline style, so a `duration-*` utility on the bubble, in a slot or inlined from CSS is silently
-dead no matter where it is written.
+**There is no slot for the fade, and there cannot be one.** `useTransitionStyles` writes
+`transition-duration` as an inline style, so a `duration-*` utility on the bubble — in a slot, in
+`className`, or inlined from CSS — is silently dead wherever it is written. That is why the tempo
+is a **token**, not a slot: `--MOTION-DURATION-ENTER` and `--MOTION-DURATION-EXIT` are the only
+channel that can reach it, and a theme setting them reaches every floating surface at once.
 
 ## Theme tokens
 
@@ -262,13 +264,16 @@ breakpoint. Each example theme pins the line-height at `:root[data-theme=…]`, 
 the breakpoint rule, and `tech` pins the size as well — so the step only happens in the
 default theme.
 
-Four values are hard literals rather than contract variables: the padding (`0.25rem 0.625rem`),
-the wrap width (`17.5rem`, with long words broken rather than overflowing), the stack level
-(50), and the 150 ms fade, which is set inline from JavaScript rather than in the stylesheet.
-None are themeable. The first three are reachable **per instance** through `className` — see
-[Slots](#slots) — and the fade is reachable by neither route, because an inline
-`transition-duration` outranks every stylesheet rule and every utility. Two of them have
-consequences worth knowing — see [Gotchas](#gotchas).
+Three values are hard literals rather than contract variables: the padding (`0.25rem 0.625rem`),
+the wrap width (`17.5rem`, with long words broken rather than overflowing) and the stack level
+(50). None are themeable, but all three are reachable **per instance** through `className` — see
+[Slots](#slots). Two have consequences worth knowing — see [Gotchas](#gotchas).
+
+**The fade is themeable, and only through the token.** It reads `--MOTION-DURATION-ENTER` on open
+and `--MOTION-DURATION-EXIT` on close, falling back to 150 ms when no token layer is present. It is
+set inline from JavaScript, so no stylesheet rule and no utility can outrank it — the token is the
+whole channel. Under `prefers-reduced-motion: reduce` it drops to 0, which removes the fade and the
+delayed unmount together.
 
 The arrow adds no variable of its own: it inherits the bubble's fill and border, so it re-tints
 with `--C-PRIMARY` and needs no separate row above.
@@ -302,9 +307,11 @@ with `--C-PRIMARY` and needs no separate row above.
   module into the client bundle. Unlike [Button](button.md) it is not itself usable as a server
   component — it is a client boundary, and both the bubble and the cloned trigger are painted
   on the client.
-- **The bubble outlives the close by 150 ms.** It fades out rather than vanishing, so a test
-  that asserts `queryByRole("tooltip")` is null immediately after an unhover will flake; wait
-  for its removal instead.
+- **The bubble outlives the close by `--MOTION-DURATION-EXIT`** (150 ms with no token layer, 0 under
+  `prefers-reduced-motion: reduce`). It fades out rather than vanishing, so a test that asserts
+  `queryByRole("tooltip")` is null immediately after an unhover will flake — and the delay is
+  whatever the *consumer's theme* says, not a constant you can hard-code a wait for. Wait for its
+  removal instead.
 
 ## Accessibility
 

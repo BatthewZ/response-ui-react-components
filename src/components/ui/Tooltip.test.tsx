@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import tooltipCss from "./Tooltip.css?raw";
 import { Tooltip } from "./Tooltip";
@@ -327,5 +327,48 @@ describe("arrow", () => {
     // The arrow is `aria-hidden`, so the description is the content and nothing else.
     expect(tip).toHaveTextContent("Tooltip text");
     expect(tip.textContent).toBe("Tooltip text");
+  });
+  /**
+   * #128. `useTransitionStyles` writes `transition-duration` inline, so the value
+   * is observable here even though no test in this package can read a stylesheet.
+   * That inline write is also *why* the tempo has to come from a token: no CSS
+   * rule and no `duration-*` utility can outrank it, so `--MOTION-DURATION-*` is
+   * the only channel a theme has. What is NOT observable: whether the fade
+   * actually paints — jsdom performs no layout and computes no animation.
+   */
+  describe("fade timing", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      document.documentElement.style.removeProperty("--MOTION-DURATION-ENTER");
+    });
+
+    it("#128: takes its open duration from --MOTION-DURATION-ENTER", async () => {
+      document.documentElement.style.setProperty("--MOTION-DURATION-ENTER", "380ms");
+      const user = userEvent.setup();
+      render(
+        <Tooltip content="Tooltip text">
+          <button>Hover me</button>
+        </Tooltip>,
+      );
+
+      await user.hover(screen.getByRole("button", { name: "Hover me" }));
+      const tip = await screen.findByRole("tooltip");
+
+      await waitFor(() => expect(tip.style.transitionDuration).toBe("380ms"));
+    });
+
+    it("#128: falls back to 150ms when no token layer is present", async () => {
+      const user = userEvent.setup();
+      render(
+        <Tooltip content="Tooltip text">
+          <button>Hover me</button>
+        </Tooltip>,
+      );
+
+      await user.hover(screen.getByRole("button", { name: "Hover me" }));
+      const tip = await screen.findByRole("tooltip");
+
+      await waitFor(() => expect(tip.style.transitionDuration).toBe("150ms"));
+    });
   });
 });

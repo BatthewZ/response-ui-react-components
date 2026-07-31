@@ -25,6 +25,7 @@ import {
 } from "../../hooks/use-floating";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn, type SlotClassNames } from "../../util/style";
+import { useFadeDuration } from "./floating-motion";
 
 interface TooltipProps {
   content: ReactNode;
@@ -110,8 +111,16 @@ export function Tooltip({
     role,
   ]);
 
+  // Tempo comes from the theme, not from this file. `useTransitionStyles`
+  // writes `transition-duration` inline, so no stylesheet and no utility can
+  // reach it — `--MOTION-DURATION-*` is the only channel, and `useFadeDuration`
+  // is how every other floating surface reads it. It also returns 0 under
+  // `prefers-reduced-motion: reduce`, which drops the fade and the delayed
+  // unmount together, since both are sized from this number.
+  const duration = useFadeDuration(open);
+
   const { isMounted, styles: transitionStyles } = useTransitionStyles(context, {
-    duration: 150,
+    duration,
   });
 
   const childRef = isValidElement(children)

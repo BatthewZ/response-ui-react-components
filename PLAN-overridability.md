@@ -703,9 +703,20 @@ is not a per-instance derivation and does not qualify.**
 documents it at source: `useTransitionStyles` writes `transition-duration` **inline**, and *"the
 value cannot be supplied from CSS while that hook owns it."* A `transition-*` or `duration-*` utility
 added to such a panel — by `className`, by `classNames`, or inlined from CSS — is **silently dead**.
-Fade tempo is reachable only through `--MOTION-DURATION-*`. **Three importers, not four:**
-`Popover.tsx:29`, `HoverCard.tsx:31`, `menu-internals.tsx:29` — both menus inherit it through
-`menu-internals`, so one edit point covers them.
+Fade tempo is reachable only through `--MOTION-DURATION-*`. **Four importers now** — `Popover`,
+`HoverCard`, `menu-internals` (both menus inherit it, so one edit point covers them) and, since
+Phase 3, `Tooltip`. Re-derive rather than trust the count:
+
+```
+grep -rln 'floating-motion' src --include=*.tsx --include=*.ts | grep -v '\.test\.'
+```
+
+> **`Tooltip` was the fourth, and it was the interesting one.** It did *not* import the hook — it
+> passed a literal `duration: 150` to `useTransitionStyles`, so its tempo ignored
+> `--MOTION-DURATION-*` entirely while every other floating surface read it. The count "three, not
+> four" was true and was also the tell: the file the reader would expect to be there was the one
+> component whose fade a theme could not reach. **A count that excludes something is worth asking
+> *why* about, not just recording.** Fixed, and pinned by `Tooltip.test.tsx`'s `fade timing` block.
 
 **`AvatarUpload.tsx:267`** renders `<Avatar size={size} className="size-full" />`, and
 `cn("size-16","size-full")` → `size-full`, so tailwind-merge drops the class `size` mapped to. The
