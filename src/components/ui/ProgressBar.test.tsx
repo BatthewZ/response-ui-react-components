@@ -278,7 +278,7 @@ describe("ProgressBar · classNames slots", () => {
   it("leaves the fill on its base classes alone when no slot is passed", () => {
     const { container } = render(<ProgressBar value={40} aria-label="Upload" />);
     expect(container.querySelector(".progress-bar__fill")?.getAttribute("class")).toBe(
-      "progress-bar__fill progress-bar__fill--accent",
+      "progress-bar__fill progress-bar__fill--accent bg-accent",
     );
   });
 
@@ -303,7 +303,7 @@ describe("ProgressBar · classNames slots", () => {
       />,
     );
     expect(container.querySelector(".progress-bar__fill")?.getAttribute("class")).toBe(
-      "progress-bar__fill progress-bar__fill--accent",
+      "progress-bar__fill progress-bar__fill--accent bg-accent",
     );
   });
 
@@ -313,4 +313,125 @@ describe("ProgressBar · classNames slots", () => {
     );
     expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
   });
+});
+
+/**
+ * `color` used to swap a `--progress-bar-fill` pair declared on the fill itself,
+ * which a consumer's `:root` can never outrank — a declaration on the element
+ * beats an inherited one whatever the cascade layer. The pair is deleted and the
+ * paint is a utility that *reads* `--C-ACCENT`/`--C-STATUS-*` instead.
+ *
+ * WHAT THESE ASSERT, AND WHAT THEY CANNOT. `vitest` stubs CSS to `""` and jsdom
+ * applies no stylesheets, so an exact class string is a test of this component's
+ * INPUT to the cascade and never of the computed colour. The computed half was
+ * measured once out-of-tree with a real Tailwind build and `getComputedStyle`
+ * (the `scripts/probe-cascade-layer.mjs` pattern): `bg-accent` compiles to
+ * `background-color: var(--C-ACCENT)` and `bg-status-success` to
+ * `var(--C-STATUS-SUCCESS)`, so a `:root` theme reaches the bar. These tests pin
+ * that the component keeps emitting the classes that measurement was taken on.
+ *
+ * Fill class before → after, `variant="default"` (`renderToStaticMarkup`, not
+ * retyped): `…--accent` → `…--accent bg-accent`, `…--success` →
+ * `…--success bg-status-success`, and likewise `warning`/`error`.
+ */
+describe("ProgressBar · colour is a utility, not a shadowing token", () => {
+  const solid: Array<[NonNullable<ComponentProps<typeof ProgressBar>["color"]>, string]> = [
+    ["accent", "progress-bar__fill progress-bar__fill--accent bg-accent"],
+    ["success", "progress-bar__fill progress-bar__fill--success bg-status-success"],
+    ["warning", "progress-bar__fill progress-bar__fill--warning bg-status-warning"],
+    ["error", "progress-bar__fill progress-bar__fill--error bg-status-error"],
+  ];
+
+  it.each(solid)("color=%s paints with exactly one background-colour utility", (color, expected) => {
+    render(<ProgressBar value={40} color={color} aria-label="Upload" />);
+    expect(getFill().getAttribute("class")).toBe(expected);
+  });
+
+  /**
+   * The ramp is `background-image`, a different tailwind-merge group from the
+   * colour's `background-color`, so both survive and the image paints over the
+   * colour exactly as the two CSS rules did. Each end is written out per colour
+   * because the end stop is a `color-mix` of the start and CSS cannot read the
+   * element's own resolved `background-color`.
+   */
+  const gradient: Array<[NonNullable<ComponentProps<typeof ProgressBar>["color"]>, string]> = [
+    [
+      "accent",
+      "progress-bar__fill progress-bar__fill--accent bg-accent progress-bar__fill--gradient bg-[linear-gradient(90deg,var(--C-ACCENT),var(--C-ACCENT-HOVER))]",
+    ],
+    [
+      "success",
+      "progress-bar__fill progress-bar__fill--success bg-status-success progress-bar__fill--gradient bg-[linear-gradient(90deg,var(--C-STATUS-SUCCESS),color-mix(in_oklch,var(--C-STATUS-SUCCESS)_75%,var(--C-CANVAS)))]",
+    ],
+    [
+      "warning",
+      "progress-bar__fill progress-bar__fill--warning bg-status-warning progress-bar__fill--gradient bg-[linear-gradient(90deg,var(--C-STATUS-WARNING),color-mix(in_oklch,var(--C-STATUS-WARNING)_75%,var(--C-CANVAS)))]",
+    ],
+    [
+      "error",
+      "progress-bar__fill progress-bar__fill--error bg-status-error progress-bar__fill--gradient bg-[linear-gradient(90deg,var(--C-STATUS-ERROR),color-mix(in_oklch,var(--C-STATUS-ERROR)_75%,var(--C-CANVAS)))]",
+    ],
+  ];
+
+  it.each(gradient)("variant=gradient color=%s ramps from the colour to its mix", (color, expected) => {
+    render(<ProgressBar value={40} color={color} variant="gradient" aria-label="Upload" />);
+    expect(getFill().getAttribute("class")).toBe(expected);
+  });
+
+  it("only the gradient variant carries a ramp", () => {
+    render(<ProgressBar value={40} color="success" variant="striped" aria-label="Upload" />);
+    expect(getFill().getAttribute("class")).toBe(
+      "progress-bar__fill progress-bar__fill--success bg-status-success progress-bar__fill--striped",
+    );
+  });
+
+  /**
+   * §12: the modifiers are declaration-free markers now, and a consumer
+   * stylesheet, devtools and the Astro/Rails consumers of `response-ui-css` all
+   * still target them. `cn()` must not eat them alongside the utility it dedupes.
+   */
+  it("a caller's classNames.fill beats the colour utility, and the markers survive", () => {
+    render(
+      <ProgressBar
+        value={40}
+        color="success"
+        aria-label="Upload"
+        classNames={{ fill: "bg-status-info" }}
+      />,
+    );
+    expect(getFill().getAttribute("class")).toBe(
+      "progress-bar__fill progress-bar__fill--success bg-status-info",
+    );
+  });
+
+  it("a caller's classNames.fill beats the gradient ramp too", () => {
+    render(
+      <ProgressBar
+        value={40}
+        color="success"
+        variant="gradient"
+        aria-label="Upload"
+        classNames={{ fill: "bg-none" }}
+      />,
+    );
+    const cls = getFill().getAttribute("class") ?? "";
+    expect(cls).toContain("bg-none");
+    expect(cls).not.toContain("linear-gradient");
+    expect(cls).toContain("progress-bar__fill--gradient");
+  });
+
+  /**
+   * NOT ASSERTED HERE, AND THE ATTEMPT IS WORTH RECORDING. The other half of the
+   * footgun is a CSS declaration — re-adding `--progress-bar-fill` to
+   * `ProgressBar.css` restores an un-themeable route while every assertion above
+   * stays green. The obvious guard is `AppShell.test.tsx`'s raw-source read, and
+   * it is INERT for a stylesheet: vitest's default `css: false` stubs the module
+   * to `""`, so `import.meta.glob("./ProgressBar.css", { query: "?raw" })`, a
+   * static `?raw` import and a `*.css` glob all yield the empty string and the
+   * assertion passes against a file that still declares it. `node:fs` is not
+   * available either — `tsconfig.types` is an allowlist without `@types/node`,
+   * and `import.meta.url` is an http URL under jsdom. The instruments that CAN
+   * see it are `bun run probe:cascade-layer` and the comment in the stylesheet
+   * saying not to.
+   */
 });

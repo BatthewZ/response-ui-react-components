@@ -25,54 +25,27 @@
   height: var(--R-SIZE-4);
 }
 
-/* Fill (inner bar)
+/* Fill (inner bar) — paint only, no colour.
 
-   `color` picks the two ends of the ramp, never the paint directly: the style
-   variants below draw with `background-image`, which sits *over* the colour's
-   `background-color`. Before this indirection the `gradient` variant used the
-   `background` shorthand and, declared later at equal specificity, discarded
-   `color` entirely. */
+   The four `--accent`/`--success`/`--warning`/`--error` modifiers and
+   `--gradient` are still emitted, and they are deliberately absent here: they
+   are §12 marker classes, and their paint is now a utility written in
+   `ProgressBar.tsx`. `--progress-bar-fill`/`-fill-end` are gone with them —
+   both were declared on THIS element, which a consumer's `:root` can never
+   outrank, so the pair advertised a theme route that could not work. `bg-*`
+   reads `--C-ACCENT`/`--C-STATUS-*` instead of shadowing them, so the theme
+   reaches it. Do not re-add a `background-color` here as a "default" either:
+   `color` defaults to `accent`, so every instance already carries a colour
+   utility, and a utility beats this layer — the declaration would be inert in
+   every state the component can render. */
 .progress-bar__fill {
-  --progress-bar-fill: var(--C-ACCENT);
-  --progress-bar-fill-end: var(--C-ACCENT-HOVER);
   height: 100%;
   border-radius: var(--RADIUS-FULL);
-  background-color: var(--progress-bar-fill);
   transition: width var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
 }
 
 .progress-bar__fill--no-animate {
   transition: none;
-}
-
-/* Color variants */
-.progress-bar__fill--accent {
-  --progress-bar-fill: var(--C-ACCENT);
-  --progress-bar-fill-end: var(--C-ACCENT-HOVER);
-}
-
-.progress-bar__fill--success {
-  --progress-bar-fill: var(--C-STATUS-SUCCESS);
-  --progress-bar-fill-end: color-mix(in oklch, var(--C-STATUS-SUCCESS) 75%, var(--C-CANVAS));
-}
-
-.progress-bar__fill--warning {
-  --progress-bar-fill: var(--C-STATUS-WARNING);
-  --progress-bar-fill-end: color-mix(in oklch, var(--C-STATUS-WARNING) 75%, var(--C-CANVAS));
-}
-
-.progress-bar__fill--error {
-  --progress-bar-fill: var(--C-STATUS-ERROR);
-  --progress-bar-fill-end: color-mix(in oklch, var(--C-STATUS-ERROR) 75%, var(--C-CANVAS));
-}
-
-/* Style variants */
-.progress-bar__fill--gradient {
-  background-image: linear-gradient(
-    90deg,
-    var(--progress-bar-fill),
-    var(--progress-bar-fill-end)
-  );
 }
 
 /* The stripe ink is the ramp's own on-fill partner, not a hard-coded white:

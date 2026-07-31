@@ -43,8 +43,9 @@ type ProgressBarOwnProps = {
    * `className`, so the fill is the only element left with no route.
    *
    * Its `width` is the percentage and is written as inline style every render,
-   * so a class here changes the paint and never the reading. Prefer
-   * `--progress-bar-fill` / `-fill-end` where the change is a colour.
+   * so a class here changes the paint and never the reading. For a colour, reach
+   * for `color` first and a theme's `--C-ACCENT`/`--C-STATUS-*` second; a `bg-*`
+   * here wins over both, which is what it is for.
    */
   classNames?: SlotClassNames<"fill">;
 };
@@ -63,11 +64,47 @@ const sizeClass: Record<ProgressBarSize, string> = {
   lg: "progress-bar--lg",
 };
 
+/**
+ * The fill's paint. Each entry is a §12 marker class — declaration-free, kept so
+ * devtools, a consumer stylesheet and Astro/Rails consumers of
+ * `response-ui-css` all still have one name per colour — beside the utility that
+ * actually paints it.
+ *
+ * The utility is the point: `bg-status-success` compiles to
+ * `background-color: var(--C-STATUS-SUCCESS)`, so a consumer theme setting that
+ * token at `:root` reaches the bar. The deleted `--progress-bar-fill` could not
+ * do that — it was declared on the fill itself, and a declaration on the element
+ * beats an inherited one whatever the cascade layer.
+ */
 const colorClass: Record<ProgressBarColor, string> = {
-  accent: "progress-bar__fill--accent",
-  success: "progress-bar__fill--success",
-  warning: "progress-bar__fill--warning",
-  error: "progress-bar__fill--error",
+  accent: "progress-bar__fill--accent bg-accent",
+  success: "progress-bar__fill--success bg-status-success",
+  warning: "progress-bar__fill--warning bg-status-warning",
+  error: "progress-bar__fill--error bg-status-error",
+};
+
+/**
+ * `variant="gradient"` only, and it composes with `colorClass` rather than
+ * replacing it: this is `background-image`, which paints over the colour's
+ * `background-color` and leaves it as the fallback. (The ramp once used the
+ * `background` shorthand, which at equal specificity discarded `color`
+ * outright — hence two properties, never one.)
+ *
+ * Written out per colour because the end stop is a `color-mix` of the start, and
+ * there is no CSS way to read the element's own resolved `background-color`.
+ * Each string is one class in tailwind-merge's `bg-image` group, so
+ * `classNames={{ fill: "bg-none" }}` drops the ramp without touching the colour.
+ * Long, and deliberately not built from a template literal: Tailwind scans
+ * source text, so an interpolated name generates nothing.
+ */
+const gradientRampClass: Record<ProgressBarColor, string> = {
+  accent: "bg-[linear-gradient(90deg,var(--C-ACCENT),var(--C-ACCENT-HOVER))]",
+  success:
+    "bg-[linear-gradient(90deg,var(--C-STATUS-SUCCESS),color-mix(in_oklch,var(--C-STATUS-SUCCESS)_75%,var(--C-CANVAS)))]",
+  warning:
+    "bg-[linear-gradient(90deg,var(--C-STATUS-WARNING),color-mix(in_oklch,var(--C-STATUS-WARNING)_75%,var(--C-CANVAS)))]",
+  error:
+    "bg-[linear-gradient(90deg,var(--C-STATUS-ERROR),color-mix(in_oklch,var(--C-STATUS-ERROR)_75%,var(--C-CANVAS)))]",
 };
 
 const statusLabelMap: Record<ProgressBarColor, string | undefined> = {
@@ -77,6 +114,7 @@ const statusLabelMap: Record<ProgressBarColor, string | undefined> = {
   error: "Error",
 };
 
+// `--gradient` is a marker too; `--striped` still carries its texture in CSS.
 const variantFillClass: Record<ProgressBarVariant, string | undefined> = {
   default: undefined,
   gradient: "progress-bar__fill--gradient",
@@ -138,7 +176,9 @@ const ProgressBarRoot = forwardRef<HTMLDivElement, ProgressBarRootProps>(functio
           "progress-bar__fill",
           colorClass[color],
           variantFillClass[variant],
+          variant === "gradient" && gradientRampClass[color],
           !shouldAnimate && "progress-bar__fill--no-animate",
+          // Last, so tailwind-merge resolves every collision the caller's way.
           classNames?.fill
         )}
         style={{ width: `${percentage}%` }}

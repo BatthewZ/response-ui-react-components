@@ -214,27 +214,47 @@ key is typed, so a misspelled one is a compile error rather than a prop that doe
 ```
 
 The fill's `width` is the percentage and is written as inline style every render, so a class
-here changes the paint and never the reading. **Prefer a token where the change is a colour**
-— `--progress-bar-fill` and `--progress-bar-fill-end` are the ramp's two ends and the
-`gradient` variant reads both, so setting one without the other is how a gradient ends up
-half-branded. See [Theme tokens](#theme-tokens) for where they currently resolve.
+here changes the paint and never the reading.
+
+**For a colour, there are three routes and they rank in this order.** `color` picks one of
+the four semantic hues, and that is what you want nearly always. A theme reaches the same
+hues by overriding `--C-ACCENT` / `--C-STATUS-*`, which re-tints every bar in the app and
+[ProgressRing](progress-ring.md) with it. `classNames={{ fill: "bg-…" }}` beats both, per
+instance — which is what it is for, and why it is last: a prop should outrank a default.
+
+`ProgressBar` used to expose `--progress-bar-fill` and `--progress-bar-fill-end` for this,
+and **they are gone**. They were declared on the fill element itself, and a custom property
+declared on an element beats one inherited from `:root` whatever the cascade layer — so
+setting either in your theme did nothing, measurably, at any specificity. The `color`
+utilities *read* `--C-ACCENT`/`--C-STATUS-*` rather than shadowing them, so the theme route
+now works where the token route never did. If you were setting the pair, move to `color`
+plus a `--C-STATUS-*` override, or to `classNames.fill` for a one-off.
+
+One tailwind-merge consequence worth knowing: on a `gradient` bar the ramp is a
+`background-image` and the colour a `background-color`, which are different merge groups. A
+`classNames.fill` of `bg-status-info` replaces the colour and **leaves the ramp**, which is
+how a gradient ends up half-branded. Pass `bg-none` alongside it, or use `color`.
 
 ## Theme tokens
 
-ProgressBar uses **no Tailwind utilities** — every mark is drawn in `ProgressBar.css`
-(shipped in this package's `styles` entry) reading contract variables directly. Override
-one and every bar in the app re-tints at runtime, no rebuild.
+Nearly every mark is drawn in `ProgressBar.css` (shipped in this package's `styles` entry)
+reading contract variables directly; the fill's **colour** is the exception and is a
+Tailwind utility. Override a variable and every bar in the app re-tints at runtime, no
+rebuild.
 
-| Where                              | CSS class                        | Override                                        |
+The four colour classes and `.progress-bar__fill--gradient` still appear in the markup and
+still work as selectors for your own stylesheet — they simply carry no declarations of their
+own any more, so the row below names the utility beside the class it sits on.
+
+| Where                              | CSS class / utility              | Override                                        |
 | ---------------------------------- | -------------------------------- | ----------------------------------------------- |
 | Track background                   | `.progress-bar`                  | `--C-SURFACE-3`                                 |
 | Track and fill corners             | `.progress-bar`                  | `--RADIUS-FULL`                                 |
 | Height — `sm` · `md` · `lg`        | `.progress-bar--sm` `.progress-bar--md` `.progress-bar--lg` | `--R-SIZE-6` · `--R-SIZE-5` · `--R-SIZE-4`      |
-| Fill — `accent` (default)          | `.progress-bar__fill--accent`    | `--C-ACCENT`                                    |
-| Fill — `success`                   | `.progress-bar__fill--success`   | `--C-STATUS-SUCCESS`                            |
-| Fill — `warning`                   | `.progress-bar__fill--warning`   | `--C-STATUS-WARNING`                            |
-| Fill — `error`                     | `.progress-bar__fill--error`     | `--C-STATUS-ERROR`                              |
-| Fill — `gradient` ramp end (`accent`) | `.progress-bar__fill--gradient` | `--C-ACCENT-HOVER` (status colours mix into `--C-CANVAS`) |
+| Fill — `accent` (default), and its `gradient` ramp start | `.progress-bar__fill--accent` · `bg-accent` | `--C-ACCENT`             |
+| Fill — `success`, and its whole `gradient` ramp | `.progress-bar__fill--success` · `bg-status-success` | `--C-STATUS-SUCCESS`   |
+| Fill — `warning`, and its whole `gradient` ramp | `.progress-bar__fill--warning` · `bg-status-warning` | `--C-STATUS-WARNING`   |
+| Fill — `error`, and its whole `gradient` ramp | `.progress-bar__fill--error` · `bg-status-error` | `--C-STATUS-ERROR`         |
 | Stripe ink — `striped`             | `.progress-bar__fill--striped`   | `--C-TEXT-ON-ACCENT` (at 15%)                   |
 | Width transition · stripe scroll   | `.progress-bar__fill`            | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
 | Label ink · weight                 | `.progress-bar__label`           | `--C-TEXT-SECONDARY` · `--Semibold-Weight`      |
@@ -249,6 +269,12 @@ don't scale uniformly: `--R-SIZE-4` (`lg`) steps `0.75rem → 1.25rem` and `--R-
 worth knowing: `md` above 40rem is exactly as tall as `lg` below it. `--BodyText-2` and
 both weight tokens step up at the same breakpoint, so the label and value get slightly
 larger and heavier on wide screens.
+
+**The `gradient` ramp end has no row of its own, because it has no token of its own.** For
+a status colour it is a 75% mix of that colour with `--C-CANVAS`, so the rows above already
+cover it — re-tint `--C-STATUS-SUCCESS` and both ends move. For `accent` alone the end is
+`--C-ACCENT-HOVER`, and overriding that re-tints the ramp's tail without touching its head.
+Both live inside the fill's `background-image` utility rather than in `ProgressBar.css`.
 
 The striped texture is themeable, but only through `--C-TEXT-ON-ACCENT`: the stripes are
 a `color-mix` of that token at 15% over transparent, so they re-tint with the theme's
