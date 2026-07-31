@@ -24,6 +24,7 @@ hands you the **string**, not the event.
 | `placeholder` | `string`                                                             | `"Search..."` |
 | `clearLabel`  | `string` — accessible name for the clear button                      | `"Clear search"` |
 | `className`   | `string` — lands on the wrapper `<div>`, **not** the `<input>`       | —             |
+| `classNames`  | `{ icon?, input?, clear? }` — see [Slots](#slots)                     | —             |
 | `ref`         | `Ref<HTMLInputElement>`                                              | —             |
 | …rest         | props of `<input>` minus `value`, `onChange`, `type`, `size`          | —             |
 
@@ -162,6 +163,32 @@ the [FieldError](field-error.md), and the error-coloured border and focus ring:
 
 Note the icon and the clear button are **not** part of that: they keep their normal muted
 ink in an invalid field, so the only visual error signal is the input's own border.
+
+## Slots
+
+`className` addresses the wrapper. `classNames` addresses the three elements inside it — class
+strings only, and the keys are typed, so a misspelled one is a compile error rather than a prop
+that does nothing.
+
+| Slot    | Element                       | What it addresses                                  |
+| ------- | ----------------------------- | -------------------------------------------------- |
+| `icon`  | `svg.search-input__icon`      | the magnifier, always rendered                      |
+| `input` | `input.search-input__input`   | the field itself, `size="sm"` variant included      |
+| `clear` | `button.search-input__clear`  | the clear button, rendered only while `value` is set |
+
+```tsx
+<SearchInput
+  value={q}
+  onChange={setQ}
+  classNames={{ icon: "text-fg-muted", clear: "rounded-full" }}
+/>
+```
+
+This is the answer to the `className`/`style` split in [Gotchas](#gotchas): `style` still goes
+to the `<input>` with the rest props, and `classNames.input` is how a class reaches the same
+element. Handlers, `aria-*` and `id` stay on the rest props — that is deliberate, because the
+`id` you pass is what stands the default accessible name aside, and what a `<label for>` binds
+to.
 
 ## Theme tokens
 

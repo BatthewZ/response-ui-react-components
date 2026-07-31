@@ -681,4 +681,130 @@ describe("TagInput", () => {
       expect(screen.getByText("apple").className).toBe(badgeClass);
     });
   });
+
+  describe("classNames slots and badgeProps", () => {
+    /**
+     * One slot-override test per slot, and each is the falsifier for its own
+     * merge: delete that element's `cn()` and exactly this test must go red.
+     */
+    it("lands classNames.input on the draft field, beside the base classes", () => {
+      render(
+        <TagInput aria-label="Tags" classNames={{ input: "min-w-full" }} />,
+      );
+      const input = screen.getByRole("textbox", { name: "Tags" });
+      expect(input.className).toContain("bg-transparent");
+      expect(input.className).toContain("min-w-full");
+    });
+
+    it("lands classNames.tagRemove on every chip's button, beside the base classes", () => {
+      render(
+        <TagInput
+          aria-label="Tags"
+          defaultValue={["a", "b"]}
+          classNames={{ tagRemove: "size-r3" }}
+        />,
+      );
+      const buttons = screen.getAllByRole("button", { name: /^Remove/ });
+      expect(buttons).toHaveLength(2);
+      for (const button of buttons) {
+        expect(button.className).toContain("inline-flex");
+        expect(button.className).toContain("size-r3");
+      }
+    });
+
+    it("leaves each internal on its base classes alone when no slot is passed", () => {
+      render(<TagInput aria-label="Tags" defaultValue={["a"]} />);
+      expect(screen.getByRole("textbox", { name: "Tags" }).className).toBe(
+        "flex-1 min-w-[6rem] bg-transparent outline-none text-body-2 text-fg-primary placeholder:text-fg-muted disabled:cursor-not-allowed",
+      );
+      expect(screen.getByRole("button", { name: "Remove a" }).className).toBe(
+        "inline-flex items-center justify-center rounded-sm text-fg-muted hover:text-fg-primary disabled:cursor-not-allowed cursor-pointer",
+      );
+    });
+
+    it("does not put a slot class on the bordered field box", () => {
+      const { container } = render(
+        <TagInput
+          aria-label="Tags"
+          defaultValue={["a"]}
+          classNames={{ input: "min-w-full", tagRemove: "size-r3" }}
+        />,
+      );
+      const box = container.querySelector(".flex-wrap");
+      expect(box).not.toBeNull();
+      expect(box?.getAttribute("class")).not.toContain("min-w-full");
+      expect(box?.getAttribute("class")).not.toContain("size-r3");
+    });
+
+    /**
+     * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+     * compile error. It fails if TypeScript ever stops rejecting the key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      render(
+        // @ts-expect-error — `tag` is not a slot; the chip takes `badgeProps`.
+        <TagInput aria-label="Tags" defaultValue={["a"]} classNames={{ tag: "p-r3" }} />,
+      );
+      expect(screen.getByText("a").className).not.toContain("p-r3");
+    });
+
+    it("does not leak classNames or badgeProps onto the DOM", () => {
+      const { container } = render(
+        <TagInput
+          aria-label="Tags"
+          defaultValue={["a"]}
+          classNames={{ input: "min-w-full" }}
+          badgeProps={{ variant: "info" }}
+        />,
+      );
+      const root = container.firstElementChild as HTMLElement;
+      expect(root.hasAttribute("classnames")).toBe(false);
+      expect(root.hasAttribute("badgeprops")).toBe(false);
+      expect(
+        screen.getByRole("textbox", { name: "Tags" }).hasAttribute("classnames"),
+      ).toBe(false);
+    });
+
+    it("merges badgeProps.className onto every chip, after Badge's own classes", () => {
+      const { unmount } = render(<Badge variant="info">apple</Badge>);
+      const badgeClass = screen.getByText("apple").className;
+      unmount();
+
+      render(
+        <TagInput
+          aria-label="Tags"
+          defaultValue={["apple", "pear"]}
+          badgeProps={{ className: "rounded-none", variant: "info" }}
+        />,
+      );
+
+      for (const tag of ["apple", "pear"]) {
+        const chip = screen.getByText(tag);
+        // The caller's class arrives last, so tailwind-merge lets it *replace*
+        // the base's `rounded-sm` rather than stack with it — which is the
+        // whole point of merging in that order.
+        expect(chip.className).toBe(
+          `${badgeClass.replace(" rounded-sm", "")} rounded-none`,
+        );
+      }
+    });
+
+    /**
+     * The chips are the `list`'s only legal children, so `role` is set after the
+     * spread. Whichever direction is not asserted is the one a "simplification"
+     * that reorders the spread will break.
+     */
+    it("does not let badgeProps take the listitem role off a chip", () => {
+      render(
+        <TagInput
+          aria-label="Tags"
+          defaultValue={["apple"]}
+          // A caller's bag arriving from untyped JS; the typed form is a role
+          // union, so this is the shape that actually threatens the semantics.
+          badgeProps={{ role: "presentation" } as { role: string }}
+        />,
+      );
+      expect(screen.getByText("apple")).toHaveAttribute("role", "listitem");
+    });
+  });
 });

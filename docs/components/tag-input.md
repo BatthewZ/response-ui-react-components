@@ -30,6 +30,8 @@ error state with no extra props.
 | `error`         | `boolean`                             | `Field` state, else `false` |
 | `disabled`      | `boolean`                             | —                           |
 | `className`     | `string`                              | — (lands on the wrapper)    |
+| `classNames`    | `{ input?, tagRemove? }` — see [Slots](#slots) | —                   |
+| `badgeProps`    | `Badge` props minus `children` — see [Slots](#slots) | —             |
 | `ref`           | `Ref<HTMLInputElement>`               | —                           |
 | …rest           | `<input>` props minus `value` / `defaultValue`; `onChange` is re-typed above | — |
 
@@ -43,8 +45,9 @@ other passthrough prop — `id`, `style`, `aria-*`, `onFocus` — lands on the i
 committed tag, not the draft field. See [Gotchas](#gotchas).
 
 There is no `Tag` sub-component and no render prop: TagInput draws each chip itself, as a
-default-variant [Badge](badge.md) wrapping the label and a remove button, and a tag is
-always a plain `string`.
+[Badge](badge.md) wrapping the label and a remove button, and a tag is always a plain
+`string`. `badgeProps` is the route to that Badge — variant included — and
+`classNames.tagRemove` to the button inside it. See [Slots](#slots).
 
 ## How a tag is committed
 
@@ -225,6 +228,44 @@ the same red border on top of whatever `error` says.
 
 `disabled` reaches both the text input and every chip's remove button, so the set becomes
 read-only rather than merely un-typeable.
+
+## Slots
+
+`className` addresses the bordered field box. `classNames` addresses two elements inside it —
+class strings only, and the keys are typed, so a misspelled one is a compile error rather than
+a prop that does nothing.
+
+| Slot        | Element                   | What it addresses                                     |
+| ----------- | ------------------------- | ----------------------------------------------------- |
+| `input`     | the draft text `<input>`  | the field a tag is typed into                          |
+| `tagRemove` | every chip's `button`     | all remove buttons — chips are generated, so no key names one |
+
+The chip itself is a bare [Badge](badge.md), so it takes a **prop bag** rather than a class
+string: a slot would have no base class to merge with, and would reach only `className` when
+what a caller usually wants is the variant.
+
+| Prop         | Target                | What it addresses                              |
+| ------------ | --------------------- | ---------------------------------------------- |
+| `badgeProps` | every chip's `Badge`  | its whole prop surface, minus `children`        |
+
+```tsx
+<TagInput
+  aria-label="Topics"
+  badgeProps={{ variant: "info" }}
+  classNames={{ tagRemove: "text-status-error" }}
+/>
+```
+
+`badgeProps.className` is merged by Badge itself, after its own base classes, so a utility
+touching a property the Badge already sets replaces it. The chip's `role="listitem"` is set
+*after* the bag and is not yours to change: the chips are the only legal children of the
+`role="list"` around them.
+
+**Three internals take no class from the call site, deliberately.** The chip list is
+`display: contents` — a box would re-lay-out the chips, which is the layout the class exists
+to avoid. The validation message and the announcer are live regions whose `sr-only` is the
+mechanism; a class route there lets a caller print every add, removal and refusal on screen.
+See [Announcements](#announcements).
 
 ## Theme tokens
 

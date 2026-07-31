@@ -382,4 +382,61 @@ describe("OTPInput", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("classNames slots", () => {
+    /**
+     * The slot-override test for `classNames.box`, and the falsifier for it:
+     * delete the `cn()` merge on the box `<input>` and this must go red. It
+     * asserts every box, because the boxes are generated from `length` and the
+     * key names all of them.
+     */
+    it("lands classNames.box on every box, beside the base classes", () => {
+      render(
+        <OTPInput length={4} aria-label="Code" classNames={{ box: "size-16" }} />
+      );
+      const boxes = getBoxes();
+      expect(boxes).toHaveLength(4);
+      for (const box of boxes) {
+        expect(box.className).toContain("text-center");
+        expect(box.className).toContain("size-16");
+      }
+    });
+
+    it("leaves the boxes on their base classes alone when no slot is passed", () => {
+      render(<OTPInput length={2} aria-label="Code" />);
+      expect(getBoxes()[0].className).toBe(
+        "size-12 text-center text-h5 text-fg-primary bg-surface-0 border border-border-strong rounded-md duration-fast not-forced-colors:focus:outline-none ring-2 ring-transparent focus:ring-border-focus focus:ring-offset-0 focus:border-border-focus disabled:bg-surface-3 disabled:cursor-not-allowed"
+      );
+    });
+
+    it("does not put the slot class on the group", () => {
+      render(
+        <OTPInput length={2} aria-label="Code" classNames={{ box: "size-16" }} />
+      );
+      expect(
+        screen.getByRole("group", { name: "Code" }).className
+      ).not.toContain("size-16");
+    });
+
+    /**
+     * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+     * compile error. It fails if TypeScript ever stops rejecting the key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      render(
+        // @ts-expect-error — `slot` is not a slot key; only untyped JS gets here.
+        <OTPInput length={2} aria-label="Code" classNames={{ slot: "size-16" }} />
+      );
+      expect(getBoxes()[0].className).not.toContain("size-16");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      render(
+        <OTPInput length={2} aria-label="Code" classNames={{ box: "size-16" }} />
+      );
+      expect(
+        screen.getByRole("group", { name: "Code" }).hasAttribute("classnames")
+      ).toBe(false);
+    });
+  });
 });

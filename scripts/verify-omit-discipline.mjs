@@ -107,6 +107,18 @@ const ALLOWLIST = new Map([
       "`href?: never` to Swimlane to satisfy a check that is asking the wrong question.",
   ],
   [
+    "src/components/form/TagInput.tsx:TagInput.children",
+    "FALSE POSITIVE, same shape as the two entries below (AUDIT.md #473). The " +
+      "`Omit<ComponentPropsWithRef<typeof Badge>, \"children\">` this fires on types the " +
+      "`badgeProps` *sub-prop bag* for each chip's Badge, not TagInput's own props — the " +
+      "chip's content is the tag string, so omitting it there is the point. It is also " +
+      "inert twice over: JSX children beat a spread `children`, so the bag could not " +
+      "replace the label even without the Omit, and TagInput reaches no element with " +
+      "`children` at all (its own type's `children` comes from `<input>`, which renders " +
+      "none). The scanner matches the `Omit<…>` shape wherever it appears in a props " +
+      "module and cannot tell a nested prop bag from the component's own type.",
+  ],
+  [
     "src/components/ui/CodeBlock.tsx:CodeBlock.value",
     "FALSE POSITIVE, same shape as the Swimlane entry above (AUDIT.md #473). The " +
       "`Omit<ComponentPropsWithRef<typeof CopyButton>, \"value\">` this fires on types the " +

@@ -13,7 +13,7 @@ import {
   focusRingControl,
   focusRingControlError,
 } from "../../util/focus";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { useFieldError } from "./Field";
 
@@ -45,6 +45,14 @@ type OTPInputProps = {
   charLabel?: (position: number, length: number) => string;
   error?: boolean;
   disabled?: boolean;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * root grid, so the only slot is the entry box — and it lands on **every** box,
+   * because the boxes are generated from `length` and no key can name the third
+   * one. The union is written out here so an unknown key is a type error rather
+   * than a silently ignored one.
+   */
+  classNames?: SlotClassNames<"box">;
 } & Omit<ComponentPropsWithRef<"div">, "onChange" | "defaultValue">;
 
 const PATTERNS: Record<OTPMode, RegExp> = {
@@ -74,6 +82,7 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
     error,
     disabled,
     className,
+    classNames,
     "aria-label": ariaLabel = "One-time code",
     ...props
   },
@@ -229,7 +238,8 @@ export const OTPInput = forwardRef<HTMLDivElement, OTPInputProps>(function OTPIn
               focusOutlineResetControl,
               focusRingControl,
               "disabled:bg-surface-3 disabled:cursor-not-allowed",
-              invalid && focusRingControlError
+              invalid && focusRingControlError,
+              classNames?.box
             )}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}

@@ -26,7 +26,7 @@ import {
 } from "../../util/focus";
 import { mergeProps } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import {
   type Hsv,
@@ -75,6 +75,33 @@ type ColorPickerProps = {
   hueLabel?: string;
   /** Accessible name for the hex text field. @default "Hex value" */
   hexLabel?: string;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * wrapper (see `color-picker.md`); everything else the picker draws — the
+   * trigger, and the nine parts of the floating instrument panel — is reached
+   * from here. The union is written out so an unknown key is a type error rather
+   * than a silently ignored one.
+   *
+   * `swatch` lands on **both** colour chips (the trigger's and the panel's) and
+   * `preset` on **every** preset button: they are generated from `presets`, so
+   * no key can name an individual one.
+   *
+   * Class strings only. The panel is a floating surface whose position is
+   * written as an inline `style`, so a positioning utility passed through
+   * `panel` is silently dead — pass `placement` instead.
+   */
+  classNames?: SlotClassNames<
+    | "trigger"
+    | "swatch"
+    | "value"
+    | "panel"
+    | "plane"
+    | "thumb"
+    | "hue"
+    | "hex"
+    | "presets"
+    | "preset"
+  >;
 } & Omit<
   ComponentPropsWithRef<"button">,
   "value" | "defaultValue" | "onChange"
@@ -104,6 +131,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       error,
       disabled,
       className,
+      classNames,
       "aria-label": ariaLabel = "Choose color",
       panelLabel = "Color picker",
       areaLabel = "Saturation and brightness",
@@ -247,11 +275,16 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       // buttons on `:focus-visible` (which is what this trigger already did) and
       // paints ring only, never the border — so the invalid border survives
       // focus by construction rather than by a specificity tie-break.
+      //
+      // This `className` is an object property, not a JSX attribute, so a walk
+      // over JSX attributes never visits it: its triage is (c) and is recorded
+      // here rather than being inferable from the surrounding markup.
       className: cn(
         "colorpicker-trigger duration-fast",
         focusOutlineResetButton,
         focusRingButton,
         invalid && "colorpicker-trigger--error",
+        classNames?.trigger,
       ),
       ...ariaProps,
     });
@@ -265,11 +298,13 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
           })}
         >
           <span
-            className="colorpicker-swatch"
+            className={cn("colorpicker-swatch", classNames?.swatch)}
             style={{ backgroundColor: hex }}
             aria-hidden="true"
           />
-          <span className="colorpicker-trigger__value">{hex}</span>
+          <span className={cn("colorpicker-trigger__value", classNames?.value)}>
+            {hex}
+          </span>
         </button>
 
         {open && (
@@ -286,7 +321,10 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
               <div
                 {...getFloatingProps({
                   ref: refs.setFloating,
-                  className: "colorpicker-panel",
+                  // An object property rather than a JSX attribute, so a walk
+                  // over JSX attributes never visits it: triage (c), recorded
+                  // here because nothing in the markup around it says so.
+                  className: cn("colorpicker-panel", classNames?.panel),
                   style: floatingStyles,
                   "aria-label": panelLabel,
                 })}
@@ -300,7 +338,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     and the thumb is presentational. */}
                 <div
                   ref={svRef}
-                  className="colorpicker-sv"
+                  className={cn("colorpicker-sv", classNames?.plane)}
                   role="group"
                   aria-disabled={disabled || undefined}
                   aria-label={areaLabel}
@@ -311,6 +349,12 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   <input
                     ref={saturationRef}
                     type="range"
+                    // slot:(a) this class *is* the visually-hidden clip that
+                    // makes a named, arrow-key-operable axis exist without
+                    // painting a second control over the square. A route here
+                    // lets a caller un-clip it and lay two raw range inputs
+                    // across the picking surface, which is the arrangement the
+                    // class was written to prevent.
                     className="colorpicker-sv__input"
                     min={0}
                     max={100}
@@ -325,6 +369,9 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   />
                   <input
                     type="range"
+                    // slot:(a) the brightness axis's twin of the clip above, and
+                    // unreachable for the same reason: un-hiding it puts a
+                    // second raw range control over the picking surface.
                     className="colorpicker-sv__input"
                     min={0}
                     max={100}
@@ -338,7 +385,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     }
                   />
                   <span
-                    className="colorpicker-sv__thumb"
+                    className={cn("colorpicker-sv__thumb", classNames?.thumb)}
                     aria-hidden="true"
                     style={{
                       left: `${hsv.s * 100}%`,
@@ -351,7 +398,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                 {/* Hue rail */}
                 <input
                   type="range"
-                  className="colorpicker-hue"
+                  className={cn("colorpicker-hue", classNames?.hue)}
                   min={0}
                   max={360}
                   step={1}
@@ -364,9 +411,19 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                 />
 
                 {/* Hex field */}
-                <div className="colorpicker-row">
+                <div
+                  // slot:(a) a two-child flex row inside a fixed-width
+                  // instrument panel: its only job is to stand the large swatch
+                  // beside the hex field. Reflowing it does not produce a
+                  // different picker, it produces a broken one, and the surface
+                  // a caller actually restyles is `classNames.panel`.
+                  className="colorpicker-row"
+                >
                   <span
-                    className="colorpicker-swatch colorpicker-swatch--lg"
+                    className={cn(
+                      "colorpicker-swatch colorpicker-swatch--lg",
+                      classNames?.swatch
+                    )}
                     style={{ backgroundColor: hex }}
                     aria-hidden="true"
                   />
@@ -382,6 +439,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                       "border border-border-strong",
                       focusOutlineResetControl,
                       focusRingControl,
+                      classNames?.hex,
                     )}
                     aria-label={hexLabel}
                     spellCheck={false}
@@ -400,12 +458,12 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
 
                 {/* Presets */}
                 {swatches.length > 0 && (
-                  <div className="colorpicker-presets">
+                  <div className={cn("colorpicker-presets", classNames?.presets)}>
                     {swatches.map((swatch) => (
                       <button
                         key={swatch}
                         type="button"
-                        className="colorpicker-preset"
+                        className={cn("colorpicker-preset", classNames?.preset)}
                         aria-label={swatch}
                         aria-pressed={swatch === hex}
                         disabled={disabled}

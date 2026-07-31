@@ -2,7 +2,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { Button } from "../ui/Button";
 import { IconButton } from "../ui/IconButton";
 
@@ -124,6 +124,16 @@ type RepeaterProps<T extends Record<string, unknown>, P extends ArrayPath<T> & s
   reorderable?: boolean;
   disabled?: boolean;
   className?: string;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * outer column; these reach the four parts inside it that no prop otherwise
+   * addresses.
+   *
+   * `item`, `fields` and `itemActions` land on **every** row — the rows are
+   * generated from the array field and no key can name the third one. Row
+   * *content* is the render-prop child's, not a slot's.
+   */
+  classNames?: SlotClassNames<"list" | "item" | "fields" | "itemActions">;
 };
 
 /**
@@ -170,6 +180,7 @@ export function Repeater<
   reorderable = false,
   disabled = false,
   className,
+  classNames,
 }: RepeaterProps<T, P>) {
   const array = useFieldArray({ form, name });
   const count = array.fields.length;
@@ -222,17 +233,24 @@ export function Repeater<
       {/* The rows are a list: without the semantics a screen reader hears a run
           of unrelated fields and cannot tell how many there are or which one it
           is in. */}
-      <div role="list" className="flex flex-col gap-r4">
+      <div role="list" className={cn("flex flex-col gap-r4", classNames?.list)}>
         {array.fields.map((field, index) => {
           const isFirst = index === 0;
           const isLast = index === count - 1;
           return (
-            <div key={field.id} role="listitem" className="flex items-start gap-r5">
+            <div
+              key={field.id}
+              role="listitem"
+              className={cn("flex items-start gap-r5", classNames?.item)}
+            >
               {/* A `disabled` fieldset disables every native control inside it,
                   which is the only way `disabled` can reach fields this
                   component does not own. Preflight already strips the UA
                   border/padding/margin; `min-w-0` clears `min-inline-size`. */}
-              <fieldset disabled={disabled} className="flex-1 min-w-0">
+              <fieldset
+                disabled={disabled}
+                className={cn("flex-1 min-w-0", classNames?.fields)}
+              >
                 {children({
                   id: field.id,
                   name: field.name,
@@ -252,7 +270,9 @@ export function Repeater<
                   },
                 })}
               </fieldset>
-              <div className="flex items-center gap-r6 pt-r6">
+              <div
+                className={cn("flex items-center gap-r6 pt-r6", classNames?.itemActions)}
+              >
                 {reorderable && (
                   <>
                     <IconButton
@@ -305,7 +325,14 @@ export function Repeater<
       {/* One region for the whole repeater, mounted whether or not it holds
           anything: a region created in the same commit as its first text is not
           reliably announced. N rows never become N live regions. */}
-      <div className="sr-only" role="status" aria-live="polite">
+      <div
+        // slot:(a) `sr-only` is the whole point of this element: it is the
+        // repeater's one polite announcer, and a caller who could restyle it
+        // could unhide it and print every add, removal and reorder on screen.
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+      >
         {announcement}
       </div>
     </div>

@@ -46,6 +46,7 @@ store, so a repeating group validates, submits and resets exactly like any other
 | `reorderable` | `boolean`                               | `false` |
 | `disabled`    | `boolean`                               | `false` |
 | `className`   | `string`                                | —       |
+| `classNames`  | `{ list?, item?, fields?, itemActions? }` — see [Slots](#slots) | — |
 
 Six further props are functions that produce the component's own English — `removeLabel`,
 `moveUpLabel` and `moveDownLabel` name the row controls, and `addAnnouncement` /
@@ -56,8 +57,9 @@ them.
 The first four are required. There is no rest spread and no `ref`: the prop type is a closed
 object rather than an intersection with `div` props, so `<Repeater id="links">` is a compile
 error rather than a prop that silently vanishes. `className` merges onto the outer column
-through tailwind-merge, so `className="gap-r3"` replaces the built-in row gap instead of
-fighting it.
+through tailwind-merge, so `className="gap-r3"` replaces the built-in gap instead of fighting
+it — that is the gap between the row list and the Add button. The gap *between rows* belongs
+to the list inside it, and is `classNames.list`; see [Slots](#slots).
 
 ## The row API
 
@@ -315,6 +317,39 @@ Repeater's `disabled` disables its own Add/Remove/Move buttons **and** the row f
 row's children render inside a `<fieldset disabled>`, which disables every native control
 within it. Custom row controls that are not native form elements read
 `RepeaterItem.disabled` instead — see [Gotchas](#gotchas).
+
+## Slots
+
+`className` addresses the outer column. `classNames` addresses the four elements inside it —
+class strings only, and the keys are typed, so a misspelled one is a compile error rather than
+a prop that does nothing.
+
+| Slot          | Element                       | What it addresses                          |
+| ------------- | ----------------------------- | ------------------------------------------ |
+| `list`        | the `role="list"` `div`       | the row container, and so the gap between rows |
+| `item`        | every `role="listitem"` `div` | each row's own layout                       |
+| `fields`      | every row's `fieldset`        | the region your render prop fills           |
+| `itemActions` | every row's control cluster   | the Move/Remove buttons' box                |
+
+The last three land on **every** row: the rows are generated from the array field, so no key
+can name the third one.
+
+```tsx
+<Repeater form={form} name="links" defaultItem={() => ({ url: "" })}
+  classNames={{ list: "gap-r6", itemActions: "pt-0" }}
+>
+  {({ name }) => <Input {...form.field(`${name}.url`)} />}
+</Repeater>
+```
+
+Row *content* is the render prop's, not a slot's — see [The row API](#the-row-api). The Move
+and Remove buttons themselves take no class from the call site; if you need to restyle or
+relabel them, render your own inside the row and drive them from the `remove` / `moveUp` /
+`moveDown` callbacks — see [Your own row controls](#your-own-row-controls).
+
+**The live region takes no class, deliberately.** Its `sr-only` is what keeps the
+announcements off the screen; a class route there lets a caller print every add, removal and
+reorder into the layout. See [Accessibility](#accessibility).
 
 ## Theme tokens
 

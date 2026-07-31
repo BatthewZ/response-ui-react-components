@@ -353,4 +353,91 @@ describe("RangeSlider", () => {
       expect(screen.getByLabelText<HTMLInputElement>("High").value).toBe("100");
     });
   });
+
+  describe("classNames slots", () => {
+    /**
+     * One slot-override test per slot, and each is the falsifier for its own
+     * merge: delete that element's `cn()` and exactly this test must go red.
+     */
+    it("lands classNames.track on the track, beside the base class", () => {
+      const { container } = render(
+        <RangeSlider defaultValue={[20, 80]} classNames={{ track: "h-r3" }} />,
+      );
+      const track = container.querySelector(".range-slider__track");
+      expect(track?.getAttribute("class")).toContain("range-slider__track");
+      expect(track?.getAttribute("class")).toContain("h-r3");
+    });
+
+    it("lands classNames.fill on the fill, beside the base class", () => {
+      const { container } = render(
+        <RangeSlider defaultValue={[20, 80]} classNames={{ fill: "bg-accent" }} />,
+      );
+      const fill = container.querySelector(".range-slider__fill");
+      expect(fill?.getAttribute("class")).toContain("range-slider__fill");
+      expect(fill?.getAttribute("class")).toContain("bg-accent");
+    });
+
+    it("lands classNames.input on both thumbs, beside the base class", () => {
+      render(
+        <RangeSlider
+          defaultValue={[20, 80]}
+          minLabel="Low"
+          maxLabel="High"
+          classNames={{ input: "cursor-grab" }}
+        />,
+      );
+      for (const name of ["Low", "High"]) {
+        const input = screen.getByLabelText(name);
+        expect(input.className).toContain("range-slider__input");
+        expect(input.className).toContain("cursor-grab");
+      }
+    });
+
+    it("leaves each internal on its base class alone when no slot is passed", () => {
+      const { container } = render(
+        <RangeSlider defaultValue={[20, 80]} minLabel="Low" maxLabel="High" />,
+      );
+      expect(
+        container.querySelector(".range-slider__track")?.getAttribute("class"),
+      ).toBe("range-slider__track");
+      expect(
+        container.querySelector(".range-slider__fill")?.getAttribute("class"),
+      ).toBe("range-slider__fill");
+      expect(screen.getByLabelText("Low").className).toBe("range-slider__input");
+    });
+
+    it("does not put a slot class on the root", () => {
+      const { container } = render(
+        <RangeSlider
+          defaultValue={[20, 80]}
+          classNames={{ track: "h-r3", fill: "bg-accent", input: "cursor-grab" }}
+        />,
+      );
+      expect(container.firstElementChild?.getAttribute("class")).toBe("range-slider");
+    });
+
+    /**
+     * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+     * compile error. It fails if TypeScript ever stops rejecting the key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        <RangeSlider
+          defaultValue={[20, 80]}
+          // @ts-expect-error — `thumb` is not a slot; only untyped JS gets here.
+          classNames={{ thumb: "h-r3" }}
+        />,
+      );
+      expect(
+        container.querySelector(".range-slider__track")?.getAttribute("class"),
+      ).toBe("range-slider__track");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(
+        <RangeSlider defaultValue={[20, 80]} classNames={{ track: "h-r3" }} />,
+      );
+      expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+    });
+  });
 });

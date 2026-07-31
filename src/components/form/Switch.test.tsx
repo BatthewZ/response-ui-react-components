@@ -218,6 +218,56 @@ describe("Switch", () => {
     });
   });
 
+  describe("classNames slots", () => {
+    /**
+     * The slot-override test for `classNames.thumb`, and the falsifier for it:
+     * delete the `cn()` merge on the thumb `<span>` and this must go red. A slot
+     * that still passes with the merge removed is a prop that lands in the type
+     * and nowhere else.
+     */
+    it("lands classNames.thumb on the thumb, beside the base class", () => {
+      const { container } = render(
+        <Switch aria-label="Wifi" classNames={{ thumb: "size-r3" }} />,
+      );
+      const thumb = container.querySelector("span");
+      expect(thumb?.getAttribute("class")).toContain("switch-thumb");
+      expect(thumb?.getAttribute("class")).toContain("size-r3");
+    });
+
+    it("leaves the thumb on its base class alone when no slot is passed", () => {
+      const { container } = render(<Switch aria-label="Wifi" />);
+      expect(container.querySelector("span")?.getAttribute("class")).toBe(
+        "switch-thumb",
+      );
+    });
+
+    it("does not put the slot class on the track itself", () => {
+      render(<Switch aria-label="Wifi" classNames={{ thumb: "size-r3" }} />);
+      expect(screen.getByRole("switch").className).not.toContain("size-r3");
+    });
+
+    /**
+     * The reason for a per-component inline slot union rather than a
+     * `Record<string, string>`: an unknown key is a *type* error, not a silent
+     * no-op. The `@ts-expect-error` is the assertion — it fails if TypeScript
+     * ever stops rejecting the key. Do not "clean it up".
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        // @ts-expect-error — `knob` is not a slot; only untyped JS gets here.
+        <Switch aria-label="Wifi" classNames={{ knob: "size-r3" }} />,
+      );
+      expect(container.querySelector("span")?.getAttribute("class")).toBe(
+        "switch-thumb",
+      );
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      render(<Switch aria-label="Wifi" classNames={{ thumb: "size-r3" }} />);
+      expect(screen.getByRole("switch").hasAttribute("classnames")).toBe(false);
+    });
+  });
+
   describe("omitted props", () => {
     it("a field()-shaped bag's onChange never reaches the <button>", async () => {
       const user = userEvent.setup();

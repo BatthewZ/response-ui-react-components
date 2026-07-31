@@ -14,7 +14,7 @@ import { useControllableState } from "../../hooks/use-controllable-state";
 import { focusRingWithin, focusRingWithinError } from "../../util/focus";
 import { mergeProps } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { Badge } from "../ui/Badge";
 
 import { useFieldError } from "./Field";
@@ -84,6 +84,30 @@ type TagInputProps = {
   placeholder?: string;
   error?: boolean;
   disabled?: boolean;
+  /**
+   * Class overrides for the internals this component renders. `className` styles
+   * the bordered field box (see the component doc), so these reach the two parts
+   * inside it that no prop otherwise addresses: the text `<input>` a tag is
+   * typed into, and a chip's remove button.
+   *
+   * `tagRemove` lands on **every** chip's button — the chips are generated from
+   * `value` and no key can name the third one. The chip itself is a `Badge`, so
+   * it takes `badgeProps` below rather than a slot.
+   */
+  classNames?: SlotClassNames<"input" | "tagRemove">;
+  /**
+   * Props for each chip's `Badge`. A chip is a bare `Badge` — this component
+   * adds no class of its own to it — so a class string slot would have no base
+   * to merge with and nothing else would reach the chip at all. A prop bag is
+   * the route instead, and it carries `variant`, `title` and the rest of
+   * `Badge`'s own surface with it.
+   *
+   * Applied to **every** chip; the chips are generated from `value`, so no key
+   * can name the third one. `children` is `Omit`ted because the chip's content
+   * is the tag, and `role` is set after the spread because a `list` owns only
+   * `listitem`s.
+   */
+  badgeProps?: Omit<ComponentPropsWithRef<typeof Badge>, "children">;
 } & Omit<
   ComponentPropsWithRef<"input">,
   "value" | "defaultValue" | "onChange"
@@ -107,6 +131,8 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
       error,
       disabled,
       className,
+      classNames,
+      badgeProps,
       onKeyDown,
       onPaste,
       onBlur,
@@ -404,9 +430,25 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
               bordered field exactly as before (measured identical in Firefox 146
               and Chrome) while the role survives (both engines expose it). */}
           {tags.length > 0 && (
-            <div role="list" className="contents">
+            <div
+              role="list"
+              // slot:(a) `contents` is the mechanism, not a style: it removes
+              // this element's own box so the chips stay flex items of the
+              // bordered field while the `list` role survives. Any class a
+              // caller could set here restores a box and re-lays out the chips,
+              // which is the layout this element exists to avoid.
+              className="contents"
+            >
               {tags.map((tag, index) => (
-                <Badge key={`${index}:${tag}`} role="listitem">
+                <Badge
+                  key={`${index}:${tag}`}
+                  {...badgeProps}
+                  // After the bag, not before: `list` owns only `listitem`s, so
+                  // this is the one prop the chip is not the caller's to change.
+                  // Everything else — including `className`, which `Badge` merges
+                  // with its own base classes — is theirs.
+                  role="listitem"
+                >
                   {tag}
                   <button
                     type="button"
@@ -419,7 +461,10 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
                       pendingFocus.current = index;
                       removeTag(index);
                     }}
-                    className="inline-flex items-center justify-center rounded-sm text-fg-muted hover:text-fg-primary disabled:cursor-not-allowed cursor-pointer"
+                    className={cn(
+                      "inline-flex items-center justify-center rounded-sm text-fg-muted hover:text-fg-primary disabled:cursor-not-allowed cursor-pointer",
+                      classNames?.tagRemove
+                    )}
                   >
                     <X size={12} />
                   </button>
@@ -439,7 +484,8 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
             onBlur={handleBlur}
             className={cn(
               "flex-1 min-w-[6rem] bg-transparent outline-none text-body-2 text-fg-primary placeholder:text-fg-muted",
-              "disabled:cursor-not-allowed"
+              "disabled:cursor-not-allowed",
+              classNames?.input
             )}
             // `field()` always emits the KEY `aria-invalid`, valued `undefined`
             // when the field is valid — a plain spread would therefore erase the
@@ -460,6 +506,11 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
         <p
           id={messageId}
           aria-live="polite"
+          // slot:(a) a live region that is mounted whether or not it holds text,
+          // and whose `sr-only` half is the mechanism that keeps the empty case
+          // out of the visual flow. A class route here lets a caller drop
+          // `sr-only` and reserve a permanent blank line under every field, or
+          // hide the refusal text a sighted user is meant to read.
           className={cn("mt-r6 text-body-3 text-status-error", message == null && "sr-only")}
         >
           {message}
@@ -468,7 +519,14 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
             anything: a region created in the same commit as its first text is
             not reliably announced. Every add, removal and refusal writes here,
             so N chips never become N live regions. */}
-        <div className="sr-only" role="status" aria-live="polite">
+        <div
+          // slot:(a) `sr-only` is the whole point of this element: it is the
+          // component's one polite announcer, and a caller who could restyle it
+          // could unhide it and print every add, removal and refusal on screen.
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+        >
           {announcement}
         </div>
       </div>

@@ -43,13 +43,15 @@ and it returns `null` while closed. Each `Combobox.Item` is one `role="option"`,
 | Part               | Renders                                                  | Adds                              |
 | ------------------ | -------------------------------------------------------- | --------------------------------- |
 | `Combobox`         | nothing — a context provider                             | the props table below             |
-| `Combobox.Input`   | `<div>` wrapper + `<input role="combobox">` + chevron button | `error?` (+ all `input` props) |
-| `Combobox.Content` | portalled `<div role="listbox">`, or `null` when closed  | (all `div` props)                 |
+| `Combobox.Input`   | `<div>` wrapper + `<input role="combobox">` + chevron button | `error?` · `toggleLabel?` · `classNames?` (+ all `input` props) |
+| `Combobox.Content` | portalled `<div role="listbox">`, or `null` when closed  | `loadingLabel?` · `classNames?` (+ all `div` props) |
 | `Combobox.Item`    | `<div role="option">`                                    | `index` · `value` · `disabled?` (+ all `div` props) |
 | `Combobox.Empty`   | `<div role="presentation">`                              | (all `div` props)                 |
 
 All four forward `ref`, merge `className`, and spread the rest of your props onto the element
-they render. [Input](input.md), `Content` and `Item` read context and throw — `"Combobox.Item must be
+they render — for `Combobox.Input` that element is the `<input>`, not its wrapper. Two parts
+also take a `classNames` object for the internals nothing else reaches; see
+[Slots](#slots). [Input](input.md), `Content` and `Item` read context and throw — `"Combobox.Item must be
 used within a Combobox"`, and so on — if rendered outside the root. `Combobox.Empty` reads no
 context at all: it is a pre-styled `<div>` that works anywhere and warns nowhere.
 
@@ -264,6 +266,34 @@ Set `error` on the input to mark a standalone combobox invalid. Resolution is
 
 `placement` accepts any floating-ui `Placement`. The popup is offset 8px, and `flip` and
 `shift({ padding: 8 })` are always on, so it moves itself when the preferred side has no room.
+
+## Slots
+
+`className` addresses the element each part renders — for `Combobox.Input`, the `<input>`
+itself. `classNames` addresses the elements a part renders *inside* itself, and the unions are
+per-part, so a `Content` key on `Input` is a compile error rather than a prop that does
+nothing.
+
+| Part               | Slot      | Element                    | What it addresses                                |
+| ------------------ | --------- | -------------------------- | ------------------------------------------------ |
+| `Combobox.Input`   | `toggle`  | `button.combobox-toggle`   | the disclosure button beside the field            |
+| `Combobox.Content` | `loading` | `div.combobox-loading`     | the row that replaces the options while `loading` |
+
+```tsx
+<Combobox loading={pending}>
+  <Combobox.Input aria-label="Fruit" classNames={{ toggle: "text-fg-muted" }} />
+  <Combobox.Content classNames={{ loading: "py-r3" }} />
+</Combobox>
+```
+
+**`Combobox.Input`'s wrapper takes no class from the call site, deliberately.** Its four
+declarations are the coupling that keeps the toggle beside the field, and the floating listbox
+anchors to the `<input>` rather than to the wrapper — so sizing the field is `className` on
+`Combobox.Input`, and it works.
+
+`Content`'s fade is written as an inline `transition-duration` by the floating-motion hook, so
+a `duration-*` utility passed anywhere here is silently dead. Fade tempo is reachable only
+through `--MOTION-DURATION-*`.
 
 ## Theme tokens
 

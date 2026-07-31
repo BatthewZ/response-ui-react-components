@@ -513,4 +513,89 @@ describe("NumberInput", () => {
       ).toContain("pr-[var(--numberinput-stepper)]");
     });
   });
+
+  describe("classNames slots", () => {
+    /** The two stepper `<button>`s, in document order (up, then down). */
+    const steppers = (container: HTMLElement) =>
+      Array.from(container.querySelectorAll("button"));
+
+    /**
+     * The slot-override test for `classNames.chevron`, and the falsifier for it:
+     * delete either `cn()` merge on the stepper buttons and this must go red.
+     * It asserts *both* buttons, because the key names the pair.
+     */
+    it("lands classNames.chevron on both steppers, beside the base classes", () => {
+      const { container } = render(
+        <NumberInput aria-label="Qty" classNames={{ chevron: "bg-surface-1" }} />
+      );
+      const [up, down] = steppers(container);
+      expect(up.className).toContain("rounded-tr-md");
+      expect(up.className).toContain("bg-surface-1");
+      expect(down.className).toContain("rounded-br-md");
+      expect(down.className).toContain("bg-surface-1");
+    });
+
+    it("leaves the steppers on their base classes alone when no slot is passed", () => {
+      const { container } = render(<NumberInput aria-label="Qty" />);
+      const [up, down] = steppers(container);
+      expect(up.className).toBe(
+        "flex flex-1 items-center justify-center px-r5 text-fg-secondary hover:bg-surface-2 active:bg-surface-3 rounded-tr-md duration-fast disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      );
+      expect(down.className).toBe(
+        "flex flex-1 items-center justify-center px-r5 text-fg-secondary hover:bg-surface-2 active:bg-surface-3 rounded-br-md duration-fast disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      );
+    });
+
+    it("does not put the slot class on the input or the wrapper", () => {
+      const { container } = render(
+        <NumberInput aria-label="Qty" classNames={{ chevron: "bg-surface-1" }} />
+      );
+      expect(
+        screen.getByRole("spinbutton", { name: "Qty" }).className
+      ).not.toContain("bg-surface-1");
+      expect(container.firstElementChild?.getAttribute("class")).toBe("relative");
+    });
+
+    /**
+     * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+     * compile error. It fails if TypeScript ever stops rejecting the key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        // @ts-expect-error — `stepper` is not a slot; only untyped JS gets here.
+        <NumberInput aria-label="Qty" classNames={{ stepper: "bg-surface-1" }} />
+      );
+      expect(steppers(container)[0].className).not.toContain("bg-surface-1");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(
+        <NumberInput aria-label="Qty" classNames={{ chevron: "bg-surface-1" }} />
+      );
+      expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+      expect(
+        screen.getByRole("spinbutton", { name: "Qty" }).hasAttribute("classnames")
+      ).toBe(false);
+    });
+
+    /**
+     * The pin on the (a) ruling for the two wrappers: `className` goes to the
+     * `<input>` (documented in `number-input.md`), the outer box carries only the
+     * positioning context, and the stepper column only the reservation geometry.
+     * If the house rule is ever applied here, this is the test to rewrite rather
+     * than delete.
+     */
+    it("leaves both wrappers on their own classes only", () => {
+      const { container } = render(
+        <NumberInput aria-label="Qty" className="w-32" />
+      );
+      expect(container.firstElementChild?.getAttribute("class")).toBe("relative");
+      expect(
+        container.querySelector(".relative > div")?.getAttribute("class")
+      ).toBe("absolute inset-y-0 right-0 flex flex-col");
+      expect(
+        screen.getByRole("spinbutton", { name: "Qty" }).className
+      ).toContain("w-32");
+    });
+  });
 });

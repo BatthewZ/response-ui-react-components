@@ -31,7 +31,7 @@ import {
   focusRingControlError,
 } from "../../util/focus";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { Spinner } from "../ui/Spinner";
 
 import { useFieldError } from "./Field";
@@ -258,11 +258,27 @@ type ComboboxInputProps = ComponentPropsWithRef<"input"> & {
   error?: boolean;
   /** Accessible name for the chevron that opens and closes the listbox. */
   toggleLabel?: string;
+  /**
+   * Class overrides for the internals this part renders. `className` is the
+   * `<input>` — the element the `ref` and every other prop address — so the only
+   * slot is the disclosure `<button>` beside it, which no caller can otherwise
+   * reach. The union is written out here so an unknown key is a type error
+   * rather than a silently ignored one.
+   */
+  classNames?: SlotClassNames<"toggle">;
 };
 
 const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
   function ComboboxInput(
-    { error, className, onChange, onKeyDown, toggleLabel = "Show options", ...props },
+    {
+      error,
+      className,
+      classNames,
+      onChange,
+      onKeyDown,
+      toggleLabel = "Show options",
+      ...props
+    },
     ref,
   ) {
     const {
@@ -292,7 +308,15 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
     }
 
     return (
-      <div className="combobox-input-wrap" onBlur={handleFocusOut}>
+      <div
+        // slot:(a) the four declarations behind this class (relative, flex,
+        // centred, full width) are the coupling that keeps the toggle beside the
+        // field and nothing else; the floating listbox anchors to the `<input>`,
+        // not to this box. A caller sizing the field does it on `className`,
+        // which lands on that input.
+        className="combobox-input-wrap"
+        onBlur={handleFocusOut}
+      >
         <input
           {...getReferenceProps({
             ref: mergeRefs(ref, refs.setReference),
@@ -345,7 +369,7 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
           aria-label={toggleLabel}
           aria-expanded={open}
           aria-controls={open ? listboxId : undefined}
-          className="combobox-toggle"
+          className={cn("combobox-toggle", classNames?.toggle)}
           // Keep DOM focus on the input: `aria-activedescendant` navigation
           // depends on it, and a focus move here reads as a focus-out.
           onMouseDown={(event) => {
@@ -372,10 +396,21 @@ type ComboboxContentProps = ComponentPropsWithRef<"div"> & {
    * decoration without it, so with no label the wait is silent to AT.
    */
   loadingLabel?: string;
+  /**
+   * Class overrides for the internals this part renders. `className` is the
+   * floating surface, so the only slot is the row that replaces the options
+   * while the root is `loading` — an element that exists in one state and has no
+   * other route. The union is written out here so an unknown key is a type error
+   * rather than a silently ignored one.
+   */
+  classNames?: SlotClassNames<"loading">;
 };
 
 const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
-  function ComboboxContent({ children, className, style, loadingLabel, ...props }, ref) {
+  function ComboboxContent(
+    { children, className, classNames, style, loadingLabel, ...props },
+    ref,
+  ) {
     const {
       open,
       loading,
@@ -416,7 +451,10 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
           role="listbox"
         >
           {loading ? (
-            <div className="combobox-loading" role="presentation">
+            <div
+              className={cn("combobox-loading", classNames?.loading)}
+              role="presentation"
+            >
               <Spinner size="sm">{loadingLabel}</Spinner>
             </div>
           ) : (

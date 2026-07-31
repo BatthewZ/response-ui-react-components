@@ -36,11 +36,13 @@ See [Gotchas](#gotchas).
 | `disabled`      | `boolean`                         | —                           |
 | `aria-label`    | `string`                          | `"One-time code"`           |
 | `className`     | `string`                          | —                           |
+| `classNames`    | `{ box?: string }` — see [Slots](#slots) | —                     |
 | `ref`           | `Ref<HTMLDivElement>`             | —                           |
 | …rest           | `<div>` props minus `defaultValue`; `onChange` is re-typed above | —       |
 
-`className` and the rest props land on the **group `<div>`**, never on the boxes — there is
-no prop that reaches an individual `<input>` beyond `charLabel`. Three edges are worth
+`className` and the rest props land on the **group `<div>`**, never on the boxes; the class
+route to the boxes is `classNames.box`, and it reaches all of them at once — see
+[Slots](#slots). No prop reaches an individual `<input>` beyond `charLabel`. Three edges are worth
 reading before you ship: `onComplete` never fires the same code twice in a row, a gap
 between filled boxes does not survive the next edit, and a `<label htmlFor>` cannot name
 this control. See [Gotchas](#gotchas).
@@ -164,6 +166,24 @@ the boxes:
 `disabled` is forwarded to all `length` boxes. The group `<div>` itself is not marked, so a
 disabled OTPInput is still reachable as a group in the accessibility tree; only its inputs
 are skipped by the tab sequence.
+
+## Slots
+
+`className` addresses the group `<div>`. `classNames` addresses the boxes inside it. Class
+strings only, and the keys are typed, so a misspelled one is a compile error rather than a
+prop that does nothing.
+
+| Slot  | Element        | What it addresses                                             |
+| ----- | -------------- | ------------------------------------------------------------- |
+| `box` | every `<input>` | all `length` boxes — they are generated, so no key names one   |
+
+```tsx
+<OTPInput length={4} aria-label="Verification code" classNames={{ box: "size-14" }} />
+```
+
+The slot class is merged after the base classes, so a utility touching a property a box
+already sets — `size-14` against the built-in `size-12` — replaces it through tailwind-merge
+rather than stacking with it.
 
 ## Theme tokens
 

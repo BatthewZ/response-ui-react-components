@@ -25,6 +25,7 @@ submits later with a form.
 | `name`            | `string`                        | —       |
 | `value`           | `string`                        | `"on"`  |
 | `className`       | `string`                        | —       |
+| `classNames`      | `{ thumb?: string }` — see [Slots](#slots) | —       |
 | `ref`             | `Ref<HTMLButtonElement>`        | —       |
 | …rest             | props of `<button>`, minus the native `value`; `onChange` is a compile error | — |
 
@@ -194,6 +195,29 @@ free to use purely as a veto channel:
 </div>
 ```
 <!-- /example -->
+
+## Slots
+
+`className` addresses the track — the `<button>` the switch is. `classNames` addresses the
+one element it renders inside itself. Class strings only, and the keys are typed, so a
+misspelled one is a compile error rather than a prop that does nothing.
+
+| Slot    | Element             | What it addresses                            |
+| ------- | ------------------- | -------------------------------------------- |
+| `thumb` | `span.switch-thumb` | the sliding knob, in both checked states      |
+
+```tsx
+<Switch aria-label="Wi-Fi" classNames={{ thumb: "rounded-none" }} />
+```
+
+The slot class is merged after the base class and both survive: `cn()` resolves conflicts
+between utilities, not between a utility and a component class. A utility touching a property
+`.switch-thumb` already sets replaces it rather than stacking, because the base class lives in
+`@layer components` and yours does not.
+
+Prefer a token where the change is a *value* — the whole track and thumb re-tint from the
+variables in [Theme tokens](#theme-tokens) with no class at all, and that reaches every switch
+in the app rather than one call site.
 
 ## Theme tokens
 
