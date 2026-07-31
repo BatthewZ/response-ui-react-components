@@ -256,6 +256,48 @@ good. These are the ways they have still let defects through.
   hand-retyped class strings measures what the author believed the component emits. Render the
   real component with `renderToStaticMarkup` and read the class attribute; it costs three lines
   and removes the only remaining place the probe can agree with a wrong belief.
+- **A gate whose pass state is "reachable OR annotated" needs a third assertion, because both
+  halves can go to zero at once.** A reachability check over `className` attributes passes trivially
+  on any directory where every attribute happens to be reachable — which is most of `layout/`,
+  `animation/` and `guards/` — so "0 failing" there is not evidence that the annotation half works
+  at all. Measured: `src/components/layout` reports 8 attributes, 8 reachable, 0 failing, and the
+  only thing standing between that and a green tick is an explicit *zero-annotated is a failure*
+  check. Three vacuity guards, not one: zero attributes found (bad root or bad glob), zero
+  annotated (the annotations reverted, or the comment walk stopped working), and an attribute the
+  parser cannot classify — the last a **failure, never a skip**. Each was made to exit non-zero on
+  purpose, unpiped, before the gate was believed.
+- **Exercise every branch of a gate's verdict function, not just the one the tree currently
+  produces.** The `className` gate has six failure branches — unannotated, malformed marker, wrong
+  triage letter, contradiction (annotated *and* reachable), no sites, no annotations — and the
+  first is the only one a normal red run ever prints. The other five were reachable only by
+  planting one violation each in a throwaway copy of the tree. A branch nobody has watched fire is
+  indistinguishable from a branch with a typo in its condition, and this is the same shape as the
+  ledger guard that printed `FAIL` and exited `0`: **the verdict you never provoked is the verdict
+  that does not work.** Giving the script an optional root argument is what made this cheap — the
+  fixture is a `cp -r` of one directory plus a symlinked `node_modules`, and `src/` is never
+  touched.
+- **When a gate lands before the work it gates, say which kind of "red" it is.** This one arrived
+  with 17 real violations in `src/` (`Meter`, `RequireAuth`, `Alert`, `CopyButton`, `ErrorBoundary`,
+  `Spinner`, `ThemeSwitcher` — every one a component no lane owned), and not one of them a false
+  alarm: partitioned by initialiser shape, 14 bare string literals, 2 `cn(…)` composing modifiers
+  with no caller value in the call at all, 1 module-level static read through a local. That is a
+  **backlog**, not a broken gate, and the distinction only survives if it is written down the day
+  the script lands; otherwise the next person meets a red `prepublishOnly` and loosens the script.
+  Partition the failures mechanically before reporting a single one (`split a red gate's failures`,
+  above), and prove a green state exists somewhere — `src/components/form` is 80 attributes, 65
+  reachable, 15 annotated, exit 0.
+- **A gate written from a spec, against a tree the spec predates, encodes the spec's blind spot.**
+  The rule was drafted as "reachable OR annotated `(a)`/`(b)`", from a convention doc written when
+  `(a)` and `(b)` were the only letters anyone had shipped. A lane then landed 21 `slot:(e)`
+  annotations — `FileUpload`'s `renderPreview`/`renderFile` subtrees — and the first run reported
+  all 21 as failures. The reflex is to add them to a set; the fix was to work out what the set
+  *means*. It is not "letters we have seen": it is **does the consumer's need have a route
+  somewhere other than this attribute**. (a) none owed, (b) a custom property, (e) a `render*`
+  prop — all settling; (c), (d) and (f) each end in a `className` merge, so a settled one is
+  reachable and needs no comment at all. Stating the discriminator turned an arbitrary
+  three-element allowlist into a rule that decides letters nobody has invented yet. **Run a new
+  gate against the tree before you finish writing its rule**, and when it disagrees with source
+  a lane reasoned about carefully, suspect the rule first.
 - **Port the `var(--x, N)` fallback, not just the `var(--x)` read.** A component stylesheet that
   resolved its scale through `var(--scale, 1)` was answering two questions: what the caller asked
   for, *and* what happens when they asked for nothing at that step. A lookup table keyed on the
@@ -264,3 +306,20 @@ good. These are the ways they have still let defects through.
   default. `grid-template-columns: none` is not `repeat(1, minmax(0, 1fr))` — the implicit track
   is `auto`-sized, so a long unbreakable word widens the grid past its container instead of
   wrapping. Enumerate the fallbacks in a deleted stylesheet as declarations in their own right.
+- **A gate whose verdict is a judgement letter can be satisfied by a dishonest letter, and the
+  only defence is what the reason has to say.** Every unreachable element takes a settling letter
+  in one edit, so a lane under time pressure can turn a red gate green without triaging anything
+  — the pattern only rejects an *empty* reason. Require the reason to state **what a consumer
+  would break by getting a route**, not that the class is static: "static utility" is true of
+  every failing site and therefore evidence about none of them, while "dropping `sr-only` prints
+  the confirmation beside the button" is a claim a reviewer can go and refute. Where the same
+  shape has already been ruled elsewhere in the tree, cite the sibling ruling rather than
+  re-deriving it — a triage that disagrees with an identical neighbour is the one worth reading.
+- **Turning a gate on rots the prose that explained its absence.** The `verify:*` count is the
+  obvious casualty and the cheap one: it is greppable, and re-derive it from `package.json`
+  rather than transcribing it. The expensive ones read as reasoning rather than as status — a
+  paragraph arguing the script was deliberately kept out of `package.json`, a grammar frozen
+  while the convention was "a proposal for the owner", a backlog measured before the lanes that
+  closed it. None of those contain the count, so a count sweep leaves all three standing and
+  each is now a confident statement of something false. Re-derive every number from the tool
+  that produces it, and grep for the *claim of absence* separately.

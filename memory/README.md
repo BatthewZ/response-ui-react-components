@@ -385,30 +385,92 @@ to understand.
    the index into the *source* array too: a renderer invoked over a partitioned list sees
    positions that are not the ones the removal callback expects.
 
-Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
-gone stale is worse than an empty one, because it is still believed.
 
-55. **A subcomponent can only ship for an element the root's own `className` does not
+68. **A subcomponent can only ship for an element the root's own `className` does not
    already reach.** A ruling that a component "becomes a compound with `.Content`" has to be
    checked against which element `.Content` would name: where the root *is* the surface —
    a modal panel, not a floating child of one — `className` is already the single writer and
    a `.Content` beside it is the two-writers defect the subcomponent-or-slot rule exists to
    prevent. The asymmetry is in the anatomy, not in the ruling: a sibling whose surface is a
    separate portalled element takes the subcomponent, and the two look identical in a table.
-56. **The arity of a compound's children function is derived from what the root must keep
+69. **The arity of a compound's children function is derived from what the root must keep
    owning, not chosen for symmetry with a sibling.** Where the root owns a structural ARIA
    invariant — a listbox owning its options directly or through a `role="group"` that is
    itself a direct child — the consumer's authoring point is strictly *inside* a row, so the
    function is per-row. Where it owns no such tree, one whole-tree call is right. Copying the
    sibling's shape instead hands the consumer a scaffold they can break.
-57. **The `className:` form inside a props-getter object is invisible to a reachability
+70. **The `className:` form inside a props-getter object is invisible to a reachability
    classifier in both directions, and the grep offered for finding it undercounts.** Matching
    only string-literal initialisers misses every `className: cn(…)`, which is what the form
    looks like once it *has* a route. Re-grep as `className:\s*(cn\(|")` and hand-triage; a
    green classifier says nothing about these sites either before or after the fix.
-58. **Rename an exported type in the same change that already breaks the component.** Two
+71. **Rename an exported type in the same change that already breaks the component.** Two
    names for one concept survive because each rename looks gratuitous on its own; once a
    component is being rewritten the rename is free, and once its data type has become a
    subcomponent's prop type it is not. Check the rename against the internals first — a data
    type and a subcomponent competing for one identifier is a signal to move the *component*
    name, since the exported one is the one consumers type.
+
+72. **A default node a prop replaces outright is (a), not (e), and the discriminator is who
+   computes the element.** Both read as "replaced wholesale", so the words in the letter table
+   do not separate them. (e) is owed where the component still *builds* the subtree and
+   dispatches over data no caller could reconstruct — it has to hand the renderer the branch it
+   took. Where the prop simply swaps one node in, the caller supplies their own element with its
+   own classes, so the library's class is a default rather than content anyone has to be handed,
+   and no `render*` is owed. A whole default *branch* behind a fallback prop lands on the same
+   side as a single default glyph, for the same reason.
+73. **The loop test rules out a compound; it does not grant a slot.** A slot on every instance
+   is structurally fine, so the loop test cannot be the whole argument. Ask what the
+   per-instance class carries first: where it is the only channel distinguishing the instances —
+   which of N repeated elements is filled, selected, past — a slot lands identically on all of
+   them and a caller passing one conflicting utility collapses the distinction. tailwind-merge
+   makes that collapse total and silent for that utility group, so the element is (a) however
+   inviting the loop looks.
+74. **Two components sharing a hoisted class constant do not thereby share a triage.** The
+   constant travels; the element does not. Where a sibling has the same local and settles it
+   (a), check which of its *uses* that ruling was written at — a component may use one constant
+   at two elements with two different routes, and matching the neighbour by the constant's name
+   copies the wrong half.
+75. **A gate landing falsifies prose about the gate's absence, not only prose about its count.**
+   The count is the easy half and the one everyone greps for. The expensive half is the
+   paragraph explaining why the thing was deliberately *not* shipped, and the grammar the
+   convention froze while it was still a proposal — both read as settled reasoning rather than
+   as a dated status, and both are wrong the moment the script is in `package.json`. Search for
+   the assertion of absence.
+
+76. **Three elements one document rules identically, split across two lanes, will be settled two
+   different ways — and both lanes will be green.** Each lane's gates only see its own files, so
+   an element resolved by adding a route and its twin resolved by annotating the route away are
+   locally consistent and globally a contradiction. The seam pass's first sweep is therefore not
+   the vocabulary but the *dispositions*: group the diff's elements by the shared ruling that
+   covers them, and read the group, never the file. The one that took the additive route is
+   almost always right, because the other is a breaking change a lane had no standing to make and
+   quietly declined to.
+77. **The same construction written twice will disagree on spread order, and only one order is a
+   bug.** Two sibling compounds built from one design put the consumer's prop bag on opposite
+   sides of the attributes that constitute the element — `id`, `role`, `aria-*`. Spread last, a
+   caller's `role` silently empties the widget of its own children; spread first, it cannot.
+   Nothing types this, no gate sees it, and the component still renders, so the only instrument is
+   reading the two siblings side by side. Write the invariants after the bag, always.
+78. **A prop that names a row is an address, not a data channel — read the row back from your own
+   list.** A compound that hands children its data and takes an entry back must look the entry up
+   and use *its* copy, or a spread-and-edit at the call site writes state the component believes.
+   The tell is a modality split: the click path reads the child's object and the keyboard path
+   reads the source list, so the same widget accepts and refuses the same action depending on how
+   it was triggered, and the accessibility tree reports the caller's answer to both.
+79. **Guard the addresses symmetrically or not at all.** Where one part of a compound throws on an
+   entry the root never produced and its sibling does not, the unguarded one is the whole hole —
+   the design's single-writer claim is only as strong as its weakest part, and a reviewer reading
+   the guarded one concludes the property holds.
+80. **A cap, a filter and a label derived from the same list need three separate falsifiers, and
+   the cap's is the one that will be missing.** A test that never narrows the list cannot tell a
+   count of *data* from a count of *rendered nodes*, because while everything is mounted the two
+   agree. Every such test will be written without a query in it. Filter first, then assert.
+81. **Renumbering a document's `file:line` citations against `HEAD` is a defect; stating the
+   commit they are anchored to is the fix.** Once a fan-out has touched fifty files, "two anchors
+   rotted" is never the finding — all of them moved together, and repairing the two you were told
+   about produces a document where two point at one tree and four hundred at another. Verify the
+   anchors were right at their baseline before believing either story.
+
+Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
+gone stale is worse than an empty one, because it is still believed.

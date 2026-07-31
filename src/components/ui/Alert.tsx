@@ -1,7 +1,7 @@
 import { type ComponentPropsWithRef, forwardRef, type ReactNode } from "react";
 import { CircleCheck, CircleX, Info, TriangleAlert } from "lucide-react";
 
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 type Variant = "success" | "warning" | "error" | "info";
 
@@ -57,10 +57,44 @@ const statusLabelMap: Record<Variant, string> = {
  * pairing the message text already uses, so it introduces no new contrast.
  */
 const statusIconMap: Record<Variant, ReactNode> = {
-  success: <CircleCheck size={16} aria-hidden="true" className="shrink-0" />,
-  warning: <TriangleAlert size={16} aria-hidden="true" className="shrink-0" />,
-  error: <CircleX size={16} aria-hidden="true" className="shrink-0" />,
-  info: <Info size={16} aria-hidden="true" className="shrink-0" />,
+  success: (
+    <CircleCheck
+      size={16}
+      aria-hidden="true"
+      // slot:(a) default *content*, not an element the component owns —
+      // `statusIcon` replaces the whole node, so a class route here would style
+      // something the caller may have swapped out. `shrink-0` is the flex guard
+      // that keeps the glyph its own size beside a long message.
+      className="shrink-0"
+    />
+  ),
+  warning: (
+    <TriangleAlert
+      size={16}
+      aria-hidden="true"
+      // slot:(a) as `success` above — replaceable content, and `shrink-0` is the
+      // flex guard that keeps the glyph its own size beside a long message.
+      className="shrink-0"
+    />
+  ),
+  error: (
+    <CircleX
+      size={16}
+      aria-hidden="true"
+      // slot:(a) as `success` above — replaceable content, and `shrink-0` is the
+      // flex guard that keeps the glyph its own size beside a long message.
+      className="shrink-0"
+    />
+  ),
+  info: (
+    <Info
+      size={16}
+      aria-hidden="true"
+      // slot:(a) as `success` above — replaceable content, and `shrink-0` is the
+      // flex guard that keeps the glyph its own size beside a long message.
+      className="shrink-0"
+    />
+  ),
 };
 
 type AlertProps = {
@@ -76,10 +110,15 @@ type AlertProps = {
    * must be `aria-hidden`, or the severity is announced twice.
    */
   statusIcon?: ReactNode;
+  /**
+   * `icon` addresses the glyph's first-line box, not the glyph — the glyph is
+   * `statusIcon`, and a replacement brings its own classes.
+   */
+  classNames?: SlotClassNames<"icon">;
 } & ComponentPropsWithRef<"div">;
 
 export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
-  { variant = "info", statusLabel, statusIcon, className, children, ...props },
+  { variant = "info", statusLabel, statusIcon, classNames, className, children, ...props },
   ref
 ) {
   const statusText = statusLabel ?? statusLabelMap[variant];
@@ -94,8 +133,18 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
       {...ariaMap[variant]}
       {...props}
     >
-      {statusText && <span className="sr-only">{statusText}</span>}
-      {icon && <span className={firstLineClasses}>{icon}</span>}
+      {statusText && (
+        <span
+          // slot:(a) the severity word, read ahead of the message. `sr-only` is
+          // the whole mechanism — the tint is the visible channel — so a route
+          // here lets a caller drop it and print "Error" above their own error
+          // text. `statusLabel=""` is the supported remover.
+          className="sr-only"
+        >
+          {statusText}
+        </span>
+      )}
+      {icon && <span className={cn(firstLineClasses, classNames?.icon)}>{icon}</span>}
       {children}
     </div>
   );

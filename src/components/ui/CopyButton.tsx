@@ -79,7 +79,15 @@ export const CopyButton = forwardRef<HTMLButtonElement, CopyButtonProps>(functio
       </IconButton>
       {/* Outside the button: ARIA makes a button's descendants presentational,
           so a live region nested in one is never announced. */}
-      <span className="sr-only" role="status" aria-live="polite">
+      <span
+        // slot:(a) the live region, and `sr-only` is the whole mechanism rather
+        // than decoration: a route here lets a caller drop it, and "Copied"
+        // prints beside the button for two seconds every time it is pressed.
+        // `copiedLabel` is the supported way to change what it says.
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+      >
         {confirmation}
       </span>
     </>

@@ -215,10 +215,19 @@ const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(function Time
           <span className={cn("timeline-icon", classNames?.icon)}>{icon}</span>
         ) : (
           <div
-            // slot:(b) the marker's ink is `--timeline-highlight-fill` paired
-            // with `--timeline-highlight-ink`, both public and both inherited
-            // from one write on the entry; its ring width is private so the
-            // emphasis cue cannot be reduced to colour alone.
+            // slot:(b) the marker's fill is a token at both states, so a class
+            // route would only duplicate one: `--C-ACCENT` by default
+            // (`Timeline.css`, `.timeline-dot`) and `--timeline-highlight-fill`
+            // under `[data-highlight]`, the latter public and inherited from one
+            // write on the entry. Its ring width is private, so the emphasis cue
+            // cannot be reduced to colour alone — which is the thing a slot here
+            // would let a caller do. **Not** `--timeline-highlight-ink`: a dot
+            // has no glyph to ink and never reads it, and the element that does
+            // — `.timeline-icon`, the sibling branch above — is already
+            // reachable through `classNames.icon`. `ActivityFeed`'s dot is the
+            // near-identical element that *does* read its `-ink`, because it can
+            // hold an avatar; do not copy this reason back onto it or the other
+            // way round.
             className="timeline-dot"
           />
         )}

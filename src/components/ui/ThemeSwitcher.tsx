@@ -8,7 +8,7 @@ import {
 
 import { useRovingFocus } from "../../hooks/use-roving-focus";
 import { useTheme } from "../../hooks/use-theme";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 /** Option text, keyed by theme id. A theme with no entry is labelled by its id. */
 export type ThemeSwitcherLabels = Partial<Record<string, string>>;
@@ -44,10 +44,16 @@ type ThemeSwitcherProps = {
    * so `aurora` reads as "aurora" until you name it.
    */
   labels?: ThemeSwitcherLabels;
+  /**
+   * `item` addresses every option button, the selected one included. There is no
+   * per-theme key: the switcher is driven by *your* theme ids, so a keyed object
+   * would be a second place to list them.
+   */
+  classNames?: SlotClassNames<"item">;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 export const ThemeSwitcher = forwardRef<HTMLDivElement, ThemeSwitcherProps>(function ThemeSwitcher(
-  { themes: themesProp, labels, className, ...props },
+  { themes: themesProp, labels, classNames, className, ...props },
   ref
 ) {
   const { theme, setTheme, themes } = useTheme({ themes: themesProp ?? FALLBACK_THEMES });
@@ -112,7 +118,11 @@ export const ThemeSwitcher = forwardRef<HTMLDivElement, ThemeSwitcherProps>(func
             aria-checked={theme === t}
             tabIndex={roving.tabIndex}
             ref={roving.ref}
-            className={cn("theme-switcher__option", theme === t && "theme-switcher__option--active")}
+            className={cn(
+              "theme-switcher__option",
+              theme === t && "theme-switcher__option--active",
+              classNames?.item
+            )}
             onKeyDown={handleKeyDown}
             onClick={() => setTheme(t)}
           >

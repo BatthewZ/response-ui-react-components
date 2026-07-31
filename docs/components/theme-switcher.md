@@ -28,11 +28,12 @@ const APP_LABELS = { default: "Default", aurora: "Aurora", midnight: "Midnight" 
 | ----------- | ---------------------------------------------- | ------------------------ |
 | `themes`    | `readonly string[]`                            | `["default"]`            |
 | `labels`    | `Partial<Record<string, string>>`              | `{ default: "Default" }` |
+| `classNames` | `{ item? }` — see [Slots](#slots)             | —                        |
 | `className` | `string`                                       | —                        |
 | `ref`       | `Ref<HTMLDivElement>`                          | —                        |
 | …rest       | `div` props, **except `children`**             | —                        |
 
-That is the entire surface: those two plus
+That is the entire surface: those three plus
 `Omit<ComponentPropsWithRef<"div">, "children">`. There is no `value`/`onChange` — the
 selected theme is `<html data-theme>`, which `useTheme` owns. See
 [Registering your themes](#registering-your-themes) for how the two props compose.
@@ -214,6 +215,29 @@ component:
 Module scope for `APP_THEMES` is not stylistic. The hook memoises its snapshot reader on the
 array's identity, so an inline `useTheme({ themes: ["default", "aurora"] as const })` — a
 fresh reference every render — rebuilds that reader on every render instead.
+
+## Slots
+
+One internal takes a class, and the key is typed, so a misspelled one is a compile error
+rather than a prop that does nothing.
+
+| Slot   | Element                | What it addresses                                        |
+| ------ | ---------------------- | -------------------------------------------------------- |
+| `item` | every option `<button>` | the segment itself — padding, type, hit area              |
+
+```tsx
+<ThemeSwitcher themes={APP_THEMES} labels={APP_LABELS} classNames={{ item: "px-r3" }} />
+```
+
+`className` reaches the track and `classNames.item` reaches the options; between them the
+whole control is addressable without writing a descendant selector against a BEM class.
+
+**It lands on every option, the selected one included, and there is no per-theme key.** The
+options are generated from *your* theme array, so a keyed object would be a second place to
+list your theme ids — and the selected option keeps `theme-switcher__option--active`
+alongside your class, so a `--active` rule in your own CSS still wins where it should. Where
+you need one option to differ, that is a different control: drop to `useTheme` and build it
+(see [Registering your themes](#registering-your-themes)).
 
 ## Theme tokens
 

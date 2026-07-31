@@ -47,10 +47,34 @@ export class ErrorBoundary extends Component<Props, State> {
     // Rung 0 because this stands in for the card that failed and draws no
     // border — the raised sheet is the only thing giving it an edge on canvas.
     return (
-      <div className="flex items-center justify-center bg-surface-0 p-r2">
-        <div className="text-center">
-          <h1 className="text-h3 font-bold mb-r5">Something went wrong</h1>
-          <p className="text-fg-secondary mb-r3">An unexpected error occurred.</p>
+      <div
+        // slot:(a) the built-in fallback, which `fallback` replaces outright —
+        // and it is handed `reset`, so a replacement keeps the retry rather than
+        // trading it for a class. This branch renders only when the caller took
+        // neither route, so a key here would name elements a caller who cares
+        // about the look never sees. The boundary takes no `className`: it
+        // renders `children` untouched until it catches.
+        className="flex items-center justify-center bg-surface-0 p-r2"
+      >
+        <div
+          // slot:(a) inside the built-in fallback — replaced wholesale by
+          // `fallback`, along with everything below it.
+          className="text-center"
+        >
+          <h1
+            // slot:(a) inside the built-in fallback — replaced wholesale by
+            // `fallback`, which builds its own heading.
+            className="text-h3 font-bold mb-r5"
+          >
+            Something went wrong
+          </h1>
+          <p
+            // slot:(a) inside the built-in fallback — replaced wholesale by
+            // `fallback`, which builds its own message.
+            className="text-fg-secondary mb-r3"
+          >
+            An unexpected error occurred.
+          </p>
           <Button onClick={this.reset}>Try again</Button>
         </div>
       </div>

@@ -54,9 +54,26 @@ const defaultStatusLabels: Partial<Record<MeterStatus, string>> = {
  */
 const defaultStatusIcons: Partial<Record<MeterStatus, ReactNode>> = {
   warning: (
-    <TriangleAlert size={16} aria-hidden="true" className="self-center text-status-warning" />
+    <TriangleAlert
+      size={16}
+      aria-hidden="true"
+      // slot:(a) default *content*, not an element the component owns —
+      // `statusIcons.warning` replaces the whole node, so a class route here
+      // would style something the caller may have swapped out. The ink is the
+      // threshold's own status token, which is what a replacement has to carry
+      // for the glyph to keep matching the segments it sits after.
+      className="self-center text-status-warning"
+    />
   ),
-  critical: <CircleX size={16} aria-hidden="true" className="self-center text-status-error" />,
+  critical: (
+    <CircleX
+      size={16}
+      aria-hidden="true"
+      // slot:(a) as `warning` above — replaced through `statusIcons.critical`,
+      // never restyled through a class.
+      className="self-center text-status-error"
+    />
+  ),
 };
 
 /**
@@ -133,6 +150,13 @@ export const Meter = forwardRef<HTMLDivElement, MeterProps>(function Meter(
         <span
           key={i}
           aria-hidden="true"
+          // slot:(a) one of `segments` identical spans, and the class *is* the
+          // reading: which of them carry `filledColor[status]` and which carry
+          // `bg-surface-3` is the only channel saying how full the meter is. A
+          // key here lands on every segment alike, so a caller passing their own
+          // `bg-*` collapses filled and unfilled to one colour and the meter
+          // stops reporting. The grid the segments sit in is the root, which
+          // `className` reaches.
           className={cn(
             "h-r3 rounded-sm",
             i < filled ? filledColor[status] : "bg-surface-3"

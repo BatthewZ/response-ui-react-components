@@ -387,16 +387,24 @@ export function DataTable<T>({
         <Table.Row>
           {expandable && (
             <Table.HeaderCell
-              // slot:(a) the width reservation for the expander column, sized
-              // to the toggle this component renders under it. A caller class
-              // here re-sizes a column whose only content the component owns.
+              // slot:(a) the column's *only* width declaration — the matching
+              // `Table.Cell` below carries none, so auto layout takes this one
+              // and every data column divides the remainder. It is sized to the
+              // toggle, whose own footprint (`p-r6` + a 16px chevron) a caller
+              // cannot change from out here, so a narrower class does not give
+              // a narrower column: it clips a control with no route of its own,
+              // or springs back and moves every column beside it. The toggle's
+              // look is `classNames.expandToggle`; the widths a caller owns are
+              // the ones on the columns they defined.
               className="w-10"
             />
           )}
           {selectable && (
             <Table.HeaderCell
-              // slot:(a) the width reservation for the checkbox column — same
-              // shape as the expander column above.
+              // slot:(a) same shape as the expander column above, and the
+              // clipping half is stronger here: the `Checkbox` under it is a
+              // shared primitive this component renders with no props hatch, so
+              // its size is unreachable from the caller's side at all.
               className="w-10"
             >
               <Checkbox

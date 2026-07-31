@@ -16,6 +16,7 @@ from your theme's status tokens, so a custom theme restyles every alert for free
 | `variant`   | `"success" \| "warning" \| "error" \| "info"`   | `"info"` |
 | `statusLabel` | `string`                                      | the word for `variant` |
 | `statusIcon` | `ReactNode`                                    | the glyph for `variant` |
+| `classNames` | `{ icon? }` — see [Slots](#slots)              | —        |
 | `className` | `string`                                        | —        |
 | `ref`       | `Ref<HTMLDivElement>`                            | —        |
 | …rest       | props of `div` (`role`, `aria-live`, `id`, …)   | —        |
@@ -45,7 +46,7 @@ greyscale.
 ## Rich content
 
 Children render as-is inside a flex row, after the severity glyph. There is no
-`title` prop and no general-purpose icon slot — `statusIcon` names the severity
+`title` prop, and no second place to put an icon — `statusIcon` names the severity
 and nothing else, so compose the structure you need:
 
 <!-- example:WithTitle -->
@@ -106,6 +107,32 @@ variant to the same urgency (or demote `error` to `polite`):
 </Alert>
 ```
 <!-- /example -->
+
+## Slots
+
+One internal takes a class, and the key is typed, so a misspelled one is a compile error
+rather than a prop that does nothing.
+
+| Slot   | Element                             | What it addresses                                      |
+| ------ | ----------------------------------- | ------------------------------------------------------ |
+| `icon` | the severity glyph's first-line box | the box, not the glyph — the glyph is the `statusIcon` prop |
+
+```tsx
+<Alert variant="warning" classNames={{ icon: "self-center" }}>
+  Your trial ends in 3 days.
+</Alert>
+```
+
+The box is what pins the glyph to the message's first line (`h-[1lh]`), which is right for a
+message that wraps and wrong for a one-line banner where centring on the whole row reads
+better — that is the override this slot exists for. The glyph inside it takes no class route:
+`statusIcon` replaces the node outright, so a class there would style something you may have
+swapped out.
+
+**The visually-hidden severity word takes no slot.** `sr-only` *is* its mechanism — the tint
+is the visible channel and the word is the spoken one — so a route there would print "Error"
+above your own error text. Its wording is the `statusLabel` prop, and `statusLabel=""` is how
+you remove it.
 
 ## Theme tokens
 

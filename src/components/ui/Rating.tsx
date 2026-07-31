@@ -76,7 +76,12 @@ function fillFor(position: number, value: number): number {
 function StarIcon({ fill }: { fill: number }) {
   return (
     <span
-      // slot:(a) the positioning context the fill overlay is measured against.
+      // slot:(a) the containing block the fill overlay's percentage `width` is
+      // resolved against. `fill * 100%` means nothing until something establishes
+      // what 100% is, and this class is what does — so a caller class that
+      // changes `position`, `display` or `width` here re-bases the percentage
+      // and every star reports a fraction that is not the value. It is the one
+      // of the four whose failure is silent: the stars still draw.
       className="rating-star"
       aria-hidden="true"
     >
@@ -241,9 +246,15 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
             disabled={disabled}
             tabIndex={disabled ? -1 : roving.tabIndex}
             ref={roving.ref}
-            // slot:(a) a bare hit target around the glyph — it strips the UA
-            // button chrome and nothing else, and the star it wraps is (a) for
-            // the reason above, so there is no appearance here to vary.
+            // slot:(a) the hit target, and its box is load-bearing for the
+            // reading rather than for the look: under `allowHalf`,
+            // `valueFromClick` measures the pointer against this element's own
+            // `getBoundingClientRect()` to decide half-star from whole-star, so
+            // padding, width or a transform here changes which value a click
+            // commits. That is the same defect as a class on `StarIcon`'s clip
+            // — a detuned fraction — reached from the input side instead of the
+            // paint side. Size and spacing of the row are `className` on the
+            // root.
             className="rating-button"
             // Deliberately not `roving.onKeyDown` as well: the hook's own key
             // handling is the second state machine this component used to run

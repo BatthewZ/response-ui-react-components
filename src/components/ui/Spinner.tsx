@@ -44,7 +44,17 @@ export const Spinner = forwardRef<HTMLDivElement, SpinnerProps>(function Spinner
       className={cn(baseClasses, sizeClassMap[size], className)}
       {...props}
     >
-      {announces && <span className="sr-only">{children}</span>}
+      {announces && (
+        <span
+          // slot:(a) the announcement, and `sr-only` is the whole mechanism: the
+          // ring is the visible channel and this is the spoken one, so a route
+          // here lets a caller print "Loading…" next to the spinner that already
+          // says it. The wording is `children`; the ring itself is `className`.
+          className="sr-only"
+        >
+          {children}
+        </span>
+      )}
     </div>
   );
 });

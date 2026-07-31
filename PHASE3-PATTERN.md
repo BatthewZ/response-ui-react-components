@@ -250,12 +250,12 @@ which is the defect this whole procedure exists to find.
 
 ---
 
-## 6. Recording an (a)/(b) triage annotation
+## 6. Recording a triage annotation
 
-§7 item 3 accepts **either** a seam **or** an explicit (a)/(b) annotation with its reason. §8's
-future `verify:slot-annotations` gate has to read the second half, and that gate does not exist —
-so the syntax below is chosen for a parser, and is a **proposal for the owner**, not a settled
-convention.
+§7 item 3 accepts **either** a seam **or** an explicit annotation with its reason. §8's
+`verify:slot-annotations` gate reads the second half. **It has shipped** — the syntax below is no
+longer a proposal but the enforced convention, and `scripts/verify-slot-annotations.mjs` is where
+it is written down for a parser rather than for a reader.
 
 ### The syntax
 
@@ -270,9 +270,56 @@ A comment **inside the JSX opening tag**, in the `className` attribute's leading
 >
 ```
 
-Grammar: `slot:(<letter>) <reason>` where `<letter>` ∈ `a b c d e`, and `<reason>` is non-empty.
+Grammar: `slot:(<letter>) <reason>` where `<letter>` ∈ `a b c d e f` and `<reason>` is non-empty.
 Continuation lines need no marker — the annotation is the whole leading comment block, and other
-comments may sit above it.
+comments may sit above it. A marker that looks like an attempt and does not match — an empty
+reason, a letter outside the range — is reported as **malformed** by name, rather than falling
+through to "unannotated" and reading as an oversight.
+
+### Which letters settle an unreachable element: (a), (b) and (e) only
+
+The grammar parses six letters; **three of them discharge a site**. That is not a shortlist of the
+"good" outcomes — it follows from the one question the gate is asking, which is not *was this
+triaged* but **does the consumer's need have a route somewhere other than this attribute?**
+
+| | Means | The route it points at |
+| --- | --- | --- |
+| **(a)** not a gap | the class **is** the mechanism | none is owed — the class is not a style to swap |
+| **(b)** token | the override is a *value*, not a choice of utilities | a custom property |
+| **(e)** render prop | the component still **builds** the subtree and dispatches over data no caller could reconstruct, so it has to hand the renderer the branch it took | a `render*` prop — a **function** the component calls with what it computed |
+
+**(a) and (e) both read as "replaced wholesale", and this row's wording used to make them
+indistinguishable.** It said (e)'s route could be *"a `ReactNode` prop that replaces the node
+outright"*, which is true of `Alert`'s `statusIcon`, `ErrorBoundary`'s `fallback` and
+`RequireAuth`'s `loadingFallback` — none of which is (e). **The discriminator is who computes the
+element** (`memory/README.md` §72):
+
+- **(e)** — `FileUpload`'s `renderPreview`/`renderFile`. Which of three private preview components
+  renders is chosen from MIME types and `previewMode`; a caller cannot reconstruct that, so the
+  component hands them `layout`, `index`, `remove` and the rest. The class literals inside those
+  subtrees are content the caller has to be *given*.
+- **(a)** — a `ReactNode` prop that swaps one node in. The caller supplies their own element
+  carrying their own classes, so nothing is handed over and no `render*` is owed; the library's
+  class on the default is a default, not content. **A whole default *branch* behind a fallback
+  prop lands here too**, for the same reason — `ErrorBoundary`'s four literals are one ruling.
+
+Filing the second group (e) because "the node is replaced" is a 19-site churn against a ruling the
+fan-out already took, and the sentence above is what invited it.
+
+The other three answer *no*, because each one **ends in a `className` merge** — at this attribute
+or at another — so an unreachable element carrying one is a contradiction, and the gate reports it
+as its own failure rather than accepting or ignoring it:
+
+- **(c) slot** — the route is `cn(base, classNames?.key)` *right here*, so a settled (c) is
+  **reachable** and needs no comment. See the judgement below: (c) is proved by the code.
+- **(d) compound** — the route is the subcomponent's own `className`, at a different and reachable
+  attribute. Left annotated here, it means the compound was *named and not built*.
+- **(f) just-`className`** — §4b's house rule: add `className` and merge it. Once done, the
+  attribute is reachable.
+
+So the failure mode this rule exists to catch is not a missing letter but a **letter used as a
+receipt**: `(c)` written at an element that has no `classNames?.key` in its `cn()` is a promise
+the code does not keep, and it now fails by name.
 
 **The placement rule is "the annotation must start a line", not "the line before".** That
 distinction is the parser's, not prose's, and it was measured rather than assumed — a first
@@ -308,7 +355,9 @@ the gate is:
 > For every `JsxAttribute` named `className` in `src/components/**/*.tsx` (excluding `*.test.tsx`
 > and `*.examples.tsx`), the element is **reachable** — its initialiser is or contains an
 > identifier named `className`, or a property access on `classNames` — **or** its leading comments
-> match `/^\s*slot:\(([a-e])\)\s+\S/`. Anything else is a failure.
+> match `/^\s*slot:\(([a-f])\)\s+\S/` **with a letter in `{a, b, e}`**. Anything else is a
+> failure — including `(c)`, `(d)` and `(f)`, which fail by name rather than reading as an
+> oversight.
 
 Both halves are decidable by a parser, which is exactly the split §8 asks for: the gate decides
 *"does a caller's `className` flow here"* and takes *"should it"* from the annotation. It needs no
@@ -365,15 +414,24 @@ src/components/data-display/Sparkline.tsx
 Rewording one annotation by a line moves five of them, and this block has already been wrong once
 for exactly that reason. What is durable is the shape: three states, and **zero** in the fourth.
 
-**Sized for the fan-out, so nobody plans off this lane's two files.** Over every production
-`.tsx` under `src/components`, the same probe reads **426** `className` attributes: **153**
-reachable, **6** annotated (this lane's), **267** neither. That 267 is the annotation backlog the
-five lanes divide, and it is the same order as plan §8's *"~300 of 478 literals"* — which is why
-the gate cannot be turned on before the annotations land, and why §8 schedules it after.
+**Sized for the fan-out, so nobody plans off this lane's two files.** When this was written the
+probe read **426** `className` attributes over `src/components`: **153** reachable, **6**
+annotated (this lane's), **267** neither. That 267 was the annotation backlog the five lanes
+divided, and it was the same order as plan §8's *"~300 of 478 literals"* — which is why the gate
+could not be turned on before the annotations landed, and why §8 scheduled it after.
+
+**Those four numbers are a snapshot of a backlog that is now closed, so they are dated rather
+than current — re-derive, do not quote.** The shipped gate prints its own totals on every run:
 
 ```
-node <the appendix probe> $(find src/components -name '*.tsx' ! -name '*.test.tsx' ! -name '*.examples.tsx')
+bun run verify:slot-annotations
+verify:slot-annotations — 432 className attributes under src/
+  reachable: 329   annotated: 103 (a:78 b:6 e:19)   failing: 0
 ```
+
+`src` and `src/components` give the same 432, because every `className` attribute in the package
+is inside a component file — the optional root argument is how you check that, and it is also how
+the fail-on-purpose procedure runs against a throwaway copy instead of editing `src/` in place.
 
 **And it was made to fail on purpose**, because a classifier that cannot come back red is not
 evidence (`memory/gates.md`). Deleting one annotation and re-running:
@@ -384,10 +442,13 @@ evidence (`memory/gates.md`). Deleting one annotation and re-running:
   : 176  ok — annotated (b)
 ```
 
-The exact probe used is in the appendix below — ~25 lines, no allowlist. It is deliberately **not**
-added to `package.json`: §8 schedules the gate for after Phase 3 ships, the `verify:*` count is
-part of the contract at 11, and a half-built gate in the tree is the shape `memory/gates.md` warns
-about most.
+The exact probe used is in the appendix below — ~25 lines, no allowlist. **It has since shipped**,
+as `scripts/verify-slot-annotations.mjs` / `bun run verify:slot-annotations`, and that script is
+the authority: it is the probe plus the three vacuous-pass guards and the (a)/(b)/(e) rule above,
+and its header records the five named false-verdict shapes. Read it before the appendix, which is
+kept only as the record of how the shape was arrived at. (An earlier revision of this paragraph
+said the probe was deliberately *not* in `package.json` and that the `verify:*` count was "part of
+the contract at 11". Both halves died when the gate landed — the count is **12**.)
 
 **One nuance the probe surfaced, worth knowing before you write a lane.** A private leaf component
 that takes a `className` parameter — `TrendArrow` here — reads as *reachable* at its own
@@ -401,7 +462,8 @@ inlining the leaf.
 ### ▸ judgement — (c) is proved by the code, so it needs no annotation
 
 `SLOT-VOCABULARY.md` §9 asks for *every* element in §7 to carry its letter, including (c). The
-reference lane annotates **only (a) and (b)**, for two reasons:
+reference lane annotated **only (a) and (b)** — the package now also carries (e) — and (c) is
+omitted deliberately, for two reasons:
 
 - `cn("stat-card__trend-icon", classNames?.trendIcon)` already *is* the (c) annotation, and it is
   more machine-readable than a comment — the gate's reachability half reads it directly, and the
@@ -572,12 +634,13 @@ Per component, in order:
 - [ ] Add `classNames?: SlotClassNames<"…">` with the union inline; destructure it; merge with
       `cn()`, base first.
 - [ ] Add hatches only where §4's precondition test says yes.
-- [ ] Annotate every (a)/(b) with `slot:(x) <reason>`.
+- [ ] Annotate every (a)/(b)/(e) with `slot:(x) <reason>`. **(c), (d) and (f) are not annotations**
+      — each ends in a `className` merge, so write the merge instead (§6).
 - [ ] One slot-override test **per slot**, plus the four companions in §5.
 - [ ] **Fail on purpose, per slot**, and paste the verbatim output into your report.
 - [ ] Docs: slots table added, theme-token prose **answered** rather than deleted, examples still
       compile.
-- [ ] Gates: `typecheck`, `lint`, `test`, all **11** `verify:*` (count it, do not remember it), and
+- [ ] Gates: `typecheck`, `lint`, `test`, all **12** `verify:*` (count it, do not remember it), and
       `probe:cascade-layer` at **0 regressions / 0 inert** for anything CSS-shaped.
 - [ ] `git status` empty — **and** `scripts/.cascade-probe/` and `dev/dist/` explicitly checked,
       because both are gitignored and invisible to it (§7 item 12).
@@ -616,9 +679,13 @@ a correctly-run triage looks like, and it is the number to compare your own lane
 
 ## Appendix — the annotation probe, runnable
 
-The feasibility evidence for §6, kept here rather than in `scripts/` for the reason given there.
-Save it anywhere and point it at `.tsx` files. It reports three states and exits are the caller's
-to add; a real gate would also cross-check each slot key against `SLOT-VOCABULARY.md` §7.
+**Superseded — read `scripts/verify-slot-annotations.mjs` instead.** This is the feasibility
+evidence for §6, kept as the record of how the shape was arrived at. The shipped gate is this
+walk plus the three vacuous-pass guards, the malformed-marker report, the props-getter blind-spot
+listing, and the `{a, b, e}` settling rule — so the `[a-e]` below is the *proposal's* grammar and
+not the enforced one, and this probe still reads a bare `(c)` as settling where the gate fails it.
+It reports three states and exits are the caller's to add; the gate does not cross-check slot keys
+against `SLOT-VOCABULARY.md` §7 either, which stays a review job.
 
 ```js
 import ts from "typescript";

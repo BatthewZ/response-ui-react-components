@@ -80,7 +80,16 @@ export function RequireAuth({
     return (
       <>
         {loadingFallback ?? (
-          <Center className="min-h-screen">
+          <Center
+            // slot:(a) the whole of the default loading branch, and the route to
+            // a different one is `loadingFallback`, which replaces this subtree
+            // outright. `min-h-screen` is what makes the default a page-level
+            // wait rather than a collapsed row; a caller gating a card wants a
+            // different element here, not a different class on this one. The
+            // component renders no element of its own to hang a `className` on —
+            // all three branches are the caller's content.
+            className="min-h-screen"
+          >
             <Spinner size="lg">{loadingLabel || undefined}</Spinner>
           </Center>
         )}

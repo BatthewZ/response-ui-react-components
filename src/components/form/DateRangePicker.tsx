@@ -376,9 +376,14 @@ export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
           />
           <span
             aria-hidden="true"
-            // slot:(a) an `aria-hidden` en dash whose whole job is to read the
-            // two fields as one span quietly. It carries one ink utility and no
-            // geometry; the lever a caller actually wants — the spacing and
+            // slot:(a) the separator glyph between the two fields, and its one
+            // utility is the thing that makes it a separator rather than a
+            // third value: `text-fg-muted` is what ranks it below the dates it
+            // sits between. A route here is a route to un-rank it — a caller
+            // giving it `text-fg-primary` prints what reads as a third field,
+            // and one that removes the ink inherits the field colour and gets
+            // the same. The glyph is already `aria-hidden`, so nothing warns
+            // them. The lever they are usually after — the spacing and
             // arrangement of the pair — is `classNames.control` around it.
             className="text-fg-muted"
           >

@@ -199,6 +199,35 @@ describe("MultiSelect", () => {
     expect(onValueChange).toHaveBeenLastCalledWith(["apple"]);
   });
 
+  /**
+   * `atMax` counts the **selection**, not the rendered rows — one of the four
+   * things `SLOT-VOCABULARY.md` §10.1 says `options` is load-bearing for, and
+   * the only one that had no gate. The test above cannot see it: it never types
+   * a query, so every selected row is still mounted and a node-counting `atMax`
+   * agrees with a data-counting one. Filtering the first pick out of the DOM is
+   * what separates them. Falsifier: count only selections whose row is currently
+   * rendered.
+   */
+  it("counts maxItems against the selection, not against the rendered rows", async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(<Harness onValueChange={onValueChange} maxItems={1} searchable />);
+
+    const input = screen.getByRole("combobox");
+    await user.click(input);
+    await user.click(within(screen.getByRole("listbox")).getByText("Apple"));
+    expect(onValueChange).toHaveBeenLastCalledWith(["apple"]);
+
+    // Query Apple out of the list; the cap must not go with it.
+    await user.type(input, "cher");
+    const cherry = within(screen.getByRole("listbox")).getByText("Cherry");
+    expect(within(screen.getByRole("listbox")).queryByText("Apple")).toBeNull();
+    expect(cherry.closest('[role="option"]')).toHaveAttribute("aria-disabled", "true");
+
+    await user.click(cherry);
+    expect(onValueChange).toHaveBeenLastCalledWith(["apple"]);
+  });
+
   describe("form.field() binding (#430)", () => {
     it("binds via the advertised form.field() spread without crashing", async () => {
       const user = userEvent.setup();
@@ -613,6 +642,104 @@ describe("MultiSelect", () => {
           </Harness>
         )
       ).toThrow(/not in the list MultiSelect handed to children/);
+      consoleError.mockRestore();
+    });
+
+    /**
+     * `option` is an address, not a data channel. Spreading a row and flipping
+     * `disabled` used to write selectability — and only half of it, because
+     * `handleKeyDown` reads `filtered[activeIndex]`: the click path honoured the
+     * override while the keyboard path refused it, and `aria-disabled` reported
+     * the caller's answer to both. Falsifier: read `option.disabled` instead of
+     * `filtered[index].disabled` in `MultiSelect.Item`.
+     */
+    it("reads a row's disabled state from options, not from the option a child passed", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <Harness onValueChange={onValueChange} open>
+          {({ options }) => (
+            <MultiSelect.Content>
+              {options.map((option) => (
+                <MultiSelect.Item
+                  key={option.value}
+                  option={{ ...option, disabled: !option.disabled }}
+                >
+                  {option.label}
+                </MultiSelect.Item>
+              ))}
+            </MultiSelect.Content>
+          )}
+        </Harness>
+      );
+
+      const listbox = screen.getByRole("listbox");
+      // `date` is disabled in OPTIONS and the child said otherwise.
+      const date = within(listbox).getByText("Date").closest('[role="option"]')!;
+      expect(date).toHaveAttribute("aria-disabled", "true");
+      await user.click(date);
+      expect(onValueChange).not.toHaveBeenCalled();
+
+      // And the reverse: `apple` is enabled in OPTIONS and the child said otherwise.
+      const apple = within(listbox).getByText("Apple").closest('[role="option"]')!;
+      expect(apple).not.toHaveAttribute("aria-disabled");
+      await user.click(apple);
+      expect(onValueChange).toHaveBeenCalledWith(["apple"]);
+    });
+
+    /**
+     * The bag is spread before the invariants, so a consumer prop of the same
+     * name cannot win. Spread last, a `role` from the call site left the listbox
+     * with zero discoverable options. Falsifier: move the `getItemProps(...)`
+     * spread back below `className` in `MultiSelect.Item`.
+     */
+    it("keeps its own id, role and aria state when a child passes the same props", () => {
+      render(
+        <Harness open>
+          {({ options }) => (
+            <MultiSelect.Content>
+              {options.map((option) => (
+                <MultiSelect.Item
+                  key={option.value}
+                  option={option}
+                  id="hijacked"
+                  role="presentation"
+                  aria-selected={true}
+                >
+                  {option.label}
+                </MultiSelect.Item>
+              ))}
+            </MultiSelect.Content>
+          )}
+        </Harness>
+      );
+
+      const rows = within(screen.getByRole("listbox")).getAllByRole("option");
+      expect(rows).toHaveLength(OPTIONS.length);
+      expect(rows[0]).not.toHaveAttribute("id", "hijacked");
+      expect(rows[0]).toHaveAttribute("aria-selected", "false");
+    });
+
+    /**
+     * The chip half of the sole-writer property. `.Item` guarded its address and
+     * `.Tag` did not, so a consumer could author a chip the selection does not
+     * hold — whose remove button then called `removeChipAt` on nothing.
+     * Falsifier: delete the index guard in `MultiSelect.Tag`.
+     */
+    it("refuses a chip at an index the selection does not hold", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() =>
+        render(
+          <Harness>
+            {() => (
+              <MultiSelect.Tag index={99}>
+                Ghost
+                <MultiSelect.TagRemove />
+              </MultiSelect.Tag>
+            )}
+          </Harness>
+        )
+      ).toThrow(/not a position in the selection MultiSelect handed to children/);
       consoleError.mockRestore();
     });
 

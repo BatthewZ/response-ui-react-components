@@ -183,3 +183,51 @@ describe("ThemeSwitcher", () => {
     expect(screen.getByRole("radio", { name: "midnight" })).toBeInTheDocument();
   });
 });
+
+describe("ThemeSwitcher · classNames slots", () => {
+  /**
+   * One slot-override test for the one slot, and it is the falsifier for its own
+   * merge: delete the `cn()` at the option and exactly this test must go red.
+   * `item` lands on every option because the options are loop-generated from the
+   * app's own theme ids — there is no key that could address one of them.
+   */
+  it("lands classNames.item on every option, beside the base classes", () => {
+    render(<ThemeSwitcher themes={APP_THEMES} labels={LABELS} classNames={{ item: "italic" }} />);
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio.className).toContain("theme-switcher__option");
+      expect(radio.className).toContain("italic");
+    }
+    // The selected option keeps its modifier alongside the slot class.
+    expect(screen.getByRole("radio", { name: "Default" }).className).toContain(
+      "theme-switcher__option--active",
+    );
+  });
+
+  it("leaves the options on their base class when no slot is passed", () => {
+    render(<ThemeSwitcher themes={APP_THEMES} labels={LABELS} />);
+    expect(screen.getByRole("radio", { name: "Aurora" }).className).toBe("theme-switcher__option");
+  });
+
+  it("does not put the slot class on the radiogroup", () => {
+    render(<ThemeSwitcher themes={APP_THEMES} labels={LABELS} classNames={{ item: "italic" }} />);
+    expect(screen.getByRole("radiogroup").className).not.toContain("italic");
+  });
+
+  it("rejects a key outside the union", () => {
+    render(
+      <ThemeSwitcher
+        themes={APP_THEMES}
+        labels={LABELS}
+        // @ts-expect-error — `option` is the banned spelling; the frozen name for
+        // a repeated child is `item`.
+        classNames={{ option: "italic" }}
+      />,
+    );
+    expect(screen.getByRole("radio", { name: "Aurora" }).className).toBe("theme-switcher__option");
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    render(<ThemeSwitcher themes={APP_THEMES} labels={LABELS} classNames={{ item: "italic" }} />);
+    expect(screen.getByRole("radiogroup").hasAttribute("classnames")).toBe(false);
+  });
+});

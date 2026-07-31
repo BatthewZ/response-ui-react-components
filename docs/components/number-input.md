@@ -24,7 +24,7 @@ never reaches your state as `NaN`.
 | `precision`     | `number`                                                            | — (no rounding)             |
 | `error`         | `boolean`                                                           | [Field](field.md) state, else `false` |
 | `className`     | `string`                                                            | — (lands on the input)      |
-| `classNames`    | `{ chevron?: string }` — see [Slots](#slots)                        | —                           |
+| `classNames`    | `{ control?: string; chevron?: string }` — see [Slots](#slots)      | —                           |
 | `ref`           | `Ref<HTMLInputElement>`                                             | —                           |
 | …rest           | `<input>` props except `type`, `value`, `defaultValue`; `onChange` is re-typed above | —           |
 
@@ -167,23 +167,34 @@ and `aria-invalid` applies here unchanged — including inheritance from a surro
 ## Slots
 
 `className` addresses the `<input>` — the element the ref and every rest prop also address.
-`classNames` addresses the stepper buttons, which nothing else reaches. Class strings only,
-and the keys are typed, so a misspelled one is a compile error rather than a prop that does
-nothing.
+`classNames` addresses the framing box and the stepper buttons, which nothing else reaches.
+Class strings only, and the keys are typed, so a misspelled one is a compile error rather than
+a prop that does nothing.
 
 | Slot      | Element                | What it addresses                                     |
 | --------- | ---------------------- | ----------------------------------------------------- |
+| `control` | the positioning `div`  | the framing box the field and its steppers sit in     |
 | `chevron` | both stepper `button`s | the increment **and** decrement buttons — one control in two directions, so the key names the pair |
 
 ```tsx
-<NumberInput aria-label="Quantity" classNames={{ chevron: "text-fg-primary" }} />
+<NumberInput aria-label="Quantity" classNames={{ control: "w-32", chevron: "text-fg-primary" }} />
 ```
 
-**Neither wrapper takes a class from the call site, deliberately.** The outer box carries only
-`relative` plus the reserved stepper width the input's right padding is measured from, and the
-stepper column carries only the geometry that pins the pair to the field's right edge; change
-either and the chevrons detach or a long value runs under them. Width belongs on the wrapper
-you supply — see [Width](#width).
+**`control` is the outermost element, and `className` is not.** `className`, the `ref` and
+every rest prop address the `<input>`, which is what makes `<Label htmlFor>` and `form.field()`
+work. That leaves the wrapper with no route of its own, and `control` is it — the same word
+`DatePicker`, `DateRangePicker`, `Select` and `MultiSelect` spend on the same element. You can
+still size the field from a wrapper you supply; `control` means you no longer have to.
+
+**Its base class is `relative`, and that is load-bearing:** it is the containing block the
+stepper column is absolutely placed against, so a `control` class that changes `position`
+detaches the chevrons. It also carries `--numberinput-stepper`, the reserved width the input's
+right padding is measured from — that is an inline `style`, not a class, so no `control` class
+can disturb it. Width and margin are what the slot is for — see [Width](#width).
+
+**The inner stepper column takes no class from the call site, deliberately.** It carries only
+the geometry pinning the pair to the field's right edge; a caller restyling the steppers wants
+the buttons, which `chevron` reaches.
 
 ## Theme tokens
 

@@ -535,6 +535,33 @@ describe("NumberInput", () => {
       expect(down.className).toContain("bg-surface-1");
     });
 
+    /**
+     * The slot-override test for `classNames.control`, and the falsifier for it:
+     * delete the `cn()` merge on the positioning `<div>` and this must go red.
+     * The box is the outermost element and had no route of any kind — the same
+     * element `DatePicker` and `Select` reach as `classNames.control`.
+     */
+    it("lands classNames.control on the positioning box, beside the base class", () => {
+      const { container } = render(
+        <NumberInput aria-label="Qty" classNames={{ control: "w-40" }} />
+      );
+      const box = container.firstElementChild;
+      expect(box?.getAttribute("class")).toContain("relative");
+      expect(box?.getAttribute("class")).toContain("w-40");
+    });
+
+    it("leaves the positioning box on its base class alone when no slot is passed", () => {
+      const { container } = render(<NumberInput aria-label="Qty" />);
+      expect(container.firstElementChild?.getAttribute("class")).toBe("relative");
+    });
+
+    it("does not put the control slot class on the input", () => {
+      render(<NumberInput aria-label="Qty" classNames={{ control: "w-40" }} />);
+      expect(
+        screen.getByRole("spinbutton", { name: "Qty" }).className
+      ).not.toContain("w-40");
+    });
+
     it("leaves the steppers on their base classes alone when no slot is passed", () => {
       const { container } = render(<NumberInput aria-label="Qty" />);
       const [up, down] = steppers(container);

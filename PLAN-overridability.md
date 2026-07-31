@@ -1223,7 +1223,7 @@ is.
    fence swallows every heading and fence up to the next example's closing fence, and the only signal
    is an `unused example` error naming a *different* example. Put a placeholder line in a new fence
    and diff the page's heading list afterwards.
-9. **Gates green**: `typecheck`, `lint`, `test`, and all **11** `verify:*` — the count is
+9. **Gates green**: `typecheck`, `lint`, `test`, and all **12** `verify:*` — the count is
    `node -e 'console.log(Object.keys(require("./package.json").scripts).filter(s=>s.startsWith("verify:")).length)'`,
    not a memory. Plus `probe:cascade-layer` at zero regressions and zero inert for anything
    CSS-shaped.
@@ -1259,7 +1259,11 @@ you have established what that tab does on a clean checkout.
 | `verify:css-layering` | Every `@import "./components/*.css"` in `src/styles.css` carries `layer(components)`, `tokens.css` carries none, and an import it cannot classify is a failure rather than a skip | **Built**, in `prepublishOnly`. ~130 lines, no allowlist. It exists because Phase 1's entire result is one keyword repeated on one line per component stylesheet (43 today) and **nothing read those lines**: the probe strips whatever `layer()` is there and adds its own, and jsdom applies no stylesheets, so a one-line deletion reverted the phase with every other gate green. Made to fail on purpose three ways. |
 | `verify:no-css-imports` | No `.ts`/`.tsx` under `src/` imports a `.css` file | **Built**, in `prepublishOnly`. The other door into the same invariant: a stylesheet reached through the JS graph is injected **unlayered**, out-ranks `@layer components`, and the probe — which builds no JS — reports the layering healthy while the real bundle disagrees. That was live in `Grid.tsx`. |
 | `verify:token-mirror` | Every `@theme inline` name in `tokens.css` appears in `createCn`'s list in `src/util/style.ts` | To build, ~20 lines. The one remaining silent-drift risk: tailwind-merge's arbitrary-property and standard class groups are generic, so a **named token value** added to `tokens.css` and not to `createCn` is the only real drift. Gate that and nothing more. |
-| `verify:slot-annotations` | *"A literal annotated `(c)` has a corresponding slot, and a slot is merged with `cn()`."* | To build, after Phase 3 ships `classNames`. |
+| `verify:slot-annotations` | Every `className` JSX attribute in production `src/` is either **reachable** (its initialiser mentions `className` or `classNames?.`) or **annotated** `// slot:(a\|b\|e) <reason>`. Anything else — including anything the parser cannot classify — fails. | **Built**, in `prepublishOnly`. No allowlist. Zero annotated sites is a failure, so it cannot pass vacuously. |
+
+**The letter set is a rule, not a list.** The gate settles on `(a)`, `(b)` and `(e)` and **rejects `(c)`, `(d)`, `(f)` by name**, because the question each letter answers is *does the consumer's need have a route somewhere other than this attribute?* — (a) none is owed, (b) a custom property, (e) a `render*` prop. The other three all **end** in a `className` merge, here or at a subcomponent, so a settled one is already *reachable* and a comment claiming otherwise is refuted by the code. That decides letters nobody has invented yet, which an enumerated allowlist could not.
+
+**What it cannot do, and the docblock says so at every run:** reachability is a **name match on the attribute initialiser, not data flow** — `const cls = cn("x", className)` then `className={cls}` reads unreachable (a loud false alarm), and `const className = "static"` in scope reads reachable (the one **silent** false pass). The **props-getter form is invisible** to it — `className:` inside an object literal is not a `JsxAttribute`; there are **6** such sites, named in its own output, and §7 item 5's "exactly 3" is wrong because that grep matches only string-literal initialisers. And it cannot tell an honest `(a)` from a lazy one: `// slot:(a) static class` passes. **The reason has to say what a consumer would break by getting a route** — that stays a review question, and no gate can read it.
 
 > **The two built rows above are the same lesson twice, and it is worth naming.** Both gates guard
 > one invariant — *this package's CSS reaches the bundle exactly once, through `src/styles.css`, in
@@ -1378,6 +1382,13 @@ deliberately not restated.**
 
 **Banned names, with reasons. This list matters as much as the chosen names.**
 
+> **`SLOT-VOCABULARY.md` is authoritative for this list; the table below is a summary and has already
+> drifted once.** It carried `header`/`footer`/`closeButton` as a package-wide ban after §3.5 of that
+> file had scoped them to the overlay family, and `arrow` as banned after decision 4 narrowed it. Both
+> are corrected in place below. `memory/README.md` §20: a plan restating what already lives somewhere
+> authoritative is a second source of truth, not diligence — **read the vocabulary, not this table**,
+> and when they disagree the vocabulary wins.
+
 | Banned | Why |
 | --- | --- |
 | `root` | §4a — `className` is the root. |
@@ -1389,7 +1400,7 @@ deliberately not restated.**
 | `announcer` | `sr-only role="status"` regions (`TagInput.tsx:471`, `Repeater.tsx:308`). Exposing invites a consumer to drop `sr-only`. Triage **(a)**. |
 | `arrow` | **Narrowed by owner ruling 4, not lifted.** The stated reason — *"no such element is rendered"* — was false twice over: `Carousel` renders `.carousel-arrow` today, and the floating surfaces render one under ruling 4. It stays banned as a name for a **direction control** (use `prev`/`next`/`first`/`last`) and is granted to the **floating-surface pointer**. |
 | `backdrop`/`scrim` | `::backdrop` takes no class. **(b) token** — `--OVERLAY-SCRIM-COLOR` exists in `response-ui-css/src/tokens/overlay.css:2`. |
-| `header`/`footer`/`closeButton` | `Dialog`/`Drawer` render `{children}` only; that structure is consumer-supplied. |
+| `header`/`footer`/`closeButton` | **Overlay family only — see `SLOT-VOCABULARY.md` §3.5, which is authoritative.** The reason is a fact about `Dialog`/`Drawer` (they render `{children}` only, so that structure is consumer-supplied), not about the words: `CalendarBase`, `CodeBlock` and `Wizard` each render a real header/footer element and each legitimately names it. Three lanes reached that independently. |
 
 ¹ `box` is permitted for exactly one thing: `OTPInput`'s N homogeneous entry boxes.
 

@@ -22,7 +22,7 @@ Dropped inside a [Field](field.md) it inherits that field's error state — the 
 | ----------- | ------------------------ | --------------------------- |
 | `error`     | `boolean`                | `Field` state, else `false` |
 | `className` | `string`                 | —                           |
-| `classNames` | `{ chevron?: string }` — see [Slots](#slots) | —          |
+| `classNames` | `{ control?: string; chevron?: string }` — see [Slots](#slots) | —          |
 | `ref`       | `Ref<HTMLSelectElement>` | —                           |
 | …rest       | props of `<select>`      | —                           |
 
@@ -206,24 +206,30 @@ These are the native `<select>` props, so React's usual rule applies — a `valu
 ## Slots
 
 `className` addresses the `<select>` — the element the ref and every rest prop also address.
-`classNames` addresses the one element Select renders beside it. Class strings only, and the
-keys are typed, so a misspelled one is a compile error rather than a prop that does nothing.
+`classNames` addresses the two elements Select renders around and beside it. Class strings
+only, and the keys are typed, so a misspelled one is a compile error rather than a prop that
+does nothing.
 
-| Slot      | Element                | What it addresses                              |
-| --------- | ---------------------- | ---------------------------------------------- |
-| `chevron` | the `ChevronDown` `svg` | the "I am a dropdown" glyph, absolutely placed |
+| Slot      | Element                 | What it addresses                                        |
+| --------- | ----------------------- | -------------------------------------------------------- |
+| `control` | the positioning `div`    | the framing box the whole control sits in                |
+| `chevron` | the `ChevronDown` `svg`  | the "I am a dropdown" glyph, absolutely placed           |
 
 ```tsx
-<Select aria-label="Country" classNames={{ chevron: "text-fg-muted" }}>
+<Select aria-label="Country" classNames={{ control: "w-40", chevron: "text-fg-muted" }}>
   <option>United Kingdom</option>
 </Select>
 ```
 
-**The positioning wrapper takes no class from the call site, deliberately.** Its only
-declaration is `relative`, which is the context the chevron is placed against — change it and
-the glyph detaches from the field. Everything a caller normally wants on the outside of a
-select (width, margin, display) is reachable on the `<select>` itself, which is where
-`className` lands; see [Gotchas](#gotchas).
+**`control` is the outermost element, and `className` is not.** `className`, the `ref` and
+every rest prop address the `<select>`, which is what makes `<Label htmlFor>` and
+`form.field()` work — see [Gotchas](#gotchas). That leaves the wrapper with no route of its
+own, and `control` is it. It is the same word `DatePicker`, `DateRangePicker`, `NumberInput`
+and `MultiSelect` spend on the same element.
+
+**Its base class is `relative`, and that is load-bearing:** it is the containing block the
+chevron is absolutely placed against, so a `control` class that changes `position` detaches the
+glyph from the field. Width, margin and display are what the slot is for.
 
 ## Theme tokens
 

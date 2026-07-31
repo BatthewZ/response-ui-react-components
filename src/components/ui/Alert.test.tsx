@@ -188,3 +188,63 @@ describe("Alert · severity is visible without colour", () => {
     expect(screen.getByRole("alert").querySelector("svg")).toBeNull();
   });
 });
+
+describe("Alert · classNames slots", () => {
+  const iconBox = (root: HTMLElement) => root.querySelector("svg")?.parentElement ?? null;
+
+  /**
+   * One slot-override test per slot, and it is the falsifier for its own merge:
+   * delete the `cn()` at the box and exactly this test must go red.
+   */
+  it("lands classNames.icon on the glyph's first-line box, beside the base classes", () => {
+    render(
+      <Alert variant="error" classNames={{ icon: "self-center" }}>
+        Boom
+      </Alert>,
+    );
+    const box = iconBox(screen.getByRole("alert"));
+    expect(box?.getAttribute("class")).toContain("h-[1lh]");
+    expect(box?.getAttribute("class")).toContain("self-center");
+  });
+
+  it("leaves the box on its base classes when no slot is passed", () => {
+    render(<Alert variant="error">Boom</Alert>);
+    expect(iconBox(screen.getByRole("alert"))?.getAttribute("class")).toBe(
+      "flex h-[1lh] shrink-0 items-center",
+    );
+  });
+
+  it("does not put the slot class on the banner", () => {
+    render(
+      <Alert variant="error" classNames={{ icon: "self-center" }}>
+        Boom
+      </Alert>,
+    );
+    expect(screen.getByRole("alert").className).not.toContain("self-center");
+  });
+
+  it("rejects a key outside the union", () => {
+    render(
+      <Alert
+        variant="error"
+        // @ts-expect-error — the visually-hidden severity word is (a), so
+        // `announcer` is a banned key rather than a missing one.
+        classNames={{ announcer: "not-sr-only" }}
+      >
+        Boom
+      </Alert>,
+    );
+    expect(screen.getByRole("alert").querySelector("span.sr-only")?.getAttribute("class")).toBe(
+      "sr-only",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    render(
+      <Alert variant="error" classNames={{ icon: "self-center" }}>
+        Boom
+      </Alert>,
+    );
+    expect(screen.getByRole("alert").hasAttribute("classnames")).toBe(false);
+  });
+});

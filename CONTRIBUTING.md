@@ -93,10 +93,12 @@ src/
     merge-props.ts (mergeProps, composeEventHandlers), merge-refs.ts
     focus.ts (the one Tailwind focus recipe — internal, see below)
     date.ts, format.ts, index.ts
-scripts/                    (repo-only; none of these are published)
-  gen-docs.mjs              verify-component-docs.mjs   verify-directives.mjs
-  verify-docs.mjs           verify-focus-affordance.mjs verify-omit-discipline.mjs
-  bugs-ledger.mjs
+scripts/                    (repo-only; none of these are published — `ls scripts/`)
+  gen-docs.mjs              verify-chart-palette.mjs    verify-component-docs.mjs
+  verify-css-layering.mjs   verify-directives.mjs       verify-docs.mjs
+  verify-example-themes.mjs verify-focus-affordance.mjs verify-no-css-imports.mjs
+  verify-omit-discipline.mjs verify-slot-annotations.mjs
+  bugs-ledger.mjs           probe-cascade-layer.mjs
 ```
 
 ## The focus ring lives in one place
@@ -190,12 +192,17 @@ authoritative list is the script itself in [package.json](./package.json); in or
 
 ```
 build → verify-directives → verify-docs → gen-docs --check → verify-component-docs
-      → verify-focus-affordance → verify-omit-discipline --check → lint → typecheck → test
+      → verify-focus-affordance → verify-no-css-imports → verify-css-layering
+      → verify-omit-discipline --check → verify-chart-palette --check
+      → verify-example-themes --check → verify-slot-annotations
+      → lint → typecheck → test
 ```
 
-So a broken RSC directive, an undocumented export, a stale doc fence, a bad token table or
-dead link, an unrepaid `outline` reset, a compile-time-only `Omit`, a lint error, a type
-error, or a failing test each block publish.
+Fifteen steps. So a broken RSC directive, an undocumented export, a stale doc fence, a bad
+token table or dead link, an unrepaid `outline` reset, a CSS import in the barrel, a rule
+outside its cascade layer, a compile-time-only `Omit`, an off-palette chart colour, an
+example theme name leaking into the design system, an internal element nobody ruled on, a
+lint error, a type error, or a failing test each block publish.
 
 **Know what the gates cannot see.** `verify:component-docs` reads token *tables* — a token that
 changes role passes silently, and falsified prose always passes. `verify:docs` checks that
@@ -203,7 +210,10 @@ every **value** export appears in README and AGENTS; type-only exports are optio
 the `date`/`color` helper modules are summarised rather than enumerated, so a new export in
 either class can go missing with every gate green (`SortState`, `toISODate` and `getMonthNames`
 all did). `verify:omit-discipline` proves an omitted key is destructured out, not that omitting
-it was right. Nothing anywhere reads a doc paragraph. Every promise left standing next to a
+it was right. `verify:slot-annotations` decides whether a caller's class *can* reach an element,
+never whether it *should* — the second half is the annotation's reason, which no parser reads —
+and it is blind to the props-getter form (`className:` inside a spread object literal), which it
+names in its own output rather than counting as passing. Nothing anywhere reads a doc paragraph. Every promise left standing next to a
 change is a claim its author now owns — re-verify it by hand or flag it.
 
 Every guard in that chain checks a **shipped** artifact. `verify:bugs` is deliberately

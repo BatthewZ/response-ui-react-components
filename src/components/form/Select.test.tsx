@@ -166,6 +166,41 @@ describe("Select", () => {
       expect(chevron?.getAttribute("class")).toContain("size-r3");
     });
 
+    /**
+     * The slot-override test for `classNames.control`, and the falsifier for it:
+     * delete the `cn()` merge on the positioning `<div>` and this must go red.
+     * The box is the outermost element and had no route of any kind — the same
+     * element `DatePicker` reaches as `classNames.control`.
+     */
+    it("lands classNames.control on the positioning box, beside the base class", () => {
+      const { container } = render(
+        <Select aria-label="Country" classNames={{ control: "w-40" }}>
+          {options}
+        </Select>
+      );
+      const box = container.firstElementChild;
+      expect(box?.getAttribute("class")).toContain("relative");
+      expect(box?.getAttribute("class")).toContain("w-40");
+    });
+
+    it("leaves the positioning box on its base class alone when no slot is passed", () => {
+      const { container } = render(
+        <Select aria-label="Country">{options}</Select>
+      );
+      expect(container.firstElementChild?.getAttribute("class")).toBe("relative");
+    });
+
+    it("does not put the control slot class on the <select>", () => {
+      render(
+        <Select aria-label="Country" classNames={{ control: "w-40" }}>
+          {options}
+        </Select>
+      );
+      expect(
+        screen.getByRole("combobox", { name: "Country" }).className
+      ).not.toContain("w-40");
+    });
+
     it("leaves the chevron on its base classes alone when no slot is passed", () => {
       const { container } = render(
         <Select aria-label="Country">{options}</Select>

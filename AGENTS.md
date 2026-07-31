@@ -168,6 +168,49 @@ const className = cn(
   which and why under its **Slots** heading. Where the override is a *value* rather than a choice
   of utilities, the route is a custom property instead — e.g. `--sparkline-color`.
 
+#### Writing one: the `slot:(…)` annotation and `verify:slot-annotations`
+
+Every `className` JSX attribute in production `src/` must be one of two things, and
+`bun run verify:slot-annotations` (in `prepublishOnly`) fails the build on anything else:
+
+- **reachable** — the attribute's initialiser mentions `className` or `classNames?.`, i.e. a
+  caller's value can arrive here; **or**
+- **annotated** — a comment recording that it deliberately cannot:
+
+```tsx
+<span
+  // slot:(a) the accessible twin of the ticking figure. A slot here hands a caller
+  // the one class that keeps the real value out of the visual flow.
+  className="sr-only"
+>
+```
+
+Three letters settle an unreachable element, and the test they share is *does the consumer's need
+have a route somewhere other than this attribute*:
+
+| | Means | The route |
+| --- | --- | --- |
+| `slot:(a) <reason>` | not a gap — the class **is** the mechanism | none is owed |
+| `slot:(b) <reason>` | the override is a *value*, not a choice of utilities | a custom property |
+| `slot:(e) <reason>` | the element is loop-generated or lives in a subtree replaced wholesale, so what a caller wants is different **content** | a `render*` prop |
+
+`(c)` slot, `(d)` compound and `(f)` just-`className` are **not** accepted here, because each one
+ends in a `className` merge — at this attribute or at a subcomponent's — so a settled one is
+*reachable* and needs no comment. An empty reason fails the pattern; so does a letter outside
+`a`–`f`, and both fail by name rather than reading as an oversight.
+
+Three things the gate cannot do, because an unstated blind spot is where the next bug lives:
+
+- **It matches a name at the attribute; it does not follow data flow.** Hoist the merge into a
+  local (`const cls = cn("x", className)` then `className={cls}`) and it reports a false alarm.
+  The fix is to write the house form, not to widen the check: the one shape that fails *silently*
+  is a local literally named `className`, and every widening buys more of those.
+- **The annotation must BEGIN A LINE.** A trailing `/* … */` after another attribute, or a comment
+  above the element instead of inside its opening tag, is invisible to
+  `ts.getLeadingCommentRanges` and the site fails as unannotated.
+- **It cannot see the props-getter form** — `className: "…"` or `className: cn(…)` inside an
+  object literal is not a JSX attribute. The run names those sites; they need hand-triage.
+
 ### Controlled vs uncontrolled — the mode locks on the FIRST render
 
 Every controllable component in this package (`useControllableState` and the components that

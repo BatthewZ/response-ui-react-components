@@ -36,13 +36,19 @@ type NumberInputProps = {
   error?: boolean;
   /**
    * Class overrides for the internals this component renders. `className` is the
-   * `<input>` — the element the `ref` and every other prop address — so the only
-   * slot is the stepper pair, which no caller can otherwise reach. It lands on
-   * **both** chevron buttons; they are one control in two directions and no key
-   * names an individual one. The union is written out here so an unknown key is
-   * a type error rather than a silently ignored one.
+   * `<input>` — the element the `ref` and every other prop address — so the
+   * framing box and the stepper pair are the two things no caller can otherwise
+   * reach. `chevron` lands on **both** chevron buttons; they are one control in
+   * two directions and no key names an individual one. The union is written out
+   * here so an unknown key is a type error rather than a silently ignored one.
+   *
+   * `control` is the framing box, the same word `DatePicker`,
+   * `DateRangePicker`, `Select` and `MultiSelect` spend on the same element
+   * (`SLOT-VOCABULARY.md` §6, §7.1). It is a slot rather than a re-pointed
+   * `className` because moving a documented `className` target is breaking and
+   * is the owner's call, not a lane's (`PHASE3-PATTERN.md` §7).
    */
-  classNames?: SlotClassNames<"chevron">;
+  classNames?: SlotClassNames<"control" | "chevron">;
 } & Omit<
   ComponentPropsWithRef<"input">,
   "type" | "value" | "defaultValue" | "onChange"
@@ -177,13 +183,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 
     return (
       <div
-        // slot:(a) `relative` is the positioning context the stepper column is
-        // absolutely placed against, and it is this element's only class. It
-        // also carries the reserved stepper width the input's right padding is
-        // measured from, so varying either detaches the chevrons or lets a long
-        // value run under them. `className` lands on the `<input>`, where width
-        // and every other box property remain reachable.
-        className="relative"
+        className={cn("relative", classNames?.control)}
         style={
           {
             "--numberinput-stepper": `calc(${CHEVRON_SIZE}px + 2 * var(--R-SIZE-5))`,

@@ -17,11 +17,17 @@ type SelectProps = {
   /**
    * Class overrides for the internals this component renders. `className` is the
    * `<select>` itself — the element every other prop and the `ref` address — so
-   * the only slot is the chevron, which no caller can otherwise reach. The union
-   * is written out here so an unknown key is a type error rather than a silently
-   * ignored one.
+   * the outer positioning box and the chevron are the two elements no caller can
+   * otherwise reach. The union is written out here so an unknown key is a type
+   * error rather than a silently ignored one.
+   *
+   * `control` is the framing box, the same word `DatePicker`, `DateRangePicker`
+   * and `MultiSelect` spend on the same element (`SLOT-VOCABULARY.md` §6, §7.1).
+   * It is a slot rather than a re-pointed `className` because moving a
+   * documented `className` target is breaking and is the owner's call, not a
+   * lane's (`PHASE3-PATTERN.md` §7).
    */
-  classNames?: SlotClassNames<"chevron">;
+  classNames?: SlotClassNames<"control" | "chevron">;
 } & ComponentPropsWithRef<"select">;
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
@@ -35,14 +41,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
     // `fill="currentColor"` cannot resolve in an SVG-as-image — it painted
     // black on every theme (1.06:1 on `tech`). A real element inherits the
     // themed text colour instead.
-    <div
-      // slot:(a) `relative` is the positioning context the chevron below is
-      // absolutely placed against, and it is this element's only class. Varying
-      // it detaches the glyph from the field, so it is not a value a consumer
-      // would set. Width and every other box property are reachable on the
-      // `<select>`, which is where `className` lands.
-      className="relative"
-    >
+    <div className={cn("relative", classNames?.control)}>
       <select
         ref={ref}
         className={cn(

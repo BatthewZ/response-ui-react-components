@@ -58,6 +58,13 @@ interface MultiSelectContextValue {
   labelOf: Map<string, string>;
   /** Position of an option in the root's filtered list, keyed by value. */
   indexOfValue: Map<string, number>;
+  /**
+   * The root's own filtered list. `MultiSelect.Item` reads a row's state from
+   * here rather than from the `option` it was handed, so the object a consumer
+   * passes is an **address** and never a data channel — the same relationship
+   * `CommandPalette.Item` gets from `RowContext`.
+   */
+  filtered: MultiSelectItem[];
   activeIndex: number | null;
   atMax: boolean;
   listboxId: string;
@@ -354,6 +361,7 @@ const MultiSelectRoot = forwardRef<HTMLDivElement, MultiSelectProps>(
       selected,
       labelOf,
       indexOfValue,
+      filtered,
       activeIndex,
       atMax,
       listboxId,
@@ -558,7 +566,12 @@ const Content = forwardRef<HTMLDivElement, MultiSelectContentProps>(
 /* ------------------------------------------------------------------ */
 
 type MultiSelectItemProps = {
-  /** An entry of the `options` array the root handed to the children function. */
+  /**
+   * An entry of the `options` argument the root handed to the children
+   * function. It is an **address**, not a data channel: only `value` is read,
+   * and every other field of the row — its label, its `disabled` — comes from
+   * the root's own list. A fabricated `value` throws.
+   */
   option: MultiSelectItem;
 } & ComponentPropsWithRef<"div">;
 
@@ -566,6 +579,7 @@ const Item = forwardRef<HTMLDivElement, MultiSelectItemProps>(
   function MultiSelectItem({ option, children, className, onClick, ...props }, ref) {
     const {
       indexOfValue,
+      filtered,
       selected,
       atMax,
       disabled,
@@ -585,11 +599,31 @@ const Item = forwardRef<HTMLDivElement, MultiSelectItemProps>(
     }
 
     const isSelected = selected.includes(option.value);
-    const isDisabled = option.disabled || (!isSelected && atMax) || disabled;
+    // `filtered[index]`, never the `option` argument: a consumer who spreads a
+    // row and flips `disabled` would otherwise write selectability, and only
+    // half of it — `handleKeyDown` reads `filtered[activeIndex]`, so the click
+    // path would honour the override while the keyboard path refused it and
+    // `aria-disabled` reported the caller's answer to both.
+    const isDisabled = filtered[index].disabled || (!isSelected && atMax) || disabled;
 
     return (
       <ItemContext.Provider value={{ selected: isSelected }}>
         <div
+          // The bag first, the invariants after it: `id`, `role`, the two
+          // `aria-*` and the two `data-*` are what make this a listbox option,
+          // and a consumer prop of the same name must not win. Spread last, a
+          // `role="presentation"` from the call site left the listbox with zero
+          // discoverable options. `CommandPalette.Item` is the sibling with the
+          // same construction — keep the two in step.
+          {...getItemProps({
+            ...props,
+            onClick(event: React.MouseEvent<HTMLDivElement>) {
+              onClick?.(event);
+              if (isDisabled) return;
+              toggle(option.value);
+              focusInput();
+            },
+          })}
           ref={mergeRefs<HTMLDivElement>(ref, (node) => {
             listRef.current[index] = node;
           })}
@@ -600,15 +634,6 @@ const Item = forwardRef<HTMLDivElement, MultiSelectItemProps>(
           data-active={index === activeIndex ? "" : undefined}
           data-selected={isSelected ? "" : undefined}
           className={cn("multiselect-item", className)}
-          {...getItemProps({
-            ...props,
-            onClick(event: React.MouseEvent<HTMLDivElement>) {
-              onClick?.(event);
-              if (isDisabled) return;
-              toggle(option.value);
-              focusInput();
-            },
-          })}
         >
           {children}
         </div>
@@ -675,7 +700,20 @@ type MultiSelectTagProps = {
 
 const Tag = forwardRef<HTMLSpanElement, MultiSelectTagProps>(
   function MultiSelectTag({ index, children, className, ...props }, ref) {
+    const { selected } = useMultiSelectContext("MultiSelect.Tag");
     const value = useMemo(() => ({ index }), [index]);
+
+    // The same guard `MultiSelect.Item` carries, for the same reason and it was
+    // missing here: without it a chip at an index the selection does not hold
+    // renders, and its `TagRemove` calls `removeChipAt` on nothing — a chip a
+    // consumer authored, in a list `value` is supposed to be the sole writer of.
+    // Below the hooks so the throw cannot reorder them.
+    if (index < 0 || index >= selected.length) {
+      throw new Error(
+        `MultiSelect.Tag was given index ${index}, which is not a position in the selection MultiSelect handed to children. Map the \`selected\` argument; do not build entries.`,
+      );
+    }
+
     return (
       <TagContext.Provider value={value}>
         <span ref={ref} className={cn("multiselect-tag", className)} {...props}>

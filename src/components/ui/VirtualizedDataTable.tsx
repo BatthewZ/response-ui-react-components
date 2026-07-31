@@ -262,9 +262,13 @@ export function VirtualizedDataTable<T>({
         <Table.Row aria-rowindex={1}>
           {selectable && (
             <Table.HeaderCell
-              // slot:(a) the width reservation for the checkbox column, sized
-              // to the control this component renders under it. A caller class
-              // here re-sizes a column whose only content the component owns.
+              // slot:(a) the column's only width declaration — the matching
+              // body cell carries none, so auto layout takes this one and every
+              // data column divides the remainder. It is sized to the
+              // `Checkbox` under it, a shared primitive rendered with no props
+              // hatch, so its footprint is unreachable from the caller's side:
+              // a narrower class here clips the control rather than narrowing
+              // the column. Identical ruling to `DataTable`'s two.
               className="w-10"
             >
               <Checkbox
