@@ -275,5 +275,30 @@ to understand.
    the element, not merely that the finding is a false positive, or the allowlist becomes the
    place findings go to be forgotten.
 
+50. **A generalisation with exactly one value is usually also already violated, and the violation
+   is the cheaper evidence.** A shared prefix parameter that both of its two consumers set to the
+   same string looks like harmless flexibility; what proved it wrong was that one consumer had
+   quietly hardcoded a *different* name for one element, and that name had no stylesheet behind
+   it. So the parameter was not buying variation — it was hiding a component styled entirely
+   through another component's class names, plus one class that painted nothing. Deleting the
+   parameter was smaller than fixing either symptom. When a knob has one setting, look for where
+   somebody went around it rather than arguing about the knob.
+51. **A class name built by template concatenation is invisible to every static reader you have,
+   including your own gates.** Tailwind's scanner cannot see it, a reachability check cannot see
+   it, and the one gate that *did* resolve it needed a whole identifier-to-literal fixpoint
+   resolver to do so — machinery whose docblock then cited a shape that no longer exists. Static
+   names cost nothing and delete the machinery's reason to be trusted. Check what your gates said
+   about the code you are deleting; a gate's comments rot exactly like a doc's.
+52. **`toContain` on markup cannot prove a class *rename*, because the old name usually contains
+   the new one.** `dropdown-menu-content` contains `menu-content`, so the substring assertion that
+   was supposed to prove the rename stayed green with the old class still emitted — found only by
+   running the falsifier. Assert with a class selector (`querySelectorAll(".menu-content")`),
+   which matches whole tokens, and for the negative direction use `[class*="old-prefix"]`.
+53. **Splitting a stylesheet beats renaming it when its selectors have two different owners.**
+   §30 says to name a sheet after the component that renders its markup — but where a sheet holds
+   both a shared internal module's classes *and* one consumer's own, either name is wrong for half
+   the file. Two sheets, each beside the module that renders it, is one added import line and
+   leaves nothing misfiled; the aggregate stylesheet's import count is a report, not a contract.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

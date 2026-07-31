@@ -595,7 +595,7 @@ export function App() {
               </div>
             </ContextMenu.Trigger>
             <ContextMenu.Content>
-              <ContextMenu.Label>Actions</ContextMenu.Label>
+              <ContextMenu.GroupHeader>Actions</ContextMenu.GroupHeader>
               <ContextMenu.Item index={0} icon={<Copy size={14} />} onSelect={() => {}}>
                 Copy
               </ContextMenu.Item>

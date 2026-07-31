@@ -1,28 +1,16 @@
 "use client";
-import {
-  type ComponentPropsWithRef,
-  forwardRef,
-  useMemo,
-} from "react";
+import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
 import {
   MenuContent,
   MenuContext,
-  type MenuContextValue,
   MenuDivider,
+  MenuGroupHeader,
   MenuItem,
-  MenuLabel,
   useMenuContext,
   useMenuRoot,
 } from "./menu-internals";
-
-/**
- * ContextMenu reuses the existing `dropdown-menu-*` styles, so it ships no CSS
- * of its own.
- */
-const CLASS_PREFIX = "dropdown-menu";
 
 /* ------------------------------------------------------------------ */
 /*  Root                                                              */
@@ -51,12 +39,7 @@ function ContextMenuRoot({
     enableClick: false,
   });
 
-  const value = useMemo<MenuContextValue>(
-    () => ({ ...menu, classPrefix: CLASS_PREFIX }),
-    [menu]
-  );
-
-  return <MenuContext.Provider value={value}>{children}</MenuContext.Provider>;
+  return <MenuContext.Provider value={menu}>{children}</MenuContext.Provider>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -78,7 +61,11 @@ const ContextMenuTrigger = forwardRef<HTMLDivElement, ContextMenuTriggerProps>(
     return (
       <div
         ref={mergeRefs(ref, refs.setReference)}
-        className={cn("context-menu-trigger", className)}
+        // No base class: the region is a bare `<div>` nothing in the package
+        // paints, so `className` is the whole styling surface rather than one
+        // half of a merge. The `context-menu-trigger` hook that used to sit here
+        // named a stylesheet that never existed.
+        className={className}
         // The Menu key and Shift+F10 fire `contextmenu` at the *focused*
         // element, so a trigger that is not a tab stop can never be opened from
         // the keyboard. Set before the rest spread so a caller can override it.
@@ -134,5 +121,5 @@ export const ContextMenu = Object.assign(ContextMenuRoot, {
   Content: MenuContent,
   Item: MenuItem,
   Divider: MenuDivider,
-  Label: MenuLabel,
+  GroupHeader: MenuGroupHeader,
 });

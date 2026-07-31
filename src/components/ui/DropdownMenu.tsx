@@ -5,7 +5,6 @@ import {
   forwardRef,
   isValidElement,
   type ReactElement,
-  useMemo,
 } from "react";
 
 import { type Placement } from "../../hooks/use-floating";
@@ -15,15 +14,12 @@ import { cn } from "../../util/style";
 import {
   MenuContent,
   MenuContext,
-  type MenuContextValue,
   MenuDivider,
+  MenuGroupHeader,
   MenuItem,
-  MenuLabel,
   useMenuContext,
   useMenuRoot,
 } from "./menu-internals";
-
-const CLASS_PREFIX = "dropdown-menu";
 
 /* ------------------------------------------------------------------ */
 /*  Root                                                              */
@@ -46,12 +42,7 @@ function DropdownMenuRoot({
 }: DropdownMenuRootProps) {
   const menu = useMenuRoot({ open, onOpenChange, defaultOpen, placement });
 
-  const value = useMemo<MenuContextValue>(
-    () => ({ ...menu, classPrefix: CLASS_PREFIX }),
-    [menu]
-  );
-
-  return <MenuContext.Provider value={value}>{children}</MenuContext.Provider>;
+  return <MenuContext.Provider value={menu}>{children}</MenuContext.Provider>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -103,5 +94,5 @@ export const DropdownMenu = Object.assign(DropdownMenuRoot, {
   Content: MenuContent,
   Item: MenuItem,
   Divider: MenuDivider,
-  Label: MenuLabel,
+  GroupHeader: MenuGroupHeader,
 });

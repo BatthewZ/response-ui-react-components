@@ -24,13 +24,13 @@ export function Minimal() {
   );
 }
 
-/** `Label` and `Divider` are decoration: no `index`, never focused, skipped by the arrow keys. */
+/** `GroupHeader` and `Divider` are decoration: no `index`, never focused, skipped by the arrow keys. */
 export function LabelledGroups() {
   return (
     <DropdownMenu>
       <DropdownMenu.Trigger type="button">Pull request #42</DropdownMenu.Trigger>
       <DropdownMenu.Content>
-        <DropdownMenu.Label>Edit</DropdownMenu.Label>
+        <DropdownMenu.GroupHeader>Edit</DropdownMenu.GroupHeader>
         <DropdownMenu.Item index={0} icon={<Pencil aria-hidden="true" />}>
           Rename branch
         </DropdownMenu.Item>
@@ -41,7 +41,7 @@ export function LabelledGroups() {
           Copy branch name
         </DropdownMenu.Item>
         <DropdownMenu.Divider />
-        <DropdownMenu.Label>Danger zone</DropdownMenu.Label>
+        <DropdownMenu.GroupHeader>Danger zone</DropdownMenu.GroupHeader>
         <DropdownMenu.Item index={3} icon={<Trash2 aria-hidden="true" />}>
           Delete branch
         </DropdownMenu.Item>

@@ -34,17 +34,17 @@ registers itself as the anchor, sets `tabIndex={0}` so it can be focused, and li
 `contextmenu` plus the two keys that stand in for it. `ContextMenu.Content` is the
 menu panel; it renders through Floating UI's `FloatingPortal` (so no ancestor's `overflow`,
 `transform`, or `z-index` can clip it) and returns `null` while closed. Inside it,
-`ContextMenu.Item` is one action, and `ContextMenu.Label` / `ContextMenu.Divider` are
+`ContextMenu.Item` is one action, and `ContextMenu.GroupHeader` / `ContextMenu.Divider` are
 non-interactive decoration.
 
-| Part                  | Renders                             | Props                                                             |
-| --------------------- | ----------------------------------- | ----------------------------------------------------------------- |
-| `ContextMenu`         | nothing — a context provider        | `open?` · `onOpenChange?` · `defaultOpen?` · `children`            |
-| `ContextMenu.Trigger` | `<div class="context-menu-trigger">` | all `div` props                                                   |
-| `ContextMenu.Content` | `<div role="menu">`, portalled      | all `div` props                                                   |
-| `ContextMenu.Item`    | `<button role="menuitem">`          | `index` · `icon?` · `disabled?` · `onSelect?` (+ all `button` props) |
-| `ContextMenu.Divider` | `<hr role="separator">`             | all `hr` props                                                    |
-| `ContextMenu.Label`   | `<span role="presentation">`        | all `span` props                                                  |
+| Part                     | Renders                                                | Props                                                             |
+| ------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| `ContextMenu`            | nothing — a context provider                           | `open?` · `onOpenChange?` · `defaultOpen?` · `children`            |
+| `ContextMenu.Trigger`    | `<div>` — no class of its own                          | all `div` props                                                   |
+| `ContextMenu.Content`    | `<div role="menu" class="menu-content">`, portalled     | all `div` props                                                   |
+| `ContextMenu.Item`       | `<button role="menuitem" class="menu-item">`            | `index` · `icon?` · `disabled?` · `onSelect?` · `classNames?` (+ all `button` props) |
+| `ContextMenu.Divider`    | `<hr role="separator" class="menu-divider">`            | all `hr` props                                                    |
+| `ContextMenu.GroupHeader`| `<span role="presentation" class="menu-group-header">`  | all `span` props                                                  |
 
 Every part except the root takes a `ref` and forwards the rest of its element's props, so
 `className`, `id`, `data-*`, and `aria-*` all pass through. `Item` replaces the native
@@ -52,7 +52,7 @@ Every part except the root takes a `ref` and forwards the rest of its element's 
 
 `index` is the one prop with no default and no safety net: it is the item's position in the
 arrow-key/typeahead list, and you number them yourself, from `0`, in visual order.
-`ContextMenu.Label` and `ContextMenu.Divider` are not in that list and take no `index`.
+`ContextMenu.GroupHeader` and `ContextMenu.Divider` are not in that list and take no `index`.
 
 ## Grouping the actions
 
@@ -63,7 +63,7 @@ arrow-key/typeahead list, and you number them yourself, from `0`, in visual orde
     <p>Q3-forecast.xlsx</p>
   </ContextMenu.Trigger>
   <ContextMenu.Content>
-    <ContextMenu.Label>Q3-forecast.xlsx</ContextMenu.Label>
+    <ContextMenu.GroupHeader>Q3-forecast.xlsx</ContextMenu.GroupHeader>
     <ContextMenu.Item index={0} icon={<Pencil size={16} aria-hidden="true" />}>
       Rename
     </ContextMenu.Item>
@@ -85,10 +85,12 @@ arrow-key/typeahead list, and you number them yourself, from `0`, in visual orde
 ```
 <!-- /example -->
 
-`icon` renders in a fixed 1rem slot before the label, tinted separately from the label text —
-pass it `aria-hidden` so the item announces once. `ContextMenu.Label` is `role="presentation"`,
-so it is a visual caption only: it groups nothing as far as assistive tech is concerned, and
-`ContextMenu.Divider`'s `role="separator"` is what actually marks the break.
+`icon` renders in a fixed 1rem box before the label, tinted separately from the label text —
+pass it `aria-hidden` so the item announces once. That box is the one part of an item no prop
+otherwise reaches, so it has a slot: `classNames={{ itemIcon: "…" }}`. See
+[Slots](#slots). `ContextMenu.GroupHeader` is `role="presentation"`, so it is a visual caption
+only: it groups nothing as far as assistive tech is concerned, and `ContextMenu.Divider`'s
+`role="separator"` is what actually marks the break.
 
 A `disabled` item is `aria-disabled`, not natively `disabled` — it keeps its `index`, its row,
 and its place in the accessibility tree. Arrow keys step over it; typeahead does not (see
@@ -185,9 +187,9 @@ component leaves the key alone. That is the opposite of the `contextmenu` path, 
 suppression happens before your handler ever sees the event — see
 [Suppressing the browser menu](#suppressing-the-browser-menu).
 
-The tab stop you get by default is a bare `<div>`. Nothing in the package styles
-`.context-menu-trigger`, and a `<div>` takes no accessible name from its own text the way a
-button does, so a keyboard user arrives at an unnamed region wearing only the browser's default
+The tab stop you get by default is a bare `<div>` with no class at all — whatever you pass as
+`className` is the whole of it — and a `<div>` takes no accessible name from its own text the way
+a button does, so a keyboard user arrives at an unnamed region wearing only the browser's default
 focus ring. Wrapping a real control gives it both, and is the shape to reach for:
 
 <!-- example:KeyboardReachable -->
@@ -249,29 +251,61 @@ first right-click that reference sticks — nothing on the programmatic path cle
 open resets it: the Menu key and Shift+F10 drop the reference before opening, so they always
 anchor on the trigger box.
 
+## Slots
+
+`className` reaches every part that renders one, and each subcomponent merges it after the
+library class. On the trigger there is no library class to merge with — the `<div>` carries
+exactly what you pass. The one element no prop reached was the box the `icon` goes into, so
+`ContextMenu.Item` takes a `classNames` object for it. Class strings only, and the keys are
+typed, so a misspelled one is a compile error rather than a prop that does nothing.
+
+| Slot       | Element                | What it addresses                                            |
+| ---------- | ---------------------- | ------------------------------------------------------------ |
+| `itemIcon` | `span.menu-item-icon`  | the fixed 1rem box around `icon`, on every item that has one  |
+
+```tsx
+<ContextMenu.Item index={0} icon={<Trash2 size={16} />} classNames={{ itemIcon: "text-status-error" }}>
+  Move to trash
+</ContextMenu.Item>
+```
+
+There is no slot for the panel, the row, the divider or the group heading: `ContextMenu.Content`,
+`.Item`, `.Divider` and `.GroupHeader` already reach those through their own `className`. And
+**no slot can
+carry the fade timing** — the enter/exit duration is written inline by the shared floating-motion
+hook, so a `duration-*` or `transition-*` utility on the panel is silently dead however it
+arrives; retime it with `--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT`.
+
 ## Theme tokens
 
-ContextMenu has no CSS file of its own, and its `.tsx` uses no Tailwind utilities. It sets
-`CLASS_PREFIX = "dropdown-menu"`, so its panel, items, dividers, and labels render the exact
-`.dropdown-menu-*` classes that [DropdownMenu](dropdown-menu.md) does and are painted by `DropdownMenu.css`, which
-`src/styles.css` imports for the package. Overriding the menu's look means overriding those rules
-— and doing so retints **both** components at once. The full table lives with [DropdownMenu](dropdown-menu.md); in
-summary, that stylesheet reads `--C-SURFACE-0` and `--C-BORDER-DEFAULT` for the panel with
-`--RADIUS-MD` and `--SHADOW-LG`, `--C-TEXT-PRIMARY` at `--BodyText-2` for item labels,
-`--C-SURFACE-2` for the hover/focus row with a 2px `--C-BORDER-FOCUS` ring on
-`:focus-visible`, `--C-TEXT-SECONDARY` for item icons, and `--C-TEXT-MUTED` for disabled items
-and for the `--BodyText-3` group label.
+ContextMenu has no CSS file of its own, and its `.tsx` uses no Tailwind utilities. Its panel,
+items, dividers, and group headings render the shared `menu-*` classes — `menu-content`,
+`menu-item`, `menu-item-icon`, `menu-divider`, `menu-group-header` — painted by
+`menu-internals.css`, which `src/styles.css` imports for the package.
+[DropdownMenu](dropdown-menu.md) renders the identical components and therefore the identical
+classes, so overriding those rules retints **both** at once. The full table lives with
+[DropdownMenu](dropdown-menu.md); in summary, that stylesheet reads `--C-SURFACE-0` and
+`--C-BORDER-DEFAULT` for the panel with `--RADIUS-MD` and `--SHADOW-LG`, `--C-TEXT-PRIMARY` at
+`--BodyText-2` for item labels, `--C-SURFACE-2` for the hover/focus row with a 2px
+`--C-BORDER-FOCUS` ring on `:focus-visible`, `--C-TEXT-SECONDARY` for item icons, and
+`--C-TEXT-MUTED` for disabled items and for the `--BodyText-3` group heading.
+
+**Those classes used to be `dropdown-menu-*`, and they were rendered from a shared prefix both
+menus set to `"dropdown-menu"`.** A ContextMenu was therefore styled — and could only be
+restyled — through classes named after the other component, while its trigger carried a
+`context-menu-trigger` class no stylesheet anywhere defined. If you have CSS targeting either of
+those, retarget it: `.dropdown-menu-*` becomes `.menu-*`, and the trigger has no class of its own
+to hook, so give it one through `className`.
 
 Two things are *not* on the contract. The panel's geometry — its `0.25rem 0` padding, the items'
 `0.375rem 0.75rem`, the `0.5rem` icon gap, an `11.25rem` minimum width and `z-index: 40` — is
 hard literals in that stylesheet rather than the responsive `r`-scale, so the item **type** steps
 up at the 40rem breakpoint with the rest of the app while the padding around it does not. And the
-part ContextMenu owns is unthemeable
-by design: the 4px pointer offset is a number in `menu-internals.tsx`, tied to no token. The
-open/close opacity fade is **not** — it reads `--MOTION-DURATION-ENTER` /
-`--MOTION-DURATION-EXIT` (150ms when no token layer is present) and drops to `0` under
-`prefers-reduced-motion: reduce`. The trigger's own `context-menu-trigger` class is a naming hook only —
-nothing in the package styles it. See the [theme contract](../theme-contract.md).
+part ContextMenu owns is unthemeable by design: the 4px pointer offset is a number in
+`menu-internals.tsx`, tied to no token. The open/close opacity fade is **not** — it reads
+`--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT` (150ms when no token layer is present) and
+drops to `0` under `prefers-reduced-motion: reduce`. See the
+[theme contract](../theme-contract.md).
 
 ## Gotchas
 
@@ -309,7 +343,7 @@ nothing in the package styles it. See the [theme contract](../theme-contract.md)
   stays open behind it.
 - **The sub-parts are literally [DropdownMenu](dropdown-menu.md)'s.** `ContextMenu.Item` and `DropdownMenu.Item`
   are the same component object, distinguished only by which provider they find at runtime. The
-  practical consequences: styling `.dropdown-menu-item` restyles both, and rendering one outside
+  practical consequences: styling `.menu-item` restyles both, and rendering one outside
   any menu throws `"MenuItem must be used within a menu provider"` — the internal name, not the
   one you wrote.
 - **Touch is whatever the browser gives you.** There is no long-press handling in the code — only
@@ -335,8 +369,8 @@ is a name for that element, and what the focus manager does with focus around it
   shortcut for actions that exist somewhere else too: it is a gesture most users never try.
 - **The tab stop has no name and no focus style of its own.** `tabIndex={0}` puts a `<div>` in
   the tab order, but a `<div>` takes no accessible name from its own text the way a button does,
-  nothing sets an `aria-label` for you, and nothing in the package styles
-  `.context-menu-trigger`. So a keyboard user arrives at an unnamed region wearing only the
+  nothing sets an `aria-label` for you, and the element carries no class the package styles — it
+  carries only your `className`. So a keyboard user arrives at an unnamed region wearing only the
   browser's default ring. Wrap a real control, or give the trigger an `aria-label` and a focus
   style yourself.
 - **A right-click moves focus, and close returns it to the trigger.** The `contextmenu` handler

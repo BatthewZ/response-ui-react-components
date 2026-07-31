@@ -1,0 +1,75 @@
+/* The menu surface shared by DropdownMenu and ContextMenu.
+   Named after `menu-internals.tsx`, which renders every selector below; the two
+   public components render only their own triggers. These rules used to live in
+   `DropdownMenu.css` under `.dropdown-menu-*` names, which meant a ContextMenu
+   was painted by — and could only be restyled through — classes named after the
+   other component. */
+
+.menu-content {
+  background: var(--C-SURFACE-0);
+  border: 1px solid var(--C-BORDER-DEFAULT);
+  border-radius: var(--RADIUS-MD);
+  box-shadow: var(--SHADOW-LG);
+  padding: 0.25rem 0;
+  min-width: 11.25rem;
+  z-index: 40;
+  outline: none;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  background: none;
+  border: none;
+  color: var(--C-TEXT-PRIMARY);
+  font: inherit;
+  font-size: var(--BodyText-2);
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--C-SURFACE-2);
+}
+
+/* The wash above is identical in both states, so it can never distinguish focus
+   from hover however large the step gets; and at rung 2 against the rung-0 panel
+   it measures 1.08–1.21:1, still an order below the 3:1 a state indicator owes.
+   The ring, not the fill, carries focus. Inset, as `.app-shell-sidebar-link`
+   uses for the same full-width-row shape. */
+.menu-item:focus-visible {
+  outline: 2px solid var(--C-BORDER-FOCUS);
+  outline-offset: -2px;
+}
+
+.menu-item[aria-disabled="true"] {
+  color: var(--C-TEXT-MUTED);
+  cursor: default;
+}
+
+.menu-item-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--C-TEXT-SECONDARY);
+}
+
+.menu-divider {
+  height: 1px;
+  background: var(--C-BORDER-DEFAULT);
+  border: none;
+  margin: 0.25rem 0;
+}
+
+.menu-group-header {
+  display: block;
+  padding: 0.375rem 0.75rem;
+  font-size: var(--BodyText-3);
+  color: var(--C-TEXT-MUTED);
+  font-weight: var(--Semibold-Weight);
+}

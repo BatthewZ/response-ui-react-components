@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { type ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ContextMenu } from "./ContextMenu";
@@ -143,6 +144,76 @@ describe("MenuItem — disabled items are inert", () => {
 
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("MenuItem — the itemIcon slot", () => {
+  async function openWithIcon(props: Partial<ComponentProps<typeof DropdownMenu.Item>> = {}) {
+    render(
+      <DropdownMenu>
+        <DropdownMenu.Trigger>Open menu</DropdownMenu.Trigger>
+        <DropdownMenu.Content>
+          <DropdownMenu.Item index={0} icon={<svg data-testid="glyph" />} {...props}>
+            Edit
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu>
+    );
+    await openDropdown();
+    const glyph = screen.getByTestId("glyph");
+    return { box: glyph.parentElement, item: screen.getByRole("menuitem", { name: "Edit" }) };
+  }
+
+  it("lands classNames.itemIcon on the icon box, beside the base class", async () => {
+    const { box } = await openWithIcon({ classNames: { itemIcon: "size-r5" } });
+
+    expect(box?.getAttribute("class")).toContain("menu-item-icon");
+    expect(box?.getAttribute("class")).toContain("size-r5");
+  });
+
+  it("keeps the base class when no slot is passed", async () => {
+    const { box } = await openWithIcon();
+
+    expect(box?.getAttribute("class")).toBe("menu-item-icon");
+  });
+
+  it("does not put the slot class on the row", async () => {
+    const { item } = await openWithIcon({ classNames: { itemIcon: "size-r5" } });
+
+    expect(item.getAttribute("class")).not.toContain("size-r5");
+  });
+
+  it("rejects an unknown slot key at the type level", async () => {
+    const { box } = await openWithIcon({
+      // @ts-expect-error — the slot union is inline, so a key that is not a slot
+      // is a compile error rather than a prop that silently does nothing. The
+      // directive is the assertion: it fails if TS ever stops rejecting this.
+      classNames: { iconWrapper: "size-r5" },
+    });
+
+    expect(box?.getAttribute("class")).toBe("menu-item-icon");
+  });
+
+  it("does not leak classNames onto the DOM", async () => {
+    const { item } = await openWithIcon({ classNames: { itemIcon: "size-r5" } });
+
+    expect(item.hasAttribute("classnames")).toBe(false);
+  });
+
+  it("names the box the same through ContextMenu.Item — one component, two entry points", async () => {
+    render(
+      <ContextMenu>
+        <ContextMenu.Trigger>Right-click area</ContextMenu.Trigger>
+        <ContextMenu.Content>
+          <ContextMenu.Item index={0} icon={<svg data-testid="glyph" />}>
+            Edit
+          </ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu>
+    );
+    await openContextMenu();
+
+    expect(screen.getByTestId("glyph").parentElement?.getAttribute("class")).toBe("menu-item-icon");
   });
 });
 

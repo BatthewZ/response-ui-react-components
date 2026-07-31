@@ -17,7 +17,7 @@ function renderMenu(
       <DropdownMenu>
         <DropdownMenu.Trigger>Open menu</DropdownMenu.Trigger>
         <DropdownMenu.Content>
-          <DropdownMenu.Label>Actions</DropdownMenu.Label>
+          <DropdownMenu.GroupHeader>Actions</DropdownMenu.GroupHeader>
           <DropdownMenu.Item index={0} onSelect={onSelect}>
             Edit
           </DropdownMenu.Item>

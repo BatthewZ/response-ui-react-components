@@ -28,35 +28,35 @@ the open state and the Floating UI wiring. `DropdownMenu.Trigger` is the anchor 
 `DropdownMenu.Content` is the floating `role="menu"` surface; it renders through Floating UI's
 `FloatingPortal` into `<body>`, so it escapes `overflow: hidden` and stacking contexts without a
 [Portal](portal.md) of your own. Everything inside it is your composition: `DropdownMenu.Item`s
-are the focusable actions; `DropdownMenu.Divider` and `DropdownMenu.Label` are decoration.
+are the focusable actions; `DropdownMenu.Divider` and `DropdownMenu.GroupHeader` are decoration.
 
-| Part                   | Renders                                                             | Props                                                             |
-| ---------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `DropdownMenu`         | nothing — a context provider                                        | `open?` · `onOpenChange?` · `defaultOpen?` · `placement?` · `children` |
-| `DropdownMenu.Trigger` | `<button class="dropdown-menu-trigger">`, or your own element       | `asChild?` (+ all `button` props)                                 |
-| `DropdownMenu.Content` | `<div role="menu">`, portalled                                       | all `div` props                                                   |
-| `DropdownMenu.Item`    | `<button role="menuitem">`                                           | `index` · `icon?` · `disabled?` · `onSelect?` (+ `button` props)   |
-| `DropdownMenu.Divider` | `<hr role="separator">`                                              | all `hr` props                                                    |
-| `DropdownMenu.Label`   | `<span role="presentation">`                                         | all `span` props                                                  |
+| Part                       | Renders                                                         | Props                                                             |
+| -------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `DropdownMenu`             | nothing — a context provider                                    | `open?` · `onOpenChange?` · `defaultOpen?` · `placement?` · `children` |
+| `DropdownMenu.Trigger`     | `<button class="dropdown-menu-trigger">`, or your own element   | `asChild?` (+ all `button` props)                                 |
+| `DropdownMenu.Content`     | `<div role="menu" class="menu-content">`, portalled              | all `div` props                                                   |
+| `DropdownMenu.Item`        | `<button role="menuitem" class="menu-item">`                     | `index` · `icon?` · `disabled?` · `onSelect?` · `classNames?` (+ `button` props) |
+| `DropdownMenu.Divider`     | `<hr role="separator" class="menu-divider">`                     | all `hr` props                                                    |
+| `DropdownMenu.GroupHeader` | `<span role="presentation" class="menu-group-header">`           | all `span` props                                                  |
 
 **`index` is required on every `Item` and you assign it by hand.** It is not a display detail:
 the number is the item's slot in the keyboard-navigation array, so it must be unique, count from
 `0`, and run in the order you want the arrow keys to walk. `DropdownMenu.Divider` and
-`DropdownMenu.Label` take no `index` and are skipped by the counter. Getting this wrong is the
-single easiest way to break the component — see [Gotchas](#gotchas).
+`DropdownMenu.GroupHeader` take no `index` and are skipped by the counter. Getting this wrong is
+the single easiest way to break the component — see [Gotchas](#gotchas).
 
 The root's only styling hook is what its children carry: `DropdownMenu` itself takes no
 `className`, no `ref`, and no rest props. The other five all forward the props of the element
 they render.
 
-## Structure: labels, dividers, icons
+## Structure: group headings, dividers, icons
 
 <!-- example:LabelledGroups -->
 ```tsx
 <DropdownMenu>
   <DropdownMenu.Trigger type="button">Pull request #42</DropdownMenu.Trigger>
   <DropdownMenu.Content>
-    <DropdownMenu.Label>Edit</DropdownMenu.Label>
+    <DropdownMenu.GroupHeader>Edit</DropdownMenu.GroupHeader>
     <DropdownMenu.Item index={0} icon={<Pencil aria-hidden="true" />}>
       Rename branch
     </DropdownMenu.Item>
@@ -67,7 +67,7 @@ they render.
       Copy branch name
     </DropdownMenu.Item>
     <DropdownMenu.Divider />
-    <DropdownMenu.Label>Danger zone</DropdownMenu.Label>
+    <DropdownMenu.GroupHeader>Danger zone</DropdownMenu.GroupHeader>
     <DropdownMenu.Item index={3} icon={<Trash2 aria-hidden="true" />}>
       Delete branch
     </DropdownMenu.Item>
@@ -199,12 +199,40 @@ library has not measured. Don't read the `Enter` row as covering it. Floating UI
 the only thing that ever intercepts a `Space`, and only mid-search: while a still-matching
 search string is in flight it swallows the key so the space extends the string.
 
+## Slots
+
+`className` reaches every part that renders one — each subcomponent forwards it to its own
+element, and `cn()` merges it after the library class. The one element no prop reached was the
+box the `icon` goes into, so `DropdownMenu.Item` takes a `classNames` object for it. Class
+strings only, and the keys are typed, so a misspelled one is a compile error rather than a prop
+that does nothing.
+
+| Slot       | Element                    | What it addresses                                        |
+| ---------- | -------------------------- | -------------------------------------------------------- |
+| `itemIcon` | `span.menu-item-icon`      | the fixed 1rem box around `icon`, on every item that has one |
+
+```tsx
+<DropdownMenu.Item index={0} icon={<Trash2 />} classNames={{ itemIcon: "text-status-error" }}>
+  Delete branch
+</DropdownMenu.Item>
+```
+
+There is no slot for the panel, the row, the divider or the group heading:
+`DropdownMenu.Content`, `.Item`, `.Divider` and `.GroupHeader` already reach those elements
+through their own `className`, and a slot beside a subcomponent would be a second writer for one
+element. And **no slot can carry the
+fade timing** — the enter/exit duration is written inline by the shared floating-motion hook, so
+a `duration-*` or `transition-*` utility on the panel is silently dead however it arrives. Retime
+it with `--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT`.
+
 ## Theme tokens
 
-DropdownMenu uses **no Tailwind utilities** — every rule lives in `DropdownMenu.css` and reads
-contract variables directly, the way [Tabs](tabs.md) and [ActivityFeed](activity-feed.md) do.
-Override any of these and the menu re-tints with the rest of the app, at runtime, with no
-rebuild.
+DropdownMenu uses **no Tailwind utilities**. The trigger's own rule lives in `DropdownMenu.css`;
+the panel and everything in it is painted by `menu-internals.css`, the shared stylesheet named
+after the module that renders those elements — [ContextMenu](context-menu.md) is painted by the
+same file. Both read contract variables directly, the way [Tabs](tabs.md) and
+[ActivityFeed](activity-feed.md) do. Override any of these and the menu re-tints with the rest of
+the app, at runtime, with no rebuild.
 
 | Where                     | Override                                                          |
 | ------------------------- | ----------------------------------------------------------------- |
@@ -215,20 +243,24 @@ rebuild.
 | Item icon                 | `--C-TEXT-SECONDARY`                                              |
 | Disabled item label       | `--C-TEXT-MUTED`                                                  |
 | Divider rule              | `--C-BORDER-DEFAULT`                                              |
-| Section label             | `--C-TEXT-MUTED` · `--BodyText-3` · `--Semibold-Weight`           |
+| Group heading             | `--C-TEXT-MUTED` · `--BodyText-3` · `--Semibold-Weight`           |
 
 `--BodyText-2` and `--BodyText-3` are responsive and step up at the 40rem breakpoint, so menu
 type grows on desktop with no work from you.
 
 Several values are **not** on the contract and cannot be themed: item padding
 (`0.375rem 0.75rem`), the icon gap (`0.5rem`), the icon box (`1rem`), the menu's `min-width`
-(`11.25rem`), the divider's `1px` rule, and the surface `z-index` (`40`). Override
-`.dropdown-menu-label` in your own CSS if any of those matter. The trigger sets no colour at
-all: it inherits the surrounding font and
-ink, which is what makes `asChild` and a bare trigger both look right.
+(`11.25rem`), the divider's `1px` rule, and the surface `z-index` (`40`). Override the class in
+your own CSS if any of those matter — or pass a utility through the part's `className`, which
+after the move to `@layer components` wins against these rules. The trigger sets no colour at
+all: it inherits the surrounding font and ink, which is what makes `asChild` and a bare trigger
+both look right.
 
-The whole surface is styled from a single `dropdown-menu-*` class family, and [ContextMenu](context-menu.md)
-deliberately reuses it — restyle these classes and both components move together.
+The whole panel is styled from a single `menu-*` class family — `menu-content`, `menu-item`,
+`menu-item-icon`, `menu-divider`, `menu-group-header` — shared with
+[ContextMenu](context-menu.md), which renders the identical components. Restyle these classes and
+both move together; that is deliberate, and it is why they are named after the menu rather than
+after either component. Only `.dropdown-menu-trigger` is this component's alone.
 
 ## Gotchas
 
@@ -278,8 +310,9 @@ deliberately reuses it — restyle these classes and both components move togeth
   `"DropdownMenu.Trigger must be used within a menu provider"`. The other four are shared with
   [ContextMenu](context-menu.md) and name themselves after the shared implementation, so a stray
   `DropdownMenu.Item` throws `"MenuItem must be used within a menu provider"` and
-  `Content`/[Divider](divider.md)/[Label](label.md) throw as `MenuContent`/`MenuDivider`/`MenuLabel`. Grep for those
-  names, not the ones in your JSX.
+  `DropdownMenu.Content`, `DropdownMenu.Divider` and `DropdownMenu.GroupHeader` throw as
+  `MenuContent`, `MenuDivider` and `MenuGroupHeader`. Grep for those names, not the ones in your
+  JSX.
 
 ## Accessibility
 
@@ -289,7 +322,7 @@ surface; the surface is `role="menu"` labelled by the trigger's own text, and ea
 Items are skipped by the arrow keys when `aria-disabled`, which is Floating UI's default. That
 is the menu-button pattern implemented properly — with four things still to know:
 
-- **The focus ring is real, but thin in two themes.** `.dropdown-menu-item` resets the UA
+- **The focus ring is real, but thin in two themes.** `.menu-item` resets the UA
   outline and paints the same `--C-SURFACE-2` wash it uses for hover — a recessed step of
   **1.08–1.21:1** against the menu's rung-0 `--C-SURFACE-0`, which on its own is no indicator
   at all — so a `:focus-visible` rule puts a 2px `--C-BORDER-FOCUS` outline back at `-2px`
@@ -308,7 +341,7 @@ is the menu-button pattern implemented properly — with four things still to kn
   is still on the trigger and Tab moves straight past the menu — before this was fixed, that
   left an open menu stranded on screen with focus somewhere else entirely.
 - **Muted ink clears AA, but still reads as hint-level.** Disabled items and
-  `DropdownMenu.Label` both paint `--C-TEXT-MUTED` on `--C-SURFACE-0` at **4.85:1 to 5.23:1**
+  `DropdownMenu.GroupHeader` both paint `--C-TEXT-MUTED` on `--C-SURFACE-0` at **4.85:1 to 5.23:1**
   since `@batthewz/response-ui-css` **v0.10.0**, where it measured 2.10–2.59 and failed AA outright. It is legible now; it is
   still the quietest ink in the contract, so weigh that before putting something load-bearing in
   a section label.
@@ -322,10 +355,12 @@ is the menu-button pattern implemented properly — with four things still to kn
   outside press dismisses the menu first. This is the same line [ContextMenu](context-menu.md) inherits, and it
   is not exposed as a prop. Nothing on screen — no scrim, no scroll lock — signals it.
 
-Two smaller notes. `DropdownMenu.Label` is `role="presentation"` and is wired to nothing: it
-does not name the menu, does not group the items after it, and is not guaranteed to be
+Two smaller notes. `DropdownMenu.GroupHeader` is `role="presentation"` and is wired to nothing:
+it does not name the menu, does not group the items after it, and is not guaranteed to be
 announced — treat it as a visual hint, and if a group genuinely needs a name, put it in the
-trigger. And `icon` is
+trigger. (It was called `.Label` until it was renamed; the word `label` is spent everywhere else
+in this package on accessible names, which is exactly the confusion the rename removes.) And
+`icon` is
 rendered exactly as you pass it with no accessible name of its own, so mark decorative glyphs
 `aria-hidden="true"` as the examples above do.
 
