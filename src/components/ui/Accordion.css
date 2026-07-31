@@ -1,117 +1,26 @@
 /* ------------------------------------------------------------------ */
-/*  Accordion                                                          */
+/*  Accordion — converted to utilities; one rule could not move        */
 /* ------------------------------------------------------------------ */
 
-.accordion {
-  width: 100%;
-}
+/* Everything this component draws is a Tailwind utility in `Accordion.tsx`.
+   The survivor is a RESET, and a reset is the one shape that has to LOSE to a
+   caller's class rather than beat it — which is what `@layer components` buys
+   and `@layer utilities` takes away. AGENTS.md "The test", questions 3 and 5.
 
-/* ------------------------------------------------------------------ */
-/*  Item                                                               */
-/* ------------------------------------------------------------------ */
+   The class names below are behavioural markers as well as selectors:
+   `Accordion.tsx` finds `.accordion` with `closest()` and `.accordion-trigger`
+   with `querySelectorAll()` for arrow-key navigation. Append, never replace. */
 
-.accordion-item {
-  border-bottom: 1px solid var(--C-BORDER-DEFAULT);
-}
+/* The trigger needs a heading ancestor for heading navigation, and the heading
+   must contribute no typography of its own.
 
-/* ------------------------------------------------------------------ */
-/*  Trigger                                                            */
-/* ------------------------------------------------------------------ */
-
-/* Presentational wrapper: the trigger needs a heading ancestor for heading
-   navigation, and the heading must contribute no typography of its own. */
+   Not `[font:inherit]`. Measured: that utility emits after `.text-h4` in
+   `@layer utilities`, so `classNames={{ heading: "text-h4" }}` would land in
+   the DOM and change nothing — the silent-no-op defect Phase 1 removed. Note
+   also that `font-[inherit]` is not this declaration at all: it compiles to
+   `font-family: inherit`, not the shorthand. */
 .accordion-heading {
   margin: 0;
   font: inherit;
   color: inherit;
-}
-
-.accordion-trigger {
-  all: unset;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: var(--R-SIZE-4) var(--R-SIZE-6);
-  cursor: pointer;
-  font-size: var(--BodyText-2);
-  font-weight: var(--Semibold-Weight);
-  line-height: var(--BodyText-2-line-height);
-  color: var(--C-TEXT-PRIMARY);
-  transition: background-color var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
-}
-
-.accordion-trigger:hover:not(:disabled) {
-  background-color: var(--C-SURFACE-2);
-}
-
-.accordion-trigger:disabled {
-  color: var(--C-TEXT-MUTED);
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.accordion-trigger:focus-visible {
-  outline: 2px solid var(--C-BORDER-FOCUS);
-  outline-offset: -2px;
-  border-radius: var(--RADIUS-SM);
-}
-
-.accordion-trigger-text {
-  flex: 1;
-  text-align: left;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Chevron                                                            */
-/* ------------------------------------------------------------------ */
-
-.accordion-chevron {
-  flex-shrink: 0;
-  color: var(--C-TEXT-SECONDARY);
-  transition: transform var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
-}
-
-.accordion-trigger[aria-expanded="true"] .accordion-chevron {
-  transform: rotate(180deg);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Content — grid-template-rows animation                             */
-/* ------------------------------------------------------------------ */
-
-.accordion-content {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows var(--MOTION-DURATION-SHIFT) var(--MOTION-EASE-SHIFT);
-}
-
-.accordion-content[data-state="open"] {
-  grid-template-rows: 1fr;
-}
-
-.accordion-content-inner {
-  overflow: hidden;
-}
-
-.accordion-content-inner > * {
-  padding: 0 var(--R-SIZE-6) var(--R-SIZE-4);
-  font-size: var(--BodyText-2);
-  line-height: var(--BodyText-2-line-height);
-  color: var(--C-TEXT-SECONDARY);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Reduced motion                                                     */
-/* ------------------------------------------------------------------ */
-
-@media (prefers-reduced-motion: reduce) {
-  .accordion-content {
-    transition: none;
-  }
-
-  .accordion-chevron {
-    transition: none;
-  }
 }

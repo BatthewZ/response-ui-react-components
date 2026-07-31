@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 
 import {
+  Accordion,
   ActivityFeed,
   Alert,
   Avatar,
@@ -557,6 +558,76 @@ export function App() {
               </p>
             </Collapsible.Content>
           </Collapsible>
+        </Tile>
+        <Tile label="Accordion — single" id="tile-accordion-single">
+          <Accordion defaultValue="shipping" className="w-80">
+            <Accordion.Item value="shipping">
+              <Accordion.Trigger>When will my order ship?</Accordion.Trigger>
+              <Accordion.Content>
+                <p>Orders placed before 2pm ship the same working day.</p>
+              </Accordion.Content>
+            </Accordion.Item>
+            <Accordion.Item value="returns">
+              <Accordion.Trigger>How do I return an item?</Accordion.Trigger>
+              <Accordion.Content>
+                <p>Start a return from your order history within 30 days of delivery.</p>
+              </Accordion.Content>
+            </Accordion.Item>
+            <Accordion.Item value="warranty" disabled>
+              <Accordion.Trigger>Warranty claims</Accordion.Trigger>
+              <Accordion.Content>
+                <p>Unreachable — the item is disabled.</p>
+              </Accordion.Content>
+            </Accordion.Item>
+          </Accordion>
+        </Tile>
+        <Tile label="Accordion — multiple" id="tile-accordion-multiple">
+          <Accordion mode="multiple" defaultValue={["a", "b"]} className="w-80">
+            <Accordion.Item value="a">
+              <Accordion.Trigger>Both panels open at once</Accordion.Trigger>
+              <Accordion.Content>
+                <p>mode="multiple" lets sections stack instead of replacing each other.</p>
+              </Accordion.Content>
+            </Accordion.Item>
+            <Accordion.Item value="b">
+              <Accordion.Trigger>And they animate independently</Accordion.Trigger>
+              <Accordion.Content>
+                <p>Each panel animates its own grid-template-rows from 0fr to 1fr.</p>
+              </Accordion.Content>
+            </Accordion.Item>
+          </Accordion>
+        </Tile>
+        {/* The panel's inset lives on the padded body, which is `classNames.body`.
+            LEFT is the default; RIGHT flattens it. `className` cannot do this —
+            it addresses the animating box, whose padding would survive the
+            collapse and show as a strip under a closed panel. */}
+        <Tile label="Accordion — panel inset via classNames.body" id="tile-accordion-inset">
+          <div className="flex flex-wrap items-start gap-r4">
+            <div className="flex flex-col gap-r6">
+              <span className="text-body-3 font-semibold text-fg-muted">Default inset</span>
+              <Accordion defaultValue="x" className="w-72">
+                <Accordion.Item value="x">
+                  <Accordion.Trigger>Card in a panel</Accordion.Trigger>
+                  <Accordion.Content>
+                    <Card>The card keeps its own padding and the panel keeps its inset.</Card>
+                  </Accordion.Content>
+                </Accordion.Item>
+              </Accordion>
+            </div>
+            <div className="flex flex-col gap-r6">
+              <span className="text-body-3 font-semibold text-fg-muted">
+                {`classNames={{ body: "p-0" }}`}
+              </span>
+              <Accordion defaultValue="x" className="w-72">
+                <Accordion.Item value="x">
+                  <Accordion.Trigger>Full-bleed panel</Accordion.Trigger>
+                  <Accordion.Content classNames={{ body: "p-0" }}>
+                    <Card shadow="sm">Flush to the panel edges.</Card>
+                  </Accordion.Content>
+                </Accordion.Item>
+              </Accordion>
+            </div>
+          </div>
         </Tile>
         <Tile label="Drawer">
           <div className="flex flex-wrap gap-r5">

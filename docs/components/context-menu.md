@@ -64,20 +64,20 @@ arrow-key/typeahead list, and you number them yourself, from `0`, in visual orde
   </ContextMenu.Trigger>
   <ContextMenu.Content>
     <ContextMenu.GroupHeader>Q3-forecast.xlsx</ContextMenu.GroupHeader>
-    <ContextMenu.Item index={0} icon={<Pencil size={16} aria-hidden="true" />}>
+    <ContextMenu.Item index={0} icon={<Pencil aria-hidden="true" />}>
       Rename
     </ContextMenu.Item>
-    <ContextMenu.Item index={1} icon={<Copy size={16} aria-hidden="true" />}>
+    <ContextMenu.Item index={1} icon={<Copy aria-hidden="true" />}>
       Duplicate
     </ContextMenu.Item>
-    <ContextMenu.Item index={2} icon={<Star size={16} aria-hidden="true" />}>
+    <ContextMenu.Item index={2} icon={<Star aria-hidden="true" />}>
       Add to favourites
     </ContextMenu.Item>
     <ContextMenu.Divider />
-    <ContextMenu.Item index={3} icon={<Download size={16} aria-hidden="true" />}>
+    <ContextMenu.Item index={3} icon={<Download aria-hidden="true" />}>
       Download a copy
     </ContextMenu.Item>
-    <ContextMenu.Item index={4} icon={<Trash2 size={16} aria-hidden="true" />}>
+    <ContextMenu.Item index={4} icon={<Trash2 aria-hidden="true" />}>
       Move to trash
     </ContextMenu.Item>
   </ContextMenu.Content>
@@ -85,8 +85,10 @@ arrow-key/typeahead list, and you number them yourself, from `0`, in visual orde
 ```
 <!-- /example -->
 
-`icon` renders in a fixed 1rem box before the label, tinted separately from the label text —
-pass it `aria-hidden` so the item announces once. That box is the one part of an item no prop
+`icon` renders in a `1.125em` box before the label, tinted separately from the label text — pass
+it `aria-hidden` so the item announces once. The box sizes the glyph, so an icon set's own
+dimensions do not need hand-tuning to fit, and `em` keeps it in proportion to the row's type
+across the 40rem breakpoint and under a theme that rescales its own. That box is the one part of an item no prop
 otherwise reaches, so it has a slot: `classNames={{ itemIcon: "…" }}`. See
 [Slots](#slots). `ContextMenu.GroupHeader` is `role="presentation"`, so it is a visual caption
 only: it groups nothing as far as assistive tech is concerned, and `ContextMenu.Divider`'s
@@ -264,10 +266,10 @@ typed, so a misspelled one is a compile error rather than a prop that does nothi
 
 | Slot       | Element                | What it addresses                                            |
 | ---------- | ---------------------- | ------------------------------------------------------------ |
-| `itemIcon` | `span.menu-item-icon`  | the fixed 1rem box around `icon`, on every item that has one  |
+| `itemIcon` | `span.menu-item-icon`  | the `1.125em` box around `icon`, on every item that has one   |
 
 ```tsx
-<ContextMenu.Item index={0} icon={<Trash2 size={16} />} classNames={{ itemIcon: "text-status-error" }}>
+<ContextMenu.Item index={0} icon={<Trash2 />} classNames={{ itemIcon: "text-status-error" }}>
   Move to trash
 </ContextMenu.Item>
 ```

@@ -218,20 +218,31 @@ the open and close transition working.
 
 ## Theme tokens
 
-Accordion uses **no Tailwind utilities** — everything lives in `Accordion.css` and reads
-the contract variables directly. Override any of these and it re-tints with the rest of the
-app, at runtime, with no rebuild.
+Accordion paints in Tailwind utilities, each resolving to a contract variable. Override any
+of these and it re-tints with the rest of the app, at runtime, with no rebuild — and because
+the utilities sit in `@layer utilities`, a `className` of your own beats every one of them.
 
-| Where                 | Override                                                        |
-| --------------------- | ---------------------------------------------------------------- |
-| Item divider          | `--C-BORDER-DEFAULT`                                             |
-| Trigger label         | `--C-TEXT-PRIMARY` · `--C-TEXT-MUTED` when disabled              |
-| Trigger hover fill    | `--C-SURFACE-2`                                                  |
-| Chevron & panel copy  | `--C-TEXT-SECONDARY`                                             |
-| Focus outline         | `--C-BORDER-FOCUS` · `--RADIUS-SM`                               |
-| Type                  | `--BodyText-2` · `--BodyText-2-line-height` · `--Semibold-Weight` |
-| Inset                 | `--R-SIZE-4` (block) · `--R-SIZE-6` (inline)                     |
-| Motion                | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`                |
+| Where                | Utility                                                       | Override                                                         |
+| -------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Item divider         | `border-border-default`                                       | `--C-BORDER-DEFAULT`                                             |
+| Trigger label        | `text-fg-primary` · `disabled:text-fg-muted`                  | `--C-TEXT-PRIMARY` · `--C-TEXT-MUTED` when disabled              |
+| Trigger hover fill   | `hover:not-disabled:bg-surface-2`                             | `--C-SURFACE-2`                                                  |
+| Chevron & panel copy | `text-fg-secondary`                                           | `--C-TEXT-SECONDARY`                                             |
+| Focus outline        | `focus-visible:outline-border-focus` · `focus-visible:rounded-sm` | `--C-BORDER-FOCUS` · `--RADIUS-SM`                           |
+| Type                 | `text-body-2` · `font-semibold`                               | `--BodyText-2` · `--BodyText-2-line-height` · `--Semibold-Weight` |
+| Inset                | `py-r4` · `px-r6` · `pb-r4`                                   | `--R-SIZE-4` (block) · `--R-SIZE-6` (inline)                     |
+| Motion               | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+
+One rule stays in `Accordion.css` — the heading wrapper's `font: inherit`. It is a reset,
+and a reset has to *lose* to a class you pass rather than beat it, which is what the
+component layer buys it. The file says so at the top.
+
+**The panel's inset is `classNames.body`, not `className`.** `Accordion.Content` renders
+three boxes: the one that animates (`className` and `ref` address this one), a clipper that
+does nothing but `overflow: hidden`, and a padded body. The inset has to sit on the body,
+because the two outer boxes are collapsed to zero height while the panel is closed and their
+padding would survive that collapse as a visible strip. So `<Accordion.Content
+className="p-0">` will not flatten the panel — `classNames={{ body: "p-0" }}` will.
 
 **The open/close animation is `grid-template-rows: 0fr` → `1fr`**, with `overflow: hidden`
 on an inner wrapper — not a `max-height` guess. A panel therefore animates to its true

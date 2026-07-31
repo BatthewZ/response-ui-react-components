@@ -76,8 +76,11 @@ they render.
 ```
 <!-- /example -->
 
-`icon` is rendered into a fixed 1rem box before the label, so glyphs line up down the menu
-regardless of the icon set. The items here pass no `onSelect` at all — an item without a handler
+`icon` is rendered into a `1.125em` box before the label, and the box sizes the glyph — so items
+line up down the menu whatever the icon set's own dimensions are, and you do not pass a `size`
+prop to make one fit. `em`, not `rem`: the box tracks the row's own type, so it stays in
+proportion across the 40rem breakpoint and under a theme that rescales its type. The items here
+pass no `onSelect` at all — an item without a handler
 is still a working, focusable menu item, and choosing it still closes the menu.
 
 ## Disabled items
@@ -209,7 +212,7 @@ that does nothing.
 
 | Slot       | Element                    | What it addresses                                        |
 | ---------- | -------------------------- | -------------------------------------------------------- |
-| `itemIcon` | `span.menu-item-icon`      | the fixed 1rem box around `icon`, on every item that has one |
+| `itemIcon` | `span.menu-item-icon`      | the `1.125em` box around `icon`, on every item that has one |
 
 ```tsx
 <DropdownMenu.Item index={0} icon={<Trash2 />} classNames={{ itemIcon: "text-status-error" }}>
@@ -249,7 +252,7 @@ the app, at runtime, with no rebuild.
 type grows on desktop with no work from you.
 
 Several values are **not** on the contract and cannot be themed: item padding
-(`0.375rem 0.75rem`), the icon gap (`0.5rem`), the icon box (`1rem`), the menu's `min-width`
+(`0.375rem 0.75rem`), the icon gap (`0.5rem`), the icon box (`1.125em`), the menu's `min-width`
 (`11.25rem`), the divider's `1px` rule, and the surface `z-index` (`40`). Override the class in
 your own CSS if any of those matter — or pass a utility through the part's `className`, which
 after the move to `@layer components` wins against these rules. The trigger sets no colour at

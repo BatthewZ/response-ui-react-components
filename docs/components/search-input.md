@@ -72,11 +72,12 @@ Supply any of those and the default stands aside, so a visible [Label](label.md)
 <!-- /example -->
 
 `sm` does four things: it steps the type down one scale step — font size **and**
-line-height — tightens the vertical padding to `--R-SIZE-6`, narrows the icon gutters
-from `2.25rem` to `2rem` on both sides, and shrinks both glyphs from 16px to 14px. The
-first two are what make `sm` genuinely shorter than `md`: a font-size-only override would
-have left the `py-r5` and `text-body-2` line box of the base recipe intact and both sizes
-the same height.
+line-height, via `text-body-3` — tightens the vertical padding to `--R-SIZE-6` with
+`py-r6`, narrows the icon gutters from `2.25rem` to `2rem` on both sides, and shrinks both
+glyphs from 16px to 14px. The first two are what make `sm` genuinely shorter than `md`: a
+font-size-only override would have left the `py-r5` and `text-body-2` line box of the base
+recipe intact and both sizes the same height. Measured at 375px and 1280px: 38px against
+`md`'s 42px and 54px.
 
 ## Width
 
@@ -93,8 +94,8 @@ the same height.
 
 The wrapper is `display: inline-flex` at `width: 100%`, so by default the field fills its
 container. Because `className` lands on that wrapper, that is where you cap it — and it is
-the right place anyway: the input beneath is `width: 100%` from `SearchInput.css`, so it
-just fills whatever the wrapper allows.
+the right place anyway: the input beneath is `w-full` from [Input](input.md)'s own recipe,
+so it just fills whatever the wrapper allows.
 
 ## Filtering
 
@@ -194,7 +195,8 @@ to.
 
 Two layers paint this component. `SearchInput.css` owns the icon and the clear button and
 reads its contract variables directly; the field underneath is the [Input](input.md) SearchInput
-renders, styled entirely with Tailwind utilities.
+renders, styled entirely with Tailwind utilities — [Input](input.md)'s own, plus the few
+SearchInput adds to make room for the two affordances and to step `size="sm"` down.
 
 **The chrome — `SearchInput.css`, read directly:**
 
@@ -206,42 +208,49 @@ renders, styled entirely with Tailwind utilities.
 | Clear button corners               | `--RADIUS-SM`                                    |
 | Clear button focus outline         | `--C-BORDER-FOCUS`                               |
 | Clear button transition            | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER` |
-| Type at `size="sm"`                | `--BodyText-3` · `--BodyText-3-line-height`      |
-| Vertical padding at `size="sm"`    | `--R-SIZE-6`                                     |
 
-**The field — utilities inherited from [Input](input.md):**
+**The field — utilities, inherited from [Input](input.md) or written by SearchInput:**
 
-| Where                | Utility                                               | Override                          |
-| -------------------- | ----------------------------------------------------- | --------------------------------- |
-| Text                 | `text-body-2` `text-fg-primary`                       | `--BodyText-2` `--C-TEXT-PRIMARY` |
-| Placeholder          | `placeholder:text-fg-muted`                           | `--C-TEXT-MUTED`                  |
-| Fill                 | `bg-surface-0`                                        | `--C-SURFACE-0`                   |
-| Disabled fill        | `disabled:bg-surface-3`                               | `--C-SURFACE-3`                   |
-| Border               | `border-border-strong`                                | `--C-BORDER-STRONG`               |
-| Focus ring & border  | `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
-| Invalid border & ring | `border-status-error` `focus:ring-status-error` | `--C-STATUS-ERROR`             |
-| Vertical padding     | `py-r5`                                               | `--R-SIZE-5`                      |
-| Corner radius        | `rounded-md`                                          | `--RADIUS-MD`                     |
-| Transition           | `duration-fast`                                       | `--DURATION-FAST`                 |
+| Where                            | Utility                                               | Override                          |
+| -------------------------------- | ----------------------------------------------------- | --------------------------------- |
+| Text                             | `text-body-2` `text-fg-primary`                       | `--BodyText-2` `--C-TEXT-PRIMARY` |
+| Placeholder                      | `placeholder:text-fg-muted`                           | `--C-TEXT-MUTED`                  |
+| Fill                             | `bg-surface-0`                                        | `--C-SURFACE-0`                   |
+| Disabled fill                    | `disabled:bg-surface-3`                               | `--C-SURFACE-3`                   |
+| Border                           | `border-border-strong`                                | `--C-BORDER-STRONG`               |
+| Focus ring & border              | `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
+| Invalid border & ring            | `border-status-error` `focus:ring-status-error` | `--C-STATUS-ERROR`             |
+| Vertical padding                 | `py-r5`                                               | `--R-SIZE-5`                      |
+| Vertical padding at `size="sm"`  | `py-r6`                                               | `--R-SIZE-6`                      |
+| Type at `size="sm"`              | `text-body-3`                                         | `--BodyText-3`                    |
+| Corner radius                    | `rounded-md`                                          | `--RADIUS-MD`                     |
+| Transition                       | `duration-fast`                                       | `--DURATION-FAST`                 |
 
 [Input's own table](input.md#theme-tokens) lists one more row that SearchInput cancels:
-that component sets its horizontal padding with `px-r4`, but `SearchInput.css` overrides
-it with literal `2.25rem` gutters (`2rem` at `size="sm"`) to make room for the icon and
-the clear button. Those literals out-specify `Input`'s own `px-r4` on the same element and
-still apply — but a `px-*` utility in your `className` beats them, because the component CSS
-is in `@layer components` and Tailwind orders that below `@layer utilities`. The consequence:
-overriding `--R-SIZE-4` re-pads a plain [Input](input.md) and steps it up at the 40rem
-breakpoint, but leaves a SearchInput's gutters fixed at every viewport. The `sm` step is
-complete, by contrast: `SearchInput.css` overrides font size, line-height and vertical
-padding together (`--BodyText-3`, `--BodyText-3-line-height`, `--R-SIZE-6`), which is
-what makes `sm` genuinely shorter than `md`.
+that component sets its horizontal padding with `px-r4`, and SearchInput replaces it with
+literal `px-[2.25rem]` gutters (`px-[2rem]` at `size="sm"`) to make room for the icon and
+the clear button. **Those gutters are utilities on purpose, and cannot go back into
+`SearchInput.css`.** That file is in `@layer components`, which Tailwind orders below
+`@layer utilities`, so a `padding-left` declared there loses to `px-r4` at equal
+specificity however it is written — measured, the input computed `padding-left: 12px`, the
+magnifier's own inset, and the placeholder ran under the glyph. `px-*` is a single
+tailwind-merge class group, so the gutter *replaces* `px-r4` in the class list rather than
+racing it in the cascade. The same reasoning puts `py-r6` and `text-body-3` there for the
+`sm` step, which lost to `py-r5` and `text-body-2` the same way and left `sm` exactly as
+tall as `md`. The consequence for you: overriding `--R-SIZE-4` re-pads a plain
+[Input](input.md) and steps it up at the 40rem breakpoint, but leaves a SearchInput's
+gutters fixed at every viewport — and because `classNames.input` is merged last, a `px-*`
+of your own still wins over the gutter.
 
 Every colour, radius and timing above is a variable, so overriding one re-tints the
 component at runtime with no rebuild. The geometry is not on the contract, though: the
 gutters, the icon's `0.75rem` inset, the clear button's `1.5rem` square and its `0.5rem`
 offset, and the 16px/14px glyph sizes are all literals, hard-coded so the two affordances
-stay clear of the text at any theme. The clear button's transition is suppressed entirely
-under `prefers-reduced-motion: reduce`.
+stay clear of the text at any theme. Measured, that clearance is 8px left / 4px right at
+`md` and 6px left / **0px** right at `sm`, identical at 375px and 1280px — the `sm` text
+edge meets the clear button exactly, so a long query has no visual gap before the X.
+The clear button's transition is suppressed entirely under
+`prefers-reduced-motion: reduce`.
 
 ## Gotchas
 

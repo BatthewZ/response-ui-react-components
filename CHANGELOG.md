@@ -584,6 +584,37 @@ upgrading.
 
 ### Fixed
 
+- **`SearchInput`'s placeholder sat underneath the magnifier, and `size="sm"` was the same
+  height as `md` — both caused by the layer move above, and both caught before publish.**
+  `SearchInput.css` declared the icon gutters (`2.25rem`, `2rem` at `sm`) and the small size's
+  type and vertical padding, against the `px-r4`, `py-r5` and `text-body-2` of the
+  [Input](docs/components/input.md) it renders. Those are utilities, so once this package's CSS
+  moved into `@layer components` the component's own rules lost to them at any specificity, and
+  the field fell back to `Input`'s padding: the text started at `--R-SIZE-4`, exactly the
+  magnifier's own inset. Measured on the same source built both ways at 1280px — `padding-left`
+  36px unlayered against 20px layered, with `sm` computing identically to `md` in every property
+  once layered. The geometry is now spelled as utilities in `SearchInput.tsx`
+  (`px-[2.25rem]`, and `px-[2rem] py-r6 text-body-3` at `sm`), where `px-*` is a single
+  tailwind-merge group and therefore *replaces* `Input`'s value rather than racing it in the
+  cascade. `classNames.input` still merges last, so your own `px-*` beats the gutter.
+  `search-input__input--sm` is still emitted, now as a state hook carrying no rules of its own.
+  Three of `search-input.md`'s statements were the inverse of what the browser computed — that
+  the literals "out-specify" `px-r4`, that the `sm` step was "complete", and that the input's
+  `width: 100%` came from `SearchInput.css` — and are corrected.
+
+- **A menu item's `icon` overflowed its box and closed the gap to the label, at a size that
+  ignored the theme's type scale.** `.menu-item-icon` sized the span the icon is wrapped in and
+  stopped there. The wrapped content is arbitrary, and an `<svg>` carrying its own `width`/
+  `height` attributes — every lucide-react icon renders 24px — is not resized by its parent's
+  box: it painted past the 1rem span, ate the row's 0.5rem gap, and left the label sitting hard
+  against the glyph. The box now sizes its direct `svg` child, as `Timeline` and `ActivityFeed`
+  already do for theirs. Separately, that box was `1rem` while the row's font-size is
+  `--BodyText-2`, which steps at the theme's breakpoint — so the glyph read one size too large
+  below it and one size too small above it, and any theme rescaling its type moved the label
+  without the icon. It is `em` now, so the ratio is whatever the type scale says, under any
+  theme. Both apply to `DropdownMenu.Item` and `ContextMenu.Item`, which render the same
+  internals.
+
 - **`classNames.pickerGrid` could change the calendar quick-nav's column count and silently
   break its 2-D keyboard navigation.** The count lived twice — as a constant in
   `CalendarBase.tsx` that ArrowUp/ArrowDown stepped by, and as

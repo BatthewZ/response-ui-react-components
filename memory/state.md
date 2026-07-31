@@ -70,6 +70,26 @@ whether a safeguard is needed at all, and the two duplications that are load-bea
   `mb-r*` on each item (the value passed down through a context the component already had) deleted the
   token *and* gained an override path per half, which a single property could not offer. Ask who
   renders the reader before concluding the fan-out is irreducible.
+- **A wrapper that restyles a base component must do it in the base component's own channel.**
+  Since Phase 1, the two channels are no longer interchangeable: this package's CSS is in
+  `@layer components`, below `@layer utilities`, so a property a base component sets with a
+  utility CANNOT be reset by a rule in the wrapper's stylesheet at any specificity. Both writers
+  look reasonable in isolation and neither errors; the CSS one simply never applies. SearchInput
+  declared the gutters that keep the placeholder clear of the magnifier — and the type and vertical
+  padding of its small size — in CSS, against `Input`'s `px-r4`, `py-r5` and `text-body-2`; the
+  gutters computed as the icon's own inset (text under the glyph) and `sm` was pixel-identical to
+  `md` at every viewport, in a shipped release, with every gate green. Rewritten as utilities they
+  work *and* read better: `px-*` is one tailwind-merge class group, so the wrapper's value
+  **replaces** the base's in the class list instead of racing it in the cascade, and because the
+  caller's slot className merges last, an override still wins. **The tell is a wrapper stylesheet
+  that names a property its base already sets** — and it is worth grepping for deliberately,
+  because the same rule holds everywhere and the failure is silent.
+- **Docs asserting which declaration wins are the least trustworthy sentences in the package.**
+  This one said the literal gutters "out-specify" the base's utility "and still apply" — a
+  specificity claim about two single-class selectors in different layers, i.e. false in principle
+  and refuted by one `getComputedStyle`. Nothing can go stale more quietly: the sentence describes
+  a cascade nobody re-runs, and the whole page around it stays accurate. Treat any prose about
+  precedence as a claim to measure, not as a record of a decision.
 - **A "this must stay in CSS because unlayered beats a utility" comment expires the moment its
   neighbour becomes a utility.** MasonryGrid's trailing-gap reset was in CSS because
   `.masonry-grid__item`'s unlayered `margin-bottom` out-ranked any `mb-0`. Once that margin became a

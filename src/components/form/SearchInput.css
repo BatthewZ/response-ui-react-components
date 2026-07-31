@@ -12,22 +12,16 @@
   pointer-events: none;
 }
 
-.search-input__input {
-  width: 100%;
-  padding-left: 2.25rem;
-  padding-right: 2.25rem;
-}
-
-/* The size variants have to differ in height, not just in glyph size: the base
-   recipe's `py-r5` and `text-body-2` line-height both survive a font-size-only
-   override, which left `sm` and `md` the same height. */
-.search-input__input--sm {
-  padding-block: var(--R-SIZE-6);
-  padding-left: 2rem;
-  padding-right: 2rem;
-  font-size: var(--BodyText-3);
-  line-height: var(--BodyText-3-line-height);
-}
+/* The field's own geometry — the icon gutters, and the type and vertical
+   padding that make `sm` shorter than `md` — is NOT written here. It is spelled
+   as utilities in `SearchInput.tsx`, because this file sits in
+   `@layer components` and every property it would set is already set by an
+   `Input` utility one layer above: `px-r4`, `py-r5`, `text-body-2`. A rule here
+   loses to those at any specificity. Measured: with the gutters declared in
+   this file the input computed `padding-left: 12px`, exactly the magnifier's
+   own inset, and `sm` computed identically to `md` at both viewport steps.
+   `.search-input__input--sm` is still emitted, as a state hook to target; it
+   deliberately carries no rules of its own. */
 
 /* `type="search"` renders a native clear affordance (WebKit/Chromium show one
    while the field is focused with content; legacy Edge/IE via ::-ms-clear). The

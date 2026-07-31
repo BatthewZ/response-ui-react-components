@@ -35,20 +35,20 @@ export function GroupedActions() {
       </ContextMenu.Trigger>
       <ContextMenu.Content>
         <ContextMenu.GroupHeader>Q3-forecast.xlsx</ContextMenu.GroupHeader>
-        <ContextMenu.Item index={0} icon={<Pencil size={16} aria-hidden="true" />}>
+        <ContextMenu.Item index={0} icon={<Pencil aria-hidden="true" />}>
           Rename
         </ContextMenu.Item>
-        <ContextMenu.Item index={1} icon={<Copy size={16} aria-hidden="true" />}>
+        <ContextMenu.Item index={1} icon={<Copy aria-hidden="true" />}>
           Duplicate
         </ContextMenu.Item>
-        <ContextMenu.Item index={2} icon={<Star size={16} aria-hidden="true" />}>
+        <ContextMenu.Item index={2} icon={<Star aria-hidden="true" />}>
           Add to favourites
         </ContextMenu.Item>
         <ContextMenu.Divider />
-        <ContextMenu.Item index={3} icon={<Download size={16} aria-hidden="true" />}>
+        <ContextMenu.Item index={3} icon={<Download aria-hidden="true" />}>
           Download a copy
         </ContextMenu.Item>
-        <ContextMenu.Item index={4} icon={<Trash2 size={16} aria-hidden="true" />}>
+        <ContextMenu.Item index={4} icon={<Trash2 aria-hidden="true" />}>
           Move to trash
         </ContextMenu.Item>
       </ContextMenu.Content>

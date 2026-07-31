@@ -121,9 +121,20 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          // The geometry is utilities rather than rules in `SearchInput.css`,
+          // and has to be: this package's CSS is in `@layer components`, which
+          // Tailwind orders BELOW `@layer utilities`, so a `padding-left` there
+          // loses to the `px-r4` of `Input`'s own recipe at equal specificity —
+          // the gutters never applied and the placeholder sat under the
+          // magnifier. The `sm` type and vertical padding lost to `text-body-2`
+          // and `py-r5` the same way, which left `sm` the same height as `md`.
+          // `px-*` is one class group, so tw-merge drops `px-r4` outright
+          // instead of leaving both to source order. `classNames.input` stays
+          // last, so a caller's own `px-*` still wins.
           className={cn(
-            "search-input__input",
-            size === "sm" && "search-input__input--sm",
+            "search-input__input px-[2.25rem]",
+            size === "sm" &&
+              "search-input__input--sm px-[2rem] py-r6 text-body-3",
             classNames?.input
           )}
           {...props}

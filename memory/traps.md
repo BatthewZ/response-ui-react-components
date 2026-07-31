@@ -841,3 +841,25 @@ collision, left alone because briefs in flight cite the later one by letter.)
   the same name. The assertion's name still said "direction". Where two axes share an element,
   give them non-overlapping vocabularies and assert both together, so neither can drift into the
   other unnoticed.
+
+## W · From the pass that asked why a menu row's label sat against its icon
+
+- **An icon slot that sizes only its own box has not sized the icon.** Where a component takes a
+  glyph as content and wraps it, the wrapper's width and height are an instruction to the
+  wrapper: an `<svg>` carrying its own `width`/`height` attributes paints at that intrinsic size
+  regardless, overflows, and eats whatever gap or padding sits next to it. The visible symptom is
+  a *spacing* bug — a label crowded against a glyph — several declarations away from the size
+  declaration that looks correct and is being ignored. This is §V's intrinsic-size lesson in its
+  other form, and the two together are the rule: whenever a slot's content can be an svg, the
+  slot must size the child, not just itself. Where a sibling component instead takes the icon as
+  a component *type* and forwards a class onto the svg, the same bug cannot occur — which is why
+  one of these slots being correct says nothing about the next one.
+- **`rem` inside a component whose text is a responsive token silently unpins the two.** The type
+  scale steps at a breakpoint, so a box fixed in `rem` beside a label sized from a body token
+  holds still while the label grows: the intended ratio is right at one viewport and wrong at
+  the other, and it is wrong again for any theme that rescales its type — a consumer's theme
+  gets a worse deal than the shipped one, which is the failure the theming rules exist to
+  prevent. Anything meant to hold a ratio to text belongs in `em`, where the ratio is stated once
+  and the type scale supplies the rest. Neither half of this is visible to a unit test: jsdom
+  performs no layout, so the box, the overflow and the breakpoint are all unobservable there —
+  the instrument is a screenshot at each side of the breakpoint.

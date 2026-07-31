@@ -69,6 +69,41 @@ describe("SearchInput", () => {
     expect(input.className).toContain("search-input__input--sm");
   });
 
+  /**
+   * The gutters and the `sm` step have to REPLACE `Input`'s own `px-r4` /
+   * `py-r5` / `text-body-2` in the class list, not merely sit beside them:
+   * this package's CSS is in `@layer components`, below `@layer utilities`, so
+   * anything left to the cascade is decided one layer up and lost. `css: false`
+   * makes every assertion here blind to computed style, so the surviving signal
+   * is the merged class list — the base utility must be GONE.
+   */
+  it("replaces Input's horizontal padding rather than sitting beside it", () => {
+    render(<SearchInput value="" onChange={vi.fn()} />);
+    const input = screen.getByRole("searchbox");
+    expect(input.className).toContain("px-[2.25rem]");
+    expect(input.className).not.toContain("px-r4");
+  });
+
+  it("replaces Input's vertical padding and type at size='sm'", () => {
+    render(<SearchInput value="" onChange={vi.fn()} size="sm" />);
+    const input = screen.getByRole("searchbox");
+    expect(input.className).toContain("px-[2rem]");
+    expect(input.className).toContain("py-r6");
+    expect(input.className).toContain("text-body-3");
+    expect(input.className).not.toContain("px-r4");
+    expect(input.className).not.toContain("py-r5");
+    expect(input.className).not.toContain("text-body-2");
+  });
+
+  it("lets a caller's own padding beat the gutters", () => {
+    render(
+      <SearchInput value="" onChange={vi.fn()} classNames={{ input: "px-r2" }} />,
+    );
+    const input = screen.getByRole("searchbox");
+    expect(input.className).toContain("px-r2");
+    expect(input.className).not.toContain("px-[2.25rem]");
+  });
+
   it("uses default placeholder", () => {
     render(<SearchInput value="" onChange={vi.fn()} />);
     expect(screen.getByPlaceholderText("Search...")).toBeInTheDocument();
@@ -243,7 +278,7 @@ describe("SearchInput", () => {
       // exactly what SearchInput contributes, and an empty one is the failure
       // this assertion exists to catch.
       expect(screen.getByRole("searchbox").className).toMatch(
-        / search-input__input search-input__input--sm$/,
+        / search-input__input search-input__input--sm px-\[2rem\] py-r6 text-body-3$/,
       );
       expect(screen.getByRole("button", { name: "Clear search" }).className).toBe(
         "search-input__clear",
@@ -276,7 +311,7 @@ describe("SearchInput", () => {
         />,
       );
       expect(screen.getByRole("searchbox").className).toMatch(
-        / search-input__input$/,
+        / search-input__input px-\[2.25rem\]$/,
       );
     });
 

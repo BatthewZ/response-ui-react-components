@@ -633,17 +633,59 @@ describe("Accordion · classNames slots", () => {
     expect(chevron?.getAttribute("class")).toContain("text-fg-muted");
   });
 
-  it("leaves each internal on its base class alone when no slot is passed", () => {
+  /**
+   * `body` is `Accordion.Content`'s only slot, and it is the *sole* route to the
+   * panel's inset: the inset cannot live on either box above it, because both
+   * are collapsed to zero height while the panel is closed and their padding
+   * would survive that collapse as a visible strip.
+   */
+  it("lands classNames.body on the padded body, beside the base classes", () => {
+    const { container } = render(
+      <Accordion defaultValue="a">
+        <Accordion.Item value="a">
+          <Accordion.Trigger>Section</Accordion.Trigger>
+          <Accordion.Content classNames={{ body: "px-0" }}>Body</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+    const body = container.querySelector(".accordion-content-body");
+    expect(body?.getAttribute("class")).toContain("accordion-content-body");
+    expect(body?.getAttribute("class")).toContain("px-0");
+  });
+
+  /**
+   * The clipper stays classless-by-design: `overflow-hidden` IS the open/close
+   * mechanism, so nothing routes to it. If a slot is ever added there, this is
+   * the test that should be rewritten rather than deleted.
+   */
+  it("keeps the clipper between the animating box and the padded body", () => {
+    const { container } = render(
+      <Accordion defaultValue="a">
+        <Accordion.Item value="a">
+          <Accordion.Trigger>Section</Accordion.Trigger>
+          <Accordion.Content>Body</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+    const clipper = container.querySelector(".accordion-content > .accordion-content-inner");
+    expect(clipper?.getAttribute("class")).toBe("accordion-content-inner overflow-hidden");
+    expect(clipper?.firstElementChild).toHaveClass("accordion-content-body");
+  });
+
+  /**
+   * These two used to assert the class attribute equalled the marker exactly,
+   * which stopped being expressible once the elements carried their own
+   * utilities. The falsifiers are unchanged and are what the equality was ever
+   * standing in for: an absent slot must append *nothing* — no `undefined`, no
+   * empty token — and a slot must land on its own element and no other.
+   */
+  it("leaves each internal on its base classes alone when no slot is passed", () => {
     const { container } = renderTrigger();
-    expect(container.querySelector(".accordion-heading")?.getAttribute("class")).toBe(
-      "accordion-heading",
-    );
-    expect(container.querySelector(".accordion-trigger-text")?.getAttribute("class")).toBe(
-      "accordion-trigger-text",
-    );
-    expect(container.querySelector(".accordion-chevron")?.getAttribute("class")).toBe(
-      "accordion-chevron",
-    );
+    for (const marker of ["accordion-heading", "accordion-trigger-text", "accordion-chevron"]) {
+      const classes = container.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain(marker);
+      expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+    }
   });
 
   it("does not put a slot class on the button, which className still addresses", () => {
@@ -652,9 +694,11 @@ describe("Accordion · classNames slots", () => {
       triggerText: "font-bold",
       chevron: "text-fg-muted",
     });
-    expect(container.querySelector(".accordion-trigger")?.getAttribute("class")).toBe(
-      "accordion-trigger",
-    );
+    const classes = container.querySelector(".accordion-trigger")?.getAttribute("class") ?? "";
+    expect(classes.split(" ")).toContain("accordion-trigger");
+    for (const slotClass of ["mb-0", "font-bold", "text-fg-muted"]) {
+      expect(classes.split(" ")).not.toContain(slotClass);
+    }
   });
 
   /**
@@ -674,9 +718,9 @@ describe("Accordion · classNames slots", () => {
         </Accordion.Item>
       </Accordion>,
     );
-    expect(container.querySelector(".accordion-trigger")?.getAttribute("class")).toBe(
-      "accordion-trigger",
-    );
+    expect(
+      container.querySelector(".accordion-trigger")?.getAttribute("class")?.split(" "),
+    ).not.toContain("font-bold");
   });
 
   it("does not leak classNames onto the DOM", () => {

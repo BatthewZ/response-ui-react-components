@@ -1075,9 +1075,9 @@ as a *slot* here — both are subcomponents.)
 | a crumb link | `link` | Breadcrumbs | `Breadcrumbs.tsx:177` |
 | a non-link crumb | `text` | Breadcrumbs | `Breadcrumbs.tsx:181` |
 | the crumb rule | *(subcomponent `.Divider`)* | Breadcrumbs | `Breadcrumbs.tsx:199`, exported at `:210` — **renamed from `.Separator`** (decision 2, §8.5). The subcomponent and the slot vocabulary now use one word |
-| the step content region | `body` | Wizard | `Wizard.tsx:228` |
+| the step content region | `body` | Wizard, Accordion | `Wizard.tsx:228` · `Accordion.tsx:365` — Accordion's is the padded panel body, and it is the SOLE route to the panel inset: the two boxes above it are collapsed to zero height while the panel is closed, so padding on either survives the collapse as a visible strip. Measured before the slot was added |
 | the button row | `footer` | Wizard | `Wizard.tsx:233` |
-| the clipping inner box | **(a)** | Accordion, Collapsible | `Accordion.tsx:283` · `Collapsible.tsx:141` — see §11 |
+| the clipping inner box | **(a)** | Accordion, Collapsible | `Accordion.tsx:363` · `Collapsible.tsx:141` — see §11. The (a) ruling is unchanged by the padded body added beneath it: the clipper still carries `overflow-hidden` and nothing else, and varying that is the animation breaking rather than a restyle |
 
 **Family-owned** (§1.5): `heading`, `triggerText`, `itemBody`, `card`, `sentence`, `actor`, `action`,
 `target`, `page`, `ellipsis`, `info`, `current`, `link`. Everything else in the table is a §6 name or

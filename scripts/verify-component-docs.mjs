@@ -247,12 +247,22 @@ for (const barrel of walk(SRC, (f) => f === "index.ts")) {
 
 const tokenMap = new Map();
 const definedTokens = new Set();
+/**
+ * Contract variables that a `--text-*` scale entry drags along rather than a doc author
+ * choosing them: `--text-body-2--line-height` -> `--BodyText-2-line-height`. A row naming
+ * `text-body-2` MAY claim one (`resolveUtility` returns it, so the claim resolves), but is
+ * never REQUIRED to list it — the size is the choice and the leading follows it. Forcing
+ * the reverse direction turned 28 existing rows red across the docs set for naming the
+ * size alone, which is not drift and not something a doc author decided.
+ */
+const lineHeightCompanions = new Set();
 for (const dir of [CSS_PKG, SRC]) {
   if (!existsSync(dir)) continue;
   for (const file of walk(dir, (f) => f.endsWith(".css"))) {
     const text = readFileSync(file, "utf8");
     for (const m of text.matchAll(/(--[a-zA-Z0-9-]+):\s*var\((--[A-Za-z0-9-]+)\)/g)) {
       tokenMap.set(m[1], m[2]);
+      if (m[1].endsWith("--line-height")) lineHeightCompanions.add(m[2]);
     }
     for (const m of text.matchAll(/(--[a-zA-Z0-9-]+):\s*[^;]/g)) definedTokens.add(m[1]);
   }
@@ -316,7 +326,16 @@ function resolveUtility(util) {
       const rest = bare.slice(prefix.length + 1);
       for (const ns of namespaces) {
         const hit = tokenMap.get(`--${ns}-${rest}`);
-        if (hit) return [hit];
+        if (!hit) continue;
+        // A `--text-*` scale entry carries a `--…--line-height` companion and the
+        // `text-*` utility emits BOTH declarations, so a row naming the utility can
+        // legitimately claim either variable. Returning only the size made the
+        // line-height token unresolvable through any route the moment a component
+        // stopped reading it from CSS, which cost accordion.md a variable that does
+        // still re-tint it. Companions are NOT forced into the reverse direction —
+        // see `pairedOptional` at the row check.
+        const paired = tokenMap.get(`--${ns}-${rest}--line-height`);
+        return paired ? [hit, paired] : [hit];
       }
     }
   }
@@ -428,7 +447,9 @@ for (const spoke of spokeFiles) {
           errors.push(`${spoke}: utility \`${util}\` resolves to no token in the contract`);
           continue;
         }
-        const unlisted = resolved.filter((r) => !claimed.includes(r));
+        const unlisted = resolved.filter(
+          (r) => !claimed.includes(r) && !lineHeightCompanions.has(r),
+        );
         if (claimed.length && unlisted.length) {
           errors.push(
             `${spoke}: \`${util}\` resolves to ${unlisted.map((r) => `\`${r}\``).join(", ")}, ` +
