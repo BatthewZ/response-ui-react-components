@@ -185,7 +185,7 @@ compile error rather than a prop that does nothing.
 | `labelButton` | `button.calendar-label-button` | once — the month/year jump   |
 | `months`      | `div.calendar-months`          | once                         |
 | `month`       | `div.calendar-month`           | one per visible month        |
-| `caption`     | `div.calendar-month-caption`   | one per month, multi-month only |
+| `caption`     | `div.calendar-month-caption`   | one per month, two or more months on screen |
 | `grid`        | `div.calendar-grid`            | one per visible month        |
 | `weekdays`    | `div.calendar-weekdays`        | one per visible month        |
 | `weekday`     | `div.calendar-weekday`         | seven per month              |
@@ -216,6 +216,24 @@ cascade, because the base class lives in `@layer components` and yours does not.
 `.calendar-picker-cell` are the selectors the roving-focus effects query, so the base class
 is written first and yours is added to it. Passing a class that *looks* like a replacement
 does not remove them.
+
+**`caption` needs two months *on screen*, which is a viewport condition as well as a prop
+one.** The per-month caption renders only when more than one grid is showing, and below
+`40rem` the calendar collapses to a single paged month whatever `numberOfMonths` says. So at
+the default `numberOfMonths={1}`, and at *any* `numberOfMonths` under `40rem`,
+`classNames.caption` addresses nothing. The header caption is always there and is
+`labelButton`.
+
+**`weekdays` and `row` share one track list.** Both elements are laid out by a single
+`grid-template-columns: repeat(7, …)` rule, so an override of the tracks passed to one key and
+not the other slides the weekday header out of alignment with the day rows — pass both. The
+seven itself is not a layout choice: arrow keys move ±7 days because a week is seven days, so
+a different column count would leave the keyboard walking a grid nobody can see.
+
+**`pickerGrid` may change the column count, and the keyboard follows.** The month and year
+pickers read the number of columns back off the grid they are laid out in, so
+`classNames={{ pickerGrid: "grid-cols-4" }}` gives four columns *and* an ArrowUp/ArrowDown that
+steps four. Nothing in the component restates the count for the keyboard to disagree with.
 
 **Deliberately not a slot.** The `‹` and `›` navigation buttons are
 [IconButton](icon-button.md)s, not elements Calendar classes; the header row around them
@@ -357,8 +375,11 @@ date — `"June 13, 2026"` — so a screen reader never reads a bare `"13"`.
 - **The month and year pickers are one tab stop each.** They are a `role="group"` of buttons
   — deliberately not `role="grid"`, which would promise rows and cells they do not have. The
   displayed month/year is marked `aria-current="true"` (navigation state, not selection) and
-  holds the tab stop; arrow keys move ±1 and ±3 across the three-column layout, with
-  <kbd>Home</kbd>/<kbd>End</kbd> jumping to the ends.
+  holds the tab stop; arrow keys move ±1 and ±one row, with
+  <kbd>Home</kbd>/<kbd>End</kbd> jumping to the ends. A row is however many columns
+  `.calendar-picker-grid` is laid out in — three by default, read back off the grid at each
+  press, so a `classNames.pickerGrid` that changes the columns changes the vertical step with
+  it rather than desyncing from it.
 - **Today is `aria-current="date"`,** and only ever on the in-month instance, so it is
   announced once even in a multi-month view. Its *visual* marker is a 1px
   `--C-BORDER-STRONG` inset ring, which measures **3.23–3.49:1** against `--C-SURFACE-0`

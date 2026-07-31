@@ -434,7 +434,10 @@ DataTable builds a whole table from data, so most of what it renders belongs to
 one you want depends on which element you mean.
 
 **`className` is the outermost element** — the block wrapping the table, `footer` and the
-pagination row.
+pagination row. That block carries no class of its own, but `className` still goes through
+`cn()`: `className="p-r3 p-r5"` resolves to `p-r5` here, the way it does on every other
+component in the package, rather than emitting both and leaving the stylesheet's order to
+pick.
 
 **`classNames` addresses the internals DataTable adds on top of Table.** Class strings only,
 and the keys are typed, so a misspelled one is a compile error rather than a prop that does
@@ -509,7 +512,7 @@ utilities in `DataTable.tsx`. Change the variable and it re-tints at runtime, no
 
 | Where                          | Utility              | Override              |
 | ------------------------------ | -------------------- | --------------------- |
-| Expanded detail-row backdrop   | `bg-surface-3`       | `--C-SURFACE-3`       |
+| Expanded detail-row backdrop   | `bg-surface-2`       | `--C-SURFACE-2`       |
 | Expander chevron ink           | `text-fg-secondary`  | `--C-TEXT-SECONDARY`  |
 | Expander hover wash            | `hover:bg-surface-2` | `--C-SURFACE-2`       |
 | Expander corner radius         | `rounded-md`         | `--RADIUS-MD`         |
@@ -522,9 +525,19 @@ utilities in `DataTable.tsx`. Change the variable and it re-tints at runtime, no
 `--R-SIZE-6` is on the same scale but holds at `0.25rem` on both sides of that breakpoint,
 so the expander's hit area is identical at every width.
 
-The expanded detail row is deliberately on `--C-SURFACE-3`, the deepest rung — a well cut
-into the table sheet, and a step below the zebra band at rung 2, so an expanded row never
-reads as just another stripe.
+The expanded detail row sits on `--C-SURFACE-2`, the same rung as the zebra band, with a
+3px `--C-BORDER-STRONG` bar down its leading edge. What separates it from a stripe is that
+bar, not extra depth. It used to sit at rung 3, and the trouble with that is scale: the
+detail row is the widest, tallest block the table draws, so putting the deepest rung under
+it made it the heaviest thing on the page — and in themes that carry chroma into the lower
+rungs it read as a coloured slab rather than a recess. A marker costs the same at any size
+and does not depend on the gap between two rungs, so it holds up in a theme whose ladder is
+tightly spaced.
+
+The marker is `--C-BORDER-STRONG` rather than `--C-ACCENT` on purpose: a table can be
+selectable and expandable at once, and an accent bar on the detail row would read as
+selection. Overriding `--C-SURFACE-2` re-tints the zebra band with it — to move the detail
+row alone, pass `classNames.expandedCell`, which replaces the fill and leaves the marker.
 
 The selected-row highlight is an 8% `--C-ACCENT` wash over the row background *plus* a 3px
 `--C-ACCENT` bar down the row's leading edge. The wash is a very small luminance change in

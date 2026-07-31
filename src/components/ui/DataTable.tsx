@@ -566,7 +566,10 @@ export function DataTable<T>({
   const hasRows = !loading && data.length > 0;
 
   return (
-    <div className={className}>
+    <div
+      // No base class, still merged — see `cn`'s docblock in util/style.
+      className={cn(className)}
+    >
       {/* The skeleton cells are `aria-hidden`: one `role="status"` per cell was
           `rows × columns` polite live regions all saying "Loading" (#366).
           `aria-busy` states it once, on the thing that is loading. */}
@@ -686,11 +689,13 @@ function ExpandableDetailRow({
       // the marker itself is the one thing that would break that.
       className="data-table-expanded-row"
     >
-      {/* Rung 3: a well cut into the sheet, and deeper than the zebra band at
-          rung 2 so an expanded row never reads as just another band. */}
+      {/* Rung 2: a mild recession within the rung-0 sheet, matching the zebra
+          band rather than sinking below it. What separates it from a band is
+          the leading marker `.data-table-expanded-cell` paints, not extra
+          depth — see the rationale there. */}
       <Table.Cell
         colSpan={colSpan}
-        className={cn("data-table-expanded-cell bg-surface-3", classNames?.expandedCell)}
+        className={cn("data-table-expanded-cell bg-surface-2", classNames?.expandedCell)}
       >
         <div
           ref={contentRef}

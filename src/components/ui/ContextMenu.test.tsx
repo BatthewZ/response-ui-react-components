@@ -421,4 +421,17 @@ describe("ContextMenu is named after itself, not after DropdownMenu", () => {
 
     expect(container.querySelector("div")?.getAttribute("class")).toBe("rounded-md border");
   });
+
+  // Exact string, not `toContain`: arrival and the collapse of the caller's own
+  // conflicting utilities are one assertion.
+  it("collapses the caller's conflicting utilities on the trigger", () => {
+    const { container } = render(
+      <ContextMenu>
+        <ContextMenu.Trigger className="rounded-md p-r3 p-r5">Region</ContextMenu.Trigger>
+        <ContextMenu.Content />
+      </ContextMenu>,
+    );
+
+    expect(container.querySelector("div")?.getAttribute("class")).toBe("rounded-md p-r5");
+  });
 });

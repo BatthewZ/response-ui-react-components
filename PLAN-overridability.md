@@ -9,7 +9,7 @@ lessons are in `memory/gates.md` and `memory/README.md`; their settled outcomes 
 
 ```
 bun run probe:cascade-layer     # regressions: 0  inert: 0  accepted: 3  verified: 16
-bun run verify:css-layering     # 43 component imports, all layer(components); tokens.css unlayered
+bun run verify:css-layering     # 44 component imports, all layer(components); tokens.css unlayered
 ```
 
 **Phase 3's remaining blocker is the slot vocabulary (§10), and it is now written down.**
@@ -53,7 +53,7 @@ Two things in that output a newcomer will misread:
 
 - **The first section still prints a build error, and that is the *pass* condition.** It proves
   `@import "./styles.css" layer(components)` cannot compile — `@source` may not be nested — which is
-  why the 43 per-component imports each carry `layer()` instead. It is a measurement, not a failure.
+  why the 44 per-component imports each carry `layer()` instead. It is a measurement, not a failure.
 - **`accepted: 3` is not `verified: 3`.** An accepted row is a *changed* value the owner signed off,
   pinned to that value. Read each one's reason before anything else: they are the rows whose green
   means "decided", not "safe" (§3a, and the two `hero-*` rows).
@@ -100,7 +100,9 @@ on `tokens.css`. The probe **cannot** assert that: it re-derives the import list
 Phase 1  ──►  Phase 2  ──►  Phase 3  ──►  Phase 5 (release)
 ✔ CLOSED      ✔ CLOSED      (lanes,
 (owned        (2 files       fan-out)     Phase 4 is not a project — it is a
- styles.css)   deleted)                   standing convention. No lanes, no
+ styles.css)   deleted)                   standing convention, and it is now
+                                          written down: AGENTS.md, "Decision:
+                                          what stays in CSS…". No lanes, no
                                           completion criterion.
 ```
 
@@ -142,7 +144,7 @@ breaks the API.
 
 | Fact | Re-check with |
 | --- | --- |
-| This package's component CSS is imported **in `@layer components`**, which Tailwind orders **below** `@layer utilities` — so a caller's utility beats a component rule at any specificity. `tokens.css` is deliberately the one unlayered import: it carries `@theme inline`. | `bun run verify:css-layering` → `43 component imports, all layer(components); tokens.css unlayered`. Then `node scripts/probe-cascade-layer.mjs --keep` and walk the built CSS: `.flex-col` and `.sr-only` resolve inside `@layer utilities`; `.stat-card` and `.timeline-item` resolve inside `@layer components`; the foundation's `.scroll-reveal-hidden` resolves **unlayered**. (**`grep -c 'layer(' src/styles.css` is a trap, not the check.** It returns **46** against 43 imports, because the file's own header prose mentions the token three times — `grep -n 'layer(' src/styles.css \| grep -v '@import'`. The two halves move independently, so the number is not the import count and never was. `verify:css-layering` parses the imports and classifies every one; quote *its* headline.) |
+| This package's component CSS is imported **in `@layer components`**, which Tailwind orders **below** `@layer utilities` — so a caller's utility beats a component rule at any specificity. `tokens.css` is deliberately the one unlayered import: it carries `@theme inline`. | `bun run verify:css-layering` → `44 component imports, all layer(components); tokens.css unlayered`. Then `node scripts/probe-cascade-layer.mjs --keep` and walk the built CSS: `.flex-col` and `.sr-only` resolve inside `@layer utilities`; `.stat-card` and `.timeline-item` resolve inside `@layer components`; the foundation's `.scroll-reveal-hidden` resolves **unlayered**. (**`grep -c 'layer(' src/styles.css` is a trap, not the check.** It returns **47** against 44 imports, because the file's own header prose mentions the token on three lines — `grep -n 'layer(' src/styles.css \| grep -v '^[0-9]*:@import "\./components'` → 3. **Filtering those three with `grep -v '@import'` finds only two of them**, because one of the prose lines quotes an `@import`; filter on the import *shape*, not the word. The two halves move independently, so the number is not the import count and never was. `verify:css-layering` parses the imports and classifies every one; quote *its* headline.) |
 | The foundation is **almost entirely unlayered** — 2 `@layer` blocks, both `@layer base`, across the whole package. So it out-ranks everything this package writes, and the property-intersection surface is the whole of `response-ui-css`, not just its animation files. | `grep -rn '@layer' ../response-ui-css/src/` → `base.css:48`, `responsive/text.css:114` (the third hit, `base.css:44`, is the comment explaining the first). |
 | **3 rules in 2 files** still name a class the foundation owns, down from 7 in 4. Each was left deliberately and is measured by a probe row; the other four were deleted, because a rule that can never win again is dead CSS that looks live. | `grep -rn 'stagger-item\|scroll-reveal-hidden\|\.fade-\|\.scale-in\|\.scale-out' src --include=*.css` → **rule** lines `Hero.css:99` and `:119`, `ScrollReveal.css:32`. Method: every other hit in that output is a comment. `Stagger.css` no longer exists and `Timeline.css`'s two entrance rules are keyed on `[data-entering]`, an attribute this package emits, not on a foundation class. |
 | Token-backed utilities compile to `var()`, so **runtime re-theming survives inlining**. | `.bg-surface-0{background-color:var(--C-SURFACE-0)}` in the built CSS. |
@@ -150,7 +152,7 @@ breaks the API.
 | A token override and the utility reading it coexist. | `cn("[--C-TEXT-PRIMARY:red]","text-fg-primary")` → both retained. |
 | Variant-scoped utilities do **not** dedupe against bare ones. An override must match the variant. | `cn("in-[.timeline]:mt-r5","mt-0")` → both kept. |
 | Tailwind v4 is **already a hard requirement**; no non-Tailwind consumer exists to break. | `AGENTS.md:16`. `diff src/styles.css dist/styles.css` → identical: unresolved `@import`s, live `@source`, zero generated rules. |
-| The package's written policy already **is** inline utilities. | `AGENTS.md:400`: *"The library's styling boundary is Tailwind utilities + design tokens."* |
+| The package's written policy already **is** inline utilities. | `grep -n 'styling boundary is Tailwind utilities' AGENTS.md`: *"The library's styling boundary is Tailwind utilities + design tokens."* (Cited as `AGENTS.md:400` before Phase 3 grew the file; the line moved, the sentence did not.) |
 | `cn()` accepts the clsx **conditional-object** form. This is why `className` must not be overloaded to take a slot object (§4a). | `cn({"border-0":true,"bg-surface-2":false})` → `"border-0"`. |
 
 **Do not cite byte offsets in compiled CSS.** The previous version of this table did; every one of
@@ -159,65 +161,105 @@ command that recomputes the answer.
 
 ### 2b. Payload size — method-dependent, so state the method
 
-Two legitimate denominators: **all of `src`** (46 `.css` files, 5,948 lines) and **component
-siblings only** (43 files, 5,749 lines). The all-`src` reading includes `styles.css`, `tokens.css`
+Two legitimate denominators: **all of `src`** (47 `.css` files, 6,032 lines) and **component
+siblings only** (44 files, 5,832 lines). The all-`src` reading includes `styles.css`, `tokens.css`
 and `examples/example-theme-tuning.css`.
 
 ```
-find src -name '*.css' | wc -l                      # 46
-cat $(find src -name '*.css') | wc -l               # 5948
-grep -c '^@import "\./components' src/styles.css    # 43  — the components-only denominator
+find src -name '*.css' | wc -l                      # 47
+cat $(find src -name '*.css') | wc -l               # 6032
+grep -c '^@import "\./components' src/styles.css    # 44  — the components-only denominator
 # components-only line total: iterate that import list
 cat $(grep -o '^@import "\./components[^"]*"' src/styles.css \
-      | sed 's/@import "//; s/"$//; s|^\./|src/|') | wc -l    # 5749
+      | sed 's/@import "//; s/"$//; s|^\./|src/|') | wc -l    # 5832
 ```
 
 **The components-only file count is the same number `verify:css-layering` asserts**, which is what
 keeps the two from drifting: a file that is not imported from `src/styles.css` is not in the
 cascade, so it is not in this table either. `Stagger.css` left both when Phase 1 deleted it, and
-`Grid.css` and `MasonryGrid.css` when Phase 2 did.
+`Grid.css` and `MasonryGrid.css` when Phase 2 did; `menu-internals.css` joined both in Phase 3, and
+`Calendar.css` → `CalendarBase.css` was a rename and moved neither count.
+
+> **Every figure in the table below was re-derived at HEAD, and each method was re-checked against a
+> known answer first.** The tree that carried the previous figures is `0a61e01` (46 files / 5,948
+> lines); running each method over `git archive 0a61e01 src` returns that tree's numbers exactly —
+> 2,192 / 2,150 declarations, 632 / 648 rules, 23.6% / 13.2% / 12.3%, 51 blank-in-comment lines, 218
+> lines and 113 declarations in the deletable seven. A method that cannot reproduce a known answer is
+> not the method that produced it.
 
 | Measure | Value | Caveat |
 | --- | --- | --- |
-| Declarations | **2,192** all-`src` / **2,150** components-only | Method: strip `/* */`, count `;` at brace depth ≥ 1. Verified exact for this codebase — no block omits its trailing `;`, no `;` inside `url()`/`content`. **The method is checkable against a known answer:** run it over `git archive 81888c2 src` and it returns the pre-Phase-2 figures this table used to carry (2,247 / 2,205) exactly. Reproduce components-only by iterating the `@import` list with `/@import\s+"(\.\/[^"]+\.css)"[^;\n]*;/` — **`"\s*;` matches nothing now the imports carry `layer(components)`, and prints a silent `0`.** |
-| Rules | **632** selector rules, or **648** counting `@keyframes` steps | Never quote 648 bare. Same method check: 685 / 701 over `81888c2`. Phase 2 deleted 53 rules, 50 of them the two column scales. |
-| Comments / blank | **23.6%** / **13.2%** | Method: mask `/* */` spans, then count lines that retain any masked character as comment, and lines blank outside a comment as blank. **The old "this caveat is now inert — there are zero blank lines inside comment blocks" claim is false, and was false when written.** There are **51** of them, unchanged across Phase 2, so the two readings genuinely differ: counting them as blank gives **13.2%**, not counting them gives **12.3%**. The figure above is the first reading. Combined **36.8%** of the payload is not CSS, and both phases pushed that up: they added explanation faster than they removed rules. |
-| Fully deletable by inlining | **7 files** = **218 lines (3.7%)**, **113 declarations (5.2%)** | Tooltip 12, Popover 27, Wizard 23, ThemeSwitcher 42, DropdownMenu 78, Button 1 (comment only), Collapsible 35 — line counts, and they sum to 218. **`Grid.css` and `MasonryGrid.css` have left this list because Phase 2 deleted them**, which is where 137 of the old 355 lines and 55 of the old 168 declarations went. **`ScrollReveal.css` has come off this list for the opposite reason** and must not go back on it: it is 35 lines of which exactly **one** is a declaration — `opacity: 1 !important` inside `@media (scripting: none)` — and no utility can replace it, because `noscript:opacity-100` lands in `@layer utilities` and loses to the foundation's unlayered `.scroll-reveal-hidden`. Quote lines *or* declarations, never mixed. |
+| Declarations | **2,207** all-`src` / **2,165** components-only | Method: strip `/* */`, count `;` at brace depth ≥ 1. Verified exact for this codebase — no block omits its trailing `;`, no `;` inside `url()`/`content`. **The method is checkable against two known answers:** over `git archive 81888c2 src` it returns the pre-Phase-2 figures (2,247 / 2,205); over `git archive 0a61e01 src` it returns the figures this row used to carry (2,192 / 2,150). Both exactly. Reproduce components-only by iterating the `@import` list with `/@import\s+"(\.\/[^"]+\.css)"[^;\n]*;/` — **`"\s*;` matches nothing now the imports carry `layer(components)`, and prints a silent `0`.** |
+| Rules | **637** selector rules, or **653** counting `@keyframes` steps | Never quote 653 bare. Same method check: 685 / 701 over `81888c2`, 632 / 648 over `0a61e01`. Method: count `{` whose prelude does not begin `@`; a block nested inside `@keyframes` is a step, not a selector rule. Phase 2 deleted 53 rules, 50 of them the two column scales. |
+| Comments / blank | **24.1%** / **13.2%** | Method: mask `/* */` spans, then count lines that retain any masked character as comment, and lines blank outside a comment as blank. **The old "this caveat is now inert — there are zero blank lines inside comment blocks" claim is false, and was false when written.** There are **55** of them at HEAD (51 at `0a61e01`, unchanged across Phase 2), so the two readings genuinely differ: counting them as blank gives **13.2%**, not counting them gives **12.3%**. The figure above is the first reading. **A blank line inside a comment carries no masked *character*, so a mask-any-character test cannot see it — test the comment state at the line's position instead, or this row silently reads zero.** Combined **37.3%** of the payload is not CSS, and every phase so far has pushed that up: they add explanation faster than they remove rules. |
+| Fully deletable by inlining | **7 files** = **242 lines (4.0%)**, **102 declarations (4.6%)** | `wc -l src/components/ui/{Tooltip,Popover,Wizard,ThemeSwitcher,DropdownMenu,Button,Collapsible}.css` → Tooltip 57, Popover 72, Wizard 23, ThemeSwitcher 42, DropdownMenu 12, Button 1 (comment only), Collapsible 35; they sum to 242. **Three moved in Phase 3** — `Tooltip` 12 → 57 and `Popover` 27 → 72 with the opt-in `arrow` CSS owner ruling 4 shipped, `DropdownMenu` 78 → 12 when the shared menu sheet was split out into `menu-internals.css`. **The *membership* of this list is a judgement taken at `81888c2` and it has not been re-taken since**; that is stated rather than quietly carried, because two of the seven changed shape underneath it. Anyone re-taking it starts with the two arrow blocks, whose `border: inherit` shorthand has no Tailwind utility short of an arbitrary property. **`Grid.css` and `MasonryGrid.css` left this list because Phase 2 deleted them**, which is where 137 of the old 355 lines and 55 of the old 168 declarations went. **`ScrollReveal.css` came off it for the opposite reason** and must not go back on: it is 35 lines of which exactly **one** is a declaration — `opacity: 1 !important` inside `@media (scripting: none)` — and no utility can replace it, because `noscript:opacity-100` lands in `@layer utilities` and loses to the foundation's unlayered `.scroll-reveal-hidden`. Quote lines *or* declarations, never mixed. |
 | Convert mechanically | **~80%** | Bucket A + B. **An estimate, not a measurement** — the bucketing is a judgement call and is not derivable from the repo. Robust to the denominator; do not present as measured, and do not restate it as a count of declarations, which is what made the previous figure look measured. |
 
 `Timeline.css` is the cleanest illustration of why lines mislead: **582 lines, 115 declarations,
-50.3% comment** — a layout contract that would not survive being spread across six class strings. It
-grew by 53 lines in Phase 1 while gaining one declaration, which is the same point from the other
-direction. **This is the file's only measurement in this document**; a second one further down said
+50.3% comment** (`wc -l src/components/ui/Timeline.css`, plus the declaration and comment methods
+above run over that one file) — a layout contract that would not survive being spread across six
+class strings. It grew by 53 lines in Phase 1 while gaining one declaration, which is the same point
+from the other direction. **This is the file's only measurement in this document**; a second one further down said
 529 / 114 / 50.9% and was stale by Phase 1's own doc sweep. One measurement, stated once.
 
 ### 2c. Component counts — reading-dependent, and the old numbers were not reproducible
 
 ```
 # .tsx under src/components, excluding *.test.tsx and *.examples.tsx
-281 total − 96 test − 90 examples = 95;  43 have a sibling .css, 52 do not
+281 total − 96 test − 90 examples = 95;  44 have a sibling .css, 51 do not
 # excluding three non-components (use-form, router-adapter, menu-internals)
 92;  43 with CSS, 49 without
 # the sibling test, spelled out — a module has a sibling iff X.css sits beside X.tsx
 for f in $(find src/components -name '*.tsx' ! -name '*.test.tsx' ! -name '*.examples.tsx'); do
-  [ -f "${f%.tsx}.css" ] && echo "$f"; done | wc -l          # 43
+  [ -f "${f%.tsx}.css" ] && echo "$f"; done | wc -l          # 44
 ```
 
-**The 50/50 split is gone, and it was never the finding.** `Stagger.css` moved it to 45/47 and
-Phase 2's two deletions moved it again to 43/52 — which is exactly how much weight a "50/50"
-observation could ever bear. The durable statement is the absolute one: **fewer than half** of this
-package's components have a sibling stylesheet, and Phase 1 made that fact stop mattering for
-`className`.
+**The 50/50 split is gone, and it was never the finding.** `Stagger.css` moved it to 45/47, Phase
+2's two deletions moved it again to 43/52, and Phase 3's `menu-internals.css` moved it back to 44/51
+— which is exactly how much weight a "50/50" observation could ever bear. The durable statement is
+the absolute one: **fewer than half** of this package's components have a sibling stylesheet, and
+Phase 1 made that fact stop mattering for `className`.
 
-**43 is also the `verify:css-layering` headline and the components-only denominator in §2b**, and
-that is not a coincidence — every component stylesheet sits beside its module and is imported from
-`src/styles.css`. If those three ever disagree, one of them is measuring something else. **A count
-of `.css` files under `src` is *not* this number**: that is 46, because `styles.css`, `tokens.css`
-and `examples/example-theme-tuning.css` have no sibling module.
+**The three counts agree at 44, and that is worth checking rather than assuming.** 44 is the
+`verify:css-layering` headline, the components-only denominator in §2b, and the sibling count in the
+95-module reading above — because every component stylesheet sits beside its module and is imported
+from `src/styles.css`. Verified as set equality, not just as a matching integer: the sibling list and
+the `@import` list are byte-identical.
 
-**There is no reading of this repo that yields ~155 components.** The ceiling is 105 (exported
-PascalCase symbols); the plausible range is 92–105. Any percentage built on ~155 is unmeasurable —
-which includes the old "~87 clean of ~155" coverage figure. **Do not quote a coverage percentage
+```
+for f in $(find src/components -name '*.tsx' ! -name '*.test.tsx' ! -name '*.examples.tsx'); do
+  [ -f "${f%.tsx}.css" ] && echo "${f%.tsx}.css"; done | sed 's|^src/||' | sort > /tmp/sib
+grep -o '^@import "\./components[^"]*"' src/styles.css \
+  | sed 's|@import "\./||; s|"$||' | sort > /tmp/imp
+diff /tmp/sib /tmp/imp      # no output
+```
+
+**The 92-module reading is the one that disagrees, and it is measuring something else — by design.**
+It excludes three modules as non-components, and since Phase 3 one of them, `menu-internals.tsx`, has
+a sibling stylesheet in the cascade. So that reading yields **43** with CSS against a
+`verify:css-layering` headline of **44**, and the single-file gap *is* `menu-internals.css`. Neither
+number is wrong; they answer different questions ("how many components ship CSS" vs "how many
+stylesheets are in the cascade"), and the discrepancy is now the difference between them. Quote the
+95-module reading whenever the number has to line up with the gate.
+
+**A count of `.css` files under `src` is *not* any of these numbers**: that is 47, because
+`styles.css`, `tokens.css` and `examples/example-theme-tuning.css` have no sibling module.
+
+**There is no reading of this repo that yields ~155 components.** The ceiling is **98** — PascalCase
+value symbols re-exported from the seven barrels under `src/components/*/index.ts`, `type` exports
+excluded — and the plausible range is 92–98. (**The "105" this sentence used to carry is dropped: no
+method tried reproduces it**, and 98 is stable across `81888c2`, `0a61e01` and HEAD. The refutation
+does not depend on which figure is right — every reading is far below 155.)
+
+```
+cat src/components/{ui,form,data-display,layout,animation,guards,router}/index.ts \
+  | tr '\n' ' ' | grep -oE 'export \{[^}]*\}' | tr ',{}' '\n\n\n' \
+  | sed 's/export//; s/.* as //; s/^ *//; s/ *$//' \
+  | grep -E '^[A-Z][A-Za-z0-9]*$' | sort -u | wc -l      # 98
+```
+
+Any percentage built on ~155 is unmeasurable — which includes the old "~87 clean of ~155" coverage
+figure. **Do not quote a coverage percentage
 for the gap list.** Use the absolute count of verified gaps, and verify each at source first (§7).
 
 **The test-blast-radius number is not reproducible and must not be used for lane sizing.** Readings
@@ -225,23 +267,26 @@ range 34–99 across seven definitions:
 
 ```
 find src -name '*.test.ts*' | wc -l                                  # 116  total
-grep -rl 'toHaveClass\|className' src --include=*.test.tsx | wc -l   #  71  simple grep
+grep -rl 'toHaveClass\|className' src --include=*.test.tsx | wc -l   #  89  simple grep
 ```
 
-**Test files referencing a class an authored `.css` defines: 51 (exact-token) or 61 (substring).**
-Method, and it has to be stated because the two readings differ by ten files: collect every class
-selector appearing outside a `{ }` body in every `.css` under `src` bar `styles.css` and
-`tokens.css` (**335 distinct names**, of which **110** carry `__`); then count test files whose text
-contains one of those names as a whole `[A-Za-z_][\w-]*` token (exact) or anywhere at all
-(substring). Run over `git archive 81888c2 src` the same code returns **53 / 63**, which is how the
-method was checked — and note that the exact-token half reproduces the figure this section used to
-carry while the substring half does **not** reproduce the "92" it sat beside. **That 92 matched no
-method tried here and has been dropped rather than re-quoted**; the spread it was illustrating is
-real and is the point, but an unreproducible bound is not evidence of it.
+**Test files referencing a class an authored `.css` defines: 54 (exact-token) or 63 (substring).**
+Method, and it has to be stated because the two readings differ by nine files: collect every class
+selector appearing outside a **declaration** body in every `.css` under `src` bar `styles.css` and
+`tokens.css` — a selector nested inside `@media`/`@supports`/`@container` is still a selector, and a
+naive brace-depth test drops it and quietly loses four names and one test file — (**332 distinct
+names**, of which **105** carry `__`); then count test files whose text contains one of those names
+as a whole `[A-Za-z_][\w-]*` token (exact) or anywhere at all (substring). Run over `git archive
+81888c2 src` the same code returns **53 / 63** and over `git archive 0a61e01 src` it returns
+**51 / 61** with **335** distinct names and **110** carrying `__` — the figures this paragraph used
+to carry, exactly, which is how the method was checked. Note that the substring half never
+reproduced the "92" it once sat beside: **that 92 matched no method tried here and has been dropped
+rather than re-quoted**; the spread it was illustrating is real and is the point, but an
+unreproducible bound is not evidence of it.
 
-Pick a method, write it down, run it, quote both together. **12** test files assert a `__`-form
-class that a `.css` file actually defines (13 before Phase 2) — that one is exact under the method
-above and is the narrow reading; it is not the lane-sizing figure.
+Pick a method, write it down, run it, quote both together. **17** test files assert a `__`-form
+class that a `.css` file actually defines (12 before Phase 3, 13 before Phase 2) — that one is exact
+under the method above and is the narrow reading; it is not the lane-sizing figure.
 
 ### 2d. Descendant-capable variants, by specificity
 
@@ -255,7 +300,7 @@ consumer can override it. All measured from compiled output; all land in `@layer
 | `**` | `:is(.x\:** *)` | **(0,1,0)** | All descendants. |
 | `not-[…]` | `.x:not(:disabled):hover` | (0,1,0) | Replaces the `:hover:not(…)` chains in Calendar/Pagination/Accordion. |
 | `nth-[…]`, `first`, `odd`, … | `.x:nth-child(…)` | (0,1,0) | Structural position. |
-| `[&::-webkit-slider-thumb]` | `.x::-webkit-slider-thumb` | (0,1,1) | Fine — no child element to class, so repeating the variant is natural, and it dedupes. All 21 vendor pseudo-element rules can move. |
+| `[&::-webkit-slider-thumb]` | `.x::-webkit-slider-thumb` | (0,1,1) | Fine — no child element to class, so repeating the variant is natural, and it dedupes. All **18** vendor pseudo-element rules can move (see below). |
 | `group-*` | `.x:is(:where(.group)[data-…] *)` | (0,2,0) | Works, but `in-[…]` is strictly better. |
 | `[&_.child]:` | `.\[\&_\.child\]\:x .child` | **(0,2,0)** | **Banned.** A consumer's class on the child is (0,1,0) in the same layer and loses. Relocates the bug and makes it unreadable. |
 
@@ -264,8 +309,29 @@ These v4 variants all generate correctly and are available: `has-[…]`, `not-ha
 `rtl:`/`ltr:`, `motion-reduce:`, `forced-colors:`, `contrast-more:`, `pointer-coarse:`, `noscript:`,
 `print:`, `supports-[…]`, `open:`, `inert:`, `autofill:`, `details-content:`, `@container`/`@md:`.
 
+**Vendor pseudo-element rules: 18, not 21.** Method: count rule blocks (not selectors — `SearchInput`
+groups two per block, twice) whose prelude contains `::-webkit-`, `::-moz-` or `::-ms-`, with
+comments stripped so `Tabs.css`'s prose about the rules it deleted is not counted as rules.
+**21 was correct when taken and is now anchored to a dead tree**: it reproduces exactly over
+`git archive 81888c2^ src`, and Phase 1 deleted `Tabs.css`'s three scrollbar rules (§13). 18 is
+stable across `81888c2`, `0a61e01` and HEAD, so nothing since Phase 1 has moved it. The selector
+reading is 20 at HEAD and 23 at `81888c2^`; quote the rule reading, and say which.
+
+```
+grep -rn '::-webkit-\|::-moz-\|::-ms-' src --include=*.css | grep -c '{'   # 18
+```
+
+The `{` filter is what drops the seven selector-continuation and comment lines — including
+`Tabs.css`'s three comment lines describing the rules Phase 1 deleted. Without it the same grep
+returns 25.
+
 **Genuinely immovable: only `@keyframes`** — 8 animation bodies (Sparkline ×2, AppShell ×2,
-CommandPalette ×2, ProgressBar, Skeleton). There is no variant for a `@keyframes` block.
+CommandPalette ×2, ProgressBar, Skeleton), and that count is unchanged since `81888c2^`. There is no
+variant for a `@keyframes` block.
+
+```
+grep -rn '@keyframes' src --include=*.css | grep -c '{'    # 8 — the `{` discards the one comment hit
+```
 
 Two things are *judgement calls*, not impossibilities, and must be labelled as such: Timeline's
 6-deep lazy derivation graph (`--_timeline-marker-radius` → `-line-offset` → `-gutter` → `-rail-x`),
@@ -333,8 +399,9 @@ grep -n 'not-forced-colors' src/util/focus.ts
    an `expectAfter` without a stated `accepted` reason, and an `expectAfter` equal to `expectBefore`.
    **An accepted row still fails if it drifts off its pinned value** — accepting a change is not
    excusing the row from measurement. Both guards were verified to exit non-zero.
-3. **The ~76-site focus-ring-width question is a separate follow-up** (§11) and must not be merged
-   into this one. A focus-ring width and a rule stroke are different concepts sharing a literal.
+3. **The focus-ring-width question is a separate follow-up** (§11, which carries the two
+   reproducible sizings and drops the unreproducible "~76") and must not be merged into this one. A
+   focus-ring width and a rule stroke are different concepts sharing a literal.
 4. **`verify:focus-affordance` cannot see any of this.** It checks *source pairing* — a reset implies
    a replacement — so it stays green while the replacement stops painting. Do not add a focus-ring
    assertion to it and believe the ring is covered.
@@ -462,13 +529,29 @@ makes a typo a *type error* rather than a silent no-op.
 the shipped pattern is a props hatch: library base class first, caller's last.
 
 ```tsx
-cn("code-block-copy", copyButtonProps?.className)   // CodeBlock.tsx:22,76 — the correct form
+cn("code-block-copy", copyButtonProps?.className)   // the correct form
+// grep -n 'code-block-copy' src/components/ui/CodeBlock.tsx   (cited as :22,76 — both rotted)
 ```
 
-`Swimlane.tsx:57` (`viewAllProps`) and `Table.tsx:70` (`tableProps`) match. **`Spotlight.tsx:111`
-does not** — it spreads `imgProps` onto an `<img>` that carries no library class and performs no
-`cn()` merge. Either give it a base class or carve it out explicitly as "no library class ⇒ raw
-spread is fine." Do not describe the four as uniform; they are three plus an exception.
+`grep -n viewAllProps src/components/ui/Swimlane.tsx` (cited as `:57`) and `Table.tsx:70`
+(`tableProps`) match. **`grep -n imgProps src/components/ui/Spotlight.tsx` (cited as `:111`) does
+not** — it spreads `imgProps` onto an `<img>` that carries no library class and performs no `cn()`
+merge.
+
+> **Settled as the carve-out, and it is no longer an exception.** "No library class ⇒ raw spread is
+> fine" is the rule, stated in `SLOT-VOCABULARY.md` §13.1, and the prop's docblock must say so.
+> **Five hatches now spread class-free** — `Spotlight.imgProps`, `TagInput.badgeProps`,
+> `DataTable.paginationProps`, `Repeater.itemActionProps` and `Repeater.addButtonProps`. The
+> denominator is method-dependent, so state which: **9 distinct hatch names across 13 declaration
+> sites** (`imgProps` is declared by three components, `tableProps` by three).
+>
+> ```
+> grep -rhoE '\b[a-zA-Z]+Props\?:' src/components --include=*.tsx | grep -v '\.test\.' | sort -u | wc -l   # 9
+> grep -rnE  '\b[a-zA-Z]+Props\?:' src/components --include=*.tsx | grep -v '\.test\.\|\.examples\.' | wc -l  # 13
+> ```
+> The framing "three plus an exception" was wrong even when written: `paginationProps` was already
+> class-free and uncounted. **Adding a base class purely so there is something to merge with is the
+> wrong repair** — that is §13.1's correction, and it applies to roots as much as to hatches.
 
 Worst uncovered cases, all needing a hatch rather than a slot: `DataTable` → `Table` (its root is a
 bare classless `<div>` and `DataTableProps` has no `className` at all), `VirtualizedDataTable`
@@ -489,10 +572,19 @@ worth *when the component CSS is unlayered*, which is the state any future packa
 
 ### 4b. The house rule
 
-- **`className` → the outermost element the component renders.** Uncontroversial. It fixes
-  `DatePicker.tsx:280` (applies `className` raw, with no `cn()`, so that element has no base class)
-  and `TagInput.tsx:378` (a bare `<div>` receiving *nothing*, so the true outermost element is both
-  unstyled and unreachable).
+- **`className` → the outermost element the component renders.** Uncontroversial. The two worked
+  cases, both cited by line number originally and both repointed by content:
+  - `DatePicker` applied `className` raw, with no `cn()`, so that element had no base class
+    (`DatePicker.tsx:280`). **Fixed** — `grep -n 'cn(className)' src/components/form/DatePicker.tsx`
+    now lands on the root with the reason written beside it.
+  - `TagInput`'s return opened on a bare `<div>` receiving *nothing*, so the true outermost element
+    was both unstyled and unreachable (cited as `TagInput.tsx:378`). **✔ FIXED — owner ruled, and it
+    was breaking.** `className` now lands there (`grep -n 'cn(className)' src/components/form/TagInput.tsx`)
+    and the bordered field box is `classNames.control`, the same word `Select`, `NumberInput`,
+    `DatePicker` and `MultiSelect` already spend on that element. **The migration is silent**:
+    `className` and `classNames.control` are both valid props with valid types, so a string aimed at
+    the frame simply stops painting — grep `<TagInput` rather than trusting the compiler. `...props`,
+    `ref` and the `id` did **not** move; they stay on the `<input>` for the reasons below.
 - **`...props` → the focusable control. Unchanged from today.** Do not move a11y-bearing attributes
   to satisfy symmetry.
 - **The layout box gets `classNames.control`** (and `wrapperProps` if it needs more than classes).
@@ -507,16 +599,21 @@ worth *when the component CSS is unlayered*, which is the state any future packa
   causal link is the **`ref`**, not the `id`: the registry is keyed by `field()`'s `ref` callback
   (`use-form.tsx:197`), and `ref`/`id`/`...props` travel together.
 - `field()` returns exactly seven keys and **no `id`** — `name`, `value`, `onChange`, `onBlur`,
-  `ref`, `aria-invalid`, `disabled` (`use-form.tsx:205-217`). The control's `id` is 100%
+  `ref`, `aria-invalid`, `disabled` (`grep -n 'const field = useCallback' -A14 src/components/form/use-form.tsx`;
+  cited as `:205-217`). The control's `id` is 100%
   consumer-supplied and on three of four components it travels via `...props`.
 - An `inputProps` hatch does **not** restore `mergeProps` (a plain spread re-introduces the
   documented `aria-invalid: undefined` erasure bug) or `SearchInput`'s named guard, which keys off
   `id !== undefined` *"because a default name outranks an associated `<label for>`."*
 
-`DateRangePicker.tsx:316` puts `ref`, `className` and `...props` all on the outermost element — but
-it **does not generalise**: it has two focusable inputs and therefore no single control, a
-constraint the others lack. `ColorPicker.tsx:228-239` documents the split deliberately and is a
-written refutation of the symmetric reading, not evidence for it.
+`DateRangePicker` puts `ref`, `className` and `...props` all on the outermost element — but it
+**does not generalise**: it has two focusable inputs and therefore no single control, a constraint
+the others lack. `ColorPicker` documents the split deliberately and is a written refutation of the
+symmetric reading, not evidence for it. Both anchors (`DateRangePicker.tsx:316`,
+`ColorPicker.tsx:228-239`) rotted in Phase 3; find them by content —
+`grep -n '{\.\.\.props}' src/components/form/DateRangePicker.tsx` (one hit — `ref`, `className` and
+the rest on one `<div>`) and `grep -n 'Rest props go to the trigger' src/components/form/ColorPicker.tsx`,
+which is the comment that documents the split.
 
 ### 4c. The token rule
 
@@ -555,14 +652,17 @@ grep -rn -- '--_activity-feed-gutter\|--_activity-feed-gap\|--_timeline-date-gap
 | `--MEDIA-CAROUSEL-GAP` | `Carousel.css:26` — `gap` | `gap-r5` |
 
 (`--spacing-r1`…`-r6` bridge the scale, so every `r*` utility above resolves to the same
-`var(--R-SIZE-n)` the token held: `../response-ui-css/src/responsive/spacing.css:30-37`.)
+`var(--R-SIZE-n)` the token held: `grep -n -- '--spacing-r' ../response-ui-css/src/responsive/spacing.css`
+— six lines, cited as `:30-37` before the foundation file shifted.)
 
 **`--MEDIA-CAROUSEL-GAP` needs its own justification, because it looks like a keep and is not.** It
-is SCREAMING_CASE, it lives in `tokens.css`, and `docs/components/carousel.md:199,212` documents it
-to consumers as a theme token — three signals that say "consumer write channel". It fails anyway, on
+is SCREAMING_CASE, it lives in `tokens.css`, and `grep -n 'MEDIA-CAROUSEL-GAP' docs/components/carousel.md`
+(two lines — the token table row and the tuning paragraph; `:199,212` before Phase 3 grew the page)
+documents it to consumers as a theme token — three signals that say "consumer write channel". It fails anyway, on
 the part of the test that matters: the element reading it is **directly addressable**.
 `Carousel.Track` is a compound subcomponent that merges an incoming class
-(`Carousel.tsx:338` — `cn("carousel-track", className)`), so the caller already writes
+(`grep -n 'cn("carousel-track", className)' src/components/ui/Carousel.tsx`; cited as
+`Carousel.tsx:338`, now `:357`), so the caller already writes
 `<Carousel.Track className="gap-r3">` and needs no token to reach it. **That route works now** —
 before Phase 1 the unlayered `.carousel-track` beat the utility, which is why this was blocked; it is
 not any more, so the only thing still holding it is that deleting the token is Phase 3/4 work.
@@ -576,20 +676,23 @@ aliases; that is why the alias test had to go.
   by a `calc()` has no property to convert to, so deleting it inlines the baseline `var()` at each
   call site and the shared value stops being shared.
   - `--_stepper-gap` — 1 def / 2 uses, both in the connector-inset calc (`Stepper.css:242,243`).
-  - `--calendar-col-gap` — 1 def / 1 use, and that use is **inside `--calendar-month-width`'s calc**
-    (`Calendar.css:19,22`). It is never applied as a `column-gap` anywhere, so there was never a
-    utility to convert it to.
+  - `--calendar-col-gap` — 1 def / 1 use, and that use is **inside `--calendar-month-width`'s calc**.
+    It is never applied as a `column-gap` anywhere, so there was never a utility to convert it to.
+    The file is `CalendarBase.css` now (§5 renamed it); find both by content, not by the `Calendar.css:19,22`
+    this used to cite: `grep -n -- '--calendar-col-gap' src/components/ui/CalendarBase.css`.
   - `--calendar-month-gap` — 1 def / 2 uses, **split across both kinds**: the `--calendar-ideal-width`
-    calc (`Calendar.css:27`) and a real `gap` property (`:111`). **A token with even one `calc()`
-    reader is not convertible piecemeal** — writing `gap-r4` at `:111` while the calc keeps reading
-    the token forks one value into two sources, which is `CLAUDE.md` rule 3. Convert both or neither.
+    calc and a real `gap` property. **A token with even one `calc()` reader is not convertible
+    piecemeal** — writing `gap-r4` at the `gap` while the calc keeps reading the token forks one
+    value into two sources, which is `CLAUDE.md` rule 3. Convert both or neither.
+    `grep -n -- '--calendar-month-gap' src/components/ui/CalendarBase.css` prints the def and both
+    reads; the `Calendar.css:27` / `:111` this used to cite are gone with the filename.
 - `--_timeline-card-padding`, `--_timeline-item-gap` — **3 defs each, 1 use each.** These are the
   **density axis**: three values selected by `[data-density]` on the root, applied to a descendant.
   Convertible via `in-[[data-density=dense]]:p-r5` but that is 6 variant-scoped classes, not "use
   the baseline utility." Keep, or convert deliberately with the cost stated.
 - **Computed:** the Timeline derivation chain, `--_stepper-active-line-width` (`calc(× 1.5)`),
   `--calendar-month-width`/`-ideal-width` (`--calendar-months` is set by JS),
-  `--_table-selected-marker-side` (gradient flipped by `:dir(rtl)`).
+  `--_table-marker-side` (gradient flipped by `:dir(rtl)`, and shared by the selected row and the expanded detail row).
 
   > **"Computed" is not the discriminator — *where it is read* is.** This bucket lost two entries
   > that only looked computed. The keep clause spares a token *"because there is no property there
@@ -658,8 +761,10 @@ also a single-source-of-truth violation (`CLAUDE.md` rule 3), which is what made
 value-to-risk change in the plan. The old sentence sized this as "50 of the 64 rules whose
 declarations are exclusively custom properties"; the **50** reproduces exactly, the **64** does not
 — the nearest method (innermost selector blocks, every declaration starting `--`) returns 63 at
-`81888c2` and 13 now. **The residual 13 is the number to carry forward, and 64 is not to be
-re-quoted**: it is method-dependent, off by one under every method tried, and nothing depends on it.
+`81888c2`, 13 at `0a61e01`, and **9** now. **The residual 9 is the number to carry forward, and 64 is
+not to be re-quoted**: it is method-dependent, off by one under every method tried, and nothing
+depends on it. (The residue fell 13 → 9 across Phase 3, which deleted `--progress-bar-fill`/`-fill-end`
+and `--sparkline-color` and split the menus' custom-property block out of `DropdownMenu.css`.)
 
 **The conversion cost more than a token swap, and §13 carries why.** Tailwind scans source text, so
 the class names could not be built from a template literal; the table had to be written out, which
@@ -681,8 +786,12 @@ not read it as the migration *introducing* raw values. `--_activity-feed-aside-w
 `--_activity-feed-icon-size: 1rem`, `--calendar-day-size: 2.25rem`, `--app-shell-navbar-height:
 3.5rem`, `--_stepper-indicator-size: 2rem`, `--_timeline-dot-size: 0.875rem`,
 `--_timeline-marker-size: 1.75rem`, `--_timeline-glyph-size: 1rem`, `--MEDIA-CAROUSEL-PEEK: 3rem`,
-`--BUTTON-GAP-SM/MD/LG`, and `MediaCard.css`'s six raw `oklch(1 0 0)` overrides of **contract**
-tokens.
+`--BUTTON-GAP-SM/MD/LG`, and `MediaCard.css`'s six raw `oklch(1 0 0…)` overrides of **contract**
+tokens (`grep -c oklch src/components/ui/MediaCard.css` → 6; four are bare `oklch(1 0 0)` and two
+carry an alpha, so a grep for the exact literal returns 4 and understates it). Every named token
+above still exists with the value quoted — `grep -rn -- '--_activity-feed-aside-width\|--calendar-day-size\|--app-shell-navbar-height\|--_stepper-indicator-size\|--_timeline-dot-size\|--MEDIA-CAROUSEL-PEEK\|--BUTTON-GAP' src/tokens.css src/components`.
+The **~14** is a flag, not a census: Timeline's three density steps redeclare dot/marker/glyph, so a
+strict occurrence count is higher.
 
 ### 4d. Footguns — verified live instances
 
@@ -702,12 +811,13 @@ is not a per-instance derivation and does not qualify.**
 
 | Site | Mechanism | Effect |
 | --- | --- | --- |
-| `NumberInput.tsx:171-175` | inline `style` custom property from `CHEVRON_SIZE`, a **module constant** (`:44`) | A frozen default wearing a computed value's clothes: unthemeable and un-overridable. Move the default to CSS, or write the padding as a utility. |
-| `Skeleton.tsx:34,44` | inline `style` **geometry** — `width = "100%"` defaulted, `height` **not** defaulted | ✔ **FIXED.** Both props are **deleted**; geometry is `className`, with `w-full` in the class list so `cn()` collapses it against a caller's `w-*`. Height keeps `.skeleton { height: 1em }` in `@layer components` — deliberately, because making it a utility would out-rank `.skeleton--circular { height: auto }` and break circles. So the two axes reach `className` by different mechanisms (class-list collapse vs layer precedence) and the *contract* is finally uniform. `style` still wins, as the hatch for a runtime-computed value. |
-| `ProgressBar.css:35-37` | declared `--progress-bar-fill`/`-fill-end` **on `.progress-bar__fill`** | ✔ **FIXED — but not the way this row said.** "Move to `.progress-bar`" **could never have worked**, and the row gave the reason one clause earlier without following it: all four colour modifiers redeclare the pair on the reading element and `color` defaults to `"accent"`, so *every* instance overwrote the relocated base. Measured: at `fadcd60` a consumer setting the pair at `:root` got the unchanged default — **the documented override route was already dead**. Both tokens are now **deleted** and the fill colour is a `bg-*` utility, which *reads* the theme var instead of shadowing it. §13 carries the refutation. |
-| `Sparkline.css:10-13` | declared `--sparkline-color` on `.sparkline` | ✔ **FIXED in Phase 3** by deleting the declaration — every read already carried an identical `var(…, currentColor)` fallback, so it is byte-identical where nothing sets the property and now reachable from a theme. **Check this row's shape before trusting any other "move the declaration up" fix**: it worked here only because *nothing else redeclared it*. Where a variant or a prop-driven modifier redeclares on the reading element, relocation is a no-op — see the `ProgressBar` row above, which is the same prescription and was refuted. |
+| `grep -n CHEVRON_SIZE src/components/form/NumberInput.tsx` — four hits: the module constant, the inline `style` that builds the padding from it, and the two chevron icons (cited as `:171-175` and `:44`; both rotted) | inline `style` custom property from `CHEVRON_SIZE`, a **module constant** | A frozen default wearing a computed value's clothes: unthemeable and un-overridable. Move the default to CSS, or write the padding as a utility. |
+| `git show 0a61e01:src/components/ui/Skeleton.tsx \| sed -n '34p;44p'` (both props are deleted, so the live file has no anchor; the sha is the tree the citation `Skeleton.tsx:34,44` was taken at, where it is still exact) | inline `style` **geometry** — `width = "100%"` defaulted, `height` **not** defaulted | ✔ **FIXED.** Both props are **deleted**; geometry is `className`, with `w-full` in the class list so `cn()` collapses it against a caller's `w-*`. Height keeps `.skeleton { height: 1em }` in `@layer components` — deliberately, because making it a utility would out-rank `.skeleton--circular { height: auto }` and break circles. So the two axes reach `className` by different mechanisms (class-list collapse vs layer precedence) and the *contract* is finally uniform. `style` still wins, as the hatch for a runtime-computed value. |
+| `git show fadcd60:src/components/ui/ProgressBar.css \| sed -n '35,37p'` (the pair is deleted, so the live file has no anchor; the sha is the one the measurement below was taken at) | declared `--progress-bar-fill`/`-fill-end` **on `.progress-bar__fill`** | ✔ **FIXED — but not the way this row said.** "Move to `.progress-bar`" **could never have worked**, and the row gave the reason one clause earlier without following it: all four colour modifiers redeclare the pair on the reading element and `color` defaults to `"accent"`, so *every* instance overwrote the relocated base. Measured: at `fadcd60` a consumer setting the pair at `:root` got the unchanged default — **the documented override route was already dead**. Both tokens are now **deleted** and the fill colour is a `bg-*` utility, which *reads* the theme var instead of shadowing it. §13 carries the refutation. |
+| `grep -n 'DELIBERATELY NOT declared here' src/components/data-display/Sparkline.css` — the comment that replaced the declaration says what it was and why it must not come back (cited as `Sparkline.css:10-13`) | declared `--sparkline-color` on `.sparkline` | ✔ **FIXED in Phase 3** by deleting the declaration — every read already carried an identical `var(…, currentColor)` fallback, so it is byte-identical where nothing sets the property and now reachable from a theme. **Check this row's shape before trusting any other "move the declaration up" fix**: it worked here only because *nothing else redeclared it*. Where a variant or a prop-driven modifier redeclares on the reading element, relocation is a no-op — see the `ProgressBar` row above, which is the same prescription and was refuted. |
 
-**Fade timing on floating surfaces is unreachable by `className` at all.** `floating-motion.ts:9-16`
+**Fade timing on floating surfaces is unreachable by `className` at all.**
+`grep -n 'cannot be supplied from CSS' src/components/ui/floating-motion.ts` (cited as `:9-16`)
 documents it at source: `useTransitionStyles` writes `transition-duration` **inline**, and *"the
 value cannot be supplied from CSS while that hook owns it."* A `transition-*` or `duration-*` utility
 added to such a panel — by `className`, by `classNames`, or inlined from CSS — is **silently dead**.
@@ -726,10 +836,12 @@ grep -rln 'floating-motion' src --include=*.tsx --include=*.ts | grep -v '\.test
 > component whose fade a theme could not reach. **A count that excludes something is worth asking
 > *why* about, not just recording.** Fixed, and pinned by `Tooltip.test.tsx`'s `fade timing` block.
 
-**`AvatarUpload.tsx:267`** renders `<Avatar size={size} className="size-full" />`, and
-`cn("size-16","size-full")` → `size-full`, so tailwind-merge drops the class `size` mapped to. The
-accurate finding is narrow: **one redundant utility, no visual consequence.** `size` still drives
-`initialsTextMap` (`Avatar.tsx:24-31`), and `AvatarUpload`'s own `containerSizeMap` is
+**`grep -n 'size-full' src/components/ui/AvatarUpload.tsx`** (cited as `:267`) renders the inner
+`<Avatar size={size}>` with `size-full` in its class list, and `cn("size-16","size-full")` →
+`size-full`, so tailwind-merge drops the class `size` mapped to. The accurate finding is narrow:
+**one redundant utility, no visual consequence.** `size` still drives
+`initialsTextMap` (`grep -n 'initialsTextMap' src/components/ui/Avatar.tsx`; cited as
+`Avatar.tsx:24-31`), and `AvatarUpload`'s own `containerSizeMap` is
 value-identical, so the geometry is unchanged. **A lane told "the `size` prop is dead" would delete
 it and break initials sizing.**
 
@@ -754,12 +866,40 @@ Each verified gap resolves to **one of six**, and a lane must say which before w
 impossible* — no compound API can name "the 15th cell" — and the answer is **(e)**.
 
 **▲ ONE-WAY DOOR: classify before coding.** High slot count means the element tree *is* the API, but
-the resolution may be (d), (e), or a mix. `CalendarBase`'s 15 internals split: **9 are
-loop-generated** by `renderMonthGrid` (`CalendarBase.tsx:535-628`), 42 cells per month — what a
-consumer wants there is a dot on a booked day, i.e. content, i.e. a `renderDay` render prop.
-**6 are chrome rendered exactly once** (`calendar-header`, `-label-button`, `-months`, `-footer`,
-`-today-button`, `-month-caption`) and are ordinary (c). So: 6 slots + 3 applied-to-every-instance +
-`renderDay`. **Not** 15 slots, and **not** a compound.
+the resolution may be (d), (e), or a mix. **`CalendarBase` is the worked case, and it settled as
+15 × (c) + 1 × (e) — not a compound.** The anatomy, re-derived; the `.tsx` and `.css` name sets are
+identical, which is what makes either command sufficient:
+
+```
+grep -oE '\.calendar[a-zA-Z-]*' src/components/ui/CalendarBase.css | sort -u      # 17 names
+```
+
+**17 names on 16 non-root names on 15 non-root elements** — one element carries two
+(`"calendar-label calendar-label-button"`), which is the whole of the old 16-vs-15 discrepancy.
+Three cardinalities, enumerated rather than counted:
+
+- **Once per calendar (6):** `-header`, `-label-button`, `-months`, `-footer`, `-today-button`,
+  `-picker-grid`.
+- **Per month grid (4):** `-month`, `-month-caption`, `-grid`, `-weekdays`. A real third case —
+  `renderMonthGrid` runs once per *visible month*, caller-controlled and 1 by default, forced to 1
+  below `40rem`.
+- **Per loop iteration (5):** `-picker-cell` (12/picker), `-weekday` (7/month), `-week` (6/month),
+  `-cell` and `-day` (42/month each).
+
+**Every one of the 15 keys is merged *inside* its map, from one `classNames?.<key>` read.** No index,
+no predicate, no per-date map. So nothing in the shipped API addresses one instance — the thing the
+loop test forbids — and the repeated-element keys are exactly the *applied-to-every-instance* case
+this section already allows.
+
+> **What the earlier "6 slots + 3 + `renderDay`, not 15" prediction got wrong — and it was not the
+> count.** Its *category* held completely. It failed on **what `renderDay` can reach**: the prop is
+> invoked in the **children position of the day button** (`grep -n 'renderDay ? renderDay' src/components/ui/CalendarBase.tsx`),
+> so it renders that button's contents and nothing else. It cannot reach `-weekday`, `-week`,
+> `-cell`, `-month`, `-month-caption`, `-grid`, `-weekdays` or `-picker-cell` — eight of the nine
+> elements the prediction assigned to it, one of which is not even in a day grid. A weekday header is
+> not a day. **So the prescription routed at most 9 of 15 elements and left six with no override path
+> at all**, which is this section's own definition of a gap: it would have manufactured the (d)
+> pressure it was written to relieve. The census errors that produced it are in §13.
 
 **Sibling asymmetry is a LEAD, not proof.** `memory/affordances.md`: which element a caller's
 `className` addresses is a **per-component** answer, and a non-compound component whose sibling is
@@ -772,17 +912,25 @@ component's own doc first**; for `MultiSelect` it already states where `classNam
 
 Two hard constraints found at source, both of which a lane would otherwise break:
 
-- **`.calendar-picker-cell` and `.calendar-day` are `querySelector` targets** (`CalendarBase.tsx:174`,
-  `:366`) driving focus management, plus a third query at `:348` keyed on `[data-day]`. These are
-  *behavioural markers*: append to them, never replace them.
-- **`Calendar.css` has no owning component.** It styles `CalendarBase`'s markup entirely, yet only
-  `src/styles.css` imports it (`grep -n Calendar.css src/styles.css`) — neither `Calendar.tsx` nor `RangeCalendar.tsx` does. Rename to
-  `CalendarBase.css` in the same lane or the ownership stays invisible.
+- **`.calendar-picker-cell` and `.calendar-day` are `querySelector` targets** driving focus
+  management, plus a third query keyed on `[data-day]`. These are *behavioural markers*: append to
+  them, never replace them. All three anchors (`CalendarBase.tsx:174`, `:366`, `:348`) rotted in
+  Phase 3 — `grep -n 'querySelector' src/components/ui/CalendarBase.tsx` returns exactly the three.
+- **`Calendar.css` had no owning component, and the rename shipped.** It styled `CalendarBase`'s
+  markup entirely while only `src/styles.css` imported it — neither `Calendar.tsx` nor
+  `RangeCalendar.tsx` did. It is `CalendarBase.css` now: `grep -n Calendar src/styles.css` returns
+  the one `CalendarBase.css` import. **Every citation into `Calendar.css` anywhere in this document
+  has been repointed by content, never by adjusting the line number** (§13's last row).
 
-**`FileUpload` is a (d), but not as 27 slots.** Its internals mostly live inside **three already-
-separate private components** — `MediaPreviewLarge` (`:220`), `MediaPreviewGrid` (`:285`),
-`FilePreviewItem` (`:344`) — selected by internal `previewMode`/MIME logic (`:489-500`, dispatched
-`:655`/`:670`/`:688`) that the consumer cannot predict. A flat 27-key map would be a window onto
+**`FileUpload` is a (d), but not as 27 slots.** **27** is the count of `file-upload__*` element
+classes it emits — `grep -oE '"file-upload__[a-zA-Z-]*"' src/components/ui/FileUpload.tsx | sort -u | wc -l`,
+unchanged at `0a61e01` (the root and the six `--` state modifiers are excluded, which is what
+distinguishes it from the 34 distinct literals in the file). Its internals mostly live inside
+**three already-separate private components** — `MediaPreviewLarge`, `MediaPreviewGrid`,
+`FilePreviewItem` (`grep -n 'function MediaPreview\|function FilePreviewItem' src/components/ui/FileUpload.tsx`;
+cited as `:220`, `:285`, `:344`, all taken at `0a61e01` and all rotted) — selected by internal
+`previewMode`/MIME logic (`grep -n previewMode src/components/ui/FileUpload.tsx`; cited as `:489-500`,
+dispatched `:655`/`:670`/`:688`) that the consumer cannot predict. A flat 27-key map would be a window onto
 three element trees that may not even render. Right design: export those three (or take
 `renderPreview`/`renderFile`), **plus** small slots for the dropzone chrome the root always renders,
 **plus** keep the root state modifiers as `data-*` so consumers write `data-drag-over:*` variants.
@@ -792,10 +940,19 @@ three element trees that may not even render. Right design: export those three (
 | Component | Internals | Proved by |
 | --- | --- | --- |
 | `MultiSelect` | 10 | **✔ ruled (d) by the owner.** `Combobox` does **not** prove it — see below. The shape that does is in `SLOT-VOCABULARY.md` §10.1 |
-| `ColorPicker` | 13 (largest in `form/`) | `Combobox` — trigger+panel is compound-shaped |
-| `CommandPalette` | 11 + a `renderOption` closure (`:338`) a consumer cannot replace | **✔ ruled (d) by the owner**, for consistency of one anatomy under one mechanism. `DropdownMenu` exposes `Trigger`/`Content`/`Item`/`Divider`/`GroupHeader` for *the same anatomy*, from JSX instead of an array — and `Trigger` is the piece `CommandPalette` most conspicuously lacks |
-| `Tooltip` | 1 literal, but all **10** `Tooltip.css` declarations unreachable | `Popover` — identical hook, portal and fade, with the API present |
+| `ColorPicker` | 12 (largest in `form/`) | `Combobox` — trigger+panel is compound-shaped |
+| `CommandPalette` | 10 + a `renderOption` closure a consumer could not replace (`git show 0a61e01:src/components/ui/CommandPalette.tsx \| sed -n '338p'`; the closure is gone — the ruling below shipped and `CommandPalette.Item` replaced it) | **✔ ruled (d) by the owner**, for consistency of one anatomy under one mechanism. `DropdownMenu` exposes `Trigger`/`Content`/`Item`/`Divider`/`GroupHeader` for *the same anatomy*, from JSX instead of an array — and `Trigger` is the piece `CommandPalette` most conspicuously lacks |
+| `Tooltip` | 1 literal, and at `0a61e01` all **10** `Tooltip.css` declarations were unreachable (`git show 0a61e01:src/components/ui/Tooltip.css`). The file is **24** declarations now, because owner ruling 4's opt-in arrow landed there | `Popover` — identical hook, portal and fade, with the API present |
 | `Repeater` | 5, per-row identity | `Combobox.Item`; also needs a `ref`/rest channel regardless |
+
+**The `Internals` column needed a method and did not have one.** It is now: distinct class names in
+the component's sibling stylesheet, **excluding the root and the `--` state modifiers** —
+`grep -oE '\.multiselect[a-zA-Z_-]*' src/components/form/MultiSelect.css | sort -u`, and the same
+shape per component. That reproduces `MultiSelect`'s **10** exactly, which is why it is the method
+stated; under it `ColorPicker` is **12** (not 13) and `CommandPalette` is **10** (not 11), and both
+have been corrected above. `Repeater`'s 5 is a different unit — it has no stylesheet, so it is
+`grep -c 'className={' src/components/form/Repeater.tsx`. **Say which unit a lane-sizing count is
+in**; these two are not comparable.
 
 **`Combobox` was the wrong proving sibling for `MultiSelect`, and the correction changes what a lane
 builds.** The subcomponents exist, but `ComboboxRootProps` has **no required data prop at all** — it
@@ -813,7 +970,11 @@ design with no answer for the filter, the chip labels or the cap. **`SLOT-VOCABU
 function over the root's own filtered list. §13 carries the refutation.
 
 **Severity precision on `Tooltip` and `Repeater`:** a passed `className` is **not** silently dropped
-at runtime — the props types are closed (`Tooltip.tsx:26-38`, `Repeater.tsx:77-127`), so it is a
+at runtime — the props types are closed (`git show 0a61e01:src/components/ui/Tooltip.tsx | sed -n '26,38p'`,
+`git show 0a61e01:src/components/form/Repeater.tsx | sed -n '77,127p'` — both anchors were taken
+there and neither survives Phase 3, which added `className` to both; the live type has moved twice
+since, so read it by name — `sed -n "/^type RepeaterProps/,/^};/p" src/components/form/Repeater.tsx`
+— because adjusting the number is the wrong repair), so it is a
 **TypeScript error**: loud, at compile time. The defect is *"there is no override path"*, not *"the
 override path is broken."* That is the same distinction that sank both Phase 0 claims (§10). Do not
 re-inflate it. (`SLOT-VOCABULARY.md` §15.6 narrows this further: it holds for `Tooltip` and not for
@@ -828,14 +989,14 @@ before a single component's CSS is inlined.**
 
 ### Phase 1 — `@layer components` — ✔ CLOSED
 
-This package's component CSS is in `@layer components`: **43 individual imports** in `src/styles.css`
+This package's component CSS is in `@layer components`: **44 individual imports** in `src/styles.css`
 each carry `layer(components)`, and `tokens.css` deliberately carries none. The aggregate import
 cannot carry it, and that is measured rather than asserted:
 
 ```
 node scripts/probe-cascade-layer.mjs      # first section proves it — the build error IS the pass
   @import "./styles.css" layer(components);  →  Error: `@source` cannot be nested
-grep -c '^@import "\./components' src/styles.css      # 43
+grep -c '^@import "\./components' src/styles.css      # 44
 bun run verify:css-layering                           # asserts the layer keyword on every one
 ```
 
@@ -979,7 +1140,9 @@ by `getComputedStyle` across four emulated environments. It exits non-zero on an
 **Plus `bun run verify:css-layering`, which is the gate the probe cannot be.** The probe strips
 whatever `layer()` `src/styles.css` carries and re-adds its own, so it compares "no layer" against
 "layer" regardless of the real file — delete `layer(components)` from a component import and the
-probe stays green, `typecheck`, `lint` and 2079 tests stay green, and the component silently goes
+probe stays green, `typecheck`, `lint` and **2,547** tests stay green (`npx vitest list | grep -c ' > '`
+— collected cases, which is not the same unit as a runner summary line; the `2079` this sentence
+carried had no command and is superseded), and the component silently goes
 back to beating every caller utility. **Phase 1's whole result was one token repeated on one line per component stylesheet,
 and until this script nothing read those lines.** Made to fail on purpose three ways before being
 trusted: a component import with the keyword removed, `tokens.css` with the keyword added, and the
@@ -1102,23 +1265,38 @@ nothing this package renders can put a class on a `.stagger-item`. **Giving `Sta
 **What would prove Phase 3 wrong:** for each new slot, delete the `cn()` merge and confirm the
 slot-override test reddens. A slot that passes its test with the merge removed is not wired up.
 
-### Phase 4 — a standing convention, **not a campaign**
+### Phase 4 — a standing convention, **not a campaign** — ✔ DELIVERABLE WRITTEN
 
 > **Not "optional polish we'll probably do" — *not a project*.** The rule is: **when you touch a
 > component for another reason, prefer utilities.** No lanes, no sweep, no completion criterion.
 
-The cost/benefit does not survive the numbers: **~1,750 mechanical edits** — §2b's "convert
-mechanically ~80%" against its 2,192 declarations, and that 80% is an estimate, not a measurement —
-to fully delete **7 files, 3.7% of the CSS by line and 5.2% by declaration**, buying consistency
-only, after Phases 1–3 have already delivered every capability. **Both halves shrank when Phase 2
-closed** (the old reading was ~1,800 edits for 5.8% / 7.5%), because Phase 2 took the two files with
-the best ratio in the package: 137 lines and 55 declarations deleted for two lookup tables.
+**Its one deliverable — the CSS/utility boundary written down with its reason — is discharged.** It
+lives in `AGENTS.md` under *"Decision: what stays in CSS, what becomes a utility, and how to tell
+which you are looking at"*: the ruling, the categories that stay with a live instance and a command
+each, the four-question test, and the a11y precedent as its falsifier. **It is authoritative and is
+deliberately not restated here** (`memory/README.md` §20). The reason it was mandatory is unchanged:
+without it the next reader reads the leftover CSS as unfinished work and "finishes" it.
+
+The cost/benefit is why there is no project: **~1,770 mechanical edits** — §2b's "convert
+mechanically ~80%" against its 2,207 declarations, and that 80% is an estimate, not a measurement —
+to fully delete **7 files, 4.0% of the CSS by line and 4.6% by declaration**, buying consistency
+only, after Phases 1–3 have already delivered every capability. **The ratio has moved twice.** Phase
+2 improved it (the pre-Phase-2 reading was ~1,800 edits for 5.8% / 7.5%) by taking the two files with
+the best ratio in the package: 137 lines and 55 declarations deleted for two lookup tables. Phase 3
+worsened it again — the seven grew from 218 lines to 242 while their declarations fell from 113 to
+102, because the opt-in arrow CSS is verbose and the menu split moved declarations *out* of
+`DropdownMenu.css` into a file that is not on this list. **Both halves are re-derived in §2b and this
+sentence does not measure them again.**
+
+> **The *membership* of the seven is a judgement taken at `81888c2` and has not been re-taken.**
+> It is carried forward here because nothing in this phase depends on it, not because it has been
+> re-checked. Two of the seven changed shape underneath it — see §2b's row.
 
 And there is recorded precedent that this exact shape of refactor ships a11y regressions:
 **`memory/traps.md:85-163` records a `1.31:1` focus ring on `<Button variant="danger">`, shipped by
 the pass whose entire purpose was making the focus ring consistent.** A sweep motivated by
 consistency that broke the thing it was making consistent, with every gate green. That is this
-phase's own future, written down in advance.
+phase's own future, written down in advance, and the written decision carries it as its falsifier.
 
 Stop where a wall of utilities would be less legible than the CSS it replaced. `Timeline.css` is the
 clearest case — **§2b measures it once (582 lines, 115 declarations, 50.3% comment) and this sentence
@@ -1126,8 +1304,6 @@ does not measure it again.** The figure that stood here (529 / 114 / 50.9%) was 
 own doc sweep, and two measurements of one file is how a document ends up disagreeing with itself.
 `src/util/focus.ts` already documents itself as the utility-side counterpart to the `:focus-visible`
 rules in component CSS — **a hybrid is this package's established, gated pattern, not a compromise.**
-**Whatever boundary is chosen, write it down as a decision with its reason**, or the next reader will
-read the leftover CSS as unfinished work and "finish" it.
 
 ### Phase 5 — serial cleanup and release
 
@@ -1149,21 +1325,24 @@ opposite of the drift the 14/28 reading was measuring. The historical note stand
 the 21 was the count of files mentioning `unlayered` at all, and the two got conflated.
 
 And **"~20 more are falsified and contain no CSS at all, so a CSS-shaped sweep cannot find
-them" does not hold**: only **2 of 91** component docs contain zero CSS mention (`field.md`,
-`parallax.md`), and neither is on the change list. The real falsified-and-CSS-free set is small
-enough to **enumerate**, and starts with `repeater.md` (0 CSS mentions, 5 internals to restructure)
-and `multi-select.md:45`, which states the *absence* of a subcomponent as design intent — correct
-today, a lie after Phase 3.
+them" does not hold**: only **3 of 91** component docs contain zero CSS mention — `date-picker.md`,
+`field.md` and `repeater.md` (`for f in docs/components/*.md; do grep -qi css "$f" || echo "$f"; done`;
+`ls docs/components/*.md | wc -l` → 91). **The membership moved and the count with it**: the reading
+this sentence carried was 2, naming `field.md` and `parallax.md`, and `parallax.md` has since gained
+a CSS mention while `date-picker.md` and `repeater.md` lost theirs. The real falsified-and-CSS-free
+set is small enough to **enumerate**, and starts with `repeater.md` (0 CSS mentions, 5 internals to
+restructure — `grep -c 'className={' src/components/form/Repeater.tsx` → 5; the two static
+`className="…"` attributes it also carries are the `sr-only` announcer and its wrapper).
+
+**The other half of that sentence has been discharged and moves to §13**: `multi-select.md:45` stated
+the *absence* of a subcomponent as design intent, and the page now records that as a superseded
+earlier version.
 
 Why this matters beyond bookkeeping: `memory/README.md` §16 — prose describing a footgun reads as a
 *decision*, and the next reader treats the workaround as the API. Answer the prose; do not delete it.
 
-**Terminology collision this plan creates.** `AGENTS.md:390` says *"Always wrap classNames with
-`cn(...)`"*, using **"classNames" as a plural noun**. Once §4a ships a prop called `classNames`, that
-sentence instructs readers to do the exact thing §4a prevents. Reword to "class strings."
-
-**`classPrefix` has zero documentation** (`grep -rl classPrefix docs` → 0), so deleting it needs no
-doc sweep — but it also means a public prop shipped undocumented. Decide whether it was ever public.
+**The terminology collision this plan created is closed**, and the `classPrefix` doc question with
+it. Both were discharged in Phase 3; §13 carries the outcomes and the commands that show it.
 
 **Release shape: ship per phase.** "Each phase is independently shippable" and "one deliberate
 `0.12.0`" cannot both hold, and the breaking surface is too large for one minor anyway: compound
@@ -1183,7 +1362,7 @@ is.
 | **1 ✔ CLOSED** | §3a recorded in `AGENTS.md`; `probe:cascade-layer` shows **zero regressions and zero inert rows** (accepted deltas allowed, each pinned to its `expectAfter`); the property-intersection search recorded with direction per rule; `src/styles.css` owned by this one commit — **and with it `Grid.tsx`'s `import "./Grid.css"`**, because a stylesheet reached through the JS graph is injected unlayered and defeats the file's entire purpose for that one component; **and the two gates that make the result assertable**, `verify:no-css-imports` (the JS door) and `verify:css-layering` (the registry door) | yes — and it alone made `<StatCard className="flex-row">` work |
 | **2 ✔ CLOSED** | `Grid.css` deleted; `MasonryGrid.css` deleted (its gap already landed — §3b); `columns={7}` proven to be a type error rather than a silent 1-column fallback, **and** proven to still land on the base cell when it arrives from untyped JS; **every deleted declaration accounted for by name** (item 2 below applies to Phase 2 as much as to 3/4); **and the computed-style measurement, because a class string is the input and not the outcome** — one Tailwind build carrying the deleted stylesheet and the new utilities, both markups on one page, `getComputedStyle` diffed across viewport widths, with the "after" string taken from the component and **the deleted stylesheet's selectors renamed in the probe's copy** so §12's retained marker class cannot leak declarations onto the new side (§6 Phase 2). A teeth-check passing does **not** clear that trap | yes |
 | **3** | items **3–9** below, per component; slot vocabulary frozen first (§10, `SLOT-VOCABULARY.md`) | yes, per family |
-| **4** | items 1–5 below, per file; the CSS/utility boundary written down with its reason | yes, per file — **and abandonable at any point** |
+| **4** | items 1–5 below, per file. **Its one non-per-file deliverable — the CSS/utility boundary written down with its reason — is ✔ done**, in `AGENTS.md` under *"Decision: what stays in CSS, what becomes a utility, and how to tell which you are looking at"*; that section is authoritative and §6 does not restate it | yes, per file — **and abandonable at any point** |
 
 > **"Green" now means zero regressions and zero inert rows — not zero changes.** §3a accepted one
 > measured change, so the probe has an `expectAfter` + `accepted` mechanism. Two things to hold onto:
@@ -1213,26 +1392,38 @@ is.
    from the annotation.
 4. **House rule**: `className` → outermost element; `...props` → the focusable control (§4b).
 5. **`cn()` wherever a caller `className` can arrive.** *Not* "no bare-string classNames anywhere."
-   **The two readings differ by two orders of magnitude and only one is a house pattern:**
+   **The two readings differ by more than an order of magnitude and only one is a house pattern:**
 
    ```
-   grep -rn 'className: "' src --include=*.tsx | grep -v '\.test\.\|\.examples\.' | wc -l   # 3
+   grep -rn 'className: "' src --include=*.tsx | grep -v '\.test\.\|\.examples\.' | wc -l   # 0
    ```
 
-   Exactly **3** in production — `MultiSelect.tsx:337`, `:370`, `ColorPicker.tsx:289` — all the
-   props-getter object-literal form, and all deliberate. The broad reading is two orders of magnitude
-   larger:
+   **Zero** in production. The three this item used to name — `MultiSelect.tsx:337`, `:370`,
+   `ColorPicker.tsx:289` — were the props-getter object-literal form with a *string* initialiser, and
+   Phase 3 converted every one to `cn(…)`. The form itself has not gone away: there are **6**
+   props-getter sites, all `className: cn(…)`, and §8's gate names them in its own output because it
+   structurally cannot see them. **That is why this grep was always the wrong instrument** — it
+   matched only string literals, so it under-reported the shape it was pointing at even when it
+   returned 3.
+
+   ```
+   bun run verify:slot-annotations | sed -n '/BLIND SPOT/,/^$/p'   # names all 6, with file:line
+   ```
+
+   The broad reading is still an order of magnitude larger:
 
    ```
    grep -rno 'className="[^"{]*"' src/components --include=*.tsx \
-     | grep -v '\.test\.\|\.examples\.' | wc -l          # 238, across 50 files
+     | grep -v '\.test\.\|\.examples\.' | wc -l          # 98, across 34 files
    ```
 
-   Led by `FileUpload` (36), `CalendarBase` (15), `CommandPalette` (11), `ColorPicker` (11).
-   **Never generalise the 3 into "a small containable pattern," and never sweep the ~238 as if it
-   were the defect** — most of them are on internal elements no caller `className` reaches, which is
-   triage (a). The requirement is item 3, reachability; `cn()` is how you satisfy it once a seam
-   exists.
+   Led by `FileUpload` (21), `DataTable` (8), `Toast` (6), `Rating` (6). It was **238 across 50
+   files** at `0a61e01`; Phase 3 more than halved it by giving the internals `classNames` merges.
+   **This one moves under active Phase 3 lanes** — it read 97/33 an hour earlier in the same session
+   — so re-run it rather than quoting the figure. **Never generalise the props-getter sites into "a
+   small containable pattern," and never sweep the ~98 as if it were the defect** — most of them are on internal elements no caller `className`
+   reaches, which is triage (a). The requirement is item 3, reachability; `cn()` is how you satisfy it
+   once a seam exists.
 6. **Tokens**: §4c applied. Retained tokens documented as public; no themeable default written as an
    inline arbitrary property (§4d).
 7. **Tests**: class-asserting tests updated, **plus one slot-override test per slot-bearing
@@ -1242,7 +1433,7 @@ is.
    fence swallows every heading and fence up to the next example's closing fence, and the only signal
    is an `unused example` error naming a *different* example. Put a placeholder line in a new fence
    and diff the page's heading list afterwards.
-9. **Gates green**: `typecheck`, `lint`, `test`, and all **12** `verify:*` — the count is
+9. **Gates green**: `typecheck`, `lint`, `test`, and all **13** `verify:*` — the count is
    `node -e 'console.log(Object.keys(require("./package.json").scripts).filter(s=>s.startsWith("verify:")).length)'`,
    not a memory. Plus `probe:cascade-layer` at zero regressions and zero inert for anything
    CSS-shaped.
@@ -1252,7 +1443,12 @@ is.
     an `@import` pointing at a missing file does not compile, so "untouched" and "Phase 2" are not
     both satisfiable. That is the whole carve-out — remove the line, change nothing else, and
     `verify:css-layering`'s headline count moves by exactly the number of files deleted. It moved
-    45 → 43 in Phase 2, which is the shape of a legitimate edit here; any other movement is not.
+    45 → 43 in Phase 2, which is the shape of a legitimate edit here. **The mirror-image edit is also
+    legitimate and has now happened**: Phase 3 split the shared menu sheet out, adding
+    `menu-internals.css` and one `@import` line, so the headline moved 43 → 44. Both directions are
+    "one line per file, nothing else changed" — `for s in 81888c2 0a61e01 HEAD; do git show
+    $s:src/styles.css | grep -c '^@import "\./components'; done` → 45, 43, 44. Any movement that is
+    *not* a file appearing or disappearing is not.
 11. **Cross-lane seam pass.** After a family's lanes merge, one pass re-reads the *seams between*
     them — a slot named consistently inside two lanes can still disagree across them, and each
     lane's gates were green. Precedent: `memory/README.md` §14.
@@ -1275,14 +1471,36 @@ you have established what that tab does on a clean checkout.
 | Gate | Asserts | Status |
 | --- | --- | --- |
 | `probe:cascade-layer` | Two CSS builds differing only by `layer(components)` produce identical computed styles across four emulated environments — **except** rows carrying an owner-accepted `expectAfter`, which are pinned to their decided value | **Built**, **19 rows** (3 accepted + 16 verified). Not in `prepublishOnly` — it needs Playwright and two vite builds; run on demand and in any PR touching CSS. **It cannot see whether `src/styles.css` still says `layer(components)`** — see the two rows below. |
-| `verify:css-layering` | Every `@import "./components/*.css"` in `src/styles.css` carries `layer(components)`, `tokens.css` carries none, and an import it cannot classify is a failure rather than a skip | **Built**, in `prepublishOnly`. ~130 lines, no allowlist. It exists because Phase 1's entire result is one keyword repeated on one line per component stylesheet (43 today) and **nothing read those lines**: the probe strips whatever `layer()` is there and adds its own, and jsdom applies no stylesheets, so a one-line deletion reverted the phase with every other gate green. Made to fail on purpose three ways. |
+| `verify:css-layering` | Every `@import "./components/*.css"` in `src/styles.css` carries `layer(components)`, `tokens.css` carries none, and an import it cannot classify is a failure rather than a skip | **Built**, in `prepublishOnly`. ~130 lines, no allowlist. It exists because Phase 1's entire result is one keyword repeated on one line per component stylesheet (44 today) and **nothing read those lines**: the probe strips whatever `layer()` is there and adds its own, and jsdom applies no stylesheets, so a one-line deletion reverted the phase with every other gate green. Made to fail on purpose three ways. |
 | `verify:no-css-imports` | No `.ts`/`.tsx` under `src/` imports a `.css` file | **Built**, in `prepublishOnly`. The other door into the same invariant: a stylesheet reached through the JS graph is injected **unlayered**, out-ranks `@layer components`, and the probe — which builds no JS — reports the layering healthy while the real bundle disagrees. That was live in `Grid.tsx`. |
-| `verify:token-mirror` | Every `@theme inline` name in `tokens.css` appears in `createCn`'s list in `src/util/style.ts` | To build, ~20 lines. The one remaining silent-drift risk: tailwind-merge's arbitrary-property and standard class groups are generic, so a **named token value** added to `tokens.css` and not to `createCn` is the only real drift. Gate that and nothing more. |
+| `verify:token-mirror` | Every name declared in **any `@theme` block under `src/`** appears in `createCn`'s theme lists in `src/util/style.ts`, **and the reverse** — a name in `createCn` that no `@theme` block declares is also a failure. Namespace-aware: each `@theme` name is split into its Tailwind namespace and resolved against a tailwind-merge theme key, longest-prefix-first, with the 19 namespaces read at runtime from the installed `getDefaultConfig().theme` rather than transcribed; a name matching no namespace fails rather than being skipped | **Built**, in `prepublishOnly`. No allowlist; zero blocks and zero checked names are both failures. Made to fail on purpose seven ways. Headline: `bun run verify:token-mirror` → `OK (9 @theme name(s) in src/tokens.css, all mirrored in createCn, none stale; 1 namespace(s): color)`. **Its stated rationale was wrong and the row below records why** — the gate is right, the reason given for it was not. |
 | `verify:slot-annotations` | Every `className` JSX attribute in production `src/` is either **reachable** (its initialiser mentions `className` or `classNames?.`) or **annotated** `// slot:(a\|b\|e) <reason>`. Anything else — including anything the parser cannot classify — fails. | **Built**, in `prepublishOnly`. No allowlist. Zero annotated sites is a failure, so it cannot pass vacuously. |
+
+> **`verify:token-mirror`'s stated rationale is refuted by measurement, and the gate survives it.**
+> This section used to say that *"tailwind-merge's arbitrary-property and standard class groups are
+> generic, so a **named token value** added to `tokens.css` and not to `createCn` is the only real
+> drift. Gate that and nothing more."* **For the only namespace this package currently uses, that is
+> false.** tailwind-merge's default `color` scale accepts anything, so `createCn()` and
+> `createCn({theme:{color:[…the 9 names…]}})` produce identical output on every colour pair tried —
+> **8,640 pairs, 0 differences** (16 colour-taking prefixes × the 9 tokens × 20 neighbours, both
+> orders, plus a variant-scoped form). What makes that a finding rather than a null result is the
+> controls: the default `spacing` and `text` scales are *not* generic, so
+> `cn("p-gutter","p-r3")` and `cn("text-display","text-fg-primary")` genuinely do merge differently
+> with and without their theme entry. **The honest statement is: the mirror is load-bearing for any
+> non-colour namespace, and documentation-grade for `color`.** The drift named above is not the drift
+> that exists. §13 carries the row.
+>
+> ```
+> node -e 'const{getDefaultConfig}=require("tailwind-merge");console.log(Object.keys(getDefaultConfig().theme).length)'   # 19 namespaces
+> # then diff createCn() against createCn({theme:{color:[…]}}) over the colour cross-product,
+> # with p-gutter/p-r3 and text-display/text-fg-primary as the two controls that must differ
+> ```
 
 **The letter set is a rule, not a list.** The gate settles on `(a)`, `(b)` and `(e)` and **rejects `(c)`, `(d)`, `(f)` by name**, because the question each letter answers is *does the consumer's need have a route somewhere other than this attribute?* — (a) none is owed, (b) a custom property, (e) a `render*` prop. The other three all **end** in a `className` merge, here or at a subcomponent, so a settled one is already *reachable* and a comment claiming otherwise is refuted by the code. That decides letters nobody has invented yet, which an enumerated allowlist could not.
 
-**What it cannot do, and the docblock says so at every run:** reachability is a **name match on the attribute initialiser, not data flow** — `const cls = cn("x", className)` then `className={cls}` reads unreachable (a loud false alarm), and `const className = "static"` in scope reads reachable (the one **silent** false pass). The **props-getter form is invisible** to it — `className:` inside an object literal is not a `JsxAttribute`; there are **6** such sites, named in its own output, and §7 item 5's "exactly 3" is wrong because that grep matches only string-literal initialisers. And it cannot tell an honest `(a)` from a lazy one: `// slot:(a) static class` passes. **The reason has to say what a consumer would break by getting a route** — that stays a review question, and no gate can read it.
+**What it cannot do, and the docblock says so at every run:** reachability is a **name match on the attribute initialiser, not data flow** — `const cls = cn("x", className)` then `className={cls}` reads unreachable (a loud false alarm), and `const className = "static"` in scope reads reachable (the one **silent** false pass). The **props-getter form is invisible** to it — `className:` inside an object literal is not a `JsxAttribute`; there are **6** such sites, named in its own output, and §7 item 5's grep could never have counted them because it matches only string-literal initialisers (it returned "exactly 3" then and returns 0 now, while the shape it was pointing at has been 6 sites throughout — the same 6 at `81888c2`, `0a61e01` and HEAD). And it cannot tell an honest `(a)` from a lazy one: `// slot:(a) static class` passes. **The reason has to say what a consumer would break by getting a route** — that stays a review question, and no gate can read it.
+
+**Current reading:** `bun run verify:slot-annotations` → `435 className attributes under src/ — reachable: 332  annotated: 103 (a:78 b:6 e:19)  failing: 0`.
 
 > **The two built rows above are the same lesson twice, and it is worth naming.** Both gates guard
 > one invariant — *this package's CSS reaches the bundle exactly once, through `src/styles.css`, in
@@ -1294,10 +1512,22 @@ you have established what that tab does on a clean checkout.
 
 ### Why `verify:slot-reachability` was re-scoped
 
-Written literally — "every class literal must be reachable" — it fails ~300 of 478 literals and needs
-an allowlist roughly **twice the size of the clean set it guards**, which is the exact anti-pattern
-`verify-focus-affordance.mjs`'s own header warns against. The flaw is conceptual: it conflates two
-questions.
+Written literally — "every class literal must be reachable" — it failed **274 of 425** `className`
+JSX attributes at the tree it was designed against, and needed an allowlist roughly **twice the size
+of the clean set it guards**, which is the exact anti-pattern `verify-focus-affordance.mjs`'s own
+header warns against. The flaw is conceptual: it conflates two questions.
+
+> **The "~300 of 478 literals" this paragraph carried does not reproduce, and it is dropped.** Under
+> the shipped gate's own method — `node scripts/verify-slot-annotations.mjs <root>`, which takes a
+> root argument, so it runs against `git archive 0a61e01 src` unmodified — the pre-Phase-3 reading is
+> `425 className attributes, reachable: 151, failing: 274`, identical at `81888c2`. No method tried
+> here yields 478; "class literals" and "`className` attributes" are different units (one attribute
+> can hold several literals) and the plan never said which it meant. **The argument does not depend
+> on the figure** — 274 against 151 is the same 2:1 shape the sentence rests on. That shape has since
+> inverted, and it inverted *because the prescribed order was followed*: at HEAD the gate reports
+> **332 reachable against 103 annotated**, because step (1) below — ship `classNames` — happened.
+> The literal gate would now need an allowlist a third the size of the clean set, and it is still the
+> wrong gate for the reason given below rather than for the ratio.
 
 | Question | Decidable by a parser? |
 | --- | --- |
@@ -1308,19 +1538,10 @@ Feasible order: **(1)** ship `classNames`; **(2)** land the triage as source ann
 judgement is recorded where the element is; **(3)** gate the decidable half. That gate is small, has
 no allowlist, and cannot be satisfied by a lie.
 
-**It needs class literals to be statically visible, so the runtime-built names must go.**
-`menu-internals.tsx` emits five template-concatenated literals (`:288, :346, :368, :388, :408`), and
-**`:368` is worse than its siblings** — a bare `` `${classPrefix}-item-icon` `` with no `cn()` and no
-`className` parameter, so by §5's own discriminator it is the only one of the five with *no override
-path at all*. Meanwhile `classPrefix` is a **generalisation with one value** (`DropdownMenu.tsx:26`
-and `ContextMenu.tsx:25` both set `"dropdown-menu"`) and is **already violated**:
-`ContextMenu.tsx:81` hardcodes `"context-menu-trigger"`, a class **no CSS file defines** — so
-`ContextMenu` currently emits `dropdown-menu-*` styles plus one orphan class, and anyone styling it
-from CSS is targeting classes named after the wrong component. **Delete the mechanism**; use static
-shared names and `classNames` for per-instance override. **The names are `SLOT-VOCABULARY.md` §8.2's,
-not this paragraph's earlier guess** — it found two errors in the list that stood here, including
-`menu-separator`, which contradicts the package-wide ruling that the word is **`divider`** (§8.5
-there, and owner ruling 3 in §10 here).
+**It needs class literals to be statically visible, so the runtime-built names had to go — and they
+have.** `grep -rn classPrefix src` returns **0**: the mechanism is deleted, `menu-internals.tsx`
+emits five static `menu-*` literals, and `menu-internals.css` defines them. The names are
+`SLOT-VOCABULARY.md` §8.2's. §13 carries the outcome and the anchors, which are all dead.
 
 ### What a green gate here does not mean
 
@@ -1349,17 +1570,24 @@ same 95 modules §2c counts. Take the family list from there, not from the four 
 
 | Cluster | Why |
 | --- | --- |
-| `CalendarBase` + `Calendar` + `RangeCalendar` + `DatePicker` + `DateRangePicker` | `CalendarBase` owns 15 internal classes all four consume |
+| `CalendarBase` + `Calendar` + `RangeCalendar` + `DatePicker` + `DateRangePicker` | `CalendarBase` owns **16** internal classes all four consume (`grep -oE '\.calendar[a-zA-Z-]*' src/components/ui/CalendarBase.css \| sort -u \| wc -l` → 17, minus `.calendar` itself; the "15" this row carried is the §5 arithmetic that does not re-derive) |
 | `Table` + `DataTable` + `VirtualizedDataTable` | `VirtualizedDataTable.css` selectors reach **into `Table`'s markup** |
-| `menu-internals.tsx` + `DropdownMenu` + `ContextMenu` | shared `classPrefix` literals (§8) |
+| `menu-internals.tsx` + `DropdownMenu` + `ContextMenu` | shared `menu-*` literals in `menu-internals.css` (§8; it was `classPrefix` before Phase 3 deleted the mechanism) |
 | `Avatar` + `AvatarGroup` + `AvatarUpload` | `AvatarUpload` overrides the inner `Avatar`'s className |
 | `Sparkline` + `StatCard` | `StatCard.Sparkline` wraps `Sparkline` |
 
-Softer affinity, worth keeping together for convention consistency: the 16 modules importing
-`src/util/focus.ts`.
+Softer affinity, worth keeping together for convention consistency: the **16** modules under
+`src/components` importing `src/util/focus.ts` —
+`grep -rl 'util/focus' src/components --include=*.tsx --include=*.ts | wc -l`. **State which 16**:
+that reading includes three `*.test.tsx`; the production-module reading is **13**
+(`… | grep -v '\.test\.'`). Both are stable across `81888c2`, `0a61e01` and HEAD. **Do not drop the
+`--include`** — three `.css` files mention `util/focus` in comments, and without it the same grep
+returns 19.
 
-**Size lanes by declaration count, not component count.** `FileUpload` is 53 rules; `Tooltip` is 1.
-An over-stuffed lane is where a verifier starts rubber-stamping.
+**Size lanes by declaration count, not component count.** `FileUpload` is 53 rules and 208
+declarations; `Tooltip` is 6 rules and 24 (it was 1 rule and 10 declarations before owner ruling 4's
+arrow landed there — `git show 0a61e01:src/components/ui/Tooltip.css`). An over-stuffed lane is where
+a verifier starts rubber-stamping.
 
 **Use `isolation: "worktree"` per lane.** Five agents in one tree each running `typecheck` will see
 each other's half-finished edits and chase phantom failures.
@@ -1376,9 +1604,13 @@ most of its inflated numbers. This document's own history is the case study.
 
 ## 10. ▲ ONE-WAY DOOR: slot vocabulary — ✔ FROZEN in `SLOT-VOCABULARY.md`
 
-Freeze this before any fan-out. `grep -rn classNames src/components` returns **zero**, so this *is*
-the whole public API — greenfield, and permanent once shipped. Five agents inventing names in
-parallel would produce `wrapper`/`container`/`outer`/`root`/`box` for one concept.
+Freeze this before any fan-out. When this section was written `grep -rn classNames src/components`
+returned **zero**, so the vocabulary was the whole public API — greenfield, and permanent once
+shipped. Five agents inventing names in parallel would have produced
+`wrapper`/`container`/`outer`/`root`/`box` for one concept. **That grep now returns ~800 and climbs
+while Phase 3 lanes land** (806 at the time of writing): the
+vocabulary is frozen and Phase 3 is spending it, so the freeze is a constraint on new names rather
+than a description of an empty field. §13 carries the row.
 
 > **`SLOT-VOCABULARY.md` is the contract; this section is the summary that produced it.** Every
 > name, every per-family table, the ban list with each reason re-verified at source, and eleven
@@ -1396,7 +1628,7 @@ deliberately not restated.**
 | 1 | **`MultiSelect` becomes a compound** — `.Content` / `.Item` / `.ItemIndicator` / `.Empty` / `.Tag` / `.TagRemove`, render-prop-shaped so `options` stays the sole writer of the data. | **Reverses the "zero (d)" implication of §5's triage.** The `CLAUDE.md` rule 3 objection is engineered around, not waived. **`MultiSelect`'s `item` / `panel` / `empty` slots must not ship** — §1.5a there makes subcomponent and slot mutually exclusive. `SLOT-VOCABULARY.md` §10.1, §7.1, §11. |
 | 2 | **`CommandPalette` also becomes a compound**, for consistency: one anatomy under one mechanism. | Closes the second item its §14.2 lists as open. `SLOT-VOCABULARY.md` §10.2. |
 | 3 | **`Breadcrumbs.Separator` → `.Divider`; `DropdownMenu.Label` / `ContextMenu.Label` → `.GroupHeader`.** | Both are breaking renames and both move an internal identity check, not just a name. `label` stays **hard-banned** as a slot name in every family. `SLOT-VOCABULARY.md` §8.5, §8.8. |
-| 4 | **`arrowRef` is covered** — the arrow element is actually rendered, behind an opt-in `arrow` prop on the floating surfaces. | **Reverses the ban below**, whose stated reason was that no such element is rendered. The name is **narrowed, not un-banned**: still banned for a direction control, granted to the floating-surface pointer. **`docs/components/popover.md:85` becomes a *false cannot* the moment this ships** — `memory/README.md` §21, the worst doc-rot shape. `SLOT-VOCABULARY.md` §4, §3.3. |
+| 4 | **`arrowRef` is covered** — the arrow element is actually rendered, behind an opt-in `arrow` prop on the floating surfaces. | **Reverses the ban below**, whose stated reason was that no such element is rendered. The name is **narrowed, not un-banned**: still banned for a direction control, granted to the floating-surface pointer. **`docs/components/popover.md` would have become a *false cannot* the moment this shipped** — `memory/README.md` §21, the worst doc-rot shape — and it did not: the page documents the arrow (`grep -n 'The arrow' docs/components/popover.md`). The `:85` this row cited is now the `arrow()` middleware bullet. `SLOT-VOCABULARY.md` §4, §3.3. |
 | 5 | **`MultiSelectOption` / `CommandItem` are being harmonised** before Phase 3 authors the compound props types. | Ruling 1 makes the type name *more* public, not less — it moves from a data-prop element type to a subcomponent prop type. Do it first or the rename gets more expensive. `SLOT-VOCABULARY.md` §14.2. |
 
 **Banned names, with reasons. This list matters as much as the chosen names.**
@@ -1416,20 +1648,22 @@ deliberately not restated.**
 | **`label`** | **Hard flag.** `*Label` props already mean *accessible name*, and there are **30 distinct ones**, not the handful previously listed — `grep -rhoE '^\s+[a-z][a-zA-Z]*Label\?:' src/components \| sort -u`. It also collides with the exported `Label` component (`form/index.ts:48`). |
 | `chip` | `TagInput`'s public vocabulary is already "tag" (`maxTags`, `validateTag`, `TagRejection`). |
 | `adornment`, `prefix`/`suffix` | MUI vocabulary; these elements are `icon` + `affordance` here. |
-| `announcer` | `sr-only role="status"` regions (`TagInput.tsx:471`, `Repeater.tsx:308`). Exposing invites a consumer to drop `sr-only`. Triage **(a)**. |
+| `announcer` | `sr-only role="status"` regions — one each in `TagInput.tsx` and `Repeater.tsx` (`grep -rn 'role="status"' src/components/form/TagInput.tsx src/components/form/Repeater.tsx`; cited as `TagInput.tsx:471` and `Repeater.tsx:308`, both rotted in Phase 3). Exposing invites a consumer to drop `sr-only`. Triage **(a)**. |
 | `arrow` | **Narrowed by owner ruling 4, not lifted.** The stated reason — *"no such element is rendered"* — was false twice over: `Carousel` renders `.carousel-arrow` today, and the floating surfaces render one under ruling 4. It stays banned as a name for a **direction control** (use `prev`/`next`/`first`/`last`) and is granted to the **floating-surface pointer**. |
-| `backdrop`/`scrim` | `::backdrop` takes no class. **(b) token** — `--OVERLAY-SCRIM-COLOR` exists in `response-ui-css/src/tokens/overlay.css:2`. |
+| `backdrop`/`scrim` | `::backdrop` takes no class. **(b) token** — `--OVERLAY-SCRIM-COLOR` exists in `response-ui-css/src/tokens/overlay.css:2` (still exact). |
 | `header`/`footer`/`closeButton` | **Overlay family only — see `SLOT-VOCABULARY.md` §3.5, which is authoritative.** The reason is a fact about `Dialog`/`Drawer` (they render `{children}` only, so that structure is consumer-supplied), not about the words: `CalendarBase`, `CodeBlock` and `Wizard` each render a real header/footer element and each legitimately names it. Three lanes reached that independently. |
 
 ¹ `box` is permitted for exactly one thing: `OTPInput`'s N homogeneous entry boxes.
 
 > **`arrowRef` is public API, not dead code — and owner ruling 4 has now chosen "cover it".**
-> `use-floating.ts:17,23,29` wires the floating-ui `arrow` middleware behind it, nothing in this
-> package passed it, *and* `useFloating` is exported (`src/hooks/index.ts:10` → `src/index.ts`) with
-> the option documented at `docs/components/popover.md:85`. A consumer can activate it. Deleting it
-> would have been a **breaking change**, not a dead-code removal; the choice was cover it or document
-> it as unsupported, and it is covered. **The doc sentence that says there is no arrow element must
-> be rewritten in the same commit that ships the arrow**, or the package ships a false cannot.
+> `grep -n 'arrow' src/hooks/use-floating.ts` (cited as `:17,23,29`; the import, the `arrowRef`
+> option and the middleware wiring have all moved) wires the floating-ui `arrow` middleware behind
+> it, nothing in this package passed it, *and* `useFloating` is exported (`src/hooks/index.ts:10` →
+> `src/index.ts`; still exact) with the option documented in `docs/components/popover.md` (cited as
+> `:85`). A consumer can activate it. Deleting it would have been a **breaking change**, not a
+> dead-code removal; the choice was cover it or document it as unsupported, and it is covered. **The
+> doc sentence that said there is no arrow element has been rewritten** — the page now documents the
+> `arrow` prop and `classNames.arrow` — so the false cannot did not ship. §13 carries the row.
 
 **Cross-family collision, settled:** the menus call the leading glyph `item-icon`, the form family
 proposed `itemIndicator` for the check mark, and `SearchInput`/`Toast` use `icon` for a leading
@@ -1469,6 +1703,29 @@ and got the `SearchInput`/`Toast` half wrong. Take the names from there.
 
 ### Recorded follow-ups (do not fix here)
 
+- **The wrapper/inner silent residue is a three-component question, and no `Omit` answers it.**
+  `MediaCard.Image`, `Hero.Background` and `Spotlight.Image` share one shape:
+  `Omit<ComponentPropsWithRef<"div">, "children">` on the box plus an `imgProps` bag for the
+  `<img>`. Every `<img>`-exclusive attribute is a loud call-site error (`loading`, `srcSet`,
+  `sizes`, `decoding`, `fetchPriority`, `crossOrigin`, `referrerPolicy`, `useMap`, `width`,
+  `height` — measured by compiling a throwaway `.tsx` under the project `tsc`, not by reasoning).
+  Every prop legal on **both** elements still compiles and addresses the box: `className`,
+  `style`, `ref`, `onLoad`/`onError`, `id`/`title`/`aria-*`.
+
+  **`ref` is the only genuine defect, and it is unreachable by any props type.**
+  `RefObject<HTMLImageElement>` is assignable to `Ref<HTMLDivElement>` because `HTMLDivElement`
+  adds only the deprecated `align` over `HTMLElement`, so a caller silently holds the wrong
+  element and reads `undefined` off it. `Omit` cannot close it — `Omit` is compile-time only and
+  leaks through spreads (§4a reason 2), so `<MediaCard.Image {...bag} />` would still deliver the
+  prop silently.
+
+  **Do not classify this as "the override path is broken" (§5).** `imgProps` is a complete working
+  route, and `onLoad`/`onError` re-pointed to the box still **fire**: React attaches a listener
+  for these non-delegated events directly to the target element and dispatches up its own fiber
+  tree, so only `event.currentTarget` changes — and reading `.naturalWidth` off it is itself a
+  compile error. Pinned by `MediaCard.test.tsx`. If this is ever taken it is one decision across
+  all three components, and it needs a mechanism `Omit` does not provide.
+
 - **▲ Two foundation-side fixes for Phase 1, both cheaper than what shipped, both out of bounds.**
   Recorded so nobody reads the in-package answers as the only possible ones — and so nobody takes
   them without a decision, because `memory/README.md` §6's boundary was crossed once and reverted in
@@ -1484,23 +1741,47 @@ and got the `SearchInput`/`Toast` half wrong. Take the names from there.
 
   Both would need a `response-ui-css` release and a dependency bump here (`CLAUDE.md`'s one-way
   dependency rule), which is the real price and is not a design input.
-- **One rule-width scale** (~5 sites, the rail family: `--_timeline-line-width`,
+- **One rule-width scale** (5 tokens, the rail family: `--_timeline-line-width`,
   `--_timeline-highlight-ring`, `--_stepper-line-width`, `--_activity-feed-line-width`,
-  `--_activity-feed-highlight-ring`, plus `3px` for the table marker) **and, separately, a
-  focus-ring-width question** (~76 sites). Two different concepts sharing a literal; §3a touches the
-  second directly. Do not merge them.
-- **No overlay z-index scale.** `Popover.css:17` = 40, `DropdownMenu.css:18` = 40, `Tooltip.css:11` =
-  50, `ToastContext.tsx:212` = `z-50`, and `HoverCard` sets **nothing** (no `HoverCard.css` at all).
-  Four values, one absence, no shared contract. Needs one `--OVERLAY-Z-*` scale in `response-ui-css`.
-- **`AGENTS.md:392` is false about `Repeater`.** It claims `Repeater` is "a plain function component
-  taking React 19's `ref` prop." `RepeaterProps` (`Repeater.tsx:77-127`) is a closed type ending at
-  `className?: string` — no `ref`, no `ComponentProps` intersection, no rest spread, and the
-  signature destructures none. `<Repeater ref={…}>` is a type error. **Check `DataTable` and
+  `--_activity-feed-highlight-ring` — all five still `2px` — plus `--_table-marker-width: 3px`
+  for the table marker) **and, separately, a focus-ring-width question.** Two different concepts
+  sharing a literal; §3a touches the second directly. Do not merge them.
+
+  **The "~76 sites" this bullet carried is dropped — no method reproduces it.** The reproducible
+  readings, both stated with their method: **41** ring-width sites (32 `outline: 2px` declarations in
+  CSS plus 9 `outline-2`/`ring-2` utilities in production `.ts`/`.tsx`), or **62** if the 21
+  `outline-offset: 2px` declarations are counted as the same literal, which is a different concept
+  and probably should not be.
+
+  ```
+  grep -rn 'outline: 2px' src --include=*.css | wc -l                              # 32
+  grep -rno 'outline-2\|ring-2\b' src --include=*.ts --include=*.tsx \
+    | grep -v '\.test\.' | wc -l                                                   #  9
+  grep -rn 'outline-offset: 2px' src --include=*.css | wc -l                       # 21
+  grep -rn -- '--_timeline-line-width:\|--_timeline-highlight-ring:\|--_stepper-line-width:\|--_activity-feed-line-width:\|--_activity-feed-highlight-ring:\|--_table-marker-width:' src   # 6
+  ```
+- **No overlay z-index scale.** `Popover.css:17` = 40, `menu-internals.css:15` = 40 (it was
+  `DropdownMenu.css:18` before Phase 3 split the menu sheet out), `Tooltip.css:11` = 50,
+  `grep -n 'z-50' src/components/ui/ToastContext.tsx` (cited as `:212`), and `HoverCard` sets
+  **nothing** (no `HoverCard.css` at all). Four values, one absence, no shared contract. Needs one
+  `--OVERLAY-Z-*` scale in `response-ui-css`. Re-derive the whole set with
+  `grep -rn 'z-index' src --include=*.css` rather than trusting the four.
+- **`AGENTS.md` is false about `Repeater`.** The sentence — *"`DataTable`, `VirtualizedDataTable`,
+  `Repeater` and `AvatarUpload` are plain function components taking React 19's `ref` prop"* — is at
+  `grep -n "React 19's \`ref\` prop" AGENTS.md` (cited as `:392`; the file grew and it is now further
+  down). `RepeaterProps` (`grep -n 'type RepeaterProps' src/components/form/Repeater.tsx`; cited as
+  `Repeater.tsx:77-127`; read it by name with
+  `sed -n "/^type RepeaterProps/,/^};/p" src/components/form/Repeater.tsx`, since the end line has
+  moved twice this phase and chasing it is the wrong repair) is still a closed type — no `ref`, no
+  `ComponentProps` intersection, no rest spread, and the
+  signature destructures none. `<Repeater ref={…}>` is a type error. **The false sentence in
+  `AGENTS.md` has been corrected**; what stays out of scope is *giving `Repeater` a `ref`*.
+  **Check `DataTable` and
   `VirtualizedDataTable` against that same sentence before trusting it** — `AvatarUpload` does
   document its `ref`, so the bullet is only partly wrong.
-- **Verbatim duplication:** `TagInput.tsx:463` duplicates `date-picker-internals.ts:69`
-  (`"mt-r6 text-body-3 text-status-error"`). `DatePicker` and `DateRangePicker` both import the
-  constant; TagInput is the sole drifter. Import it.
+- **Verbatim duplication:** `grep -n 'mt-r6 text-body-3 text-status-error' src/components/form/TagInput.tsx`
+  (cited as `:463`) duplicates `date-picker-internals.ts:69` (still exact).
+  `DatePicker` and `DateRangePicker` both import the constant; TagInput is the sole drifter. Import it.
 - **`Dialog` and `Drawer` are near-identical twins with divergent mechanisms** — `Dialog` fully
   inlined with a `backdrop:` utility and `animate-fade-in`; `Drawer` a 125-line CSS with
   `@starting-style` + `allow-discrete`; `CommandPalette` uses `@keyframes` for the same job. Three
@@ -1539,13 +1820,14 @@ class that styles nothing — both Phase 2 components carry that comment.
 
 | Claim | Outcome | Where the reasoning lives |
 | --- | --- | --- |
-| `AppShell.tsx:396` overwrites the consumer icon's `className` | **Refuted.** `icon` is `LucideIcon` — a *component*, not an element — so the class is handed over as a prop and there is nothing to overwrite. The prescribed `cn()` fix is a provable no-op. | `bugs/ARCHIVE.md` #497 |
-| `MultiSelect.tsx:337,370` discard an incoming `className` | **Refuted.** The caller's `className` is destructured at `:98` and merged at `:256`; nothing arrives on the two inner paths, so nothing is discarded. What survives is a *different* finding: those elements have no prop-level route at all, which is §5 (d) work. | `bugs/ARCHIVE.md` #498 |
+| `AppShell` overwrites the consumer icon's `className` (cited as `AppShell.tsx:396`) | **Refuted.** `icon` is `LucideIcon` — a *component*, not an element — so the class is handed over as a prop and there is nothing to overwrite. The prescribed `cn()` fix is a provable no-op. `grep -n 'icon?: LucideIcon' src/components/ui/AppShell.tsx` is the anchor; the docblock beside it now states the same conclusion at source. | `bugs/ARCHIVE.md` #497 |
+| `MultiSelect`'s two inner paths discard an incoming `className` (cited as `MultiSelect.tsx:337,370`) | **Refuted.** The caller's `className` is destructured and merged onto the root (`grep -n 'cn("multiselect", className)' src/components/form/MultiSelect.tsx`; the `:98` / `:256` this row cited are rotted); nothing arrives on the two inner paths, so nothing is discarded. What survives is a *different* finding: those elements had no prop-level route at all, which is §5 (d) work — owner ruling 1's compound. | `bugs/ARCHIVE.md` #498 |
 | "No utility can redefine inherited tokens for a subtree" | **False.** `[--C-TEXT-PRIMARY:var(--C-TEXT-INVERSE)]` generates and inherits normally. `MediaCard` moves. | §2d |
-| "Vendor pseudo-elements are a lateral move" | **False.** `cn("[&::-webkit-slider-thumb]:size-r5","…:size-r3")` → `size-r3`. All 21 rules can move. | §2d |
+| "Vendor pseudo-elements are a lateral move" | **False.** `cn("[&::-webkit-slider-thumb]:size-r5","…:size-r3")` → `size-r3`. All **18** rules can move — the 21 was correct when taken, at `81888c2^`, and Phase 1 deleted `Tabs.css`'s three scrollbar rules out from under it. §2d states the counting method and the two readings (18 rules / 20 selectors). | §2d |
 | "Timeline's `:has()` rules can never move" | **Overstated.** `not-has-[…]` generates, so the pair restructures into mutually exclusive conditions and improves. | §4c |
 | "`> *` reaching caller-supplied children is immovable" | **False.** The `*` variant is `:is(& > *)` at (0,1,0). `ActivityFeed`'s `.activity-feed-aside > *` moves and *improves* — the current selector is (0,3,0) and unbeatable. | §2d |
-| "We need a gate asserting tw-merge knows every utility" | **Mostly unnecessary.** Only a *named token value* can drift. | §8 `verify:token-mirror` |
+| "We need a gate asserting tw-merge knows every utility" | **Mostly unnecessary.** Only a *named token value* can drift. **The gate was built anyway, and this outcome is now itself refuted — see the row below.** | §8 `verify:token-mirror` |
+| "A named token value added to `tokens.css` and not to `createCn` is the only real drift" | **Refuted by measurement, and the gate survives the refutation.** For `color` — the only namespace this package currently uses — tailwind-merge's default scale accepts anything, so adding the 9 `@theme` names to `createCn` changes **nothing**: 8,640 colour pairs tested (16 colour-taking prefixes × 9 tokens × 20 neighbours, both orders, plus a variant-scoped form), **0 differences**. The controls are what make that a finding rather than a null result: `cn("p-gutter","p-r3")` and `cn("text-display","text-fg-primary")` *do* differ with and without their theme entry, because the default `spacing` and `text` scales are not generic. **The mirror is load-bearing for any non-colour namespace and documentation-grade for `color`** — which is the opposite of "gate that and nothing more", and is why the shipped gate is namespace-aware and bidirectional rather than a `tokens.css`-only name check. | §8 |
 | "A component needing 15–27 slots is really a compound" | **Refuted by `CalendarBase`.** High slot count means the element tree is the API, but the resolution may be (d), (e), or a mix. | §5 |
 | "`arrowRef` is dead code; delete it" | **Refuted twice over.** It is exported, documented public API — and the ban on the name `arrow` that rested on *"no such element is rendered"* was false even before owner ruling 4, because `Carousel` renders `.carousel-arrow` today. Ruling 4 covers `arrowRef` and narrows the ban to direction controls. | §10; `SLOT-VOCABULARY.md` §3.3, §4 |
 | "`Hero.css` is a cross-package collision site" | **Confirmed by measurement**, and the hidden-state rule is worse than predicted — the entrance fires while the reveal is still hidden, so it is spent before the content appears. Found by grepping for foundation-owned class names, not by the hand-written probe list. It is the one that took an `!important`; its sibling four lines above was accepted instead. | §6 Phase 1 |
@@ -1554,7 +1836,7 @@ class that styles nothing — both Phase 2 components carry that comment.
 | "`--masonry-gap` is a genuine inherited fan-out, so the token rule spares it" | **Refuted.** The fan-out was real, but the *component* was the token's only writer — `MasonryGrid` renders both elements and takes a `gap` prop — so the value already had a channel. Deleted. | §3b |
 | A token is deleted when it is a **single-use alias** of a baseline token | **Refuted — the wording could not decide its own lists.** Use-count is not the discriminator. It spares `--masonry-gap` (1 def / 2 uses), which was deleted, and it deletes `--calendar-month-gap` (1 def / 2 uses), which is kept. It also gave opposite verdicts to two tokens of one shape: `--_stepper-gap` kept as a `calc()` input while `--calendar-col-gap` — whose *only* reader is a `calc()` — sat on the delete list. Replaced by "who writes it". | §4c |
 | The fan-out keep-clause turns on **who renders** the reading elements | **Refuted, and stated in two inverted forms.** §4c said "children the consumer never renders"; §3b said "children the consumer renders and the component never sees". Neither survives `--timeline-highlight-fill`: `TimelineItem` renders `.timeline-dot`/`.timeline-icon`/`.timeline-card` itself (`grep -n 'timeline-icon\\|timeline-dot\\|timeline-card' src/components/ui/Timeline.tsx`), so the §3b form deletes a token both sections keep. The clause turns on **who writes** — a consumer channel stays, a component-only default goes. | §4c |
-| `--calendar-col-gap` and `--calendar-month-gap` are deletable baseline aliases | **Re-verdicted to keep.** `--calendar-col-gap`'s only reader is `--calendar-month-width`'s calc (`Calendar.css:19,22`) — it is never applied as `column-gap`, so there is no utility to convert it to. `--calendar-month-gap` is read by a calc *and* a `gap` property, and converting only the property forks one value into two sources. Shrinks the calendar lane's token work to zero. | §4c |
+| `--calendar-col-gap` and `--calendar-month-gap` are deletable baseline aliases | **Re-verdicted to keep.** `--calendar-col-gap`'s only reader is `--calendar-month-width`'s calc (`grep -n -- '--calendar-col-gap' src/components/ui/CalendarBase.css`; cited as `Calendar.css:19,22` before the file was renamed) — it is never applied as `column-gap`, so there is no utility to convert it to. `--calendar-month-gap` is read by a calc *and* a `gap` property, and converting only the property forks one value into two sources. Shrinks the calendar lane's token work to zero. | §4c |
 | "`MasonryGrid`'s trailing-gap reset must stay in CSS because unlayered beats `mb-0`" | **True only while the sibling declaration was unlayered.** Once the margin became a utility too, `last:mb-0` at (0,1,1) beats it at (0,1,0) in the same layer. Deleting the competitor beat layering it. | §3b |
 | `masonry-grid.md`'s "`className="mb-0"` loses, use `mb-0!`" | **Inverted by §3b, and it cited compiled byte offsets.** A *false cannot* — the worst doc-rot shape, because it steers consumers away from something that now works. | §3b |
 | The `...props` half of the house rule should move to the outermost element | **Withdrawn.** It traded WCAG-load-bearing wiring for API symmetry. | §4b |
@@ -1572,9 +1854,17 @@ class that styles nothing — both Phase 2 components carry that comment.
 | A token consumed by `calc()` or `color-mix()` is "computed" and must be kept | **Refuted — the discriminator is the read *site*, not the arithmetic.** §4c spares a token because *"there is no property there for a utility to set"*, which means one consumed inside another custom property's definition. `--progress-bar-fill-end` was read inside `background-image`; a utility takes that whole declaration, `color-mix()` included, so it was deleted. Ask what property the read sits in. | §4c |
 | `<Skeleton style={{ width: undefined }} />` shrinks the box to fit | **Refuted by measurement — it produced a 0px-wide box, and always had.** A Skeleton's only child is `sr-only` and out of flow, so dropping the inline `100%` landed on `width: auto`, which on an `inline-block` resolves to zero. `w-auto` and `w-fit` measure the same **0×16**. The documented escape hatch never worked, which is worth more than the fix: it was the objection that deferred this change through two phases. | §4d |
 | `Combobox` proves `MultiSelect` can become a compound | **Refuted, and it changes what a lane builds.** `ComboboxRootProps` has **no required data prop at all** — eleven optional props plus `children` — and its option data exists only as registrations from its own children. So it proves a listbox compound is *achievable*; it says nothing about coexisting with a required `options` prop, which was the entire difficulty. A lane that copies it inherits a design with no answer for the filter, the chip labels or the cap. | §5; `SLOT-VOCABULARY.md` §15.12, §10.1 |
-| `grep -c 'layer(' src/styles.css` counts the layered component imports | **Refuted — it is a trap that has now been quoted wrong twice.** It returns 46 against 43 imports, because the file's own header prose mentions the token three times, and the two halves move independently. The count is `grep -c '^@import "\./components'`; the *check* is `verify:css-layering`, which classifies every import and fails on one it cannot classify. | §2a |
-| "There are zero blank lines inside comment blocks, so §2b's comment/blank caveat is inert" | **Refuted — there are 51, and the caveat is live.** The two readings of §2b's blank percentage genuinely differ (13.2% counting them, 12.3% not), so the figure has to say which it is. The claim was false when written and survived because nothing recomputed it. | §2b |
-| Line references into files a phase touched | **Repointed by content, never by adjusting the number.** Phase 2 moved `MasonryGrid.tsx:23` (the `columns` union is now `:31`) and deleted `Grid.css` entirely, so every citation into it is now a `git show 81888c2:` invocation. `Combobox.tsx:537-542` had drifted to `:538-543` and is now a grep. `memory/ledger.md`: adjusting a rotted anchor is the wrong repair — cite the quoted phrase. | §6 Phase 2; §10 |
+| `grep -c 'layer(' src/styles.css` counts the layered component imports | **Refuted — it is a trap that has now been quoted wrong three times, and its *own* correction was wrong too.** It returns 47 against 44 imports, because the file's own header prose mentions the token on three lines, and the two halves move independently. The correction this row shipped — filter the imports out with `grep -v '@import'` — finds only two of the three, because one prose line quotes an `@import`. Filter on the import *shape*: `grep -v '^[0-9]*:@import "\./components'`. The count is `grep -c '^@import "\./components'`; the *check* is `verify:css-layering`, which classifies every import and fails on one it cannot classify. | §2a |
+| "There are zero blank lines inside comment blocks, so §2b's comment/blank caveat is inert" | **Refuted — there are 55 (51 when this row was written), and the caveat is live.** The two readings of §2b's blank percentage genuinely differ (13.2% counting them, 12.3% not), so the figure has to say which it is. The claim was false when written and survived because nothing recomputed it — **and the obvious re-measurement reproduces the same falsehood**: a blank line inside a comment carries no masked *character*, so a "does this line retain a masked character" test returns zero for exactly the lines in question. Test the comment state at the line's position. | §2b |
+| Line references into files a phase touched | **Repointed by content, never by adjusting the number.** Phase 2 moved `MasonryGrid.tsx:23` (the `columns` union is now `:31`, and still is) and deleted `Grid.css` entirely, so every citation into it is now a `git show 81888c2:` invocation. `Combobox.tsx:537-542` had drifted to `:538-543` and is now a grep (it is `:578` today, which is the point). **Phase 3 rotted anchors on a scale Phase 2 did not**: `Calendar.css` → `CalendarBase.css`, `Repeater.tsx:77-127` → `:77-137`, and most `.tsx` line citations in §4a–§5, §10 and §11 moved by tens of lines. All are now greps, or `git show <sha>:` where the cited code is deleted. `memory/ledger.md`: adjusting a rotted anchor is the wrong repair — cite the quoted phrase. | §6 Phase 2; §6 Phase 3; §10 |
+| "`grep -rn classNames src/components` returns zero, so the slot vocabulary is greenfield" | **True when written, false now — the vocabulary is being spent.** That grep returns ~800 and is still climbing as Phase 3 lanes land, so it is not a figure to quote; re-run it. The freeze still holds and §10's argument for it is unchanged; what has changed is that the field is no longer empty, so a new name is now a consistency question against shipped API rather than a free choice. `SLOT-VOCABULARY.md` stays authoritative. | §10 |
+| `AGENTS.md` tells readers to *"always wrap classNames with `cn(...)`"*, which §4a's prop makes self-contradictory | **Discharged — already reworded.** `grep -n 'wrap classNames' AGENTS.md` returns nothing; the sentence now reads *"Always wrap class strings with `cn(...)` … Class **strings** — `classNames` is a prop name … and `cn()` on that object reads it as clsx's conditional form"*. The cited `AGENTS.md:390` is dead. | §6 Phase 5 |
+| `classPrefix` is a generalisation with one value, is already violated by `ContextMenu`, and must be deleted | **Discharged in Phase 3, and every anchor the argument used is dead.** `grep -rn classPrefix src --include=*.tsx --include=*.ts \| grep -v '\.test\.'` → 0 (the one remaining hit in the tree is a `ContextMenu.test.tsx` comment recording the removal), `grep -rl classPrefix docs` → 0 (it was undocumented, which was the other half of the finding). `menu-internals.tsx` emits five *static* `menu-*` literals and `menu-internals.css` defines them; the orphan `context-menu-trigger` class is gone and `ContextMenu.test.tsx` pins its absence. The names came from `SLOT-VOCABULARY.md` §8.2, not from §8's earlier guess. Cited anchors, all rotted: `menu-internals.tsx:288,346,368,388,408`, `DropdownMenu.tsx:26`, `ContextMenu.tsx:25,81`. | §8; §6 Phase 5 |
+| `docs/components/popover.md:85` becomes a *false cannot* when the arrow ships; `multi-select.md:45` becomes a lie after Phase 3 | **Both discharged — the doc edits landed with the code.** `popover.md` documents the `arrow` prop, `classNames.arrow` and the middleware; `multi-select.md` records its own earlier "no subcomponent" sentence as superseded. Recorded because `memory/README.md` §21 rates the false-cannot the worst doc-rot shape, and this is the case where it was caught in the same commit rather than after release. | §10; §6 Phase 5 |
+| "~300 of 478 class literals fail the literal reachability gate" | **Unreproducible, and dropped.** No method tried yields 478; the shipped gate's own method gives **274 failing of 425 `className` attributes** at `0a61e01` and `81888c2`, and **103 of 435** at HEAD. The 2:1 shape the re-scoping argument rests on is real at the pre-Phase-3 tree and has since inverted *because* the prescribed order was followed. An unreproducible bound is not evidence, even for a conclusion that is right. | §8 |
+| "`~76` sites share the focus-ring-width literal" | **Unreproducible, and dropped.** The reproducible readings are 41 (ring widths: 32 `outline: 2px` declarations + 9 `outline-2`/`ring-2` utilities) or 62 (adding the 21 `outline-offset: 2px` declarations, which is a different concept). Both carry their command in §11. The rule-width half of the same bullet — 5 rail tokens + the table marker — re-derives exactly. | §11 |
+| "`CalendarBase` has 15 internals: 9 loop-generated, 6 chrome — so 6 slots + 3 applied-to-every-instance + `renderDay`, **not** 15 slots and **not** a compound" | **The category was right; the census was wrong; the prescription failed as a consequence. Owner-reviewed and settled: the shipped 15 keys stay.** Both *counts* re-derive (6 once-rendered, 9 not) and both *memberships* were wrong by one swap: `calendar-month-caption` was filed as once-rendered chrome when it is per-month-grid and conditional on `monthCount > 1`; the actual 6th once-rendered element is `calendar-picker-grid`, never named; and the 9 are not all `renderMonthGrid`'s — `calendar-picker-cell` comes from `QuickNavGrid` in a different view. "15 internals" does re-derive on the **element** reading (16 non-root names sit on 15 elements — `"calendar-label calendar-label-button"` is one element with two names); the failure was **not stating the unit and not carrying the command**, which is the `Maintenance` rule this file now enforces. **The prescription's real error was assuming `renderDay` answers the loop set** — it renders the day button's *children only*, so it reaches none of the eight non-day elements assigned to it, and "6 + 3 + `renderDay`" would have left six elements with no route at all. What shipped is **15 × (c) + 1 × (e)**, every repeated-element key merged uniformly inside its map, so **no key addresses a single instance** and the loop test is not violated. "Not a compound" held unchanged. | §5; §9 |
+| "The `CalendarSlotClassNames` union is aliased by `Calendar`, `RangeCalendar`, `DatePicker` and `DateRangePicker`" | **False for the two pickers, and it was false on the type's own docblock** — which ships to consumers through the generated `.d.ts`, so it is worse than prose rot. `DatePicker` and `DateRangePicker` declare their own unions (`"control" \| "actions" \| "panel"` and `"control" \| "panel"`) and pass an explicit prop list to `Calendar`/`RangeCalendar` carrying neither `classNames` nor `renderDay`. A picker consumer gets **3** keys, not 18. `docs/components/date-picker.md` and `date-range-picker.md` already stated this correctly; the type did not. Whether the pickers should forward a second `calendarClassNames` prop is a **new public API** and an open owner question, not a bug fix. | §5; `SLOT-VOCABULARY.md` §7.2 |
 
 > **The lesson that governs Phase 3.** The first two rows were the `className` audit's *only* two
 > active-defect claims — its highest-confidence output — and both dissolved on contact with the

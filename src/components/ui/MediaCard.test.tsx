@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { MediaCard } from "./MediaCard";
@@ -212,5 +212,40 @@ describe("MediaCard", () => {
 
     expect(box).toBe(container.querySelector(".media-card__image-container"));
     expect(img).toBe(container.querySelector("img"));
+  });
+
+  /**
+   * `onLoad`/`onError` are the silent half of the re-point — legal on a `<div>`
+   * as well as an `<img>`, so nothing in the props type moves them. The guess
+   * that a handler on the box therefore never fires is wrong: React registers
+   * the non-bubbling `load` on the `<img>` and dispatches it up its own fiber
+   * tree, so both handlers run off one event. What actually moved is
+   * `currentTarget`, which is the box for the top-level handler — that is what
+   * a migrating `event.currentTarget.naturalWidth` was reading.
+   *
+   * Both directions in one test: the falsifier for either spread is one red.
+   */
+  it("delivers one load event to a top-level onLoad with the box as currentTarget, and to imgProps.onLoad with the <img>", () => {
+    const boxTargets: EventTarget[] = [];
+    const imgTargets: EventTarget[] = [];
+
+    const { container } = render(
+      <MediaCard>
+        <MediaCard.Image
+          src="/a.jpg"
+          alt="A"
+          onLoad={(event) => boxTargets.push(event.currentTarget)}
+          imgProps={{ onLoad: (event) => imgTargets.push(event.currentTarget) }}
+        />
+      </MediaCard>,
+    );
+
+    const img = screen.getByRole("img", { name: "A" });
+    fireEvent.load(img);
+
+    expect(boxTargets).toHaveLength(1);
+    expect(boxTargets[0]).toBe(container.querySelector(".media-card__image-container"));
+    expect(imgTargets).toHaveLength(1);
+    expect(imgTargets[0]).toBe(img);
   });
 });

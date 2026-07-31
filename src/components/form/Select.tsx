@@ -60,10 +60,12 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           // `r1` is the smallest rung that clears `right-r4` + the glyph's 16px
           // at both steps (8px spare below 40rem, 60px above it). `r2` is
           // 1.25rem on a phone and would run under the chevron. The 60px is
-          // more than the graphic needs and is the price of staying on the
-          // scale; a composed `calc()` of two rungs fits better but resolves to
-          // no single token, so `scripts/verify-component-docs.mjs` cannot
-          // check the doc row that claims it.
+          // more than the graphic needs and was the price of staying on the
+          // scale: a composed `calc()` of two rungs fits better, and used to be
+          // unusable because the doc guard could not resolve it. That constraint
+          // has expired — `verify-component-docs` now resolves every token a
+          // composed arbitrary value names — so the geometry is a live question
+          // again rather than a settled trade. See bugs/LEDGER.md #499.
           "appearance-none pr-r1",
           invalid && focusRingControlError,
           className

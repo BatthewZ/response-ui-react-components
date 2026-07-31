@@ -255,7 +255,10 @@ anchor on the trigger box.
 
 `className` reaches every part that renders one, and each subcomponent merges it after the
 library class. On the trigger there is no library class to merge with — the `<div>` carries
-exactly what you pass. The one element no prop reached was the box the `icon` goes into, so
+your classes and nothing of ours. It still goes through `cn()`, which is not a formality with
+no base class present: `className="p-r3 p-r5"` resolves to `p-r5` here, the way it does on
+every other component in the package, rather than emitting both and leaving the stylesheet's
+order to pick. The one element no prop reached was the box the `icon` goes into, so
 `ContextMenu.Item` takes a `classNames` object for it. Class strings only, and the keys are
 typed, so a misspelled one is a compile error rather than a prop that does nothing.
 

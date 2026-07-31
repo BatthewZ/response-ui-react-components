@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 
 /**
- * Fade timing for the floating surfaces (Popover, HoverCard, the menus), read
- * from the theme instead of frozen in the `.tsx`.
+ * Fade timing for the floating surfaces (Popover, HoverCard, Tooltip and the
+ * menus, which share `menu-internals`), read from the theme instead of frozen in
+ * the `.tsx`.
  *
  * These panels transition through `useTransitionStyles`, which writes
  * `transition-duration` *inline* — and an inline declaration outranks every

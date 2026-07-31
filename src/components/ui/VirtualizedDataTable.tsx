@@ -312,6 +312,11 @@ export function VirtualizedDataTable<T>({
         density={density}
         striped={false}
         stickyHeader={stickyHeader}
+        // Raw, and deliberately: this branch adds no class of its own, and
+        // `Table`'s root is `cn("table-wrapper", className)`, so the merge
+        // already happens one level down. A `cn()` here would be a provable
+        // no-op. The data branch below differs only because it has a base class
+        // to put first.
         className={className}
         style={style}
         tableProps={{ ...tableProps, "aria-busy": true }}
@@ -354,6 +359,8 @@ export function VirtualizedDataTable<T>({
         density={density}
         striped={false}
         stickyHeader={stickyHeader}
+        // Raw for the same reason as the loading branch above: no base class
+        // here, and `Table` merges.
         className={className}
         style={style}
         tableProps={tableProps}

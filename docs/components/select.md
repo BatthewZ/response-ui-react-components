@@ -279,10 +279,11 @@ left 4px between the text box and the chevron above the 40rem breakpoint, and ne
 `r1` is the **smallest** rung that clears the chevron at both steps — the gutter has to cover
 the glyph's `right-r4` inset plus its 16px box, and `r2` is `1.25rem` on a phone, which runs
 under it. That leaves 8px of air below 40rem and 60px above it. The 60px is more than a 16px
-glyph needs, and it is the price of staying on the scale: the value that would fit exactly is a
-`calc()` over two rungs, which resolves to no single token and so cannot be checked by the
-repo's token-table guard against the row above. A gutter the guard can verify beat a
-gutter tuned by eye. If it costs you visible text on a narrow control, `className="pr-r2"`
+glyph needs, and it was the price of staying on the scale: the value that would fit exactly is a
+`calc()` over two rungs, which the repo's token-table guard could not resolve when this was
+chosen — so a gutter the guard could verify beat a gutter tuned by eye. That guard now resolves
+every token a composed value names, so the constraint has lapsed and only the geometry is
+holding the rung in place. If it costs you visible text on a narrow control, `className="pr-r2"`
 merges over it — the class list runs through tailwind-merge — at the cost of the clearance.
 
 ## Gotchas

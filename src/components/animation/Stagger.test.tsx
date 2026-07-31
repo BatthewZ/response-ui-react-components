@@ -121,14 +121,16 @@ describe("Stagger", () => {
     });
   });
 
-  it("merges custom className", () => {
+  // Exact string, not `toContain`: arrival and the collapse of the caller's own
+  // conflicting utilities are one assertion.
+  it("merges custom className, collapsing the caller's conflicting utilities", () => {
     const { container } = render(
-      <Stagger className="custom-class">
+      <Stagger className="custom-class p-r3 p-r5">
         <span>A</span>
       </Stagger>
     );
     const el = container.firstElementChild as HTMLElement;
-    expect(el.className).toContain("custom-class");
+    expect(el.getAttribute("class")).toBe("custom-class p-r5");
   });
 
   // #10 — the public type accepts the rendered element's whole prop set.

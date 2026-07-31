@@ -12,6 +12,12 @@
  *
  * Prefer importing from `@batthewz/response-ui-tw-merge` directly in new code
  * outside this package.
+ *
+ * `cn(className)` with no base class is not a no-op, which is why the roots that
+ * paint nothing still call it: the merge collapses the CALLER'S OWN conflicting
+ * utilities last-wins, so `className="p-r3 p-r5"` reaches the DOM as `p-r5`
+ * rather than as both with stylesheet order picking the winner. Every root in
+ * the package behaves the same way as a result.
  */
 import { createCn } from "@batthewz/response-ui-tw-merge";
 

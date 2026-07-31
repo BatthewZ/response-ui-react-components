@@ -381,7 +381,8 @@ rebuild.
 | Row divider                    | `--C-BORDER-DEFAULT`                                      |
 | Striped row                    | `--C-SURFACE-2`                                           |
 | Selected row wash              | `--C-ACCENT`, mixed to 8% in oklch                        |
-| Selected row marker            | `--C-ACCENT` at full strength · width `--_table-selected-marker-width` (3px, private) |
+| Selected row marker            | `--C-ACCENT` at full strength · width `--_table-marker-width` (3px, private) |
+| Expanded detail row            | `--C-SURFACE-2` fill · `--C-BORDER-STRONG` leading marker at `--_table-marker-width` |
 | Cell ink                       | `--C-TEXT-PRIMARY`                                        |
 | Cell type step                 | `--BodyText-2` (dense) · `--BodyText-1` (comfortable, spacious) |
 | Sticky header shadow           | `--SHADOW-SM`                                             |

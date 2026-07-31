@@ -284,6 +284,10 @@ The slot class is merged after the base classes, and both survive — `cn()` res
 conflicts between utilities, so a utility touching a property the base already sets replaces
 it and anything else stacks.
 
+`className` goes through the same merge, even though the root carries no base class of its
+own: `className="p-r3 p-r5"` resolves to `p-r5` here, the way it does on every other component
+in the package, rather than emitting both and leaving the stylesheet's order to pick.
+
 **The calendar inside the popover is not addressed from here.** Its anatomy belongs to
 [Calendar](calendar.md#slots), which DatePicker renders; there is no route to those elements
 through this component today.

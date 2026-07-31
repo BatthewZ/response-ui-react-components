@@ -113,3 +113,17 @@ validator over it. These are the ways the record itself has failed, independent 
   own. The decision record's version was falsified by the very example it named as protected. A
   refinement recorded next to the case that produced it is a *derivation*, not a second home for
   the rule: state the rule once, and have the worked example point at it rather than restate it.
+- **An anchor that never matched is worse than one that rotted, because nothing can make it fail.**
+  Switching citations from line numbers to quoted phrases fixes rot and introduces this: a `grep`
+  for a phrase nobody ever wrote returns empty, which is *indistinguishable* from "the code moved
+  and the anchor needs repointing". Two sections of one authoritative document cited
+  `grep -n 'left that way on purpose'` and `grep -n 'deliberately still unreachable'` as the
+  evidence for an owner-level ruling; `git log --all -S` finds neither string in any commit of any
+  file. The element they described carried **no comment at all**. A rotted line number is loud —
+  it lands on visibly wrong code. An invented phrase is silent, and the reader who checks it
+  concludes the tree changed rather than that the citation was fiction. **Run a content anchor once
+  at the moment you write it**, and treat an empty result on first use as a bug in the citation,
+  never as drift. The same shape reaches prose: the doc rewritten in that ruling's own commit
+  claimed it was *withdrawing* advice ("wrap the component in your own element") that no revision
+  of the page had ever given. A claim about a prior state is a claim, and `git show <sha>:path` is
+  its command.

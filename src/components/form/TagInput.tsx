@@ -85,16 +85,22 @@ type TagInputProps = {
   error?: boolean;
   disabled?: boolean;
   /**
-   * Class overrides for the internals this component renders. `className` styles
-   * the bordered field box (see the component doc), so these reach the two parts
-   * inside it that no prop otherwise addresses: the text `<input>` a tag is
-   * typed into, and a chip's remove button.
+   * Class overrides for the internals this component renders. `className` is the
+   * outermost element — the block holding the field, the validation message and
+   * the announcer — so these reach the three parts inside it that no prop
+   * otherwise addresses.
+   *
+   * - `control` — the bordered field box. The same word `Select`, `NumberInput`,
+   *   `DatePicker` and `MultiSelect` spend on the same element
+   *   (`SLOT-VOCABULARY.md` §6, §7.1). It is where `className` used to land.
+   * - `input` — the text `<input>` a tag is typed into.
+   * - `tagRemove` — a chip's remove button.
    *
    * `tagRemove` lands on **every** chip's button — the chips are generated from
    * `value` and no key can name the third one. The chip itself is a `Badge`, so
    * it takes `badgeProps` below rather than a slot.
    */
-  classNames?: SlotClassNames<"input" | "tagRemove">;
+  classNames?: SlotClassNames<"control" | "input" | "tagRemove">;
   /**
    * Props for each chip's `Badge`. A chip is a bare `Badge` — this component
    * adds no class of its own to it — so a class string slot would have no base
@@ -401,7 +407,13 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
     };
 
     return (
-      <div>
+      <div
+        // The outermost element, per the house rule: it covers the field box,
+        // the validation message and the announcer, so a margin or a width meant
+        // for the whole control has somewhere to land. No base class, still
+        // merged — see `cn`'s docblock in util/style.
+        className={cn(className)}
+      >
         <div
           className={cn(
             "flex flex-wrap items-center gap-r6",
@@ -410,7 +422,7 @@ export const TagInput = forwardRef<HTMLInputElement, TagInputProps>(
             focusRingWithin,
             hasError && focusRingWithinError,
             disabled && "bg-surface-3 cursor-not-allowed",
-            className
+            classNames?.control
           )}
           // The bordered box is the control's hit area, not just its frame:
           // clicking its padding must reach the text input the way it does in

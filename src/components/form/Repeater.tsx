@@ -1,5 +1,5 @@
 "use client";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ComponentPropsWithRef, type ReactNode, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 
 import { cn, type SlotClassNames } from "../../util/style";
@@ -132,8 +132,46 @@ type RepeaterProps<T extends Record<string, unknown>, P extends ArrayPath<T> & s
    * `item`, `fields` and `itemActions` land on **every** row — the rows are
    * generated from the array field and no key can name the third one. Row
    * *content* is the render-prop child's, not a slot's.
+   *
+   * The row-action buttons and the Add button are other components, not
+   * elements this one classes, so their route is `itemActionProps` /
+   * `addButtonProps` below.
    */
   classNames?: SlotClassNames<"list" | "item" | "fields" | "itemActions">;
+  /**
+   * Props for the three row-action controls — Move up, Move down and Remove.
+   * They are `IconButton`s this component renders but adds no class of its own
+   * to, so there is no base class for a slot string to merge with and no `cn()`
+   * here: the bag is spread and `IconButton` merges its `className` with its own
+   * base classes, exactly as `badgeProps` does for `TagInput`'s chips.
+   *
+   * Applied to **all three** controls on **every** row: the rows come from the
+   * array field, so no key can name the third one, and `classNames.itemActions`
+   * reaches only the cluster around them. What the component owns is `Omit`ted
+   * and re-set after the spread — the names come from `removeLabel` /
+   * `moveUpLabel` / `moveDownLabel`, `disabled` from `disabled` and the bounds,
+   * and `onClick` is the mutation itself.
+   */
+  itemActionProps?: Omit<
+    ComponentPropsWithRef<"button">,
+    "aria-label" | "aria-labelledby" | "type" | "disabled" | "onClick" | "ref" | "children"
+  >;
+  /**
+   * Props for the "Add" `Button`. A bag rather than a slot because the thing a
+   * caller most often wants here is the `variant` or `size` — the defaults are
+   * `"secondary"` and `"sm"`, and no class string can change a variant. Both are
+   * written **before** the spread so the bag replaces them; `onClick`,
+   * `disabled` and the label are the component's and are `Omit`ted.
+   *
+   * `typeof Button<"button">` and not `typeof Button`: `Button` is polymorphic,
+   * and without the instantiation its element half resolves through an
+   * unbound `ElementType` to `any`, which silently disables the `Omit`s and
+   * every excess-property check with them.
+   */
+  addButtonProps?: Omit<
+    ComponentPropsWithRef<typeof Button<"button">>,
+    "as" | "children" | "type" | "disabled" | "onClick" | "ref"
+  >;
 };
 
 /**
@@ -181,6 +219,8 @@ export function Repeater<
   disabled = false,
   className,
   classNames,
+  itemActionProps,
+  addButtonProps,
 }: RepeaterProps<T, P>) {
   const array = useFieldArray({ form, name });
   const count = array.fields.length;
@@ -275,7 +315,12 @@ export function Repeater<
               >
                 {reorderable && (
                   <>
+                    {/* Bag first, then everything this component owns: the name
+                        is positional, `disabled` carries the bound, and the
+                        click is the mutation. `Omit` is compile-time only, so
+                        the order is the guarantee. */}
                     <IconButton
+                      {...itemActionProps}
                       type="button"
                       aria-label={moveUpLabel(index, count)}
                       disabled={disabled || isFirst}
@@ -284,6 +329,7 @@ export function Repeater<
                       <ChevronUp size={16} aria-hidden="true" />
                     </IconButton>
                     <IconButton
+                      {...itemActionProps}
                       type="button"
                       aria-label={moveDownLabel(index, count)}
                       disabled={disabled || isLast}
@@ -294,6 +340,7 @@ export function Repeater<
                   </>
                 )}
                 <IconButton
+                  {...itemActionProps}
                   type="button"
                   ref={(node) => {
                     removeRefs.current[index] = node;
@@ -309,12 +356,20 @@ export function Repeater<
           );
         })}
       </div>
+      {/* A block box so the Add button sits at its own width instead of being
+          stretched by the flex column. It carries no class: the default block
+          behaviour is the whole mechanism, which is why there is nothing here
+          for a caller to vary. */}
       <div>
+        {/* `variant`/`size` before the spread — they are defaults the bag is
+            meant to be able to replace. Everything after it is the component's:
+            the ref drives focus after a removal, and the click is the mutation. */}
         <Button
-          ref={addRef}
-          type="button"
           variant="secondary"
           size="sm"
+          {...addButtonProps}
+          ref={addRef}
+          type="button"
           disabled={disabled || !canAdd}
           onClick={addRow}
         >

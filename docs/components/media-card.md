@@ -176,12 +176,48 @@ An image `ref` goes in the bag — `imgProps={{ ref: imgRef }}` — which is wha
 `Image`'s top-level `ref` observes the box instead, which is the element that actually
 occupies flow space.
 
-**Migrating from ≤ 0.x.** `<MediaCard.Image className="…">` used to reach the `<img>`; it now
-reaches the box, silently. Move any picture-shaping class to `imgProps={{ className: … }}`.
-`ref` and every other `img` attribute (`loading`, `srcSet`, `onLoad`, …) moved into `imgProps`
-too, but those are loud — they become type errors against the box's `div` props rather than
-changing behaviour. This matches [`Hero.Background`](hero.md) and
-[`Spotlight.Image`](spotlight.md), which already split the same way.
+### Migrating from ≤ 0.x
+
+`<MediaCard.Image className="…">` used to reach the `<img>`; it now reaches the box. Two kinds
+of prop moved into `imgProps`, and they behave differently — which is the part worth knowing
+before you start grepping.
+
+**Loud — the compiler finds these for you.** Every attribute that is legal only on an `<img>`:
+`loading`, `srcSet`, `sizes`, `decoding`, `fetchPriority`, `crossOrigin`, `referrerPolicy`,
+`useMap`, `width`, `height`. The box takes `div` props, so each is a
+`Property 'loading' does not exist on type …` at the call site. Move them into `imgProps`.
+
+**Silent — these still compile, and they now address the box.** A prop legal on *both* elements
+is indistinguishable to any props type, so there is nothing for the compiler to say:
+
+| Prop                     | Where it lands now      | If you meant the picture             |
+| ------------------------ | ----------------------- | ------------------------------------ |
+| `className`              | restyles the frame      | `imgProps={{ className: … }}`        |
+| `style`                  | inline-styles the frame | `imgProps={{ style: … }}`            |
+| `ref`                    | gives you the `<div>`   | `imgProps={{ ref: … }}`              |
+| `onLoad` / `onError`     | still fires — see below | `imgProps={{ onLoad: … }}`           |
+| `id`, `title`, `aria-*`  | describes the frame     | `imgProps={{ … }}`                   |
+
+`ref` is the sharp one, because **a `Ref<HTMLImageElement>` still type-checks against the box.**
+`HTMLImageElement` is structurally assignable to `HTMLDivElement` — the only member
+`HTMLDivElement` adds over `HTMLElement` is the deprecated `align`, which images also have — so
+an image ref left at the top level silently holds a `<div>`, and `imgRef.current.naturalWidth`
+reads `undefined` with no error anywhere. Grep your call sites for a `ref` on a
+`MediaCard.Image`; nothing else will.
+
+`onLoad` and `onError` are the mild ones, and worth stating precisely because the natural guess
+— "it moved to a `<div>`, so it never fires" — is wrong. React attaches a listener for these
+non-delegated events **directly to the `<img>`** and then dispatches up its own component tree,
+so a handler on the box does receive the image's `load` even though the DOM event never bubbles.
+(Verified in this repo's `react-dom`: `listenToNonDelegatedEvent` registers `load`/`error` under
+a `__bubble` key on the target element itself — it is *not* a capture-phase listener on the root
+container, which is the plausible-sounding explanation to avoid repeating.) What changed is
+`event.currentTarget`: it is the `<div>` now, not the `<img>`. A handler that ignores it
+(`onLoad={() => setLoaded(true)}`) keeps working unchanged; one that reads
+`event.currentTarget.naturalWidth` turns into a compile error, which is the good case.
+
+This matches [`Hero.Background`](hero.md) and [`Spotlight.Image`](spotlight.md), which split the
+same way — and carry the same silent set, for the same reason.
 
 ## Image loading
 
@@ -271,8 +307,11 @@ zeroed the same way: tabbing in still applies the transform, just untransitioned
   reversed: the box used to receive nothing while `className`, `ref` and every rest prop went
   to the `<img>`. `Image`'s `className`, `style`, `ref` and rest props now land on the box —
   the outermost element it renders — and the `<img>` is reached through
-  [`imgProps`](#the-images-two-elements). A class you wrote for the picture will silently
-  restyle its frame instead until you move it. The box gets **no class slot** on top of that,
+  [`imgProps`](#the-images-two-elements). Anything you wrote for the picture that is *also*
+  legal on a `<div>` silently addresses the frame instead until you move it — `className`,
+  `style`, `ref`, `onLoad`/`onError`, and `id`/`title`/`aria-*`. The `<img>`-only attributes
+  (`loading`, `srcSet`, `sizes`, …) are compile errors instead, so only that first list needs a
+  grep; see [Migrating from ≤ 0.x](#migrating-from--0x). The box gets **no class slot** on top of that,
   because `className` already reaches it and a slot would be a second writer for one element.
   To change one card's ratio you can still pick a different `orientation` or set that
   orientation's aspect variable in the root's `style` — custom properties inherit, so the box

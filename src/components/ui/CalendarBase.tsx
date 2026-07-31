@@ -78,10 +78,15 @@ export const DEFAULT_CALENDAR_LABELS: Required<CalendarLabels> = {
  * Class overrides for the internals `CalendarBase` renders. `className` is the
  * root, so there is no `root` key.
  *
- * Exported, and aliased rather than re-spelled by `Calendar`, `RangeCalendar`,
- * `DatePicker` and `DateRangePicker`: all four render none of this markup, they
- * forward to `CalendarBase`, so one union written at the component that owns the
- * anatomy is the single source of truth. Re-spelling it four times would fork it.
+ * Exported, and aliased rather than re-spelled by `Calendar` and `RangeCalendar`:
+ * neither renders any of this markup, both forward `classNames` straight to
+ * `CalendarBase`, so one union written at the component that owns the anatomy is
+ * the single source of truth. Re-spelling it would fork it.
+ *
+ * `DatePicker` and `DateRangePicker` do **not** alias it. They pass an explicit
+ * prop list to `Calendar`/`RangeCalendar` — no `classNames`, no `renderDay` — and
+ * declare their own small unions for their own chrome, so the calendar inside
+ * their popover has no slot route from the picker.
  *
  * `pickerCell` and `day` land on elements the component also finds by selector
  * to drive focus, so both merges append to the base class and never replace it.
@@ -198,8 +203,32 @@ type PickerView = "days" | "months" | "years";
 /** Number of years shown per page in the year picker. */
 const YEARS_PER_PAGE = 12;
 
-/** Columns in the month/year quick-nav grid — must match `.calendar-picker-grid`. */
-const QUICK_NAV_COLUMNS = 3;
+/** Used only when nothing styles `.calendar-picker-grid`. See {@link quickNavColumns}. */
+const QUICK_NAV_COLUMNS_UNSTYLED = 3;
+
+/**
+ * Columns the quick-nav grid is *laid out* in, so ArrowUp/ArrowDown step one
+ * visual row. The track list on `.calendar-picker-grid` is the only writer of
+ * the count — including a caller's `classNames.pickerGrid` — because a laid-out
+ * grid container resolves `grid-template-columns` to one entry per used track.
+ * `none` means no stylesheet reached the element at all, and a value still
+ * carrying `repeat()`/`minmax()` means the element has no layout box to resolve
+ * against — neither is countable, so both take the default.
+ */
+function quickNavColumns(grid: HTMLElement | null): number {
+  const tracks = grid ? getComputedStyle(grid).gridTemplateColumns.trim() : "";
+  if (tracks === "" || tracks === "none") return QUICK_NAV_COLUMNS_UNSTYLED;
+  // A line-name span sits between tracks and may hold several names, so drop the
+  // span whole: splitting first and dropping the words that start with `[` reads
+  // `[a b]` as one discard and one track.
+  const sized = tracks.replace(/\[[^\]]*\]/g, " ");
+  // A used track list is a plain run of lengths. A surviving `(` means this is
+  // the computed value instead — `repeat(3, 1fr)`, from an element with no
+  // layout box — whose spaces and commas do not count tracks.
+  if (sized.includes("(")) return QUICK_NAV_COLUMNS_UNSTYLED;
+  const columns = sized.split(/\s+/).filter(Boolean).length;
+  return columns || QUICK_NAV_COLUMNS_UNSTYLED;
+}
 
 type QuickNavItem = {
   key: string;
@@ -257,10 +286,10 @@ function QuickNavGrid({
         move(focusIndex + 1);
         break;
       case "ArrowUp":
-        move(focusIndex - QUICK_NAV_COLUMNS);
+        move(focusIndex - quickNavColumns(gridRef.current));
         break;
       case "ArrowDown":
-        move(focusIndex + QUICK_NAV_COLUMNS);
+        move(focusIndex + quickNavColumns(gridRef.current));
         break;
       case "Home":
         move(0);
@@ -712,7 +741,7 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
     <div
       ref={mergeRefs(ref, rootRef)}
       className={cn("calendar", className)}
-      // Tells Calendar.css how many month grids are shown so it can size itself
+      // Tells CalendarBase.css how many month grids are shown so it can size itself
       // to exactly that many on wide layouts. `max-width: 100%` then lets it
       // collapse to a single fluid column on narrow screens / mobile.
       style={{ "--calendar-months": monthCount, ...style } as CSSProperties}

@@ -5,6 +5,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { cn } from "../../util/style";
+
 // The hook carries the "use client" directive in its own module; this component
 // holds no state and reads no browser API, so it stays server-renderable.
 export { useViewTransition } from "./use-view-transition";
@@ -19,7 +21,8 @@ export const ViewTransition = forwardRef<HTMLDivElement, ViewTransitionProps>(
     return (
       <div
         ref={ref}
-        className={className}
+        // No base class, still merged — see `cn`'s docblock in util/style.
+        className={cn(className)}
         style={{ ...style, viewTransitionName: name } as CSSProperties}
         {...rest}
       >

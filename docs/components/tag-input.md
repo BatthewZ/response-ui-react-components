@@ -29,8 +29,8 @@ error state with no extra props.
 | `placeholder`   | `string`                              | —                           |
 | `error`         | `boolean`                             | `Field` state, else `false` |
 | `disabled`      | `boolean`                             | —                           |
-| `className`     | `string`                              | — (lands on the wrapper)    |
-| `classNames`    | `{ input?, tagRemove? }` — see [Slots](#slots) | —                   |
+| `className`     | `string`                              | — (lands on the outermost element) |
+| `classNames`    | `{ control?, input?, tagRemove? }` — see [Slots](#slots) | —         |
 | `badgeProps`    | `Badge` props minus `children` — see [Slots](#slots) | —             |
 | `ref`           | `Ref<HTMLInputElement>`               | —                           |
 | …rest           | `<input>` props minus `value` / `defaultValue`; `onChange` is re-typed above | — |
@@ -39,10 +39,12 @@ error state with no extra props.
 and fires with the committed `string[]`, beside `onValueChange` and with the same payload. It
 exists so `{...form.field<string[]>("tags")}` binds directly — see [Gotchas](#gotchas).
 
-Two of the rest have sharp edges. `className` styles the **bordered wrapper**, while every
-other passthrough prop — `id`, `style`, `aria-*`, `onFocus` — lands on the inner text
-`<input>`. And `name` is intercepted rather than passed through: it names one hidden input per
-committed tag, not the draft field. See [Gotchas](#gotchas).
+Two of the rest have sharp edges. `className` styles the **outermost element** — the block
+holding the field box, the validation message and the announcer — while every other
+passthrough prop — `id`, `style`, `aria-*`, `onFocus` — lands on the inner text `<input>`.
+The bordered field box itself is `classNames.control`. And `name` is intercepted rather than
+passed through: it names one hidden input per committed tag, not the draft field. See
+[Slots](#slots) and [Gotchas](#gotchas).
 
 There is no `Tag` sub-component and no render prop: TagInput draws each chip itself, as a
 [Badge](badge.md) wrapping the label and a remove button, and a tag is always a plain
@@ -231,14 +233,28 @@ read-only rather than merely un-typeable.
 
 ## Slots
 
-`className` addresses the bordered field box. `classNames` addresses two elements inside it —
-class strings only, and the keys are typed, so a misspelled one is a compile error rather than
-a prop that does nothing.
+`className` addresses the **outermost element**: the block wrapping the bordered field box,
+the validation message and the announcer. It is the element to reach for when a margin, a
+width or a grid placement has to cover the control *and* whatever it says about itself.
+`classNames` addresses three elements inside it — class strings only, and the keys are typed,
+so a misspelled one is a compile error rather than a prop that does nothing.
 
 | Slot        | Element                   | What it addresses                                     |
 | ----------- | ------------------------- | ----------------------------------------------------- |
+| `control`   | the bordered field box    | the frame, its padding, fill, border and focus ring    |
 | `input`     | the draft text `<input>`  | the field a tag is typed into                          |
 | `tagRemove` | every chip's `button`     | all remove buttons — chips are generated, so no key names one |
+
+**`control` is where `className` used to land**, and moving it is the one breaking change on
+this page. A call that styled the frame —
+`<TagInput className="border-dashed rounded-none" />` — now styles the outer block instead,
+where those utilities do nothing visible. Move that string into
+`classNames={{ control: "border-dashed rounded-none" }}` and it lands exactly where it did
+before; the merge order is unchanged, so a utility touching a property the frame already sets
+still replaces it. Nothing warns you, because both spellings are valid props — grep for
+`<TagInput` and read each `className`. `control` is the same word
+[Select](select.md), [NumberInput](number-input.md), [DatePicker](date-picker.md) and
+[MultiSelect](multi-select.md) spend on the same element, so the four now agree.
 
 The chip itself is a bare [Badge](badge.md), so it takes a **prop bag** rather than a class
 string: a slot would have no base class to merge with, and would reach only `className` when
@@ -266,6 +282,15 @@ touching a property the Badge already sets replaces it. The chip's `role="listit
 to avoid. The validation message and the announcer are live regions whose `sr-only` is the
 mechanism; a class route there lets a caller print every add, removal and refusal on screen.
 See [Announcements](#announcements).
+
+**A fourth element used to have no route at all, and it is `className`'s now.** The block
+enclosing the field box, the validation message and the announcer was unstyled and
+unaddressable, so a margin or a width meant to cover the control *and* what it says about
+itself had nowhere to land. This page never mentioned that block — it documented `className`
+as landing on the field box and stopped there, which is why the gap read as a design rather
+than an omission. The cost of closing it was moving `className` off the field box, which is the
+break described above — the field box is `classNames.control` now, so both are addressable
+where previously only one was.
 
 ## Theme tokens
 
@@ -370,7 +395,7 @@ your own theme — re-check them against your values. See the
   de-duplicates, but a `value` prop is taken as given, so `value={["react", "react"]}` shows
   two chips — a faithful picture of your array, and no longer a React key collision.
   De-duplicate before you hand the array over if that is not what you meant.
-- **Clicking the wrapper's padding focuses the field.** The bordered box is the control's hit
+- **Clicking the field box's padding focuses the field.** The bordered box is the control's hit
   area, not just its frame: a press that lands on the box itself is redirected to the text
   input, while a press on a chip or its remove button is left alone.
 - **Client component, with the directive.** TagInput ships its own `"use client"`, so
@@ -416,7 +441,7 @@ worth knowing before you allow twenty.
   fires no blur, so the [blur commit](#how-a-tag-is-committed) is not on that path.
 
 Visually the error state is border-and-ring colour only, so always pair it with the
-message text. Focus is a `focus-within` ring on the wrapper, not `focus-visible`, so it
+message text. Focus is a `focus-within` ring on the field box, not `focus-visible`, so it
 appears on mouse click as well as on keyboard focus, and it lights up whenever a chip's
 remove button takes focus too. Those buttons also keep the browser's own focus outline —
 only the text input sets `outline-none` — so tabbing through chips is visible even though

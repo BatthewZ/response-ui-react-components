@@ -89,9 +89,11 @@ describe("Parallax", () => {
     expect(el.style.willChange).toBe("transform");
   });
 
-  it("merges custom className", () => {
-    render(<Parallax className="custom-class" data-testid="parallax">Styled</Parallax>);
-    expect(screen.getByTestId("parallax").className).toContain("custom-class");
+  // Exact string, not `toContain`: arrival and the collapse of the caller's own
+  // conflicting utilities are one assertion.
+  it("merges custom className, collapsing the caller's conflicting utilities", () => {
+    render(<Parallax className="custom-class p-r3 p-r5" data-testid="parallax">Styled</Parallax>);
+    expect(screen.getByTestId("parallax").getAttribute("class")).toBe("custom-class p-r5");
   });
 
   it("merges custom style", () => {

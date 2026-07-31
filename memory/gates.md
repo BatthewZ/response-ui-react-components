@@ -315,6 +315,33 @@ good. These are the ways they have still let defects through.
   the confirmation beside the button" is a claim a reviewer can go and refute. Where the same
   shape has already been ruled elsewhere in the tree, cite the sibling ruling rather than
   re-deriving it — a triage that disagrees with an identical neighbour is the one worth reading.
+- **Before building the gate a plan asks for, measure whether the drift it names is drift.**
+  A mirror gate was specified as "a named token value added to the CSS and not to the merge
+  helper's list is the only real drift". Measured against the installed tailwind-merge, the
+  default theme scale for `color` is `isAny` — so an unmirrored *colour* name still dedupes,
+  identically, across 12,474 class pairs built from every colour-taking prefix. The controls
+  are what make that a finding rather than a null result: the default `spacing` and `text`
+  scales are restrictive, and the same experiment shows those extensions genuinely changing
+  the merge. So the honest gate asserts a *documented coupling* that is load-bearing for the
+  namespaces nobody has used here yet, and it has to say in its own output that the namespace
+  it currently guards is not one of them. A gate that quietly implies a live bug it cannot
+  demonstrate spends the same credibility as a false doc.
+- **Widening a gate's vocabulary and then counting the new route's coverage will flatter it,
+  because the attribution order decides the number.** A doc gate taught to see tokens reached
+  through an arbitrary utility value reported seven claims resolved that way on first run —
+  and every one of the seven was already resolvable through the route the gate had all along.
+  Ordering the new route *last*, so its bucket counts only claims no older route can settle,
+  reported zero, which was the truth: the widening had added a capability nothing yet used.
+  That zero is what turned into a real number once the docs it unblocked were written, and it
+  is now the only signal that the route still works. Put a new route at the end of the
+  attribution chain, not the front.
+- **A doc that explains why something is undocumented is a bug report nobody filed.** Two
+  component pages said their scrim was left out of the token table "on purpose", naming the
+  gate's inability to resolve that shape of utility as the reason. The prose was accurate,
+  survived every green run, and had quietly converted a fixable gate limitation into a
+  documented convention — the same shape as shipping a defect and writing it up as a Gotcha.
+  When a page explains an omission by citing a tool, the finding is the tool's, and grepping
+  the docs for the tool's own name is how you find the rest of them.
 - **Turning a gate on rots the prose that explained its absence.** The `verify:*` count is the
   obvious casualty and the cheap one: it is greppable, and re-derive it from `package.json`
   rather than transcribing it. The expensive ones read as reasoning rather than as status — a

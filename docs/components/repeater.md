@@ -47,6 +47,8 @@ store, so a repeating group validates, submits and resets exactly like any other
 | `disabled`    | `boolean`                               | `false` |
 | `className`   | `string`                                | —       |
 | `classNames`  | `{ list?, item?, fields?, itemActions? }` — see [Slots](#slots) | — |
+| `itemActionProps` | `IconButton` props, minus the ones Repeater owns — see [Slots](#slots) | — |
+| `addButtonProps`  | `Button` props, minus the ones Repeater owns — see [Slots](#slots) | — |
 
 Six further props are functions that produce the component's own English — `removeLabel`,
 `moveUpLabel` and `moveDownLabel` name the row controls, and `addAnnouncement` /
@@ -342,10 +344,38 @@ can name the third one.
 </Repeater>
 ```
 
-Row *content* is the render prop's, not a slot's — see [The row API](#the-row-api). The Move
-and Remove buttons themselves take no class from the call site; if you need to restyle or
-relabel them, render your own inside the row and drive them from the `remove` / `moveUp` /
-`moveDown` callbacks — see [Your own row controls](#your-own-row-controls).
+Row *content* is the render prop's, not a slot's — see [The row API](#the-row-api).
+
+The four buttons are other components, not elements Repeater classes, so they take **prop
+bags** rather than class strings: there is no base class here for a slot to merge with, and
+what a caller usually wants on the Add button is its `variant`.
+
+| Prop              | Target                                        | What it addresses                          |
+| ----------------- | --------------------------------------------- | ------------------------------------------ |
+| `itemActionProps` | all three [IconButton](icon-button.md)s, on every row | their whole prop surface, minus what Repeater owns |
+| `addButtonProps`  | the Add [Button](button.md)                   | its whole prop surface, minus what Repeater owns |
+
+```tsx
+<Repeater form={form} name="links" defaultItem={() => ({ url: "" })}
+  itemActionProps={{ className: "text-fg-muted" }}
+  addButtonProps={{ variant: "ghost", size: "md" }}
+>
+  {({ name }) => <Input {...form.field(`${name}.url`)} />}
+</Repeater>
+```
+
+`itemActionProps` reaches Move up, Move down **and** Remove, on every row — the rows are
+generated from the array field, so no key can name the third one, and a bag cannot tell the
+three controls apart. Where you need them to differ, or to be *named* per row, render your own
+inside the row and drive them from the `remove` / `moveUp` / `moveDown` callbacks — see
+[Your own row controls](#your-own-row-controls).
+
+What Repeater owns is not yours to set, in either bag, and each is a compile error: the
+controls' accessible names (`removeLabel`, `moveUpLabel`, `moveDownLabel`, `addLabel`), their
+`disabled` state (it carries the `min` / `max` bounds and the first/last row), `onClick` (it is
+the mutation itself), `type`, `ref` and `children`. `variant` and `size` on the Add button are
+*defaults*, so those two the bag does replace. `className` in either bag is merged by the
+button itself, after its own base classes.
 
 **The live region takes no class, deliberately.** Its `sr-only` is what keeps the
 announcements off the screen; a class route there lets a caller print every add, removal and
@@ -368,9 +398,11 @@ no breakpoint utilities from you: the row gap goes `0.75rem` → `1.25rem` and t
 
 Everything with a colour in a rendered Repeater belongs to something else: the Add button is a
 [Button](button.md) at `variant="secondary" size="sm"`, the row controls are
-[IconButton](icon-button.md)s, and the fields are whatever you put in the rows. Re-tint those on
-their own pages; there is nothing here to override. See the
-[theme contract](../theme-contract.md) for the `r`-scale itself.
+[IconButton](icon-button.md)s, and the fields are whatever you put in the rows. Their variables
+are documented on their own pages, and there is no Repeater variable to override — but there is
+a per-instance route: `addButtonProps` and `itemActionProps` reach those buttons from the call
+site, so a single Repeater can differ from the rest without a theme change. See
+[Slots](#slots), and the [theme contract](../theme-contract.md) for the `r`-scale itself.
 
 ## Gotchas
 

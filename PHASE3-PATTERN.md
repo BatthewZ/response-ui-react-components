@@ -523,10 +523,12 @@ choice:
 
 **What a lane should copy is the procedure, not the verdict.** Ask, in order: (1) is the wrapper
 bare and unstyled, with `className` landing on an inner element the component itself renders? Then
-§4b, unambiguously — that is `TagInput.tsx:378`, which §4b names (and `Select.tsx:30`,
-`NumberInput.tsx:170`, the same shape, from `SLOT-VOCABULARY.md` §11). §4b's other citation,
-`DatePicker.tsx:280`, is a *different* half of the same rule — that element takes `className` raw
-with no `cn()`, so it has no base class rather than no route. (2)
+§4b, unambiguously — that was `TagInput` (cited as `:378`; `Select.tsx:30` and `NumberInput.tsx:170`
+are the same shape, from `SLOT-VOCABULARY.md` §11). **`TagInput` is now the worked example rather
+than the open case**: the owner ruled, `className` moved to the outer block and the field box became
+`classNames.control`. §4b's other citation, `DatePicker.tsx:280`, is a *different* half of the same
+rule — that element took `className` raw with no `cn()`, so it had no base class rather than no
+route, and it is also fixed. **Both halves are discharged; the procedure below is what survives.** (2)
 Does the wrapper forward another *component's* whole prop surface? Then the wrapper is plumbing,
 the inner component is the public identity, and re-pointing `className` is an owner call. (3)
 Either way, **annotate what you decided and why**, so the next reader sees a ruling rather than an

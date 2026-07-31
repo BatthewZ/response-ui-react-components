@@ -206,7 +206,7 @@ const PopoverTrigger = forwardRef<HTMLButtonElement, PopoverTriggerProps>(
 /*  Content                                                           */
 /* ------------------------------------------------------------------ */
 
-type PopoverContentProps = ComponentPropsWithRef<"div"> & {
+export type PopoverContentProps = ComponentPropsWithRef<"div"> & {
   /**
    * Render the pointer triangle that points back at the trigger. Off by default,
    * because it is the one option here that changes what is painted.

@@ -11,6 +11,14 @@ export { Badge } from "./Badge";
 export { Breadcrumbs } from "./Breadcrumbs";
 export { Button } from "./Button";
 export { Calendar } from "./Calendar";
+// Type-only: `CalendarBase` itself stays internal, but the shapes a caller must name to
+// write a `renderDay` or a typed `classNames` for `Calendar`/`RangeCalendar` live here.
+export type {
+  CalendarDayRenderArgs,
+  CalendarDayRenderer,
+  CalendarSlotClassNames,
+  DayStatus,
+} from "./CalendarBase";
 export { Card } from "./Card";
 export { CodeBlock } from "./CodeBlock";
 export { Carousel } from "./Carousel";
@@ -36,13 +44,13 @@ export {
   type FileUploadRejection,
 } from "./FileUpload";
 export { Hero } from "./Hero";
-export { HoverCard } from "./HoverCard";
+export { HoverCard, type HoverCardContentProps } from "./HoverCard";
 export { IconButton } from "./IconButton";
 export { Kbd } from "./Kbd";
 export { MasonryGrid } from "./MasonryGrid";
 export { MediaCard } from "./MediaCard";
 export { Pagination } from "./Pagination";
-export { Popover } from "./Popover";
+export { Popover, type PopoverContentProps } from "./Popover";
 export { Portal } from "./Portal";
 export { ProgressBar } from "./ProgressBar";
 export { type DateRange, RangeCalendar } from "./RangeCalendar";
@@ -59,8 +67,8 @@ export { Text } from "./Text";
 export { ThemeSwitcher } from "./ThemeSwitcher";
 export { Timeline } from "./Timeline";
 export { Toast, type ToastVariant } from "./Toast";
-export { ToastProvider, useToast } from "./ToastContext";
-export { Tooltip } from "./Tooltip";
+export { ToastProvider, type ToastProviderProps, useToast } from "./ToastContext";
+export { Tooltip, type TooltipProps } from "./Tooltip";
 export {
   VirtualizedDataTable,
   type VirtualizedDataTableProps,

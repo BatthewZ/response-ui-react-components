@@ -17,7 +17,7 @@ to understand.
 | [testing.md](./testing.md) | Ways a test here passes for the wrong reason.                |
 | [history.md](./history.md) | Why an inherited claim is worth less than you think.         |
 | [example-themes.md](./example-themes.md) | How sample data becomes API without anyone deciding to, and the one test that catches it. |
-| [affordances.md](./affordances.md) | Adding a visual cue or an override hook: why a slot `className` only looks like it works, how to read a "the library overwrote my class" report, and how to move a rail without moving everyone's. |
+| [affordances.md](./affordances.md) | Adding a visual cue or an override hook: why a slot `className` only looks like it works, how to read a "the library overwrote my class" report, how to move a rail without moving everyone's, and why depth is the wrong channel on a large region. |
 
 ## The short version
 
@@ -472,12 +472,27 @@ to understand.
    about produces a document where two point at one tree and four hundred at another. Verify the
    anchors were right at their baseline before believing either story.
 
-95. **Re-pointing `className` from an inner element to its wrapper is the one half of that change
-   no compiler and no gate can see — so move the rest bag with it and let the type checker carry
-   the rest.** Once the wrapper's props type is the wrapper's element, every other misplaced
-   attribute (`src`, `loading`, `onLoad`) becomes a type error at the call site, and the only
-   thing left that can fail silently is the single class you already knew about. Grep for that
-   one prop across `src/`, `dev/` and `docs/`; do not try to grep for the others.
+95. **Re-pointing `className` from an inner element to its wrapper silently moves every prop the
+   two elements *share*, not just the class — the type checker carries only the difference.**
+   Moving the rest bag with the class is still right, and it does turn the inner element's
+   exclusive attributes into call-site errors: for an `<img>` inside a `<div>`, `loading`,
+   `srcSet`, `sizes`, `decoding`, `fetchPriority`, `crossOrigin`, `referrerPolicy`, `useMap`,
+   `width` and `height` all fail to compile. But the silent residue is the whole intersection, not
+   the one prop you knew about — `className`, `style`, `ref`, `onLoad`/`onError` and
+   `id`/`title`/`aria-*` keep compiling and now address the wrapper. **`ref` is the sharp one and
+   no props type can close it**: a `Ref<HTMLImageElement>` type-checks against a
+   `Ref<HTMLDivElement>` because `HTMLDivElement` adds only the deprecated `align` over
+   `HTMLElement`, so the caller silently holds the wrong element and reads `undefined` off it.
+   **Count the residue by compiling, never by reasoning** — a throwaway `.tsx` passing each shared
+   prop at the top level, run through the project's own `tsc`, and the lines that *don't* error
+   are the list. Then check what the survivors actually *do* before calling them broken: React
+   attaches `load`/`error` listeners directly to the target element and dispatches up its own
+   fiber tree, so a handler re-pointed to the wrapper still fires and only `event.currentTarget`
+   changes. A migration note that says "those are loud" is a severity claim, and severity claims
+   are the ones that dissolve. **Read the mechanism out of `react-dom`, not out of a plausible
+   story about it** — "capture phase at the root container" was the explanation three files
+   carried, and it is wrong: `listenToNonDelegatedEvent` registers under a `__bubble` key on the
+   element. The behaviour was right and the reason was invented.
 96. **A props hatch and a re-point are one change, not two.** Adding `<thing>Props` while the
    component's rest bag still lands on the same element gives that element two writers, which is
    the defect the hatch was supposed to close. The hatch is warranted only once the rest bag has

@@ -140,6 +140,32 @@ guessed. And an absolutely-positioned child is laid out against the **padding** 
 it to the surface's edge with `inset: 0` puts it a border-width inside; a percentage `translate`
 of the element's own box is what keeps the overlap correct at any size the caller chooses.
 
+## Depth is a signal that scales with area; a marker is not
+
+Reaching one rung deeper to separate a region from its neighbour is correct reasoning applied at
+the wrong scale when the region is large. Contrast chosen while looking at a single row reads as
+weight once the same fill covers the widest, tallest block the component draws, and the deepest
+rung under the biggest area makes that region the heaviest thing on the page regardless of how
+little it matters. Ask what fraction of the viewport a fill will occupy before picking its rung,
+and treat "it must not be confused with its neighbour" as a question about *which channel*
+carries the distinction, not about how far down the ladder to go.
+
+A leading marker costs the same at any size, which is what makes it the right channel here. It
+also does not depend on the gap between two rungs, so it holds up in a theme whose surface ladder
+is tightly spaced or whose lower rungs carry chroma — a fill that reads as a gentle recess in a
+neutral ladder reads as a coloured slab in a saturated one, and the distance between rungs is
+exactly the thing a consumer's theme is free to change. Prefer the marker, keep the fill level
+with the neighbour it must not be confused with, and the distinction survives a ladder you never
+saw.
+
+Two related traps. Give a second state's marker a *different colour role* rather than reusing the
+one an existing state owns, or the two become indistinguishable wherever a component can be in
+both at once — the structural neutral is usually the free slot, since accent is normally already
+spoken for by selection. And paint the marker as a background-image while the fill stays a
+background-color: different properties compose on one element, so a caller overriding the fill
+through a slot keeps the marker, which is the behaviour you want because the marker is
+structure and the fill is decoration.
+
 ## An inline style written by a positioning library cannot be overridden by any class
 
 Where a hook writes a property inline — a transition duration, a transform — that property is

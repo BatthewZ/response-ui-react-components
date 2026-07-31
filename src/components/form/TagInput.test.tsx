@@ -687,6 +687,22 @@ describe("TagInput", () => {
      * One slot-override test per slot, and each is the falsifier for its own
      * merge: delete that element's `cn()` and exactly this test must go red.
      */
+    it("lands classNames.control on the bordered field box, beside the base classes", () => {
+      const { container } = render(
+        <TagInput aria-label="Tags" classNames={{ control: "px-r1" }} />,
+      );
+      const box = container.querySelector(".flex-wrap");
+      expect(box?.getAttribute("class")).toContain("bg-surface-0");
+      expect(box?.getAttribute("class")).toContain("px-r1");
+      // The slot arrives last, so tailwind-merge lets it *replace* the base's
+      // own horizontal padding rather than stack with it.
+      expect(box?.getAttribute("class")).not.toContain("px-r4");
+      // And it stays off the outermost element, which is `className`'s.
+      expect(
+        container.firstElementChild?.getAttribute("class") ?? "",
+      ).not.toContain("px-r1");
+    });
+
     it("lands classNames.input on the draft field, beside the base classes", () => {
       render(
         <TagInput aria-label="Tags" classNames={{ input: "min-w-full" }} />,
@@ -713,7 +729,10 @@ describe("TagInput", () => {
     });
 
     it("leaves each internal on its base classes alone when no slot is passed", () => {
-      render(<TagInput aria-label="Tags" defaultValue={["a"]} />);
+      const { container } = render(<TagInput aria-label="Tags" defaultValue={["a"]} />);
+      expect(container.querySelector(".flex-wrap")?.getAttribute("class")).toBe(
+        "flex flex-wrap items-center gap-r6 w-full px-r4 py-r5 bg-surface-0 border rounded-md border-border-strong duration-fast ring-2 ring-transparent focus-within:ring-border-focus focus-within:ring-offset-0 focus-within:border-border-focus",
+      );
       expect(screen.getByRole("textbox", { name: "Tags" }).className).toBe(
         "flex-1 min-w-[6rem] bg-transparent outline-none text-body-2 text-fg-primary placeholder:text-fg-muted disabled:cursor-not-allowed",
       );
@@ -805,6 +824,51 @@ describe("TagInput", () => {
         />,
       );
       expect(screen.getByText("apple")).toHaveAttribute("role", "listitem");
+    });
+  });
+
+  describe("className addresses the outermost element", () => {
+    const outermost = (container: HTMLElement) =>
+      container.firstElementChild as HTMLElement;
+
+    /**
+     * The falsifier for the root's `cn()`. There is no base class to merge
+     * against and none was invented — the merge earns its place against the
+     * *caller's own* conflicting utilities, so the assertion is the collapse:
+     * raw, `p-r3 p-r5` reaches the DOM as both and stylesheet order picks.
+     */
+    it("collapses conflicting utilities in the caller's own className", () => {
+      const { container } = render(
+        <TagInput aria-label="Tags" className="p-r3 p-r5" />,
+      );
+      expect(outermost(container).getAttribute("class")).toBe("p-r5");
+    });
+
+    it("keeps className off the bordered field box", () => {
+      const { container } = render(<TagInput aria-label="Tags" className="p-r5" />);
+      const box = container.querySelector(".flex-wrap");
+      expect(box).not.toBe(outermost(container));
+      expect(box?.getAttribute("class")).not.toContain("p-r5");
+      expect(box?.getAttribute("class")).toContain("px-r4");
+    });
+
+    /**
+     * The reason the re-point is worth a break: the element `className` reaches
+     * has to be the one covering the field, its validation message and its
+     * announcer, or a margin meant for the whole control still has nowhere to
+     * land. The message and the announcer stay siblings of the field box.
+     */
+    it("wraps the field box, the validation message and the announcer", () => {
+      const { container } = render(
+        <TagInput aria-label="Tags" className="p-r5" defaultValue={["a"]} />,
+      );
+      const outer = outermost(container);
+
+      expect(container.querySelector(".flex-wrap")?.parentElement).toBe(outer);
+      expect(container.querySelector("p[aria-live='polite']")?.parentElement).toBe(
+        outer,
+      );
+      expect(screen.getByRole("status").parentElement).toBe(outer);
     });
   });
 });

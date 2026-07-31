@@ -254,8 +254,7 @@ while closed — see [Gotchas](#gotchas).
 ## Theme tokens
 
 Dialog has no CSS file: everything it paints is a Tailwind utility in the `.tsx`. Six of them
-do the painting, and five resolve to a contract variable a theme can override — four in the
-table, plus the scrim described below it:
+do the painting, and five resolve to a contract variable a theme can override:
 
 | Where          | Utility        | Override        |
 | -------------- | -------------- | --------------- |
@@ -263,15 +262,15 @@ table, plus the scrim described below it:
 | Corners        | `rounded-lg`   | `--RADIUS-LG`   |
 | Elevation      | `shadow-lg`    | `--SHADOW-LG`   |
 | Panel padding  | `p-r2`         | `--R-SIZE-2`    |
+| Backdrop scrim | `backdrop:bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]` | `--OVERLAY-SCRIM-COLOR` |
 
 `p-r2` is on the responsive `r`-scale — 1.25rem below the 40rem breakpoint, 2rem above it —
 so the panel's padding grows with the viewport without a breakpoint utility from you.
 
-**The scrim follows the theme.** The backdrop is
-`backdrop:bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]` — the same contract token
-[Drawer](drawer.md) and [CommandPalette](command-palette.md) read in their stylesheets, with
-the same 50% black fallback, which only applies when `@batthewz/response-ui-css` isn't loaded
-at all. Override `--OVERLAY-SCRIM-COLOR` and all three scrims re-tint together.
+**The scrim follows the theme.** It is the same contract token [Drawer](drawer.md) and
+[CommandPalette](command-palette.md) read in their stylesheets, with the same 50% black
+fallback, which only applies when `@batthewz/response-ui-css` isn't loaded at all. Override
+`--OVERLAY-SCRIM-COLOR` and all three scrims re-tint together.
 
 **Motion** is `animate-fade-in`, which resolves through `--animate-fade-in` to
 `--MOTION-DURATION-ENTER` and `--MOTION-EASE-ENTER`, so retiming every enter animation in the

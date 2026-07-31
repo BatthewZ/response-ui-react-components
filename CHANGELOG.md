@@ -4,12 +4,25 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
-## [Unreleased]
+## [0.12.0] — 2026-07-31
+
+This release is the whole of the "sensible defaults, overridable" work: component CSS moved into
+`@layer components` so a caller's utility wins, the two column-scale stylesheets were deleted in
+favour of native Tailwind utilities, and every component gained a `classNames` slot API for the
+internals `className` cannot reach.
+
+**Why one release and not three.** The plan that drove this argued for shipping each phase
+separately, so the version would land where the breakage actually is. That argument holds when the
+phases can be published independently — here they could not be observed independently: all three
+landed before anything was published, so no consumer ever saw an intermediate state, and cutting
+two versions nobody could have installed would buy history rather than information. The breaking
+surface is large and it is all in this one minor. Read the *Breaking* section in full before
+upgrading.
 
 ### Breaking
 
 - **This package's component CSS is now in `@layer components`, so `className` overrides
-  work.** All 43 per-component imports in `src/styles.css` carry `layer(components)`, and
+  work.** All 44 per-component imports in `src/styles.css` carry `layer(components)`, and
   Tailwind orders that layer **below** `@layer utilities`. `<StatCard className="flex-row
   border-0 bg-surface-2">` now does what it looks like it does, on every component — previously
   a utility touching any property a component stylesheet already set landed in the DOM, changed
@@ -99,6 +112,210 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   full-scale swings. `line` and `area` are unchanged — they encode position, not magnitude.
   Pass an explicit `min`/`max` to restore any previous framing.
 
+- **`MediaCard.Image`'s `className`, `ref` and rest props now address the ratio box, and the
+  `<img>` is reached through a new `imgProps` bag.** The box is the outermost element the
+  subcomponent renders, so this is the package's house rule — `className` goes to the outermost
+  element — applied to the one part that broke it: the box received *nothing*, had no override
+  route at any level, and every prop flew past it into the picture it frames. `src` and `alt` stay
+  `Image`'s own props and are written **after** the bag, so `imgProps` can neither re-point the
+  picture nor erase the alt text; `imgProps.className` merges after `size-full object-cover`, so
+  `object-contain` still beats the default. This is the split
+  [`Spotlight.Image`](./docs/components/spotlight.md) already shipped and
+  [`Hero.Background`](./docs/components/hero.md) gains in this release.
+
+  **What breaks, and only half of it is loud.** The split is exact: every attribute that is
+  `<img>`-only becomes a type error against the box's `div` props — `loading`, `srcSet`, `sizes`,
+  `decoding`, `fetchPriority`, `crossOrigin`, `referrerPolicy`, `useMap`, `width` and `height` —
+  so the compiler finds those ten for you. Every prop legal on **both** elements still compiles
+  and now addresses the box: `className`, `style`, `ref`, `onLoad`, `onError`, and `id`/`title`/
+  `aria-*`. Move them into `imgProps={{ … }}`, and grep — the compiler will not find them.
+
+  **`ref` is the one to grep for first.** A `useRef<HTMLImageElement>` slips through because
+  `HTMLImageElement` is structurally assignable to `HTMLDivElement` — the only member
+  `HTMLDivElement` adds to `HTMLElement` is a deprecated `align`, which `HTMLImageElement` also
+  carries — so the caller silently holds a `<div>` and `naturalWidth`/`naturalHeight` read
+  `undefined`. No props type can close this one.
+
+  **`onLoad`/`onError` still fire**, which is worth knowing before you go hunting for a dead
+  handler: React attaches a listener for these non-delegated events directly to the `<img>` and
+  then dispatches up its own component tree, so a handler on the box runs even though the DOM
+  event never bubbles. What changes is `event.currentTarget`, which is now the `<div>` — and
+  reading `.naturalWidth` off it is itself a compile error, so that half is loud.
+
+- **`Skeleton`'s `width` and `height` props are deleted — geometry is `className`, both axes.**
+  `width` defaulted to `"100%"` and always shipped as an inline `style`, which outranks any class
+  in any layer, so `w-64` on a Skeleton never applied however this package's CSS was layered.
+  `height` had no default, so `h-48` worked. One component, two geometry props, opposite answers,
+  and nothing in the API saying which was which. Now `w-full` rides in the class list where `cn()`
+  collapses it against whatever `w-*` you pass — one `width` declaration reaches the element, never
+  two racing on source order — and the height default stays in CSS as `.skeleton { height: 1em }`
+  in `@layer components`, where an `h-*` utility outranks it. Height is deliberately *not* moved
+  into the class list: a utility there would out-rank `.skeleton--circular { height: auto }` and
+  flatten every circle. Two mechanisms, one contract.
+
+  **What breaks.** Both props are now type errors, so nothing changes silently. Translate them into
+  classes: `width="65%"` → `className="w-[65%]"`, `height="8rem"` → `className="h-32"`,
+  `width={40} height={40}` on a `circular` skeleton → `className="w-10"` and let the aspect ratio
+  supply the other axis. `size-4` works too, since it conflicts with both `w-*` and `h-*`. An
+  inline `style` still beats every class and is the hatch for a dimension only known at runtime.
+
+  **The documented escape hatch never worked, which is worth more than the fix.**
+  `style={{ width: undefined }}` was published as the way to drop the inline `100%` and shrink a
+  Skeleton to fit its content. Measured, it produced a **0px** box, and always had: a Skeleton's
+  only child is the `sr-only` label, which is out of flow, so `width: auto` on an `inline-block`
+  resolves to zero. `w-auto` and `w-fit` measure the same and are documented as such — they are
+  useful only where a flex/grid parent, `flex-1` or a `min-w-*` supplies the size.
+
+- **`--progress-bar-fill` and `--progress-bar-fill-end` are deleted; the fill's colour is a `bg-*`
+  utility.** The pair was declared on `.progress-bar__fill` — the element that *reads* it — and all
+  four colour modifiers redeclared it on that same element, while `color` defaults to `"accent"`.
+  A declaration on an element beats an inherited one at every cascade layer, so a theme setting
+  either variable at `:root` was overwritten on **100%** of bars; measured, a consumer who set the
+  pair got the unchanged default. Relocating the declaration to `.progress-bar` could not have
+  fixed that either — the modifiers would still have shadowed it. So the route those two tokens
+  advertised was already dead, and deleting them removes an advertisement, not a capability. The
+  four `colorClass` entries now carry `bg-accent` / `bg-status-success` / `bg-status-warning` /
+  `bg-status-error`, which **read** `--C-ACCENT` and `--C-STATUS-*` instead of shadowing them, so
+  the theme route works where the token route never did. `variant="gradient"` composes an
+  arbitrary `bg-[linear-gradient(…)]` per colour on top, reproducing the old ramp exactly rather
+  than going through `bg-linear-to-*`, which would have changed the interpolation space to oklab.
+
+  **What breaks.** The ten declarations of the pair — two on `.progress-bar__fill` and two on each
+  of the four colour rules — are gone along with the rules that held eight of them, and setting
+  either custom property now does nothing, which is what it already did. To re-tint every bar in
+  the app, override `--C-ACCENT` / `--C-STATUS-*`; for one bar, pass `color`, or
+  `classNames={{ fill: "bg-…" }}`, which beats both.
+  `.progress-bar__fill--accent`/`--success`/`--warning`/`--error`/`--gradient`
+  all stay on the element as **declaration-free marker classes**, so devtools, a consumer
+  stylesheet and non-React consumers of `@batthewz/response-ui-css` still have one name per
+  colour — but a stylesheet that *read* colour off one of them now finds an empty rule, and a
+  stylesheet that sets one gets it, because a consumer's unlayered rule beats our utility. On a
+  `gradient` bar the ramp and the colour are different tailwind-merge groups, so a
+  `classNames.fill` of `bg-…` replaces the colour and **leaves the ramp**; pass `bg-none`
+  alongside it, or use `color`.
+
+- **`MultiSelect` and `CommandPalette` are compound components.** `MultiSelect` gains `.Content`,
+  `.Item`, `.ItemIndicator`, `.Empty`, `.Tag` and `.TagRemove`; `CommandPalette` gains `.Item`. A
+  listbox row, a chip, its remove button, the check mark and the "nothing matched" row each have an
+  identity a consumer would address by name, and each had **no override route at all** — not a
+  class, not a prop, not a ref. A map of slot keys would have been the wrong shape for the same
+  reason: these are elements you want to *compose*, not merely re-class.
+
+  **The data stays the component's.** `options` / `items` remains the single writer, and `children`
+  is an optional **function** the root invokes over the list it has already filtered — so a caller
+  maps rows and never authors them. Omit it and nothing changes: the default tree is the same
+  composition, so a custom one cannot drift from it. The two functions differ in grain.
+  `MultiSelect`'s is called once, with `{ options, selected }`; `CommandPalette`'s is called once
+  **per row**, with `{ item, index, active }`.
+
+  ```tsx
+  <MultiSelect options={options} value={value} onValueChange={setValue}>
+    {({ options, selected }) => (
+      <>
+        {selected.map(({ value, label }, index) => (
+          <MultiSelect.Tag key={value} index={index} className="rounded-full">
+            {label}
+            <MultiSelect.TagRemove />
+          </MultiSelect.Tag>
+        ))}
+        <MultiSelect.Content>
+          {options.map((option) => (
+            <MultiSelect.Item key={option.value} option={option}>
+              <MultiSelect.ItemIndicator />
+              {option.label}
+            </MultiSelect.Item>
+          ))}
+        </MultiSelect.Content>
+      </>
+    )}
+  </MultiSelect>
+  ```
+
+  Each subcomponent is an address into the root's own state, and says so out loud rather than
+  rendering something wrong: `MultiSelect.Item` throws for an `option` that is not in the list it
+  was handed, `.Tag` throws for an `index` outside the selection, `.TagRemove` and `.ItemIndicator`
+  throw outside their parent, and `CommandPalette.Item` throws unless it came out of the children
+  function — it carries the row's `id`, `role`, `aria-selected`, active state and select handler,
+  none of which a caller can supply or get wrong. Consequently **no `item`, `panel` or `empty` slot
+  ships on either component**: the subcomponent's own `className` is that route, and one element
+  with two writers is one writer too many.
+
+  **What breaks.** `CommandPalette`'s `children` used to be typed through from `<dialog>` and
+  rendered *nothing* — the JSX children the component supplies itself always won. It is now
+  `(args: CommandPaletteRenderArgs) => ReactNode`, so passing elements is a compile error: delete
+  them, or turn them into the function. `MultiSelect` already refused `children`, so its root props
+  are unchanged.
+
+- **`MultiSelectOption` → `MultiSelectItem`, `CommandItem` → `CommandPaletteItem`.** Both are
+  exported types and both are now the prop type of a subcomponent as well as an element of a data
+  array, which is exactly when a name has to say which component it belongs to — `CommandItem` never
+  did. **No alias is kept**, so the compiler finds every site: rename the `import type` and you are
+  done. Neither shape changed a field.
+
+- **`Breadcrumbs.Separator` is now `Breadcrumbs.Divider`.** One concept, two shipped words: the
+  menus called the same thing `Divider`, and `Divider` is a top-level component in its own right.
+  `<Breadcrumbs.Separator>` no longer exists, so this is a compile error rather than a silent
+  fallthrough — which matters more than usual here, because the root detects a caller-rendered
+  divider by **reference identity** (`child.type === BreadcrumbsDivider`) to pair it with the crumb
+  it precedes. An element that is not literally that component is treated as a crumb, so a wrapper
+  of your own around the old name would have gone quietly wrong. The root's `separator` **prop** is
+  unchanged and keeps its name; only the subcomponent moved.
+
+- **`DropdownMenu.Label` and `ContextMenu.Label` are now `.GroupHeader`.** `label` means
+  *accessible name* everywhere else in this package — there are 30 `*Label` props saying so, and a
+  `Label` component in `form/` — while this element is a heading over a group of menu items.
+  `<DropdownMenu.Label>` → `<DropdownMenu.GroupHeader>`, same for `ContextMenu`; the props type and
+  the rendered `<span role="presentation">` are unchanged. If you assert on the
+  used-outside-a-provider error, its text moved with the name: `MenuLabel must be used within a menu
+  provider` is now `MenuGroupHeader must be used within a menu provider`.
+
+- **The menu surface's class names are `menu-*`, and `classPrefix` is deleted.** The five classes
+  inside a menu panel were built at runtime from a context field —
+  `` cn(`${classPrefix}-item`, className) `` — and both menus set that field to the same literal,
+  `"dropdown-menu"`. So it was a generalisation with one value, **and it was already violated**:
+  `ContextMenu` painted its panel, items, icons, dividers and headings with `dropdown-menu-*`
+  classes named after the other component, plus one `context-menu-trigger` class **no stylesheet in
+  this package ever defined**. Anyone styling a context menu from CSS was either targeting a class
+  named for a component they were not using, or targeting one that did nothing.
+
+  The five are now static and shared, in a new `menu-internals.css` that `styles.css` imports
+  alongside the rest: `dropdown-menu-content` → **`menu-content`**, `-item` → **`menu-item`**,
+  `-item-icon` → **`menu-item-icon`**, `-divider` → **`menu-divider`**, and `-label` →
+  **`menu-group-header`** (the element renamed in the same pass, above). `DropdownMenu.css` keeps
+  `.dropdown-menu-trigger` and nothing else; `context-menu-trigger` is **gone from the DOM** — the
+  trigger carries only your `className` now.
+
+  **What breaks.** A stylesheet or test selector for `.dropdown-menu-item`, `.dropdown-menu-content`,
+  `.dropdown-menu-divider`, `.dropdown-menu-item-icon` or `.dropdown-menu-label` finds nothing:
+  switch to the `menu-*` name, and note that the rule now applies to **both** menus, which is what
+  it always did in practice. `.context-menu-trigger` has no replacement — put your own class on
+  `<ContextMenu.Trigger className="…">`. Nothing about a menu's appearance changed. A concatenated
+  class is also a class Tailwind's source scanner cannot see, so every static gate in this repo was
+  blind to all five.
+
+- **`TagInput`'s `className` now addresses the outermost element, and the bordered field box is
+  `classNames.control`.** `TagInput` returns a block wrapping three things — the field box, the
+  validation message and the polite announcer — and that block received *nothing*: it was
+  unstyled, unreachable at any specificity, and a margin or width meant to cover the control
+  *and* what it says about itself had nowhere to land. The docs' answer was to wrap the
+  component in your own element. `className` reaches that block now, which is this package's
+  house rule everywhere else, and the frame it used to reach is a slot under the same word
+  `Select`, `NumberInput`, `DatePicker` and `MultiSelect` already spend on that element.
+
+  **The edit is one line, and nothing warns you.** `<TagInput className="border-dashed" />`
+  becomes `<TagInput classNames={{ control: "border-dashed" }} />`. Both spellings are valid
+  props with valid types, so the compiler is silent and the utilities simply stop doing
+  anything visible on the outer block — grep for `<TagInput` and move each `className` whose
+  string was aimed at the frame. Merge order inside `control` is unchanged (base classes first,
+  yours last), so a utility touching a property the frame already sets still replaces it, and a
+  `className` genuinely meant for the whole control — `w-64`, `mt-r4` — is correct where it is
+  and should be left alone.
+
+  **`...props`, `ref` and the `id` do not move**, and deliberately: they stay on the text
+  `<input>`, because `<label for>` binds only to labelable elements and the form store's
+  focus-the-first-error path calls `.focus()` through that same `ref`. `classNames.input` and
+  `classNames.tagRemove` are unchanged.
+
 ### Added
 
 - **`classNames` — per-slot class overrides for a component's internals, and the exported
@@ -106,16 +323,117 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `classNames` addresses the elements it renders *inside* itself, as class strings keyed by
   slot. The keys are a union written out per component, so an unknown one is a compile error
   rather than a prop that silently does nothing, and there is deliberately no `root` key —
-  `className` is the root. The first slot ships on `StatCard.Trend`:
+  `className` is the root.
 
   ```tsx
   <StatCard.Trend value={12.5} direction="up" classNames={{ trendIcon: "size-r3" }} />
+  <SearchInput value={q} onChange={setQ} classNames={{ icon: "text-fg-secondary" }} />
+  <Pagination
+    page={page}
+    totalPages={9}
+    onPageChange={setPage}
+    classNames={{ list: "gap-r6", page: "rounded-full" }}
+  />
   ```
+
+  **51 components and subcomponents take it, with 103 distinct slot keys reaching 168 elements** —
+  the whole library in one pass, off a single frozen vocabulary, so one concept has one name
+  everywhere: the framing box around a control is `control` wherever there is one, a repeated unit
+  is `item`, a leading glyph inside a repeated unit is `itemIcon`, the filled half of a progress
+  control is `fill`. Names that would have meant two things are banned outright rather than
+  disambiguated per component — there is no `label` slot anywhere, because 30 `*Label` props
+  already mean *accessible name* and `Label` is an exported component.
 
   Additive and a no-op on screen. Your slot class beats the component's base class for the same
   reason `className` does — the base class is in `@layer components` and yours is a utility.
   Not every internal gets a slot: an element whose class *is* a mechanism stays unreachable on
-  purpose, and each component's doc page says which and why under its **Slots** heading.
+  purpose, and each component's doc page says which and why under its **Slots** heading. Where the
+  right answer was not a class at all it is a subcomponent, a custom property, a `<thing>Props`
+  bag or a `render*` prop instead — see the entries below.
+
+- **`renderDay` on the calendars, `renderPreview` and `renderFile` on `FileUpload`.** Where the
+  internals are loop-generated, no key can name one instance — a calendar renders 42 cells a month —
+  and what a caller wants there is usually different *content* anyway: a dot on a booked day, a
+  thumbnail with your own overlay. So those get a render prop rather than a slot.
+
+  `renderDay` takes `{ date, status, outside, today, disabled, selected }` and replaces the day
+  button's **children only** — the button, its `aria-*`, its keyboard handling and the
+  `querySelector` markers focus management depends on all stay the component's. It ships on
+  `Calendar`, `RangeCalendar` and `CalendarBase`, and deliberately **not** on `DatePicker` /
+  `DateRangePicker`, which do not forward it.
+
+  `FileUpload`'s two split by what is being previewed: `renderPreview` for images and video
+  (`layout: "large"` for a lone one, `"grid"` for several), `renderFile` for every other file and
+  for everything under `previewMode="compact"`. Both receive `{ file, previewUrl, index, remove,
+  removeLabel, disabled }` — `index` is the position in the `files` prop, which is what
+  `onRemoveFile` expects; `remove` is `undefined` unless you passed `onRemoveFile`; and `previewUrl`
+  is absent on the first paint and for non-media files, because it is minted in an effect. The
+  exported types are `FileUploadPreviewItem` and `FileUploadMediaPreviewItem`. The grid that holds
+  them is still the component's, and still reachable through `classNames.list`.
+
+  (`Calendar.css` is renamed `CalendarBase.css` in passing. A stylesheet here is owned by the module
+  it sits beside, and this one sat beside `Calendar.tsx` while styling `CalendarBase`'s markup
+  entirely — so the one signal of ownership the package has was pointing at the wrong component. No
+  selector, no declaration and no custom property changed, and no supported import path exposed the
+  file.)
+
+- **`<thing>Props` bags for the elements that belong to another component.** `classNames` reaches
+  what a component renders itself; where the target is a nested *component*, a class alone is not
+  enough and the answer is a props bag, merged library-class-first. New: `tableProps` and
+  `paginationProps` on `DataTable`, `tableProps` on `VirtualizedDataTable`, `badgeProps` on
+  `TagInput`, `avatarProps` on `AvatarUpload`, and `imgProps` on `Hero.Background`. In every case
+  the component's own contract wins over the bag — `DataTable` spreads `paginationProps` **before**
+  `page` / `totalPages` / `onPageChange` (which is why the type `Omit`s them), `VirtualizedDataTable`
+  keeps `aria-rowcount` and `aria-busy` for itself, and `TagInput` keeps the chip's
+  `role="listitem"` — while a `className` inside the bag merges *after* the library's, so it wins.
+
+  **`DataTable` and `VirtualizedDataTable` also take a `className` at last** (and
+  `VirtualizedDataTable` a `style`). Both props types are closed objects that extend no DOM props,
+  so there was previously no way to put a class on either root at all, at any level.
+  `VirtualizedDataTable` now forwards all three through its loading and empty branches too, which
+  used to drop them.
+
+- **`FileUpload` publishes its dropzone state as `data-*` attributes.** `data-has-files`,
+  `data-drag-over`, `data-uploading`, `data-success`, `data-error` and `data-disabled` sit on the
+  root beside the `file-upload--*` modifier classes they mirror — neither replaces the other. The
+  point is that state-keyed styling now goes through the one prop that already reaches that element:
+  `className="data-drag-over:ring-2"`.
+
+- **`Popover`, `HoverCard` and `Tooltip` render a pointer arrow, behind an opt-in `arrow` prop.**
+  `arrow?: boolean`, default `false`, on `Popover.Content`, `HoverCard.Content` and `Tooltip`
+  itself; the surface owns the ref, hands it to `useFloating`, and positions the element from
+  floating-ui's own measurement, so a flip carries the arrow to the other edge.
+
+  **This closes a hole rather than adding a feature.** `useFloating` has always exported an
+  `arrowRef` option, wired to floating-ui's `arrow` middleware and documented on the Popover page —
+  and no component in this package ever passed one, so a consumer could switch on a middleware that
+  positions an element nothing renders. The doc said, in as many words, that there is no arrow
+  element and nothing to position: a *cannot* that was true only because the library never built
+  the half it owned. It is now the `arrow` prop's documentation, and `tooltip.md` and
+  `hover-card.md` say the same.
+
+  The arrow takes its `background-color` and `border` from `inherit`, not from a
+  `--popover-arrow-*` token — the panel already publishes both, and a second writer would let a
+  caller retint the fill and leave the border behind. A `bg-*` or `border-*` utility you put on
+  `Popover.Content` therefore reaches the arrow for free, and it survives forced colours.
+  `classNames.arrow` is there for size and shape: floating-ui *measures* the element, so a bigger
+  arrow stays correctly positioned. Its offset is written **inline**, so a positioning utility in
+  that slot loses — paint and geometry only. The element carries `aria-hidden` and a `data-side` of
+  `top` / `right` / `bottom` / `left`, taken from the resolved placement, which is what the
+  border-trimming rules key off and what you would key your own off: `.popover-arrow` and
+  `.tooltip-arrow` are real classes, while `HoverCard` — which ships no stylesheet — dresses its
+  arrow in utilities, so there `classNames.arrow` is the only route. `Tooltip` renders a second
+  element only while `arrow` is set; with it off, everything below about it rendering one element
+  still holds.
+
+  `useFloating`'s own `arrowRef` option widens from `RefObject<Element>` to
+  `RefObject<Element | null>`, so the `useRef<HTMLDivElement>(null)` you would actually write now
+  type-checks without a cast. Existing calls are unaffected.
+
+  **The two menus deliberately get no arrow.** `DropdownMenu` and `ContextMenu` share one hook, and
+  `ContextMenu` positions against a virtual 0×0 rect at the cursor: an arrow there would point at
+  nothing, and one shared surface cannot be arrowed for one of its two consumers without a prop
+  that lies for the other.
 
 - **`ScrollReveal` publishes `data-entering` and accepts `animation="none"`.** The attribute
   marks the entrance window — added on intersection, removed on `animationend` — so a stylesheet
@@ -127,12 +445,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `@import "./components/*.css"` in `src/styles.css` must carry `layer(components)`, `tokens.css`
   must carry none, and an import the script cannot classify fails the run rather than being
   skipped. No allowlist. It exists because the entire `@layer components` change is one keyword
-  repeated on 43 lines and **nothing read those lines**: `probe:cascade-layer` re-derives the
+  repeated on 44 lines and **nothing read those lines**: `probe:cascade-layer` re-derives the
   import list from that file, strips whatever `layer()` is written there and adds its own, so it
   compares "unlayered" against "layered" whatever the file says; `tsc` cannot read CSS; and vitest
   stubs CSS imports to an empty string. Deleting the keyword from one import left all ten gates
   green while that component went back to out-ranking every caller utility. Made to fail on
   purpose three ways before being trusted. ([`scripts/verify-css-layering.mjs`](./scripts/verify-css-layering.mjs))
+
+- **`verify:slot-annotations` — a publish gate for "every class on an element you cannot reach is
+  a decision somebody made on purpose".** Every `className` attribute in production `src/` must
+  either be *reachable* — its value mentions `className` or `classNames` — or carry a
+  `// slot:(a|b|e) <reason>` comment saying why the consumer's route is somewhere else: (a) no
+  route is owed because the class *is* the mechanism, (b) the route is a custom property because
+  the override is a value, (e) the route is a `render*` prop because the element is
+  loop-generated. An attribute it cannot classify is a **failure**, not a skip, and a run with
+  zero annotations fails too, so it cannot pass vacuously. It rejects `slot:(c)`, `(d)` and `(f)`
+  by name: each of those ends in a class merge, so a settled one is reachable and needs no
+  comment. There is no allowlist. It reads **435 attributes — 332 reachable, 103 annotated,
+  0 failing** — and it prints its own blind spots at every run, including the six
+  props-getter sites (`className:` inside an object literal) it structurally cannot see. It found
+  17 unclassified elements in six components no slot lane owned, invisible to types, to lint and
+  to 2,507 tests. ([`scripts/verify-slot-annotations.mjs`](./scripts/verify-slot-annotations.mjs))
+
 - **Forced-colours focus indicators for six more controls.** `focusOutlineResetControl` is now
   `not-forced-colors:focus:outline-none`, so in forced-colours mode the reset stands down and
   the browser's own outline survives. `Radio` keeps its `Highlight` outline (which the
@@ -172,7 +506,120 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   now composed with the component's own rather than replacing them; `preventDefault()` on the
   click opts a press out.
 
+- **`Tooltip` takes a `className`, which reaches the bubble.** It renders one element —
+  `children` is cloned rather than wrapped, and the arrow above is off by default — and its props
+  type was closed, so passing a class was
+  a **TypeScript error**, not a prop that quietly did nothing. All ten `Tooltip.css` declarations
+  on `.tooltip` therefore had no override route at any level, and four of them reach no theme
+  variable either: the padding, the `max-width` wrap width, `word-wrap` and the `z-index`. Per
+  instance was the only route those four could ever have, and there wasn't one. It merges through
+  `cn("tooltip", className)`, and because the base class is in `@layer components` a utility
+  touching a property `.tooltip` already sets replaces it. It is spread nowhere else — the cloned
+  child is untouched, so this cannot reach the trigger.
+
+- **Eight type-only exports, so this release's new props can be *named*.** Everything above
+  shipped as a prop; a prop whose type has no public name is only half shipped, because a caller
+  can pass an object literal at the call site but cannot write the wrapper component, the typed
+  helper or the `satisfies` that puts the same value somewhere else.
+
+  From the calendars: `CalendarDayRenderer` and `CalendarDayRenderArgs`, so `renderDay` can be
+  declared apart from the JSX (`const renderDay: CalendarDayRenderer = …`); `DayStatus`, the
+  selection shape a `renderDay` switches on, which was previously reachable only as
+  `CalendarDayRenderArgs["status"]`; and `CalendarSlotClassNames`, the calendar slot map. All four
+  are declared in `CalendarBase` and were reachable only through the deep
+  `./components/ui/CalendarBase` subpath. `CalendarBase` itself stays internal — the barrel
+  re-exports the four types and nothing else from it.
+
+  From the overlays: `TooltipProps`, `PopoverContentProps`, `HoverCardContentProps` and
+  `ToastProviderProps` — the four props types that gained `arrow` or `classNames` in this release
+  and had no name to hang a `<MyTooltip {...props} />` on.
+
+  Type-only and additive: no value export, no runtime import, nothing renders differently. Slot
+  unions stay written inline at the component that owns the anatomy, which is what keeps a typo a
+  compile error; `CalendarSlotClassNames` is named only because two components (`Calendar` and
+  `RangeCalendar`) already alias one anatomy across module boundaries, and re-spelling it would
+  fork it.
+
+- **`Repeater` gains `itemActionProps` and `addButtonProps`, so its four buttons have a route.**
+  `classNames.itemActions` reached the *cluster* the Move up / Move down / Remove controls sit
+  in and never the controls themselves; the Add button had nothing at all. Both new props are
+  prop bags rather than slot keys, because the targets are other components — `Repeater` adds no
+  class of its own to any of them, so there is no base class for a class string to merge with,
+  and what a caller most often wants on the Add button is its `variant`, which no class can
+  change.
+
+  ```tsx
+  <Repeater
+    form={form}
+    name="links"
+    defaultItem={() => ({ url: "" })}
+    itemActionProps={{ className: "text-fg-muted" }}
+    addButtonProps={{ variant: "ghost", size: "md" }}
+  />
+  ```
+
+  `itemActionProps` applies to all three row controls on every row: the rows come from the array
+  field, so no key can name the third one, and a bag cannot tell the three controls apart —
+  where they must differ, render your own from the `remove` / `moveUp` / `moveDown` callbacks.
+  What `Repeater` owns is `Omit`ted from both bags and re-set *after* the spread, so neither the
+  type nor an untyped bag can rename a control, un-disable it or replace what it does: the
+  accessible names, `disabled`, `onClick`, `type`, `ref` and `children`. `variant` and `size` on
+  the Add button are written *before* the spread, because those two are defaults the bag is
+  meant to replace.
+
+### Changed
+
+- **`DataTable`'s expanded detail row moved from `--C-SURFACE-3` to `--C-SURFACE-2`, and gained a
+  3px `--C-BORDER-STRONG` bar down its leading edge.** The old rung was chosen so a detail row
+  could never be mistaken for a zebra band, which is the right worry answered in the wrong
+  channel: the detail row is the widest, tallest block the table draws, so the deepest rung under
+  it made it the heaviest thing on screen, and in a theme that carries chroma into its lower rungs
+  it read as a coloured slab rather than a recess. The fill now sits level with the band and the
+  marker carries the distinction — the same trade `.table-row--selected` already makes, and one
+  that does not depend on how far apart a theme spaces its rungs. The marker is the structural
+  neutral rather than `--C-ACCENT` so that a row that is both selected and expanded stays legible
+  as both. It is painted as a `background-image`, so `classNames.expandedCell` still replaces the
+  fill and keeps the marker. The private `--_table-selected-marker-width` / `-side` pair is now
+  `--_table-marker-width` / `-side`, shared by both markers so their width and side cannot drift.
+
 ### Fixed
+
+- **`classNames.pickerGrid` could change the calendar quick-nav's column count and silently
+  break its 2-D keyboard navigation.** The count lived twice — as a constant in
+  `CalendarBase.tsx` that ArrowUp/ArrowDown stepped by, and as
+  `grid-template-columns: repeat(3, 1fr)` in `CalendarBase.css` — kept in step by a comment.
+  The new `pickerGrid` slot made the CSS half reachable, so
+  `classNames={{ pickerGrid: "grid-cols-4" }}` rendered four columns while the arrow keys kept
+  stepping three, with no error, no warning and nothing to notice. The constant is gone: the
+  vertical step is now read off the grid's used track list at each press, so the track list is
+  the only writer of the count and *any* route to it — a utility, an arbitrary property, your
+  own stylesheet, a media or container query — moves the keyboard with the layout. Where no
+  stylesheet reaches the element at all the component falls back to three, as before.
+
+- **`CalendarSlotClassNames`' docblock claimed `DatePicker` and `DateRangePicker` alias it.**
+  They do not, and never did: each declares its own union (`control`/`actions`/`panel` and
+  `control`/`panel`) and hands the calendar an explicit prop list carrying no `classNames`, so
+  the calendar inside a picker's popover has no slot route from the picker. The docblock ships
+  to consumers through the generated `.d.ts`, which is why this is listed as a fix rather than a
+  docs change. `docs/components/date-picker.md` and `date-range-picker.md` already stated the
+  limitation correctly and are unchanged.
+
+- **`DatePicker` applied `className` to its root raw, so a caller's own conflicting utilities
+  did not resolve.** It was the one root in the package outside `cn()`: `className="p-r3 p-r5"`
+  emitted both classes and left the stylesheet's order to decide which won, where every other
+  component collapses the pair to `p-r5`. The root now merges through `cn()`. Nothing changes
+  for a `className` that carries no internal conflict, and the element still has no base class
+  of its own — `classNames.control`, `.actions` and `.panel` are unaffected.
+
+- **`DataTable`, `ContextMenu.Trigger`, `Stagger`, `ViewTransition` and `Parallax` applied
+  `className` raw for the same reason, and now merge through `cn()` too.** These were the rest of
+  the shape `DatePicker` was the first instance of: a root that takes a caller's `className`
+  straight onto the element, so `className="p-r3 p-r5"` emitted both classes and left the
+  stylesheet's order to decide, where every other component in the package collapses the pair to
+  `p-r5`. None of the five gains a base class — there was nothing to merge *with*, and the merge
+  is not there for that; it is there so a caller's own conflicting utilities resolve last-wins.
+  Nothing changes for a `className` that carries no internal conflict. `AnimatePresence` and
+  `ScrollReveal` already did this, so the animation family is now uniform.
 
 - **`--sparkline-color` was unreachable from a theme.** `Sparkline.css` declared the
   `currentColor` default *on* `.sparkline` — the element that reads it — and a declaration on
@@ -247,6 +694,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **The `area` fill bottoms out on the drawing area's floor, not the viewBox edge.** It
   closed at `height`, painting into the gutter `strokeWidth` reserves and putting the area's
   baseline `strokeWidth` px below every other variant's.
+
+- **`Tooltip`'s fade ignored the theme.** It passed a literal `duration: 150` to
+  `useTransitionStyles` while `Popover`, `HoverCard` and both menus read `--MOTION-DURATION-ENTER`
+  / `-EXIT` through `useFadeDuration` — so it was the one floating surface whose tempo a consumer
+  could not reach, and 0.9.0's fix for the other four went straight past it. It now reads the same
+  tokens the same way. **Visible on every consumer:** the default theme sets `ENTER: 300ms` and
+  `EXIT: 200ms`, so a tooltip fades in twice as slowly as the old literal and out a third slower.
+  `useTransitionStyles` writes `transition-duration` **inline**, so no stylesheet rule and no
+  `duration-*` utility can out-rank it — the token is not one channel among several, it is the
+  only one, which is why the fade is a token and not a slot, and the docs now say so rather than
+  merely recording the limitation.
+
+  It also gains the reduced-motion behaviour it was missing: under
+  `prefers-reduced-motion: reduce` the duration resolves to `0`, which drops the fade **and** the
+  delayed unmount, since both are sized from this number. **If you hard-coded a wait for the
+  bubble to disappear**, that delay is now whatever the consumer's theme says; the fallback stays
+  150ms for SSR and for a page with no token layer.
 
 ## [0.11.0] — 2026-07-29
 

@@ -141,6 +141,11 @@
   gap: var(--R-SIZE-6);
 }
 
+/* One rule for two elements, which `classNames.weekdays` and `classNames.row`
+   address separately: a track-list override passed to one and not the other
+   desyncs the header from the day rows. Seven is a domain fact rather than a
+   layout choice — the arrow keys move ±7 days for one week — so unlike the
+   quick-nav grid below, this count is not something to override. */
 .calendar-weekdays,
 .calendar-week {
   display: grid;
@@ -267,6 +272,10 @@
 /*  Month / year quick-navigation views                                */
 /* ------------------------------------------------------------------ */
 
+/* This track list is the only writer of the quick-nav column count: ArrowUp /
+   ArrowDown read the grid's used tracks back through `getComputedStyle`, so an
+   override through `classNames.pickerGrid` moves the keyboard with the layout
+   instead of desyncing from it. Do not restate the count in the TSX. */
 .calendar-picker-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

@@ -78,7 +78,10 @@ Stack layers at different rates and the gap between them reads as depth.
 
 Parallax spreads every remaining `div` prop onto the wrapper and merges your `style`
 with its own `will-change` hint, so `className`, `id`, `data-*`, and inline styles all
-land where you expect.
+land where you expect. `className` goes through `cn()` on the way, even though the wrapper
+carries no base class of its own: `className="p-r3 p-r5"` resolves to `p-r5` the way it does
+on every other component in the package, rather than emitting both and leaving the
+stylesheet's order to pick.
 
 <!-- example:Passthrough -->
 ```tsx

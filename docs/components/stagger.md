@@ -145,7 +145,10 @@ inline rather than in CSS, it is visible to the test suite for the first time.
   selector, `flex`/`grid`, or `gap` on the container targets the wrappers, not your nodes.
 - **`style` reaches the container, with `--_stagger-step` merged in first.** Every prop the
   `as` element accepts (`id`, `aria-label`, `onClick`, `data-*`, `style`, …) is spread onto the
-  outer element, and `className` lands as given. The one thing the component adds to your
+  outer element, and `className` lands there too — through `cn()`, even though the container
+  carries no base class of its own, so `className="p-r3 p-r5"` resolves to `p-r5` the way it
+  does on every other component in the package rather than emitting both and leaving the
+  stylesheet's order to pick. The one thing the component adds to your
   `style` is `--_stagger-step`; yours is spread **last**, so every key of yours still wins —
   including that one, if you want to set the step directly. A `--stagger-delay` you write into
   `style` yourself sits on the container and feeds the same chain.

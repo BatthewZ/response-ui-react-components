@@ -11,6 +11,7 @@ import {
 
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { mergeRefs } from "../../util/merge-refs";
+import { cn } from "../../util/style";
 
 type ParallaxProps = {
   rate?: number;
@@ -106,7 +107,8 @@ export const Parallax = forwardRef<HTMLDivElement, ParallaxProps>(function Paral
   return (
     <div
       ref={mergeRefs(innerRef, ref)}
-      className={className}
+      // No base class, still merged — see `cn`'s docblock in util/style.
+      className={cn(className)}
       style={{
         ...style,
         // A permanent hint parks a compositor layer for the element's whole

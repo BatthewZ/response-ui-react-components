@@ -748,5 +748,21 @@ describe("DatePicker · popup wiring, i18n and native form behaviour", () => {
       const { container } = render(<DatePicker classNames={{ control: "sentinel-slot" }} />);
       expect(container.querySelector("[classnames]")).toBeNull();
     });
+
+    /*
+     * The root has no base class, so the falsifier for its `cn()` is the
+     * caller's own string: raw, both utilities reach the DOM and stylesheet
+     * order decides; merged, the later one wins as it does on every other root
+     * in the package. Delete the `cn()` at the root and exactly this reddens.
+     */
+    it("merges the root className through cn(), so a caller's own conflicts resolve", () => {
+      const { container } = render(<DatePicker className="p-r3 p-r5" />);
+      expect(container.firstElementChild!.getAttribute("class")).toBe("p-r5");
+    });
+
+    it("leaves a conflict-free root className untouched", () => {
+      const { container } = render(<DatePicker className="root-class" />);
+      expect(container.firstElementChild!.getAttribute("class")).toBe("root-class");
+    });
   });
 });

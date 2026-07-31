@@ -17,12 +17,32 @@
 //                    ("override this variable, the component re-tints"), and it is the
 //                    one section that can be wrong without anything looking broken.
 //                    Every contract variable named must be reachable from that
-//                    component's source, by either path the system supports:
+//                    component's source, by one of the three paths the system supports:
 //                      a) CSS reads it directly            — `var(--C-ACCENT)` in Tabs.css
-//                      b) a Tailwind utility resolves to it — `bg-primary`
+//                      b) a Tailwind arbitrary value in the .tsx names it outright —
+//                         `bg-[linear-gradient(90deg,var(--C-ACCENT),var(--C-ACCENT-HOVER))]`
+//                      c) a Tailwind utility resolves to it — `bg-primary`
 //                         → `--color-primary` → `--C-PRIMARY`, per response-ui-css
 //                    Utilities are checked in both directions: present in the .tsx, and
 //                    paired with the right variable in their own table row.
+//
+// Path (b) is the newest and was a measured blind spot, not a hypothetical one. Until it
+// existed a token a component painted from an arbitrary utility was reachable by NO path:
+// there is no CSS to read it, and a row naming the utility failed too, because
+// `resolveUtility` only understood an arbitrary value of the exact form `[var(--X)]` —
+// not one carrying a fallback or sitting inside a larger value. The docs recorded the
+// hole rather than the gate catching it: `avatar-upload.md` said its scrim was "not in
+// that table on purpose" because "an arbitrary-value utility carrying a `var()` is not
+// something verify-component-docs can resolve to a token", and `dialog.md` tabulated four
+// of its five themeable utilities and described the fifth in prose. Then Phase 3 deleted
+// `--progress-bar-fill`/`-fill-end` and made ProgressBar's fill a `bg-*` utility, which
+// made the hole a live under-report: `--C-ACCENT-HOVER` and `--C-CANVAS` re-tint that
+// component's gradient and could not be tabulated. Reproduced before it was fixed — a row
+// claiming `--C-ACCENT-HOVER` for ProgressBar went red with "neither reads it in CSS nor
+// reaches it through a utility in this row" — and `memory/gates.md` is explicit that a
+// guard which only under-reports stays green while going blind, so the headline now
+// carries a per-route claim count. If the arbitrary-value figure falls to zero, that
+// path stopped working, whatever the exit code says.
 //
 // One addition to the source a component is read as (RC-2, commit aafb9f8): the focus
 // ring became a set of named constants in `src/util/focus.ts`, so the utilities that
@@ -102,6 +122,53 @@ function siblingImports(file, text) {
 const stripComments = (text) =>
   text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
+/** Every `var(--TOKEN)` named inside an arbitrary value, in source order. */
+const varsIn = (value) => [...value.matchAll(/var\(\s*(--[A-Za-z0-9-]+)/g)].map((m) => m[1]);
+
+/**
+ * Contract variables a component reaches through a Tailwind ARBITRARY value written in
+ * its own TS/TSX — `bg-[linear-gradient(90deg,var(--C-ACCENT),var(--C-ACCENT-HOVER))]`.
+ *
+ * Scoped to string literals, then to whitespace-separated words inside them, then to the
+ * bracket span inside a word: that is what a class string is, and it is what keeps a
+ * `var()` written in ordinary TS — an inline `style` object, an array of CSS strings —
+ * from counting as a utility. Comments are stripped first for the reason the focus recipe
+ * below strips them: a doc must not be able to satisfy this check against a sentence, and
+ * ProgressBar's ramp is argued for in a docblock that quotes its own class names.
+ *
+ * Brackets are balanced rather than matched with `[^\]]*`, because these values nest —
+ * `color-mix(in_oklch,var(--X)_75%,var(--Y))` inside a `linear-gradient()` inside `bg-[…]`
+ * (`memory/README.md` §106: the oxide scanner reads the whole bracketed value too).
+ *
+ * Unlike `resolveUtility`, this does NOT filter by `definedTokens`. The question here is
+ * "does this component read that variable", which a `var()` in its own class string
+ * settles; whether the variable exists is a different question and not this gate's.
+ */
+function arbitraryValueTokens(text) {
+  const found = new Set();
+  for (const literal of stripComments(text).matchAll(/(["'`])((?:\\.|(?!\1)[^\\\n])*)\1/g)) {
+    for (const word of literal[2].split(/\s+/)) {
+      for (const token of varsIn(bracketSpan(word))) found.add(token);
+    }
+  }
+  return found;
+}
+
+/** The first BALANCED `[…]` span in a word, brackets included; `""` if there is none. */
+function bracketSpan(word) {
+  const open = word.indexOf("[");
+  if (open === -1) return "";
+  let depth = 0;
+  for (let i = open; i < word.length; i += 1) {
+    if (word[i] === "[") depth += 1;
+    else if (word[i] === "]") {
+      depth -= 1;
+      if (depth === 0) return word.slice(open, i + 1);
+    }
+  }
+  return "";
+}
+
 /**
  * The focus ring is the one piece of class vocabulary that lives outside the component
  * tree: `src/util/focus.ts` holds it as named constants so the eight hand-rolled copies
@@ -150,12 +217,14 @@ for (const file of walk(SRC, (f) => f.endsWith(".tsx") && !/\.(test|examples)\./
   const ownCss = existsSync(cssPath) ? readFileSync(cssPath, "utf8") : "";
   const extra = siblingImports(file, own);
   const tsx = own + extra.tsx;
+  const source =
+    tsx +
+    (tsx.includes("util/focus") ? focusRecipe : "") +
+    (tsx.includes("layout/shared") ? gapScale : "");
   components.set(name, {
-    tsx:
-      tsx +
-      (tsx.includes("util/focus") ? focusRecipe : "") +
-      (tsx.includes("layout/shared") ? gapScale : ""),
+    tsx: source,
     css: ownCss + extra.css,
+    arbitrary: arbitraryValueTokens(source),
   });
 }
 
@@ -205,7 +274,14 @@ const PREFIX_NAMESPACES = [
   [["p", "px", "py", "pt", "pb", "pl", "pr", "m", "mx", "my", "mt", "mb", "ml", "mr", "gap"], ["spacing"]],
 ];
 
-const bareUtility = (util) => util.split(":").pop().split("/")[0].replace(/^-/, "");
+// The `/` split drops an opacity modifier (`bg-primary/50`) — but only outside a bracket,
+// because an arbitrary value can contain a `/` of its own that is part of the value
+// (`bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]`), and truncating there silently
+// changed which tokens the value was read to name.
+const bareUtility = (util) => {
+  const last = util.split(":").pop().replace(/^-/, "");
+  return last.includes("[") ? last : last.split("/")[0];
+};
 
 /**
  * Whether an item is a Tailwind utility at all, as opposed to prose, a CSS class, or a
@@ -219,13 +295,20 @@ function isUtility(item) {
   return PREFIX_NAMESPACES.some(([prefixes]) => prefixes.some((p) => bare.startsWith(p + "-")));
 }
 
-/** `hover:bg-primary-hover` -> `--C-PRIMARY-HOVER`, or null if it maps to no token. */
+/**
+ * The contract variables a utility names. `hover:bg-primary-hover` -> `["--C-PRIMARY-HOVER"]`;
+ * an empty array means it maps to no token at all.
+ *
+ * An arbitrary value returns EVERY token it names, not the one token the old exact-form
+ * match could see: a gradient ramp legitimately reads two or three, and a row naming it
+ * has to account for all of them or the table under-describes what re-tints the mark.
+ */
 function resolveUtility(util) {
   const bare = bareUtility(util);
 
-  // Arbitrary value: `gap-[var(--BUTTON-GAP-MD)]` names its token outright.
-  const arbitrary = bare.match(/\[var\((--[A-Za-z0-9-]+)\)\]$/);
-  if (arbitrary) return definedTokens.has(arbitrary[1]) ? arbitrary[1] : null;
+  // Arbitrary value: `gap-[var(--BUTTON-GAP-MD)]` names its tokens outright.
+  const open = bare.indexOf("[");
+  if (open !== -1) return varsIn(bare.slice(open)).filter((t) => definedTokens.has(t));
 
   for (const [prefixes, namespaces] of PREFIX_NAMESPACES) {
     for (const prefix of prefixes) {
@@ -233,11 +316,11 @@ function resolveUtility(util) {
       const rest = bare.slice(prefix.length + 1);
       for (const ns of namespaces) {
         const hit = tokenMap.get(`--${ns}-${rest}`);
-        if (hit) return hit;
+        if (hit) return [hit];
       }
     }
   }
-  return null;
+  return [];
 }
 
 /* ------------------------------------------------------------------ */
@@ -272,6 +355,13 @@ const spokeFiles = existsSync(SPOKES)
   : [];
 
 const spokeComponents = new Map(); // component name -> spoke filename
+
+// Per-route coverage, for the headline. `memory/gates.md`: a guard's summary line is
+// evidence only against its previous value — and a widened guard goes blind rather than
+// red, so the route that was widened needs a number of its own to compare.
+let claimsViaCss = 0;
+let claimsViaArbitrary = 0;
+let claimsViaUtility = 0;
 
 for (const spoke of spokeFiles) {
   const md = readFileSync(join(SPOKES, spoke), "utf8");
@@ -309,12 +399,18 @@ for (const spoke of spokeFiles) {
       const utilities = items.filter(isUtility);
 
       for (const token of claimed) {
-        const inCss = source.css.includes(`var(${token}`);
-        const viaUtility = utilities.some((u) => resolveUtility(u) === token);
-        if (!inCss && !viaUtility) {
+        // Attribution order puts the arbitrary-value route LAST on purpose, so its bucket
+        // counts only the claims no older route can resolve. Ordered the other way it
+        // reads 7 on this tree and every one of those is also reachable through its row's
+        // utility — a number that looks like coverage the widening added and is not.
+        // It decides only which bucket a claim is counted in, never whether it passes.
+        if (source.css.includes(`var(${token}`)) claimsViaCss += 1;
+        else if (utilities.some((u) => resolveUtility(u).includes(token))) claimsViaUtility += 1;
+        else if (source.arbitrary.has(token)) claimsViaArbitrary += 1;
+        else {
           errors.push(
-            `${spoke}: claims \`${token}\` but ${title} neither reads it in CSS nor ` +
-              `reaches it through a utility in this row`,
+            `${spoke}: claims \`${token}\` but ${title} neither reads it in CSS, nor names ` +
+              `it in an arbitrary utility value, nor reaches it through a utility in this row`,
           );
         }
       }
@@ -328,14 +424,15 @@ for (const spoke of spokeFiles) {
           continue;
         }
         const resolved = resolveUtility(util);
-        if (!resolved) {
+        if (!resolved.length) {
           errors.push(`${spoke}: utility \`${util}\` resolves to no token in the contract`);
           continue;
         }
-        if (claimed.length && !claimed.includes(resolved)) {
+        const unlisted = resolved.filter((r) => !claimed.includes(r));
+        if (claimed.length && unlisted.length) {
           errors.push(
-            `${spoke}: \`${util}\` resolves to \`${resolved}\`, not listed in its row ` +
-              `(row claims ${claimed.map((c) => `\`${c}\``).join(", ")})`,
+            `${spoke}: \`${util}\` resolves to ${unlisted.map((r) => `\`${r}\``).join(", ")}, ` +
+              `not listed in its row (row claims ${claimed.map((c) => `\`${c}\``).join(", ")})`,
           );
         }
       }
@@ -394,5 +491,8 @@ if (errors.length) {
 const documented = spokeComponents.size;
 console.log(
   `verify-component-docs: OK — ${documented} spoke(s) verified ` +
-    `(titles, links, token tables) against ${tokenMap.size} mapped tokens.`,
+    `(titles, links, token tables) against ${tokenMap.size} mapped tokens; ` +
+    `${claimsViaCss + claimsViaArbitrary + claimsViaUtility} token claim(s) resolved ` +
+    `(${claimsViaCss} via CSS, ${claimsViaArbitrary} via a .tsx arbitrary value, ` +
+    `${claimsViaUtility} via a row utility).`,
 );

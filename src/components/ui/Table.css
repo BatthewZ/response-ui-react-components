@@ -10,11 +10,14 @@
 }
 
 .table {
-  /* Width of the leading marker a selected row paints (#351). A component
-     dimension rather than page spacing, so a literal — same call as
+  /* Geometry of the leading marker painted on the inline-start edge of a row
+     (#351). Shared by the selected row and the expanded detail row so the two
+     markers cannot drift apart in width or side — only the colour differs, and
+     that is `--_table-marker-color`, set by each state's own rule. A
+     component dimension rather than page spacing, so a literal — same call as
      Timeline's dot size. */
-  --_table-selected-marker-width: 3px;
-  --_table-selected-marker-side: to right;
+  --_table-marker-width: 3px;
+  --_table-marker-side: to right;
 
   width: 100%;
   border-collapse: collapse;
@@ -141,10 +144,18 @@
    cannot drift from the other. */
 .table-row--selected {
   background-color: color-mix(in oklch, var(--C-ACCENT) 8%, transparent);
+  --_table-marker-color: var(--C-ACCENT);
+}
+
+/* The marker itself, for every row that carries one. One rule rather than a copy
+   per state: the colour is the only thing that differs, and a second gradient is
+   exactly how the two would drift apart in width or side. */
+.table-row--selected,
+.data-table-expanded-cell {
   background-image: linear-gradient(
-    var(--_table-selected-marker-side),
-    var(--C-ACCENT) 0 var(--_table-selected-marker-width),
-    transparent var(--_table-selected-marker-width)
+    var(--_table-marker-side),
+    var(--_table-marker-color) 0 var(--_table-marker-width),
+    transparent var(--_table-marker-width)
   );
   background-repeat: no-repeat;
 }
@@ -152,8 +163,9 @@
 /* A gradient has no logical direction, so the inline-start edge is chosen here
    rather than baked into the gradient — same call Carousel.css makes with
    `inset-inline-start` for its arrows. */
-.table-row--selected:dir(rtl) {
-  --_table-selected-marker-side: to left;
+.table-row--selected:dir(rtl),
+.data-table-expanded-cell:dir(rtl) {
+  --_table-marker-side: to left;
 }
 
 /* Cell */
@@ -196,9 +208,27 @@
 
 /* Zero the cell padding so the row can collapse to zero height; the visible
    padding lives on the inner body instead. Declared after the density classes
-   so it overrides their padding at equal specificity. */
+   so it overrides their padding at equal specificity.
+
+   The marker, not the fill, is what says "this belongs to the row above". The
+   detail row is the largest contiguous block in the table, so depth scales with
+   it: at rung 3 it was the deepest surface on the page and outweighed the data.
+   It sits at rung 2 now (see the `bg-surface-2` in DataTable.tsx) and the
+   inline-start bar carries the relationship instead — the same trade
+   `.table-row--selected` makes above, and one that survives any theme's ladder
+   because it does not depend on the gap between two rungs.
+
+   --C-BORDER-STRONG, deliberately not --C-ACCENT: a table can be selectable and
+   expandable at once, and an accent bar here would read as selection. The
+   structural neutral keeps the two states legible when they stack.
+
+   Painted as a background-image so it composes with the `bg-surface-2` fill the
+   component sets — different properties, so a caller overriding the fill via
+   `classNames.expandedCell` keeps the marker. The gradient itself is the shared
+   rule up in the Table section; only the colour is set here. */
 .data-table-expanded-cell {
   padding: 0;
+  --_table-marker-color: var(--C-BORDER-STRONG);
 }
 
 /* Animate height via grid-template-rows: 0fr (collapsed) -> 1fr (natural). */

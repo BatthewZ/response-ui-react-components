@@ -87,10 +87,24 @@ function deriveEntries() {
   // stylesheets and report every row `unchanged`.
   const imports = [...src.matchAll(/@import\s+"(\.\/[^"]+\.css)"[^;]*;/g)].map((m) => m[1]);
   const componentImports = imports.filter((p) => !p.endsWith("tokens.css"));
-  if (componentImports.length < 40) {
+
+  // The expectation is DERIVED, not a constant. A floor like `< 40` is a second
+  // record of how many stylesheets the package has, and it rots the moment a lane
+  // adds or deletes one — it read `~43` while the file held 44. What this guard is
+  // actually for is the regex above: if `@import` syntax changes under it, it
+  // matches fewer lines and the probe silently builds two identical stylesheets.
+  // So count the lines a human would call an import, independently of that regex,
+  // and require the parser to have found every one.
+  const importLines = src
+    .split("\n")
+    .filter((l) => /^\s*@import\s+"\.\//.test(l) && !/tokens\.css/.test(l)).length;
+  if (componentImports.length !== importLines) {
     throw new Error(
-      `expected ~43 component imports in src/styles.css, found ${componentImports.length} — the parser has drifted`
+      `parsed ${componentImports.length} component import(s) from src/styles.css but the file has ${importLines} — the regex has drifted`
     );
+  }
+  if (componentImports.length === 0) {
+    throw new Error("found ZERO component imports in src/styles.css — the probe would measure nothing");
   }
 
   // The foundation and `tokens.css` stay UNLAYERED in both builds. Phase 1 layers

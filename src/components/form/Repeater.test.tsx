@@ -8,6 +8,7 @@ import { Repeater } from "./Repeater";
 import { useForm } from "./use-form";
 
 type Values = { links: { url: string }[] };
+type LinksRepeaterProps = React.ComponentProps<typeof Repeater<Values, "links">>;
 
 function Harness({
   initial = [{ url: "a" }],
@@ -437,7 +438,7 @@ describe("Repeater", () => {
       classNames,
       className,
     }: {
-      classNames?: React.ComponentProps<typeof Repeater<Values, "links">>["classNames"];
+      classNames?: LinksRepeaterProps["classNames"];
       className?: string;
     }) {
       const form = useForm<Values>({
@@ -564,6 +565,138 @@ describe("Repeater", () => {
       expect(
         container.querySelector('[role="status"]')?.getAttribute("class"),
       ).toBe("sr-only");
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  prop hatches — the buttons are other components, not elements      */
+  /*  this one classes, so their route is a bag rather than a slot.      */
+  /* ------------------------------------------------------------------ */
+
+  describe("prop hatches", () => {
+    function HatchHarness({
+      itemActionProps,
+      addButtonProps,
+    }: {
+      itemActionProps?: LinksRepeaterProps["itemActionProps"];
+      addButtonProps?: LinksRepeaterProps["addButtonProps"];
+    }) {
+      const form = useForm<Values>({
+        defaultValues: { links: [{ url: "a" }, { url: "b" }] },
+      });
+      return (
+        <Repeater
+          form={form}
+          name="links"
+          defaultItem={() => ({ url: "" })}
+          addLabel="Add link"
+          reorderable
+          itemActionProps={itemActionProps}
+          addButtonProps={addButtonProps}
+        >
+          {({ name, index }) => (
+            <Field name={`${name}.url`}>
+              <Input aria-label={`url-${index}`} {...form.field(`${name}.url`)} />
+            </Field>
+          )}
+        </Repeater>
+      );
+    }
+
+    /** Move up, Move down and Remove, for both rows — six controls. */
+    const rowActions = () =>
+      screen
+        .getAllByRole("button")
+        .filter((b) => b.textContent === "" && b.getAttribute("aria-label") !== null);
+
+    /*
+     * The falsifier for the hatch: delete `{...itemActionProps}` from the three
+     * `IconButton`s and exactly this test goes red. There is no `cn()` to delete
+     * because Repeater adds no class of its own to them — the spread IS the
+     * merge point, and IconButton merges the class with its own base classes.
+     */
+    it("lands itemActionProps on all three row controls, beside IconButton's base classes", () => {
+      render(<HatchHarness itemActionProps={{ className: "sentinel-hatch" }} />);
+      const actions = rowActions();
+      expect(actions).toHaveLength(6);
+      for (const button of actions) {
+        expect(button.getAttribute("class")).toContain("sentinel-hatch");
+        expect(button.getAttribute("class")).toContain("inline-flex");
+      }
+    });
+
+    it("leaves the row controls on their base classes when no bag is passed", () => {
+      render(<HatchHarness />);
+      for (const button of rowActions()) {
+        expect(button.getAttribute("class")).not.toContain("sentinel-hatch");
+        expect(button.getAttribute("class")).toContain("inline-flex");
+      }
+    });
+
+    /*
+     * The mirror direction, one key per literal because TypeScript reports only
+     * the FIRST excess property of an object literal — three directives in one
+     * bag leaves two of them unused, and `tsc` says so. Each directive IS the
+     * assertion: it fails if TypeScript ever stops rejecting the key. The
+     * runtime half matters separately, because `Omit` is compile-time only and
+     * attribute order is the whole guarantee against an untyped bag.
+     */
+    it("keeps its own aria-label over the bag's", () => {
+      render(
+        // @ts-expect-error — the names are positional and the component's.
+        <HatchHarness itemActionProps={{ "aria-label": "hijacked" }} />,
+      );
+      expect(screen.queryByRole("button", { name: "hijacked" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Move item 1 up" })).toBeDisabled();
+    });
+
+    it("keeps its own disabled over the bag's", () => {
+      // @ts-expect-error — `disabled` carries the first/last and min/max bounds.
+      render(<HatchHarness itemActionProps={{ disabled: false }} />);
+      expect(screen.getByRole("button", { name: "Move item 1 up" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Move item 2 down" })).toBeDisabled();
+    });
+
+    it("keeps its own onClick over the bag's", async () => {
+      const user = userEvent.setup();
+      // @ts-expect-error — the click is the mutation itself.
+      render(<HatchHarness itemActionProps={{ onClick: () => undefined }} />);
+      await user.click(screen.getByRole("button", { name: "Remove item 1" }));
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    });
+
+    it("lands addButtonProps on the Add button, and its variant replaces the default", () => {
+      render(<HatchHarness addButtonProps={{ variant: "primary", className: "sentinel-hatch" }} />);
+      const add = screen.getByRole("button", { name: "Add link" });
+      expect(add.getAttribute("class")).toContain("sentinel-hatch");
+      // `variant` sits before the spread, so the bag replaces "secondary".
+      expect(add.getAttribute("class")).toContain("bg-primary");
+      expect(add.getAttribute("class")).not.toContain("bg-secondary");
+    });
+
+    it("keeps the Add button's defaults when no bag is passed", () => {
+      render(<HatchHarness />);
+      const add = screen.getByRole("button", { name: "Add link" });
+      expect(add.getAttribute("class")).toContain("bg-secondary");
+    });
+
+    it("keeps the Add button's own onClick over the bag's", async () => {
+      const user = userEvent.setup();
+      // @ts-expect-error — adding a row is the button's whole job.
+      render(<HatchHarness addButtonProps={{ onClick: () => undefined }} />);
+      await user.click(screen.getByRole("button", { name: "Add link" }));
+      expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    });
+
+    it("does not leak the bags onto the DOM", () => {
+      const { container } = render(
+        <HatchHarness
+          itemActionProps={{ className: "sentinel-hatch" }}
+          addButtonProps={{ className: "sentinel-hatch" }}
+        />,
+      );
+      expect(container.querySelector("[itemactionprops]")).toBeNull();
+      expect(container.querySelector("[addbuttonprops]")).toBeNull();
     });
   });
 });

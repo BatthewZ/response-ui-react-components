@@ -27,7 +27,7 @@ import { mergeRefs } from "../../util/merge-refs";
 import { cn, type SlotClassNames } from "../../util/style";
 import { useFadeDuration } from "./floating-motion";
 
-interface TooltipProps {
+export interface TooltipProps {
   content: ReactNode;
   placement?: Placement;
   delay?: number;

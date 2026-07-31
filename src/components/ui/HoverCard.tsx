@@ -230,7 +230,7 @@ const HoverCardTrigger = forwardRef<HTMLButtonElement, HoverCardTriggerProps>(
 /*  Content                                                           */
 /* ------------------------------------------------------------------ */
 
-type HoverCardContentProps = ComponentPropsWithRef<"div"> & {
+export type HoverCardContentProps = ComponentPropsWithRef<"div"> & {
   /**
    * Render the pointer triangle that points back at the trigger. Off by default,
    * because it is the one option here that changes what is painted.

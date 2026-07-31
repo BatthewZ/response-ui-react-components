@@ -463,12 +463,16 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
   prop name (see the section above), and `cn()` on that object reads it as clsx's conditional form
   and emits the slot keys themselves as classes.
 - For polymorphic spacing in props, expose `r1..r6` as values: `<Stack gap="r3">`.
-- Components are forwardRef, with four generic exceptions — `DataTable`, `VirtualizedDataTable`, `Repeater` and `AvatarUpload` are plain function components taking React 19's `ref` prop, because `forwardRef` erases a type parameter. When composing, type props as `ComponentPropsWithRef<"div">` (or appropriate element) — correct for all of them either way.
+- Components are forwardRef, with four generic exceptions — `DataTable`, `VirtualizedDataTable`, `Repeater` and `AvatarUpload` are plain function components, because `forwardRef` erases a type parameter. **Being a plain function component is what *allows* React 19's `ref` prop, not what delivers it: the props type still has to carry `ref`, and on three of the four it does not.**
+  - **`AvatarUpload` takes `ref`.** Its props intersect `Omit<ComponentPropsWithRef<"div">, "children">`, it destructures `ref` and spreads the rest onto its root, and the docblock above it says why (`grep -n 'A plain generic function component' src/components/ui/AvatarUpload.tsx`). This is the shape to copy when you write a generic component here.
+  - **`DataTable`, `VirtualizedDataTable` and `Repeater` do not.** Each props type is closed — `className?: string` and named props only, no `ref`, no `ComponentProps` intersection — and none of the three destructures a rest bag (`grep -rn '\.\.\.rest\|\.\.\.props' src/components/ui/DataTable.tsx src/components/ui/VirtualizedDataTable.tsx src/components/form/Repeater.tsx` returns nothing). So `<Repeater ref={…}>` is a **compile error**, and so are `<DataTable ref>` and `<VirtualizedDataTable ref>`. Read the types by name rather than by line — they have all grown: `grep -n 'type DataTableProps\|type VirtualizedDataTableProps\|type RepeaterProps' src/components/ui/DataTable.tsx src/components/ui/VirtualizedDataTable.tsx src/components/form/Repeater.tsx`.
+  - Closing that gap is a recorded follow-up in `PLAN-overridability.md` §11, deliberately not folded into Phase 3. **Do not add `ref` to the three in passing** — it is public API surface on three components and wants its own change.
+  - When *writing* one of these, intersect `ComponentPropsWithRef<"div">` (or the appropriate element) as `AvatarUpload` does; that intersection is the whole mechanism. When *composing* with the existing three, reach their roots through `className`, and their inner components through the `<thing>Props` hatches (`tableProps`, `paginationProps`, `itemActionProps`, `addButtonProps`).
 - **Uniform card grids → `Grid`, not `Row wrap` or `MasonryGrid`.** `Grid columns={{ base: 1, md: 3 }}` gives equal-width columns and equal-height rows (cells share the row height, so footer buttons line up). `Row wrap` sizes children to content (uneven widths); `MasonryGrid` is CSS multi-column (uneven heights *by design* — reach for it only when you want Pinterest-style masonry). `Grid` cells are `minmax(0, 1fr)`, so long words wrap instead of overflowing. **Both take a bounded `columns` union** — `Grid` 1–6, `MasonryGrid` 1–4 — and neither ships a stylesheet: the count resolves to `grid-cols-*` / `columns-*` utilities from a written-out lookup table, because Tailwind scans source text and generates nothing for a template literal. Adding a count means adding its literal class strings to that table, not a CSS rule.
 
 ## This package's CSS is in `@layer components`, so `className` wins
 
-**Every component's stylesheet is layered.** All 43 per-component imports in `src/styles.css`
+**Every component's stylesheet is layered.** All 44 per-component imports in `src/styles.css`
 carry `layer(components)`, and Tailwind orders `@layer components` **below** `@layer utilities`.
 The consequence is the headline capability of this library:
 
@@ -595,12 +599,77 @@ and silently dropped all seven `focusRingControl` sites out of its coverage: mea
 controls fell to 11 while the script still printed OK. Widening a guard's vocabulary is how a
 guard goes blind rather than red — make it fail on purpose after every such change.
 
+## Decision: what stays in CSS, what becomes a utility, and how to tell which you are looking at
+
+**Status: in effect.** The rule is: **when you touch a component for another reason, prefer
+utilities.** There is no sweep, no lane and no completion criterion — **a component still carrying a
+stylesheet is not unfinished work**, and the end state is a documented hybrid, not zero CSS.
+`src/util/focus.ts` is the utility-side counterpart to the `:focus-visible` rules in component CSS
+and says so in its own docblock; that pairing is this package's established, gated pattern rather
+than a compromise.
+
+**Why a convention and not a project.** Every override capability already shipped — component CSS in
+`@layer components` (above) and per-slot `classNames`. Converting the rest is on the order of a
+thousand mechanical edits that delete a handful of stylesheets and buy **consistency only**. The
+cost/benefit is measured once, with its method, in `PLAN-overridability.md` §2b and §6 (repo-only,
+not in the npm package); take the figures from there rather than re-deriving them beside this
+paragraph.
+
+### What stays
+
+| Stays in CSS when | Why no utility can take it | Live instance |
+| --- | --- | --- |
+| It is a **`@keyframes` block** | A utility sets properties on an element; there is no variant for a block. The only genuinely immovable thing in the package. | **8 blocks in 5 files** (`Sparkline` ×2, `AppShell` ×2, `CommandPalette` ×2, `ProgressBar`, `Skeleton`) — `grep -rn '^@keyframes' src --include=*.css`. Anchor the `^`: `Timeline.css` says the word in a comment. |
+| A **modifier in the same layer must out-rank it** | The utility lands in `@layer utilities`, *above* `@layer components` — so the base declaration starts beating the modifier that qualifies it. This is the subtlest one and the one a bulk conversion destroys. | `.skeleton { height: 1em }` against `.skeleton--circular { height: auto }`. As `h-[1em]` in the class list, every circle collapses to 1em. `grep -n 'height' src/components/ui/Skeleton.css` — the file states it at source. |
+| It must **beat an unlayered foundation rule** | `@batthewz/response-ui-css` is unlayered almost everywhere, and `@layer utilities` loses to unlayered too. `noscript:opacity-100` cannot replace `ScrollReveal`'s `opacity: 1`. | The package's **two** `!important` declarations, and no others — `grep -rn '!important;' src --include=*.css`. They are governed by the admission test above. Reach first for *stopping* the collision: `Timeline` stopped emitting the foundation's entrance class, `Stagger`'s stylesheet went entirely, `Tabs` deleted three scrollbar declarations. |
+| The subject is **an element this package does not render** | A utility has to be put *on* something. | `Hero.css`'s two `.stagger-item` rules — that markup is hand-authored by the consumer (`grep -n 'THE CONSUMER PICKS THE ENTRANCE' src/components/ui/Hero.css`). `VirtualizedDataTable.css` styles `.table-cell` / `.table-header-cell`, which `Table.tsx` renders (`grep -rn 'table-cell' src/components/ui/Table.tsx`). |
+| The value's **read site is not a property** | A value consumed by a `calc()`, or inside another custom property's definition, has no property for a utility to set. **The discriminator is what property the read sits in, not whether the value contains arithmetic** — `--progress-bar-fill-end` was a `color-mix()` read inside `background-image`, which *is* a property, so a utility took the whole declaration and the token was deleted. | `grep -rn -- '--_stepper-gap\|--calendar-col-gap\|--calendar-month-gap' src` — `--calendar-col-gap` is never applied as a `column-gap` at all; its only read is inside `--calendar-month-width`'s `calc()`. |
+| The utility form is **N variant-scoped classes, not one** | A judgement call, not an impossibility. Convert it only deliberately, with the cost written down. | The Timeline density axis: `--_timeline-card-padding` / `--_timeline-item-gap`, 3 definitions each selected by `[data-density]` and 1 read each, so the utility form is six `in-[[data-density=…]]:` classes rather than one baseline utility. `grep -rn -- '--_timeline-card-padding\|--_timeline-item-gap' src` |
+| The file is a **layout contract read as a whole** | Legibility is the property being bought. `Timeline.css`'s six-deep derivation chain would not survive being spread across six class strings. Also a judgement call — label it as one. | Measured **once**, with its method, in `PLAN-overridability.md` §2b. Do not measure it a second time; two measurements of one file is how a document ends up disagreeing with itself. |
+
+**Class names outlive their declarations.** When a rule's declarations become utilities, the BEM class
+stays as a declaration-free marker — it costs nothing, and it keeps one name per component for
+consumer stylesheets, devtools and Astro/Rails consumers of `response-ui-css`. Comment it at the site
+as a marker or the next reader deletes a class that styles nothing (`Grid.tsx`, `MasonryGrid.tsx`
+both carry that comment). Two consequences: a class a `querySelector` finds is a **behavioural**
+marker — append to it, never replace it; and a retained marker contaminates any single-build A/B of
+old stylesheet versus new utilities, because the new markup still matches the deleted selector.
+
+### The test
+
+Ask these in order, of one declaration:
+
+1. **Is there an element this component renders that the class could go on?** No → stays.
+2. **Does the declaration have a property a utility can set** — is the read site a property, rather
+   than a `calc()` or another custom property's value? No → stays.
+3. **Would landing in `@layer utilities` invert something?** A modifier it must lose to, or an
+   unlayered foundation rule it must beat? Yes → stays.
+4. **Is the utility form one class or N variant-scoped ones?** N → convert only with the cost stated.
+
+Survive all four and it is a straight transposition to a utility. **Leftover CSS is not a backlog:** a
+file that *has* been converted keeps a header comment naming why each surviving rule cannot move; a
+file nobody has touched has no such comment, and that is the expected state rather than drift.
+
+### The falsifier, and it is not soft
+
+The last package-wide pass motivated by consistency shipped a **1.31:1** focus ring on
+`<Button variant="danger">` — a focus indicator's floor is 3:1 (`grep -n '1.31:1' src/util/focus.ts`).
+Collapsing eight hand-rolled focus recipes into one flattened a distinction nobody had enumerated: the
+ring's contrast had been measured against surfaces and never against a control's own fill. `typecheck`,
+`lint`, every test and every `verify:*` were green throughout, because no gate here can see a contrast
+ratio or a pixel. `memory/traps.md` §D–§F (repo-only) carries it in full.
+
+So "prefer utilities" is exercised **one component at a time, for a reason other than tidiness**. A
+consistency argument is precisely the argument that produced that ring — and when you do convert,
+enumerate what the declarations you are collapsing actually differed *on* before deciding the
+difference was drift.
+
 ## Don'ts for AI-generated code
 
 - Don't import from deep paths in the main app's source — import from the root barrel: `import { Button } from "@batthewz/response-ui-react-components"`. Subpath imports work but are usually unnecessary.
 - Don't use `clsx` or `twMerge` directly — always go through `cn()`.
 - Don't reach into `node_modules/@batthewz/response-ui-css/src/...` from JS. CSS goes in CSS via `@import`.
-- Don't write CSS-in-JS. The library's styling boundary is Tailwind utilities + design tokens.
+- Don't write CSS-in-JS. The library's styling boundary is Tailwind utilities + design tokens — with the enumerated exceptions under *Decision: what stays in CSS…* above, which are the only places a stylesheet is still the right answer.
 - When a component paints marks directly on a surface, follow the **Contrast contract** in `response-ui-css/AGENTS.md` (Colour): use text tokens (`--C-TEXT-*`) for ink/lines/borders on `--C-SURFACE-*`, and outline filled chips in their `on-*` token. Don't use `--C-PRIMARY` / `--C-ACCENT` as a border/line/text colour on a surface — a theme may set them ≈ the surface.
 - **Don't name an example theme.** `events`, `grimdark` and `tech` are sample code. Never put one in a selector, a type, a default value, a config list, or a test fixture — invent a name (`aurora`, `midnight`) instead. If a rule really needs to vary per theme, express it as a token the consumer also controls, so their theme gets the same deal. `bun run verify:example-themes` fails the build on violations; `src/examples/` is the only exception. The one legitimate use is a demo that has explicitly imported the example CSS — then import `EXAMPLE_THEMES`.
 

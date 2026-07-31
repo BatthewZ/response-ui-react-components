@@ -426,6 +426,10 @@ border standing while the control is focused.
   grid if one you expected is missing.
 - **The preset grid is always eight columns.** Three presets are three eighth-width
   swatches with five empty cells, not three wide ones.
+- **A positioning utility in `classNames.panel` is silently dead.** The panel's coordinates
+  are an inline `style` written by Floating UI, and an inline style beats a class, so
+  `top-0` or `left-r5` lands in the DOM, changes nothing and reports no error. Move the panel
+  with [`placement`](#placement); [Slots](#slots) has what `panel` does reach.
 - **The floating panel is a named `role="dialog"`.** Its name is `panelLabel`, default
   `"Color picker"` — pass your own to translate it, along with the five `*Label` props that
   name what is inside it.

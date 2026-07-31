@@ -2,6 +2,7 @@
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import { mergeRefs } from "../../util/merge-refs";
+import { cn } from "../../util/style";
 import {
   MenuContent,
   MenuContext,
@@ -64,8 +65,9 @@ const ContextMenuTrigger = forwardRef<HTMLDivElement, ContextMenuTriggerProps>(
         // No base class: the region is a bare `<div>` nothing in the package
         // paints, so `className` is the whole styling surface rather than one
         // half of a merge. The `context-menu-trigger` hook that used to sit here
-        // named a stylesheet that never existed.
-        className={className}
+        // named a stylesheet that never existed. Still merged with nothing to
+        // merge against — see `cn`'s docblock in util/style.
+        className={cn(className)}
         // The Menu key and Shift+F10 fire `contextmenu` at the *focused*
         // element, so a trigger that is not a tab stop can never be opened from
         // the keyboard. Set before the rest spread so a caller can override it.

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { startOfDay } from "../../util/date";
 import { CalendarBase } from "./CalendarBase";
@@ -15,6 +15,18 @@ function dayKey(d: Date): string {
 
 function pickerCells(): HTMLButtonElement[] {
   return Array.from(document.querySelectorAll<HTMLButtonElement>(".calendar-picker-cell"));
+}
+
+/**
+ * vitest stubs the component stylesheet to `""`, but jsdom does cascade a real
+ * `<style>` into `getComputedStyle` — so this is the only way to give a test a
+ * laid-out grid to read.
+ */
+function styleRule(css: string): void {
+  const style = document.createElement("style");
+  style.textContent = css;
+  document.head.append(style);
+  onTestFinished(() => style.remove());
 }
 
 /**
@@ -125,6 +137,85 @@ describe("CalendarBase", () => {
       expect(cells[9]).toHaveFocus();
       await user.keyboard("{Home}");
       expect(cells[0]).toHaveFocus();
+    });
+
+    /**
+     * The vertical step is read off the grid rather than declared in the TSX, so
+     * `classNames.pickerGrid` can change the column count without silently
+     * breaking the keyboard. The rule carries line names deliberately: a used
+     * track list may include them and they are not tracks.
+     */
+    it("steps ArrowUp/ArrowDown by the columns the grid is laid out in", async () => {
+      const user = userEvent.setup();
+      styleRule(".four-columns { grid-template-columns: [s] 1fr 1fr 1fr 1fr [e] }");
+      render(
+        <CalendarBase
+          defaultMonth={JUNE_2026}
+          getDayStatus={() => ({})}
+          onDaySelect={noop}
+          classNames={{ pickerGrid: "four-columns" }}
+        />,
+      );
+      await user.click(screen.getByRole("button", { name: "June 2026" }));
+
+      // June is index 5 and holds the tab stop; one row down is 9, not the 8 the
+      // default three columns would give.
+      const cells = pickerCells();
+      cells[5].focus();
+      await user.keyboard("{ArrowDown}");
+      expect(document.activeElement).toBe(cells[9]);
+      await user.keyboard("{ArrowUp}");
+      expect(document.activeElement).toBe(cells[5]);
+    });
+
+    /**
+     * A line-name span may hold more than one name, and a used track list keeps
+     * them. Split on whitespace first and `[a b]` reads as one discard plus a
+     * track called `b]` — four columns counted as five, and ArrowDown lands a
+     * cell short of the row below.
+     */
+    it("does not count the extra names in a multi-name line span as tracks", async () => {
+      const user = userEvent.setup();
+      styleRule(".four-columns { grid-template-columns: [s one] 1fr 1fr 1fr 1fr [e two] }");
+      render(
+        <CalendarBase
+          defaultMonth={JUNE_2026}
+          getDayStatus={() => ({})}
+          onDaySelect={noop}
+          classNames={{ pickerGrid: "four-columns" }}
+        />,
+      );
+      await user.click(screen.getByRole("button", { name: "June 2026" }));
+
+      const cells = pickerCells();
+      cells[5].focus();
+      await user.keyboard("{ArrowDown}");
+      expect(document.activeElement).toBe(cells[9]);
+    });
+
+    /**
+     * `repeat()` in the resolved value means the element had no layout box, so
+     * the browser handed back the computed value. Its commas and spaces count
+     * nothing: `repeat(4, 1fr)` splits into two words. The default is the only
+     * honest answer.
+     */
+    it("falls back to the default when the value is not a used track list", async () => {
+      const user = userEvent.setup();
+      styleRule(".uncounted { grid-template-columns: repeat(4, 1fr) }");
+      render(
+        <CalendarBase
+          defaultMonth={JUNE_2026}
+          getDayStatus={() => ({})}
+          onDaySelect={noop}
+          classNames={{ pickerGrid: "uncounted" }}
+        />,
+      );
+      await user.click(screen.getByRole("button", { name: "June 2026" }));
+
+      const cells = pickerCells();
+      cells[5].focus();
+      await user.keyboard("{ArrowDown}");
+      expect(document.activeElement).toBe(cells[8]);
     });
   });
 

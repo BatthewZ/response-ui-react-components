@@ -110,7 +110,7 @@ export function useToast(): ToastApi {
   return ctx;
 }
 
-type ToastProviderProps = {
+export type ToastProviderProps = {
   children: ReactNode;
   /**
    * Class overrides for the stack this provider renders. It takes no

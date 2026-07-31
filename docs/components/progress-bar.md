@@ -255,6 +255,8 @@ own any more, so the row below names the utility beside the class it sits on.
 | Fill — `success`, and its whole `gradient` ramp | `.progress-bar__fill--success` · `bg-status-success` | `--C-STATUS-SUCCESS`   |
 | Fill — `warning`, and its whole `gradient` ramp | `.progress-bar__fill--warning` · `bg-status-warning` | `--C-STATUS-WARNING`   |
 | Fill — `error`, and its whole `gradient` ramp | `.progress-bar__fill--error` · `bg-status-error` | `--C-STATUS-ERROR`         |
+| `gradient` ramp end — `accent` only | `.progress-bar__fill--gradient` | `--C-ACCENT-HOVER`                              |
+| `gradient` ramp end — `success` · `warning` · `error` | `.progress-bar__fill--gradient` | `--C-CANVAS` (mixed 25% into the colour above) |
 | Stripe ink — `striped`             | `.progress-bar__fill--striped`   | `--C-TEXT-ON-ACCENT` (at 15%)                   |
 | Width transition · stripe scroll   | `.progress-bar__fill`            | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
 | Label ink · weight                 | `.progress-bar__label`           | `--C-TEXT-SECONDARY` · `--Semibold-Weight`      |
@@ -270,11 +272,15 @@ worth knowing: `md` above 40rem is exactly as tall as `lg` below it. `--BodyText
 both weight tokens step up at the same breakpoint, so the label and value get slightly
 larger and heavier on wide screens.
 
-**The `gradient` ramp end has no row of its own, because it has no token of its own.** For
-a status colour it is a 75% mix of that colour with `--C-CANVAS`, so the rows above already
-cover it — re-tint `--C-STATUS-SUCCESS` and both ends move. For `accent` alone the end is
-`--C-ACCENT-HOVER`, and overriding that re-tints the ramp's tail without touching its head.
-Both live inside the fill's `background-image` utility rather than in `ProgressBar.css`.
+**The two `gradient` ramp-end rows are the only ones a colour prop does not already cover.**
+For a status colour the end is a 75/25 mix of that colour with `--C-CANVAS`, so re-tinting
+`--C-STATUS-SUCCESS` moves both ends and re-tinting `--C-CANVAS` moves only the tail — which
+also means the ramp shortens or lengthens with the theme's canvas rather than staying a fixed
+distance from its head. For `accent` alone the end is `--C-ACCENT-HOVER`, and overriding that
+re-tints the tail without touching the head. Both live inside the fill's `background-image`
+utility rather than in `ProgressBar.css`, which is why their rows name the marker class and
+not a utility: the ramp is one long arbitrary value per colour, and quoting it here would be
+less readable than the class it sits on.
 
 The striped texture is themeable, but only through `--C-TEXT-ON-ACCENT`: the stripes are
 a `color-mix` of that token at 15% over transparent, so they re-tint with the theme's

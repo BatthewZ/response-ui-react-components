@@ -239,11 +239,7 @@ error tooltip:
 | Error tooltip fill               | `bg-status-error`                       | `--C-STATUS-ERROR`  |
 | Error tooltip ink                | `text-fg-inverse`                       | `--C-TEXT-INVERSE`  |
 | Error tooltip type               | `text-body-3`                           | `--BodyText-3`      |
-
-The hover scrim is not in that table on purpose: it is written as
-`bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]`, and an arbitrary-value utility carrying a
-`var()` is not something `verify-component-docs` can resolve to a token — the same reason
-[Dialog](dialog.md)'s backdrop is described in prose rather than tabulated.
+| Hover scrim                      | `bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]` | `--OVERLAY-SCRIM-COLOR` |
 
 **The scrim is on the contract; its glyph is not.** The overlay reads
 `--OVERLAY-SCRIM-COLOR`, the same token [Drawer](drawer.md), [AppShell](app-shell.md),

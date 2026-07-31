@@ -1273,11 +1273,18 @@ describe("#463 · defaultPage seeds the uncontrolled page", () => {
       return result;
     }
 
-    it("lands className on the outermost element", () => {
+    // Exact string, not `toContain`: arrival and the collapse of the caller's
+    // own conflicting utilities are one assertion.
+    it("lands className on the outermost element, collapsing conflicting utilities", () => {
       const { container } = render(
-        <DataTable data={data} columns={columns} rowKey={rowKey} className="sentinel-root" />,
+        <DataTable
+          data={data}
+          columns={columns}
+          rowKey={rowKey}
+          className="sentinel-root p-r3 p-r5"
+        />,
       );
-      expect(container.firstElementChild!.getAttribute("class")).toBe("sentinel-root");
+      expect(container.firstElementChild!.getAttribute("class")).toBe("sentinel-root p-r5");
     });
 
     it("lands classNames.expandToggle on the toggle, beside its base classes", async () => {
@@ -1310,7 +1317,7 @@ describe("#463 · defaultPage seeds the uncontrolled page", () => {
       // `toBe`, not `toContain`: a merge that drops the library class when the
       // slot is `undefined` passes `toContain` and fails here.
       expect(container.querySelector(".data-table-expanded-cell")!.getAttribute("class")).toBe(
-        "table-cell table-cell--comfortable data-table-expanded-cell bg-surface-3",
+        "table-cell table-cell--comfortable data-table-expanded-cell bg-surface-2",
       );
       expect(container.querySelector(".data-table-expanded-body")!.getAttribute("class")).toBe(
         "data-table-expanded-body data-table-expanded-body--comfortable",

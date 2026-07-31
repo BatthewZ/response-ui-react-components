@@ -43,8 +43,15 @@ contract); the exported `cn` is built with `createCn` so it dedupes these utilit
 When adding a new component that needs CSS:
 
 1. Create `MyComponent.css` next to `MyComponent.tsx`.
-2. Add an `@import` line to [`src/styles.css`](./src/styles.css).
-3. The CSS file is copied to `dist/` automatically by the `copyCssAssets` plugin in
+2. Add an `@import "./components/…/MyComponent.css" layer(components);` line to
+   [`src/styles.css`](./src/styles.css). The `layer(components)` keyword is not optional —
+   `verify:css-layering` fails an import without it, because a component rule outside
+   `@layer components` out-ranks a caller's utility and `<MyComponent className="…">`
+   silently stops working.
+3. Do **not** `import "./MyComponent.css"` from the `.tsx`. A stylesheet reached through the
+   JS graph is injected *unlayered*, which defeats step 2 for that one component;
+   `verify:no-css-imports` gates it.
+4. The CSS file is copied to `dist/` automatically by the `copyCssAssets` plugin in
    [`vite.config.ts`](./vite.config.ts).
 
 Class-name convention: kebab-case rooted on the component name (e.g. `.accordion`,
@@ -81,7 +88,7 @@ first so `dist/` exists.
 src/
   index.ts                      <- main barrel
   components/
-    animation/   form/   guards/ (RequireAuth)
+    animation/   data-display/   form/   guards/ (RequireAuth)
     layout/      router/ (router-adapter)   ui/
   hooks/
     use-active-section.ts, use-click-outside.ts, use-controllable-state.ts,
@@ -92,12 +99,12 @@ src/
     style.ts (cn, twMerge, tailwindMergeExtension)
     merge-props.ts (mergeProps, composeEventHandlers), merge-refs.ts
     focus.ts (the one Tailwind focus recipe — internal, see below)
-    date.ts, format.ts, index.ts
+    date.ts, format.ts, accept.ts, index.ts
 scripts/                    (repo-only; none of these are published — `ls scripts/`)
   gen-docs.mjs              verify-chart-palette.mjs    verify-component-docs.mjs
   verify-css-layering.mjs   verify-directives.mjs       verify-docs.mjs
   verify-example-themes.mjs verify-focus-affordance.mjs verify-no-css-imports.mjs
-  verify-omit-discipline.mjs verify-slot-annotations.mjs
+  verify-omit-discipline.mjs verify-slot-annotations.mjs verify-token-mirror.mjs
   bugs-ledger.mjs           probe-cascade-layer.mjs
 ```
 
@@ -163,7 +170,12 @@ published. `ScrollReveal.test.tsx` and `AnimatePresence.test.tsx` each carry a c
 
 Code defects found while documenting are recorded, not fixed inline, in
 [bugs/LEDGER.md](./bugs/LEDGER.md) — one row per finding, with evidence in
-`bugs/components/<name>.md` and the root-cause clusters in [bugs/PLAN.md](./bugs/PLAN.md).
+`bugs/components/<name>.md`. Closed rows move to [bugs/ARCHIVE.md](./bugs/ARCHIVE.md); ids are
+never reused and nothing is deleted, because a refutation is a result. Findings about the
+*checking* rather than the shipped code — a gate that reads the wrong thing, a test that passes
+for the wrong reason — belong in [bugs/AUDIT.md](./bugs/AUDIT.md), since a ledger row should be
+something a user could notice. [bugs/PLAN.md](./bugs/PLAN.md) is **retired** and survives only as
+a section map for the archived rows that cite it by number.
 `verify:bugs` ([scripts/bugs-ledger.mjs](./scripts/bugs-ledger.mjs)) is the oracle over
 it: unique and ordered ids, statuses in the lifecycle enum, terminal statuses carrying
 their evidence, `src/` anchors resolving to a real file and an in-range line, a **content
@@ -193,19 +205,33 @@ authoritative list is the script itself in [package.json](./package.json); in or
 ```
 build → verify-directives → verify-docs → gen-docs --check → verify-component-docs
       → verify-focus-affordance → verify-no-css-imports → verify-css-layering
-      → verify-omit-discipline --check → verify-chart-palette --check
-      → verify-example-themes --check → verify-slot-annotations
-      → lint → typecheck → test
+      → verify-token-mirror → verify-omit-discipline --check
+      → verify-chart-palette --check → verify-example-themes --check
+      → verify-slot-annotations → lint → typecheck → test
 ```
 
-Fifteen steps. So a broken RSC directive, an undocumented export, a stale doc fence, a bad
+**Sixteen steps** — re-derive rather than trust this sentence, because the chain grows:
+
+```
+node -e 'console.log(require("./package.json").scripts.prepublishOnly.split("&&").length)'
+```
+
+So a broken RSC directive, an undocumented export, a stale doc fence, a bad
 token table or dead link, an unrepaid `outline` reset, a CSS import in the barrel, a rule
-outside its cascade layer, a compile-time-only `Omit`, an off-palette chart colour, an
-example theme name leaking into the design system, an internal element nobody ruled on, a
-lint error, a type error, or a failing test each block publish.
+outside its cascade layer, a domain token declared in `@theme` but never mirrored into
+`createCn` (or mirrored after being deleted), a compile-time-only `Omit`, an off-palette
+chart colour, an example theme name leaking into the design system, an internal element
+nobody ruled on, a lint error, a type error, or a failing test each block publish.
 
 **Know what the gates cannot see.** `verify:component-docs` reads token *tables* — a token that
-changes role passes silently, and falsified prose always passes. `verify:docs` checks that
+changes role passes silently, and falsified prose always passes. It now resolves a token named
+through a `var()` anywhere inside an arbitrary utility value (`bg-[var(--X,fallback)]`, a composed
+`calc()` of two rungs), but its utility-prefix map still has no entry for the inset family, so
+`right-r4` is not recognised as a utility at all and a token reachable only that way still cannot
+be tabulated (`bugs/LEDGER.md` #488). `verify:token-mirror` proves the two halves of the domain
+token list agree; it cannot prove the mirror *matters* — its own header records that an unmirrored
+colour token still dedupes under tailwind-merge 3.6.0, so the coupling is load-bearing only once a
+non-colour namespace lands in `src/tokens.css`. `verify:docs` checks that
 every **value** export appears in README and AGENTS; type-only exports are optional to it, and
 the `date`/`color` helper modules are summarised rather than enumerated, so a new export in
 either class can go missing with every gate green (`SortState`, `toISODate` and `getMonthNames`

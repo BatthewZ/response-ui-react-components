@@ -22,10 +22,13 @@ list reorder, an expand. Pair it with `useViewTransition` to run the change insi
 | `ref`       | `Ref<HTMLDivElement>`  | —              |
 | …rest       | props of `div`         | —              |
 
-The `name` sets `view-transition-name` on a real `<div>` — nothing more. `className`,
-`style`, `id`, `data-*`, and every other `div` prop pass straight through, and `ref`
-points at the underlying element. The one rule the type can't enforce: `name` must be
-unique per document at snapshot time — see [Gotchas](#gotchas).
+The `name` sets `view-transition-name` on a real `<div>` — nothing more. `style`, `id`,
+`data-*`, and every other `div` prop pass straight through, and `ref` points at the
+underlying element. `className` lands on the same `<div>` but goes through `cn()` first,
+even though the element carries no base class of its own: `className="p-r3 p-r5"` resolves
+to `p-r5` the way it does on every other component in the package, rather than emitting both
+and leaving the stylesheet's order to pick. The one rule the type can't enforce: `name` must
+be unique per document at snapshot time — see [Gotchas](#gotchas).
 
 ## Unique names in a list
 

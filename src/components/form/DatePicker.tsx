@@ -290,7 +290,10 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     );
 
     return (
-      <div className={className}>
+      <div
+        // No base class, still merged — see `cn`'s docblock in util/style.
+        className={cn(className)}
+      >
         {/* The field row is its own positioning context, and the floating
             anchor: the message below is a sibling of it, so a refusal neither
             re-centres the icon cluster (`inset-y-0` spans whatever box it is

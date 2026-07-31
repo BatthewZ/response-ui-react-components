@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
+import { cn } from "../../util/style";
 
 /**
  * Resolves the delay step ONCE, on the container, where nothing competes.
@@ -61,7 +62,8 @@ export const Stagger = forwardRef<HTMLElement, StaggerImplProps>(function Stagge
     <Tag
       {...rest}
       ref={ref}
-      className={className}
+      // No base class, still merged — see `cn`'s docblock in util/style.
+      className={cn(className)}
       // The caller's `style` is spread LAST, so every key of theirs still wins.
       style={
         {

@@ -58,13 +58,15 @@ describe("ViewTransition", () => {
     expect(el.style.viewTransitionName).toBe("hero");
   });
 
-  it("merges custom className", () => {
+  // Exact string, not `toContain`: arrival and the collapse of the caller's own
+  // conflicting utilities are one assertion.
+  it("merges custom className, collapsing the caller's conflicting utilities", () => {
     render(
-      <ViewTransition name="card" className="custom-class" data-testid="vt">
+      <ViewTransition name="card" className="custom-class p-r3 p-r5" data-testid="vt">
         Styled
       </ViewTransition>
     );
-    expect(screen.getByTestId("vt").className).toContain("custom-class");
+    expect(screen.getByTestId("vt").getAttribute("class")).toBe("custom-class p-r5");
   });
 
   it("forwards ref", () => {
