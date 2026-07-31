@@ -14,7 +14,7 @@ import {
 } from "react";
 
 import { composeEventHandlers } from "../../util/merge-props";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                            */
@@ -84,8 +84,6 @@ const TableRoot = forwardRef<HTMLDivElement, TableProps>(function Table(
   },
   ref
 ) {
-  const { className: tableClassName, ...restTableProps } = tableProps ?? {};
-
   return (
     <TableContext.Provider value={{ density, striped }}>
       <div
@@ -94,9 +92,11 @@ const TableRoot = forwardRef<HTMLDivElement, TableProps>(function Table(
         style={maxHeight !== undefined ? { maxHeight, ...style } : style}
         {...props}
       >
+        {/* Bag first, `className` after it: the merge has to be the last writer
+            or the raw bag's own `className` overwrites it. */}
         <table
-          className={cn("table", stickyHeader && "table--sticky-header", tableClassName)}
-          {...restTableProps}
+          {...tableProps}
+          className={cn("table", stickyHeader && "table--sticky-header", tableProps?.className)}
         >
           {children}
         </table>
@@ -218,6 +218,16 @@ type TableHeaderCellProps = {
    * the column alone. Ignored without `onSort`: there is no button to name.
    */
   sortLabel?: string;
+  /**
+   * Class overrides for the sort affordance this cell renders. `className` is
+   * the `<th>` itself, so there is no `root` key.
+   *
+   * - `sortButton` — the real `<button>` a sortable header wraps its column in.
+   * - `sortIcon` — the direction glyph, present whenever a direction is set.
+   *
+   * Neither element exists on a header with no `onSort` and no `sortDirection`.
+   */
+  classNames?: SlotClassNames<"sortButton" | "sortIcon">;
 } & ComponentPropsWithRef<"th">;
 
 const TableHeaderCell = forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
@@ -226,6 +236,7 @@ const TableHeaderCell = forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
       sortDirection,
       onSort,
       sortLabel = "Sort by",
+      classNames,
       className,
       children,
       onClick,
@@ -248,9 +259,18 @@ const TableHeaderCell = forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
     let sortIcon: ReactNode = null;
     if (sortable || hasDirection) {
       const Icon = sortDirection === "asc" ? ArrowUp : sortDirection === "desc" ? ArrowDown : ArrowUpDown;
-      const modifier = hasDirection ? "active" : "muted";
+      // Written out rather than interpolated: a template-built class name is
+      // invisible to Tailwind's source scan and to any static reader of it.
       sortIcon = (
-        <span className={`table-header-cell__sort-icon table-header-cell__sort-icon--${modifier}`}>
+        <span
+          className={cn(
+            "table-header-cell__sort-icon",
+            hasDirection
+              ? "table-header-cell__sort-icon--active"
+              : "table-header-cell__sort-icon--muted",
+            classNames?.sortIcon,
+          )}
+        >
           <Icon size={14} />
         </span>
       );
@@ -283,11 +303,19 @@ const TableHeaderCell = forwardRef<HTMLTableCellElement, TableHeaderCellProps>(
     const content = sortable ? (
       <button
         type="button"
-        className="table-header-cell__sort-button"
+        className={cn("table-header-cell__sort-button", classNames?.sortButton)}
         aria-labelledby={named ? `${sortId}-action ${sortId}-column` : undefined}
       >
         {named && (
-          <span id={`${sortId}-action`} className="sr-only" aria-hidden="true">
+          <span
+            id={`${sortId}-action`}
+            // slot:(a) the action word, carried into the button's accessible
+            // name by `aria-labelledby` and kept out of the visible cell by
+            // this class alone. Dropping `sr-only` prints "Sort by" beside
+            // every column heading; there is nothing else here to vary.
+            className="sr-only"
+            aria-hidden="true"
+          >
             {sortLabel}
           </span>
         )}

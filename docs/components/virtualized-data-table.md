@@ -328,6 +328,53 @@ in the loading branch acts on whatever is still in `data`.
 Omit `emptyContent` and you get a built-in [EmptyState](empty-state.md) reading "No data /
 There are no items to display."
 
+## Slots and props hatches
+
+VirtualizedDataTable takes **no `classNames` object**: the only elements it adds on top of
+[Table](table.md) are the two spacer rows, and those are not overridable — see below. What
+it does take is the two routes it previously hardcoded.
+
+**`className` and `style` address the outermost element**, which is also the scroll
+container:
+
+```tsx
+<VirtualizedDataTable
+  data={rows}
+  columns={columns}
+  rowKey={(r) => r.id}
+  rowHeight={40}
+  className="rounded-lg"
+  style={{ height: "60vh" }}
+/>
+```
+
+Two things about that element specifically:
+
+- **`className` is appended to `table-virtual-scroll`, never a replacement.** That class is
+  the selector `VirtualizedDataTable.css` scopes its fixed-layout and truncation rules to —
+  see [Fixed row height](#fixed-row-height) — so it is written first and yours is added.
+- **`style` is applied after the derived `height`/`overflow-y`**, so a value you set on the
+  same key wins. `style={{ height }}` and the `height` prop do the same thing; prefer the
+  prop, which is also what the virtualiser's initial-viewport estimate reads.
+
+Both also reach the loading and empty roots, which are different elements from the data one.
+
+**`tableProps` reaches the inner `<table>`**, forwarded to [Table](table.md)'s own hatch and
+**merged** into the `aria-rowcount`/`aria-busy` this component derives — those describe the
+virtual window and cannot be restated correctly from outside:
+
+```tsx
+<VirtualizedDataTable … tableProps={{ "aria-label": "Transactions" }} />
+```
+
+**Deliberately not slots.**
+
+- **The spacer rows** (`.table-virtual-spacer`). They are `aria-hidden` height shims: their
+  whole geometry is the padding the virtualiser computes and writes inline, and the class
+  exists only to zero the padding and border a data row would carry. A class there desyncs
+  the scroll arithmetic — see [Gotchas](#gotchas).
+- **The checkbox column's `w-10`.** A width reservation for a control this component owns.
+
 ## Theme tokens
 
 VirtualizedDataTable reads **no theme variables of its own**. `VirtualizedDataTable.css` is two

@@ -1,10 +1,11 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { formatDate } from "../../util/date";
 import type { DateRange } from "../ui/RangeCalendar";
+import { datePickerPopoverClassName } from "./date-picker-internals";
 import { DateRangePicker } from "./DateRangePicker";
 import { useForm } from "./use-form";
 
@@ -412,5 +413,67 @@ describe("DateRangePicker · popup wiring, i18n and commit safety", () => {
     expect(onKeyDown).toHaveBeenCalled();
     // The caller preempted the commit.
     expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  classNames                                                       */
+  /* ---------------------------------------------------------------- */
+
+  describe("classNames", () => {
+    /** Open the popover so `panel` exists, and return the container. */
+    async function open(props: Partial<ComponentProps<typeof DateRangePicker>> = {}) {
+      const user = userEvent.setup();
+      const result = render(<DateRangePicker {...props} />);
+      await user.click(screen.getByRole("button", { name: "Open calendar" }));
+      return result;
+    }
+
+    it("lands classNames.control on the field row, beside its base classes", async () => {
+      const { container } = await open({ classNames: { control: "sentinel-slot" } });
+      const control = container.querySelector(".sentinel-slot");
+      expect(control).not.toBeNull();
+      expect(control!.getAttribute("class")).toContain("flex");
+      expect(control!.getAttribute("class")).toContain("gap-r6");
+    });
+
+    it("lands classNames.panel on the popover surface, beside its base classes", async () => {
+      await open({ classNames: { panel: "sentinel-slot" } });
+      const panel = screen.getByRole("dialog", { name: "Choose date range" });
+      expect(panel.getAttribute("class")).toContain("sentinel-slot");
+      expect(panel.getAttribute("class")).toContain("rounded-md");
+    });
+
+    it("leaves every base class alone when no slot is passed", async () => {
+      const { container } = await open();
+      // `toBe`, not `toContain`: a merge that drops the base class when the
+      // slot is `undefined` passes `toContain` and fails here.
+      expect(container.querySelector(".items-center")!.getAttribute("class")).toBe(
+        "flex items-center gap-r6",
+      );
+      expect(
+        screen.getByRole("dialog", { name: "Choose date range" }).getAttribute("class"),
+      ).toBe(datePickerPopoverClassName);
+    });
+
+    it("does not put a slot class on the root", async () => {
+      const { container } = await open({
+        className: "root-class",
+        classNames: { control: "sentinel-slot" },
+      });
+      expect(container.firstElementChild!.getAttribute("class")).toBe("relative root-class");
+    });
+
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        // @ts-expect-error — `actions` is not a slot here; only untyped JS gets here.
+        <DateRangePicker classNames={{ actions: "sentinel-slot" }} />,
+      );
+      expect(container.querySelector(".sentinel-slot")).toBeNull();
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(<DateRangePicker classNames={{ control: "sentinel-slot" }} />);
+      expect(container.querySelector("[classnames]")).toBeNull();
+    });
   });
 });

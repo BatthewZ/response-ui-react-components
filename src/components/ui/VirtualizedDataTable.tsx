@@ -1,8 +1,9 @@
 "use client";
-import { type ReactNode, useEffect, useMemo, useRef } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { useVirtualRows } from "../../hooks/use-virtual-rows";
+import { cn } from "../../util/style";
 import { Checkbox } from "../form/Checkbox";
 import {
   areAllSelected,
@@ -17,7 +18,7 @@ import {
 } from "./data-table-utils";
 import { EmptyState, EmptyStateDescription, EmptyStateTitle } from "./EmptyState";
 import { Skeleton } from "./Skeleton";
-import { Table } from "./Table";
+import { Table, type TableProps } from "./Table";
 
 export type VirtualizedDataTableProps<T> = {
   // Data
@@ -79,6 +80,27 @@ export type VirtualizedDataTableProps<T> = {
 
   // Empty state
   emptyContent?: ReactNode;
+
+  // Overrides
+  /**
+   * Classes for the outermost element — the `Table` root, which is also the
+   * scroll container. Merged after `table-virtual-scroll`, which is the
+   * selector `VirtualizedDataTable.css` scopes its column and truncation rules
+   * to, so it is appended and never replaced.
+   */
+  className?: string;
+  /**
+   * Inline styles for that same element. Applied *after* the prop-derived
+   * `height`/`overflow-y`, so a caller's value wins on the same key.
+   */
+  style?: CSSProperties;
+  /**
+   * Props for the inner `<table>`, forwarded to `Table`'s own hatch. Merged
+   * into the `aria-rowcount`/`aria-busy` this component derives rather than
+   * replacing them — those describe the virtual window and cannot be restated
+   * correctly from outside.
+   */
+  tableProps?: TableProps["tableProps"];
 };
 
 /* ------------------------------------------------------------------ */
@@ -140,6 +162,9 @@ export function VirtualizedDataTable<T>({
   loading = false,
   loadingRowCount = 5,
   emptyContent,
+  className,
+  style,
+  tableProps,
 }: VirtualizedDataTableProps<T>) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -236,7 +261,12 @@ export function VirtualizedDataTable<T>({
             their dataset index, not from their position in the mounted window. */}
         <Table.Row aria-rowindex={1}>
           {selectable && (
-            <Table.HeaderCell className="w-10">
+            <Table.HeaderCell
+              // slot:(a) the width reservation for the checkbox column, sized
+              // to the control this component renders under it. A caller class
+              // here re-sizes a column whose only content the component owns.
+              className="w-10"
+            >
               <Checkbox
                 checked={allSelected}
                 ref={(el) => {
@@ -278,7 +308,9 @@ export function VirtualizedDataTable<T>({
         density={density}
         striped={false}
         stickyHeader={stickyHeader}
-        tableProps={{ "aria-busy": true }}
+        className={className}
+        style={style}
+        tableProps={{ ...tableProps, "aria-busy": true }}
       >
         {renderHeader()}
         <Table.Body>
@@ -304,7 +336,14 @@ export function VirtualizedDataTable<T>({
   // Empty state.
   if (data.length === 0) {
     return (
-      <Table density={density} striped={false} stickyHeader={stickyHeader}>
+      <Table
+        density={density}
+        striped={false}
+        stickyHeader={stickyHeader}
+        className={className}
+        style={style}
+        tableProps={tableProps}
+      >
         {renderHeader()}
         <Table.Body>
           <Table.Row>
@@ -330,18 +369,31 @@ export function VirtualizedDataTable<T>({
       density={density}
       striped={striped}
       stickyHeader={stickyHeader}
-      className="table-virtual-scroll"
-      style={{ height, overflowY: "auto" }}
+      // `table-virtual-scroll` is what `VirtualizedDataTable.css` scopes its
+      // fixed-layout and truncation rules to, so the base class comes first and
+      // a caller's is appended to it.
+      className={cn("table-virtual-scroll", className)}
+      // Caller's `style` last: `height` is prop-derived, and an override on the
+      // same key should win rather than be shadowed.
+      style={{ height, overflowY: "auto", ...style }}
       // Only a slice of the rows is mounted, so the DOM row count is not the
       // table's row count. `aria-rowcount` (+ the per-row `aria-rowindex`
       // below) is what tells assistive tech the size of the real table and
-      // where in it the mounted window sits (#372). Header row included.
-      tableProps={{ "aria-rowcount": sortedData.length + 1 }}
+      // where in it the mounted window sits (#372). Header row included, and
+      // set after the caller's bag because only this component can compute it.
+      tableProps={{ ...tableProps, "aria-rowcount": sortedData.length + 1 }}
     >
       {renderHeader()}
       <Table.Body>
         {paddingTop > 0 && (
-          <tr aria-hidden className="table-virtual-spacer">
+          <tr
+            aria-hidden
+            // slot:(a) an `aria-hidden` height shim. Its whole geometry is the
+            // padding `use-virtual-rows` computes and writes inline below, and
+            // the class exists only to zero the padding and border a data row
+            // would carry — a caller class here desyncs the scroll arithmetic.
+            className="table-virtual-spacer"
+          >
             <td colSpan={totalColumns} style={{ height: paddingTop }} />
           </tr>
         )}
@@ -379,7 +431,14 @@ export function VirtualizedDataTable<T>({
           );
         })}
         {paddingBottom > 0 && (
-          <tr aria-hidden className="table-virtual-spacer">
+          <tr
+            aria-hidden
+            // slot:(a) an `aria-hidden` height shim. Its whole geometry is the
+            // padding `use-virtual-rows` computes and writes inline below, and
+            // the class exists only to zero the padding and border a data row
+            // would carry — a caller class here desyncs the scroll arithmetic.
+            className="table-virtual-spacer"
+          >
             <td colSpan={totalColumns} style={{ height: paddingBottom }} />
           </tr>
         )}

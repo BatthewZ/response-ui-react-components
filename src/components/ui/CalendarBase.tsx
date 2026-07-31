@@ -4,6 +4,7 @@ import {
   type CSSProperties,
   forwardRef,
   type KeyboardEvent,
+  type ReactNode,
   useEffect,
   useRef,
   useState,
@@ -26,7 +27,7 @@ import {
   startOfMonth,
 } from "../../util/date";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { IconButton } from "./IconButton";
 
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -73,6 +74,60 @@ export const DEFAULT_CALENDAR_LABELS: Required<CalendarLabels> = {
   previewRange: "in previewed range",
 };
 
+/**
+ * Class overrides for the internals `CalendarBase` renders. `className` is the
+ * root, so there is no `root` key.
+ *
+ * Exported, and aliased rather than re-spelled by `Calendar`, `RangeCalendar`,
+ * `DatePicker` and `DateRangePicker`: all four render none of this markup, they
+ * forward to `CalendarBase`, so one union written at the component that owns the
+ * anatomy is the single source of truth. Re-spelling it four times would fork it.
+ *
+ * `pickerCell` and `day` land on elements the component also finds by selector
+ * to drive focus, so both merges append to the base class and never replace it.
+ */
+export type CalendarSlotClassNames = SlotClassNames<
+  | "header"
+  | "labelButton"
+  | "months"
+  | "footer"
+  | "todayButton"
+  | "pickerGrid"
+  | "pickerCell"
+  | "month"
+  | "caption"
+  | "grid"
+  | "weekdays"
+  | "weekday"
+  | "row"
+  | "cell"
+  | "day"
+>;
+
+/** What `renderDay` is handed for one day cell. */
+export type CalendarDayRenderArgs = {
+  date: Date;
+  /** Selection state from the adapter — empty for an outside day. */
+  status: DayStatus;
+  /** The day belongs to an adjacent month and renders as padding. */
+  outside: boolean;
+  today: boolean;
+  disabled: boolean;
+  /** `status.selected`, `rangeStart` or `rangeEnd` — what paints the solid fill. */
+  selected: boolean;
+};
+
+/**
+ * Content for one day, inside the day button.
+ *
+ * The 42 cells a month grid renders are loop-generated, so no slot key can name
+ * one of them — and what a consumer wants there ("a dot on a booked day") is
+ * different *content*, not a different class. This renders the button's children
+ * only: the button itself, its class, its `data-*` state and its roving tab stop
+ * stay the component's, because focus management finds it by selector.
+ */
+export type CalendarDayRenderer = (args: CalendarDayRenderArgs) => ReactNode;
+
 export type CalendarBaseProps = {
   /** Controlled first displayed month. */
   month?: Date;
@@ -103,6 +158,10 @@ export type CalendarBaseProps = {
   autoFocus?: boolean;
   /** Selection side effect when Today is pressed (after navigating + focusing today). */
   onTodayClick?: (today: Date) => void;
+  /** Class overrides for the internals. See {@link CalendarSlotClassNames}. */
+  classNames?: CalendarSlotClassNames;
+  /** Replace a day's content. See {@link CalendarDayRenderer}. */
+  renderDay?: CalendarDayRenderer;
   /**
    * Not a calendar prop — the selection channel is `onDaySelect`.
    *
@@ -157,7 +216,15 @@ type QuickNavItem = {
  * rows and no gridcells, and its buttons carry navigation state (`aria-current`),
  * not selection (`aria-selected`, which `button` does not support).
  */
-function QuickNavGrid({ ariaLabel, items }: { ariaLabel: string; items: QuickNavItem[] }) {
+function QuickNavGrid({
+  ariaLabel,
+  items,
+  classNames,
+}: {
+  ariaLabel: string;
+  items: QuickNavItem[];
+  classNames?: CalendarSlotClassNames;
+}) {
   const initialIndex = Math.max(
     0,
     items.findIndex((i) => i.current),
@@ -210,7 +277,7 @@ function QuickNavGrid({ ariaLabel, items }: { ariaLabel: string; items: QuickNav
   return (
     <div
       ref={gridRef}
-      className="calendar-picker-grid"
+      className={cn("calendar-picker-grid", classNames?.pickerGrid)}
       role="group"
       aria-label={ariaLabel}
       onKeyDown={handleKeyDown}
@@ -219,7 +286,10 @@ function QuickNavGrid({ ariaLabel, items }: { ariaLabel: string; items: QuickNav
         <button
           key={item.key}
           type="button"
-          className="calendar-picker-cell"
+          // `.calendar-picker-cell` is the selector `useEffect` above lands
+          // arrow-key focus through, so the base class comes first and the slot
+          // is appended to it — a slot must never be able to replace it.
+          className={cn("calendar-picker-cell", classNames?.pickerCell)}
           tabIndex={i === focusIndex ? 0 : -1}
           aria-disabled={item.disabled || undefined}
           aria-current={item.current ? "true" : undefined}
@@ -255,6 +325,8 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
     labels,
     autoFocus = false,
     onTodayClick,
+    classNames,
+    renderDay,
     className,
     style,
     onPointerLeave,
@@ -511,7 +583,7 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
         setView("days");
       },
     }));
-    return <QuickNavGrid ariaLabel={String(year)} items={items} />;
+    return <QuickNavGrid ariaLabel={String(year)} items={items} classNames={classNames} />;
   }
 
   function renderYearsView() {
@@ -529,32 +601,32 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
         },
       };
     });
-    return <QuickNavGrid ariaLabel={headerLabel} items={items} />;
+    return <QuickNavGrid ariaLabel={headerLabel} items={items} classNames={classNames} />;
   }
 
   function renderMonthGrid(monthDate: Date) {
     const weekdayNames = getWeekdayNames(locale, "short", weekStartsOn);
     const weeks = buildMonthGrid(monthDate, weekStartsOn);
     return (
-      <div className="calendar-month" key={monthOrdinal(monthDate)}>
+      <div className={cn("calendar-month", classNames?.month)} key={monthOrdinal(monthDate)}>
         {monthCount > 1 && (
-          <div className="calendar-month-caption" aria-hidden="true">
+          <div className={cn("calendar-month-caption", classNames?.caption)} aria-hidden="true">
             {captionFor(monthDate)}
           </div>
         )}
         <div
           role="grid"
           aria-label={captionFor(monthDate)}
-          className="calendar-grid"
+          className={cn("calendar-grid", classNames?.grid)}
           onKeyDown={handleDayKeyDown}
         >
-          <div role="row" className="calendar-weekdays">
+          <div role="row" className={cn("calendar-weekdays", classNames?.weekdays)}>
             {weekdayNames.map((name, i) => (
               <div
                 key={`${i}-${name}`}
                 role="columnheader"
                 aria-label={name}
-                className="calendar-weekday"
+                className={cn("calendar-weekday", classNames?.weekday)}
               >
                 {name}
               </div>
@@ -562,7 +634,7 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
           </div>
 
           {weeks.map((week) => (
-            <div role="row" className="calendar-week" key={dayKey(week[0])}>
+            <div role="row" className={cn("calendar-week", classNames?.row)} key={dayKey(week[0])}>
               {week.map((day) => {
                 const outside = !isSameDay(startOfMonth(day), monthDate);
                 const disabled = isDayDisabled(day);
@@ -593,14 +665,17 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
                   // support it on `button`, so on the day itself it was ignored.
                   <div
                     role="gridcell"
-                    className="calendar-cell"
+                    className={cn("calendar-cell", classNames?.cell)}
                     aria-selected={selected}
                     key={dayKey(day)}
                   >
                     <button
                       type="button"
                       data-day={dayKey(day)}
-                      className="calendar-day"
+                      // `.calendar-day` and `[data-day]` are both selectors the
+                      // roving-focus effects query, so the base class comes
+                      // first and the slot is appended — never a replacement.
+                      className={cn("calendar-day", classNames?.day)}
                       tabIndex={isFocusDay ? 0 : -1}
                       aria-disabled={disabled || undefined}
                       aria-label={name}
@@ -615,7 +690,9 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
                       onClick={() => handleSelect(day)}
                       onPointerEnter={onDayHover ? () => onDayHover(day) : undefined}
                     >
-                      {day.getDate()}
+                      {renderDay
+                        ? renderDay({ date: day, status, outside, today: isToday, disabled, selected })
+                        : day.getDate()}
                     </button>
                   </div>
                 );
@@ -645,7 +722,7 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
       }}
       {...props}
     >
-      <div className="calendar-header">
+      <div className={cn("calendar-header", classNames?.header)}>
         <IconButton type="button" aria-label={prevLabel} onClick={stepBackward}>
           <ChevronLeft aria-hidden="true" size={18} />
         </IconButton>
@@ -654,7 +731,7 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
             per-month captions it used to defer to are `aria-hidden`. */}
         <button
           type="button"
-          className="calendar-label calendar-label-button"
+          className={cn("calendar-label calendar-label-button", classNames?.labelButton)}
           aria-live="polite"
           onClick={onCaptionClick}
         >
@@ -665,13 +742,21 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
         </IconButton>
       </div>
 
-      {view === "days" && <div className="calendar-months">{visibleMonths.map(renderMonthGrid)}</div>}
+      {view === "days" && (
+        <div className={cn("calendar-months", classNames?.months)}>
+          {visibleMonths.map(renderMonthGrid)}
+        </div>
+      )}
       {view === "months" && renderMonthsView()}
       {view === "years" && renderYearsView()}
 
       {showToday && view === "days" && (
-        <div className="calendar-footer">
-          <button type="button" className="calendar-today-button" onClick={handleToday}>
+        <div className={cn("calendar-footer", classNames?.footer)}>
+          <button
+            type="button"
+            className={cn("calendar-today-button", classNames?.todayButton)}
+            onClick={handleToday}
+          >
             {todayLabel}
           </button>
         </div>

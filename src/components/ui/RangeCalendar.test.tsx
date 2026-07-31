@@ -392,4 +392,86 @@ describe("RangeCalendar", () => {
     expect(hijack).not.toHaveBeenCalled();
     expect(onValueChange).toHaveBeenCalledTimes(1);
   });
+
+  /**
+   * RangeCalendar renders none of the calendar markup — `CalendarBase` does —
+   * so the only thing to assert here is that both channels survive the forward.
+   * The anatomy itself is pinned in `CalendarBase.test.tsx`.
+   */
+  describe("classNames / renderDay forwarding", () => {
+    it("forwards classNames to CalendarBase's internals", () => {
+      const { container } = render(
+        <RangeCalendar
+          defaultMonth={JUNE_2026}
+          numberOfMonths={1}
+          classNames={{ day: "sentinel-slot" }}
+        />,
+      );
+      const day = container.querySelector(".calendar-day");
+      expect(day!.getAttribute("class")).toContain("calendar-day");
+      expect(day!.getAttribute("class")).toContain("sentinel-slot");
+    });
+
+    it("leaves the base classes alone when no slot is passed", () => {
+      const { container } = render(
+        <RangeCalendar defaultMonth={JUNE_2026} numberOfMonths={1} />,
+      );
+      expect(container.querySelector(".calendar-day")!.getAttribute("class")).toBe("calendar-day");
+    });
+
+    it("does not put a slot class on the root", () => {
+      const { container } = render(
+        <RangeCalendar
+          defaultMonth={JUNE_2026}
+          numberOfMonths={1}
+          classNames={{ day: "sentinel-slot" }}
+        />,
+      );
+      expect(container.querySelector(".calendar")!.getAttribute("class")).not.toContain(
+        "sentinel-slot",
+      );
+    });
+
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        <RangeCalendar
+          defaultMonth={JUNE_2026}
+          numberOfMonths={1}
+          // @ts-expect-error — `dayCell` is not a slot; only untyped JS gets here.
+          classNames={{ dayCell: "sentinel-slot" }}
+        />,
+      );
+      expect(container.querySelector(".calendar-day")!.getAttribute("class")).toBe("calendar-day");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(
+        <RangeCalendar
+          defaultMonth={JUNE_2026}
+          numberOfMonths={1}
+          classNames={{ day: "sentinel-slot" }}
+        />,
+      );
+      expect(container.querySelector(".calendar")!.hasAttribute("classnames")).toBe(false);
+    });
+
+    it("forwards renderDay, and range picking still commits from the rendered cell", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <RangeCalendar
+          defaultMonth={JUNE_2026}
+          numberOfMonths={1}
+          onValueChange={onValueChange}
+          renderDay={({ date }) => (
+            // The 42-cell grid spans three months, so the day number alone is
+            // not unique — key on the whole date.
+            <span data-testid={`d-${date.toDateString()}`}>{date.getDate()}</span>
+          )}
+        />,
+      );
+      await user.click(screen.getByTestId(`d-${new Date(2026, 5, 10).toDateString()}`));
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+    });
+  });
 });

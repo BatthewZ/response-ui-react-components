@@ -677,4 +677,71 @@ describe("#368 · the zebra follows the dataset, not the scroll window", () => {
       if (Number.isFinite(n)) expect(banded).toBe(n % 2 === 1);
     }
   });
+
+  /* ---------------------------------------------------------------- */
+  /*  className / style / tableProps                                   */
+  /* ---------------------------------------------------------------- */
+
+  describe("className, style and tableProps", () => {
+    const base = { data: makeData(50), columns, rowKey, rowHeight: 40 };
+
+    it("appends className after the scroll-container base class", () => {
+      const { container } = render(
+        <VirtualizedDataTable {...base} className="sentinel-root" />,
+      );
+      // `table-virtual-scroll` is the selector `VirtualizedDataTable.css` scopes
+      // its column and truncation rules to — it must survive the merge.
+      const scroller = container.querySelector(".table-virtual-scroll")!;
+      expect(scroller.getAttribute("class")).toBe(
+        "table-wrapper table-virtual-scroll sentinel-root",
+      );
+    });
+
+    it("leaves the base class alone when no className is passed", () => {
+      const { container } = render(<VirtualizedDataTable {...base} />);
+      expect(container.querySelector(".table-virtual-scroll")!.getAttribute("class")).toBe(
+        "table-wrapper table-virtual-scroll",
+      );
+    });
+
+    it("lets a caller's style win on the same key as the derived height", () => {
+      const { container } = render(
+        <VirtualizedDataTable {...base} height={400} style={{ height: 123 }} />,
+      );
+      const scroller = container.querySelector<HTMLElement>(".table-virtual-scroll")!;
+      expect(scroller.style.height).toBe("123px");
+      // The derived overflow is untouched by an override on another key.
+      expect(scroller.style.overflowY).toBe("auto");
+    });
+
+    it("merges tableProps into the derived aria-rowcount", () => {
+      const { container } = render(
+        <VirtualizedDataTable
+          {...base}
+          tableProps={{ "aria-label": "Rows", className: "sentinel-slot" }}
+        />,
+      );
+      const table = container.querySelector("table")!;
+      expect(table).toHaveAttribute("aria-label", "Rows");
+      // 50 data rows + the header row — only this component can compute it.
+      expect(table).toHaveAttribute("aria-rowcount", "51");
+      expect(table.getAttribute("class")).toBe("table table--sticky-header sentinel-slot");
+    });
+
+    it("reaches the loading and empty roots too", () => {
+      const loading = render(
+        <VirtualizedDataTable {...base} loading className="sentinel-root" />,
+      );
+      expect(
+        loading.container.querySelector(".table-wrapper")!.getAttribute("class"),
+      ).toContain("sentinel-root");
+
+      const empty = render(
+        <VirtualizedDataTable {...base} data={[]} className="sentinel-root" />,
+      );
+      expect(
+        empty.container.querySelector(".table-wrapper")!.getAttribute("class"),
+      ).toContain("sentinel-root");
+    });
+  });
 });

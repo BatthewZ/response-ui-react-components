@@ -3,7 +3,13 @@ import { type ComponentPropsWithRef, forwardRef, useState } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { addDays, isAfter, isBefore, isSameDay } from "../../util/date";
-import { CalendarBase, type CalendarLabels, type Weekday } from "./CalendarBase";
+import {
+  CalendarBase,
+  type CalendarDayRenderer,
+  type CalendarLabels,
+  type CalendarSlotClassNames,
+  type Weekday,
+} from "./CalendarBase";
 
 /** A (possibly incomplete) selected date range. `end` is null while picking the second endpoint. */
 export type DateRange = {
@@ -30,6 +36,14 @@ type RangeCalendarProps = {
   showToday?: boolean;
   todayLabel?: string;
   labels?: CalendarLabels;
+  /**
+   * Class overrides for the calendar internals. RangeCalendar renders none of
+   * them itself — the anatomy and the union are `CalendarBase`'s, and both are
+   * forwarded rather than re-declared.
+   */
+  classNames?: CalendarSlotClassNames;
+  /** Replace a day's content. See {@link CalendarDayRenderer}. */
+  renderDay?: CalendarDayRenderer;
   /**
    * Not a RangeCalendar prop — the change channel is `onValueChange`. Declared
    * `never` rather than only `Omit`ted because a JSX spread performs no

@@ -1,9 +1,17 @@
 "use client";
 import { ChevronRight } from "lucide-react";
-import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ComponentPropsWithRef,
+  Fragment,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { Checkbox } from "../form/Checkbox";
 import {
   areAllSelected,
@@ -19,7 +27,7 @@ import {
 import { EmptyState, EmptyStateDescription, EmptyStateTitle } from "./EmptyState";
 import { Pagination } from "./Pagination";
 import { Skeleton } from "./Skeleton";
-import { Table } from "./Table";
+import { Table, type TableProps } from "./Table";
 
 // Re-export shared types so existing import paths (`./DataTable`, the `ui`
 // barrel) stay valid.
@@ -119,6 +127,41 @@ export type DataTableProps<T> = {
    * sentinel here, and omits the pagination props.
    */
   footer?: ReactNode;
+
+  // Overrides
+  /** Classes for the outermost element — the block wrapping table, footer and pager. */
+  className?: string;
+  /**
+   * Class overrides for the internals this component renders on top of `Table`.
+   * `className` is the root, so there is no `root` key.
+   *
+   * - `expandToggle` — the per-row expander button (every expandable row).
+   * - `expandedCell` — the full-width `<td>` a detail row lives in.
+   * - `expandedBody` — the padded box holding `renderExpanded`'s output.
+   *
+   * The table's own anatomy is `Table`'s: use its subcomponents, or `tableProps`
+   * for the `<table>` element.
+   */
+  classNames?: SlotClassNames<"expandToggle" | "expandedCell" | "expandedBody">;
+  /**
+   * Props for the inner `<table>`, forwarded to `Table`'s own hatch. Merged
+   * into the `aria-busy` this component sets from `loading` rather than
+   * replacing it, so a caller adding an `aria-label` does not silently drop the
+   * busy state.
+   */
+  tableProps?: TableProps["tableProps"];
+  /**
+   * Props for the pagination block, when one is rendered. The only route to it:
+   * the pager is constructed here and `className` lands on the root, so without
+   * this a caller cannot reach it at all.
+   *
+   * Spread raw, with no `cn()`: this component puts no class on `Pagination`,
+   * and `Pagination` merges an incoming `className` with its own base class.
+   */
+  paginationProps?: Omit<
+    ComponentPropsWithRef<typeof Pagination>,
+    "page" | "totalPages" | "onPageChange"
+  >;
 };
 
 /* ------------------------------------------------------------------ */
@@ -179,6 +222,10 @@ export function DataTable<T>({
   loadingRowCount = 5,
   emptyContent,
   footer,
+  className,
+  classNames,
+  tableProps,
+  paginationProps,
 }: DataTableProps<T>) {
   // Sort mode locks on the first render: `onSortChange` emits `null` for
   // "unsorted", and a consumer feeding that straight back must not flip the
@@ -316,8 +363,14 @@ export function DataTable<T>({
   function renderPaginationBlock() {
     if (!showPagination) return null;
     return (
-      <div className={cn("mt-r3 flex justify-center")}>
+      <div
+        // slot:(a) a centring shim around the pager, with nothing of its own to
+        // vary. The pager it positions is reachable through `paginationProps`,
+        // and the block around both is `className`.
+        className="mt-r3 flex justify-center"
+      >
         <Pagination
+          {...paginationProps}
           page={currentPage}
           totalPages={derivedTotalPages}
           onPageChange={(p) => setPage(p)}
@@ -332,9 +385,20 @@ export function DataTable<T>({
     return (
       <Table.Head>
         <Table.Row>
-          {expandable && <Table.HeaderCell className="w-10" />}
+          {expandable && (
+            <Table.HeaderCell
+              // slot:(a) the width reservation for the expander column, sized
+              // to the toggle this component renders under it. A caller class
+              // here re-sizes a column whose only content the component owns.
+              className="w-10"
+            />
+          )}
           {selectable && (
-            <Table.HeaderCell className="w-10">
+            <Table.HeaderCell
+              // slot:(a) the width reservation for the checkbox column — same
+              // shape as the expander column above.
+              className="w-10"
+            >
               <Checkbox
                 checked={allSelected}
                 ref={(el) => {
@@ -422,7 +486,10 @@ export function DataTable<T>({
               <Table.Cell>
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center rounded-md p-r6 text-fg-secondary hover:bg-surface-2 cursor-pointer duration-fast"
+                  className={cn(
+                    "inline-flex items-center justify-center rounded-md p-r6 text-fg-secondary hover:bg-surface-2 cursor-pointer duration-fast",
+                    classNames?.expandToggle,
+                  )}
                   aria-label={isExpanded ? "Collapse row" : "Expand row"}
                   aria-expanded={isExpanded}
                   onClick={() => toggleExpanded(key)}
@@ -430,6 +497,11 @@ export function DataTable<T>({
                   <ChevronRight
                     size={16}
                     aria-hidden="true"
+                    // slot:(a) `rotate-90` *is* the open state — the only
+                    // visual difference between an expanded row and a
+                    // collapsed one on this glyph. A route here lets a caller
+                    // pin the chevron and leave the toggle telling the wrong
+                    // story; the button around it is `classNames.expandToggle`.
                     className={cn("duration-fast", isExpanded && "rotate-90")}
                   />
                 </button>
@@ -455,6 +527,7 @@ export function DataTable<T>({
               open={isExpanded}
               colSpan={totalColumns}
               density={density}
+              classNames={classNames}
             >
               {() => renderExpanded(row, i)}
             </ExpandableDetailRow>
@@ -469,7 +542,7 @@ export function DataTable<T>({
   const hasRows = !loading && data.length > 0;
 
   return (
-    <div>
+    <div className={className}>
       {/* The skeleton cells are `aria-hidden`: one `role="status"` per cell was
           `rows × columns` polite live regions all saying "Loading" (#366).
           `aria-busy` states it once, on the thing that is loading. */}
@@ -478,7 +551,10 @@ export function DataTable<T>({
         striped={hasRows && striped}
         stickyHeader={stickyHeader}
         maxHeight={maxHeight}
-        tableProps={{ "aria-busy": loading || undefined }}
+        // Merged into, not replaced by, the caller's bag: `aria-busy` is
+        // derived from `loading`, so it wins while loading and stands down
+        // otherwise rather than erasing a value the caller set.
+        tableProps={{ ...tableProps, "aria-busy": loading || tableProps?.["aria-busy"] }}
       >
         {renderHeader()}
         <Table.Body>
@@ -531,11 +607,13 @@ function ExpandableDetailRow({
   open,
   colSpan,
   density,
+  classNames,
   children,
 }: {
   open: boolean;
   colSpan: number;
   density: "dense" | "comfortable" | "spacious";
+  classNames?: SlotClassNames<"expandToggle" | "expandedCell" | "expandedBody">;
   children: () => ReactNode;
 }) {
   // `present` drives DOM mounting; `expanded` drives the 0fr/1fr grid reveal.
@@ -578,17 +656,42 @@ function ExpandableDetailRow({
   if (!present) return null;
 
   return (
-    <Table.Row className="data-table-expanded-row">
+    <Table.Row
+      // slot:(a) a declaration-free marker — no rule in this package styles it.
+      // It exists so a consumer stylesheet can name the detail row, and varying
+      // the marker itself is the one thing that would break that.
+      className="data-table-expanded-row"
+    >
       {/* Rung 3: a well cut into the sheet, and deeper than the zebra band at
           rung 2 so an expanded row never reads as just another band. */}
-      <Table.Cell colSpan={colSpan} className="data-table-expanded-cell bg-surface-3">
+      <Table.Cell
+        colSpan={colSpan}
+        className={cn("data-table-expanded-cell bg-surface-3", classNames?.expandedCell)}
+      >
         <div
           ref={contentRef}
+          // slot:(a) the reveal itself: `display: grid` plus the
+          // `grid-template-rows: 0fr -> 1fr` transition this element's
+          // `data-state` drives, and whose resolved duration is read back off
+          // this node to schedule the unmount. A caller class here changes
+          // behaviour, not appearance. The padded box inside it is
+          // `classNames.expandedBody`.
           className="data-table-expanded-content"
           data-state={expanded ? "open" : "closed"}
         >
-          <div className="data-table-expanded-inner">
-            <div className={cn("data-table-expanded-body", `data-table-expanded-body--${density}`)}>
+          <div
+            // slot:(a) the grid item that clips the collapse — `overflow:
+            // hidden` and `min-height: 0` are what let the row reach zero
+            // height at all, so a caller varying them stops it closing.
+            className="data-table-expanded-inner"
+          >
+            <div
+              className={cn(
+                "data-table-expanded-body",
+                `data-table-expanded-body--${density}`,
+                classNames?.expandedBody,
+              )}
+            >
               {children()}
             </div>
           </div>

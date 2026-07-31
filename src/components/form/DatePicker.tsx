@@ -22,7 +22,7 @@ import { useControllableState } from "../../hooks/use-controllable-state";
 import { clampDate, formatDate, parseDateInput, toISODate } from "../../util/date";
 import { mergeProps } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { Calendar } from "../ui/Calendar";
 import { type CalendarLabels, type Weekday } from "../ui/CalendarBase";
 import { IconButton } from "../ui/IconButton";
@@ -94,6 +94,18 @@ type DatePickerProps = {
   showToday?: boolean;
   /** Forwarded to the popover calendar. */
   todayLabel?: string;
+  /**
+   * Class overrides for the picker's own chrome. `className` is the root, so
+   * there is no `root` key.
+   *
+   * - `control` — the field row: the positioning context the popover anchors to.
+   * - `actions` — the clear/open icon cluster inside the field.
+   * - `panel` — the floating surface the calendar is rendered into.
+   *
+   * The calendar's own internals are not addressed from here: they belong to
+   * `CalendarBase`'s anatomy, which this component renders through `Calendar`.
+   */
+  classNames?: SlotClassNames<"control" | "actions" | "panel">;
   // `value`/`defaultValue`/`min`/`max` are native input attrs typed string|number;
   // omit them so our Date-typed props don't intersect to `never` for consumers.
 } & Omit<ComponentPropsWithRef<"input">, "value" | "defaultValue" | "onChange" | "min" | "max">;
@@ -129,6 +141,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       numberOfMonths,
       showToday,
       todayLabel,
+      classNames,
       className,
       name,
       form,
@@ -282,7 +295,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             anchor: the message below is a sibling of it, so a refusal neither
             re-centres the icon cluster (`inset-y-0` spans whatever box it is
             in) nor pushes the calendar away from the field. */}
-        <div ref={refs.setReference} className="relative">
+        <div ref={refs.setReference} className={cn("relative", classNames?.control)}>
           {/* Native form submission carries a machine-readable YYYY-MM-DD, not the
               localized display string. The visible input is intentionally unnamed.
               `form`/`disabled` ride along so this field behaves like a native one
@@ -306,6 +319,11 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             placeholder={placeholder}
             disabled={disabled}
             form={form}
+            // slot:(a) the padding that reserves room for the icon cluster
+            // overlaying the field — one button wide, or two with `clearable`.
+            // A caller class here is a caller deciding how much room its own
+            // affordances need, and gets text under the buttons when it is
+            // wrong. The cluster itself is `classNames.actions`.
             className={clearable ? "pr-[4rem]" : "pr-r1"}
             // Editing clears the refusal: the message quotes what was typed,
             // so leaving it up beside text the user has already started
@@ -318,7 +336,12 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
           />
-          <div className="absolute inset-y-0 right-r6 my-auto flex items-center gap-r6">
+          <div
+            className={cn(
+              "absolute inset-y-0 right-r6 my-auto flex items-center gap-r6",
+              classNames?.actions,
+            )}
+          >
             {clearable && selected != null && !disabled && (
               <IconButton type="button" aria-label={label.clearDate} onClick={handleClear}>
                 <X aria-hidden="true" size={16} />
@@ -345,6 +368,10 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         <p
           id={messageId}
           aria-live="polite"
+          // slot:(a) the live region, and `sr-only` is the mechanism rather
+          // than a style: the element is mounted whether or not it holds
+          // anything, and the class is what keeps an empty one out of the
+          // visual flow. A route here is a route to dropping it.
           className={cn(rejectMessageClassName, message == null && "sr-only")}
         >
           {message}
@@ -359,7 +386,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                 ref={refs.setFloating}
                 style={floatingStyles}
                 aria-label={label.chooseDate}
-                className={datePickerPopoverClassName}
+                className={cn(datePickerPopoverClassName, classNames?.panel)}
                 {...getFloatingProps()}
               >
                 <Calendar

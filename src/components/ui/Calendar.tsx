@@ -4,7 +4,13 @@ import { type ComponentPropsWithRef, forwardRef } from "react";
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { isSameDay } from "../../util/date";
 import { isSameDateValue } from "../form/date-picker-internals";
-import { CalendarBase, type CalendarLabels, type Weekday } from "./CalendarBase";
+import {
+  CalendarBase,
+  type CalendarDayRenderer,
+  type CalendarLabels,
+  type CalendarSlotClassNames,
+  type Weekday,
+} from "./CalendarBase";
 
 type CalendarProps = {
   value?: Date | null;
@@ -23,6 +29,14 @@ type CalendarProps = {
   showToday?: boolean;
   todayLabel?: string;
   labels?: CalendarLabels;
+  /**
+   * Class overrides for the calendar internals. Calendar renders none of them
+   * itself — the anatomy and the union are `CalendarBase`'s, and both are
+   * forwarded rather than re-declared.
+   */
+  classNames?: CalendarSlotClassNames;
+  /** Replace a day's content. See {@link CalendarDayRenderer}. */
+  renderDay?: CalendarDayRenderer;
   /**
    * Not a Calendar prop — the change channel is `onValueChange`. Declared `never`
    * rather than only `Omit`ted because a JSX spread performs no excess-property

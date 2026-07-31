@@ -227,4 +227,218 @@ describe("CalendarBase", () => {
       document.querySelector(`[data-day="${dayKey(new Date(2026, 5, 12))}"]`),
     ).toHaveAccessibleName("June 12, 2026, in previewed range");
   });
+
+  /* ---------------------------------------------------------------- */
+  /*  classNames                                                       */
+  /* ---------------------------------------------------------------- */
+
+  describe("classNames", () => {
+    /**
+     * Every internal `CalendarBase` renders, and the base class each slot must
+     * be appended to. Two of them — `.calendar-picker-cell` and `.calendar-day`
+     * — are also `querySelector` targets driving focus, which is why the
+     * base-class half of each row is asserted rather than assumed.
+     */
+    const SLOTS = [
+      { key: "header", base: "calendar-header", view: "days" },
+      { key: "labelButton", base: "calendar-label-button", view: "days" },
+      { key: "months", base: "calendar-months", view: "days" },
+      { key: "footer", base: "calendar-footer", view: "days" },
+      { key: "todayButton", base: "calendar-today-button", view: "days" },
+      { key: "month", base: "calendar-month", view: "days" },
+      { key: "caption", base: "calendar-month-caption", view: "days" },
+      { key: "grid", base: "calendar-grid", view: "days" },
+      { key: "weekdays", base: "calendar-weekdays", view: "days" },
+      { key: "weekday", base: "calendar-weekday", view: "days" },
+      { key: "row", base: "calendar-week", view: "days" },
+      { key: "cell", base: "calendar-cell", view: "days" },
+      { key: "day", base: "calendar-day", view: "days" },
+      { key: "pickerGrid", base: "calendar-picker-grid", view: "months" },
+      { key: "pickerCell", base: "calendar-picker-cell", view: "months" },
+    ] as const;
+
+    /**
+     * `showToday` and two months so every once-rendered element exists:
+     * `.calendar-footer`/`.calendar-today-button` need the first,
+     * `.calendar-month-caption` is guarded on `monthCount > 1`.
+     */
+    async function renderAll(
+      classNames: Partial<Record<(typeof SLOTS)[number]["key"], string>>,
+      view: "days" | "months",
+    ) {
+      const result = render(
+        <CalendarBase
+          showToday
+          numberOfMonths={2}
+          defaultMonth={JUNE_2026}
+          getDayStatus={() => ({})}
+          onDaySelect={noop}
+          classNames={classNames}
+        />,
+      );
+      if (view === "months") {
+        await userEvent.setup().click(screen.getByRole("button", { name: /June 2026/ }));
+      }
+      return result;
+    }
+
+    for (const { key, base, view } of SLOTS) {
+      it(`lands classNames.${key} on .${base}, beside the base class`, async () => {
+        const { container } = await renderAll({ [key]: "sentinel-slot" }, view);
+        const el = container.querySelector(`.${base}`);
+        expect(el, `no .${base} rendered`).not.toBeNull();
+        expect(el!.getAttribute("class")).toContain(base);
+        expect(el!.getAttribute("class")).toContain("sentinel-slot");
+      });
+    }
+
+    it("leaves every base class alone when no slot is passed", async () => {
+      const { container } = await renderAll({}, "days");
+      for (const { base } of SLOTS.filter((s) => s.view === "days")) {
+        const el = container.querySelector(`.${base}`);
+        expect(el, `no .${base} rendered`).not.toBeNull();
+        // `toBe`, not `toContain`: a merge that drops the library class when the
+        // slot is `undefined` passes `toContain` and fails here.
+        const expected = base === "calendar-label-button" ? "calendar-label calendar-label-button" : base;
+        expect(el!.getAttribute("class")).toBe(expected);
+      }
+    });
+
+    it("does not put a slot class on the root", async () => {
+      const { container } = await renderAll({ day: "sentinel-slot" }, "days");
+      expect(container.querySelector(".calendar")!.getAttribute("class")).not.toContain(
+        "sentinel-slot",
+      );
+    });
+
+    /**
+     * The reason for an inline slot union rather than a `Record<string,string>`
+     * helper: an unknown key is a *type* error, not a silent no-op. The
+     * `@ts-expect-error` is the assertion — it fails if TypeScript ever stops
+     * rejecting the key. Do not "clean it up".
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        <CalendarBase
+          defaultMonth={JUNE_2026}
+          getDayStatus={() => ({})}
+          onDaySelect={noop}
+          // @ts-expect-error — `dayCell` is not a slot; only untyped JS gets here.
+          classNames={{ dayCell: "sentinel-slot" }}
+        />,
+      );
+      expect(container.querySelector(".calendar-day")!.getAttribute("class")).toBe("calendar-day");
+    });
+
+    it("does not leak classNames onto the DOM", async () => {
+      const { container } = await renderAll({ header: "sentinel-slot" }, "days");
+      expect(container.querySelector(".calendar")!.hasAttribute("classnames")).toBe(false);
+    });
+
+    /**
+     * `.calendar-day` and `.calendar-picker-cell` are queried by the two
+     * roving-focus effects. A slot appends to them; it must never be able to
+     * replace them, or arrow-key focus stops finding anything.
+     */
+    it("still finds the roving day by selector when a day slot is set", async () => {
+      // Asserts the marker survived the merge, not that the slot landed — that
+      // is the override test's job, and duplicating it here would make both
+      // reden for one cause.
+      await renderAll({ day: "calendar-day-custom bg-surface-2" }, "days");
+      expect(document.querySelectorAll('.calendar-day[tabindex="0"]')).toHaveLength(1);
+    });
+
+    it("keeps arrow-key focus working through a pickerCell slot", async () => {
+      const user = userEvent.setup();
+      await renderAll({ pickerCell: "bg-surface-2" }, "months");
+      const cells = pickerCells();
+      expect(cells).toHaveLength(12);
+      cells[5].focus();
+      await user.keyboard("{ArrowRight}");
+      expect(document.activeElement).toBe(cells[6]);
+    });
+  });
+
+  /* ---------------------------------------------------------------- */
+  /*  renderDay                                                        */
+  /* ---------------------------------------------------------------- */
+
+  describe("renderDay", () => {
+    it("replaces a day's content without replacing the button", () => {
+      render(
+        <CalendarBase
+          defaultMonth={JUNE_2026}
+          getDayStatus={(d) => ({ selected: d.getDate() === 11 })}
+          onDaySelect={noop}
+          renderDay={({ date, selected }) => (
+            <>
+              {date.getDate()}
+              {selected && <span data-testid="booked">•</span>}
+            </>
+          )}
+        />,
+      );
+      const eleventh = document.querySelector<HTMLButtonElement>(
+        `[data-day="${dayKey(new Date(2026, 5, 11))}"]`,
+      )!;
+      const twelfth = document.querySelector<HTMLButtonElement>(
+        `[data-day="${dayKey(new Date(2026, 5, 12))}"]`,
+      )!;
+
+      expect(eleventh.querySelector('[data-testid="booked"]')).not.toBeNull();
+      expect(twelfth.querySelector('[data-testid="booked"]')).toBeNull();
+      // The button, its class and its accessible name stay the component's.
+      expect(eleventh.tagName).toBe("BUTTON");
+      expect(eleventh.getAttribute("class")).toBe("calendar-day");
+      expect(eleventh).toHaveAccessibleName("June 11, 2026");
+    });
+
+    it("reports outside, today and disabled per cell", () => {
+      const seen = new Map<string, { outside: boolean; disabled: boolean }>();
+      render(
+        <CalendarBase
+          defaultMonth={JUNE_2026}
+          isDateDisabled={(d) => d.getDate() === 20 && d.getMonth() === 5}
+          getDayStatus={() => ({})}
+          onDaySelect={noop}
+          renderDay={({ date, outside, disabled }) => {
+            seen.set(dayKey(date), { outside, disabled });
+            return date.getDate();
+          }}
+        />,
+      );
+      // June 2026 starts on a Monday, so the grid's first cell is 31 May.
+      expect(seen.get(dayKey(new Date(2026, 4, 31)))).toEqual({ outside: true, disabled: false });
+      expect(seen.get(dayKey(new Date(2026, 5, 20)))).toEqual({ outside: false, disabled: true });
+      expect(seen.get(dayKey(new Date(2026, 5, 11)))).toEqual({ outside: false, disabled: false });
+    });
+
+    /**
+     * The thing a render prop is most likely to break: roving focus finds the
+     * day by `[data-day]` and by `.calendar-day[tabindex="0"]`, and both live on
+     * the button `renderDay` renders *inside*.
+     */
+    it("leaves roving focus and autoFocus working", async () => {
+      const user = userEvent.setup();
+      render(
+        <CalendarBase
+          autoFocus
+          defaultMonth={JUNE_2026}
+          focusAnchor={new Date(2026, 5, 11)}
+          getDayStatus={() => ({})}
+          onDaySelect={noop}
+          renderDay={({ date }) => <span data-testid="content">{date.getDate()}</span>}
+        />,
+      );
+      const eleventh = document.querySelector<HTMLButtonElement>(
+        `[data-day="${dayKey(new Date(2026, 5, 11))}"]`,
+      )!;
+      expect(document.activeElement).toBe(eleventh);
+
+      await user.keyboard("{ArrowRight}");
+      expect(document.activeElement).toBe(
+        document.querySelector(`[data-day="${dayKey(new Date(2026, 5, 12))}"]`),
+      );
+    });
+  });
 });
