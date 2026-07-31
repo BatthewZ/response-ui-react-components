@@ -119,7 +119,7 @@ the picture and the number never disagree.
 
 ## Sizing
 
-There is no `size` prop. The star box is `1.5em` and `Rating.css` sets no `font-size`
+There is no `size` prop. The star box is `1.5em` and Rating sets no `font-size`
 anywhere, so a star is always 1.5× whatever type size it inherits — put the component
 inside a `text-*` scale, or set `font-size` on it, and the glyphs follow. The gap between
 them does **not**: it is `--R-SIZE-6`, a `rem` value, so at large sizes the stars crowd
@@ -173,25 +173,22 @@ is suppressed.
 
 ## Theme tokens
 
-Every visual style lives in `Rating.css`, which reads contract variables directly — the
-only Tailwind class anywhere in the component is `sr-only`, on the hidden star names, and
-it reads no token. Override any of these and every rating in the app re-tints or re-times
-at runtime, with no rebuild.
+Rating paints in Tailwind utilities and `Rating.css` is gone. Override any of these and every
+rating in the app re-tints or re-times at runtime, with no rebuild.
 
-| Where                                  | Override                                     |
-| -------------------------------------- | -------------------------------------------- |
-| Star ink — outline and fill alike       | `--C-STATUS-WARNING`                        |
-| Gap between stars                       | `--R-SIZE-6`                                |
-| Star-button corner radius               | `--RADIUS-SM`                               |
-| Keyboard focus outline                  | `--C-BORDER-FOCUS`                          |
-| Fill-sweep duration · easing            | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+| Where                             | Utility                                                                       | Override                                          |
+| --------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------- |
+| Star ink — outline and fill alike | `text-status-warning`                                                         | `--C-STATUS-WARNING`                              |
+| Gap between stars                 | `gap-r6`                                                                      | `--R-SIZE-6`                                      |
+| Star-button corner radius         | `rounded-sm`                                                                  | `--RADIUS-SM`                                     |
+| Keyboard focus outline            | `focus-visible:outline-border-focus`                                          | `--C-BORDER-FOCUS`                                |
+| Fill-sweep duration · easing      | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
 
 Both star layers are painted from `currentColor`, and `color` is set once on the root, so
 one variable tints the whole control. To re-tint a **single** instance, set `color` on it
 inline, scope `--C-STATUS-WARNING` to an ancestor, or put a Tailwind `text-*` class on the
-root — which now takes, because `Rating.css` is in `@layer components` and Tailwind orders
-that below `@layer utilities`. It used to lose: this package's CSS was unlayered, and an
-unlayered rule beats a layered one whatever the specificity.
+root — which takes, because `className` merges last and `cn()` drops the component's own
+`text-status-warning` in favour of yours.
 
 `--R-SIZE-6` is on the responsive `r`-scale but holds at `0.25rem` on both sides of the
 40rem breakpoint, so the star gap does not reflow. The fill transition animates the clip
@@ -200,6 +197,15 @@ width only and is suppressed entirely under `prefers-reduced-motion: reduce`.
 Four values are deliberately **not** on the contract: the star box (`1.5em`, so it tracks
 type instead of a token), the empty-star opacity (`0.45`), the disabled opacity (`0.5`),
 and the focus outline's `2px` width and `2px` offset.
+
+**The star button carries no reset of its own any more.** It used to open with `all: unset`;
+that could not become a class, because Tailwind sorts an arbitrary property *after* every
+named utility, so `[all:unset]` would have wiped the declarations it was meant to precede
+and then out-ranked your `className` as well. It is gone rather than moved: Tailwind's
+Preflight already gives every `button` `font: inherit`, `color: inherit`,
+`background-color: transparent`, `border-radius: 0`, `border: 0 solid`, and zeroed
+`margin`/`padding` — which is exactly what [Button](button.md) has always relied on. A build
+that disables Preflight will see UA button chrome behind the stars.
 
 **Measured contrast.** The star colour is `--C-STATUS-WARNING`, and against this library's
 own surfaces a filled star measures **3.19:1 on `--C-SURFACE-0` and 2.57:1 on

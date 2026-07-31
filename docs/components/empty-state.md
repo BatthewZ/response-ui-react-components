@@ -196,26 +196,37 @@ swapped in.
 
 ## Theme tokens
 
-EmptyState uses **no Tailwind utilities** — its `.tsx` only composes the `empty-state`
-BEM classes, and every value below is a `var(--…)` read directly in `EmptyState.css`.
-Override any of these and the panel re-tints and re-scales with the rest of the app, at
-runtime, with no rebuild.
+EmptyState paints in Tailwind utilities, each resolving to a contract variable. Override any
+of these and the panel re-tints and re-scales with the rest of the app, at runtime, with no
+rebuild — and because the utilities sit in `@layer utilities`, a `className` of your own
+beats every one of them.
 
-| Where             | Override                                                                                             |
-| ----------------- | ---------------------------------------------------------------------------------------------------- |
-| Root padding      | `--R-SIZE-5` (sm) · `--R-SIZE-3` (md) · `--R-SIZE-2` (lg)                                            |
-| Root gap          | `--R-SIZE-6` (sm) · `--R-SIZE-5` (md) · `--R-SIZE-4` (lg)                                            |
-| Icon ink          | `--C-TEXT-MUTED`                                                                                     |
-| Icon type scale   | `--H5` (sm) · `--H4` (md) · `--H3` (lg) — the glyph is `1em` of it                                    |
-| Title ink         | `--C-TEXT-PRIMARY`                                                                                   |
-| Title weight      | `--Semibold-Weight`                                                                                  |
-| Title type        | `--BodyText-1` `--BodyText-1-line-height` (sm) · `--H5` `--H5-line-height` (md) · `--H4` `--H4-line-height` (lg) |
-| Description ink   | `--C-TEXT-MUTED`                                                                                     |
-| Description type  | `--BodyText-2` `--BodyText-2-line-height`                                                            |
-| Actions gap       | `--R-SIZE-5`                                                                                         |
+| Where            | Utility                                                     | Override                                                                                                        |
+| ---------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Root padding     | `p-r5` (sm) · `p-r3` (md) · `p-r2` (lg)                     | `--R-SIZE-5` · `--R-SIZE-3` · `--R-SIZE-2`                                                                      |
+| Root gap         | `gap-r6` (sm) · `gap-r5` (md) · `gap-r4` (lg)               | `--R-SIZE-6` · `--R-SIZE-5` · `--R-SIZE-4`                                                                      |
+| Icon ink         | `text-fg-muted`                                             | `--C-TEXT-MUTED`                                                                                                |
+| Icon type scale  | `text-h5` (sm) · `text-h4` (md) · `text-h3` (lg)            | `--H5` · `--H4` · `--H3` — the glyph is `1em` of it                                                             |
+| Title ink        | `text-fg-primary`                                           | `--C-TEXT-PRIMARY`                                                                                              |
+| Title weight     | `font-semibold`                                             | `--Semibold-Weight`                                                                                             |
+| Title type       | `text-body-1` (sm) · `text-h5` (md) · `text-h4` (lg)        | `--BodyText-1` `--BodyText-1-line-height` (sm) · `--H5` `--H5-line-height` (md) · `--H4` `--H4-line-height` (lg) |
+| Description ink  | `text-fg-muted`                                             | `--C-TEXT-MUTED`                                                                                                |
+| Description type | `text-body-2`                                               | `--BodyText-2` `--BodyText-2-line-height`                                                                       |
+| Actions gap      | `gap-r5`                                                    | `--R-SIZE-5`                                                                                                    |
+
+The size axis is a **class map keyed off the `size` prop**, not a `[data-size]` selector.
+`data-size` is still on the root as a marker you can select on, but nothing reads it back —
+which is why an EmptyState nested inside another one keeps its own size rather than picking
+up the outer one's.
 
 One value is deliberately **not** on the contract: the description's measure —
-`max-width: 22.5rem` — is a hard literal in `EmptyState.css`, fixed at every size.
+`max-width: 22.5rem`, spelled `max-w-90` — is fixed at every size.
+
+One rule survives in `EmptyState.css`, and it is the glyph sizing:
+`.empty-state__icon svg { width: 1em; height: 1em }`. It has to stay in the component layer
+because it styles an element **you** render. From `@layer utilities` the equivalent
+(`[&_svg]:size-[1em]`) would out-rank a `size-*` class on your own icon; from
+`@layer components` your class wins, which is the way round it has always been.
 
 The panel sets no surface token of its own, so its ink is only as legible as the surface
 you put it on. `--C-TEXT-MUTED` paints both the icon and the description, and against

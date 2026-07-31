@@ -202,22 +202,23 @@ it and two writers for one element is one too many:
 
 ## Theme tokens
 
-Swimlane uses **no Tailwind utilities** — every value lives in `Swimlane.css` and reads a
-contract variable directly, so overriding one re-tints or re-spaces the header at runtime
-with no rebuild.
+Swimlane paints in Tailwind utilities and `Swimlane.css` is gone. Each utility resolves to a
+contract variable, so overriding one re-tints or re-spaces the header at runtime with no
+rebuild — and because the utilities sit in `@layer utilities`, a `className` or `classNames`
+slot of your own beats every one of them.
 
-| Where                                   | Override                                      |
-| --------------------------------------- | --------------------------------------------- |
-| Space below each lane                   | `--R-SIZE-2`                                  |
-| Header inline inset                     | `--R-SIZE-5`                                  |
-| Title↔link gap · header-to-body gap     | `--R-SIZE-4`                                  |
-| Title↔subtitle gap                      | `--R-SIZE-6`                                  |
-| Title ink and weight                    | `--C-TEXT-PRIMARY` · `--Bold-Weight`          |
-| Title type scale                        | `--H4` · `--H4-line-height`                   |
-| Subtitle ink                            | `--C-TEXT-MUTED`                              |
-| Subtitle and link type scale            | `--BodyText-2` · `--BodyText-2-line-height`   |
-| "View all" ink, and its hover           | `--C-ACCENT` · `--C-ACCENT-HOVER`             |
-| "View all" colour transition            | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER` |
+| Where                               | Utility                                                                          | Override                                          |
+| ----------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Space below each lane               | `mb-r2`                                                                          | `--R-SIZE-2`                                      |
+| Header inline inset                 | `px-r5`                                                                          | `--R-SIZE-5`                                      |
+| Title↔link gap · header-to-body gap | `gap-r4` · `mb-r4`                                                               | `--R-SIZE-4`                                      |
+| Title↔subtitle gap                  | `mt-r6`                                                                          | `--R-SIZE-6`                                      |
+| Title ink and weight                | `text-fg-primary` · `font-bold`                                                  | `--C-TEXT-PRIMARY` · `--Bold-Weight`              |
+| Title type scale                    | `text-h4`                                                                        | `--H4` · `--H4-line-height`                       |
+| Subtitle ink                        | `text-fg-muted`                                                                  | `--C-TEXT-MUTED`                                  |
+| Subtitle and link type scale        | `text-body-2`                                                                    | `--BodyText-2` · `--BodyText-2-line-height`       |
+| "View all" ink, and its hover       | `text-accent` · `hover:text-accent-hover`                                        | `--C-ACCENT` · `--C-ACCENT-HOVER`                 |
+| "View all" colour transition        | `duration-[var(--MOTION-DURATION-ENTER)]` · `ease-[var(--MOTION-EASE-ENTER)]`    | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER` |
 
 All four spacing tokens sit on the responsive `r`-scale, and three of them step up at the
 40rem breakpoint: the lane's bottom margin (`--R-SIZE-2`, `1.25rem` → `2rem`), the header
@@ -227,7 +228,7 @@ breakpoint. The type steps up too — the title goes `1.25rem` → `1.75rem` and
 the subtitle `0.8125rem` → `0.875rem` — so a lane heading is bigger on desktop without a
 breakpoint utility from you.
 
-The two motion tokens do double duty: `Swimlane.css` reads them for the "View all" colour
+The two motion tokens do double duty: the "View all" link's colour transition reads them,
 transition, and the shared entrance classes the reveal toggles (`fade-up` and friends,
 from `@batthewz/response-ui-css`) are timed from the same pair. They are **shared** enter
 tokens, so retiming them retimes every enter animation in the system — there is no
@@ -244,7 +245,7 @@ the spacing inside your scroller is entirely yours to pick.
   `style` and `ref` are merged with the reveal's own rather than replacing them — see
   [ScrollReveal's gotchas](scroll-reveal.md#gotchas). Swimlane passes no `delay`, so the
   reveal never contributes a `style` property of its own here — your `style` lands as written.
-- **It does not scroll.** Nothing in `Swimlane.css` sets `overflow`, `scroll-snap-type` or
+- **It does not scroll.** Nothing in Swimlane sets `overflow`, `scroll-snap-type` or
   `scroll-behavior` — despite the name and despite a test called "renders a scrollable
   container". Bring your own scroller (see [above](#the-body-is-yours)).
 - **Server-rendered output is `opacity: 0` until the bundle executes.** The reveal's initial
@@ -306,8 +307,8 @@ structural navigation Swimlane gives you.
   root is already focusable and Arrow-key-scrollable.
 - **Reduced motion is honoured, twice.** The reveal is skipped by the
   `prefers-reduced-motion: reduce` branch in the shared animation CSS *and* by the media-query
-  hook behind the reveal component, and `Swimlane.css` separately drops the "View all" colour
-  transition under the same query. Nothing in the component animates continuously.
+  hook behind the reveal component, and the "View all" link separately drops its colour
+  transition under the same query (`motion-reduce:transition-none`). Nothing in the component animates continuously.
 - **"View all" is distinguished by colour alone at rest.** It sets `text-decoration: none`
   and only underlines on `:hover` — not on `:focus-visible` — so a keyboard user gets the
   browser's default outline and no underline. Its ink is `--C-ACCENT` at `--BodyText-2`

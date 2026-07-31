@@ -113,10 +113,11 @@ one still follows whatever `open` you pass.
 
 ## Styling
 
-`Collapsible.css` styles the root (`width: 100%`) and the content wrapper, and nothing else.
-There is no rule anywhere for `.collapsible-trigger` — the class is emitted purely as a hook
-for you. Out of the box the trigger is therefore a bare browser `<button>` — UA font, UA
-padding — with one exception: it carries the library's focus ring as a utility, so keyboard
+`Collapsible.tsx` sizes the root (`w-full`) and drives the content wrapper's animation, and
+nothing else. There is no rule and no utility anywhere for `.collapsible-trigger` — the class
+is emitted purely as a hook for you, and `Collapsible.css` no longer exists at all. Out of
+the box the trigger is therefore a bare browser `<button>` — UA font, UA padding — with one
+exception: it carries the library's focus ring as a utility, so keyboard
 focus is themed before you style anything (see [Accessibility](#accessibility)). That is
 deliberate for a headless-ish primitive, but it means an unstyled `Collapsible` still looks
 nothing like the rest of the library.
@@ -154,8 +155,11 @@ closed instead of sliding, which degrades correctly. And because the transition 
 grid track, the content inside does not fade or move independently — if you want a
 staggered reveal you compose it inside `Collapsible.Content` yourself.
 
-`Collapsible.css` ships a `prefers-reduced-motion: reduce` block that drops the transition to
-`none`, so the panel opens instantly for users who ask for that.
+The panel carries `motion-reduce:transition-none`, so under
+`prefers-reduced-motion: reduce` it opens instantly for users who ask for that. Note the
+utility compiles to `@media (prefers-reduced-motion: reduce)` on the element itself — a
+`className` of your own reaching the same property still wins, because it lands in the same
+layer.
 
 ## A closed panel is inert, not gone
 
@@ -193,10 +197,10 @@ mounted and the reveal animates both ways.
 rest** — at rest it paints nothing. Three contract variables reach it: two that time the
 reveal, and one for the trigger's focus ring.
 
-| Where                       | Utility                           | Override                                          |
-| --------------------------- | --------------------------------- | ------------------------------------------------- |
-| Panel open/close transition | —                                 | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
-| Trigger focus ring          | `focus-visible:ring-border-focus` | `--C-BORDER-FOCUS`                                |
+| Where                       | Utility                                                                       | Override                                          |
+| --------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------- |
+| Panel open/close transition | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+| Trigger focus ring          | `focus-visible:ring-border-focus`                                             | `--C-BORDER-FOCUS`                                |
 
 That is the whole table, and it is nearly the point: the component re-themes by *not* having
 an opinion about anything except the one affordance a keyboard user cannot do without.
@@ -242,8 +246,8 @@ and an `aria-controls` that points at the panel's `useId`-generated `id`. Space 
 work because it is a button, not because of a key handler. `disabled` uses the native
 attribute, so the trigger leaves the tab order entirely when disabled.
 
-**The trigger draws the library's focus ring.** `Collapsible.css` still defines no
-`:focus-visible` rule — there is no `.collapsible-trigger` rule for one to sit in — so the
+**The trigger draws the library's focus ring.** There has never been a `:focus-visible` rule
+for it — there is no `.collapsible-trigger` rule at all for one to sit in — so the
 ring arrives as a Tailwind utility on the `<button>` instead: the same 2px `--C-BORDER-FOCUS`
 ring [Button](button.md) and [IconButton](icon-button.md) draw, re-tinting with your theme
 and costing you nothing to opt into. Your own `focus-visible:ring-*` class on

@@ -203,9 +203,37 @@ describe("ThemeSwitcher · classNames slots", () => {
     );
   });
 
-  it("leaves the options on their base class when no slot is passed", () => {
+  /**
+   * This used to assert the class attribute equalled the marker exactly, which
+   * stopped being expressible once `ThemeSwitcher.css` became utilities in the
+   * class list. The falsifiers are unchanged and are what the equality was ever
+   * standing in for: an absent slot must append *nothing* — no `undefined`, no
+   * empty token — and an unselected option must not carry the active modifier.
+   */
+  it("leaves the options on their base classes when no slot is passed", () => {
     render(<ThemeSwitcher themes={APP_THEMES} labels={LABELS} />);
-    expect(screen.getByRole("radio", { name: "Aurora" }).className).toBe("theme-switcher__option");
+    const classes = screen.getByRole("radio", { name: "Aurora" }).className;
+    expect(classes.split(" ")).toContain("theme-switcher__option");
+    expect(classes.split(" ")).not.toContain("theme-switcher__option--active");
+    expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+  });
+
+  /**
+   * The base ink and the selected ink are both utilities now, and both land in
+   * `@layer utilities` at the same specificity — so which one wins is decided by
+   * `cn()`'s tailwind-merge at the call site, not by source order. Converting the
+   * base alone is the shape that inverts; this is the falsifier for having
+   * converted the pair.
+   */
+  it("drops the resting ink from the selected option rather than stacking it", () => {
+    render(<ThemeSwitcher themes={APP_THEMES} labels={LABELS} />);
+    const selected = screen.getByRole("radio", { name: "Default" }).className.split(" ");
+    expect(selected).toContain("text-fg-primary");
+    expect(selected).not.toContain("text-fg-secondary");
+
+    const unselected = screen.getByRole("radio", { name: "Aurora" }).className.split(" ");
+    expect(unselected).toContain("text-fg-secondary");
+    expect(unselected).not.toContain("text-fg-primary");
   });
 
   it("does not put the slot class on the radiogroup", () => {
@@ -223,7 +251,9 @@ describe("ThemeSwitcher · classNames slots", () => {
         classNames={{ option: "italic" }}
       />,
     );
-    expect(screen.getByRole("radio", { name: "Aurora" }).className).toBe("theme-switcher__option");
+    expect(screen.getByRole("radio", { name: "Aurora" }).className.split(" ")).not.toContain(
+      "italic",
+    );
   });
 
   it("does not leak classNames onto the DOM", () => {

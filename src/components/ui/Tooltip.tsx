@@ -27,6 +27,38 @@ import { mergeRefs } from "../../util/merge-refs";
 import { cn, type SlotClassNames } from "../../util/style";
 import { useFadeDuration } from "./floating-motion";
 
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `Tooltip.css` keeps the arrow's border inheritance and says why; everything
+ * else this component draws is here. Each constant is one flat string literal
+ * because the docs guard resolves hoisted constants textually and a composed
+ * one would not resolve.
+ *
+ * `px-2.5`/`py-1` are the same `0.625rem`/`0.25rem` this bubble always had:
+ * they are the inset of a floating label, not of a layout box, and the
+ * responsive `r`-scale would step them up at 40rem, which a tooltip does not
+ * want. `max-w-[17.5rem]` is the wrap point — `AvatarUpload` sizes its own
+ * error bubble against this number, so the two move together.
+ */
+const bubbleClasses =
+  "bg-primary text-fg-on-primary px-2.5 py-1 rounded-sm shadow-sm text-body-2 max-w-[17.5rem] break-words z-50";
+
+/**
+ * The pointer triangle, rendered only for `<Tooltip arrow>`. A square rotated
+ * 45deg with half of it pushed past the bubble edge, so what shows is a
+ * triangle in the bubble's own fill. Position is inline, from floating-ui's
+ * measurement.
+ *
+ * `bg-inherit` is a *named* utility in the background-color group, so a
+ * caller's `classNames={{ arrow: "bg-accent" }}` merges against it and wins.
+ * The border cannot be spelled that way and stays in the stylesheet — see the
+ * header of `Tooltip.css`.
+ */
+const arrowClasses = "absolute size-r5 bg-inherit rotate-45";
+
 export interface TooltipProps {
   content: ReactNode;
   placement?: Placement;
@@ -161,7 +193,7 @@ export function Tooltip({
         <FloatingPortal root={container}>
           <div
             ref={refs.setFloating}
-            className={cn("tooltip", className)}
+            className={cn("tooltip", bubbleClasses, className)}
             style={{ ...floatingStyles, ...transitionStyles }}
             {...getFloatingProps()}
             // After the spread on purpose: `getFloatingProps` supplies an `id`
@@ -175,7 +207,7 @@ export function Tooltip({
                 ref={arrowRef}
                 aria-hidden="true"
                 {...floatingArrowProps(resolvedPlacement, middlewareData.arrow)}
-                className={cn("tooltip-arrow", classNames?.arrow)}
+                className={cn("tooltip-arrow", arrowClasses, classNames?.arrow)}
               />
             )}
           </div>

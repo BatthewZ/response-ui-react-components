@@ -161,26 +161,34 @@ a token where the change is a value — the block re-tints from the variables in
 
 ## Theme tokens
 
-CodeBlock uses **no Tailwind utilities** — its `.tsx` names only its own `code-block*`
-classes and all the styling lives in `CodeBlock.css`, which reads contract variables
-directly. Override any of these and every code block in the app re-tints at runtime, with no
-rebuild.
+CodeBlock paints in Tailwind utilities, each resolving to a contract variable —
+`CodeBlock.css` is gone. Override any of these and every code block in the app re-tints at
+runtime, with no rebuild; and because the utilities sit in `@layer utilities`, a `className`
+or `classNames` slot of your own beats every one of them.
 
-| Where                          | Override                                          |
-| ------------------------------ | ------------------------------------------------- |
-| Block border · header rule     | `--C-BORDER-DEFAULT`                              |
-| Block background               | `--C-SURFACE-0`                                   |
-| Header bar background          | `--C-SURFACE-1`                                   |
-| Language chip background       | `--C-SURFACE-2`                                   |
-| The code itself                | `--C-TEXT-PRIMARY`                                |
-| Filename and chip ink          | `--C-TEXT-SECONDARY`                              |
-| Line numbers                   | `--C-TEXT-MUTED`                                  |
-| Corners                        | `--RADIUS-MD` (block) · `--RADIUS-SM` (chip)      |
-| Mono face — header and code    | `--DEFAULT-MONO-FONT`                             |
-| Type size — header and code    | `--BodyText-3`                                    |
-| Chip weight                    | `--Semibold-Weight`                               |
-| Code padding · header and chip inline padding · header gap · number gutter | `--R-SIZE-5` |
-| Header and chip block padding  | `--R-SIZE-6`                                      |
+| Where                          | Utility                                        | Override                                     |
+| ------------------------------ | ---------------------------------------------- | -------------------------------------------- |
+| Block border · header rule     | `border-border-default`                        | `--C-BORDER-DEFAULT`                         |
+| Block background               | `bg-surface-0`                                 | `--C-SURFACE-0`                              |
+| Header bar background          | `bg-surface-1`                                 | `--C-SURFACE-1`                              |
+| Language chip background       | `bg-surface-2`                                 | `--C-SURFACE-2`                              |
+| The code itself                | `text-fg-primary`                              | `--C-TEXT-PRIMARY`                           |
+| Filename and chip ink          | `text-fg-secondary`                            | `--C-TEXT-SECONDARY`                         |
+| Line numbers                   | `before:text-fg-muted`                         | `--C-TEXT-MUTED`                             |
+| Corners                        | `rounded-md` (block) · `rounded-sm` (chip)     | `--RADIUS-MD` · `--RADIUS-SM`                |
+| Focus ring on the scrollport   | `focus-visible:outline-border-focus`           | `--C-BORDER-FOCUS`                           |
+| Mono face — header and code    | `font-[family-name:var(--DEFAULT-MONO-FONT)]`  | `--DEFAULT-MONO-FONT`                        |
+| Type size — header and code    | `text-body-3`                                  | `--BodyText-3`                               |
+| Chip weight                    | `font-semibold`                                | `--Semibold-Weight`                          |
+| Code padding · header and chip inline padding · header gap · number gutter | `p-r5` · `px-r5` · `gap-r5` · `before:mr-r5` | `--R-SIZE-5` |
+| Header and chip block padding  | `py-r6`                                        | `--R-SIZE-6`                                 |
+
+**The mono face is not `font-mono`.** That utility compiles to
+`font-family: var(--font-mono)` — Tailwind's own system stack, which
+`@batthewz/response-ui-css` never maps — so it would silently ignore your theme's
+`--DEFAULT-MONO-FONT`. The `family-name:` prefix is also load-bearing: `font-[…]` is
+ambiguous between family and weight, and a bare `var()` inside it resolves to
+`font-weight`.
 
 The whole component sits on one type step. `--BodyText-3` is the smallest of the three body
 sizes — 0.75rem, stepping to 0.8125rem at the 40rem breakpoint — and both the header labels
@@ -191,12 +199,14 @@ and the number gutter on desktop; `--R-SIZE-6` holds at 0.25rem on both sides of
 
 Three values are off-contract literals: the line-number gutter is `2.5ch` wide by default —
 the component overrides it through `--_code-block-gutter` once the line count needs more
-digits — the code sets
-`tab-size: 2`, and its line height is a hard `1.6` rather than `--BodyText-3-line-height` — a
-listing wants tighter leading than prose does. The type declarations also carry CSS fallbacks
-— `var(--BodyText-3, 0.75rem)` in the header, `var(--BodyText-3, 0.8125rem)` in the code (the
-two ends of the responsive step), `var(--Semibold-Weight, 600)` on the chip — which apply
-only if `@batthewz/response-ui-css` was never imported.
+digits — the code sets `tab-size: 2`, and its line height is a hard `1.6` rather than
+`--BodyText-3-line-height`, because a listing wants tighter leading than prose does. The
+chip's own line box is tighter again (`leading-none`), which is what keeps it chip-shaped.
+
+The old CSS carried per-declaration fallbacks — `var(--BodyText-3, 0.75rem)` in the header
+against `var(--BodyText-3, 0.8125rem)` in the code, two different guesses at one token — and
+those are gone with it. They only ever applied when `@batthewz/response-ui-css` was not
+imported at all, which is not a supported way to use this package.
 
 ## Gotchas
 

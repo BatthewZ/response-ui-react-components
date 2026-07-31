@@ -2,7 +2,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import tooltipCss from "./Tooltip.css?raw";
 import { Tooltip } from "./Tooltip";
 
 describe("Tooltip", () => {
@@ -156,11 +155,28 @@ describe("Tooltip", () => {
     });
   });
 
-  it("leaves the bubble reachable by pointer (WCAG 1.4.13 Hoverable)", () => {
-    // jsdom applies no stylesheet and synthesises no pointer path, so the rule
-    // itself is the only thing that can be asserted here: `pointer-events: none`
-    // makes the bubble unhoverable no matter what the hover logic does.
-    expect(tooltipCss).not.toMatch(/pointer-events:\s*none/);
+  it("leaves the bubble reachable by pointer (WCAG 1.4.13 Hoverable)", async () => {
+    // jsdom applies no stylesheet and synthesises no pointer path, so the
+    // declaration itself is the only thing that can be asserted here:
+    // `pointer-events: none` makes the bubble unhoverable no matter what the
+    // hover logic does.
+    //
+    // This used to read `Tooltip.css` through `import "./Tooltip.css?raw"`, and
+    // that import resolves to the EMPTY STRING under this vitest config — every
+    // CSS import is stubbed, `?raw` included, measured. The assertion was
+    // therefore green and blind for as long as it existed. Now that the bubble
+    // paints from utilities, its class list is the real subject and can be
+    // asserted for real.
+    const user = userEvent.setup();
+    render(
+      <Tooltip content="Tooltip text" delay={0}>
+        <button>Hover me</button>
+      </Tooltip>,
+    );
+    await user.hover(screen.getByRole("button", { name: "Hover me" }));
+    const tip = await screen.findByRole("tooltip");
+
+    expect(tip.getAttribute("class")?.split(" ")).not.toContain("pointer-events-none");
   });
 
   it("portals into a caller-supplied container", async () => {
@@ -210,10 +226,20 @@ describe("className", () => {
     expect(tip.getAttribute("class")).toContain("max-w-r1");
   });
 
-  it("leaves the bubble on its base class alone when nothing is passed", async () => {
+  /**
+   * This used to assert the class attribute equalled the marker exactly, which
+   * stopped being expressible once the bubble's own rule became utilities in the
+   * class list. The falsifiers are unchanged: an absent `className` must append
+   * *nothing* — no `undefined`, no empty token — and the marker must stay, since
+   * `Tooltip.css` still selects the arrow through it and consumers select the
+   * bubble by it.
+   */
+  it("leaves the bubble on its base classes alone when nothing is passed", async () => {
     const tip = await openTooltip();
 
-    expect(tip.getAttribute("class")).toBe("tooltip");
+    const classes = tip.getAttribute("class") ?? "";
+    expect(classes.split(" ")).toContain("tooltip");
+    expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
   });
 
   it("never reaches the cloned trigger", async () => {
@@ -285,12 +311,34 @@ describe("arrow", () => {
     expect(arrow?.getAttribute("class")).toContain("size-r3");
   });
 
-  it("leaves the arrow on its base class alone when no slot is passed", async () => {
+  it("leaves the arrow on its base classes alone when no slot is passed", async () => {
     const tip = await openTooltip({ arrow: true });
 
-    expect(tip.querySelector(".tooltip-arrow")?.getAttribute("class")).toBe(
-      "tooltip-arrow",
-    );
+    const classes = tip.querySelector(".tooltip-arrow")?.getAttribute("class") ?? "";
+    expect(classes.split(" ")).toContain("tooltip-arrow");
+    expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+  });
+
+  /**
+   * The arrow's `border: inherit` is the one declaration this component could not
+   * move into the class list: it is a shorthand, so its only utility form is the
+   * arbitrary property `[border:inherit]`, which Tailwind emits AFTER every named
+   * `border-*` utility at the same specificity — it would beat
+   * `classNames.arrow` instead of losing to it. This is the falsifier for that
+   * ruling: the day someone transposes it, this goes red.
+   *
+   * Only the transposition direction is checkable from here. Nothing in this
+   * repo can assert that `Tooltip.css` still *contains* the rule: every CSS
+   * import is stubbed to `""` under this vitest config, `?raw` included, and
+   * there is no `@types/node` for a `readFileSync`. The header of
+   * `Tooltip.css` is what carries the reason.
+   */
+  it("keeps the arrow's border inheritance out of the class list", async () => {
+    const tip = await openTooltip({ arrow: true });
+
+    const classes = tip.querySelector(".tooltip-arrow")?.getAttribute("class") ?? "";
+    expect(classes).not.toContain("[border:inherit]");
+    expect(classes).not.toContain("border-inherit");
   });
 
   it("does not put the slot class on the bubble itself", async () => {
@@ -316,9 +364,9 @@ describe("arrow", () => {
     await user.hover(screen.getByRole("button", { name: "Hover me" }));
 
     const tip = await screen.findByRole("tooltip");
-    expect(tip.querySelector(".tooltip-arrow")?.getAttribute("class")).toBe(
-      "tooltip-arrow",
-    );
+    expect(
+      tip.querySelector(".tooltip-arrow")?.getAttribute("class")?.split(" "),
+    ).not.toContain("size-r3");
   });
 
   it("keeps the arrow out of the bubble's accessible description", async () => {

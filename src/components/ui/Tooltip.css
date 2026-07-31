@@ -1,41 +1,39 @@
-.tooltip {
-  background: var(--C-PRIMARY);
-  color: var(--C-TEXT-ON-PRIMARY);
-  padding: 0.25rem 0.625rem;
-  border-radius: var(--RADIUS-SM);
-  box-shadow: var(--SHADOW-SM);
-  font-size: var(--BodyText-2);
-  line-height: var(--BodyText-2-line-height);
-  max-width: 17.5rem;
-  word-wrap: break-word;
-  z-index: 50;
-}
+/* ------------------------------------------------------------------- */
+/*  Tooltip — converted to utilities; the arrow's border could not move  */
+/* ------------------------------------------------------------------- */
 
-/* The pointer triangle, rendered only for <Tooltip arrow>. A square rotated
-   45deg with half of it pushed past the bubble edge, so what shows is a triangle
-   in the bubble's own fill.
+/* Everything this component draws is a Tailwind utility in `Tooltip.tsx`. What
+   is left is one declaration and its four consequences, and it is a RESET:
+   `border: inherit` is a shorthand, so the only utility form is the arbitrary
+   property `[border:inherit]`.
+
+   Measured against this repo's Tailwind: `[border:inherit]` emits at 0,1,0
+   *after* every named `border-*` utility in `@layer utilities`, so as a class it
+   would beat `classNames={{ arrow: "border-primary" }}` — the same silent-no-op
+   defect Phase 1 removed, and the exact opposite of what this rule is for. From
+   `@layer components` it loses to the caller instead, which is correct.
+   `border-inherit` is no escape: it is `border-color: inherit` only, and cannot
+   carry a width or a style. That settles the open question in
+   `PLAN-overridability.md` §2b about the two arrow blocks — the answer is no.
 
    `inherit` rather than a --tooltip-arrow-* token: the bubble already publishes
    its background, and a second writer would let a caller retint one without the
-   other. `border: inherit` resolves to the bubble's own — nothing, since
-   `.tooltip` draws no border — so a theme that gives the bubble one gets it on
-   the arrow too, and forced colours substitutes Canvas/CanvasText on parent and
-   child alike.
-
-   Position is inline, from floating-ui's measurement; only what a consumer
-   might reasonably vary is here, so `classNames.arrow` can out-rank it. */
+   other. `border: inherit` resolves to the bubble's own — nothing, since the
+   bubble draws no border — so a theme that gives the bubble one gets it on the
+   arrow too, and forced colours substitutes Canvas/CanvasText on parent and
+   child alike. */
 .tooltip-arrow {
-  position: absolute;
-  width: var(--R-SIZE-5);
-  height: var(--R-SIZE-5);
-  background-color: inherit;
   border: inherit;
-  rotate: 45deg;
 }
 
 /* Which two edges face out depends on the resolved placement, and rotation moves
    them: after 45deg the box's top and left edges are the two upper ones. Inert
-   while the bubble has no border, and correct the moment a theme gives it one. */
+   while the bubble has no border, and correct the moment a theme gives it one.
+
+   These four stay with the declaration above rather than converting to
+   `data-[side=top]:border-r-0` and friends. They would out-rank it either way,
+   but they mean nothing without it and the paragraph explaining them has
+   nowhere else to live. */
 .tooltip-arrow[data-side="top"] {
   border-right-width: 0;
   border-bottom-width: 0;

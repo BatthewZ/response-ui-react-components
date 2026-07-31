@@ -13,6 +13,28 @@ import { focusRingButton } from "../../util/focus";
 import { cn } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `Collapsible.css` is gone — everything it drew is here. One flat string
+ * literal, because the docs and focus guards resolve hoisted constants
+ * textually and a composed one would not resolve.
+ *
+ * `grid-template-rows` animates between the two tracks and the inner element
+ * clips. The open track is variant-scoped, so it wins on specificity
+ * (`.data-\[state\=open\]\:grid-rows-\[1fr\][data-state="open"]`, 0,2,0) rather
+ * than on where Tailwind happens to sort it against the base's 0,1,0.
+ *
+ * `--MOTION-*` is in no Tailwind namespace, so the shift tokens are read as
+ * custom properties; `ease-shift` generates nothing. The `[var(--X)]` spelling
+ * rather than v4's `(--X)` shorthand is the package's idiom and the one
+ * `verify:component-docs` resolves to a token. Both compile identically.
+ */
+const contentClasses =
+  "grid grid-rows-[0fr] transition-[grid-template-rows] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] data-[state=open]:grid-rows-[1fr] motion-reduce:transition-none";
+
+/* ------------------------------------------------------------------ */
 /*  Context                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -65,7 +87,7 @@ const CollapsibleRoot = forwardRef<HTMLDivElement, CollapsibleProps>(function Co
     <CollapsibleContext.Provider value={{ open, toggle, disabled, triggerId, contentId }}>
       <div
         ref={ref}
-        className={cn("collapsible", className)}
+        className={cn("collapsible w-full", className)}
         data-state={open ? "open" : "closed"}
         data-disabled={disabled || undefined}
         {...props}
@@ -135,15 +157,15 @@ const CollapsibleContent = forwardRef<HTMLDivElement, CollapsibleContentProps>(
         // as Accordion.Content; `hidden` would kill the rows transition.
         // Must sit here and not on the root, which would take the trigger with it.
         inert={!open}
-        className={cn("collapsible-content", className)}
+        className={cn("collapsible-content", contentClasses, className)}
         {...props}
       >
         <div
           // slot:(a) the clipper, and the class is the whole of it: the outer
-          // box animates `grid-template-rows` and this one only sets
-          // `overflow: hidden`. Varying that is not a restyle — it is the open
-          // and close transition stopping working.
-          className="collapsible-content-inner"
+          // box animates `grid-template-rows` and this one clips. Varying
+          // `overflow-hidden` is not a restyle — it is the open and close
+          // transition stopping working.
+          className="collapsible-content-inner overflow-hidden"
         >
           {children}
         </div>

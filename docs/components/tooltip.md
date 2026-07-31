@@ -239,16 +239,21 @@ channel that can reach it, and a theme setting them reaches every floating surfa
 
 ## Theme tokens
 
-Tooltip uses **no Tailwind utilities of its own**. Every visual value lives in `Tooltip.css`
-under two classes, `.tooltip` and `.tooltip-arrow`, and reads contract variables directly.
+Tooltip paints in Tailwind utilities, each resolving to a contract variable. Because they
+sit in `@layer utilities`, a `className` on the bubble or a `classNames.arrow` of your own
+beats every one of them.
 
-| Where            | Override                                    |
-| ---------------- | ------------------------------------------- |
-| Bubble fill      | `--C-PRIMARY`                               |
-| Bubble text      | `--C-TEXT-ON-PRIMARY`                       |
-| Corners          | `--RADIUS-SM`                               |
-| Drop shadow      | `--SHADOW-SM`                               |
-| Type scale       | `--BodyText-2` · `--BodyText-2-line-height` |
+| Where            | Utility               | Override                                    |
+| ---------------- | --------------------- | ------------------------------------------- |
+| Bubble fill      | `bg-primary`          | `--C-PRIMARY`                               |
+| Bubble text      | `text-fg-on-primary`  | `--C-TEXT-ON-PRIMARY`                       |
+| Corners          | `rounded-sm`          | `--RADIUS-SM`                               |
+| Drop shadow      | `shadow-sm`           | `--SHADOW-SM`                               |
+| Type scale       | `text-body-2`         | `--BodyText-2` · `--BodyText-2-line-height` |
+
+The arrow's box is `size-r5`, so `--R-SIZE-5` sizes it too. It is not a row above because
+`verify:component-docs` cannot resolve a `size-*` utility to a token — the table would claim
+something the gate could not check.
 
 The bubble paints its own background, so unlike most components here it is not at the mercy of
 whatever surface it lands on — and `--C-TEXT-ON-PRIMARY` on `--C-PRIMARY` is precisely the
@@ -264,10 +269,11 @@ breakpoint. Each example theme pins the line-height at `:root[data-theme=…]`, 
 the breakpoint rule, and `tech` pins the size as well — so the step only happens in the
 default theme.
 
-Three values are hard literals rather than contract variables: the padding (`0.25rem 0.625rem`),
-the wrap width (`17.5rem`, with long words broken rather than overflowing) and the stack level
-(50). None are themeable, but all three are reachable **per instance** through `className` — see
-[Slots](#slots). Two have consequences worth knowing — see [Gotchas](#gotchas).
+Three values are hard literals rather than contract variables: the padding (0.25rem 0.625rem,
+as py-1 / px-2.5), the wrap width (17.5rem, with long words broken rather than overflowing)
+and the stack level (z-50). None are themeable, but all three are reachable **per instance**
+through `className` — see [Slots](#slots). Two have consequences worth knowing — see
+[Gotchas](#gotchas).
 
 **The fade is themeable, and only through the token.** It reads `--MOTION-DURATION-ENTER` on open
 and `--MOTION-DURATION-EXIT` on close, falling back to 150 ms when no token layer is present. It is
@@ -277,6 +283,14 @@ delayed unmount together.
 
 The arrow adds no variable of its own: it inherits the bubble's fill and border, so it re-tints
 with `--C-PRIMARY` and needs no separate row above.
+
+**One rule survives in `Tooltip.css` — the arrow's `border: inherit`, and the four
+`[data-side]` rules that trim it.** It is a shorthand, so its only utility form is the
+arbitrary property `[border:inherit]`, and Tailwind emits arbitrary properties *after* every
+named `border-*` utility at the same specificity: as a class it would beat a
+`classNames={{ arrow: "border-primary" }}` of yours instead of losing to it. From
+`@layer components` it loses, which is the point of the declaration. `border-inherit` is not
+a substitute — that is `border-color: inherit` only, and cannot carry a width or a style.
 
 ## Gotchas
 

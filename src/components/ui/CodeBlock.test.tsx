@@ -267,24 +267,30 @@ describe("#152 · reaching the copy button", () => {
       }
     });
 
-    it("leaves each internal on its base class alone when no slot is passed", () => {
+    /**
+     * These six used to assert the class attribute equalled the marker exactly,
+     * which stopped being expressible once `CodeBlock.css` became utilities in
+     * the class list. The falsifiers are unchanged and are what the equality was
+     * ever standing in for: an absent slot must append *nothing* — no
+     * `undefined`, no empty token — and every marker must still be present, since
+     * `querySelector` and consumer stylesheets find the elements by it.
+     */
+    it("leaves each internal on its base classes alone when no slot is passed", () => {
       const { container } = render(
         <CodeBlock code={"a\nb"} filename="a.ts" language="ts" showLineNumbers />,
       );
-      expect(container.querySelector(".code-block-header")?.getAttribute("class")).toBe(
+      for (const marker of [
         "code-block-header",
-      );
-      expect(container.querySelector(".code-block-filename")?.getAttribute("class")).toBe(
         "code-block-filename",
-      );
-      expect(container.querySelector(".code-block-language")?.getAttribute("class")).toBe(
         "code-block-language",
-      );
-      expect(container.querySelector("pre")?.getAttribute("class")).toBe("code-block-pre");
-      expect(container.querySelector("code")?.getAttribute("class")).toBe("code-block-code");
-      expect(container.querySelector(".code-block-line")?.getAttribute("class")).toBe(
+        "code-block-pre",
+        "code-block-code",
         "code-block-line",
-      );
+      ]) {
+        const classes = container.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+        expect(classes.split(" "), marker).toContain(marker);
+        expect(classes, marker).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+      }
     });
 
     it("does not put a slot class on the root", () => {
@@ -304,7 +310,18 @@ describe("#152 · reaching the copy button", () => {
           }}
         />,
       );
-      expect(container.firstElementChild?.getAttribute("class")).toBe("code-block");
+      const classes = container.firstElementChild?.getAttribute("class")?.split(" ") ?? [];
+      expect(classes).toContain("code-block");
+      for (const slotClass of [
+        "justify-start",
+        "italic",
+        "uppercase",
+        "max-h-40",
+        "text-body-3",
+        "bg-surface-2",
+      ]) {
+        expect(classes).not.toContain(slotClass);
+      }
     });
 
     /**
@@ -319,7 +336,27 @@ describe("#152 · reaching the copy button", () => {
           classNames={{ copy: "italic" }}
         />,
       );
-      expect(container.querySelector("pre")?.getAttribute("class")).toBe("code-block-pre");
+      expect(container.querySelector("pre")?.getAttribute("class")?.split(" ")).not.toContain(
+        "italic",
+      );
+    });
+
+    /**
+     * The mono face is the one utility here whose spelling is load-bearing:
+     * `font-mono` resolves to Tailwind's `--font-mono` system stack, which this
+     * design system never maps, and `font-[var(--DEFAULT-MONO-FONT)]` resolves to
+     * `font-weight` rather than `font-family`. Only the `family-name:` form is
+     * right, and nothing else in this repo can see the difference.
+     */
+    it("reads the theme's mono face, not Tailwind's default stack", () => {
+      const { container } = render(<CodeBlock code="x" filename="a.ts" language="ts" />);
+      for (const marker of ["code-block-filename", "code-block-language", "code-block-pre"]) {
+        const classes = container.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+        expect(classes.split(" "), marker).toContain(
+          "font-[family-name:var(--DEFAULT-MONO-FONT)]",
+        );
+        expect(classes.split(" "), marker).not.toContain("font-mono");
+      }
     });
 
     it("does not leak classNames onto the DOM", () => {

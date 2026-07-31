@@ -446,3 +446,29 @@ describe("Rating", () => {
     });
   });
 });
+
+/**
+ * `Rating.css` is gone. The one declaration that could not simply move is the
+ * star button's `all: unset`, and it was *enumerated away* rather than
+ * transposed: Tailwind sorts an arbitrary property after every named utility, so
+ * `[all:unset]` in this class list would wipe the declarations it was meant to
+ * precede and then out-rank the caller as well. Preflight already supplies the
+ * reset — the same thing `Button.tsx` has always relied on.
+ */
+describe("the star button carries no reset of its own", () => {
+  it("emits no blanket reset utility, and keeps the positive declarations", () => {
+    render(<Rating aria-label="Rate" defaultValue={3} />);
+    const classes = screen.getAllByRole("radio")[0].className;
+
+    expect(classes).not.toContain("[all:unset]");
+    expect(classes).not.toContain("[font:inherit]");
+    for (const util of ["inline-flex", "cursor-pointer", "rounded-sm"]) {
+      expect(classes.split(" ")).toContain(util);
+    }
+  });
+
+  it("still marks the hit target, which measures the half-star click", () => {
+    render(<Rating aria-label="Rate" allowHalf defaultValue={3} />);
+    expect(screen.getAllByRole("radio")[0].className.split(" ")).toContain("rating-button");
+  });
+});

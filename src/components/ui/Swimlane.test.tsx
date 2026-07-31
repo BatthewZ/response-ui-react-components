@@ -238,7 +238,15 @@ describe("Swimlane", () => {
       }
     });
 
-    it("leaves every internal on its base class alone when no slot is passed", () => {
+    /**
+     * This used to assert the class attribute equalled the marker exactly, which
+     * stopped being expressible once `Swimlane.css` became utilities in the class
+     * list. The falsifiers are unchanged and are what the equality was ever
+     * standing in for: an absent slot must append *nothing* — no `undefined`, no
+     * empty token — and every marker must still be present, since consumer
+     * stylesheets and devtools find these elements by it.
+     */
+    it("leaves every internal on its base classes alone when no slot is passed", () => {
       const { container } = lane();
       for (const selector of [
         ".swimlane__header",
@@ -247,7 +255,9 @@ describe("Swimlane", () => {
         ".swimlane__subtitle",
         ".swimlane__body",
       ]) {
-        expect(container.querySelector(selector)?.getAttribute("class")).toBe(selector.slice(1));
+        const classes = container.querySelector(selector)?.getAttribute("class") ?? "";
+        expect(classes.split(" "), selector).toContain(selector.slice(1));
+        expect(classes, selector).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
       }
     });
 
@@ -290,9 +300,9 @@ describe("Swimlane", () => {
           <div>Content</div>
         </Swimlane>,
       );
-      expect(container.querySelector(".swimlane__subtitle")?.getAttribute("class")).toBe(
-        "swimlane__subtitle",
-      );
+      expect(
+        container.querySelector(".swimlane__subtitle")?.getAttribute("class")?.split(" "),
+      ).not.toContain("italic");
     });
 
     it("does not leak classNames onto the DOM", () => {

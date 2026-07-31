@@ -212,7 +212,7 @@ export function Wizard({
   }, [activeIndex]);
 
   return (
-    <div className={cn("wizard", className)} {...props}>
+    <div className={cn("wizard flex flex-col gap-r3", className)} {...props}>
       <Stepper
         activeStep={wizard.activeStep}
         orientation={orientation}
@@ -233,12 +233,20 @@ export function Wizard({
         role="group"
         aria-label={active?.title}
         tabIndex={-1}
-        className={cn("wizard__content", classNames?.body)}
+        // `min-h-16` is `4rem`, and it is not on the contract on purpose: it
+        // reserves enough room that the footer does not jump between a one-line
+        // step and a long form. Steps taller than that still grow the panel.
+        className={cn("wizard__content min-h-16 text-fg-primary", classNames?.body)}
       >
         {active?.content}
       </div>
 
-      <div className={cn("wizard__footer", classNames?.footer)}>
+      <div
+        className={cn(
+          "wizard__footer flex items-center justify-between gap-r4 pt-r4 border-t border-border-default",
+          classNames?.footer,
+        )}
+      >
         <Button
           type="button"
           variant="ghost"

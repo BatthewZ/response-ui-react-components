@@ -61,6 +61,72 @@ describe("EmptyState", () => {
     );
   });
 
+  /**
+   * The size axis is a class map keyed off the `size` prop, not a `[data-size]`
+   * selector: `data-size` is a marker nothing reads back. These three are the
+   * falsifiers for that — each part has to carry its own step's utilities.
+   */
+  it.each([
+    ["sm", "p-r5", "gap-r6", "text-h5", "text-body-1"],
+    ["md", "p-r3", "gap-r5", "text-h4", "text-h5"],
+    ["lg", "p-r2", "gap-r4", "text-h3", "text-h4"],
+  ] as const)("sizes root, icon and title for %s", (size, pad, gap, iconType, titleType) => {
+    const { container } = render(
+      <EmptyState size={size}>
+        <EmptyStateIcon>
+          <svg />
+        </EmptyStateIcon>
+        <EmptyStateTitle>Titled</EmptyStateTitle>
+      </EmptyState>,
+    );
+    const root = container.querySelector(".empty-state")?.getAttribute("class")?.split(" ") ?? [];
+    expect(root).toContain(pad);
+    expect(root).toContain(gap);
+    expect(
+      container.querySelector(".empty-state__icon")?.getAttribute("class")?.split(" "),
+    ).toContain(iconType);
+    expect(
+      container.querySelector(".empty-state__title")?.getAttribute("class")?.split(" "),
+    ).toContain(titleType);
+  });
+
+  /**
+   * The reason the size comes from context rather than an `in-[[data-size=…]]:`
+   * variant: that variant matches ANY ancestor, so a nested empty state would
+   * silently take the outer one's step.
+   */
+  it("keeps a nested empty state on its own size", () => {
+    const { container } = render(
+      <EmptyState size="lg">
+        <EmptyState size="sm">
+          <EmptyStateTitle>Inner</EmptyStateTitle>
+        </EmptyState>
+      </EmptyState>,
+    );
+    const inner = container.querySelectorAll(".empty-state")[1];
+    expect(inner.getAttribute("class")?.split(" ")).toContain("p-r5");
+    expect(inner.getAttribute("class")?.split(" ")).not.toContain("p-r2");
+  });
+
+  /**
+   * The glyph sizing stays in `EmptyState.css` because it styles an element the
+   * CALLER renders: as `[&_svg]:size-[1em]` it would emit at 0,1,1 in
+   * `@layer utilities`, after the child's own `size-*` at 0,1,0, and the wrapper
+   * would start beating the caller. This is the falsifier for that ruling.
+   */
+  it("does not put the glyph sizing on the icon slot's class list", () => {
+    const { container } = render(
+      <EmptyState>
+        <EmptyStateIcon>
+          <svg />
+        </EmptyStateIcon>
+      </EmptyState>,
+    );
+    const classes = container.querySelector(".empty-state__icon")?.getAttribute("class") ?? "";
+    expect(classes).not.toContain("[&_svg]");
+    expect(classes).not.toContain("*:size-");
+  });
+
   it("EmptyState.Icon has aria-hidden true", () => {
     const { container } = render(
       <EmptyState>

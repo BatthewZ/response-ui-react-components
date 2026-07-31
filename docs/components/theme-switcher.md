@@ -241,22 +241,22 @@ you need one option to differ, that is a different control: drop to `useTheme` a
 
 ## Theme tokens
 
-The component uses **no Tailwind utilities**; its `.tsx` carries only three BEM class names
-and every rule lives in `ThemeSwitcher.css`, reading contract variables directly. The
-control that changes your theme is itself fully themed by that theme.
+The component paints in Tailwind utilities and `ThemeSwitcher.css` is gone. The control that
+changes your theme is itself fully themed by that theme — and because the utilities sit in
+`@layer utilities`, a `className` or `classNames.item` of your own beats every one of them.
 
-| Where                        | Override                              |
-| ---------------------------- | ------------------------------------- |
-| Track fill · track border    | `--C-SURFACE-3` · `--C-BORDER-DEFAULT` |
-| Track corners · option corners | `--RADIUS-LG` · `--RADIUS-MD`       |
-| Option label type · weight   | `--BodyText-2` · `--Semibold-Weight`  |
-| Option label at rest         | `--C-TEXT-SECONDARY`                  |
-| Option label hovered / selected | `--C-TEXT-PRIMARY`                 |
-| Hover wash                   | `--C-SURFACE-2`                       |
-| Selected option              | `--C-SURFACE-0` · `--SHADOW-SM`       |
-| Option padding               | `--R-SIZE-6` block · `--R-SIZE-4` inline |
-| Focus ring                   | `--C-BORDER-FOCUS`                    |
-| Transition                   | `--DURATION-FAST` · `--MOTION-EASE-SHIFT` |
+| Where                           | Utility                                    | Override                               |
+| ------------------------------- | ------------------------------------------ | -------------------------------------- |
+| Track fill · track border       | `bg-surface-3` · `border-border-default`   | `--C-SURFACE-3` · `--C-BORDER-DEFAULT` |
+| Track corners · option corners  | `rounded-lg` · `rounded-md`                | `--RADIUS-LG` · `--RADIUS-MD`          |
+| Option label type · weight      | `text-body-2` · `font-semibold`            | `--BodyText-2` · `--Semibold-Weight`   |
+| Option label at rest            | `text-fg-secondary`                        | `--C-TEXT-SECONDARY`                   |
+| Option label hovered / selected | `hover:text-fg-primary` · `text-fg-primary` | `--C-TEXT-PRIMARY`                    |
+| Hover wash                      | `hover:bg-surface-2`                       | `--C-SURFACE-2`                        |
+| Selected option                 | `bg-surface-0` · `shadow-sm`               | `--C-SURFACE-0` · `--SHADOW-SM`        |
+| Option padding                  | `py-r6` · `px-r4`                          | `--R-SIZE-6` block · `--R-SIZE-4` inline |
+| Focus ring                      | `focus-visible:outline-border-focus`       | `--C-BORDER-FOCUS`                     |
+| Transition                      | `duration-fast` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--DURATION-FAST` · `--MOTION-EASE-SHIFT` |
 
 The three surfaces stack on purpose, and the group reads as a well with a tile in it: the
 track is `--C-SURFACE-3`, the deepest rung; the hover wash comes back one step to
@@ -272,7 +272,13 @@ only by the label's own type step.
 Label type reads the same `--BodyText-2` / `--Semibold-Weight` pair [Tabs](tabs.md) does, so
 it follows a theme's typography and steps up (`0.8125rem` → `0.875rem`, `500` → `600`) at the
 40rem breakpoint. The track's `1px` border and its `0.125rem` padding and gap are literals off
-the contract, and can only be changed with your own CSS.
+the contract; the padding and gap are now `p-0.5`/`gap-0.5` on the root, so a `className` of
+your own can replace them without a stylesheet.
+
+The option button restates neither `background: transparent` nor `border: none` any more —
+Tailwind's Preflight already gives every `button` both, so those are two fewer utilities for
+your own `bg-*`/`border-*` to have to out-rank. If you disable Preflight, restore them
+yourself.
 
 ## Gotchas
 
@@ -295,8 +301,10 @@ the contract, and can only be changed with your own CSS.
 - **Don't override `role`.** `{...props}` spreads last, so `role="group"` *will* replace
   `radiogroup` on the container — but the options keep `role="radio"`, which ARIA requires
   to be owned by a radiogroup. You would trade one broken pattern for a worse one.
-- **Needs the package stylesheet.** The rules ship in `ThemeSwitcher.css` via the package's
-  `styles` entry; without that import the control is a row of unstyled buttons.
+- **Needs Tailwind, not the package stylesheet.** `ThemeSwitcher.css` no longer exists; the
+  control is painted entirely by utilities the package's `@source` registration generates.
+  It also leans on Tailwind's Preflight for the button reset, so a build that disables
+  Preflight gets UA-styled buttons inside the track.
 
 ## Accessibility
 

@@ -13,6 +13,44 @@ import { useControllableState } from "../../hooks/use-controllable-state";
 import { useRovingFocus } from "../../hooks/use-roving-focus";
 import { cn } from "../../util/style";
 
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `Rating.css` is gone — everything it drew is here. Each constant is one flat
+ * string literal because the docs and focus guards resolve hoisted constants
+ * textually and a composed one would not resolve.
+ *
+ * The row inks `--C-STATUS-WARNING` once and every glyph reads it through
+ * `currentColor`, so a caller's `className="text-accent"` on the root retints
+ * the whole scale — which is why the colour sits here and not on the stars.
+ */
+const rootClasses = "inline-flex items-center gap-r6 text-status-warning";
+
+/**
+ * **`all: unset` is gone, enumerated rather than transposed.** A reset has to
+ * come first in its rule to be correct, and `[all:unset]` in a class list emits
+ * *after* every named utility in `@layer utilities` — it would wipe the five
+ * declarations below it and then start beating the caller's `className` as
+ * well. What was checked against the compiled Preflight before dropping it:
+ * `button` already gets `font: inherit`, `color: inherit`, `letter-spacing:
+ * inherit`, `background-color: transparent`, `border-radius: 0` and
+ * `appearance: button`, and the universal reset adds `box-sizing: border-box`,
+ * `margin: 0`, `padding: 0`, `border: 0 solid`. `Button.tsx` has shipped on
+ * exactly that and carries no reset of its own.
+ *
+ * Three things `all: unset` did that Preflight does not, and why each is inert
+ * here: `appearance` becomes `button` rather than `none`, which paints nothing
+ * on a control with no fill, no border and no padding; `text-align` keeps the
+ * UA's `center`, which reaches no inline content, since the only in-flow child
+ * is a fixed-size `inline-block`; and `align-items` keeps the UA's `center`,
+ * which is spelled out below so the box does not depend on a UA default either
+ * way.
+ */
+const buttonClasses =
+  "box-border inline-flex items-center cursor-pointer rounded-sm disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus";
+
 type RatingProps = {
   value?: number;
   defaultValue?: number;
@@ -81,26 +119,28 @@ function StarIcon({ fill }: { fill: number }) {
       // what 100% is, and this class is what does — so a caller class that
       // changes `position`, `display` or `width` here re-bases the percentage
       // and every star reports a fraction that is not the value. It is the one
-      // of the four whose failure is silent: the stars still draw.
-      className="rating-star"
+      // of the four whose failure is silent: the stars still draw. `relative` is
+      // the declaration that does it.
+      className="rating-star relative inline-block size-[1.5em] leading-[0]"
       aria-hidden="true"
     >
       <Star
         // slot:(a) the unfilled glyph the overlay is stacked on; it must match
         // the overlay's glyph exactly or the partial fill shows two outlines.
-        className="rating-star-base"
+        className="rating-star-base size-full fill-none stroke-current opacity-45"
         strokeWidth={1.5}
       />
       <span
-        // slot:(a) the clip itself — its `width` *is* the fill fraction, so a
-        // caller class competing for width prints the wrong rating.
-        className="rating-star-fill"
+        // slot:(a) the clip itself — its `width` *is* the fill fraction and
+        // `overflow-hidden` is the clip, so a caller class competing for either
+        // prints the wrong rating.
+        className="rating-star-fill absolute inset-0 block overflow-hidden pointer-events-none transition-[width] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none"
         style={{ width: `${fill * 100}%` }}
       >
         <Star
           // slot:(a) the clipped glyph, sized to the star rather than to the
           // clip so the visible sliver lines up with the base beneath it.
-          className="rating-star-fill-icon"
+          className="rating-star-fill-icon size-[1.5em] fill-current stroke-current"
           strokeWidth={1.5}
         />
       </span>
@@ -167,7 +207,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
         aria-valuenow={value}
         aria-valuetext={formatValue ? formatValue(value, max) : undefined}
         aria-disabled={disabled || undefined}
-        className={cn("rating", disabled && "rating--disabled", className)}
+        className={cn("rating", rootClasses, disabled && "rating--disabled opacity-50", className)}
         {...props}
       >
         {Array.from({ length: max }, (_, i) => (
@@ -230,7 +270,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
       role="radiogroup"
       aria-label={ariaLabel}
       aria-disabled={disabled || undefined}
-      className={cn("rating", disabled && "rating--disabled", className)}
+      className={cn("rating", rootClasses, disabled && "rating--disabled opacity-50", className)}
       {...props}
     >
       {Array.from({ length: max }, (_, i) => {
@@ -255,7 +295,7 @@ export const Rating = forwardRef<HTMLDivElement, RatingProps>(function Rating(
             // — a detuned fraction — reached from the input side instead of the
             // paint side. Size and spacing of the row are `className` on the
             // root.
-            className="rating-button"
+            className={`rating-button ${buttonClasses}`}
             // Deliberately not `roving.onKeyDown` as well: the hook's own key
             // handling is the second state machine this component used to run
             // alongside the value, and it loops where the value clamps.

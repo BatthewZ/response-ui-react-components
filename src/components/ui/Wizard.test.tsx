@@ -261,19 +261,30 @@ describe("Wizard · classNames slots", () => {
     expect(footer?.getAttribute("class")).toContain("justify-start");
   });
 
-  it("leaves each internal on its base class alone when no slot is passed", () => {
+  /**
+   * These used to assert the class attribute equalled the marker exactly, which
+   * stopped being expressible once `Wizard.css` became utilities in the class
+   * list. The falsifiers are unchanged and are what the equality was ever
+   * standing in for: an absent slot must append *nothing* — no `undefined`, no
+   * empty token — and a slot must land on its own element and no other.
+   */
+  it("leaves each internal on its base classes alone when no slot is passed", () => {
     const { container } = render(<Wizard steps={STEPS} />);
-    expect(container.querySelector(".wizard__content")?.getAttribute("class")).toBe(
-      "wizard__content",
-    );
-    expect(container.querySelector(".wizard__footer")?.getAttribute("class")).toBe("wizard__footer");
+    for (const marker of ["wizard__content", "wizard__footer"]) {
+      const classes = container.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+      expect(classes.split(" "), marker).toContain(marker);
+      expect(classes, marker).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+    }
   });
 
   it("does not put a slot class on the root", () => {
     const { container } = render(
       <Wizard steps={STEPS} classNames={{ body: "min-h-40", footer: "justify-start" }} />,
     );
-    expect(container.firstElementChild?.getAttribute("class")).toBe("wizard");
+    const classes = container.firstElementChild?.getAttribute("class")?.split(" ") ?? [];
+    expect(classes).toContain("wizard");
+    expect(classes).not.toContain("min-h-40");
+    expect(classes).not.toContain("justify-start");
   });
 
   /**
@@ -289,9 +300,9 @@ describe("Wizard · classNames slots", () => {
         classNames={{ stepper: "gap-r4" }}
       />,
     );
-    expect(container.querySelector(".wizard__content")?.getAttribute("class")).toBe(
-      "wizard__content",
-    );
+    expect(
+      container.querySelector(".wizard__content")?.getAttribute("class")?.split(" "),
+    ).not.toContain("gap-r4");
   });
 
   it("does not leak classNames onto the DOM", () => {

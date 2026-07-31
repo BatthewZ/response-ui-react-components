@@ -10,6 +10,56 @@ import { useRovingFocus } from "../../hooks/use-roving-focus";
 import { useTheme } from "../../hooks/use-theme";
 import { cn, type SlotClassNames } from "../../util/style";
 
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `ThemeSwitcher.css` is gone — everything it drew is here. Each constant is
+ * one flat string literal because the docs and focus guards resolve hoisted
+ * constants textually and a composed one would not resolve.
+ *
+ * The group's own gap and padding are `0.125rem`, which is what they always
+ * were: this is a segmented control whose segments must read as sitting *in* a
+ * well, and the responsive `r`-scale's smallest step is far too large for that
+ * hairline. `gap-0.5`/`p-0.5` are the same `0.125rem` through `--spacing`.
+ */
+const groupClasses = "inline-flex gap-0.5 p-0.5 rounded-lg bg-surface-3 border border-border-default";
+
+/**
+ * No `bg-transparent` and no `border-none`: Preflight already gives every
+ * `button` `background-color: transparent` and `border: 0 solid` (measured in
+ * the compiled output, and `Button.tsx` has relied on exactly this all along),
+ * so restating them would only add two utilities a caller's own `bg-*` and
+ * `border-*` have to out-rank.
+ *
+ * **The hover wash is one rung of a ladder — well 3 / hover 2 / active 0 — and
+ * it must stay a rung above the group's own fill or it is invisible.** Move
+ * `bg-surface-3` on the group and `hover:bg-surface-2` here together, or the
+ * hover state disappears into the well.
+ *
+ * The ring is inset, like the sibling segmented control (`.tabs-tab`): the
+ * group pads its options by only that `0.125rem`, so an outset ring would sit
+ * on the group border instead of on the segment that actually holds focus.
+ *
+ * `duration-fast` is `--DURATION-FAST` through Tailwind's
+ * `--transition-duration-*` namespace; `--MOTION-EASE-SHIFT` is in no namespace
+ * at all and has to be read as a custom property.
+ */
+const optionClasses =
+  "px-r4 py-r6 rounded-md text-body-2 font-semibold text-fg-secondary cursor-pointer whitespace-nowrap transition-all duration-fast ease-[var(--MOTION-EASE-SHIFT)] hover:text-fg-primary hover:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focus";
+
+/**
+ * Converted alongside the base rather than instead of it. A base declaration
+ * moved into `@layer utilities` on its own starts beating the modifier that
+ * qualifies it; both moved, `cn()`'s tailwind-merge resolves the pair at the
+ * call site and the selected option keeps its ink. The hover wash still wins
+ * over the selected fill, as it did in CSS — `hover:bg-surface-2` emits at
+ * 0,2,0 against this 0,1,0, and tailwind-merge keys on the modifier so neither
+ * drops the other.
+ */
+const optionActiveClasses = "theme-switcher__option--active text-fg-primary bg-surface-0 shadow-sm";
+
 /** Option text, keyed by theme id. A theme with no entry is labelled by its id. */
 export type ThemeSwitcherLabels = Partial<Record<string, string>>;
 
@@ -103,7 +153,7 @@ export const ThemeSwitcher = forwardRef<HTMLDivElement, ThemeSwitcherProps>(func
   return (
     <div
       ref={ref}
-      className={cn("theme-switcher", className)}
+      className={cn("theme-switcher", groupClasses, className)}
       role="radiogroup"
       aria-label="Theme"
       {...props}
@@ -120,7 +170,8 @@ export const ThemeSwitcher = forwardRef<HTMLDivElement, ThemeSwitcherProps>(func
             ref={roving.ref}
             className={cn(
               "theme-switcher__option",
-              theme === t && "theme-switcher__option--active",
+              optionClasses,
+              theme === t && optionActiveClasses,
               classNames?.item
             )}
             onKeyDown={handleKeyDown}

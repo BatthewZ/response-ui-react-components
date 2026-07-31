@@ -287,16 +287,17 @@ shows the whole shape, and it is the same markup `Wizard` emits.
 
 ## Theme tokens
 
-`Wizard.tsx` carries **no Tailwind utilities** — it emits three class names and all of its
-own styling lives in `Wizard.css`, which reads four contract variables directly. Override
-any of them and the wizard re-tints with the rest of the app, at runtime, with no rebuild.
+`Wizard.tsx` paints in Tailwind utilities and `Wizard.css` is gone. Four contract variables
+reach it. Override any of them and the wizard re-tints with the rest of the app, at runtime,
+with no rebuild — and because the utilities sit in `@layer utilities`, a `className` or
+`classNames` slot of your own beats every one of them.
 
-| Where                                   | Override            |
-| --------------------------------------- | ------------------- |
-| Gap between header, content and footer  | `--R-SIZE-3`        |
-| Content region ink                      | `--C-TEXT-PRIMARY`  |
-| Footer button gap and its top padding   | `--R-SIZE-4`        |
-| Rule above the footer                   | `--C-BORDER-DEFAULT` |
+| Where                                  | Utility                 | Override             |
+| -------------------------------------- | ----------------------- | -------------------- |
+| Gap between header, content and footer | `gap-r3`                | `--R-SIZE-3`         |
+| Content region ink                     | `text-fg-primary`       | `--C-TEXT-PRIMARY`   |
+| Footer button gap and its top padding  | `gap-r4` · `pt-r4`      | `--R-SIZE-4`         |
+| Rule above the footer                  | `border-border-default` | `--C-BORDER-DEFAULT` |
 
 Both spacing tokens sit on the responsive `r`-scale and step up at the 40rem breakpoint —
 the section gap `--R-SIZE-3` from `1rem` to `1.5rem`, the footer gap and padding
@@ -311,8 +312,8 @@ surface it is dropped on, and the [theme contract](../theme-contract.md) names t
 the default body ink, meant to read on any `surface-*` token.
 
 One geometry value is not on the contract: the content region reserves a hard `4rem`
-`min-height` so the footer does not jump as you move between a one-line step and a long
-form. Steps taller than that still grow the panel.
+`min-height` (spelled `min-h-16`) so the footer does not jump as you move between a one-line
+step and a long form. Steps taller than that still grow the panel.
 
 ## Gotchas
 

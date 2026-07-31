@@ -148,8 +148,10 @@ breakpoint, so a gap that did would drift out of proportion with it.
   the form's default submitter (the one Enter fires from inside a text field). Pass
   `type="submit"` explicitly on the button that *should* submit. Nothing is set when `as`
   renders something other than a `<button>`.
-- **No per-component CSS.** `Button.css` is an empty placeholder. Both CSS imports are
-  still required — the utilities above resolve to tokens from `@batthewz/response-ui-css`.
+- **No per-component CSS.** There is no `Button.css`, and there never was a rule in one.
+  Both CSS imports are still required — the utilities above resolve to tokens from
+  `@batthewz/response-ui-css`, and Button leans on Tailwind's Preflight for its button
+  reset rather than shipping one.
 - **Server-renderable.** No `"use client"`, so it works directly in an RSC tree.
 
 ## Accessibility

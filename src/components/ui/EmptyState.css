@@ -1,107 +1,27 @@
-/* ------------------------------------------------------------------ */
-/*  EmptyState                                                         */
-/* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------- */
+/*  EmptyState — converted to utilities; one rule could not move         */
+/* ------------------------------------------------------------------- */
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: var(--R-SIZE-3);
-  gap: var(--R-SIZE-5);
-}
+/* Everything this component draws is a Tailwind utility in `EmptyState.tsx`,
+   including the whole three-way size axis: `EmptyState.Icon`/`.Title` already
+   read `size` from context, so each picks its own class rather than matching an
+   ancestor's `[data-size]`. That also avoids the `in-[…]` trap, which matches
+   ANY ancestor — an empty state nested inside another would have taken the
+   outer one's size.
 
-/* ------------------------------------------------------------------ */
-/*  Size variants                                                      */
-/* ------------------------------------------------------------------ */
+   The survivor styles an element the CONSUMER renders, and moving it would
+   invert who wins. `.empty-state__icon svg` is 0,1,1 in `@layer components`, so
+   `<EmptyState.Icon><Inbox className="size-8" /></EmptyState.Icon>` beats it
+   today — layer order decides before specificity does. As `[&_svg]:size-[1em]`
+   it emits at 0,1,1 in `@layer utilities`, *after* the child's own 0,1,0
+   `size-8`, and the wrapper would start winning instead. `*:size-[1em]` inverts
+   the same way (`memory/css-to-utilities.md`, "`> *` is not `*:`").
 
-.empty-state[data-size="sm"] {
-  padding: var(--R-SIZE-5);
-  gap: var(--R-SIZE-6);
-}
-
-.empty-state[data-size="lg"] {
-  padding: var(--R-SIZE-2);
-  gap: var(--R-SIZE-4);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Icon                                                               */
-/* ------------------------------------------------------------------ */
-
-.empty-state__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--C-TEXT-MUTED);
-}
-
-/* The slot owns the glyph size, as Stepper and ActivityFeed do for theirs.
-   `font-size` alone moves nothing an SVG with its own width/height attributes:
-   every lucide-react icon renders 24px, so the size steps below were invisible
-   unless the caller happened to pass `size="1em"`. */
+   Why the rule exists at all: the slot owns the glyph size, as `Stepper` does
+   for its indicator. `font-size` alone moves nothing on an SVG carrying its own
+   width/height attributes — every lucide-react icon renders 24px — so the size
+   steps in the class list are invisible without this. */
 .empty-state__icon svg {
   width: 1em;
   height: 1em;
-}
-
-.empty-state[data-size="sm"] .empty-state__icon {
-  font-size: var(--H5);
-}
-
-.empty-state[data-size="md"] .empty-state__icon {
-  font-size: var(--H4);
-}
-
-.empty-state[data-size="lg"] .empty-state__icon {
-  font-size: var(--H3);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Title                                                              */
-/* ------------------------------------------------------------------ */
-
-.empty-state__title {
-  margin: 0;
-  color: var(--C-TEXT-PRIMARY);
-  font-weight: var(--Semibold-Weight);
-}
-
-.empty-state[data-size="sm"] .empty-state__title {
-  font-size: var(--BodyText-1);
-  line-height: var(--BodyText-1-line-height);
-}
-
-.empty-state[data-size="md"] .empty-state__title {
-  font-size: var(--H5);
-  line-height: var(--H5-line-height);
-}
-
-.empty-state[data-size="lg"] .empty-state__title {
-  font-size: var(--H4);
-  line-height: var(--H4-line-height);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Description                                                        */
-/* ------------------------------------------------------------------ */
-
-.empty-state__description {
-  margin: 0;
-  max-width: 22.5rem;
-  color: var(--C-TEXT-MUTED);
-  font-size: var(--BodyText-2);
-  line-height: var(--BodyText-2-line-height);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Actions                                                            */
-/* ------------------------------------------------------------------ */
-
-.empty-state__actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--R-SIZE-5);
-  flex-wrap: wrap;
 }
