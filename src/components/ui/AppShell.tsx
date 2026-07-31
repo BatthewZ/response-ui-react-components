@@ -17,7 +17,7 @@ import { useClickOutside } from "../../hooks/use-click-outside";
 import { useControllableState } from "../../hooks/use-controllable-state";
 import { useFocusTrap } from "../../hooks/use-focus-trap";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { useLink, usePathname } from "../router/router-adapter";
 import { Portal } from "./Portal";
@@ -224,10 +224,21 @@ const AppShellToggle = forwardRef<HTMLButtonElement, Omit<ComponentPropsWithRef<
 
 /* ─── Sidebar ─── */
 
-type AppShellSidebarProps = Omit<ComponentPropsWithRef<"aside">, "role">;
+type AppShellSidebarProps = {
+  /**
+   * Class overrides for the internals this component renders. `className` lands
+   * on the `<aside>` in both branches — the inline rail on desktop and the
+   * portaled drawer on mobile — so the scrim behind that drawer is the one
+   * element it cannot reach. The union is written out here so an unknown key is
+   * a type error rather than a silently ignored one.
+   *
+   * The scrim renders only on mobile, and only while the drawer is open.
+   */
+  classNames?: SlotClassNames<"scrim">;
+} & Omit<ComponentPropsWithRef<"aside">, "role">;
 
 const AppShellSidebar = forwardRef<HTMLElement, AppShellSidebarProps>(
-  function AppShellSidebar({ className, children, ...props }, forwardedRef) {
+  function AppShellSidebar({ className, classNames, children, ...props }, forwardedRef) {
     const { open, setOpen, collapsed, isMobile, sidebarId, setSidebarPresent } = useAppShell();
     const sidebarRef = useRef<HTMLElement>(null);
     const merged = useMemo(() => mergeRefs(forwardedRef, sidebarRef), [forwardedRef, sidebarRef]);
@@ -272,7 +283,7 @@ const AppShellSidebar = forwardRef<HTMLElement, AppShellSidebarProps>(
       if (!open) return null;
       return (
         <Portal>
-          <div className="app-shell-scrim" aria-hidden="true" />
+          <div className={cn("app-shell-scrim", classNames?.scrim)} aria-hidden="true" />
           {/* `aria-modal` is undefined on `navigation`, so AT ignored it and
               browsed behind the scrim while the DOM focus trap said otherwise.
               It belongs on a `dialog`, which the drawer now is — the navigation
@@ -322,11 +333,22 @@ type SidebarSectionProps = {
    * `"h3"` here.
    */
   titleAs?: SidebarHeadingLevel;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * section box and `children` are the caller's own links, so the heading is the
+   * only element with no route. The union is written out here so an unknown key
+   * is a type error rather than a silently ignored one.
+   *
+   * The class is **appended** to the heading's own: collapsed, that includes
+   * `sr-only`, which is what keeps the group reachable by heading navigation
+   * while the rail shows icons only.
+   */
+  classNames?: SlotClassNames<"groupHeader">;
 } & ComponentPropsWithRef<"div">;
 
 const AppShellSidebarSection = forwardRef<HTMLDivElement, SidebarSectionProps>(
   function AppShellSidebarSection(
-    { title, titleAs: Heading = "h2", className, children, ...props },
+    { title, titleAs: Heading = "h2", className, classNames, children, ...props },
     ref
   ) {
     const { collapsed, isMobile } = useAppShell();
@@ -341,7 +363,11 @@ const AppShellSidebarSection = forwardRef<HTMLDivElement, SidebarSectionProps>(
             `sr-only` here rather than a rule in AppShell.css. */}
         {title && (
           <Heading
-            className={cn("app-shell-sidebar-section-title", showCollapsed && "sr-only")}
+            className={cn(
+              "app-shell-sidebar-section-title",
+              showCollapsed && "sr-only",
+              classNames?.groupHeader
+            )}
           >
             {title}
           </Heading>
@@ -370,11 +396,23 @@ type SidebarLinkProps = {
    * regardless.
    */
   href?: never;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * anchor, so these two reach the parts inside it. The union is written out
+   * here so an unknown key is a type error rather than a silently ignored one.
+   *
+   * `icon` is a component reference, not an element, so `itemIcon` is handed to
+   * it as its `className` prop and the icon library decides what to do with it —
+   * there is nothing here to merge it against beyond this component's own hook.
+   * `itemLabel` is **appended**: collapsed, the label's own class list includes
+   * `sr-only`, which is what leaves the link with an accessible name.
+   */
+  classNames?: SlotClassNames<"itemIcon" | "itemLabel">;
 } & Omit<ComponentPropsWithRef<"a">, "href" | "children">;
 
 const AppShellSidebarLink = forwardRef<HTMLAnchorElement, SidebarLinkProps>(
   function AppShellSidebarLink(
-    { to, icon: Icon, className, children, href: _href, ...props },
+    { to, icon: Icon, className, classNames, children, href: _href, ...props },
     ref
   ) {
     const { collapsed, isMobile } = useAppShell();
@@ -393,12 +431,18 @@ const AppShellSidebarLink = forwardRef<HTMLAnchorElement, SidebarLinkProps>(
         aria-current={isActive ? "page" : undefined}
         {...props}
       >
-        {Icon && <Icon className="app-shell-sidebar-link-icon" />}
+        {Icon && <Icon className={cn("app-shell-sidebar-link-icon", classNames?.itemIcon)} />}
         {/* Collapsed, the rail is icons only — but lucide marks its own svg
             aria-hidden, so hiding the label with `display: none` left the link
             with no accessible name at all (#388). `sr-only` keeps it in the
             accessibility tree while taking it off the screen. */}
-        <span className={cn("app-shell-sidebar-link-label", showCollapsed && "sr-only")}>
+        <span
+          className={cn(
+            "app-shell-sidebar-link-label",
+            showCollapsed && "sr-only",
+            classNames?.itemLabel
+          )}
+        >
           {children}
         </span>
       </Link>

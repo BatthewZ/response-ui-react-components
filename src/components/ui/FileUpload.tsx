@@ -3,6 +3,8 @@ import {
   type ComponentPropsWithRef,
   type DragEvent,
   forwardRef,
+  Fragment,
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
@@ -14,7 +16,7 @@ import {
 import { matchesAccept } from "../../util/accept";
 import { formatBytes } from "../../util/format";
 import { composeEventHandlers } from "../../util/merge-props";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -52,6 +54,41 @@ export const DEFAULT_FILE_UPLOAD_LABELS: Required<FileUploadLabels> = {
 };
 
 const defaultRemoveFileLabel = (file: File) => `Remove ${file.name}`;
+
+/**
+ * One file, with everything the built-in previews are rendered from — the
+ * argument of {@link FileUploadProps.renderFile} and, with `layout`, of
+ * {@link FileUploadProps.renderPreview}.
+ */
+export type FileUploadPreviewItem = {
+  file: File;
+  /**
+   * Object URL for an image or video. Absent for a non-media file, and for the
+   * first paint after a selection: the URL is minted in an effect.
+   */
+  previewUrl?: string;
+  /** Position in the `files` prop, which is what `onRemoveFile` is called with. */
+  index: number;
+  /**
+   * Removes this file. Absent unless `onRemoveFile` was given — the built-in
+   * previews render no remove control in that case, and neither should yours.
+   */
+  remove?: () => void;
+  /** Accessible name for the remove control, from `removeFileLabel`. */
+  removeLabel: string;
+  /** True while `uploading`. The built-in remove controls disable on it. */
+  disabled: boolean;
+};
+
+/** {@link FileUploadPreviewItem} plus the branch the preview dispatch took. */
+export type FileUploadMediaPreviewItem = FileUploadPreviewItem & {
+  /**
+   * `"large"` for a lone image or video, `"grid"` when there are several. The
+   * choice is made from the file list and `previewMode`, so a renderer that
+   * cares has to be told rather than guess.
+   */
+  layout: "large" | "grid";
+};
 
 type FileUploadProps = {
   /**
@@ -112,6 +149,53 @@ type FileUploadProps = {
    * @default (file) => `Remove ${file.name}`
    */
   removeFileLabel?: (file: File) => string;
+  /**
+   * Replaces the built-in preview for an image or video.
+   *
+   * A render prop rather than slots, because which preview renders is decided
+   * from the file list: one media file gets a large preview, several get grid
+   * cells, and `previewMode="compact"` produces neither. A flat class map would
+   * be a window onto element trees that may not render at all, so the whole
+   * subtree is handed over instead — `layout` tells you which branch you are in.
+   *
+   * The grid container around your nodes stays this component's, so
+   * `classNames.list` still reaches it.
+   */
+  renderPreview?: (item: FileUploadMediaPreviewItem) => ReactNode;
+  /**
+   * Replaces the built-in compact row. Receives every non-media file, and —
+   * under `previewMode="compact"` — every file.
+   *
+   * The list container around your rows stays this component's, so
+   * `classNames.list` still reaches it.
+   */
+  renderFile?: (item: FileUploadPreviewItem) => ReactNode;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * dropzone root — where the `--drag-over`, `--uploading`, `--error`,
+   * `--success`, `--disabled` and `--has-files` modifiers ride, each mirrored as
+   * a `data-*` attribute so a `data-drag-over:` variant works from `className`.
+   * The union is written out here so an unknown key is a type error rather than
+   * a silently ignored one.
+   *
+   * These reach the dropzone chrome only. The previews are `renderPreview` and
+   * `renderFile`, for the reason given on those props. `hint`, `error`, `success`
+   * and `text` each address **both** the empty state's element and the preview
+   * state's; `list` addresses both the media grid and the compact row list.
+   */
+  classNames?: SlotClassNames<
+    | "preview"
+    | "list"
+    | "hint"
+    | "actions"
+    | "replace"
+    | "clear"
+    | "error"
+    | "success"
+    | "icon"
+    | "text"
+    | "textEmphasis"
+  >;
 } & Omit<ComponentPropsWithRef<"div">, "children">;
 
 /* ------------------------------------------------------------------ */
@@ -234,10 +318,19 @@ function MediaPreviewLarge({
   const isVideo = file.type.startsWith("video/");
 
   return (
-    <div className="file-upload__media-large">
+    <div
+      // slot:(e) this whole subtree is `renderPreview`'s, with `layout: "large"`.
+      // Which of the three preview components renders is chosen from the file
+      // list and `previewMode`, so a class key here would name elements a given
+      // caller may never see; the content channel is the honest one.
+      className="file-upload__media-large"
+    >
       {onRemove && (
         <button
           type="button"
+          // slot:(e) inside `MediaPreviewLarge` — replaced wholesale by
+          // `renderPreview`, which is handed `remove` and `removeLabel` to build
+          // its own control from.
           className="file-upload__media-remove"
           disabled={disabled}
           onClick={(e) => {
@@ -254,6 +347,9 @@ function MediaPreviewLarge({
         (isVideo ? (
           <video
             src={previewUrl}
+            // slot:(e) inside `MediaPreviewLarge`, and one of a video/image pair
+            // no key could tell apart — `renderPreview` gets `previewUrl` and
+            // the `file`, and decides what to draw with them.
             className="file-upload__media-large-content"
             controls
             muted
@@ -262,15 +358,30 @@ function MediaPreviewLarge({
           <img
             src={previewUrl}
             alt={file.name}
+            // slot:(e) inside `MediaPreviewLarge` — the image half of the pair
+            // above, replaced by `renderPreview` along with it.
             className="file-upload__media-large-content"
           />
         ))}
 
-      <div className="file-upload__media-caption">
-        <span className="file-upload__preview-name" title={file.name}>
+      <div
+        // slot:(e) inside `MediaPreviewLarge` — replaced wholesale by
+        // `renderPreview`, which receives the `file` this caption is built from.
+        className="file-upload__media-caption"
+      >
+        <span
+          // slot:(e) inside `MediaPreviewLarge` — replaced wholesale by
+          // `renderPreview`; the name comes from `file.name`.
+          className="file-upload__preview-name"
+          title={file.name}
+        >
           {file.name}
         </span>
-        <span className="file-upload__preview-size">
+        <span
+          // slot:(e) inside `MediaPreviewLarge` — replaced wholesale by
+          // `renderPreview`; the size comes from `file.size`.
+          className="file-upload__preview-size"
+        >
           {formatBytes(file.size)}
         </span>
       </div>
@@ -299,10 +410,19 @@ function MediaPreviewGrid({
   const isVideo = file.type.startsWith("video/");
 
   return (
-    <div className="file-upload__media-grid-item">
+    <div
+      // slot:(e) this whole subtree is `renderPreview`'s, with `layout: "grid"`.
+      // It is `.map`ped over the media files, so no slot key could address one
+      // cell; what a caller wants here is different content in the cell, which
+      // is what the render prop hands them. The grid container around it keeps
+      // `classNames.list`.
+      className="file-upload__media-grid-item"
+    >
       {onRemove && (
         <button
           type="button"
+          // slot:(e) inside `MediaPreviewGrid` — replaced wholesale by
+          // `renderPreview`, which is handed `remove` and `removeLabel`.
           className="file-upload__media-grid-remove"
           disabled={disabled}
           onClick={(e) => {
@@ -319,6 +439,9 @@ function MediaPreviewGrid({
         (isVideo ? (
           <video
             src={previewUrl}
+            // slot:(e) inside `MediaPreviewGrid`, and one of a video/image pair
+            // no key could tell apart — `renderPreview` gets `previewUrl` and
+            // the `file`, and decides what to draw with them.
             className="file-upload__media-grid-content"
             muted
           />
@@ -326,11 +449,18 @@ function MediaPreviewGrid({
           <img
             src={previewUrl}
             alt={file.name}
+            // slot:(e) inside `MediaPreviewGrid` — the image half of the pair
+            // above, replaced by `renderPreview` along with it.
             className="file-upload__media-grid-content"
           />
         ))}
 
-      <span className="file-upload__media-grid-name" title={file.name}>
+      <span
+        // slot:(e) inside `MediaPreviewGrid` — replaced wholesale by
+        // `renderPreview`; the name comes from `file.name`.
+        className="file-upload__media-grid-name"
+        title={file.name}
+      >
         {file.name}
       </span>
     </div>
@@ -357,24 +487,50 @@ function FilePreviewItem({
   const isImage = file.type.startsWith("image/");
 
   return (
-    <div className="file-upload__preview-item">
+    <div
+      // slot:(e) this whole subtree is `renderFile`'s. It is `.map`ped over the
+      // non-media files — and over every file under `previewMode="compact"` — so
+      // no slot key could address one row. The list container around it keeps
+      // `classNames.list`.
+      className="file-upload__preview-item"
+    >
       {isImage && previewUrl ? (
         <img
           src={previewUrl}
           alt={file.name}
+          // slot:(e) inside `FilePreviewItem`, and one of a thumbnail/glyph pair
+          // chosen from the file's MIME type — `renderFile` gets both `file` and
+          // `previewUrl` and makes the same choice itself.
           className="file-upload__preview-thumb"
         />
       ) : (
-        <span className="file-upload__preview-file-icon">
+        <span
+          // slot:(e) inside `FilePreviewItem` — the glyph half of the pair above,
+          // replaced by `renderFile` along with it.
+          className="file-upload__preview-file-icon"
+        >
           <FileIcon />
         </span>
       )}
 
-      <div className="file-upload__preview-info">
-        <span className="file-upload__preview-name" title={file.name}>
+      <div
+        // slot:(e) inside `FilePreviewItem` — replaced wholesale by `renderFile`,
+        // which receives the `file` this block is built from.
+        className="file-upload__preview-info"
+      >
+        <span
+          // slot:(e) inside `FilePreviewItem` — replaced wholesale by
+          // `renderFile`; the name comes from `file.name`.
+          className="file-upload__preview-name"
+          title={file.name}
+        >
           {file.name}
         </span>
-        <span className="file-upload__preview-size">
+        <span
+          // slot:(e) inside `FilePreviewItem` — replaced wholesale by
+          // `renderFile`; the size comes from `file.size`.
+          className="file-upload__preview-size"
+        >
           {formatBytes(file.size)}
         </span>
       </div>
@@ -382,6 +538,8 @@ function FilePreviewItem({
       {onRemove && (
         <button
           type="button"
+          // slot:(e) inside `FilePreviewItem` — replaced wholesale by
+          // `renderFile`, which is handed `remove` and `removeLabel`.
           className="file-upload__preview-remove"
           disabled={disabled}
           onClick={(e) => {
@@ -419,7 +577,10 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
     uploading = false,
     labels,
     removeFileLabel = defaultRemoveFileLabel,
+    renderPreview,
+    renderFile,
     className,
+    classNames,
     onClick,
     onKeyDown,
     onDragOver,
@@ -498,6 +659,25 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
     }
     return { mediaFiles: media, otherFiles: other };
   }, [filesProp, useCompact]);
+
+  // One shape for both render props and for the built-in previews, so a custom
+  // renderer is given exactly what the default one had — including the `index`
+  // `onRemoveFile` is called with, which is otherwise not derivable from a
+  // partitioned list.
+  const previewItem = useCallback(
+    (file: File): FileUploadPreviewItem => {
+      const index = filesProp ? filesProp.indexOf(file) : -1;
+      return {
+        file,
+        previewUrl: previewUrls.get(file),
+        index,
+        remove: onRemoveFile ? () => onRemoveFile(index) : undefined,
+        removeLabel: removeFileLabel(file),
+        disabled: uploading,
+      };
+    },
+    [filesProp, previewUrls, onRemoveFile, removeFileLabel, uploading],
+  );
 
   /* ---- Validation ---- */
 
@@ -625,6 +805,17 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
       aria-disabled={disabled || undefined}
       aria-busy={uploading || undefined}
       aria-describedby={describedBy}
+      // The six `--modifier` classes below, mirrored as attributes. A modifier
+      // class is a selector for a consumer stylesheet; a `data-*` attribute is
+      // also a Tailwind variant, so `className="data-drag-over:ring-2"` works
+      // from the one prop that already reaches this element. The classes are
+      // retained as the CSS hooks they have always been.
+      data-has-files={hasFiles || undefined}
+      data-drag-over={dragOver || undefined}
+      data-uploading={uploading || undefined}
+      data-success={Boolean(success) || undefined}
+      data-error={Boolean(shownError) || undefined}
+      data-disabled={disabled || undefined}
       className={cn(
         "file-upload",
         hasFiles && "file-upload--has-files",
@@ -645,71 +836,84 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
       {hasFiles ? (
         /* ---- Preview state ---- */
         <div
-          className="file-upload__preview"
+          className={cn("file-upload__preview", classNames?.preview)}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           role="presentation"
         >
           {/* Single media file — large preview */}
-          {mediaFiles.length === 1 && (
-            <MediaPreviewLarge
-              file={mediaFiles[0]}
-              previewUrl={previewUrls.get(mediaFiles[0])}
-              removeLabel={removeFileLabel(mediaFiles[0])}
-              onRemove={
-                onRemoveFile ? () => onRemoveFile(filesProp.indexOf(mediaFiles[0])) : undefined
-              }
-              disabled={uploading}
-            />
-          )}
+          {mediaFiles.length === 1 &&
+            (renderPreview ? (
+              renderPreview({ ...previewItem(mediaFiles[0]), layout: "large" })
+            ) : (
+              <MediaPreviewLarge
+                file={mediaFiles[0]}
+                previewUrl={previewUrls.get(mediaFiles[0])}
+                removeLabel={removeFileLabel(mediaFiles[0])}
+                onRemove={
+                  onRemoveFile ? () => onRemoveFile(filesProp.indexOf(mediaFiles[0])) : undefined
+                }
+                disabled={uploading}
+              />
+            ))}
 
           {/* Multiple media files — grid */}
           {mediaFiles.length > 1 && (
-            <div className="file-upload__media-grid">
+            <div className={cn("file-upload__media-grid", classNames?.list)}>
               {mediaFiles.map((file, i) => (
-                <MediaPreviewGrid
-                  key={`${file.name}-${file.size}-${i}`}
-                  file={file}
-                  previewUrl={previewUrls.get(file)}
-                  removeLabel={removeFileLabel(file)}
-                  onRemove={
-                    onRemoveFile ? () => onRemoveFile(filesProp.indexOf(file)) : undefined
-                  }
-                  disabled={uploading}
-                />
+                <Fragment key={`${file.name}-${file.size}-${i}`}>
+                  {renderPreview ? (
+                    renderPreview({ ...previewItem(file), layout: "grid" })
+                  ) : (
+                    <MediaPreviewGrid
+                      file={file}
+                      previewUrl={previewUrls.get(file)}
+                      removeLabel={removeFileLabel(file)}
+                      onRemove={
+                        onRemoveFile ? () => onRemoveFile(filesProp.indexOf(file)) : undefined
+                      }
+                      disabled={uploading}
+                    />
+                  )}
+                </Fragment>
               ))}
             </div>
           )}
 
           {/* Non-media / compact files — rows */}
           {otherFiles.length > 0 && (
-            <div className="file-upload__preview-list">
+            <div className={cn("file-upload__preview-list", classNames?.list)}>
               {otherFiles.map((file, i) => (
-                <FilePreviewItem
-                  key={`${file.name}-${file.size}-${i}`}
-                  file={file}
-                  previewUrl={previewUrls.get(file)}
-                  removeLabel={removeFileLabel(file)}
-                  onRemove={
-                    onRemoveFile ? () => onRemoveFile(filesProp.indexOf(file)) : undefined
-                  }
-                  disabled={uploading}
-                />
+                <Fragment key={`${file.name}-${file.size}-${i}`}>
+                  {renderFile ? (
+                    renderFile(previewItem(file))
+                  ) : (
+                    <FilePreviewItem
+                      file={file}
+                      previewUrl={previewUrls.get(file)}
+                      removeLabel={removeFileLabel(file)}
+                      onRemove={
+                        onRemoveFile ? () => onRemoveFile(filesProp.indexOf(file)) : undefined
+                      }
+                      disabled={uploading}
+                    />
+                  )}
+                </Fragment>
               ))}
             </div>
           )}
 
           {/* Uploading — otherwise the disabled actions below say nothing */}
           {uploading && (
-            <p className="file-upload__hint" role="status">
+            <p className={cn("file-upload__hint", classNames?.hint)} role="status">
               {text.uploading}
             </p>
           )}
 
-          <div className="file-upload__preview-actions">
+          <div className={cn("file-upload__preview-actions", classNames?.actions)}>
             <button
               type="button"
-              className="file-upload__preview-replace"
+              className={cn("file-upload__preview-replace", classNames?.replace)}
               disabled={uploading || disabled}
               onClick={(e) => {
                 e.stopPropagation();
@@ -721,7 +925,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
             {onClear && (
               <button
                 type="button"
-                className="file-upload__preview-clear"
+                className={cn("file-upload__preview-clear", classNames?.clear)}
                 disabled={uploading || disabled}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -735,14 +939,18 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
 
           {/* Error message */}
           {shownError && (
-            <p id={errorId} role="alert" className="file-upload__error">
+            <p id={errorId} role="alert" className={cn("file-upload__error", classNames?.error)}>
               {shownError}
             </p>
           )}
 
           {/* Success message */}
           {success && (
-            <p id={successId} role="status" className="file-upload__success">
+            <p
+              id={successId}
+              role="status"
+              className={cn("file-upload__success", classNames?.success)}
+            >
               {success}
             </p>
           )}
@@ -751,37 +959,43 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
         /* ---- Empty / prompt state ---- */
         <>
           {/* Icon */}
-          <span className="file-upload__icon" aria-hidden="true">
+          <span className={cn("file-upload__icon", classNames?.icon)} aria-hidden="true">
             <UploadIcon />
           </span>
 
           {/* Main text */}
           {uploading ? (
-            <p className="file-upload__text">{text.uploading}</p>
+            <p className={cn("file-upload__text", classNames?.text)}>{text.uploading}</p>
           ) : (
-            <p className="file-upload__text">
+            <p className={cn("file-upload__text", classNames?.text)}>
               {text.prompt}{" "}
-              <span className="file-upload__text-emphasis">{text.browse}</span>
+              <span className={cn("file-upload__text-emphasis", classNames?.textEmphasis)}>
+                {text.browse}
+              </span>
             </p>
           )}
 
           {/* Hint / constraints */}
           {showHint && (
-            <p id={hintId} className="file-upload__hint">
+            <p id={hintId} className={cn("file-upload__hint", classNames?.hint)}>
               {computedHint}
             </p>
           )}
 
           {/* Error message */}
           {shownError && (
-            <p id={errorId} role="alert" className="file-upload__error">
+            <p id={errorId} role="alert" className={cn("file-upload__error", classNames?.error)}>
               {shownError}
             </p>
           )}
 
           {/* Success message */}
           {success && (
-            <p id={successId} role="status" className="file-upload__success">
+            <p
+              id={successId}
+              role="status"
+              className={cn("file-upload__success", classNames?.success)}
+            >
               {success}
             </p>
           )}
@@ -798,6 +1012,11 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
         onChange={handleInputChange}
         // Programmatic click() bubbles back to the dropzone and re-enters its handlers.
         onClick={(e) => e.stopPropagation()}
+        // slot:(a) the real file input. `sr-only` is what keeps it off screen
+        // while leaving it clickable programmatically; anything else either
+        // reveals a raw file control inside the dropzone or takes it out of the
+        // accessibility tree. `accept`, `multiple` and `disabled` are the props
+        // that configure it.
         className="sr-only"
         tabIndex={-1}
         aria-hidden="true"

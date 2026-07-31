@@ -42,10 +42,12 @@ the background — and over anything else you put directly inside `Hero`. See
 | `size`         | `Hero`            | `"sm" \| "md" \| "lg" \| "full"`       | `"md"`                               |
 | `overlay`      | `Hero`            | `boolean`                              | a `Hero.Background` is present       |
 | `align`        | `Hero`            | `"start" \| "center" \| "end"`         | `"end"`                              |
+| `classNames`   | `Hero`            | `{ overlay?: string }` — see [Slots](#slots) | —                              |
 | `src`          | `Hero.Background` | `string`                               | —                                    |
 | `alt`          | `Hero.Background` | `string`                               | — (the `<img>` gets `alt=""`)        |
 | `parallax`     | `Hero.Background` | `boolean`                              | `false`                              |
 | `parallaxRate` | `Hero.Background` | `number`                               | — ([Parallax](parallax.md) uses `0.3`) |
+| `imgProps`     | `Hero.Background` | props of `<img>` minus `src` / `alt` — see [Slots](#slots) | —          |
 | `animate`      | `Hero.Content`    | `boolean`                              | `false`                              |
 | `animation`    | `Hero.Content`    | `"fade-up" \| "fade-in" \| "scale"`    | `"fade-up"`                          |
 
@@ -276,6 +278,51 @@ Three ways out, in order of how much they actually guarantee:
 The other two light-ink candidates are worse: `--C-TEXT-PRIMARY` is dark in the default and
 `events` themes, and `--C-TEXT-INVERSE` is dark in `tech` and `grimdark` — either one goes
 dark-on-dark in half the themes measured above.
+
+## Slots
+
+Three of the four elements Hero renders are subcomponents, so their own `className` reaches
+them. The scrim is the exception — Hero renders it from the `overlay` prop and nothing else
+addresses it.
+
+| Slot      | On     | Element               | What it addresses                            |
+| --------- | ------ | --------------------- | -------------------------------------------- |
+| `overlay` | `Hero` | `div.hero__overlay`   | the darkening scrim, when `overlay` is on     |
+
+```tsx
+<Hero classNames={{ overlay: "bg-linear-to-t from-black/80 to-transparent" }}>
+  <Hero.Background src="/city.jpg" alt="" />
+  <Hero.Content>…</Hero.Content>
+</Hero>
+```
+
+If what you want is a *different scrim colour* rather than a different shape, set
+`--OVERLAY-SCRIM-COLOR` instead — see [Theme tokens](#theme-tokens), and note that it is the
+shared overlay token, so it moves every scrim in the system. Reach for the slot when you
+need utilities the component never declared, like a gradient.
+
+### `Hero.Background`'s `<img>`
+
+`Hero.Background`'s own `className`, `ref` and rest props land on the wrapper `<div>`, so the
+`<img>` inside it takes an `imgProps` bag:
+
+```tsx
+<Hero.Background
+  src="/city.jpg"
+  alt="The city at dusk"
+  imgProps={{ loading: "eager", fetchPriority: "high", srcSet: "/city@2x.jpg 2x" }}
+/>
+```
+
+A hero background is usually the page's LCP element, and `loading`, `fetchPriority`,
+`srcSet`, `sizes` and `decoding` were unreachable before this bag. Its `className` merges
+after the component's own, so `{ className: "object-top" }` beats the default `object-cover`
+crop. `src` and `alt` stay this component's — they are its props, and are set after the bag.
+
+The parallax layer between them takes nothing. Its one class makes the transformed layer
+fill the background box; changing it detaches the photograph from the frame it is cropped
+to, and it exists only when `parallax` is set, so a class routed there would come and go
+with an unrelated prop.
 
 ## Theme tokens
 

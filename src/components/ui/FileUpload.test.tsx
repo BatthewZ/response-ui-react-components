@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef, StrictMode, useState } from "react";
+import { type ComponentProps, createRef, StrictMode, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FileUpload } from "./FileUpload";
@@ -639,6 +639,446 @@ describe("FileUpload", () => {
       const zone = screen.getByRole("button", { name: "Upload file" });
       expect(zone).not.toHaveTextContent("Drag & drop or");
       expect(zone).toHaveTextContent("browse");
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  Slots, render props and the state attributes                       */
+  /* ------------------------------------------------------------------ */
+
+  describe("slots", () => {
+    type Slots = NonNullable<ComponentProps<typeof FileUpload>["classNames"]>;
+
+    const txt = new File(["x"], "notes.txt", { type: "text/plain" });
+    const png = new File(["x"], "photo.png", { type: "image/png" });
+    const png2 = new File(["x"], "other.png", { type: "image/png" });
+
+    /** jsdom implements neither `createObjectURL` nor `revokeObjectURL`. */
+    function stubObjectUrls() {
+      let created = 0;
+      vi.stubGlobal(
+        "URL",
+        class StubURL extends URL {
+          static createObjectURL = vi.fn(() => `blob:mock/${++created}`);
+          static revokeObjectURL = vi.fn();
+        },
+      );
+    }
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    const cls = (container: HTMLElement, selector: string) =>
+      container.querySelector(selector)?.getAttribute("class") ?? "";
+
+    /* ---- The empty / prompt state ---- */
+
+    /**
+     * One test per slot key, and every key asserted in exactly one test —
+     * otherwise deleting one merge reddens several tests for one defect and the
+     * extra reds say nothing. The four keys that address an element in *both*
+     * states get their two renders inside their own test for the same reason.
+     */
+    it("lands the prompt-state slots on their own elements, beside the base class", () => {
+      const { container } = render(
+        <FileUpload
+          classNames={{ icon: "text-status-info", text: "text-h3", textEmphasis: "underline" }}
+        />,
+      );
+      const cases: [string, string][] = [
+        [".file-upload__icon", "text-status-info"],
+        [".file-upload__text", "text-h3"],
+        [".file-upload__text-emphasis", "underline"],
+      ];
+      for (const [selector, extra] of cases) {
+        expect(cls(container, selector), selector).toContain(selector.slice(1));
+        expect(cls(container, selector), selector).toContain(extra);
+      }
+    });
+
+    /* ---- The preview state ---- */
+
+    it("lands the preview-state slots on their own elements, beside the base class", () => {
+      stubObjectUrls();
+      const { container } = render(
+        <FileUpload
+          files={[txt]}
+          onClear={() => {}}
+          classNames={{
+            preview: "gap-r3",
+            actions: "justify-end",
+            replace: "underline",
+            clear: "italic",
+          }}
+        />,
+      );
+
+      const cases: [string, string][] = [
+        [".file-upload__preview", "gap-r3"],
+        [".file-upload__preview-actions", "justify-end"],
+        [".file-upload__preview-replace", "underline"],
+        [".file-upload__preview-clear", "italic"],
+      ];
+      for (const [selector, extra] of cases) {
+        expect(cls(container, selector), selector).toContain(selector.slice(1));
+        expect(cls(container, selector), selector).toContain(extra);
+      }
+    });
+
+    /* ---- The four keys that address two elements each ---- */
+
+    /**
+     * `list` addresses both preview containers, because they are one concept the
+     * component picks between from the file list. Several media files plus one
+     * other renders both at once. If that ever splits into two keys, this is the
+     * test that has to move rather than be deleted.
+     */
+    it("lands classNames.list on the media grid and the row list alike", () => {
+      stubObjectUrls();
+      const { container } = render(
+        <FileUpload files={[png, png2, txt]} classNames={{ list: "grid-cols-4" }} />,
+      );
+      for (const selector of [".file-upload__media-grid", ".file-upload__preview-list"]) {
+        expect(cls(container, selector), selector).toContain(selector.slice(1));
+        expect(cls(container, selector), selector).toContain("grid-cols-4");
+      }
+    });
+
+    it("lands classNames.hint on the constraints line and the uploading caption", () => {
+      stubObjectUrls();
+      const prompt = render(<FileUpload hint="PNG up to 2MB" classNames={{ hint: "italic" }} />);
+      const preview = render(
+        <FileUpload files={[txt]} uploading classNames={{ hint: "italic" }} />,
+      );
+      for (const container of [prompt.container, preview.container]) {
+        expect(cls(container, ".file-upload__hint")).toContain("file-upload__hint");
+        expect(cls(container, ".file-upload__hint")).toContain("italic");
+      }
+    });
+
+    it("lands classNames.error on the message in both states", () => {
+      stubObjectUrls();
+      const prompt = render(<FileUpload error="Too big" classNames={{ error: "font-bold" }} />);
+      const preview = render(
+        <FileUpload files={[txt]} error="Too big" classNames={{ error: "font-bold" }} />,
+      );
+      for (const container of [prompt.container, preview.container]) {
+        expect(cls(container, ".file-upload__error")).toContain("file-upload__error");
+        expect(cls(container, ".file-upload__error")).toContain("font-bold");
+      }
+    });
+
+    it("lands classNames.success on the message in both states", () => {
+      stubObjectUrls();
+      const prompt = render(
+        <FileUpload success="Uploaded" classNames={{ success: "font-bold" }} />,
+      );
+      const preview = render(
+        <FileUpload files={[txt]} success="Uploaded" classNames={{ success: "font-bold" }} />,
+      );
+      for (const container of [prompt.container, preview.container]) {
+        expect(cls(container, ".file-upload__success")).toContain("file-upload__success");
+        expect(cls(container, ".file-upload__success")).toContain("font-bold");
+      }
+    });
+
+    /* ---- Companions ---- */
+
+    it("leaves the internals on their base classes when no slot is passed", () => {
+      const { container } = render(<FileUpload hint="PNG up to 2MB" />);
+      for (const selector of [
+        ".file-upload__icon",
+        ".file-upload__text",
+        ".file-upload__text-emphasis",
+        ".file-upload__hint",
+      ]) {
+        expect(cls(container, selector), selector).toBe(selector.slice(1));
+      }
+    });
+
+    it("does not put a slot class on the dropzone root", () => {
+      render(
+        <FileUpload
+          hint="PNG up to 2MB"
+          classNames={{ icon: "text-status-info", text: "text-h3", hint: "italic" }}
+        />,
+      );
+      const zone = screen.getByRole("button", { name: "Upload file" });
+      expect(zone.className).toContain("file-upload");
+      expect(zone.className).not.toContain("text-status-info");
+      expect(zone.className).not.toContain("text-h3");
+      expect(zone.className).not.toContain("italic");
+    });
+
+    /**
+     * The reason the slot union is written out per component rather than typed
+     * `Record<string, string>`: an unknown key is a *type* error, not a silent
+     * no-op. The `@ts-expect-error` is the assertion — it fails if TypeScript
+     * ever stops rejecting the key. Do not "clean it up".
+     *
+     * `thumb` is the pointed one: it names an element inside the preview
+     * components, which are `renderFile`'s, not a slot's.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        // @ts-expect-error — `thumb` lives inside a preview; use `renderFile`.
+        <FileUpload hint="PNG up to 2MB" classNames={{ thumb: "rounded-lg" }} />,
+      );
+      expect(cls(container, ".file-upload__hint")).toBe("file-upload__hint");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      render(<FileUpload classNames={{ icon: "text-status-info" }} />);
+      const zone = screen.getByRole("button", { name: "Upload file" });
+      expect(zone.hasAttribute("classnames")).toBe(false);
+      expect(zone.hasAttribute("renderpreview")).toBe(false);
+      expect(zone.hasAttribute("renderfile")).toBe(false);
+    });
+
+    /* ---- The state attributes ---- */
+
+    it("mirrors each root modifier class as a data-* attribute", () => {
+      stubObjectUrls();
+      const { container } = render(
+        <FileUpload files={[txt]} uploading disabled error="Bad" success="Good" />,
+      );
+      const zone = container.querySelector(".file-upload") as HTMLElement;
+
+      for (const [attr, modifier] of [
+        ["data-has-files", "file-upload--has-files"],
+        ["data-uploading", "file-upload--uploading"],
+        ["data-disabled", "file-upload--disabled"],
+        ["data-error", "file-upload--error"],
+        ["data-success", "file-upload--success"],
+      ] as const) {
+        expect(zone.getAttribute(attr), attr).toBe("true");
+        expect(zone.className, modifier).toContain(modifier);
+      }
+    });
+
+    it("omits a state attribute rather than writing false", () => {
+      render(<FileUpload />);
+      const zone = screen.getByRole("button", { name: "Upload file" });
+      for (const attr of [
+        "data-has-files",
+        "data-drag-over",
+        "data-uploading",
+        "data-disabled",
+        "data-error",
+        "data-success",
+      ]) {
+        expect(zone.hasAttribute(attr), attr).toBe(false);
+      }
+    });
+
+    it("sets data-drag-over while a drag is over the zone", () => {
+      render(<FileUpload />);
+      const zone = screen.getByRole("button", { name: "Upload file" });
+      fireEvent.dragOver(zone);
+      expect(zone.getAttribute("data-drag-over")).toBe("true");
+      expect(zone.className).toContain("file-upload--drag-over");
+    });
+  });
+
+  describe("renderPreview / renderFile", () => {
+    const txt = new File(["x"], "notes.txt", { type: "text/plain" });
+    const png = new File(["x"], "photo.png", { type: "image/png" });
+    const png2 = new File(["x"], "other.png", { type: "image/png" });
+
+    function stubObjectUrls() {
+      let created = 0;
+      vi.stubGlobal(
+        "URL",
+        class StubURL extends URL {
+          static createObjectURL = vi.fn(() => `blob:mock/${++created}`);
+          static revokeObjectURL = vi.fn();
+        },
+      );
+    }
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("replaces the large media preview and reports layout: large", () => {
+      stubObjectUrls();
+      const seen: string[] = [];
+      const { container } = render(
+        <FileUpload
+          files={[png]}
+          renderPreview={(item) => {
+            seen.push(item.layout);
+            return <p data-testid="custom">{item.file.name}</p>;
+          }}
+        />,
+      );
+
+      // The object URL is minted in an effect, so the renderer runs again once
+      // it lands — assert what it was told, not how often.
+      expect(seen.length).toBeGreaterThan(0);
+      expect(new Set(seen)).toEqual(new Set(["large"]));
+      expect(screen.getByTestId("custom")).toHaveTextContent("photo.png");
+      expect(container.querySelector(".file-upload__media-large")).toBeNull();
+      // The chrome around it is still the component's.
+      expect(container.querySelector(".file-upload__preview")).not.toBeNull();
+    });
+
+    it("replaces every grid cell and reports layout: grid", () => {
+      stubObjectUrls();
+      const seen: string[] = [];
+      const { container } = render(
+        <FileUpload
+          files={[png, png2]}
+          renderPreview={(item) => {
+            seen.push(item.layout);
+            return <p className="custom-cell">{item.file.name}</p>;
+          }}
+        />,
+      );
+
+      expect(seen.length).toBeGreaterThan(0);
+      expect(new Set(seen)).toEqual(new Set(["grid"]));
+      expect(container.querySelectorAll(".custom-cell")).toHaveLength(2);
+      expect(container.querySelector(".file-upload__media-grid-item")).toBeNull();
+      // The grid container the cells sit in stays this component's, and keeps
+      // its slot.
+      expect(container.querySelector(".file-upload__media-grid")).not.toBeNull();
+    });
+
+    it("replaces the compact row and keeps the list container", () => {
+      stubObjectUrls();
+      const { container } = render(
+        <FileUpload
+          files={[txt]}
+          renderFile={(item) => <p className="custom-row">{item.file.name}</p>}
+        />,
+      );
+
+      expect(container.querySelector(".custom-row")).toHaveTextContent("notes.txt");
+      expect(container.querySelector(".file-upload__preview-item")).toBeNull();
+      // The container the rows sit in is still the component's, base class and
+      // all — the slot that reaches it is asserted in the slots block above.
+      expect(container.querySelector(".file-upload__preview-list")?.getAttribute("class")).toBe(
+        "file-upload__preview-list",
+      );
+    });
+
+    /**
+     * A render prop hands over *content*, never the component's own wiring. The
+     * preview region keeps its class, its `role="presentation"` and — the one
+     * that actually bites — its click/keydown stoppers, which are what keep a
+     * press inside a preview from re-opening the file picker.
+     */
+    it("keeps the preview region's own class, role and event guards", async () => {
+      stubObjectUrls();
+      const user = userEvent.setup();
+      const onClear = vi.fn();
+      const clickSpy = vi.fn();
+      const { container } = render(
+        <FileUpload
+          files={[txt]}
+          onClear={onClear}
+          onClick={clickSpy}
+          renderFile={(item) => <button type="button">open {item.file.name}</button>}
+        />,
+      );
+
+      const preview = container.querySelector(".file-upload__preview") as HTMLElement;
+      expect(preview.getAttribute("class")).toBe("file-upload__preview");
+      expect(preview.getAttribute("role")).toBe("presentation");
+
+      await user.click(screen.getByRole("button", { name: "open notes.txt" }));
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    /**
+     * `index` is the argument `onRemoveFile` is called with, and it is not
+     * derivable from the partitioned lists a renderer is handed one file at a
+     * time — which is why the item carries both it and a bound `remove`.
+     */
+    it("hands the renderer a working remove and the file's index in files", async () => {
+      stubObjectUrls();
+      const user = userEvent.setup();
+      const onRemoveFile = vi.fn();
+      const indices: number[] = [];
+      render(
+        <FileUpload
+          files={[png, txt]}
+          onRemoveFile={onRemoveFile}
+          renderFile={(item) => {
+            indices.push(item.index);
+            return (
+              <button type="button" onClick={item.remove}>
+                {item.removeLabel}
+              </button>
+            );
+          }}
+        />,
+      );
+
+      // `notes.txt` is the second entry of `files`, though it is the *first*
+      // compact row — the media file ahead of it went to the other branch. That
+      // gap is the whole reason `index` is on the item.
+      expect(new Set(indices)).toEqual(new Set([1]));
+      await user.click(screen.getByRole("button", { name: "Remove notes.txt" }));
+      expect(onRemoveFile).toHaveBeenCalledWith(1);
+    });
+
+    it("omits remove entirely when onRemoveFile was not given", () => {
+      stubObjectUrls();
+      let sawRemove: unknown = "unset";
+      render(
+        <FileUpload
+          files={[txt]}
+          renderFile={(item) => {
+            sawRemove = item.remove;
+            return <p>{item.file.name}</p>;
+          }}
+        />,
+      );
+      expect(sawRemove).toBeUndefined();
+    });
+
+    it("passes the object URL through for a media file and nothing for a text one", () => {
+      stubObjectUrls();
+      let mediaUrl: string | undefined;
+      let textUrl: string | undefined = "unset";
+      render(
+        <FileUpload
+          files={[png, txt]}
+          renderPreview={(item) => {
+            mediaUrl = item.previewUrl;
+            return null;
+          }}
+          renderFile={(item) => {
+            textUrl = item.previewUrl;
+            return null;
+          }}
+        />,
+      );
+      expect(mediaUrl).toMatch(/^blob:mock\//);
+      expect(textUrl).toBeUndefined();
+    });
+
+    it("sends every file to renderFile under previewMode=compact", () => {
+      stubObjectUrls();
+      const names: string[] = [];
+      render(
+        <FileUpload
+          files={[png, txt]}
+          previewMode="compact"
+          renderPreview={() => <p>never</p>}
+          renderFile={(item) => {
+            names.push(item.file.name);
+            return null;
+          }}
+        />,
+      );
+      expect(new Set(names)).toEqual(new Set(["photo.png", "notes.txt"]));
+      expect(screen.queryByText("never")).toBeNull();
+    });
+
+    it("keeps the built-in previews when neither prop is given", () => {
+      stubObjectUrls();
+      const { container } = render(<FileUpload files={[txt]} />);
+      expect(container.querySelector(".file-upload__preview-item")).not.toBeNull();
     });
   });
 });

@@ -1,5 +1,6 @@
 import { act, createEvent, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Carousel } from "./Carousel";
@@ -510,5 +511,108 @@ describe("Carousel", () => {
     expect(screen.getByRole("button", { name: "Précédent" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Suivant" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Previous" })).not.toBeInTheDocument();
+  });
+
+  describe("slots", () => {
+    type CarouselSlots = NonNullable<ComponentProps<typeof Carousel>["classNames"]>;
+
+    const withSlots = (classNames: CarouselSlots) =>
+      render(
+        <Carousel title="Featured" classNames={classNames} data-testid="carousel">
+          <Carousel.Track>
+            <Carousel.Item>Slide 1</Carousel.Item>
+          </Carousel.Track>
+        </Carousel>,
+      );
+
+    it("lands classNames.title on the heading row, beside the base class", () => {
+      const { container } = withSlots({ title: "text-h2" });
+      const title = container.querySelector(".carousel-title");
+      expect(title?.getAttribute("class")).toContain("carousel-title");
+      expect(title?.getAttribute("class")).toContain("text-h2");
+    });
+
+    it("lands classNames.viewport on the scrollport, beside the base class", () => {
+      const { container } = withSlots({ viewport: "px-r3" });
+      const viewport = container.querySelector(".carousel-viewport");
+      expect(viewport?.getAttribute("class")).toContain("carousel-viewport");
+      expect(viewport?.getAttribute("class")).toContain("px-r3");
+    });
+
+    /**
+     * `prev` and `next` are separate keys because they are separate roles.
+     * Asserting each lands on its own control and *not* on the other is what
+     * makes that a capability rather than a naming preference.
+     */
+    it("lands classNames.prev and classNames.next on their own arrows only", () => {
+      withSlots({ prev: "bg-status-error", next: "bg-status-info" });
+      const prev = screen.getByRole("button", { name: "Previous" });
+      const next = screen.getByRole("button", { name: "Next" });
+
+      expect(prev.className).toContain("carousel-arrow--prev");
+      expect(prev.className).toContain("bg-status-error");
+      expect(prev.className).not.toContain("bg-status-info");
+
+      expect(next.className).toContain("carousel-arrow--next");
+      expect(next.className).toContain("bg-status-info");
+      expect(next.className).not.toContain("bg-status-error");
+    });
+
+    it("leaves the internals on their base classes when no slot is passed", () => {
+      const { container } = render(
+        <Carousel title="Featured">
+          <Carousel.Track>
+            <Carousel.Item>Slide 1</Carousel.Item>
+          </Carousel.Track>
+        </Carousel>,
+      );
+      expect(container.querySelector(".carousel-title")?.getAttribute("class")).toBe(
+        "carousel-title",
+      );
+      expect(container.querySelector(".carousel-viewport")?.getAttribute("class")).toBe(
+        "carousel-viewport",
+      );
+    });
+
+    it("does not put a slot class on the root", () => {
+      withSlots({
+        title: "text-h2",
+        viewport: "px-r3",
+        prev: "bg-status-error",
+        next: "bg-status-info",
+      });
+      const root = screen.getByTestId("carousel");
+      expect(root.className).toContain("carousel");
+      expect(root.className).not.toContain("text-h2");
+      expect(root.className).not.toContain("px-r3");
+    });
+
+    /**
+     * The reason the slot union is written out per component rather than typed
+     * `Record<string, string>`: an unknown key is a *type* error, not a silent
+     * no-op. The `@ts-expect-error` is the assertion — it fails if TypeScript
+     * ever stops rejecting the key. Do not "clean it up".
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        <Carousel
+          title="Featured"
+          // @ts-expect-error — `track` is a subcomponent, not a slot.
+          classNames={{ track: "gap-r3" }}
+        >
+          <Carousel.Track>
+            <Carousel.Item>Slide 1</Carousel.Item>
+          </Carousel.Track>
+        </Carousel>,
+      );
+      expect(container.querySelector(".carousel-track")?.getAttribute("class")).toBe(
+        "carousel-track",
+      );
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      withSlots({ title: "text-h2" });
+      expect(screen.getByTestId("carousel").hasAttribute("classnames")).toBe(false);
+    });
   });
 });

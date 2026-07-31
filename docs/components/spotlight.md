@@ -256,6 +256,13 @@ borrows read `--MOTION-DURATION-ENTER` and `--MOTION-EASE-ENTER` from
   an image with no `imgProps` still loads eagerly and reserves no space — pass
   `imgProps={{ loading: "lazy", width, height }}`, or give the wrapper a height as shown above.
   [MediaCard](media-card.md)'s image part defaults to `loading="lazy"`; this one does not.
+  `imgProps` is also the package's one props bag whose `className` is **not** merged with a
+  class of the component's, and that is deliberate rather than an omission: this `<img>`
+  carries no class at all — every rule that shapes it hangs off `.spotlight-image` on the
+  wrapper — so there is nothing for a merge to preserve. `imgProps={{ className: "rounded-lg" }}`
+  puts exactly that on the element. Where a bag's target *does* carry a class, as
+  [Hero](hero.md)'s background `<img>` does, the merge is mandatory and the component's class
+  comes first.
 - **Parallax has no overscan.** `.spotlight-image` is `overflow: hidden` and the drifting
   layer fills it exactly, so a translate of *n* pixels exposes an *n*-pixel blank band at
   one edge. The offset is the row's distance from the viewport centre times the rate and is

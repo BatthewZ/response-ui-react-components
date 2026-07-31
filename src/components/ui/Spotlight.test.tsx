@@ -161,6 +161,34 @@ describe("Spotlight", () => {
   /*  #193 / #196 / #197 / #198 / #199                                   */
   /* ------------------------------------------------------------------ */
 
+  /**
+   * The pin on this hatch's one deviation from the house form: `imgProps` is
+   * spread **raw**, with no `cn()` merge, because this `<img>` carries no class
+   * of its own — every rule that shapes it hangs off `.spotlight-image` on the
+   * wrapper. `cn("one-literal")` returns that literal unchanged, so inventing a
+   * base class here to merge against would buy nothing. If a class is ever added
+   * to this element, the merge becomes mandatory and this test is what says so.
+   */
+  it("gives the <img> exactly the class the bag asked for, and none of its own", () => {
+    const { container } = render(
+      <Spotlight animate={false}>
+        <Spotlight.Item>
+          <Spotlight.Image src="/photo.jpg" alt="A photo" />
+        </Spotlight.Item>
+      </Spotlight>,
+    );
+    expect(container.querySelector("img")?.hasAttribute("class")).toBe(false);
+
+    const { container: withBag } = render(
+      <Spotlight animate={false}>
+        <Spotlight.Item>
+          <Spotlight.Image src="/photo.jpg" alt="A photo" imgProps={{ className: "rounded-lg" }} />
+        </Spotlight.Item>
+      </Spotlight>,
+    );
+    expect(withBag.querySelector("img")?.getAttribute("class")).toBe("rounded-lg");
+  });
+
   // #193 — every other prop landed on the wrapper div, never on the <img>.
   it("#193: forwards imgProps to the <img>, not the wrapper", () => {
     const { container } = render(

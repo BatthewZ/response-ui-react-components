@@ -155,3 +155,168 @@ describe("AvatarGroup", () => {
     expect(screen.getByText("+1").className).toContain("size-12");
   });
 });
+
+describe("Avatar slots", () => {
+  const frame = (root: HTMLElement) => root.firstElementChild as HTMLElement;
+
+  it("lands classNames.frame on the clipping disc, beside the base classes", () => {
+    render(<Avatar name="Jane Doe" classNames={{ frame: "rounded-lg" }} />);
+    const cls = frame(screen.getByRole("img")).getAttribute("class") ?? "";
+    expect(cls).toContain("overflow-hidden");
+    expect(cls).toContain("rounded-lg");
+  });
+
+  it("lands classNames.image on the <img>, beside the base classes", () => {
+    render(<Avatar src="/photo.jpg" alt="Jane" classNames={{ image: "object-contain" }} />);
+    const img = screen
+      .getAllByRole("img", { name: "Jane" })
+      .find((el) => el.tagName === "IMG") as HTMLElement;
+    // `object-contain` is the same tailwind-merge group as the base
+    // `object-cover`, so it replaces it — which is the point of the slot.
+    // `size-full` is the half that has to survive.
+    expect(img.getAttribute("class")).toContain("size-full");
+    expect(img.getAttribute("class")).toContain("object-contain");
+    expect(img.getAttribute("class")).not.toContain("object-cover");
+  });
+
+  it("lands classNames.status on the presence dot, beside the base classes", () => {
+    const { container } = render(
+      <Avatar name="Jane Doe" status="online" classNames={{ status: "ring-4" }} />,
+    );
+    const dot = container.querySelector(".bg-status-success") as HTMLElement;
+    expect(dot.getAttribute("class")).toContain("rounded-full");
+    expect(dot.getAttribute("class")).toContain("ring-4");
+  });
+
+  it("leaves the internals on their base classes when no slot is passed", () => {
+    render(<Avatar src="/photo.jpg" alt="Jane" />);
+    const img = screen
+      .getAllByRole("img", { name: "Jane" })
+      .find((el) => el.tagName === "IMG") as HTMLElement;
+    expect(img.getAttribute("class")).toBe("size-full object-cover");
+  });
+
+  it("does not put a slot class on the root", () => {
+    render(
+      <Avatar
+        name="Jane Doe"
+        status="online"
+        classNames={{ frame: "rounded-lg", image: "object-contain", status: "ring-4" }}
+      />,
+    );
+    const root = screen.getByRole("img");
+    expect(root.className).not.toContain("rounded-lg");
+    expect(root.className).not.toContain("object-contain");
+    expect(root.className).not.toContain("ring-4");
+  });
+
+  /**
+   * The reason the slot union is written out per component rather than typed
+   * `Record<string, string>`: an unknown key is a *type* error, not a silent
+   * no-op. The `@ts-expect-error` is the assertion — it fails if TypeScript ever
+   * stops rejecting the key. Do not "clean it up".
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    render(
+      // @ts-expect-error — `initials` is not a slot; only untyped JS gets here.
+      <Avatar name="Jane Doe" classNames={{ initials: "text-lg" }} />,
+    );
+    expect(frame(screen.getByRole("img")).getAttribute("class")).not.toContain("text-lg");
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    render(<Avatar name="Jane Doe" classNames={{ frame: "rounded-lg" }} />);
+    expect(screen.getByRole("img").hasAttribute("classnames")).toBe(false);
+  });
+});
+
+describe("AvatarGroup slots", () => {
+  /**
+   * The merge is `cn(base, slot)` and `cn` is tailwind-merge, so a same-group
+   * slot class *replaces* the base one — which is the capability here, since
+   * widening the separating ring is the obvious thing to want — while a class
+   * from another group stacks. Both halves live in one test on purpose: they are
+   * two readings of the same merge, and splitting them would make deleting that
+   * merge redden two tests for one defect.
+   */
+  it("lands classNames.itemRing on every visible child's ring", () => {
+    const { container } = render(
+      <AvatarGroup classNames={{ itemRing: "shadow-lg" }}>
+        <Avatar name="A B" />
+        <Avatar name="C D" />
+      </AvatarGroup>,
+    );
+    const rings = Array.from(container.querySelectorAll("div > span.ring-surface-0"));
+    expect(rings).toHaveLength(2);
+    for (const ring of rings) {
+      expect(ring.getAttribute("class")).toContain("rounded-full");
+      expect(ring.getAttribute("class")).toContain("shadow-lg");
+    }
+
+    const { container: widened } = render(
+      <AvatarGroup classNames={{ itemRing: "ring-4" }}>
+        <Avatar name="A B" />
+      </AvatarGroup>,
+    );
+    const cls =
+      widened.querySelector("div > span.ring-surface-0")?.getAttribute("class") ?? "";
+    expect(cls).toContain("ring-4");
+    expect(cls).not.toContain("ring-2");
+  });
+
+  it("lands classNames.overflow on the +N chip, beside the base classes", () => {
+    render(
+      <AvatarGroup max={1} classNames={{ overflow: "bg-status-info-bg" }}>
+        <Avatar name="A B" />
+        <Avatar name="C D" />
+      </AvatarGroup>,
+    );
+    const chip = screen.getByText("+1");
+    expect(chip.className).toContain("rounded-full");
+    expect(chip.className).toContain("bg-status-info-bg");
+  });
+
+  it("leaves the ring on its base classes when no slot is passed", () => {
+    const { container } = render(
+      <AvatarGroup>
+        <Avatar name="A B" />
+      </AvatarGroup>,
+    );
+    expect(container.querySelector("div > span.ring-surface-0")?.getAttribute("class")).toBe(
+      "ring-2 ring-surface-0 rounded-full",
+    );
+  });
+
+  it("does not put a slot class on the row", () => {
+    const { container } = render(
+      <AvatarGroup max={1} classNames={{ itemRing: "ring-4", overflow: "bg-status-info-bg" }}>
+        <Avatar name="A B" />
+        <Avatar name="C D" />
+      </AvatarGroup>,
+    );
+    const row = container.firstElementChild as HTMLElement;
+    expect(row.className).not.toContain("ring-4");
+    expect(row.className).not.toContain("bg-status-info-bg");
+  });
+
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = render(
+      // @ts-expect-error — `item` is not a slot; only untyped JS gets here.
+      <AvatarGroup classNames={{ item: "ring-4" }}>
+        <Avatar name="A B" />
+      </AvatarGroup>,
+    );
+    expect(container.querySelector("div > span.ring-surface-0")?.getAttribute("class")).not.toContain(
+      "ring-4",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = render(
+      <AvatarGroup classNames={{ itemRing: "ring-4" }}>
+        <Avatar name="A B" />
+      </AvatarGroup>,
+    );
+    expect((container.firstElementChild as HTMLElement).hasAttribute("classnames")).toBe(false);
+  });
+});

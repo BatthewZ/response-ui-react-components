@@ -36,7 +36,10 @@ on this page. Nothing appears in the preview until you pass the array back in.
 | `disabled`        | `boolean`                     | `false`  |
 | `labels`          | `FileUploadLabels`            | English — see [Translating](#translating-the-built-in-copy) |
 | `removeFileLabel` | `(file: File) => string`      | ``(file) => `Remove ${file.name}` `` |
+| `renderPreview`   | `(item: FileUploadMediaPreviewItem) => ReactNode` — see [Slots](#slots) | — |
+| `renderFile`      | `(item: FileUploadPreviewItem) => ReactNode` — see [Slots](#slots) | — |
 | `className`       | `string`                      | —        |
+| `classNames`      | 11 keys — see [Slots](#slots) | —        |
 | `ref`             | `Ref<HTMLDivElement>`         | —        |
 | `onFilesRejected` | `(rejections: FileUploadRejection[]) => void` | — |
 | …rest             | props of `div` minus `children` | —      |
@@ -249,6 +252,113 @@ Any key you leave out keeps its English default; `""` renders an empty string ra
 falling back. The internal rejection message ("…is not an accepted file type") is **not** on
 this object — it is generated per file, and the way to replace it is `onFilesRejected` plus
 your own `error` string, which overrides it.
+
+## Slots
+
+FileUpload is the largest element tree in the package, and it is deliberately **not** exposed
+as one flat class map. It splits in two, along the line the component's own dispatch already
+draws:
+
+- the **dropzone chrome** — everything the root renders itself — takes `classNames`;
+- the **previews** — three private components the root picks between from the file list — take
+  `renderPreview` and `renderFile`.
+
+A single class map over both would name elements a given caller may never see: with one image
+you get the large preview and none of the grid's classes exist; with `previewMode="compact"`
+neither media tree renders at all. What a caller wants inside a preview is different
+*content* anyway, not a different class on library markup.
+
+### `classNames` — the dropzone chrome
+
+| Slot           | Element                              | State it renders in |
+| -------------- | ------------------------------------ | -------------------- |
+| `icon`         | `span.file-upload__icon`             | empty                |
+| `text`         | `p.file-upload__text`                | empty                |
+| `textEmphasis` | `span.file-upload__text-emphasis` — the "browse" word | empty |
+| `preview`      | `div.file-upload__preview`           | preview              |
+| `list`         | `div.file-upload__media-grid` **and** `div.file-upload__preview-list` | preview |
+| `actions`      | `div.file-upload__preview-actions`   | preview              |
+| `replace`      | the **Replace** button               | preview              |
+| `clear`        | the **Clear all** button             | preview, with `onClear` |
+| `hint`         | `p.file-upload__hint`                | both                 |
+| `error`        | `p.file-upload__error`               | both                 |
+| `success`      | `p.file-upload__success`             | both                 |
+
+```tsx
+<FileUpload
+  files={files}
+  onFilesSelected={setFiles}
+  classNames={{ text: "text-h4", textEmphasis: "underline", list: "grid-cols-2" }}
+/>
+```
+
+`list` addresses both preview containers because they are one concept the component picks
+between — a media grid when there are several images, a row list for everything else. With
+both on screen the class lands on both. `hint`, `error` and `success` likewise reach the
+empty state's element and the preview state's, since they are the same message in two places.
+
+### State attributes, and why they beat a slot
+
+The root carries six `--modifier` classes, and each is mirrored as a `data-*` attribute:
+`data-has-files`, `data-drag-over`, `data-uploading`, `data-success`, `data-error` and
+`data-disabled`. An absent state writes no attribute at all.
+
+That means state-conditional styling needs no slot — it is a variant on the one prop that
+already reaches the root:
+
+```tsx
+<FileUpload className="data-drag-over:ring-2 data-drag-over:ring-border-focus" />
+```
+
+The modifier classes are unchanged and remain the hook for a plain consumer stylesheet.
+
+### `renderPreview` and `renderFile`
+
+`renderPreview` replaces the built-in preview for an image or video; `renderFile` replaces the
+compact row. Each receives one file and everything the default markup is built from:
+
+| Field         | Type                    | Notes                                                    |
+| ------------- | ----------------------- | -------------------------------------------------------- |
+| `file`        | `File`                  | —                                                         |
+| `previewUrl`  | `string \| undefined`   | an object URL for media; absent for other types, and for the first paint after selection |
+| `index`       | `number`                | position in `files` — what `onRemoveFile` expects        |
+| `remove`      | `(() => void) \| undefined` | absent unless `onRemoveFile` is set                   |
+| `removeLabel` | `string`                | from `removeFileLabel`                                    |
+| `disabled`    | `boolean`               | true while `uploading`                                    |
+
+`renderPreview`'s item carries one field more: `layout`, either `"large"` (a lone media file)
+or `"grid"` (several). That is the branch the component chose from the file list, and it is
+handed over rather than left to be guessed.
+
+```tsx
+<FileUpload
+  multiple
+  files={files}
+  onFilesSelected={setFiles}
+  onRemoveFile={(i) => setFiles((f) => f.filter((_, n) => n !== i))}
+  renderFile={({ file, remove, removeLabel }) => (
+    <Row className="items-center gap-r5">
+      <span className="grow">{file.name}</span>
+      {remove && (
+        <IconButton aria-label={removeLabel} onClick={remove}>
+          <X size={16} />
+        </IconButton>
+      )}
+    </Row>
+  )}
+/>
+```
+
+**The containers stay the component's.** Your nodes are placed inside the same media grid and
+row list the defaults use, so `classNames.list` still reaches them, and the preview region
+keeps its `role="presentation"` and the click/key guards that stop a press inside a preview
+re-opening the file picker. `index` is worth the field it takes: a renderer is handed one file
+at a time out of a *partitioned* list, so the second compact row may well be the fourth entry
+of `files`, and only `index` or the bound `remove` gets that right.
+
+The hidden `<input type="file">` takes neither a slot nor a render prop. Its `sr-only` is what
+keeps it off screen while leaving it clickable programmatically, and `accept`, `multiple` and
+`disabled` are the props that configure it.
 
 ## Theme tokens
 

@@ -519,4 +519,158 @@ describe("AvatarUpload", () => {
       expect(tooltip()).toBeNull();
     });
   });
+
+  describe("slots and the avatar hatch", () => {
+    const overlay = (container: HTMLElement) =>
+      container.querySelector('span[aria-hidden="true"].absolute.inset-0.flex') as HTMLElement;
+
+    it("lands classNames.overlay on the hover scrim, beside the base classes", () => {
+      const { container } = render(
+        <AvatarUpload name="Jane Doe" classNames={{ overlay: "text-fg-inverse" }} />,
+      );
+      const cls = overlay(container).getAttribute("class") ?? "";
+      expect(cls).toContain("rounded-full");
+      expect(cls).toContain("text-fg-inverse");
+    });
+
+    it("lands classNames.spinner on the busy ring, beside the base classes", () => {
+      const { container } = render(
+        <AvatarUpload name="Jane Doe" classNames={{ spinner: "size-8" }} />,
+      );
+      // Idle: the spinner is not rendered at all.
+      expect(container.querySelector(".animate-spin")).toBeNull();
+
+      const { container: busy } = render(
+        <AvatarUpload
+          name="Jane Doe"
+          src="/a.jpg"
+          onUpload={() => new Promise<AvatarUploadResult>(() => {})}
+          classNames={{ spinner: "size-8" }}
+        />,
+      );
+      const input = busy.querySelector('input[type="file"]') as HTMLInputElement;
+      const file = new File(["x"], "a.png", { type: "image/png" });
+      act(() => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+      const spinner = busy.querySelector(".animate-spin") as HTMLElement;
+      expect(spinner.getAttribute("class")).toContain("animate-spin");
+      expect(spinner.getAttribute("class")).toContain("size-8");
+    });
+
+    it("lands classNames.error on the message bubble, beside the base classes", async () => {
+      const { container } = render(
+        <AvatarUpload
+          name="Jane Doe"
+          accept={["image/png"]}
+          classNames={{ error: "max-w-none" }}
+        />,
+      );
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+      const file = new File(["x"], "a.pdf", { type: "application/pdf" });
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+      const bubble = container.querySelector(".bg-status-error") as HTMLElement;
+      expect(bubble.getAttribute("class")).toContain("bg-status-error");
+      expect(bubble.getAttribute("class")).toContain("max-w-none");
+    });
+
+    it("leaves the overlay on its base classes when no slot is passed", () => {
+      const { container } = render(<AvatarUpload name="Jane Doe" />);
+      expect(overlay(container).getAttribute("class")).not.toContain("text-fg-inverse");
+      expect(overlay(container).getAttribute("class")).toContain("text-white");
+    });
+
+    it("does not put a slot class on the pressable root", () => {
+      render(
+        <AvatarUpload
+          name="Jane Doe"
+          classNames={{ overlay: "text-fg-inverse", spinner: "size-8", error: "max-w-none" }}
+        />,
+      );
+      const root = screen.getByRole("button", { name: "Change avatar" });
+      expect(root.className).not.toContain("text-fg-inverse");
+      expect(root.className).not.toContain("max-w-none");
+    });
+
+    /**
+     * The reason the slot union is written out per component rather than typed
+     * `Record<string, string>`: an unknown key is a *type* error, not a silent
+     * no-op. The `@ts-expect-error` is the assertion — it fails if TypeScript
+     * ever stops rejecting the key. Do not "clean it up".
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        // @ts-expect-error — `badge` is not this component's word for the overlay.
+        <AvatarUpload name="Jane Doe" classNames={{ badge: "text-fg-inverse" }} />,
+      );
+      expect(overlay(container).getAttribute("class")).not.toContain("text-fg-inverse");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      render(<AvatarUpload name="Jane Doe" classNames={{ overlay: "text-fg-inverse" }} />);
+      const root = screen.getByRole("button", { name: "Change avatar" });
+      expect(root.hasAttribute("classnames")).toBe(false);
+      expect(root.hasAttribute("avatarprops")).toBe(false);
+    });
+
+    /**
+     * The hatch's precondition, made concrete: this component's own `className`,
+     * `ref` and rest props all land on the pressable root, so before `avatarProps`
+     * the inner `Avatar` — including its own `classNames` slots — had no route of
+     * any kind. The merge is base-first, so a caller's class wins the collision.
+     */
+    it("merges avatarProps.className after the hardcoded size-full", () => {
+      render(
+        <AvatarUpload name="Jane Doe" avatarProps={{ className: "rounded-lg" }} />,
+      );
+      const avatar = screen.getByRole("img", { name: "Jane Doe" });
+      expect(avatar.className).toContain("size-full");
+      expect(avatar.className).toContain("rounded-lg");
+    });
+
+    it("reaches the inner Avatar's own slots through the bag", () => {
+      const { container } = render(
+        <AvatarUpload
+          name="Jane Doe"
+          avatarProps={{ classNames: { frame: "rounded-none" } }}
+        />,
+      );
+      const frame = screen.getByRole("img", { name: "Jane Doe" })
+        .firstElementChild as HTMLElement;
+      expect(frame.getAttribute("class")).toContain("rounded-none");
+      expect(container.querySelector('[classnames]')).toBeNull();
+    });
+
+    /**
+     * `src`, `name` and `size` are this component's to write — `src` is the
+     * upload preview and `size` also drives the root's own box — so they are
+     * `Omit`ted from the bag and set after the spread.
+     *
+     * `size` reaching the inner `Avatar` is worth its own assertion because the
+     * *geometry* half of it is invisible: `cn("size-6", "size-full")` resolves to
+     * `size-full`, so the avatar's own box class is dropped as redundant against
+     * a container `containerSizeMap` already sized identically. What survives —
+     * and what a reader who concludes "`size` does nothing here" would delete —
+     * is the initials type scale.
+     */
+    it("keeps src, name and size out of the bag's reach", () => {
+      render(
+        <AvatarUpload
+          name="Jane Doe"
+          size="xs"
+          // @ts-expect-error — all three are Omitted; only untyped JS gets here.
+          avatarProps={{ name: "Someone Else", size: "xl" }}
+        />,
+      );
+      const root = screen.getByRole("button", { name: "Change avatar" });
+      expect(root.className).toContain("size-6");
+
+      const avatar = screen.getByRole("img", { name: "Jane Doe" });
+      const frame = avatar.firstElementChild as HTMLElement;
+      // `initialsTextMap.xs`, not `.xl` — the bag did not repoint `size`.
+      expect(frame.getAttribute("class")).toContain("text-body-3");
+    });
+  });
 });

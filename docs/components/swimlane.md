@@ -30,6 +30,7 @@ supply.
 | `once`        | `boolean` — reveal once, or replay on every re-entry               | `true`      |
 | `animate`     | `boolean` — wrap in the reveal at all                              | `true`      |
 | `className`   | `string` — merged onto the root `<section>`                        | —           |
+| `classNames`  | `{ header?, titleGroup?, title?, description?, body? }` — see [Slots](#slots) | — |
 | `children`    | `ReactNode` — the lane body                                        | —           |
 | `ref`         | `Ref<HTMLElement>` — the root `<section>`                          | —           |
 | …rest         | `section` props minus `title` — spread onto the root `<section>`   | —           |
@@ -163,6 +164,41 @@ the lane first intersects the viewport — that is true at either setting of `on
 only controls whether the element re-hides on the way out. Under
 `prefers-reduced-motion: reduce` the effect is skipped entirely and the lane renders
 visible and static from the first paint.
+
+## Slots
+
+[Header slots](#header-slots) above is about *content* — what you put in the header.
+This is about *classes*: `className` reaches the root `<section>` and `children` is the lane
+body you author, so `classNames` covers the five elements Swimlane builds in between.
+
+| Slot          | Element                   | What it addresses                                  |
+| ------------- | ------------------------- | -------------------------------------------------- |
+| `header`      | `div.swimlane__header`    | the baseline-aligned row of titles and the link     |
+| `titleGroup`  | `div.swimlane__titles`    | the title + subtitle stack on its left               |
+| `title`       | the `titleAs` heading     | —                                                   |
+| `description` | `p.swimlane__subtitle`    | rendered only when `subtitle` is set                 |
+| `body`        | `div.swimlane__body`      | the scroller your `children` sit in                  |
+
+```tsx
+<Swimlane
+  title="New releases"
+  subtitle="Added in the last seven days"
+  classNames={{ header: "items-end", description: "text-fg-muted" }}
+>
+  <Row className="overflow-x-auto px-r5 pb-r5">…</Row>
+</Swimlane>
+```
+
+**`description`, not `subtitle`** — the prop keeps the word it shipped with, and the slot uses
+the one this package spends everywhere else for secondary text under a title. The class name
+on the element is unchanged.
+
+The "View all" anchor takes no slot, because `viewAllProps` already carries a `className` to
+it and two writers for one element is one too many:
+
+```tsx
+<Swimlane title="New releases" viewAllHref="/new" viewAllProps={{ className: "font-semibold" }}>
+```
 
 ## Theme tokens
 

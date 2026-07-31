@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Swimlane } from "./Swimlane";
@@ -203,5 +204,101 @@ describe("Swimlane", () => {
     expect(root.id).toBe("lane-1");
     expect(root.getAttribute("aria-label")).toBe("Featured titles");
     expect(root.dataset.analytics).toBe("row-1");
+  });
+
+  describe("slots", () => {
+    const lane = (classNames?: ComponentProps<typeof Swimlane>["classNames"]) =>
+      render(
+        <Swimlane title="Featured" subtitle="Picked for you" classNames={classNames}>
+          <div>Content</div>
+        </Swimlane>,
+      );
+
+    it("lands each slot on its own element, beside the base class", () => {
+      const { container } = lane({
+        header: "items-end",
+        titleGroup: "gap-r6",
+        title: "text-h1",
+        description: "italic",
+        body: "gap-r3",
+      });
+
+      const cases: [string, string][] = [
+        [".swimlane__header", "items-end"],
+        [".swimlane__titles", "gap-r6"],
+        [".swimlane__title", "text-h1"],
+        [".swimlane__subtitle", "italic"],
+        [".swimlane__body", "gap-r3"],
+      ];
+      for (const [selector, extra] of cases) {
+        const el = container.querySelector(selector);
+        expect(el, selector).not.toBeNull();
+        expect(el?.getAttribute("class")).toContain(selector.slice(1));
+        expect(el?.getAttribute("class")).toContain(extra);
+      }
+    });
+
+    it("leaves every internal on its base class alone when no slot is passed", () => {
+      const { container } = lane();
+      for (const selector of [
+        ".swimlane__header",
+        ".swimlane__titles",
+        ".swimlane__title",
+        ".swimlane__subtitle",
+        ".swimlane__body",
+      ]) {
+        expect(container.querySelector(selector)?.getAttribute("class")).toBe(selector.slice(1));
+      }
+    });
+
+    it("does not put a slot class on the section", () => {
+      const { container } = lane({ header: "items-end", body: "gap-r3" });
+      const root = container.querySelector(".swimlane") as HTMLElement;
+      expect(root.className).not.toContain("items-end");
+      expect(root.className).not.toContain("gap-r3");
+    });
+
+    /**
+     * The "View all" anchor is deliberately absent from the union: `viewAllProps`
+     * already carries a `className` to it, and a slot beside that bag would be a
+     * second writer for one element.
+     */
+    it("keeps the view-all anchor on its existing props bag", () => {
+      const { container } = render(
+        <Swimlane title="Featured" viewAllHref="/all" viewAllProps={{ className: "underline" }}>
+          <div>Content</div>
+        </Swimlane>,
+      );
+      const link = container.querySelector(".swimlane__view-all");
+      expect(link?.getAttribute("class")).toContain("underline");
+    });
+
+    /**
+     * The reason the slot union is written out per component rather than typed
+     * `Record<string, string>`: an unknown key is a *type* error, not a silent
+     * no-op. The `@ts-expect-error` is the assertion — it fails if TypeScript
+     * ever stops rejecting the key. Do not "clean it up".
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        <Swimlane
+          title="Featured"
+          subtitle="Picked for you"
+          // @ts-expect-error — the class is `swimlane__subtitle`; the slot is `description`.
+          classNames={{ subtitle: "italic" }}
+        >
+          <div>Content</div>
+        </Swimlane>,
+      );
+      expect(container.querySelector(".swimlane__subtitle")?.getAttribute("class")).toBe(
+        "swimlane__subtitle",
+      );
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = lane({ header: "items-end" });
+      const root = container.querySelector(".swimlane") as HTMLElement;
+      expect(root.hasAttribute("classnames")).toBe(false);
+    });
   });
 });

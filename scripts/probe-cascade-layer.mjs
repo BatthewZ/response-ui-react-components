@@ -511,7 +511,7 @@ const PROBES = [
       "@layer utilities is a genuine in-package inversion that Phase 1 flips — but it has " +
       "no reachable observable, because the [data-collapsed] rule at (0,3,0) has already " +
       "forced the padding to 0 in the only state AppShell renders (sr-only implies " +
-      "[data-collapsed] — AppShell.tsx:303,333). This pins THAT. It reddens if the " +
+      "[data-collapsed] — AppShell.tsx:314,355). This pins THAT. It reddens if the " +
       "[data-collapsed] rule is removed as dead code, or if the TSX coupling changes. " +
       "Deliberately not an expectAfter row: nothing user-visible moves, and pinning an " +
       "unreachable state would be a gate asserting behaviour that does not exist.",

@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 type AvatarStatus = "online" | "offline" | "away";
@@ -81,10 +81,21 @@ type AvatarProps = {
    * whose children ARIA makes presentational — so the name is the only route.
    */
   statusLabel?: string;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * root — the positioning box `size` sizes — so the slots are the three parts
+   * inside it: the clipping disc, the `<img>` and the presence dot. The union is
+   * written out here so an unknown key is a type error rather than a silently
+   * ignored one.
+   *
+   * The initials `<span>` is deliberately absent: it carries no class of its
+   * own, so `frame` is where its type scale and fallback fill already live.
+   */
+  classNames?: SlotClassNames<"frame" | "image" | "status">;
 } & Omit<ComponentPropsWithRef<"span">, "children">;
 
 export const Avatar = forwardRef<HTMLSpanElement, AvatarProps>(function Avatar(
-  { src, alt, name, size = "md", status, statusLabel, className, ...props },
+  { src, alt, name, size = "md", status, statusLabel, className, classNames, ...props },
   ref
 ) {
   // Keyed by the URL that failed, so a recovered or replaced `src` gets a
@@ -116,7 +127,8 @@ export const Avatar = forwardRef<HTMLSpanElement, AvatarProps>(function Avatar(
         className={cn(
           "inline-flex size-full items-center justify-center overflow-hidden rounded-full",
           !showImage && "bg-surface-2 text-fg-secondary font-semibold",
-          !showImage && initialsTextMap[size]
+          !showImage && initialsTextMap[size],
+          classNames?.frame
         )}
       >
         {showImage ? (
@@ -124,7 +136,7 @@ export const Avatar = forwardRef<HTMLSpanElement, AvatarProps>(function Avatar(
             src={src ?? undefined}
             alt={label ?? ""}
             onError={() => setFailedSrc(src ?? null)}
-            className="size-full object-cover"
+            className={cn("size-full object-cover", classNames?.image)}
           />
         ) : (
           <span aria-hidden="true">{initials}</span>
@@ -135,7 +147,8 @@ export const Avatar = forwardRef<HTMLSpanElement, AvatarProps>(function Avatar(
           className={cn(
             "absolute bottom-0 right-0 rounded-full ring-2 ring-surface-0",
             statusDotSizeMap[size],
-            statusColorMap[status]
+            statusColorMap[status],
+            classNames?.status
           )}
         />
       )}
@@ -156,10 +169,21 @@ const groupOverlapMap: Record<AvatarSize, string> = {
 type AvatarGroupProps = {
   max?: number;
   size?: AvatarSize;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * row itself, so the slots are the two things it wraps a child in: the ring
+   * that separates overlapping faces — which lands on **every** visible child —
+   * and the `+N` chip. The union is written out here so an unknown key is a type
+   * error rather than a silently ignored one.
+   *
+   * The children are the caller's own `Avatar`s and already take `className`
+   * directly; `itemRing` is the wrapper this component adds around each.
+   */
+  classNames?: SlotClassNames<"itemRing" | "overflow">;
 } & ComponentPropsWithRef<"div">;
 
 export const AvatarGroup = forwardRef<HTMLDivElement, AvatarGroupProps>(function AvatarGroup(
-  { max, size = "md", className, children, ...props },
+  { max, size = "md", className, classNames, children, ...props },
   ref
 ) {
   const childArray = Children.toArray(children) as ReactElement[];
@@ -178,7 +202,7 @@ export const AvatarGroup = forwardRef<HTMLDivElement, AvatarGroupProps>(function
   return (
     <div ref={ref} className={cn("flex items-center", groupOverlapMap[size], className)} {...props}>
       {sizedChildren.map((child) => (
-        <span key={child.key} className="ring-2 ring-surface-0 rounded-full">
+        <span key={child.key} className={cn("ring-2 ring-surface-0 rounded-full", classNames?.itemRing)}>
           {child}
         </span>
       ))}
@@ -189,7 +213,8 @@ export const AvatarGroup = forwardRef<HTMLDivElement, AvatarGroupProps>(function
             // is one of the faces, so it cannot sit on a different rung.
             "relative inline-flex shrink-0 items-center justify-center rounded-full bg-surface-2 text-fg-secondary font-semibold ring-2 ring-surface-0",
             sizeClassMap[size],
-            initialsTextMap[size]
+            initialsTextMap[size],
+            classNames?.overflow
           )}
         >
           +{overflowCount}

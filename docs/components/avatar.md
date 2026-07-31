@@ -20,6 +20,7 @@ presence dot, and a companion `AvatarGroup` for stacked rosters.
 | `status`    | `"online" \| "offline" \| "away"`             | —       |
 | `statusLabel`| `string` — text for `status` in the accessible name | `"Online"` / `"Offline"` / `"Away"` |
 | `className` | `string`                                      | —       |
+| `classNames`| `{ frame?, image?, status? }` — see [Slots](#slots) | —  |
 | `ref`       | `Ref<HTMLSpanElement>`                        | —       |
 | …rest       | props of `span` minus `children`              | —       |
 
@@ -133,6 +134,7 @@ children, but it does not check: it wraps whatever you give it in a ringed `<spa
 | `size`      | `"xs" \| "sm" \| "md" \| "lg" \| "xl"`  | `"md"`         |
 | `children`  | `ReactNode`                             | —              |
 | `className` | `string`                                | —              |
+| `classNames`| `{ itemRing?, overflow? }` — see [Slots](#slots) | —      |
 | `ref`       | `Ref<HTMLDivElement>`                   | —              |
 | …rest       | props of `div`                          | —              |
 
@@ -165,6 +167,50 @@ it. Setting it in both places, as below, is harmless:
 </AvatarGroup>
 ```
 <!-- /example -->
+
+## Slots
+
+`className` addresses the outer box — the one `size` sizes and `status` is positioned
+against. `classNames` addresses what is inside it. Class strings only, and the keys are
+typed, so a misspelled one is a compile error rather than a prop that does nothing.
+
+| Slot     | Element                          | What it addresses                                     |
+| -------- | -------------------------------- | ----------------------------------------------------- |
+| `frame`  | the clipping `<span>`            | the disc itself, and the initials' fill and type scale |
+| `image`  | the `<img>`                      | rendered only while `src` loads successfully           |
+| `status` | the presence dot                 | rendered only with `status` set                        |
+
+```tsx
+<Avatar name="Ada Lovelace" src="/ada.jpg" classNames={{ frame: "rounded-lg" }} />
+```
+
+There is no `initials` slot, because there is no initials element to address: the initials
+`<span>` carries no class of its own, and everything that paints them — the fallback fill,
+the ink and the type scale — is on `frame`.
+
+The merge is base-first, so a slot class in the same utility group **replaces** the
+component's: `{ image: "object-contain" }` wins over the default `object-cover`, and
+`{ frame: "rounded-lg" }` squares off the disc. A class from another group stacks.
+
+### AvatarGroup
+
+| Slot       | Element                                  | What it addresses                        |
+| ---------- | ---------------------------------------- | ---------------------------------------- |
+| `itemRing` | the `<span>` around **each** visible child | the separating ring, on every avatar     |
+| `overflow` | the `+N` chip                            | rendered only when children exceed `max` |
+
+```tsx
+<AvatarGroup max={3} classNames={{ itemRing: "ring-4", overflow: "bg-surface-3" }}>
+  <Avatar name="Ada Lovelace" />
+  <Avatar name="Grace Hopper" />
+  <Avatar name="Katherine Johnson" />
+  <Avatar name="Barbara Liskov" />
+</AvatarGroup>
+```
+
+`itemRing` lands on every visible child, not one — the group wraps each in its own ringed
+`<span>` and no key names "the third one". The children themselves are yours, so their own
+`className` and `classNames` reach them directly and the group adds no slot for them.
 
 ## Theme tokens
 
