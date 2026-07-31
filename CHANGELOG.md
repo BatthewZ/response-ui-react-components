@@ -101,6 +101,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **`classNames` — per-slot class overrides for a component's internals, and the exported
+  `SlotClassNames<S>` type behind it.** `className` addresses the element a component renders;
+  `classNames` addresses the elements it renders *inside* itself, as class strings keyed by
+  slot. The keys are a union written out per component, so an unknown one is a compile error
+  rather than a prop that silently does nothing, and there is deliberately no `root` key —
+  `className` is the root. The first slot ships on `StatCard.Trend`:
+
+  ```tsx
+  <StatCard.Trend value={12.5} direction="up" classNames={{ trendIcon: "size-r3" }} />
+  ```
+
+  Additive and a no-op on screen. Your slot class beats the component's base class for the same
+  reason `className` does — the base class is in `@layer components` and yours is a utility.
+  Not every internal gets a slot: an element whose class *is* a mechanism stays unreachable on
+  purpose, and each component's doc page says which and why under its **Slots** heading.
+
 - **`ScrollReveal` publishes `data-entering` and accepts `animation="none"`.** The attribute
   marks the entrance window — added on intersection, removed on `animationend` — so a stylesheet
   can key an animation off it without depending on a foundation class it cannot out-rank.
@@ -157,6 +173,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   click opts a press out.
 
 ### Fixed
+
+- **`--sparkline-color` was unreachable from a theme.** `Sparkline.css` declared the
+  `currentColor` default *on* `.sparkline` — the element that reads it — and a declaration on
+  an element beats an inherited one at every cascade layer, so setting the variable at `:root`,
+  or on any ancestor, lost permanently. Only an inline `style` or an arbitrary-property utility
+  on the chart itself could win, which is what the docs recorded as a limitation. The
+  declaration is deleted; every read already carried `var(--sparkline-color, currentColor)`, so
+  nothing changes for anyone who sets nothing, and the variable now inherits as a public write
+  channel for anyone who does. If you were relying on a `:root` or ancestor value being ignored,
+  it now applies.
 
 - **`Grid` was importing its own stylesheet from `Grid.tsx` as well as from `src/styles.css`.**
   The JS-side copy was injected unlayered, where it out-ranked `@layer components`, so

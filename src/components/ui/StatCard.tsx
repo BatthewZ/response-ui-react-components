@@ -12,7 +12,7 @@ import {
 
 import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { Sparkline } from "../data-display/Sparkline";
 
 const defaultFormat = new Intl.NumberFormat();
@@ -147,7 +147,14 @@ const StatCardValue = forwardRef<HTMLSpanElement, StatCardValueProps>(function S
     content = (
       <>
         <span aria-hidden="true">{shown}</span>
-        <span className="sr-only">{formatValue(to)}</span>
+        <span
+          // slot:(a) the accessible twin of the ticking figure. A slot here hands a
+          // caller the one class that keeps the real value out of the visual flow,
+          // and dropping `sr-only` prints the number twice (SLOT-VOCABULARY §11).
+          className="sr-only"
+        >
+          {formatValue(to)}
+        </span>
       </>
     );
   }
@@ -197,6 +204,13 @@ type StatCardTrendProps = {
   direction: TrendDirection;
   sentiment?: TrendSentiment;
   format?: (value: number) => string;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * root — the badge itself — so the only slot is the arrow, which no caller can
+   * otherwise reach. The union is written out here so an unknown key is a type
+   * error rather than a silently ignored one.
+   */
+  classNames?: SlotClassNames<"trendIcon">;
 } & Omit<ComponentPropsWithRef<"span">, "children">;
 
 const directionClass: Record<TrendDirection, string> = {
@@ -211,8 +225,13 @@ const sentimentClass: Record<TrendSentiment, string> = {
   neutral: "stat-card__trend--neutral",
 };
 
-const TrendArrow = () => (
-  <svg className="stat-card__trend-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+const TrendArrow = ({ className }: { className?: string }) => (
+  <svg
+    className={cn("stat-card__trend-icon", className)}
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+  >
     <path
       d="M8 3.5v9M8 3.5L4 7.5M8 3.5l4 4"
       stroke="currentColor"
@@ -224,7 +243,7 @@ const TrendArrow = () => (
 );
 
 const StatCardTrend = forwardRef<HTMLSpanElement, StatCardTrendProps>(function StatCardTrend(
-  { value, direction, sentiment, format, className, ...props },
+  { value, direction, sentiment, format, className, classNames, ...props },
   ref
 ) {
   const sign = direction === "down" ? "-" : direction === "up" ? "+" : "";
@@ -240,7 +259,7 @@ const StatCardTrend = forwardRef<HTMLSpanElement, StatCardTrendProps>(function S
       )}
       {...props}
     >
-      {direction !== "neutral" && <TrendArrow />}
+      {direction !== "neutral" && <TrendArrow className={classNames?.trendIcon} />}
       {format ? format(value) : `${sign}${Math.abs(value)}%`}
     </span>
   );
@@ -282,7 +301,15 @@ const StatCardSparkline = forwardRef<SVGSVGElement, StatCardSparklineProps>(
     const tint = sentiment ?? (direction && impliedSentiment[direction]);
 
     return (
-      <div className="stat-card__sparkline">
+      <div
+        // slot:(a) the tile↔chart coupling, not a box a caller composes with: its
+        // `margin-top: auto` means something only as a flex child of `.stat-card`, so a
+        // caller who wants the chart elsewhere moves the element, not the margin.
+        // `className` stays on the wrapped chart (this component's props ARE
+        // `Sparkline`'s, and its `ref` is the `<svg>`), so re-pointing it here is a
+        // breaking API change and an owner call. See PHASE3-PATTERN.md "The wrapper case".
+        className="stat-card__sparkline"
+      >
         <Sparkline
           ref={ref}
           className={cn(tint && sparklineSentimentClass[tint], className)}

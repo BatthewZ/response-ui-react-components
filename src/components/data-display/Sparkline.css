@@ -3,14 +3,20 @@
 /* ------------------------------------------------------------------ */
 
 /*
- * Color flows through `--sparkline-color`, which falls back to
- * `currentColor`. Consumers tint via text utilities on the <svg>
+ * Color flows through `--sparkline-color`, which falls back to `currentColor`
+ * at each read below. Consumers tint via text utilities on the <svg>
  * (e.g. `text-chart-1`, `text-trend-up`) — no per-instance CSS needed.
+ *
+ * `--sparkline-color: currentColor` is DELIBERATELY NOT declared here. A declaration
+ * on the element that reads it beats an inherited one at every cascade layer, so
+ * declaring the default on `.sparkline` made a consumer theme setting
+ * `--sparkline-color` at `:root` lose permanently. The fallback at each read is
+ * byte-identical where nothing sets the property, and reachable from a theme where
+ * something does (`memory/README.md` §27). Do not re-add it.
  */
 .sparkline {
   display: inline-block;
   vertical-align: middle;
-  --sparkline-color: currentColor;
 }
 
 /* Line / area stroke.

@@ -470,6 +470,68 @@ describe("StatCard", () => {
       render(<StatCard.Trend ref={ref} value={1} direction="up" />);
       expect(ref.current).toBeInstanceOf(HTMLSpanElement);
     });
+
+    /**
+     * The slot-override test for `classNames.trendIcon` (PHASE3-PATTERN.md §5). It
+     * is the falsifier as well as the feature: delete the `cn()` merge in
+     * `TrendArrow` and this must go red. A slot that still passes with the merge
+     * removed is a prop that lands in the type and nowhere else.
+     */
+    it("lands classNames.trendIcon on the arrow, beside the base class", () => {
+      const { container } = render(
+        <StatCard.Trend value={1} direction="up" classNames={{ trendIcon: "size-r3" }} />
+      );
+      const arrow = container.querySelector("svg");
+      expect(arrow?.getAttribute("class")).toContain("stat-card__trend-icon");
+      expect(arrow?.getAttribute("class")).toContain("size-r3");
+    });
+
+    it("leaves the arrow on its base class alone when no slot is passed", () => {
+      const { container } = render(<StatCard.Trend value={1} direction="up" />);
+      expect(container.querySelector("svg")?.getAttribute("class")).toBe(
+        "stat-card__trend-icon"
+      );
+    });
+
+    it("does not put the slot class on the badge itself", () => {
+      render(
+        <StatCard.Trend
+          value={1}
+          direction="up"
+          classNames={{ trendIcon: "size-r3" }}
+          data-testid="trend"
+        />
+      );
+      expect(screen.getByTestId("trend").className).not.toContain("size-r3");
+    });
+
+    /**
+     * The reason for a per-component inline slot union rather than a
+     * `Record<string, string>` helper (PHASE3-PATTERN.md §1): an unknown key is a
+     * *type* error, not a silent no-op. The `@ts-expect-error` is the assertion — it
+     * fails if TypeScript ever stops rejecting the key. Do not "clean it up".
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        // @ts-expect-error — `trendGlyph` is not a slot; only untyped JS gets here.
+        <StatCard.Trend value={1} direction="up" classNames={{ trendGlyph: "size-r3" }} />
+      );
+      expect(container.querySelector("svg")?.getAttribute("class")).toBe(
+        "stat-card__trend-icon"
+      );
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      render(
+        <StatCard.Trend
+          value={1}
+          direction="up"
+          classNames={{ trendIcon: "size-r3" }}
+          data-testid="trend"
+        />
+      );
+      expect(screen.getByTestId("trend").hasAttribute("classnames")).toBe(false);
+    });
   });
 
   describe("Sparkline", () => {
@@ -529,6 +591,23 @@ describe("StatCard", () => {
     it("merges custom className onto the sparkline", () => {
       render(<StatCard.Sparkline values={[1, 2, 3]} className="extra-spark" />);
       expect(screen.getByRole("img").getAttribute("class")).toContain("extra-spark");
+    });
+
+    /**
+     * The mirror of the test above, and the pin on this component's triage-(a)
+     * ruling: `className` addresses the chart, not the wrapper, because this
+     * component's props ARE `Sparkline`'s and its `ref` is the `<svg>`. Moving it
+     * to the wrapper under the §4b house rule is a breaking API change and an
+     * owner call — see PHASE3-PATTERN.md "The wrapper case". If that call is
+     * taken, this test is the one that must be rewritten rather than deleted.
+     */
+    it("leaves the pinning wrapper on its own class only", () => {
+      const { container } = render(
+        <StatCard.Sparkline values={[1, 2, 3]} className="extra-spark" />
+      );
+      expect(container.querySelector(".stat-card__sparkline")?.getAttribute("class")).toBe(
+        "stat-card__sparkline"
+      );
     });
   });
 

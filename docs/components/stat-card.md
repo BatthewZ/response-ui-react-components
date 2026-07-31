@@ -25,12 +25,45 @@ context, the sub-parts also render fine outside a `StatCard` root (they are just
 | `StatCard`          | `div`    | — (plus `div` props)                                                      |
 | `StatCard.Value`    | `span`   | `animateValue?` · `from?` · `to?` · `format?` · `duration?`              |
 | `StatCard.Label`    | `span`   | — (plus `span` props)                                                     |
-| `StatCard.Trend`    | `span`   | `value` · `direction` · `sentiment?` · `format?` (no `children`)         |
+| `StatCard.Trend`    | `span`   | `value` · `direction` · `sentiment?` · `format?` · `classNames?` (no `children`) |
 | `StatCard.Icon`     | `div`    | — (plus `div` props)                                                      |
 | `StatCard.Sparkline`| `svg`    | `direction?` · `sentiment?` · all `Sparkline` props (`values` required)  |
 
 All parts spread the props of the element they render, so `className`, `id`, and
-`aria-*` pass through.
+`aria-*` pass through. `classNames` is the exception: it is consumed, never spread —
+see [Slots](#slots).
+
+## Slots
+
+`className` addresses the element each part renders. `classNames` addresses the
+elements a part renders *inside* itself — class strings only, and the keys are typed,
+so a misspelled one is a compile error rather than a prop that does nothing.
+
+| Part               | Slot        | Element                       | What it addresses                                    |
+| ------------------ | ----------- | ----------------------------- | ---------------------------------------------------- |
+| `StatCard.Trend`   | `trendIcon` | `svg.stat-card__trend-icon`   | the direction arrow, rendered for `up` and `down` only |
+
+```tsx
+<StatCard.Trend value={12.5} direction="up" classNames={{ trendIcon: "size-r3" }} />
+```
+
+The slot class is merged after the base class, and both survive the merge — `cn()`
+resolves conflicts between utilities, not between a utility and a component class. A
+utility touching a property `.stat-card__trend-icon` already sets (`width`, `height`)
+replaces it rather than stacking with it because the base class lives in
+`@layer components` and yours does not.
+
+**Deliberately not slots.** Three internals here carry a class no `className` reaches,
+and each is correct as it stands rather than a gap:
+
+- **The count-up's visually-hidden twin** (`StatCard.Value`). Its only class is
+  `sr-only`, and that class is the whole mechanism — see [Accessibility](#accessibility).
+  A slot would hand a caller the ability to print the figure twice.
+- **The sparkline's pinning wrapper** (`.stat-card__sparkline`). `margin-top: auto`
+  means something only as a flex child of `.stat-card`; a caller who wants the chart
+  somewhere else moves the element rather than the margin.
+- **[Sparkline](sparkline.md)'s own paths and bars.** Their ink is a variable, not a
+  class — see that page's [Slots](sparkline.md#slots).
 
 ## Full anatomy
 
@@ -156,9 +189,15 @@ the arrow reads them; they are otherwise styling hooks for you), and
 
 ## Sparkline
 
-`StatCard.Sparkline` wraps the [Sparkline](sparkline.md) component in a slot pinned to the
+`StatCard.Sparkline` wraps the [Sparkline](sparkline.md) component in a box pinned to the
 bottom of the tile — so a row of tiles lines its charts up however tall each one's text
 runs — and adds `direction`/`sentiment` props that tint the line to match the trend.
+
+**Its props are `Sparkline`'s**, so `className`, `ref` and everything else address the
+`<svg>`, not the pinning box. That is what makes the tint overridable: `className` is
+merged *after* the `direction`/`sentiment` class, so
+`<StatCard.Sparkline direction="up" className="text-chart-1" />` paints chart-1 rather
+than trend-up. The box itself takes no class from the call site.
 
 <!-- example:SparklineTint -->
 ```tsx
@@ -187,7 +226,7 @@ the one place utilities are used, on the [Sparkline](sparkline.md) it wraps.
 | Trend colour (sentiment)      | `.stat-card__trend--positive` `--negative` `--neutral` | `--C-STATUS-SUCCESS` `--C-STATUS-ERROR` `--C-TEXT-SECONDARY`                      |
 | Trend arrow motion            | `.stat-card__trend-icon`                              | `--MOTION-DURATION-SHIFT` `--MOTION-EASE-SHIFT`                                    |
 | Sparkline tint (sentiment)    | `text-trend-up` `text-trend-down` `text-fg-muted`     | `--C-TREND-UP` `--C-TREND-DOWN` `--C-TEXT-MUTED`                                   |
-| Sparkline slot                | `.stat-card__sparkline`                               | — (pinned with `margin-top: auto`; the chart fills the tile's width)               |
+| Sparkline box                 | `.stat-card__sparkline`                               | — (pinned with `margin-top: auto`; the chart fills the tile's width)               |
 
 **Trend text and sparkline read different tokens for the same idea.** The trend
 arrow/label ink themselves with the **status** tokens (`--C-STATUS-SUCCESS` /

@@ -7,6 +7,14 @@ rail. Self-contained on purpose: nothing below needs another file to be legible.
 
 ## The override hook: a custom property, not a slot `className`
 
+> **Read the premise before the conclusion — it has since changed here, and the note is kept
+> because the reasoning is right *given* the premise.** Everything below holds **while a package's
+> component CSS is imported unlayered**, which is the state any new package in this repo starts in.
+> This one is no longer in that state: its component CSS moved into `@layer components`, which
+> deleted the premise and with it the objection. `classNames` is now a valid API here and ships —
+> see `PHASE3-PATTERN.md`. **The two sub-rules at the end of this section survive the change
+> untouched**, because they are about contrast and cues, not about the cascade.
+
 When a caller asks to restyle something *inside* a component, the obvious answer — a
 `markerClassName` / `cardClassName` prop, or a `classNames={{ … }}` object — is an API that only
 looks like it works here. This library's component CSS is imported **unlayered**, so it outranks

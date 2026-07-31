@@ -114,7 +114,7 @@ useVirtualRows + type UseVirtualRowsParams + type UseVirtualRowsReturn
 
 ```
 cn, createCn, mergeExtension, twMerge, tailwindMergeExtension, mergeRefs,
-mergeProps, composeEventHandlers, formatBytes,
+mergeProps, composeEventHandlers, formatBytes, type SlotClassNames,
 date helpers: addDays, addMonths, buildMonthGrid, clampDate, formatDate,
 getDateFieldOrder, getMonthLabel, getMonthNames, getWeekdayNames, isAfter, isBefore,
 isSameDay, parseDateInput, startOfDay, startOfMonth, toISODate
@@ -140,6 +140,31 @@ const className = cn(
   isActive && "bg-primary",
 );
 ```
+
+### `classNames` — overriding a component's internals
+
+`className` addresses the element a component renders. Where a component renders internals a
+`className` cannot reach, it takes a **`classNames`** object of class strings, keyed by slot:
+
+```tsx
+<StatCard.Trend value={12.5} direction="up" classNames={{ trendIcon: "size-r3" }} />
+```
+
+- **The keys are typed per component**, so an unknown one is a compile error rather than a prop
+  that silently does nothing. `SlotClassNames<S>` is exported if you want to name the object:
+  `const cx: SlotClassNames<"trendIcon"> = { trendIcon: "size-r3" }`.
+- **There is no `root` key** — `className` is the root.
+- **Class strings only.** Where a component needs to let you reach an internal with handlers or
+  `aria-*`, it exposes a named `<thing>Props` bag instead (`CodeBlock`'s `copyButtonProps`,
+  `Table`'s `tableProps`, `Swimlane`'s `viewAllProps`). Those merge your `className` after the
+  library's base class, same as a slot.
+- **Slot classes win**, for the same reason `className` does: the base class is in
+  `@layer components` and yours is a utility. Not because of the merge order — `cn()` keeps both,
+  since tailwind-merge only collapses two conflicting *utilities*.
+- **Not every internal has a slot, deliberately.** An element whose class *is* a mechanism (an
+  `sr-only` twin, a clipping shim) is left unreachable on purpose; a component's doc page says
+  which and why under its **Slots** heading. Where the override is a *value* rather than a choice
+  of utilities, the route is a custom property instead — e.g. `--sparkline-color`.
 
 ### Controlled vs uncontrolled — the mode locks on the FIRST render
 
@@ -387,7 +412,9 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
   - Color: `bg-surface-0 text-fg-primary border-border-default` not `bg-gray-100 text-gray-900 border-gray-200`
   - Status: `bg-status-error-bg text-status-error` for error tints
   - Radius/shadow: `rounded-md shadow-sm` (resolves to design-system tokens)
-- Always wrap classNames with `cn(...)` from this package.
+- Always wrap class strings with `cn(...)` from this package. Class *strings* — `classNames` is a
+  prop name (see the section above), and `cn()` on that object reads it as clsx's conditional form
+  and emits the slot keys themselves as classes.
 - For polymorphic spacing in props, expose `r1..r6` as values: `<Stack gap="r3">`.
 - Components are forwardRef, with four generic exceptions — `DataTable`, `VirtualizedDataTable`, `Repeater` and `AvatarUpload` are plain function components taking React 19's `ref` prop, because `forwardRef` erases a type parameter. When composing, type props as `ComponentPropsWithRef<"div">` (or appropriate element) — correct for all of them either way.
 - **Uniform card grids → `Grid`, not `Row wrap` or `MasonryGrid`.** `Grid columns={{ base: 1, md: 3 }}` gives equal-width columns and equal-height rows (cells share the row height, so footer buttons line up). `Row wrap` sizes children to content (uneven widths); `MasonryGrid` is CSS multi-column (uneven heights *by design* — reach for it only when you want Pinterest-style masonry). `Grid` cells are `minmax(0, 1fr)`, so long words wrap instead of overflowing. **Both take a bounded `columns` union** — `Grid` 1–6, `MasonryGrid` 1–4 — and neither ships a stylesheet: the count resolves to `grid-cols-*` / `columns-*` utilities from a written-out lookup table, because Tailwind scans source text and generates nothing for a template literal. Adding a count means adding its literal class strings to that table, not a CSS rule.

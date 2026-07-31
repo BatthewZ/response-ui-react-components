@@ -3,7 +3,7 @@
 Closes `PLAN-overridability.md` §10 (**▲ ONE-WAY DOOR**) and the §9 blocker *"sequence+tabular and
 layout+media are not [settled], and Phase 3 cannot start for those two until they are."*
 
-**Status: frozen, with four owner decisions folded in and two items still open.**
+**Status: frozen. Six owner decisions folded in; nothing open.**
 
 | # | Decision | Where it lands |
 | --- | --- | --- |
@@ -11,27 +11,36 @@ layout+media are not [settled], and Phase 3 cannot start for those two until the
 | 2 | **`Breadcrumbs.Separator` → `.Divider`.** | §1.5a, §6, §7.4, §8.5 |
 | 3 | **`DropdownMenu.Label`/`ContextMenu.Label` → `.GroupHeader`**, class `menu-group-header`. | §6, §7.3, §8.8 |
 | 4 | **`arrowRef` is covered** — the arrow element is rendered and positioned. | §3, §3.3, §4, §6, §7.3 |
+| 5 | **`CommandPalette` becomes a compound too**, on §10.1's shape C. One anatomy, one mechanism. | §7.3, §10, §10.2, §11 |
+| 6 | **`MultiSelectOption` / `CommandItem` are harmonised**, before Phase 3 authors either compound's props types. | §14.2 |
 
-Decisions 1 and 4 each reverse a ruling this document argued for. **Neither argument has been
-deleted**: both are kept where they were made, marked resolved-against, with the reason (plan §13,
-`memory/README.md` §20). Nothing in the body is superseded — a lane can read top-to-bottom.
+Decisions 1 and 4 each reverse a ruling this document argued for, and decision 5 closes one it
+declined to make. **No argument has been deleted**: each is kept where it was made, marked
+resolved-against, with the reason (plan §13, `memory/README.md` §20). Nothing in the body is
+superseded — a lane can read top-to-bottom.
 
-**Still open (§14.2):** `MultiSelectOption` vs `CommandItem`, and — new, as a direct consequence of
-decision 1 — whether `CommandPalette` follows `MultiSelect` into (d).
+**This document is authoritative for *anatomy*** — which element gets which name, and by which
+mechanism. `PLAN-overridability.md` §10 carries the owner's ruling list; it is not restated here
+(`memory/README.md` §20).
 
-**Greenfield, verified:**
+**Greenfield when this was written, and no longer:**
 
 ```
-grep -rn classNames src/components | wc -l      # 0
+grep -rln 'classNames' src/components --include=*.tsx | grep -v '\.test\.\|\.examples\.'
 ```
 
-Nothing here can break a consumer today. Everything here is permanent the moment Phase 3 ships.
+That returned **nothing** when this document was frozen, which is what made every name here
+permanent-on-first-ship rather than a rename. Phase 3's reference lane (`StatCard` + `Sparkline`)
+has since shipped the first key, so the command now returns `StatCard.tsx`. **Read a growing list
+as the fan-out proceeding, not as this document being violated** — the check that still means
+something is that every key in it appears in §7, spelled as §6 spells it.
 
-**This document does not depend on Phase 1 being done, and does not license starting Phase 3.**
-§0 constraint 2 stands: `classNames` is an invalid API until `@layer components` lands. A frozen
-vocabulary is a precondition for fan-out, not a substitute for the precondition Phase 1 owns.
+**Phase 1 has landed**, so §0 constraint 2 is discharged: `classNames` is a valid API and the
+vocabulary is a precondition for fan-out that has been met, not one still outstanding.
 
-**Scope of this pass:** read-only. No `.css`, `.tsx` or `.ts` file was edited.
+**Scope of the pass that wrote this:** read-only. No `.css`, `.tsx` or `.ts` file was edited. Later
+edits to this file are corrections and owner rulings, listed above; the body's measurements are the
+original pass's unless a paragraph says otherwise.
 
 ---
 
@@ -127,7 +136,7 @@ never both."* **The rule is general and must be read that way**, or a lane will 
 > element (`CLAUDE.md` rule 3).
 
 Live consequences, verified: no `icon` slot on `EmptyState` (`EmptyState.tsx:62`, `EmptyState.Icon`)
-or `StatCard` (`StatCard.tsx:259`, `StatCard.Icon`); no `panel` slot on `Tabs` (`Tabs.Panel`); no
+or `StatCard` (`StatCard.tsx:278`, `StatCard.Icon`); no `panel` slot on `Tabs` (`Tabs.Panel`); no
 `track` slot on `Carousel` (`Carousel.Track`); no `divider` slot on `DropdownMenu`/`ContextMenu`
 (`.Divider`) or `Breadcrumbs` (`.Divider`, renamed from `.Separator` — decision 2, §8.5); no `item`
 slot on Accordion, Timeline, ActivityFeed, Carousel, Breadcrumbs, MasonryGrid (`.Item`) or Stepper
@@ -138,6 +147,12 @@ slot on Accordion, Timeline, ActivityFeed, Carousel, Breadcrumbs, MasonryGrid (`
 `MultiSelect` — `.Content`, `.Item`, `.ItemIndicator`, `.Empty`, `.Tag` and `.TagRemove` ship
 (§10.1). Those six keys are **removed** from §7.1, not annotated: a slot table that still lists them
 is the two-writers defect this rule exists to prevent.
+
+**And, from decision 5, the same three on `CommandPalette`:** no `panel`, `item` or `empty` slot —
+`.Content`, `.Item` and `.Empty` ship (§10.2). Removed from §7.3 on the same terms. The rule also
+runs against a *render prop*, not only against a slot: `renderItem` and `.Item` would be two
+writers for one element, so decision 5 retires the `renderItem` **(e)** row rather than shipping
+both.
 
 ### 1.6 Deriving a name
 
@@ -176,8 +191,17 @@ find src/components -maxdepth 2 -name '*.tsx' ! -name '*.test.tsx' ! -name '*.ex
 find src/components -name '*.tsx' | wc -l           # 281
 find src/components -name '*.test.tsx' | wc -l      #  96
 find src/components -name '*.examples.tsx' | wc -l  #  90
-# modules with a sibling .css: 46          (reproduces §2c)
+# modules with a sibling .css — X.css beside X.tsx — is 43, not 46:
+for f in $(find src/components -name '*.tsx' ! -name '*.test.tsx' ! -name '*.examples.tsx'); do
+  [ -f "${f%.tsx}.css" ] && echo "$f"; done | wc -l                     # 43
+find src -name '*.css' | wc -l                                          # 46
 ```
+
+**43 reproduces §2c; the 46 this block used to print does not.** 46 is the count of
+`.css` files anywhere under `src`, which includes `styles.css`, `tokens.css` and
+`examples/example-theme-tuning.css` — three files with no sibling module. The two numbers
+were 45/46 before Phase 2 and are 43/46 now, so they were never the same measurement.
+43 is also `verify:css-layering`'s headline and §2b's components-only denominator.
 
 **Ten families, partitioning all 95 modules.** §9 names four of them; the last three it does not
 name at all (§15.1).
@@ -217,11 +241,11 @@ bans still stand, with the corrected scope.
 | `root` | §4a — `className` is the root | ✔ | **Stands.** §4a rule 1, unchanged. |
 | `wrapper`, `container`, `outer`, `box` | the four names lanes would invent for `control` | ✔ | **Stands.** Live instances a lane would name this way: `table-wrapper` (`Table.tsx:93`), `combobox-input-wrap` (`Combobox.tsx:295`), the three bare `className="relative"` boxes (`Select.tsx:30`, `NumberInput.tsx:170`, `DatePicker.tsx:285`), `TagInput.tsx:378`'s classless `<div>`. |
 | `box` — carve-out | permitted for `OTPInput`'s N entry boxes | ✔ | **Stands.** `OTPInput.tsx:209-238` — `Array.from({length}, …)` generating N `<input>`, each with a bare `cn(…)` at `:225` and **no `className` parameter**, so no override path. |
-| `content` | reserved as a compound subcomponent name — `Combobox.Content` ships | ✔ for the rule, ✘ for the anchor | **Stands.** The `Object.assign` block is `Combobox.tsx:538-543`, `Content:` on `:540` — the plan's `537-542`/`:539` is **off by one** (§15.11). Ten components ship `.Content`: Combobox, Popover, HoverCard, DropdownMenu, ContextMenu, Accordion, Collapsible, MediaCard, Hero, Spotlight. **`MultiSelect.Content` makes eleven** (decision 1, §10.1). |
+| `content` | reserved as a compound subcomponent name — `Combobox.Content` ships | ✔ for the rule, ✘ for the anchor | **Stands.** The `Object.assign` block is `Combobox.tsx:538-543`, `Content:` on `:540` — the plan's `537-542`/`:539` is **off by one** (§15.11). Ten components ship `.Content`: Combobox, Popover, HoverCard, DropdownMenu, ContextMenu, Accordion, Collapsible, MediaCard, Hero, Spotlight. **`MultiSelect.Content` makes eleven** (decision 1, §10.1) and **`CommandPalette.Content` twelve** (decision 5, §10.2). |
 | **`label`** | 30 distinct `*Label` props; collides with the exported `Label` | ✔ **30 reproduces exactly** | **Stands.** See §3.1. |
 | `chip` | `TagInput`'s vocabulary is already "tag" | ✔ | **Stands**, and the reason is stronger than stated: `TagRejection` (`TagInput.tsx:23`), `maxTags` (`:59`), `validateTag` (`:60`), `removeAnnouncement(tag, count)` (`:70`). See §3.2 for a doc-side wrinkle. |
 | `adornment`, `prefix`/`suffix` | MUI vocabulary; these elements are `icon` + `affordance` here | ⚠ partly | **Stands, reason corrected.** `icon` is real (§6). **`affordance` is prose, not vocabulary**: `grep -rn affordance src/components \| grep -v '\.test\.\|\.examples\.' \| wc -l` → **9**, every one a comment or docblock (`MultiSelect.tsx:283`, `FileUpload.tsx:31`, `SearchInput.css:32`, `Combobox.css:22`, `Radio.css:35`, `ColorPicker.css:95,97`, `Popover.css:23`, `MediaCard.css:17`), and `grep -rnE 'affordance[a-zA-Z]*\?:\|"[a-z-]*affordance' src/components` → **0**, so it is never a class name or a prop name. The elements §10 means are `combobox-toggle` (a `<button>`, `Combobox.tsx:341-347`) and `search-input__clear` (`SearchInput.tsx:120`); the frozen names are `toggle` and `clear` (§6). **`affordance` is added to the ban list** (§3.6) — it is the package's word for *what an element is for*, not for any element. |
-| `announcer` | `sr-only role="status"` regions; exposing invites dropping `sr-only`; **(a)** | ✔ **exact** | **Stands.** `TagInput.tsx:471`, `Repeater.tsx:308`. Two more of the same shape found and ruled (a) the same way: `CommandPalette.tsx:411`, `AvatarUpload.tsx:331`, plus `Toast.tsx:185`, `StatCard.tsx:150`, `Rating.tsx:237`, `Skeleton.tsx:48`, `FileUpload.tsx:801`, `Table.tsx:290`. |
+| `announcer` | `sr-only role="status"` regions; exposing invites dropping `sr-only`; **(a)** | ✔ **exact** | **Stands.** `TagInput.tsx:471`, `Repeater.tsx:308`. Two more of the same shape found and ruled (a) the same way: `CommandPalette.tsx:411`, `AvatarUpload.tsx:331`, plus `Toast.tsx:185`, `StatCard.tsx:154`, `Rating.tsx:237`, `Skeleton.tsx:48`, `FileUpload.tsx:801`, `Table.tsx:290`. |
 | `arrow` | **"No such element is rendered."** | ✘ **false**, and **decision 4 falsifies it a second way** | **Ban narrowed, not upheld.** `arrow` is banned as a name for a *direction control* (Carousel/Pagination — the frozen names are `prev`/`next`/`first`/`last`) and is **granted to the floating-surface pointer element** that decision 4 makes real. See §3.3 and §4. |
 | `backdrop`/`scrim` | `::backdrop` takes no class; **(b) token** | ✘ **false for `scrim`** | **`backdrop` stands; `scrim` is unbanned** — see §3.4. |
 | `header`/`footer`/`closeButton` | `Dialog`/`Drawer` render `{children}` only | ✔ for the premise, ✘ for the scope | **Scope corrected to the overlay family** — see §3.5. |
@@ -256,7 +280,7 @@ full: `addLabel`, `areaLabel`, `backLabel`, `brightnessLabel`, `charLabel`, `cle
 `src/components/form/index.ts:48` → `export { Label } from "./Label";`.
 
 **`label` is banned as a slot name in every family.** Existing class names using the stem
-(`progress-bar__label` `ProgressBar.tsx:146`, `stat-card__label` `StatCard.tsx:172`,
+(`progress-bar__label` `ProgressBar.tsx:146`, `stat-card__label` `StatCard.tsx:179`,
 `dropdown-menu-label` `menu-internals.tsx:408`, `app-shell-sidebar-link-label` `AppShell.tsx:401`,
 `command-palette-option-label` `CommandPalette.tsx:367`, `calendar-label` `CalendarBase.tsx:657`)
 keep their class names under §12's retention rule, but **none of them gets a slot named `label`.**
@@ -488,12 +512,12 @@ get **no slot at all**:
 | Timeline / ActivityFeed marker (`timeline-dot` `Timeline.tsx:184`, `activity-feed-dot` `ActivityFeed.tsx:71`) | **(b) token, no slot** | The pair is already public and the ring width already private. A `dot` slot hands a caller the ability to set the fill and drop the ring — reintroducing exactly the colour-only defect the ring exists to prevent (`Timeline.tsx:152-158`, `ActivityFeed.tsx:39-45`). §4a sub-rule 2 is decisive. |
 | Timeline / ActivityFeed marker track (`timeline-node`, `activity-feed-aside`) | **(a)** | A fixed grid track the rail's origin is measured from — `ActivityFeed.tsx:46-48`: *"the 2rem marker column is a fixed grid track that the connector's origin is measured from, and growing the marker would move the rail."* Changing it is not an override, it is a broken rail. Name reserved as `gutter`, granted to nobody. |
 | Stepper current-step ring | **(b) token, no slot** | `--stepper-progress-color` public (`Stepper.css:31`), `--_stepper-active-line-width` private (`:19`). Identical shape, identical ruling. |
-| Sparkline geometry / colour (`sparkline-line` `Sparkline.tsx:174`, `-area` `:169`, `-bar` `:137`, `-point` `:151`) | **(a) + (b), no slots** | `Sparkline.css:6-8` documents the route already: `--sparkline-color: currentColor` (`:13`) means *"`text-chart-1`, `text-trend-up` — no per-instance CSS needed"* on the root, which `className` already reaches. Four unreachable literals, zero gaps. |
+| Sparkline geometry / colour (`sparkline-line` `Sparkline.tsx:190`, `-area` `:180`, `-bar` `:143`, `-point` `:159`) | **(a) + (b), no slots** | `Sparkline.css:6-8` documents the route already: `var(--sparkline-color, currentColor)` at each read means *"`text-chart-1`, `text-trend-up` — no per-instance CSS needed"* on the root, which `className` already reaches. Four unreachable literals, zero gaps. The `.sparkline { --sparkline-color: currentColor }` declaration this row originally cited has since been **deleted** — see the row below and §11. |
 | ProgressRing colour (`progress-ring__indicator--{accent,success,warning,error}` `ProgressRing.css:30-42`) | **(a)** | Driven by the `color` prop, not by a class a consumer writes. `indicator` and `track` still get slots for *geometry* (§7.8). |
 | `--numberinput-stepper` (`NumberInput.tsx:171`, from module constant `CHEVRON_SIZE` `:44`) | **neither — §4d defect** | §4d's test: *"if the inline value's inputs do not include a prop, it is not a per-instance derivation."* `CHEVRON_SIZE` is a module constant. Fix per §4d (move the default to CSS or write the padding as a utility); do **not** promote it to a public token, and do not give it a slot. |
 | Skeleton geometry (`Skeleton.tsx:34` default `width = "100%"`, `:44` `style={{ width, height, ...style }}`) | **slot-adjacent — §4d defect, fix first** | `<Skeleton className="w-20" />` silently loses today. §4d's fix (`w-full` + an `h-*` map) makes the root's `className` the route. **No slot; the root is enough.** |
 | ProgressBar fill colour (`ProgressBar.css:35-37` declares `--progress-bar-fill`/`-fill-end` **on `.progress-bar__fill`**) | **(b) token, after the §4d move** | A consumer theme at `:root` loses permanently while the declaration sits on the child. Move to `.progress-bar` (§4d), then it is a working pair. `fill` still gets a slot for *geometry* (§7.8) — the two are not alternatives. |
-| Sparkline `--sparkline-color` (`Sparkline.css:13`, declared on `.sparkline`) | **(b), same §4d move** | Root-level, so it is already reachable from `className`'s element; `docs/components/sparkline.md:133-134` documents the limitation — evidence somebody noticed, not evidence it is right (`memory/README.md` §16). |
+| Sparkline `--sparkline-color` (was declared on `.sparkline`) | **(b), and the §4d move is now done** | Root-level, so it was already reachable from `className`'s element — but not from a theme at `:root`, because a declaration on the reading element beats an inherited one. The Phase 3 reference lane **deleted the declaration** rather than out-ranking it (`Sparkline.css` header); every read already carried the `currentColor` fallback, so nothing changes for a consumer who sets nothing. `docs/components/sparkline.md` documented the loss as a limitation — evidence somebody noticed, not evidence it is right (`memory/README.md` §16, §27) — and that prose is now answered there. |
 | Fade tempo on floating surfaces | **(b) only, and only `--MOTION-DURATION-*`** | `floating-motion.ts:11-13` at source: `useTransitionStyles` writes `transition-duration` **inline**, so *"the value cannot be supplied from CSS while that hook owns it."* A `duration-*` utility in `className`, in a slot, or inlined from CSS is **silently dead**. Three importers, confirmed exact: `Popover.tsx:29`, `HoverCard.tsx:31`, `menu-internals.tsx:29`. **No slot may promise fade timing.** |
 | Overlay z-index (`Popover.css:17`=40, `DropdownMenu.css:18`=40, `Tooltip.css:11`=50, `ToastContext.tsx:212`=`z-50`, `HoverCard` sets nothing) | **neither — out of scope (§11)** | Needs one `--OVERLAY-Z-*` scale in `response-ui-css`. A `panel` slot lets a caller pass `z-…`, which is a workaround, not the fix. Do not present the slot as closing this. |
 
@@ -510,16 +534,16 @@ use these names.
 | the framing/layout box around a control and its affordances | `control` | `multiselect-control` `MultiSelect.tsx:268` |
 | the focusable entry element | `input` | `multiselect-input` `:337` · `combobox-input` `Combobox.tsx:301` · `search-input__input` `SearchInput.tsx:112` · `command-palette-input` `CommandPalette.tsx:393` · `range-slider__input` `RangeSlider.tsx:222,240` |
 | the floating or revealed surface | `panel` | `colorpicker-panel` `ColorPicker.tsx:289` · `tabs-panel` `Tabs.tsx:346` — **only where `.Content` does not ship** (§10). `multiselect-content` (`MultiSelect.tsx:370`) was a `panel` and is now `MultiSelect.Content` (decision 1) |
-| a repeated unit in a list | `item` | `accordion-item` `Accordion.tsx:158` · `combobox-item` `Combobox.tsx:474` · `carousel-item` `Carousel.tsx:362` · `timeline-item` `Timeline.tsx:203` · `activity-feed-item` `ActivityFeed.tsx:66`. `multiselect-item` (`MultiSelect.tsx:400`) is now `MultiSelect.Item` (decision 1) — the **word** is unchanged, which is the point of §1.5 |
+| a repeated unit in a list | `item` | `accordion-item` `Accordion.tsx:158` · `combobox-item` `Combobox.tsx:474` · `carousel-item` `Carousel.tsx:362` · `timeline-item` `Timeline.tsx:203` · `activity-feed-item` `ActivityFeed.tsx:66`. `multiselect-item` (`MultiSelect.tsx:400`) is now `MultiSelect.Item` (decision 1) and `command-palette-option` (`CommandPalette.tsx:352`) is now `CommandPalette.Item` (decision 5) — the **word** is unchanged in both, which is the point of §1.5 |
 | the container of repeated units | `list` | `tabs-list` `Tabs.tsx:208` · `pagination__list` `Pagination.tsx:112` · `command-palette-list` `CommandPalette.tsx:420` · `breadcrumbs__list` `Breadcrumbs.tsx:150` · `file-upload__preview-list` `FileUpload.tsx:686` |
-| a leading glyph on a non-repeated element | `icon` | `search-input__icon` `SearchInput.tsx:96` · `empty-state__icon` `EmptyState.tsx:62` · `file-upload__icon` `FileUpload.tsx:754` · `stat-card__icon` `StatCard.tsx:259` · `timeline-icon` `Timeline.tsx:184` |
+| a leading glyph on a non-repeated element | `icon` | `search-input__icon` `SearchInput.tsx:96` · `empty-state__icon` `EmptyState.tsx:62` · `file-upload__icon` `FileUpload.tsx:754` · `stat-card__icon` `StatCard.tsx:278` · `timeline-icon` `Timeline.tsx:184` |
 | a leading glyph inside a repeated item | `itemIcon` | `dropdown-menu-item-icon` `menu-internals.tsx:368` · `command-palette-option-icon` `CommandPalette.tsx:363` (§8.1) |
 | a selection indicator inside a repeated item | `itemIndicator` | `multiselect-item__check` `MultiSelect.tsx:409` (§8.1) — shipped as the subcomponent `MultiSelect.ItemIndicator` (decision 1); **reserved as a slot key, granted to no component** |
 | the primary text of a repeated item | `itemLabel` | `command-palette-option-label` `CommandPalette.tsx:367` · `app-shell-sidebar-link-label` `AppShell.tsx:401` |
 | the removal control on a repeated item | `itemRemove` | `multiselect-tag__remove` `MultiSelect.tsx:307` (→ `tagRemove` under §1.3, and shipped as `MultiSelect.TagRemove` under decision 1) · `file-upload__media-grid-remove` `FileUpload.tsx:306` |
 | a pressable disclosure control | `toggle` | `combobox-toggle` — a real `<button>`, `Combobox.tsx:341-347` · `app-shell-toggle` `AppShell.tsx:199` |
 | a decorative direction glyph | `chevron` | `accordion-chevron` `Accordion.tsx:239`. `multiselect-toggle` (`MultiSelect.tsx:357`) is a `<span aria-hidden="true">` and is **misnamed today** — its slot is `chevron` (§8.3) |
-| the "nothing matched" row | `empty` | `combobox-empty` `Combobox.tsx:507` (`.Empty` ships) · `multiselect-empty` `MultiSelect.tsx:380` (`.Empty` ships, decision 1) · `command-palette-empty` `CommandPalette.tsx:446` — **the only remaining `empty` slot** |
+| the "nothing matched" row | `empty` | `combobox-empty` `Combobox.tsx:507` (`.Empty` ships) · `multiselect-empty` `MultiSelect.tsx:380` (`.Empty` ships, decision 1) · `command-palette-empty` `CommandPalette.tsx:446` (`.Empty` ships, decision 5). **Reserved; after decisions 1 and 5 no component takes the slot** — every element the word names is a subcomponent (§1.5a) |
 | the "loading" row | `loading` | `combobox-loading` `Combobox.tsx:418` |
 | the clearing control | `clear` | `search-input__clear` `SearchInput.tsx:120` · `file-upload__preview-clear` `FileUpload.tsx:724` |
 | the dismiss control | `dismiss` | `Toast.tsx:195` (`dismissLabel`, `Toast.tsx:118`) |
@@ -548,7 +572,7 @@ use these names.
 | a darkening layer over a sibling | `overlay` | `hero__overlay` `Hero.tsx:59` · `media-card__overlay` `MediaCard.tsx:75` |
 | a dimming layer behind a modal, as a real element | `scrim` | `app-shell-scrim` `AppShell.tsx:275` (§3.4) |
 | the pointer triangle on a floating surface | `arrow` | **new element** — decision 4 (§4). Overlay-family-owned (§7.3); `Popover`, `HoverCard`, `Tooltip` only. Off the ban list for this element and this element only (§3.3) |
-| a value readout | `value` | `progress-bar__value` `ProgressBar.tsx:158` · `colorpicker-trigger__value` `ColorPicker.tsx:272` · `stat-card__value` `StatCard.tsx:156` |
+| a value readout | `value` | `progress-bar__value` `ProgressBar.tsx:158` · `colorpicker-trigger__value` `ColorPicker.tsx:272` · `stat-card__value` `StatCard.tsx:163` |
 | an action cluster the consumer fills | `actions` | `empty-state__actions` `EmptyState.tsx:119` · `file-upload__preview-actions` `FileUpload.tsx:709` |
 | one preset choice in a palette | `preset` | `colorpicker-preset` `ColorPicker.tsx:408` |
 | N homogeneous entry boxes | `box` | `OTPInput.tsx:225` — §10's sole `box` carve-out |
@@ -715,12 +739,12 @@ behavioural markers: a slot **appends**, never replaces. And `Calendar.css` has 
 | the results container | `list` | CommandPalette | `:420` |
 | a group | `group` | CommandPalette | `:436` (every-instance) |
 | a group heading | `groupHeader` | CommandPalette | `:438` (every-instance) |
-| a result row | `item` | CommandPalette | `:352` (every-instance) |
+| a result row | *(subcomponent `.Item`)* | CommandPalette | `:352` (every-instance) — decision 5; **no `item` slot** |
 | a row's glyph | `itemIcon` | CommandPalette | `:363` (every-instance) |
 | a row's text | `itemLabel` | CommandPalette | `:367` (every-instance) |
 | a row's shortcut | `itemShortcut` | CommandPalette | `:369` (every-instance) |
-| "nothing matched" | `empty` | CommandPalette | `:446` |
-| **plus** different *content* per row | `renderItem` **(e)** | CommandPalette | replaces the private closure at `:338` |
+| "nothing matched" | *(subcomponent `.Empty`)* | CommandPalette | `:446` — decision 5; **no `empty` slot**. `emptyMessage` (`:42`) is the content channel it already shipped |
+| the palette surface | *(subcomponent `.Content`)* | CommandPalette | decision 5 — **no `panel` slot** (§1.5a) |
 | dismiss control | `dismiss` | Toast | `Toast.tsx:195` |
 | leading glyph | `icon` | Toast | `Toast.tsx:183` — prop is `statusIcon` (`Toast.tsx:110-117`), **not** `icon` (§15.3) |
 | body region | `body` | Toast | `Toast.tsx:184` |
@@ -734,17 +758,19 @@ behavioural markers: a slot **appends**, never replaces. And `Calendar.css` has 
 API, which is what they already have (`Dialog.tsx:62-69`, `Drawer.tsx:63`). That is triage **(a)**
 for the family's two largest surfaces, and it is correct.
 
-**`CommandPalette`'s eleven rows above are provisional in one respect only.** Decision 1 removed the
-reason this document used to rule out a compound here (§10.2), and the question is now an open owner
-item (§14.2). If the owner takes (d), `search`/`input`/`list`/`group`/`groupHeader`/`item`/
-`itemIcon`/`itemLabel`/`itemShortcut`/`empty` do **not** all ship as slots — `.Content`, `.Item` and
-`.Empty` replace three of them under §1.5a, exactly as they did for `MultiSelect`. **The names do not
-change either way**; only the mechanism does. A lane must not start `CommandPalette` before §14.2 is
-closed.
+**`CommandPalette` is a compound — decision 5 — so three of its rows above are subcomponents, not
+slots.** `.Content`, `.Item` and `.Empty` ship and replace the `item` (`:352`) and `empty` (`:446`)
+rows plus the floating surface, under §1.5a and exactly as they did for `MultiSelect`; the
+construction is §10.1's shape C, with `items` staying the sole writer of the data. The other rows —
+`search`, `input`, `list`, `group`, `groupHeader`, `itemIcon`, `itemLabel`, `itemShortcut` — ship as
+slots unchanged. **The names did not change with the ruling**; only the mechanism did, which is why
+this table did not have to be re-derived. The `renderItem` **(e)** row is subsumed: `.Item` is the
+content channel it stood in for.
 
 **Family-owned** (§1.5) in this family: `group`, and — new with decision 4 — `arrow`. (`search`,
-`itemShortcut`, `input`, `list`, `item`, `itemIcon`, `itemLabel`, `groupHeader`, `empty`, `icon`,
-`body`, `title` and `dismiss` are all §6 names.)
+`itemShortcut`, `input`, `list`, `itemIcon`, `itemLabel`, `groupHeader`, `icon`, `body`, `title`
+and `dismiss` are all §6 names. `item` and `empty` are §6 names too, but decision 5 leaves neither
+as a *slot* here — both are subcomponents.)
 
 ### 7.4 Family 4 — sequence ▲ **newly settled**
 
@@ -887,11 +913,11 @@ bounded `columns` union) and it is already specified.
 | the centre content box | `panel`… **no** → `center` | ProgressRing | `:80` (`progress-ring__slot`) — **`slot` is banned** (§4a); frozen name `center` |
 | the star row | **(a)** | Rating | `Rating.tsx:73-76`, `:220` — see §11 |
 | value / label / trend / icon / sparkline | *(subcomponents)* | StatCard | `:156`, `:172`, `:235`, `:259`, `:285` |
-| the trend glyph | `trendIcon` | StatCard.Trend | `StatCard.tsx:215` |
-| the sparkline box | *(hatch `sparklineProps`)* | StatCard.Sparkline | `:285-288` (§13) |
+| the trend glyph | `trendIcon` | StatCard.Trend | `StatCard.tsx:230` |
+| the sparkline box | **(a)** — no slot, **and no hatch** | StatCard.Sparkline | `:285` — the row that stood here proposed a `sparklineProps` hatch; it does not survive at source. See §13.3 |
 | icon / title / description / actions | *(subcomponents)* | EmptyState | `:62`, `:87`, `:101`, `:119` |
 | leading glyph | `icon` | Alert | `Alert.tsx:98` |
-| live region | **(a)** | Alert, StatCard, Rating, Skeleton | `Alert.tsx:97` · `StatCard.tsx:150` · `Rating.tsx:237` · `Skeleton.tsx:48` |
+| live region | **(a)** | Alert, StatCard, Rating, Skeleton | `Alert.tsx:97` · `StatCard.tsx:154` · `Rating.tsx:237` · `Skeleton.tsx:48` |
 | Sparkline internals | **(a)+(b)** | Sparkline | `:137`, `:151`, `:169`, `:174` — §5 |
 | Meter, Spinner | **no slots** | — | utilities-only, `className` is the surface |
 
@@ -1085,18 +1111,19 @@ with `cn()`."* Two consequences for the vocabulary:
 Every name below is checked against §10's rule: **a component gets `Content` the subcomponent or
 `panel` the slot, never both** — read generally, per element (§1.5a).
 
-**One (d): `MultiSelect`.** The owner took it (decision 1), against this document's recommendation
-of (c). Of the other five on §5's list, **four verdicts stand** — `ColorPicker`, `Tooltip`,
-`Repeater` and `FileUpload`, the last two with half of their reasoning refined — and **one loses
-its reason outright and is re-opened as an owner item**: `CommandPalette` (§14.2). Decision 1 killed
-a premise two of the five shared. §10.2 does that work; do not read an original reason as still
-load-bearing where a replacement is given.
+**Two (d): `MultiSelect` and `CommandPalette`.** The owner took the first (decision 1) against this
+document's recommendation of (c), and the second (decision 5) in line with §10.2's. Of the other
+four on §5's list, **all four verdicts stand** — `ColorPicker`, `Tooltip`, `Repeater` and
+`FileUpload`, the last two with half of their reasoning refined. Decision 1 killed a premise three
+of the five shared, which is why the reasons had to be re-derived even where the conclusion did
+not move. §10.2 does that work; do not read an original reason as still load-bearing where a
+replacement is given.
 
 | Candidate | Disposition | Reasoning |
 | --- | --- | --- |
 | `MultiSelect` | **(d) — taken** | §10.1. The `CLAUDE.md` rule 3 objection was not waived; it is engineered around. |
 | `ColorPicker` | **(c)** — stands, on its own evidence | A consumer could compose a picker with no hue strip. Hue is unrecoverable from a greyscale hex (`memory/state.md:33-36`: *"Hue is unrecoverable from `#000000`"*), so a legal composition would be a broken instrument. Nothing in decision 1 touches this: it is a correctness argument about *what a composition can express*, not about who writes the data. §10.2 sharpens it. |
-| `CommandPalette` | **reason dead; re-opened as an owner item (§14.2)** | Was rejected for the same required-data-prop reason decision 1 overruled. §10.2. |
+| `CommandPalette` | **(d) — taken** (decision 5) | Was rejected for the same required-data-prop reason decision 1 overruled; §10.2 re-argued it from source and the owner took (d). `.Content`/`.Item`/`.Empty`, shape C, `items` the sole writer. |
 | `Tooltip` | **§4b root** — stands, untouched | Tooltip renders **one** element (`Tooltip.tsx:114-125`); the trigger is the caller's own node, cloned. §4b's answer is `className` → that one element. A compound rewrite breaks `<Tooltip content="…">` for zero new capability. (Decision 4 gives it a *second* element — an arrow — which is a slot, not a subcomponent; §4.3.) |
 | `Repeater` | **(c) + the shipped render prop** — stands, **reason refined** | §10.2. |
 | `FileUpload` | **(e)** — stands, on the second of its two reasons | Two of the three preview components are loop-generated (`FileUpload.tsx:669` `mediaFiles.map`, `:687` `otherFiles.map`), and the third (`:654`) is selected by internal MIME + count logic the consumer cannot predict. **The unpredictable-dispatch half is what carries it** — a flat compound surface would be a window onto three element trees that may not render. §5 offers "(d) … **or** take `renderPreview`/`renderFile`"; the second still wins. |
@@ -1269,7 +1296,7 @@ second premise moved with it: §5's loop test read as *"(d) is structurally impo
 §10.1 shows is too strong, and that one was load-bearing for **two** more (`Repeater`,
 `FileUpload`). Each of the five is re-examined below on its own evidence.
 
-**`CommandPalette` — the reason is dead, and the question re-opens.** Its rejection was: *"`items:
+**`CommandPalette` — the reason died, and the owner then took (d).** Its rejection was: *"`items:
 CommandItem[]` is a required data prop (`CommandPalette.tsx:38`). Same `CLAUDE.md` rule 3 argument
 as `MultiSelect`."* That argument is now overruled, and §10.1's construction transfers exactly:
 `items` stays the writer, children are invoked over the already-filtered list. What is genuinely
@@ -1289,14 +1316,16 @@ different, measured:
   so the invariant survives — but it means a `CommandPalette` compound buys **one** channel over
   what §11 already prescribes, where `MultiSelect`'s bought three.
 
-**Ruling: not mine to close.** The stated reason is gone, so leaving the (c) verdict standing on it
-would be a superseded ruling — exactly what this document must not contain. **My recommendation is
-(d)**, matching `MultiSelect`: two components with one anatomy — data-supplied options, a query
-filter, an empty row, a floating surface — shipping under two different mechanisms is the §10 failure
-one level up from class names, and "the marginal gain is only one channel" is an argument about
-size, not about correctness. But it is a breaking public-API change of exactly the class the owner
-just reserved to themselves, so it goes to **§14.2**, and a lane must not start `CommandPalette`
-until it closes.
+**Ruling: (d) — decision 5.** This document could not close it (a breaking public-API change of
+exactly the class the owner had just reserved) and recommended (d): two components with one anatomy
+— data-supplied options, a query filter, an empty row, a floating surface — shipping under two
+different mechanisms is the §10 failure one level up from class names, and "the marginal gain is
+only one channel" is an argument about size, not about correctness. **The owner took that
+recommendation.** `.Content`, `.Item` and `.Empty` ship; `items` stays the sole writer under shape
+C; the root keeps rendering the `role="group"` structure, so the ownership invariant at `:334-336`
+survives untouched. The slot names in §7.3 did not move — §1.5a simply withdraws the three keys the
+subcomponents now reach. **Order of work: decision 6 first** (§14.2) — `CommandPalette.Item`'s props
+type names `CommandItem`, so writing it before the harmonised name exists ships the wrong one.
 
 **`Repeater` — verdict stands, reason refined.** It was rejected because *"rows are loop-generated
 (`Repeater.tsx:226` `array.fields.map`), so (d) is structurally impossible by §5's own loop test."*
@@ -1327,7 +1356,7 @@ merely a *different* one?** Component doc read before classifying, per §5.
 | --- | --- | --- | --- |
 | **`MultiSelect`** — 10 internals *(count reproduces exactly: `multiselect-control`, `-tags`, `-tag`, `-tag__remove`, `-input`, `-toggle`, `-content`, `-empty`, `-item`, `-item__check`)* | (d) | **(d) × 6 + (c) × 4** — §5's expectation, taken by the owner (decision 1). This document ruled **(c) × 10** and recommended against; **resolved against, and the reasoning is preserved and answered in §10.1.** | `className` destructured `:98`, merged only at `:256` — no internal has any route (`bugs/ARCHIVE.md` #498 measured this). **(d):** `-content` `:370` → `.Content`; `-item` `:400` → `.Item`; `-item__check` `:409` → `.ItemIndicator`; `-empty` `:380` → `.Empty`; `-tag` `:299` → `.Tag`; `-tag__remove` `:307` → `.TagRemove`. **(c):** `-control` `:268`, `-tags` `:297` → `list`, `-input` `:337`, `-toggle` `:357` → `chevron`. The loop-generated elements (`:299`, `:400`, `:409`, `:307`) are reachable as (d) **only** in §10.1's shape C — the root invokes the children over its own filtered list, so §5's loop test is satisfied rather than overridden. |
 | **`ColorPicker`** — §5 says 13 | (d) | **(c) × 11 + (a) × 1**, and the count is **12**, not 13 | 13 reproduces only by counting the **root**; excluding the root and the two `--modifier` classes there are **12** internal class names, on 12 elements. `grep -oE 'colorpicker[a-zA-Z0-9_-]*' src/components/form/ColorPicker.tsx \| grep -v -- '--' \| sort -u \| wc -l` → 13 including root. `colorpicker-row` (`:367`) ruled **(a)**. |
-| **`CommandPalette`** — 11 + a `renderOption` closure | (d) | **(c) × 10 + (e) × 1 — provisional; the (d) question is re-opened (§14.2).** | 11 reproduces including the root → **10 internals**. `renderOption` confirmed a local `const` at `:338`, unreplaceable. Loop-generated: `:352, :363, :367, :369, :436, :438`. ~~`items` is data → no (d)~~ — **that reason died with decision 1** (§10.2); the verdict now rests on the two content channels that already ship (`emptyMessage` `:42`, `filter` `:40`) plus `renderItem`, and the owner has the call. |
+| **`CommandPalette`** — 11 + a `renderOption` closure | (d) | **(d) × 3 + (c) × 7** — §5's expectation, taken by the owner (decision 5). This document ruled **(c) × 10 + (e) × 1** and could not close it; **resolved, and the reasoning is preserved and answered in §10.2.** | 11 reproduces including the root → **10 internals**. Loop-generated: `:352, :363, :367, :369, :436, :438`. ~~`items` is data → no (d)~~ — **that reason died with decision 1** (§10.2). **(d):** the floating surface → `.Content`; `-option` `:352` → `.Item`; `-empty` `:446` → `.Empty`. **(c):** `search` `:388`, `input` `:393`, `list` `:420`, `group` `:436`, `groupHeader` `:438`, `itemIcon` `:363`, `itemLabel` `:367`, `itemShortcut` `:369` — eight keys over seven once-rendered/every-instance elements. The **(e) `renderItem`** row is subsumed: `.Item` is the content channel that replaces the private `renderOption` closure at `:338`, which reproduces as a local `const` and is unreachable either way. |
 | **`Tooltip`** — 1 literal / 10 unreachable declarations | (d) | **§4b root — none of (a)–(e).** | `Tooltip.css` has exactly **10 declarations** (`:2-11`) and `Tooltip.tsx:116` is the only literal — both reproduce. `TooltipProps` (`:26-38`) has no `className`, no `ComponentProps`, no rest spread → `<Tooltip className>` **is** a TS error, and `docs/components/tooltip.md:27` documents the absence (*"no `className`"*). The bubble is the only element Tooltip constructs, so §4b hands it `className`. **No compound.** §5's taxonomy has no bucket for this (§15.5). **Amended by decision 4:** with `arrow` set, Tooltip constructs a *second* element, so it takes `className` (the bubble) **plus** `classNames.arrow` — one slot, not none (§4.3). The "one element" premise was true when written and is what the decision changes. |
 | **`Repeater`** — 5 internals | (d), and "a passed `className` is a TypeScript error" | **(c) × 4 + (a) × 1**, and **the TS-error claim is false** | `RepeaterProps` (`:77-127`) **contains `className?: string` at `:126`** and it is merged at `:221` (`cn("flex flex-col gap-r4", className)`). `docs/components/repeater.md:48` lists it in the props table and `:58-60` documents the behaviour. What *is* a type error is `ref` and rest props — which is what §11 says, correctly. Rows loop-generated (`:226`); render prop already at `:87`, and the row content is the *consumer's own fields*, so there is no library-owned content for a subcomponent to name (§10.2 — the loop test alone no longer carries this). Live region `:308` → (a). |
 | **`FileUpload`** — 27 internals | (d), "not as 27 slots" | **(c) × 12 + (e) × 2 + (b→`data-*`) × 6 + (a) × 1** | 27 reproduces **exactly** (method: distinct `file-upload*` tokens in the `.tsx`, minus the root and the 6 `--modifier` classes). 12 chrome slots the root always or conditionally renders; 15 internals live inside the three private components → `renderPreview` + `renderFile`; 6 root modifiers → `data-*`; `:801` `sr-only` input → (a). |
@@ -1338,23 +1367,26 @@ merely a *different* one?** Component doc read before classifying, per §5.
 | `ColorPicker` panel row | not listed | **(a)** | `ColorPicker.tsx:367` — a two-child flex row inside a fixed instrument panel. Reflowing it does not produce a usable picker; the `panel` slot restyles the surface. |
 | `Rating` star internals | not listed | **(a) × 4** | `Rating.tsx:73-76` — `rating-star`, `-star-base`, `-star-fill`, `-star-fill-icon` implement a clipped partial fill driven by `style={{ width }}` (`:75`). A class cannot participate; a consumer changing them breaks the fill fraction. |
 | `Timeline`/`ActivityFeed` marker + gutter | not listed | **(b)** / **(a)** | §5, on the source docblocks at `Timeline.tsx:146-158` and `ActivityFeed.tsx:39-49`. |
-| `Sparkline` internals | not listed | **(a)+(b) × 4** | `Sparkline.css:6-8,13` documents the `currentColor` route (§5). |
+| `Sparkline` internals | not listed | **(a)+(b) × 4** | `Sparkline.css`'s header documents the `currentColor` route (§5). The `--sparkline-color: currentColor` declaration the (b) half rested on **has been deleted** by the Phase 3 reference lane: it sat on `.sparkline` itself, so a consumer theme setting the variable at `:root` lost permanently (plan §4d). The route is now the `var(--sparkline-color, currentColor)` fallback at each read, which is identical where nothing sets it and reachable where something does. The ruling is unchanged and stronger. |
+| `StatCard.Sparkline`'s pinning box | not listed | **(a)** — the plan's *"one known unreachable wrapper"* (§9) | `StatCard.tsx:311` — `display:block` + `margin-top:auto`, where the auto margin means something only as a flex child of `.stat-card`. §4b would hand it `className`, as it does for `MediaCard.Image` — but the two are **not** the same shape: `MediaCard.Image` configures an `<img>` it owns, whereas `StatCardSparklineProps` **is** `ComponentProps<typeof Sparkline>` (`:285-288`) and the `ref` is the `<svg>`, so `className` naming the box would be a breaking change to a documented pass-through *and* would break tint override, which works today only because `className` merges after the `direction`/`sentiment` class. **Ruled (a); re-pointing it is an owner call, not a lane's** (§13.3). |
 | `ProgressRing` colour modifiers | not listed | **(a) × 5** | `ProgressRing.css:25-42` — driven by the `color` prop. |
-| Nine `sr-only role="status"`/`role="alert"` regions | §10 named 2 | **(a) × 10** | `TagInput.tsx:471` · `Repeater.tsx:308` · `CommandPalette.tsx:411` · `AvatarUpload.tsx:331` · `Toast.tsx:185` · `Alert.tsx:97` · `StatCard.tsx:150` · `Rating.tsx:237` · `Skeleton.tsx:48` · `Table.tsx:290`. §10's reason ("exposing invites a consumer to drop `sr-only`") applies unchanged to all ten. |
+| Nine `sr-only role="status"`/`role="alert"` regions | §10 named 2 | **(a) × 10** | `TagInput.tsx:471` · `Repeater.tsx:308` · `CommandPalette.tsx:411` · `AvatarUpload.tsx:331` · `Toast.tsx:185` · `Alert.tsx:97` · `StatCard.tsx:154` · `Rating.tsx:237` · `Skeleton.tsx:48` · `Table.tsx:290`. §10's reason ("exposing invites a consumer to drop `sr-only`") applies unchanged to all ten. |
 | `VirtualizedDataTable` spacer rows | not listed | **(a) × 2** | `:344`, `:382` — `aria-hidden` height shims whose geometry `use-virtual-rows` computes. |
 | Three bare `className="relative"` boxes | not listed | **§4b** | `Select.tsx:30` · `NumberInput.tsx:170` · `DatePicker.tsx:285` — outermost elements receiving nothing while `className` lands on the inner control. Same shape as `TagInput.tsx:378`, which §4b already names. |
 
-**Totals, named not counted.** Of the candidates the plan flags: **six (d)** — all six on
-`MultiSelect` (`.Content`, `.Item`, `.ItemIndicator`, `.Empty`, `.Tag`, `.TagRemove`, decision 1) —
-**three (e)** (`renderDay`, `renderItem`, `renderPreview`+`renderFile`), and the rest (c), (b) or
-(a).
+**Totals, named not counted.** Of the candidates the plan flags: **nine (d)** — six on
+`MultiSelect` (`.Content`, `.Item`, `.ItemIndicator`, `.Empty`, `.Tag`, `.TagRemove`, decision 1)
+and three on `CommandPalette` (`.Content`, `.Item`, `.Empty`, decision 5) — **two (e)**
+(`renderDay`, `renderPreview`+`renderFile`), and the rest (c), (b) or (a). **`renderItem` has left
+the (e) list**: decision 5 gives `CommandPalette` a `.Item` subcomponent, and §1.5a makes a render
+prop and a subcomponent for one element the same two-writers defect a slot would be.
 
-**This document's earlier total was "zero (d)", and it is superseded rather than deleted.** One of
-the five rejections was overruled by the owner; of the remaining four, `ColorPicker` and `Tooltip`
-stand on evidence decision 1 never touched, `Repeater` and `FileUpload` stand with refined reasons,
-and `CommandPalette`'s reason is gone with the verdict re-opened (§10.2, §14.2). The honest summary
-is that the *conclusion* survived for four of five and the *shared premise* did not survive for two
-of them.
+**This document's earlier total was "zero (d)", and it is superseded rather than deleted.** Of the
+six candidates in §10's table, **two were ruled (d)** — `MultiSelect` against this document's
+recommendation, `CommandPalette` in line with it — and **four stand**: `ColorPicker` and `Tooltip`
+on evidence decision 1 never touched, `Repeater` and `FileUpload` with refined reasons. The honest
+summary is that the *conclusion* survived for four of six while the *shared premise* did not
+survive for three of them.
 
 **Decision 4 adds one element to the package that no triage row could have covered**, because it did
 not exist: the floating-surface arrow on `Popover`, `HoverCard` and `Tooltip`. It is **(c)** —
@@ -1413,19 +1445,28 @@ describe the four as uniform** — three plus a documented exception.
 | --- | --- | --- |
 | `MediaCard.Image` → `<img>` | after §4b moves `className` to the container (`:52`), the `<img>` (`:56`) needs a route, and it carries utilities so the merge is required | `imgProps` — same name as `Spotlight` |
 | `AvatarUpload` → `Avatar` | `AvatarUpload.tsx:267` hardcodes `className="size-full"` on an inner `Avatar` | `avatarProps` |
-| `StatCard.Sparkline` → `Sparkline` | `StatCard.tsx:285-288` wraps and classes an inner `Sparkline` (§9 cluster 5) | `sparklineProps` |
+| ~~`StatCard.Sparkline` → `Sparkline`~~ | **Withdrawn — the premise does not reproduce.** The row read *"wraps and classes an inner `Sparkline`"*, grouping it with `AvatarUpload → Avatar`, where the inner component genuinely has no route. Here it has a complete one: `StatCardSparklineProps` **is** `{direction?, sentiment?} & ComponentProps<typeof Sparkline>` (`StatCard.tsx:285-288`), every one of which is spread onto the inner `<Sparkline>`, and the `ref` is the `<svg>`. A `sparklineProps` bag would be a **second writer** for props the top-level surface already carries (`CLAUDE.md` rule 3) — the opposite of what a hatch is for. | **none** — see below | 
 | `Toast` → `IconButton` | `Toast.tsx:195` hardcodes `cn("shrink-0 -mr-r6", dismissClasses)` | `dismissProps` (or `classNames.dismiss`; the hatch is preferred, the target is a component) |
 | `Repeater` → `IconButton` ×3 | `Repeater.tsx:257-269+` render Move/Remove `IconButton`s with no route | `itemActionProps` |
 
+**A hatch's precondition, learned from the row above and easy to skip.** A `<thing>Props` bag is
+warranted only where the inner component has **no** prop route of its own. Where the wrapper's
+public props already *are* the inner component's — `X & ComponentProps<typeof Inner>`, spread
+through — a hatch adds a second writer rather than a first one. **Test before adding one: can the
+caller already reach the inner component's `className` through the wrapper's own props?** If yes,
+the wrapper is a pass-through and the only question left is which element `className` names, which
+is §4b's, not §13's. `StatCard.Sparkline` is that shape and takes no hatch; `AvatarUpload → Avatar`
+is not (its `className` goes to `AvatarUpload`'s own root) and takes one.
+
 **Naming rule for hatches:** `<camelCaseTargetName>Props`, singular, matching the element or
 component it addresses — `imgProps`, `tableProps`, `copyButtonProps`, `viewAllProps`, `badgeProps`,
-`avatarProps`, `sparklineProps`. **No `slotProps`** (§4a).
+`avatarProps`. **No `slotProps`** (§4a).
 
 ---
 
 ## 14. Owner decisions
 
-### 14.1 Closed — the four taken
+### 14.1 Closed — the six taken
 
 Recorded with their outcome so a lane meets the ruling, not the question. Each is folded into the
 body; nothing here is the only place a decision lives.
@@ -1436,25 +1477,18 @@ body; nothing here is the only place a decision lives.
 | 2 | **`Breadcrumbs.Separator` → `.Divider`?** Two shipped words for one concept; renaming is breaking. | **Renamed.** The rename also moves the internal component name and the `child.type` identity check (`Breadcrumbs.tsx:62`). | §8.5, §7.4, §6, §3.6 |
 | 3 | **`DropdownMenu.Label`/`ContextMenu.Label` → `.GroupHeader`?** The class becomes `menu-group-header`, leaving the subcomponent named after a word its class no longer contains. | **Renamed**, with `MenuLabel`/`MenuLabelProps` moving too. `label` remains **hard-banned as a slot name** in every family. | §8.8, §7.3, §6, §3.1 |
 | 4 | **`arrowRef`: cover it or document it as unsupported.** Exported, documented, activatable public API that renders nothing. | **Covered.** The arrow is rendered and positioned on `Popover`, `HoverCard` and `Tooltip`, behind an opt-in `arrow` prop. `arrow` comes **off the ban list for that element only** and stays banned as a name for a direction control. | §4, §3.3, §3, §6, §7.3 |
+| 5 | **Does `CommandPalette` follow `MultiSelect` into (d)?** Decision 1 overruled the reason this document used to rule it out (*"`items` is a required data prop"*), so the (c) verdict could no longer stand on what it was standing on. §10.2 recommended **(d)**; the counter-argument was that two of the three content channels already ship (`emptyMessage` `CommandPalette.tsx:42`, `filter` `:40`), so a compound buys one channel over the `renderItem` §11 prescribes. | **(d).** One anatomy under one mechanism — "the marginal gain is one channel" is an argument about size, not correctness. `items` stays the sole writer under §10.1's shape C, exactly as `options` does. | §10.2, §7.3, §11, §1.5a |
+| 6 | **`MultiSelectOption` vs `CommandItem`** — two exported type names for one concept, both public (`MultiSelect.tsx:27-31`, `CommandPalette.tsx:20-29`). Decisions 1 and 5 make both *more* public, not less: each moves from a data-prop element type to a **subcomponent prop** type (`MultiSelect.Item` takes `option:`, `CommandPalette.Item` takes the row). | **Harmonised**, and **first** — before Phase 3 authors either compound's props types, or the rename gets more expensive and has to move a shipped subcomponent's signature with it. The *slot* vocabulary is unaffected: it settled on `item` at §3.6 and does not depend on the type name. | §14.2 |
 
-### 14.2 Still open — two items, neither a lane's call
+### 14.2 Nothing open
 
-1. **`MultiSelectOption` vs `CommandItem`.** Two exported type names for one concept, both public
-   (`MultiSelect.tsx:27-31`, `CommandPalette.tsx:20-29`). The slot vocabulary settles on `item`
-   (§3.6); harmonising the *type* names is a separate breaking change and is not in this plan.
-   **Decision 1 may change its shape**: `MultiSelect.Item` takes an `option: MultiSelectOption`
-   prop under §10.1, so the type name moves from a data-prop element type to a *subcomponent prop*
-   type — more public, not less. Decide the harmonisation before Phase 3 writes the subcomponent's
-   props type, or the rename gets more expensive.
-2. **▲ New: does `CommandPalette` follow `MultiSelect` into (d)?** Decision 1 overruled the reason
-   this document used to rule it out (*"`items` is a required data prop"*), so the (c) verdict can
-   no longer stand on what it was standing on. §10.2 lays out both sides at source and recommends
-   **(d)**, matching `MultiSelect`, on the grounds that one anatomy shipping under two mechanisms is
-   the §10 failure one level up. The counter-argument — that two of the three content channels
-   already ship (`emptyMessage` `CommandPalette.tsx:42`, `filter` `:40`) so the compound buys one
-   channel over the `renderItem` §11 already prescribes — is an argument about size, not
-   correctness. **A lane must not start `CommandPalette` until this closes**, because the names are
-   identical either way but the mechanism is not, and §1.5a makes the two mutually exclusive.
+Both items this section carried are ruled — decisions 5 and 6 above. The anatomy each implies is
+in the body (§7.3, §10.2, §11 for `CommandPalette`; the type harmonisation touches no slot key).
+
+**Sequencing that survives the rulings, because it is a dependency and not a decision:** decision 6
+is a prerequisite of decisions 1 and 5, not a parallel task. A lane that writes
+`MultiSelect.Item`'s or `CommandPalette.Item`'s props type before the harmonised name exists
+ships the wrong one into public API and pays for it twice.
 
 ---
 
@@ -1563,7 +1597,7 @@ the subcomponent is `.GroupHeader` (§8.8).
 is not a defect."* Item 3 is the **verifier's** contract, so as written it forbids triage (a) — and
 §11 rules (a) on, named in full: `ColorPicker.tsx:367`; `Accordion.tsx:283`; `Collapsible.tsx:141`;
 `DataTable.tsx:590`; `Rating.tsx:73,74,75,76`; `Timeline.tsx:183`; `ActivityFeed.tsx:70`;
-`Sparkline.tsx:137,151,169,174`; the five `ProgressRing.css:25-42` modifiers; `Stepper.tsx:178`;
+`Sparkline.tsx:143,159,180,190`; `StatCard.tsx:311`; the five `ProgressRing.css:25-42` modifiers; `Stepper.tsx:178`;
 `Swimlane.tsx:57`; `Hero.tsx:91`; `Spotlight.tsx:115`; `AvatarUpload.tsx:296,323`;
 `VirtualizedDataTable.tsx:344,382`; and the ten live regions listed in the row above.
 §8's `verify:slot-annotations` already assumes the reconciliation
@@ -1634,8 +1668,8 @@ need a list nobody has supplied. §10.1's shape C is the answer; the sibling is 
   | `file-upload__icon` | `FileUpload.tsx:754` | `icon` |
   | `timeline-icon` | `Timeline.tsx:184` | `icon` |
   | `empty-state__icon` | `EmptyState.tsx:62` | **no slot** — `EmptyState.Icon` ships |
-  | `stat-card__icon` | `StatCard.tsx:259` | **no slot** — `StatCard.Icon` ships |
-  | `stat-card__trend-icon` | `StatCard.tsx:215` | `trendIcon` (family-owned) |
+  | `stat-card__icon` | `StatCard.tsx:278` | **no slot** — `StatCard.Icon` ships |
+  | `stat-card__trend-icon` | `StatCard.tsx:230` | `trendIcon` (family-owned) |
   | `table-header-cell__sort-icon` | `Table.tsx:253` | `sortIcon` (family-owned) |
   | `file-upload__preview-file-icon` | `FileUpload.tsx:368` | inside `FilePreviewItem` → `renderFile` **(e)** |
   | `rating-star-fill-icon` | `Rating.tsx:76` | **(a)** — clipped partial fill (§11) |
@@ -1648,11 +1682,12 @@ need a list nobody has supplied. §10.1's shape C is the answer; the sibling is 
   instead of shape C and §10.1 is broken (`CLAUDE.md` rule 3). The runtime tell is a rendered chip
   whose label is blank for a selection the current query filters out.
 - **A slot key on `MultiSelect` named `item`, `panel`, `empty`, `itemIndicator`, `tag` or
-  `tagRemove` after Phase 3 ships.** Each is a second writer for an element a subcomponent already
-  reaches (§1.5a). The same check on `Popover`/`HoverCard`/`Tooltip` runs the other way: an
-  `.Arrow` **subcomponent** beside `classNames.arrow` breaks the identical rule.
+  `tagRemove` after Phase 3 ships** — or one on `CommandPalette` named `item`, `panel` or `empty`,
+  **or a `renderItem` prop beside `CommandPalette.Item`.** Each is a second writer for an element a
+  subcomponent already reaches (§1.5a). The same check on `Popover`/`HoverCard`/`Tooltip` runs the
+  other way: an `.Arrow` **subcomponent** beside `classNames.arrow` breaks the identical rule.
 - **`docs/components/popover.md:85` still saying there is no arrow element after decision 4
   ships.** A false cannot is the worst doc-rot shape (`memory/README.md` §21), and this one is
   pre-identified, so shipping it is a choice.
 - **Any name in §3 appearing as a `classNames` key once Phase 3 lands.** `verify:slot-annotations` should be extended to assert the ban list, since it is the half of §10 that no gate can see today (`memory/README.md` §8: *"When the thing at risk is a claim rather than a behaviour, write the gate that asserts the claim."*).
-- **`grep -rn classNames src/components` returning non-zero before Phase 1 lands.** That is §0 constraint 2 broken and this document being read as permission.
+- **A `classNames` key in `src/components` that §7 does not list, or lists under another spelling.** This replaces the original falsifier — *"`grep -rn classNames src/components` returning non-zero before Phase 1 lands"* — which was a real check while the count was zero and is spent now that Phase 1 has landed and Phase 3 has begun shipping keys. The zero was evidence about *timing*; what needs guarding from here is *agreement*, and that is what `verify:slot-annotations` should assert.

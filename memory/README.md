@@ -161,5 +161,52 @@ to understand.
    falsy one) that is wrong to state twice, while the table has to stay written out in the
    component whose utility prefix it names.
 
+25. **A triage that mostly returns "not a gap" is a triage working, not a lane slacking.** The
+   reference component for the override API had eight internal elements carrying a class literal
+   and produced **one** override slot: the rest were either already reachable, or genuinely
+   correct as bare static classes — a visually-hidden twin whose only class *is* the mechanism, a
+   wrapper whose one declaration means nothing outside its parent's flex context, four chart
+   internals whose one variable property is a token. The pressure runs the other way from what it
+   looks like: a slot invented for a non-gap lands in permanent public API, while a slot missed is
+   a later addition. So the deliverable of a triage is the **annotation** — the letter and the
+   reason, written at the element — not the slot count. Without it the next reader cannot tell a
+   ruling from an oversight, and re-runs the whole judgement.
+26. **A props hatch is for a component with *no* prop route, and a pass-through wrapper is not
+   that.** Where a wrapper's public props already *are* the inner component's
+   (`X & ComponentProps<typeof Inner>`, spread through), adding a `<thing>Props` bag creates a
+   second writer rather than a first one — the exact single-source-of-truth violation the hatch
+   pattern exists to avoid elsewhere. The one-line test before adding one: *can the caller already
+   reach the inner component's `className` through the wrapper's own props?* Two entries on a
+   frozen anatomy list here were grouped as the same shape and were not; the difference was
+   visible only in the props type, never in the JSX.
+27. **A custom property's default belongs anywhere but the element that reads it.** A component
+   declaring its own fallback on its own root (`.thing { --thing-color: currentColor }`) makes a
+   consumer theme setting that variable at `:root` lose **permanently** — declarations on an
+   element beat inherited ones at every cascade layer, so moving the stylesheet into a layer does
+   not touch this. Where every read already carries `var(--x, fallback)`, deleting the declaration
+   is byte-identical for anyone who sets nothing and restores the whole theming route for anyone
+   who does. Two shipped instances were documented as limitations before anyone noticed they were
+   deletable — and none of it is testable here, because the suite stubs CSS to `""` and a
+   layering A/B reads the same on both sides, so the honest record says *uncovered* rather than
+   letting a green run imply coverage.
+
+28. **A source annotation meant for a future gate has to be validated against the parser, not the
+   prose — and the prose will be wrong.** A convention written as "a comment on the line before X"
+   read to a human as obvious and to `getLeadingCommentRanges` as something else: the real rule is
+   that the comment must *begin a line*, so a same-line comment is invisible while a comment
+   sharing a line with the thing it annotates is not. Both readings of the prose were wrong, in
+   opposite directions, and only running the parse found it. Write the fixture of forms a
+   contributor will actually produce — collapsed onto one line, above the element instead of
+   inside the tag, attached to the neighbouring attribute — and record which are seen.
+29. **A cheap reachability check is a name match, and its failures are the interesting half.** A
+   gate that asks "does a caller's class flow to this element" by looking for the identifier at
+   the attribute is small, allowlist-free, and worth having — but it reports a false alarm for
+   every correct-but-indirect form (the merge hoisted into a local, the value destructured first,
+   a leaf naming the parameter something else) and passes silently when an unrelated local happens
+   to carry the identifier's name. Neither is a bug to regex around: the false alarms are the gate
+   asking for the house form, and widening it is how a gate acquires the allowlist it was designed
+   not to need. State the blind spots beside the gate; a check described as one that "cannot be
+   satisfied by a lie" almost always can be, and the claim is what stops anyone looking.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

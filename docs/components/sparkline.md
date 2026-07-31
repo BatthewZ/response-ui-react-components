@@ -123,18 +123,41 @@ whatever text-colour utility you put on it (see [Tinting](#tinting)), rather tha
 
 | Where                    | Utility / class                                              | Override                                        |
 | ------------------------ | ----------------------------------------------------------- | ----------------------------------------------- |
-| Line / area / bar ink    | `.sparkline-line` `.sparkline-area` `.sparkline-bar` via `--sparkline-color` | `currentColor`                 |
+| Line / area / bar ink    | `.sparkline-line` `.sparkline-area` `.sparkline-bar` via `--sparkline-color` | `currentColor` (the fallback at each read — nothing declares the variable) |
 | Draw-in / fade-in motion | `.sparkline--animate`                                       | `--MOTION-DURATION-SHIFT` `--MOTION-EASE-SHIFT` |
 
 To tint from your theme rather than per call site, point a text utility at a theme
 variable — e.g. `text-chart-1` resolves to `--C-CHART-1`, `text-trend-up` to
 `--C-TREND-UP` (both optional dashboard tokens; see the
-[chart palette](../theme-contract.md#dashboard--trend--chart)). To override just one chart, set
-`--sparkline-color` **on the element itself** — inline, or in a rule that also matches
-`.sparkline` (`.my-chart.sparkline { --sparkline-color: … }`). A wrapping rule cannot work:
-`Sparkline.css` declares the property inside the `.sparkline` rule, and a declaration on the
-element always beats an inherited one. Easiest of all is a `text-*` utility, since the property
-falls back to `currentColor`.
+[chart palette](../theme-contract.md#dashboard--trend--chart)).
+
+`--sparkline-color` is a **public write channel and it inherits**, so any of these reach
+the chart: your theme's `:root`, a rule on any ancestor, an arbitrary-property utility
+(`className="[--sparkline-color:var(--C-CHART-3)]"`), or an inline `style`. (Only the
+last two used to work. `Sparkline.css` declared the default *on* `.sparkline`,
+and a declaration on the element beats an inherited one at every cascade layer, so a
+theme setting the variable at `:root` lost permanently. The default now lives in each
+read's `var(--sparkline-color, currentColor)` fallback, which is identical where nothing
+sets it and reachable where something does.)
+
+Set it at `:root` and it wins over `text-*` on the chart — the variable is read first and
+`currentColor` is only its fallback. So pick one: a text utility for per-instance tinting,
+the variable for a house palette.
+
+## Slots
+
+**Sparkline exposes no `classNames` slots, and that is a ruling rather than an
+omission.** It renders one addressable element — the `<svg>` — and `className` is
+already on it. The paths, bars and points inside are generated from `values`, and the
+one thing a caller wants to change about them is their ink, which is a *value*: it rides
+`--sparkline-color` (above), reachable from the same element `className` reaches. The
+rest of what those classes carry is the chart itself — the area's `fill-opacity`, the
+line's dash pattern normalised against `pathLength=1` — where a caller's class would not
+be an override so much as a different chart, and in the dash pattern's case a broken one
+(see [Gotchas](#gotchas)).
+
+[StatCard](stat-card.md) wraps this component and adds nothing to that surface: its
+`StatCard.Sparkline` forwards `className` and `ref` straight through to the `<svg>`.
 
 ## Gotchas
 

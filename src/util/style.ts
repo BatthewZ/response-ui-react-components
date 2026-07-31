@@ -37,3 +37,17 @@ export {
   tailwindMergeExtension,
   twMerge,
 } from "@batthewz/response-ui-tw-merge";
+
+/**
+ * Per-slot class overrides for the internals a component renders.
+ *
+ * `S` is the component's OWN slot union, written inline at the prop
+ * (`classNames?: SlotClassNames<"trendIcon">`), never a shared list: that is what
+ * makes an unknown key a type error and a known one autocomplete. A helper that
+ * accepted `Record<string, string>` would restore neither.
+ *
+ * There is no `root` key — `className` is the root. Two writers for one element
+ * is `CLAUDE.md` rule 3. Values are class strings only; where a caller needs
+ * handlers or `aria-*` on an internal, that is a `<thing>Props` hatch.
+ */
+export type SlotClassNames<S extends string> = Partial<Record<S, string>>;
