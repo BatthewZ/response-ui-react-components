@@ -1,5 +1,6 @@
 import { Component, type ComponentType, type ReactNode } from "react";
 
+import { ToastProvider } from "../src";
 import { Group, Tile } from "./gallery-ui";
 
 /**
@@ -74,30 +75,36 @@ class ExampleBoundary extends Component<{ children: ReactNode }, { error: Error 
   }
 }
 
+/**
+ * The Toast examples call `useToast()` bare — a provider-free snippet is the point of the
+ * doc — so the gallery supplies the ambient provider a real app would mount high in its tree.
+ */
 export function ExamplesGallery() {
   return (
-    <main className="mx-auto flex flex-col gap-r2 p-r3">
-      <p className="text-body-3 text-fg-secondary">
-        {exampleCount} examples across {entries.length} components, globbed from
-        <code> src/components/*/*.examples.tsx</code> — the same modules the docs are
-        generated from. Nothing to wire: add an examples file and it shows up here.
-      </p>
+    <ToastProvider>
+      <main className="mx-auto flex flex-col gap-r2 p-r3">
+        <p className="text-body-3 text-fg-secondary">
+          {exampleCount} examples across {entries.length} components, globbed from
+          <code> src/components/*/*.examples.tsx</code> — the same modules the docs are
+          generated from. Nothing to wire: add an examples file and it shows up here.
+        </p>
 
-      {groups.map((group) => (
-        <Group key={group} id={`examples-${group}`} title={GROUP_TITLES[group] ?? group}>
-          {entries
-            .filter((e) => e.group === group)
-            .flatMap((e) =>
-              e.examples.map(([name, Example]) => (
-                <Tile key={`${e.component}.${name}`} label={`${e.component} — ${name}`}>
-                  <ExampleBoundary>
-                    <Example />
-                  </ExampleBoundary>
-                </Tile>
-              )),
-            )}
-        </Group>
-      ))}
-    </main>
+        {groups.map((group) => (
+          <Group key={group} id={`examples-${group}`} title={GROUP_TITLES[group] ?? group}>
+            {entries
+              .filter((e) => e.group === group)
+              .flatMap((e) =>
+                e.examples.map(([name, Example]) => (
+                  <Tile key={`${e.component}.${name}`} label={`${e.component} — ${name}`}>
+                    <ExampleBoundary>
+                      <Example />
+                    </ExampleBoundary>
+                  </Tile>
+                )),
+              )}
+          </Group>
+        ))}
+      </main>
+    </ToastProvider>
   );
 }

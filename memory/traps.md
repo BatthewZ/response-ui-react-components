@@ -456,6 +456,14 @@ collision, left alone because briefs in flight cite the later one by letter.)
   looks wrong. Overlay surfaces in this package already carry their own padding — `Dialog` and
   `Drawer` both sit at the `r2` rung, one rung airier than `Card`'s `r3` default, deliberately,
   because a floating panel earns more gutter than an inline one. Children go in unpadded.
+- **The auto-globbing gallery mounts every example export bare, so ambient context is the
+  harness's job and not the snippet's.** An example teaching a hook is *supposed* to call it
+  without provider boilerplate — that is the thing being taught — but rendered alone it throws,
+  and the tile's error boundary turns the throw into a small red line that reads as a broken
+  component rather than a missing wrapper. Wrap the harness once, high, the way a real app
+  would; adding the provider to each snippet would buy a green tile by making every doc example
+  teach boilerplate. The general form: when a specimen harness renders declarations it did not
+  write, it owes them the environment their docs assume.
 
 ## P · From the wave that acted on the owner's six decisions
 
