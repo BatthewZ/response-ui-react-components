@@ -1107,7 +1107,7 @@ function DashboardPage() {
             </Row>
           </Stack>
 
-          <Alert variant="warning">
+          <Alert variant="warning" classNames={{ icon: "self-center" }}>
             <div className="flex flex-1 flex-wrap items-center justify-between gap-r5">
               <span>
                 <strong>Elevated latency in eu-west-2.</strong> p95 is 40% above baseline since
