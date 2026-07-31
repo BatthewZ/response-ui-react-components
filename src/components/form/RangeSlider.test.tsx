@@ -216,6 +216,46 @@ describe("RangeSlider", () => {
       expect(container.querySelector(".range-slider")).not.toHaveAttribute(
         "aria-invalid",
       );
+      // …which is exactly why the invalid SKIN cannot key off `aria-invalid` on
+      // the root: `data-invalid` is the root's own mirror of the state.
+      expect(container.querySelector(".range-slider")).toHaveAttribute("data-invalid");
+    });
+
+    /**
+     * The invalid skin used to be three `.range-slider[aria-invalid="true"] …`
+     * rules, and the root has never carried `aria-invalid`: the attribute is
+     * destructured out of the rest props and routed to the two thumbs, where an
+     * AT reads it. So all three rules were dead and an invalid RangeSlider
+     * painted exactly like a valid one. The root now mirrors the state as
+     * `data-invalid`, and the fill recolours from it.
+     */
+    it("mirrors the invalid state onto the root and recolours the fill", () => {
+      const { container, rerender } = render(
+        <RangeSlider defaultValue={[20, 80]} minLabel="Low" maxLabel="High" />,
+      );
+      const root = () => container.querySelector(".range-slider")!;
+      const fill = () => container.querySelector(".range-slider__fill")!;
+      expect(root()).not.toHaveAttribute("data-invalid");
+      expect(fill().className).not.toContain("bg-status-error");
+
+      rerender(
+        <RangeSlider defaultValue={[20, 80]} minLabel="Low" maxLabel="High" error />,
+      );
+      expect(root()).toHaveAttribute("data-invalid");
+      expect(fill().className).toContain("bg-status-error");
+      // tailwind-merge drops the resting fill rather than racing it in the cascade.
+      expect(fill().className).not.toContain("bg-accent");
+    });
+
+    /** A caller's own `aria-invalid` reaches the skin too, not only `error`. */
+    it("mirrors a caller-supplied aria-invalid onto the root", () => {
+      const { container } = render(
+        <RangeSlider defaultValue={[20, 80]} minLabel="Low" aria-invalid />,
+      );
+      expect(container.querySelector(".range-slider")).toHaveAttribute("data-invalid");
+      expect(container.querySelector(".range-slider__fill")?.className).toContain(
+        "bg-status-error",
+      );
     });
 
     it("#434 still honours the aria-invalid field() supplies when it has none of its own", () => {
@@ -393,16 +433,23 @@ describe("RangeSlider", () => {
       }
     });
 
-    it("leaves each internal on its base class alone when no slot is passed", () => {
+    /**
+     * This used to assert each class attribute equalled its marker exactly,
+     * which stopped being expressible once the track and fill carried their own
+     * utilities. The falsifier is unchanged: an absent slot appends **nothing**
+     * — no `undefined`, no `null`, no empty token.
+     */
+    it("leaves each internal on its base classes alone when no slot is passed", () => {
       const { container } = render(
         <RangeSlider defaultValue={[20, 80]} minLabel="Low" maxLabel="High" />,
       );
-      expect(
-        container.querySelector(".range-slider__track")?.getAttribute("class"),
-      ).toBe("range-slider__track");
-      expect(
-        container.querySelector(".range-slider__fill")?.getAttribute("class"),
-      ).toBe("range-slider__fill");
+      for (const marker of ["range-slider__track", "range-slider__fill"]) {
+        const classes = container.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+        expect(classes.split(" "), marker).toContain(marker);
+        expect(classes, marker).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+      }
+      // The two overlays keep their marker alone: their geometry and their
+      // thumbs are the one part of this component still written in CSS.
       expect(screen.getByLabelText("Low").className).toBe("range-slider__input");
     });
 
@@ -413,7 +460,11 @@ describe("RangeSlider", () => {
           classNames={{ track: "h-r3", fill: "bg-accent", input: "cursor-grab" }}
         />,
       );
-      expect(container.firstElementChild?.getAttribute("class")).toBe("range-slider");
+      const classes = container.firstElementChild?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("range-slider");
+      for (const slot of ["h-r3", "bg-accent", "cursor-grab"]) {
+        expect(classes, slot).not.toContain(slot);
+      }
     });
 
     /**
@@ -428,9 +479,10 @@ describe("RangeSlider", () => {
           classNames={{ thumb: "h-r3" }}
         />,
       );
-      expect(
-        container.querySelector(".range-slider__track")?.getAttribute("class"),
-      ).toBe("range-slider__track");
+      const classes =
+        container.querySelector(".range-slider__track")?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("range-slider__track");
+      expect(classes).not.toContain("h-r3");
     });
 
     it("does not leak classNames onto the DOM", () => {

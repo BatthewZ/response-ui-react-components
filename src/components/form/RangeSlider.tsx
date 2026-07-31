@@ -10,7 +10,30 @@ import { useControllableState } from "../../hooks/use-controllable-state";
 import { composeEventHandlers, mergeProps } from "../../util/merge-props";
 import { cn, type SlotClassNames } from "../../util/style";
 
-import { useFieldErrorProps } from "./Field";
+import { useFieldError } from "./Field";
+
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `RangeSlider.css` keeps the two `<input type="range">` overlays and says why;
+ * the rail, the fill and the root are here. Each constant is one flat string
+ * literal because `verify:component-docs` resolves hoisted constants textually
+ * and a composed one would not resolve.
+ */
+const rootClasses = "relative flex items-center w-full h-5";
+
+const trackClasses =
+  "absolute left-0 right-0 h-2 rounded-full bg-surface-3";
+
+/**
+ * The selected segment. Its inset edges are read from `--range-lo` / `--range-hi`
+ * on the root, which are written as an inline style — so they stay arbitrary
+ * values here rather than becoming `left-*` / `right-*` scale steps.
+ */
+const fillClasses =
+  "absolute left-[var(--range-lo,0%)] right-[var(--range-hi,0%)] h-2 rounded-full bg-accent";
 
 /**
  * A `[low, high]` pair. The component orders it (`low <= high`) and opens it to
@@ -135,7 +158,15 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
       },
     });
 
-    const fieldErrorProps = useFieldErrorProps(error);
+    const { invalid, ariaProps: fieldErrorProps } = useFieldError(error);
+    // The invalid skin used to be keyed off `.range-slider[aria-invalid="true"]`,
+    // and that attribute is destructured out of the rest props and routed to the
+    // two thumbs — so it never reached the root and all three rules were dead:
+    // an invalid RangeSlider painted exactly like a valid one. `data-invalid` is
+    // the root's own mirror of the state the thumbs announce, computed from both
+    // sources the thumbs get it from.
+    const showInvalid =
+      invalid || ariaInvalid === true || ariaInvalid === "true";
     // The invalid state and the error text belong on the focusable controls
     // that report them, not on the wrapper `<div>` — an AT never reads the
     // wrapper while a thumb has focus. Merged rather than spread because
@@ -213,8 +244,14 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
     return (
       <div
         ref={ref}
-        className={cn("range-slider", className)}
+        className={cn(
+          "range-slider",
+          rootClasses,
+          disabled && "opacity-50",
+          className,
+        )}
         data-disabled={disabled || undefined}
+        data-invalid={showInvalid || undefined}
         style={
           {
             "--range-lo": `${loPct}%`,
@@ -228,11 +265,16 @@ export const RangeSlider = forwardRef<HTMLDivElement, RangeSliderProps>(
         })}
       >
         <span
-          className={cn("range-slider__track", classNames?.track)}
+          className={cn("range-slider__track", trackClasses, classNames?.track)}
           aria-hidden="true"
         />
         <span
-          className={cn("range-slider__fill", classNames?.fill)}
+          className={cn(
+            "range-slider__fill",
+            fillClasses,
+            showInvalid && "bg-status-error",
+            classNames?.fill,
+          )}
           aria-hidden="true"
         />
         <input

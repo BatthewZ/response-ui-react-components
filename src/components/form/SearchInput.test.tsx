@@ -270,9 +270,9 @@ describe("SearchInput", () => {
       const { container } = render(
         <SearchInput value="a" onChange={vi.fn()} size="sm" />,
       );
-      expect(container.querySelector("svg")?.getAttribute("class")).toBe(
-        "lucide lucide-search search-input__icon",
-      );
+      const icon = container.querySelector("svg")?.getAttribute("class") ?? "";
+      expect(icon.split(" ")).toContain("search-input__icon");
+      expect(icon).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
       // `toBe` on the tail rather than the whole list: the field is an `Input`,
       // so the head of its class list is `Input`'s own recipe. The tail is
       // exactly what SearchInput contributes, and an empty one is the failure
@@ -280,9 +280,9 @@ describe("SearchInput", () => {
       expect(screen.getByRole("searchbox").className).toMatch(
         / search-input__input search-input__input--sm px-\[2rem\] py-r6 text-body-3$/,
       );
-      expect(screen.getByRole("button", { name: "Clear search" }).className).toBe(
-        "search-input__clear",
-      );
+      const clear = screen.getByRole("button", { name: "Clear search" }).className;
+      expect(clear.split(" ")).toContain("search-input__clear");
+      expect(clear).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     it("does not put a slot class on the wrapper", () => {
@@ -294,7 +294,11 @@ describe("SearchInput", () => {
         />,
       );
       const wrapper = container.firstElementChild;
-      expect(wrapper?.getAttribute("class")).toBe("search-input");
+      const classes = wrapper?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("search-input");
+      for (const slot of ["size-r3", "px-r2", "gap-r3"]) {
+        expect(classes, slot).not.toContain(slot);
+      }
     });
 
     /**

@@ -594,7 +594,14 @@ describe("Combobox", () => {
       expect(row?.getAttribute("class")).toContain("py-r3");
     });
 
-    it("leaves each internal on its base class alone when no slot is passed", async () => {
+    /**
+     * This used to assert the class attributes equalled their markers exactly,
+     * which stopped being expressible once the elements carried their own
+     * utilities. The falsifier is unchanged and is what the equality was ever
+     * standing in for: an absent slot appends **nothing** — no `undefined`, no
+     * `null`, no empty token.
+     */
+    it("leaves each internal on its base classes alone when no slot is passed", async () => {
       const user = userEvent.setup();
       render(
         <Combobox loading>
@@ -602,17 +609,16 @@ describe("Combobox", () => {
           <Combobox.Content />
         </Combobox>,
       );
-      expect(
-        screen.getByRole("button", { name: "Show options" }).className,
-      ).toBe("combobox-toggle");
+      const toggle = screen.getByRole("button", { name: "Show options" }).className;
+      expect(toggle.split(" ")).toContain("combobox-toggle");
+      expect(toggle).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
 
       await user.click(screen.getByRole("button", { name: "Show options" }));
-      expect(
-        screen
-          .getByRole("listbox")
-          .querySelector(".combobox-loading")
-          ?.getAttribute("class"),
-      ).toBe("combobox-loading");
+      const loading =
+        screen.getByRole("listbox").querySelector(".combobox-loading")?.getAttribute("class") ??
+        "";
+      expect(loading.split(" ")).toContain("combobox-loading");
+      expect(loading).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     it("does not put a slot class on the element className addresses", async () => {
@@ -643,9 +649,9 @@ describe("Combobox", () => {
           <Combobox.Content classNames={{ toggle: "py-r3" }} />
         </Combobox>,
       );
-      expect(screen.getByRole("button", { name: "Show options" }).className).toBe(
-        "combobox-toggle",
-      );
+      const toggle = screen.getByRole("button", { name: "Show options" }).className;
+      expect(toggle.split(" ")).toContain("combobox-toggle");
+      expect(toggle).not.toContain("px-r3");
     });
 
     it("does not leak classNames onto the DOM", () => {
@@ -662,15 +668,18 @@ describe("Combobox", () => {
      * `className` addresses the `<input>` (documented in `combobox.md`), and the
      * wrapper carries only the coupling that keeps the toggle beside the field.
      */
-    it("leaves the input wrapper on its own class only", () => {
+    it("leaves the input wrapper on its own classes only", () => {
       const { container } = render(
         <Combobox>
           <Combobox.Input aria-label="Fruit" className="w-64" />
         </Combobox>,
       );
-      expect(
-        container.querySelector(".combobox-input-wrap")?.getAttribute("class"),
-      ).toBe("combobox-input-wrap");
+      const wrap =
+        container.querySelector(".combobox-input-wrap")?.getAttribute("class") ?? "";
+      expect(wrap.split(" ")).toContain("combobox-input-wrap");
+      // `className` addresses the `<input>`, so it must not land here.
+      expect(wrap).not.toContain("w-64");
+      expect(wrap).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
       expect(getInput().className).toContain("w-64");
     });
   });

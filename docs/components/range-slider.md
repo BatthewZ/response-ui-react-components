@@ -259,19 +259,28 @@ every slider rather than one call site.
 
 ## Theme tokens
 
-`RangeSlider.css` (shipped in this package's `styles` import) paints everything; the `.tsx`
-carries no Tailwind utilities at all — only the `range-slider` BEM class names. Every colour
-and corner reads a contract variable, so overriding one re-tints every range slider in the
-app at runtime, with no rebuild.
+Two layers paint this component. The root, the rail and the selected segment are Tailwind
+utilities in `RangeSlider.tsx`; the two `<input type="range">` overlays and their thumbs stay
+in `RangeSlider.css` (shipped in this package's `styles` import), because a thumb is a UA
+pseudo-element and both its `-webkit-appearance: none` and its focus `box-shadow` are things
+a utility cannot carry safely — the file says so at the top. Every colour and corner reads a
+contract variable either way, so overriding one re-tints every range slider in the app at
+runtime, with no rebuild.
 
-| Where                                             | Override           |
-| ------------------------------------------------- | ------------------ |
-| Selected segment between the thumbs, and both thumbs | `--C-ACCENT`    |
-| Unselected rail                                   | `--C-SURFACE-3`    |
-| Segment and thumbs when invalid                   | `--C-STATUS-ERROR` |
-| Ring around each thumb                            | `--C-SURFACE-0`    |
-| Focus ring on the focused thumb                   | `--C-BORDER-FOCUS` |
-| Rail, segment, and thumb corners                  | `--RADIUS-FULL`    |
+| Where                                | Utility           | Override           |
+| ------------------------------------ | ----------------- | ------------------ |
+| Selected segment between the thumbs  | `bg-accent`       | `--C-ACCENT`       |
+| Unselected rail                      | `bg-surface-3`    | `--C-SURFACE-3`    |
+| Segment when invalid                 | `bg-status-error` | `--C-STATUS-ERROR` |
+| Rail and segment corners             | `rounded-full`    | `--RADIUS-FULL`    |
+
+| Where (in `RangeSlider.css`)                | Override           |
+| ------------------------------------------- | ------------------ |
+| Both thumbs                                 | `--C-ACCENT`       |
+| Both thumbs when invalid                    | `--C-STATUS-ERROR` |
+| Ring around each thumb                      | `--C-SURFACE-0`    |
+| Focus ring on the focused thumb             | `--C-BORDER-FOCUS` |
+| Thumb corners                               | `--RADIUS-FULL`    |
 
 The selected segment is a separate absolutely-positioned element inset from both edges by two
 component-internal custom properties: `--range-lo` is its `left`, `--range-hi` its `right`,

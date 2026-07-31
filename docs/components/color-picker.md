@@ -346,30 +346,35 @@ is the surface a caller actually restyles.
 
 ## Theme tokens
 
-`ColorPicker.css` paints nearly everything, with one deliberate exception: the trigger's and
-the hex field's focus affordances come from the shared `src/util/focus.ts` recipes applied in
-`ColorPicker.tsx` (`focusRingButton` on the trigger, `focusRingControl` on the hex field), so a
-single edit there reaches this control the way it reaches [Button](button.md) and
-[Input](input.md). Every value below is still a contract variable, so overriding one re-tints
-every picker in the app at runtime with no rebuild.
+Almost everything the picker paints is a Tailwind utility in `ColorPicker.tsx`, each
+resolving to a contract variable — including the trigger's and the hex field's focus
+affordances, which are the shared `src/util/focus.ts` recipes (`focusRingButton` on the
+trigger, `focusRingControl` on the hex field), so a single edit there reaches this control
+the way it reaches [Button](button.md) and [Input](input.md). Overriding a variable re-tints
+every picker in the app at runtime with no rebuild, and because the utilities sit in
+`@layer utilities`, a `className` of your own beats every one of them.
 
-| Where                                            | Override             |
-| ------------------------------------------------ | -------------------- |
-| Trigger fill, panel fill, hex-field fill          | `--C-SURFACE-0`      |
-| Trigger border                                    | `--C-BORDER-STRONG`  |
-| Hex-field border — `border-border-strong`         | `--C-BORDER-STRONG`  |
-| Panel border                                      | `--C-BORDER-DEFAULT` |
-| Panel drop shadow                                 | `--SHADOW-LG`        |
-| Hex readout and hex-field text                    | `--C-TEXT-PRIMARY`   |
-| Focus ring on the square, hue rail and presets    | `--C-BORDER-FOCUS`   |
-| Focus ring on the trigger — `focus-visible:ring-border-focus` | `--C-BORDER-FOCUS` |
-| Focus ring and border on the hex field — `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
-| Trigger border when invalid                       | `--C-STATUS-ERROR`   |
-| Disabled trigger fill                             | `--C-SURFACE-3`      |
-| Hex readout and hex-field type                    | `--BodyText-2`       |
-| Trigger, panel, hex field and large swatch corners | `--RADIUS-MD`       |
-| Small swatch, square and preset corners           | `--RADIUS-SM`        |
-| Square thumb and hue rail corners                 | `--RADIUS-FULL`      |
+| Where                                 | Utility                                                                | Override             |
+| ------------------------------------- | ---------------------------------------------------------------------- | -------------------- |
+| Trigger, panel, hex-field and swatch-ring fill | `bg-surface-0`                                                | `--C-SURFACE-0`      |
+| Trigger and hex-field border          | `border` `border-border-strong`                                        | `--C-BORDER-STRONG`  |
+| Panel border                          | `border-border-default`                                                | `--C-BORDER-DEFAULT` |
+| Panel drop shadow                     | `shadow-lg`                                                            | `--SHADOW-LG`        |
+| Hex readout and hex-field text        | `text-fg-primary`                                                      | `--C-TEXT-PRIMARY`   |
+| Focus ring on the square and presets  | `focus-within:outline-border-focus` `focus-visible:outline-border-focus` | `--C-BORDER-FOCUS` |
+| Focus ring on the trigger             | `focus-visible:ring-border-focus`                                      | `--C-BORDER-FOCUS`   |
+| Focus ring and border on the hex field | `focus:ring-border-focus` `focus:border-border-focus`                 | `--C-BORDER-FOCUS`   |
+| Trigger border when invalid           | `border-status-error`                                                  | `--C-STATUS-ERROR`   |
+| Disabled trigger fill                 | `bg-surface-3`                                                         | `--C-SURFACE-3`      |
+| Hex readout and hex-field type        | `text-body-2`                                                          | `--BodyText-2`       |
+| Trigger, panel, hex field and large swatch corners | `rounded-md`                                              | `--RADIUS-MD`        |
+| Small swatch, square and preset corners | `rounded-sm`                                                         | `--RADIUS-SM`        |
+| Square thumb corners                  | `rounded-full`                                                         | `--RADIUS-FULL`      |
+
+The hue rail is the one part still written in `ColorPicker.css`, and the file says why: its
+thumb is a UA pseudo-element, so neither its `-webkit-appearance: none` nor its focus
+`box-shadow` — the rail's only focus affordance — can move to a utility safely. It reads
+`--C-BORDER-FOCUS` and `--RADIUS-FULL` directly.
 
 The selected preset's ring is drawn from two of those in sequence — a 2px `--C-SURFACE-0`
 gap then a 2px `--C-TEXT-PRIMARY` ring — so it stays visible against a preset whose colour

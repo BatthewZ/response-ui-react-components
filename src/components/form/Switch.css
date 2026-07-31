@@ -1,6 +1,27 @@
 /* ------------------------------------------------------------------ */
-/*  Switch — track                                                     */
+/*  Switch — track. EXAMINED, AND IT STAYS WHOLE.                      */
 /* ------------------------------------------------------------------ */
+
+/* Two things pin this file, and the second is the one that settles it.
+
+   1. `all: unset` is a RESET, and a reset is correct because it comes FIRST in
+      its rule and the declarations after it rebuild the control. Tailwind sorts
+      arbitrary-property utilities LAST inside `@layer utilities`, so
+      `[all:unset]` in a class list wipes `inline-flex`, `rounded-full` and the
+      rest — and starts beating a caller's `className`, which it currently loses
+      to. Enumerating it instead is possible but is a MEASUREMENT, not a
+      transposition: what `all: unset` buys over Preflight here is
+      `appearance: none` against Preflight's own `button { appearance: button }`,
+      a class that appears nowhere in this file today.
+
+   2. `scripts/probe-cascade-layer.mjs` pins `.switch:focus-visible`'s
+      `outline-width: 2px` with two rows — `switch-ring-baseline` and
+      `switch-ring-vs-consumer-reset` — against a HAND-WRITTEN fixture that is
+      literally `<button class="switch">`. The ring is not reachable from a
+      class list in that fixture, so moving it to a utility reddens both rows,
+      and one of them carries a recorded owner decision about consumer resets.
+      Changing the fixture means changing `scripts/`, which is out of scope for
+      the sweep that examined this file. */
 
 .switch {
   all: unset;

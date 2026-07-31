@@ -37,6 +37,66 @@ import { Spinner } from "../ui/Spinner";
 import { useFieldError } from "./Field";
 
 /* ------------------------------------------------------------------ */
+/*  Classes                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `Combobox.css` is gone; everything this component draws is here. Each constant
+ * is one flat string literal because `verify:component-docs` and
+ * `verify:focus-affordance` resolve hoisted constants textually and a composed
+ * one would not resolve.
+ *
+ * Nothing below re-states Tailwind Preflight. The deleted stylesheet carried
+ * `font: inherit` twice; neither survived the check. On `.combobox-input` it was
+ * Preflight's own declaration for `button, input, select, optgroup, textarea`
+ * (`node_modules/tailwindcss/preflight.css`), and on `.combobox-item` — a plain
+ * `<div>` — it was a no-op, because every longhand of the `font` shorthand is an
+ * inherited property and nothing in this package sets one on that element. The
+ * toggle's `padding: 0`, `border: none` and `background: none` are Preflight's
+ * `*` and `button` rules, the same ones `Button.tsx` relies on and carries no
+ * reset for.
+ *
+ * **Do not declare `border` (or `border-color`) on the input here or anywhere
+ * else.** `focusRingControl` swaps the border on focus and `focusRingControlError`
+ * paints it red; a second writer for that one property defeats both. Before
+ * Phase 1 this package's stylesheets were unlayered and out-ranked every utility
+ * whatever the specificity, so a `border` in `Combobox.css` silently beat them.
+ * That specific reason expired when the CSS moved to `@layer components`, but
+ * the rule stands on `CLAUDE.md` rule 3 alone: `src/util/focus.ts` is the single
+ * source for this control's border and ring.
+ */
+const inputWrapClasses = "relative flex w-full items-center";
+
+const inputClasses =
+  "w-full py-2 pr-9 pl-3 text-body-2 text-fg-primary bg-surface-0 rounded-md placeholder:text-fg-muted disabled:bg-surface-3 disabled:cursor-not-allowed";
+
+const toggleClasses =
+  "absolute right-2 inline-flex items-center justify-center text-fg-secondary cursor-pointer";
+
+const contentClasses =
+  "bg-surface-0 border border-border-default rounded-md shadow-lg py-1 min-w-45 max-h-64 overflow-y-auto z-40 outline-none";
+
+/**
+ * Virtual focus: DOM focus stays on the input, so `:focus-visible` never matches
+ * an option and the keyboard cursor is drawn from `data-active` instead. The
+ * recessed wash reads at 1.08–1.21:1 against the rung-0 listbox fill — enough to
+ * be seen, still short of the 3:1 a non-text cue has to clear on its own — so the
+ * ring carries the cue and the wash reinforces it.
+ *
+ * `data-active:outline-solid` is not decoration. `outline-none` above writes
+ * `--tw-outline-style: none`, and every `outline-<width>` utility reads that
+ * property back rather than setting a style of its own — so without the fourth
+ * class `data-active:outline-2` computes `outline-style: none` and the ring
+ * paints nothing.
+ */
+const itemClasses =
+  "flex w-full items-center gap-2 px-3 py-1.5 text-body-2 text-fg-primary cursor-pointer outline-none text-left data-active:bg-surface-2 data-active:outline-2 data-active:outline-solid data-active:outline-border-focus data-active:-outline-offset-2 aria-selected:font-semibold aria-selected:text-fg-primary aria-disabled:text-fg-muted aria-disabled:cursor-default";
+
+const emptyClasses = "px-3 py-2 text-body-2 text-fg-muted";
+
+const loadingClasses = "flex items-center justify-center p-3 text-fg-secondary";
+
+/* ------------------------------------------------------------------ */
 /*  Context                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -309,12 +369,12 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
 
     return (
       <div
-        // slot:(a) the four declarations behind this class (relative, flex,
+        // slot:(a) the four utilities behind this class (relative, flex,
         // centred, full width) are the coupling that keeps the toggle beside the
         // field and nothing else; the floating listbox anchors to the `<input>`,
         // not to this box. A caller sizing the field does it on `className`,
         // which lands on that input.
-        className="combobox-input-wrap"
+        className={cn("combobox-input-wrap", inputWrapClasses)}
         onBlur={handleFocusOut}
       >
         <input
@@ -323,12 +383,8 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
             value: inputValue,
             className: cn(
               "combobox-input duration-fast",
-              // The border is a utility rather than a rule in `Combobox.css` so
-              // that one property has one writer, and so `focusRingControl`'s
-              // border swap and `focusRingControlError`'s red border reach it.
-              // It moved because the stylesheet was unlayered and out-ranked every
-              // utility; that reason expired with Phase 1 and the arrangement is
-              // still right. See the note in `Combobox.css`.
+              inputClasses,
+              // One writer for one property — see the note on `inputClasses`.
               "border border-border-strong",
               focusOutlineResetControl,
               focusRingControl,
@@ -369,7 +425,7 @@ const ComboboxInput = forwardRef<HTMLInputElement, ComboboxInputProps>(
           aria-label={toggleLabel}
           aria-expanded={open}
           aria-controls={open ? listboxId : undefined}
-          className={cn("combobox-toggle", classNames?.toggle)}
+          className={cn("combobox-toggle", toggleClasses, classNames?.toggle)}
           // Keep DOM focus on the input: `aria-activedescendant` navigation
           // depends on it, and a focus move here reads as a focus-out.
           onMouseDown={(event) => {
@@ -438,7 +494,7 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
         <div
           {...getFloatingProps({
             ref: mergeRefs(ref, refs.setFloating),
-            className: cn("combobox-content", className),
+            className: cn("combobox-content", contentClasses, className),
             style: { ...floatingStyles, ...style },
             // Options are plain divs; without this the press moves DOM focus
             // to <body> and the input never gets it back.
@@ -452,7 +508,7 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
         >
           {loading ? (
             <div
-              className={cn("combobox-loading", classNames?.loading)}
+              className={cn("combobox-loading", loadingClasses, classNames?.loading)}
               role="presentation"
             >
               <Spinner size="sm">{loadingLabel}</Spinner>
@@ -510,7 +566,7 @@ const ComboboxItem = forwardRef<HTMLDivElement, ComboboxItemProps>(
     return (
       <div
         ref={mergeRefs(ref, itemRef)}
-        className={cn("combobox-item", className)}
+        className={cn("combobox-item", itemClasses, className)}
         {...getItemProps({
           ...props,
           onClick(event: React.MouseEvent<HTMLDivElement>) {
@@ -543,7 +599,7 @@ const ComboboxEmpty = forwardRef<HTMLDivElement, ComboboxEmptyProps>(
       <div
         ref={ref}
         role="presentation"
-        className={cn("combobox-empty", className)}
+        className={cn("combobox-empty", emptyClasses, className)}
         {...props}
       >
         {children}

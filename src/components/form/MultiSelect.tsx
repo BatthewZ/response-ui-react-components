@@ -24,10 +24,86 @@ import {
   useListNavigation,
   useRole,
 } from "../../hooks/use-floating";
+import { focusRingWithin, focusRingWithinError } from "../../util/focus";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn, type SlotClassNames } from "../../util/style";
 
 import { useFieldError } from "./Field";
+
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `MultiSelect.css` is gone; everything this component draws is here. Each
+ * constant is one flat string literal because `verify:component-docs` and
+ * `verify:focus-affordance` resolve hoisted constants textually and a composed
+ * one would not resolve.
+ *
+ * Nothing below re-states Tailwind Preflight. The deleted stylesheet carried
+ * `font: inherit` twice; neither survived the check. On `.multiselect-input` it
+ * was Preflight's own declaration for `button, input, select, optgroup,
+ * textarea`, and on `.multiselect-item` — a plain `<div>` — it was a no-op,
+ * because every longhand of the `font` shorthand is inherited and nothing in
+ * this package sets one on that element. The chip remove button's `padding: 0`,
+ * `border: none`, `background: none` and the input's `border: none` /
+ * `background: transparent` are Preflight's `*` and `button, input, …` rules —
+ * the same ones `Button.tsx` relies on and carries no reset for.
+ */
+const controlClasses =
+  "flex w-full items-center gap-2 min-h-10 px-r4 py-r5 bg-surface-0 border border-border-strong rounded-md cursor-text";
+
+const tagsClasses = "flex flex-auto flex-wrap items-center gap-1.5 min-w-0";
+
+const tagClasses =
+  "inline-flex items-center gap-1 py-0.5 pr-1 pl-2 text-body-3 font-semibold leading-[1.4] text-fg-secondary bg-surface-2 rounded-sm";
+
+const tagRemoveClasses =
+  "inline-flex items-center justify-center rounded-sm text-fg-muted cursor-pointer hover:text-fg-primary disabled:cursor-not-allowed";
+
+/**
+ * The input grows into whatever space is left on the chip row but asks for
+ * almost nothing of its own, so it stays inline beside the chips instead of
+ * wrapping onto an empty second row. It only wraps once the chip row is
+ * genuinely full — at which point a full-width input row is the correct outcome.
+ *
+ * The three `in-[…]:placeholder-shown:` classes collapse the idle input
+ * width-only (not padding — that shifts the control's height on focus) so it
+ * tucks beside the chips. `:placeholder-shown` is what keeps a half-typed query
+ * visible. That is one class per declaration where the stylesheet had one rule
+ * for three, which is the stated cost of moving a compound selector; the
+ * ancestor test is written out because the state lives on the control `<div>`,
+ * not on the input.
+ */
+const inputClasses =
+  "flex-[1_1_2rem] min-w-8 py-1 text-body-2 text-fg-primary outline-none placeholder:text-fg-muted read-only:cursor-pointer disabled:cursor-not-allowed in-[[data-has-selection]:not(:focus-within)]:placeholder-shown:flex-none in-[[data-has-selection]:not(:focus-within)]:placeholder-shown:min-w-0 in-[[data-has-selection]:not(:focus-within)]:placeholder-shown:w-0";
+
+const toggleClasses = "inline-flex flex-none items-center justify-center text-fg-secondary";
+
+const contentClasses =
+  "bg-surface-0 border border-border-default rounded-md shadow-lg py-1 min-w-45 max-h-64 overflow-y-auto z-40 outline-none";
+
+/**
+ * Virtual focus: DOM focus stays on the input, so `:focus-visible` never matches
+ * an option and the keyboard cursor is drawn from `data-active` instead. The
+ * recessed wash reads at 1.08–1.21:1 against the rung-0 listbox fill — enough to
+ * be seen, still short of the 3:1 a non-text cue has to clear on its own — so the
+ * ring carries the cue and the wash reinforces it.
+ *
+ * `data-active:outline-solid` is not decoration. `outline-none` above writes
+ * `--tw-outline-style: none`, and every `outline-<width>` utility reads that
+ * property back rather than setting a style of its own — so without the fourth
+ * class `data-active:outline-2` computes `outline-style: none` and the ring
+ * paints nothing.
+ */
+const itemClasses =
+  "flex w-full items-center gap-2 px-3 py-1.5 text-body-2 text-fg-primary cursor-pointer outline-none text-left data-active:bg-surface-2 data-active:outline-2 data-active:outline-solid data-active:outline-border-focus data-active:-outline-offset-2 data-selected:font-semibold aria-disabled:text-fg-muted aria-disabled:cursor-not-allowed";
+
+/** Fixed-width check gutter keeps labels aligned whether or not selected. */
+const itemCheckClasses =
+  "inline-flex flex-none items-center justify-center size-3.5 text-accent";
+
+const emptyClasses = "px-3 py-2 text-body-2 text-fg-muted";
 
 export interface MultiSelectItem {
   value: string;
@@ -386,7 +462,7 @@ const MultiSelectRoot = forwardRef<HTMLDivElement, MultiSelectProps>(
       <MultiSelectContext.Provider value={ctx}>
         <div
           ref={ref}
-          className={cn("multiselect", className)}
+          className={cn("multiselect relative w-full", className)}
           data-disabled={disabled || undefined}
           {...props}
         >
@@ -399,7 +475,23 @@ const MultiSelectRoot = forwardRef<HTMLDivElement, MultiSelectProps>(
             ref={refs.setReference}
             className={cn(
               "multiselect-control",
+              controlClasses,
+              // The wrapper-ring recipe, and the reason `src/util/focus.ts` has
+              // one: the box is not itself focusable, so `:focus-within` is the
+              // mechanism. The stylesheet needed a third rule
+              // (`.multiselect-control--error:focus-within`) to stop focus
+              // repainting the invalid border, because base and modifier tied at
+              // one class each. Here the error recipe is simply passed last and
+              // `cn()`'s tailwind-merge resolves the pair at the call site, so
+              // the tie-break rule has nothing left to break.
+              focusRingWithin,
+              // A declaration-free marker now — the red border and ring are the
+              // recipe below it. Kept because a consumer stylesheet, a devtools
+              // search and the Astro/Rails consumers of `response-ui-css` all
+              // select on it.
               invalid && "multiselect-control--error",
+              invalid && focusRingWithinError,
+              disabled && "bg-surface-3 cursor-not-allowed",
               classNames?.control,
             )}
             // Lets CSS collapse the idle text input when chips are present (so it
@@ -433,7 +525,7 @@ const MultiSelectRoot = forwardRef<HTMLDivElement, MultiSelectProps>(
             }}
             onBlur={handleFocusOut}
           >
-            <div className={cn("multiselect-tags", classNames?.list)}>
+            <div className={cn("multiselect-tags", tagsClasses, classNames?.list)}>
               {(children ?? defaultChildren)(renderArgs)}
               <input
                 {...getReferenceProps({
@@ -454,7 +546,7 @@ const MultiSelectRoot = forwardRef<HTMLDivElement, MultiSelectProps>(
                   "aria-activedescendant": activeOptionId,
                   "aria-label": ariaLabel,
                   "aria-labelledby": ariaLabelledBy,
-                  className: cn("multiselect-input", classNames?.input),
+                  className: cn("multiselect-input", inputClasses, classNames?.input),
                   disabled,
                   readOnly: !searchable,
                   value: query,
@@ -475,7 +567,7 @@ const MultiSelectRoot = forwardRef<HTMLDivElement, MultiSelectProps>(
               />
             </div>
             <span
-              className={cn("multiselect-toggle", classNames?.chevron)}
+              className={cn("multiselect-toggle", toggleClasses, classNames?.chevron)}
               aria-hidden="true"
               ref={toggleRef}
             >
@@ -544,7 +636,7 @@ const Content = forwardRef<HTMLDivElement, MultiSelectContentProps>(
             id: listboxId,
             role: "listbox",
             "aria-multiselectable": true,
-            className: cn("multiselect-content", className),
+            className: cn("multiselect-content", contentClasses, className),
             style: { ...floatingStyles, ...style },
             // Options are plain divs, so pressing one would otherwise pull
             // focus off the combobox input and read as a focus-out.
@@ -633,7 +725,7 @@ const Item = forwardRef<HTMLDivElement, MultiSelectItemProps>(
           aria-disabled={isDisabled || undefined}
           data-active={index === activeIndex ? "" : undefined}
           data-selected={isSelected ? "" : undefined}
-          className={cn("multiselect-item", className)}
+          className={cn("multiselect-item", itemClasses, className)}
         >
           {children}
         </div>
@@ -659,7 +751,7 @@ const ItemIndicator = forwardRef<HTMLSpanElement, MultiSelectItemIndicatorProps>
   return (
     <span
       ref={ref}
-      className={cn("multiselect-item__check", className)}
+      className={cn("multiselect-item__check", itemCheckClasses, className)}
       aria-hidden="true"
       {...props}
     >
@@ -680,7 +772,7 @@ const Empty = forwardRef<HTMLDivElement, MultiSelectEmptyProps>(
       <div
         ref={ref}
         role="presentation"
-        className={cn("multiselect-empty", className)}
+        className={cn("multiselect-empty", emptyClasses, className)}
         {...props}
       >
         {children}
@@ -716,7 +808,7 @@ const Tag = forwardRef<HTMLSpanElement, MultiSelectTagProps>(
 
     return (
       <TagContext.Provider value={value}>
-        <span ref={ref} className={cn("multiselect-tag", className)} {...props}>
+        <span ref={ref} className={cn("multiselect-tag", tagClasses, className)} {...props}>
           {children}
         </span>
       </TagContext.Provider>
@@ -750,7 +842,7 @@ const TagRemove = forwardRef<HTMLButtonElement, MultiSelectTagRemoveProps>(
           chipRefs.current[tag.index] = node;
         })}
         aria-label={`Remove ${label}`}
-        className={cn("multiselect-tag__remove", className)}
+        className={cn("multiselect-tag__remove", tagRemoveClasses, className)}
         disabled={disabled}
         onClick={(event) => {
           onClick?.(event);

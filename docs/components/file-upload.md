@@ -362,35 +362,36 @@ keeps it off screen while leaving it clickable programmatically, and `accept`, `
 
 ## Theme tokens
 
-Apart from `sr-only` on the hidden input, FileUpload uses **no Tailwind utilities** — every
-rule lives in `FileUpload.css` and reads contract variables directly, so overriding any of
-these re-tints it at runtime with no rebuild.
+`FileUpload.css` is gone: everything this component paints is a Tailwind utility in
+`FileUpload.tsx`, each resolving to a contract variable, so overriding any of these re-tints
+it at runtime with no rebuild — and because the utilities sit in `@layer utilities`, a
+`className` of your own beats every one of them.
 
-| Where                                        | Override                                        |
-| -------------------------------------------- | ----------------------------------------------- |
-| Dropzone fill · thumbnail & glyph wells       | `--C-SURFACE-2`                                 |
-| Drag-over fill                                | `--C-SURFACE-3`                                 |
-| Overlay remove buttons                        | `--C-SURFACE-0`                                 |
-| Dashed border · row separators · action bar   | `--C-BORDER-DEFAULT`                            |
-| Hover + drag-over border · glyph · focus ring | `--C-BORDER-FOCUS`                              |
-| Prompt · hint · size · glyphs · Clear all     | `--C-TEXT-MUTED`                                |
-| File name in a preview row                    | `--C-TEXT-PRIMARY`                              |
-| "browse" emphasis · Replace                   | `--C-ACCENT`                                    |
-| Success border, glyph and message             | `--C-STATUS-SUCCESS`                            |
-| Success fill                                  | `--C-STATUS-SUCCESS-BG`                         |
-| Error border, glyph, message, remove hover    | `--C-STATUS-ERROR`                              |
-| Error fill · remove-button hover wash         | `--C-STATUS-ERROR-BG`                           |
-| Zone & large-preview corners                  | `--RADIUS-MD`                                   |
-| Thumbnail · action-button corners             | `--RADIUS-SM`                                   |
-| Remove-button circles                         | `--RADIUS-FULL`                                 |
-| Prompt & file-name type                       | `--BodyText-2` · `--BodyText-2-line-height`     |
-| Hint, size, message & action type             | `--BodyText-3` · `--BodyText-3-line-height`     |
-| Emphasis weight                               | `--Semibold-Weight`                             |
-| Zone padding                                  | `--R-SIZE-3`                                    |
-| Row padding · caption & action-bar gutters    | `--R-SIZE-4`                                    |
-| Zone stack gap · action-bar padding           | `--R-SIZE-5`                                    |
-| Grid chrome insets                            | `--R-SIZE-6`                                    |
-| Colour & border transitions                   | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+| Where                                        | Utility                                                | Override                                        |
+| -------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------- |
+| Dropzone fill · thumbnail & glyph wells       | `bg-surface-2`                                        | `--C-SURFACE-2`                                 |
+| Drag-over fill                                | `bg-surface-3`                                        | `--C-SURFACE-3`                                 |
+| Overlay remove buttons                        | `bg-surface-0`                                        | `--C-SURFACE-0`                                 |
+| Dashed border · row separators · action bar   | `border-border-default`                               | `--C-BORDER-DEFAULT`                            |
+| Hover + drag-over border · glyph · focus ring | `hover:border-border-focus` `text-border-focus` `focus-visible:outline-border-focus` | `--C-BORDER-FOCUS` |
+| Prompt · hint · size · glyphs · Clear all     | `text-fg-muted`                                       | `--C-TEXT-MUTED`                                |
+| File name in a preview row                    | `text-fg-primary`                                     | `--C-TEXT-PRIMARY`                              |
+| "browse" emphasis · Replace                   | `text-accent`                                         | `--C-ACCENT`                                    |
+| Success border, glyph and message             | `border-status-success` `text-status-success`         | `--C-STATUS-SUCCESS`                            |
+| Success fill                                  | `bg-status-success-bg`                                | `--C-STATUS-SUCCESS-BG`                         |
+| Error border, glyph, message, remove hover    | `border-status-error` `text-status-error` `hover:text-status-error` | `--C-STATUS-ERROR`                |
+| Error fill · remove-button hover wash         | `bg-status-error-bg` `hover:bg-status-error-bg`        | `--C-STATUS-ERROR-BG`                           |
+| Zone & large-preview corners                  | `rounded-md`                                          | `--RADIUS-MD`                                   |
+| Thumbnail · action-button corners             | `rounded-sm`                                          | `--RADIUS-SM`                                   |
+| Remove-button circles                         | `rounded-full`                                        | `--RADIUS-FULL`                                 |
+| Prompt & file-name type                       | `text-body-2`                                         | `--BodyText-2` · `--BodyText-2-line-height`     |
+| Hint, size, message & action type             | `text-body-3`                                         | `--BodyText-3` · `--BodyText-3-line-height`     |
+| Emphasis weight                               | `font-semibold`                                       | `--Semibold-Weight`                             |
+| Zone padding                                  | `p-r3`                                                | `--R-SIZE-3`                                    |
+| Row padding · caption & action-bar gutters    | `p-r4` `px-r4` `gap-r4`                               | `--R-SIZE-4`                                    |
+| Zone stack gap · action-bar padding           | `gap-r5` `py-r5`                                      | `--R-SIZE-5`                                    |
+| Grid chrome insets                            | `top-r6` `right-r6` `py-r6`                           | `--R-SIZE-6`                                    |
+| Colour & border transitions                   | `duration-[var(--MOTION-DURATION-SHIFT)]` `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
 
 Three of those spacing tokens step up at the 40rem breakpoint along the responsive `r`-scale
 (`--R-SIZE-3` 1rem → 1.5rem, `--R-SIZE-4` 0.75rem → 1.25rem, `--R-SIZE-5` 0.5rem → 0.75rem);

@@ -193,21 +193,25 @@ to.
 
 ## Theme tokens
 
-Two layers paint this component. `SearchInput.css` owns the icon and the clear button and
-reads its contract variables directly; the field underneath is the [Input](input.md) SearchInput
-renders, styled entirely with Tailwind utilities — [Input](input.md)'s own, plus the few
-SearchInput adds to make room for the two affordances and to step `size="sm"` down.
+Two layers paint this component. The chrome — the wrapper, the magnifier and the clear
+button — is Tailwind utilities in `SearchInput.tsx`; the field underneath is the
+[Input](input.md) SearchInput renders, styled with [Input](input.md)'s own utilities plus the
+few SearchInput adds to make room for the two affordances and to step `size="sm"` down.
 
-**The chrome — `SearchInput.css`, read directly:**
+`SearchInput.css` still exists, but it now holds only the two vendor pseudo-element rules
+that suppress the browser's built-in clear "x" — nothing themeable, and nothing a utility
+can replace (Tailwind's `appearance-none` drops the `-webkit-` prefix those rules depend on).
 
-| Where                              | Override                                        |
-| ---------------------------------- | ----------------------------------------------- |
-| Search icon                        | `--C-TEXT-MUTED`                                 |
-| Clear button glyph, at rest        | `--C-TEXT-MUTED`                                 |
-| Clear button on hover — ink · wash | `--C-TEXT-PRIMARY` · `--C-SURFACE-2`             |
-| Clear button corners               | `--RADIUS-SM`                                    |
-| Clear button focus outline         | `--C-BORDER-FOCUS`                               |
-| Clear button transition            | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER` |
+**The chrome — utilities in `SearchInput.tsx`:**
+
+| Where                              | Utility                                                                   | Override                                        |
+| ---------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------- |
+| Search icon · clear glyph at rest  | `text-fg-muted`                                                           | `--C-TEXT-MUTED`                                 |
+| Clear button hover ink             | `hover:text-fg-primary`                                                   | `--C-TEXT-PRIMARY`                               |
+| Clear button hover wash            | `hover:bg-surface-2`                                                      | `--C-SURFACE-2`                                  |
+| Clear button corners               | `rounded-sm`                                                              | `--RADIUS-SM`                                    |
+| Clear button focus outline         | `focus-visible:outline-border-focus`                                      | `--C-BORDER-FOCUS`                               |
+| Clear button transition            | `duration-[var(--MOTION-DURATION-ENTER)]` `ease-[var(--MOTION-EASE-ENTER)]` | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER` |
 
 **The field — utilities, inherited from [Input](input.md) or written by SearchInput:**
 

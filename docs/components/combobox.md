@@ -297,28 +297,26 @@ through `--MOTION-DURATION-*`.
 
 ## Theme tokens
 
-Every rule lives in `Combobox.css` and reads the contract variables directly, the way Tabs and
-ActivityFeed do — with one exception: the input's **border**, its focus ring and its invalid
-state are Tailwind utilities in `Combobox.tsx` (`border border-border-strong` plus the shared
-`src/util/focus.ts` recipes `focusRingControl` and `focusRingControlError`), so a single edit
-there reaches this control the way it reaches [Input](input.md). Override any of these and both
-the field and the popup re-tint at runtime.
+`Combobox.css` is gone: everything this component paints is a Tailwind utility in
+`Combobox.tsx`, each resolving to a contract variable. Override any of these and both the
+field and the popup re-tint at runtime with no rebuild — and because the utilities sit in
+`@layer utilities`, a `className` of your own beats every one of them.
 
-| Where                                       | Override                            |
-| ------------------------------------------- | ----------------------------------- |
-| Input text · option text                    | `--C-TEXT-PRIMARY` · `--BodyText-2` |
-| Input fill · popup fill                     | `--C-SURFACE-0`                     |
-| Input border — `border` `border-border-strong` | `--C-BORDER-STRONG`              |
-| Focus border and 2px ring — `focus:ring-border-focus` `focus:border-border-focus` | `--C-BORDER-FOCUS` |
-| Invalid border and ring — `border-status-error` `focus:ring-status-error` | `--C-STATUS-ERROR` |
-| Disabled input fill                         | `--C-SURFACE-3`                     |
-| Placeholder · empty slot · disabled option  | `--C-TEXT-MUTED`                    |
-| Chevron and loading spinner ink             | `--C-TEXT-SECONDARY`                |
-| Popup border                                | `--C-BORDER-DEFAULT`                |
-| Popup shadow                                | `--SHADOW-LG`                       |
-| Active-option highlight — wash and ring     | `--C-SURFACE-2` · `--C-BORDER-FOCUS` |
-| Selected option's weight                    | `--Semibold-Weight`                 |
-| Corners — input and popup                   | `--RADIUS-MD`                       |
+| Where                    | Utility                                                       | Override                            |
+| ------------------------ | ------------------------------------------------------------- | ----------------------------------- |
+| Input text · option text | `text-fg-primary` · `text-body-2`                             | `--C-TEXT-PRIMARY` · `--BodyText-2` |
+| Input fill · popup fill  | `bg-surface-0`                                                | `--C-SURFACE-0`                     |
+| Input border             | `border` `border-border-strong`                               | `--C-BORDER-STRONG`                 |
+| Focus border and 2px ring | `focus:ring-border-focus` `focus:border-border-focus`        | `--C-BORDER-FOCUS`                  |
+| Invalid border and ring  | `border-status-error` `focus:ring-status-error`               | `--C-STATUS-ERROR`                  |
+| Disabled input fill      | `disabled:bg-surface-3`                                       | `--C-SURFACE-3`                     |
+| Placeholder · empty slot · disabled option | `placeholder:text-fg-muted` `aria-disabled:text-fg-muted` | `--C-TEXT-MUTED`     |
+| Chevron and loading spinner ink | `text-fg-secondary`                                    | `--C-TEXT-SECONDARY`                |
+| Popup border             | `border-border-default`                                       | `--C-BORDER-DEFAULT`                |
+| Popup shadow             | `shadow-lg`                                                   | `--SHADOW-LG`                       |
+| Active-option highlight — wash and ring | `data-active:bg-surface-2` · `data-active:outline-border-focus` | `--C-SURFACE-2` · `--C-BORDER-FOCUS` |
+| Selected option's weight | `aria-selected:font-semibold`                                 | `--Semibold-Weight`                 |
+| Corners — input and popup | `rounded-md`                                                 | `--RADIUS-MD`                       |
 
 The spinner has no colour of its own: it is drawn with `border-current`, so it takes the
 `--C-TEXT-SECONDARY` that the loading row sets.

@@ -507,18 +507,23 @@ describe("MultiSelect", () => {
       render(<Harness className="pinned-by-the-caller" />);
 
       const input = screen.getByRole("combobox");
-      // Exact, not `toHaveClass`: what this pins is that nothing else reaches
-      // this element's className — floating-ui's `mergeProps` contributes event
-      // handlers and ARIA props only. A second class arriving here means the
-      // spread grew a source and the claim above needs re-deriving.
-      expect([...input.classList]).toEqual(["multiselect-input"]);
+      // What this pins is that nothing else reaches this element's className —
+      // floating-ui's `mergeProps` contributes event handlers and ARIA props
+      // only. The list was exact until the element grew its own utilities; the
+      // falsifier is the same one, expressed as "the component's own classes and
+      // nothing appended": no `undefined`, no `null`, no empty token, and no
+      // caller class (there is no slot for one here without `classNames.input`).
+      expect([...input.classList]).toContain("multiselect-input");
+      expect(input.className).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
       // The caller's class went to the root, not to the search input. Unlike
       // `Combobox.Input`, whose caller addresses the input itself, MultiSelect's
       // `className` addresses its root — so there is nothing to merge here.
       expect(input).not.toHaveClass("pinned-by-the-caller");
 
       await user.click(input);
-      expect([...screen.getByRole("listbox").classList]).toEqual(["multiselect-content"]);
+      const listbox = screen.getByRole("listbox");
+      expect([...listbox.classList]).toContain("multiselect-content");
+      expect(listbox.className).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     it("keeps multiselect-input when the field-error props spread over it", () => {
@@ -831,17 +836,19 @@ describe("MultiSelect", () => {
       expect(chevron.getAttribute("class")).toContain("rotate-180");
     });
 
+    /**
+     * This used to assert each class attribute equalled its marker exactly,
+     * which stopped being expressible once the elements carried their own
+     * utilities. The falsifier is unchanged: an absent slot appends **nothing**
+     * — no `undefined`, no `null`, no empty token.
+     */
     it("keeps every base class when no slot is passed", () => {
       const { container } = render(<Harness />);
-      expect(container.querySelector(".multiselect-control")?.getAttribute("class")).toBe(
-        "multiselect-control"
-      );
-      expect(container.querySelector(".multiselect-tags")?.getAttribute("class")).toBe(
-        "multiselect-tags"
-      );
-      expect(container.querySelector(".multiselect-toggle")?.getAttribute("class")).toBe(
-        "multiselect-toggle"
-      );
+      for (const marker of ["multiselect-control", "multiselect-tags", "multiselect-toggle"]) {
+        const classes = container.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+        expect(classes.split(" "), marker).toContain(marker);
+        expect(classes, marker).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+      }
     });
 
     it("puts no slot class on the root", () => {
@@ -856,7 +863,11 @@ describe("MultiSelect", () => {
         />
       );
       const root = container.querySelector(".multiselect")!;
-      expect(root.getAttribute("class")).toBe("multiselect");
+      const classes = root.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("multiselect");
+      for (const slot of ["slot-control", "slot-list", "slot-input", "slot-chevron"]) {
+        expect(classes, slot).not.toContain(slot);
+      }
     });
 
     it("rejects an unknown slot key at compile time", () => {

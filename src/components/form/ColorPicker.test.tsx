@@ -669,26 +669,36 @@ describe("ColorPicker", () => {
       }
     });
 
-    it("leaves every internal on its base class alone when no slot is passed", async () => {
+    /**
+     * This used to assert each class attribute equalled its marker exactly,
+     * which stopped being expressible once the elements carried their own
+     * utilities. The falsifiers are unchanged and are what the equality was ever
+     * standing in for: an absent slot appends **nothing** — no `undefined`, no
+     * `null`, no empty token — and every marker survives.
+     */
+    it("leaves every internal on its base classes alone when no slot is passed", async () => {
       const panel = await openPanel(
         <ColorPicker defaultValue="#3366cc" presets={["#ff0000"]} />,
       );
-      const exact: Record<string, string> = {
-        ".colorpicker-trigger__value": "colorpicker-trigger__value",
-        ".colorpicker-sv": "colorpicker-sv",
-        ".colorpicker-sv__thumb": "colorpicker-sv__thumb",
-        ".colorpicker-hue": "colorpicker-hue",
-        ".colorpicker-presets": "colorpicker-presets",
-        ".colorpicker-preset": "colorpicker-preset",
-      };
-      for (const [selector, expected] of Object.entries(exact)) {
-        const el = selector === ".colorpicker-trigger__value" ? trigger() : panel;
-        expect(el.querySelector(selector)?.getAttribute("class")).toBe(expected);
+      const markers = [
+        "colorpicker-trigger__value",
+        "colorpicker-sv",
+        "colorpicker-sv__thumb",
+        "colorpicker-hue",
+        "colorpicker-presets",
+        "colorpicker-preset",
+      ];
+      for (const marker of markers) {
+        const el = marker === "colorpicker-trigger__value" ? trigger() : panel;
+        const classes = el.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+        expect(classes.split(" "), marker).toContain(marker);
+        expect(classes, marker).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
       }
-      expect(panel.className).toBe("colorpicker-panel");
-      expect(trigger().querySelector(".colorpicker-swatch")?.getAttribute("class")).toBe(
-        "colorpicker-swatch",
-      );
+      expect(panel.className.split(" ")).toContain("colorpicker-panel");
+      const swatch =
+        trigger().querySelector(".colorpicker-swatch")?.getAttribute("class") ?? "";
+      expect(swatch.split(" ")).toContain("colorpicker-swatch");
+      expect(swatch).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     it("does not put a slot class on the wrapper className addresses", async () => {
@@ -703,8 +713,12 @@ describe("ColorPicker", () => {
       await user.click(trigger());
 
       const wrapper = container.firstElementChild;
-      expect(wrapper?.getAttribute("class")).toBe("colorpicker w-40");
-      expect(wrapper?.getAttribute("class")).not.toContain("px-r3");
+      const classes = wrapper?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("colorpicker");
+      // `className` still reaches the wrapper, and no slot does.
+      expect(classes.split(" ")).toContain("w-40");
+      expect(classes).not.toContain("px-r3");
+      expect(classes).not.toContain("gap-r3");
     });
 
     /**
@@ -738,11 +752,16 @@ describe("ColorPicker", () => {
         <ColorPicker defaultValue="#3366cc" classNames={{ plane: "h-40" }} />,
       );
       for (const name of ["Saturation", "Brightness"]) {
-        expect(screen.getByLabelText(name).className).toBe("colorpicker-sv__input");
+        const classes = screen.getByLabelText(name).className;
+        expect(classes.split(" "), name).toContain("colorpicker-sv__input");
+        // The clip is the whole point of the (a) ruling — un-hiding these puts
+        // two raw range controls across the picking surface.
+        expect(classes.split(" "), name).toContain("sr-only");
+        expect(classes, name).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
       }
-      expect(panel.querySelector(".colorpicker-row")?.getAttribute("class")).toBe(
-        "colorpicker-row",
-      );
+      const row = panel.querySelector(".colorpicker-row")?.getAttribute("class") ?? "";
+      expect(row.split(" ")).toContain("colorpicker-row");
+      expect(row).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
   });
 });

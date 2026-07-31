@@ -1,6 +1,25 @@
 /* ------------------------------------------------------------------ */
-/*  Sparkline                                                          */
+/*  Sparkline. EXAMINED, AND IT STAYS WHOLE.                           */
 /* ------------------------------------------------------------------ */
+
+/* The two `@keyframes` blocks are the package's genuinely immovable case: a
+   utility sets properties on an element and there is no variant for a block.
+   Everything else here is coupled to them and cannot be split off:
+
+   - The four leaf classes are the ONLY route to the marks. `Sparkline.tsx`
+     annotates each of `.sparkline-line`, `.sparkline-area`, `.sparkline-bar` and
+     `.sparkline-point` `slot:(b)` — a caller tints them through
+     `--sparkline-color` on the `<svg>`, and there is deliberately no class
+     route, so a utility would have to sit on an element no caller can address.
+   - The animation rules are `.sparkline--animate <leaf>` descendant selectors
+     whose subject is those same unreachable marks.
+   - `fill-opacity-15` is a genuine MISS — Tailwind has no `fill-opacity` scale,
+     so the area's wash would have to be `[fill-opacity:0.15]`, an
+     arbitrary-property utility sorted last in `@layer utilities`.
+
+   Moving `.sparkline`'s two declarations alone is exactly the partial
+   conversion that leaves the subtlest content here stripped of its context.
+   `StatCard.css` also selects `.sparkline`; that file belongs to StatCard. */
 
 /*
  * Color flows through `--sparkline-color`, which falls back to `currentColor`

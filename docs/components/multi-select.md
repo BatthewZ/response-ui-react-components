@@ -386,34 +386,32 @@ in it for you to supply.
 
 ## Theme tokens
 
-Every colour, radius, shadow, type step and gap-with-a-name lives in `MultiSelect.css` and
-reads a contract variable directly — the component's `.tsx` carries **no Tailwind
-utilities**, only `multiselect-*` class names. Override a variable and the control re-tints
-at runtime with the rest of the app.
+`MultiSelect.css` is gone: every colour, radius, shadow, type step and gap-with-a-name is a
+Tailwind utility in `MultiSelect.tsx`, each resolving to a contract variable. Override a
+variable and the control re-tints at runtime with the rest of the app — and because the
+utilities sit in `@layer utilities`, a `className` of your own beats every one of them.
 
-| Where                              | Override                                     |
-| ---------------------------------- | -------------------------------------------- |
-| Control fill                       | `--C-SURFACE-0`                              |
-| Control border                     | `--C-BORDER-STRONG`                          |
-| Focus border + ring                | `--C-BORDER-FOCUS`                           |
-| Error border + ring                | `--C-STATUS-ERROR`                           |
-| Disabled control fill              | `--C-SURFACE-3`                              |
-| Control padding                    | `--R-SIZE-5` · `--R-SIZE-4`                  |
-| Control & listbox corners          | `--RADIUS-MD`                                |
-| Tag fill                          | `--C-SURFACE-2`                              |
-| Tag label ink                     | `--C-TEXT-SECONDARY`                         |
-| Tag corners                       | `--RADIUS-SM`                                |
-| Tag type · weight                 | `--BodyText-3` · `--Semibold-Weight`         |
-| Remove glyph ink · its hover ink   | `--C-TEXT-MUTED` · `--C-TEXT-PRIMARY`        |
-| Query text ink                     | `--C-TEXT-PRIMARY`                           |
-| Placeholder ink                    | `--C-TEXT-MUTED`                             |
-| Chevron ink                        | `--C-TEXT-SECONDARY`                         |
-| Listbox fill · border · shadow     | `--C-SURFACE-0` · `--C-BORDER-DEFAULT` · `--SHADOW-LG` |
-| Option ink                         | `--C-TEXT-PRIMARY`                           |
-| Highlighted option — wash · ring   | `--C-SURFACE-2` · `--C-BORDER-FOCUS`         |
-| Disabled option ink · empty text   | `--C-TEXT-MUTED`                             |
-| Selected-option check              | `--C-ACCENT`                                 |
-| Query, option & empty-row type     | `--BodyText-2`                               |
+| Where                            | Utility                                                     | Override                                     |
+| -------------------------------- | ----------------------------------------------------------- | -------------------------------------------- |
+| Control fill                     | `bg-surface-0`                                              | `--C-SURFACE-0`                              |
+| Control border                   | `border` `border-border-strong`                             | `--C-BORDER-STRONG`                          |
+| Focus border + ring              | `focus-within:ring-border-focus` `focus-within:border-border-focus` | `--C-BORDER-FOCUS`                   |
+| Error border + ring              | `border-status-error` `focus-within:ring-status-error`      | `--C-STATUS-ERROR`                           |
+| Disabled control fill            | `bg-surface-3`                                              | `--C-SURFACE-3`                              |
+| Control padding                  | `py-r5` `px-r4`                                             | `--R-SIZE-5` · `--R-SIZE-4`                  |
+| Control & listbox corners        | `rounded-md`                                                | `--RADIUS-MD`                                |
+| Tag fill · highlighted-option wash | `bg-surface-2`                                            | `--C-SURFACE-2`                              |
+| Tag label ink · chevron ink      | `text-fg-secondary`                                         | `--C-TEXT-SECONDARY`                         |
+| Tag corners                      | `rounded-sm`                                                | `--RADIUS-SM`                                |
+| Tag type                         | `text-body-3`                                               | `--BodyText-3`                               |
+| Tag weight · selected-option weight | `font-semibold` `data-selected:font-semibold`            | `--Semibold-Weight`                          |
+| Remove-glyph hover ink · query ink · option ink | `hover:text-fg-primary` `text-fg-primary`    | `--C-TEXT-PRIMARY`                           |
+| Remove glyph · placeholder · disabled option · empty text | `text-fg-muted` `placeholder:text-fg-muted` `aria-disabled:text-fg-muted` | `--C-TEXT-MUTED` |
+| Listbox border                   | `border-border-default`                                     | `--C-BORDER-DEFAULT`                         |
+| Listbox shadow                   | `shadow-lg`                                                 | `--SHADOW-LG`                                |
+| Highlighted-option ring          | `data-active:outline-border-focus`                          | `--C-BORDER-FOCUS`                           |
+| Selected-option check            | `text-accent`                                               | `--C-ACCENT`                                 |
+| Query, option & empty-row type   | `text-body-2`                                               | `--BodyText-2`                               |
 
 The two spacing tokens step up at the 40rem breakpoint along the responsive `r`-scale: the
 control's vertical padding (`--R-SIZE-5`, `0.5rem` → `0.75rem`) and its horizontal padding

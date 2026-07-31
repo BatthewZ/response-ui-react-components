@@ -783,6 +783,13 @@ describe("FileUpload", () => {
 
     /* ---- Companions ---- */
 
+    /**
+     * This used to assert each class attribute equalled its marker exactly,
+     * which stopped being expressible once the elements carried their own
+     * utilities. The falsifier is unchanged and is what the equality was ever
+     * standing in for: an absent slot appends **nothing** — no `undefined`, no
+     * `null`, no empty token — and the marker survives for consumer stylesheets.
+     */
     it("leaves the internals on their base classes when no slot is passed", () => {
       const { container } = render(<FileUpload hint="PNG up to 2MB" />);
       for (const selector of [
@@ -791,7 +798,9 @@ describe("FileUpload", () => {
         ".file-upload__text-emphasis",
         ".file-upload__hint",
       ]) {
-        expect(cls(container, selector), selector).toBe(selector.slice(1));
+        const classes = cls(container, selector);
+        expect(classes.split(" "), selector).toContain(selector.slice(1));
+        expect(classes, selector).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
       }
     });
 
@@ -823,7 +832,9 @@ describe("FileUpload", () => {
         // @ts-expect-error — `thumb` lives inside a preview; use `renderFile`.
         <FileUpload hint="PNG up to 2MB" classNames={{ thumb: "rounded-lg" }} />,
       );
-      expect(cls(container, ".file-upload__hint")).toBe("file-upload__hint");
+      const hint = cls(container, ".file-upload__hint");
+      expect(hint.split(" ")).toContain("file-upload__hint");
+      expect(hint).not.toContain("rounded-lg");
     });
 
     it("does not leak classNames onto the DOM", () => {
@@ -955,9 +966,11 @@ describe("FileUpload", () => {
       expect(container.querySelector(".file-upload__preview-item")).toBeNull();
       // The container the rows sit in is still the component's, base class and
       // all — the slot that reaches it is asserted in the slots block above.
-      expect(container.querySelector(".file-upload__preview-list")?.getAttribute("class")).toBe(
-        "file-upload__preview-list",
-      );
+      const list =
+        container.querySelector(".file-upload__preview-list")?.getAttribute("class") ?? "";
+      expect(list.split(" ")).toContain("file-upload__preview-list");
+      expect(list).not.toContain("custom-row");
+      expect(list).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     /**
@@ -981,7 +994,9 @@ describe("FileUpload", () => {
       );
 
       const preview = container.querySelector(".file-upload__preview") as HTMLElement;
-      expect(preview.getAttribute("class")).toBe("file-upload__preview");
+      const previewClass = preview.getAttribute("class") ?? "";
+      expect(previewClass.split(" ")).toContain("file-upload__preview");
+      expect(previewClass).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
       expect(preview.getAttribute("role")).toBe("presentation");
 
       await user.click(screen.getByRole("button", { name: "open notes.txt" }));

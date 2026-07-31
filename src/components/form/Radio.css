@@ -1,6 +1,19 @@
 /* The selected dot, and only that: everything else Radio draws is a Tailwind
    utility in `Radio.tsx`, so a caller's `className` can still out-merge it.
 
+   RE-EXAMINED, AND THE RULING HOLDS. All five declarations below would
+   transpose — `checked:bg-[radial-gradient(…)]` and its `forced-colors:` twins
+   compile and emit the right selectors. What stops them is the forced-colours
+   focus outline at the bottom: `scripts/probe-cascade-layer.mjs` pins its
+   `outline-width: 2px` with the `radio-forced-colors-focus-outline` row against
+   a HAND-WRITTEN fixture, `<input class="radio not-forced-colors:focus:outline-none">`,
+   where a utility on the element is not reachable. That row is the one the
+   probe's own note calls a must-fix rather than an accepted trade. Secondarily,
+   `outline-2` emits `outline-style: var(--tw-outline-style)` rather than
+   `solid`, and how that indirection behaves under forced colours — the one mode
+   where this outline is the ONLY affordance left — is not measurable in this
+   repo.
+
    Why the dot has to be drawn here at all: the round focus ring is what forces
    `appearance: none`. A native radio's box decorations are painted by the
    engine, which drops an author `border-radius` — measured in Chrome 144, a

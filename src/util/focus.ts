@@ -93,7 +93,8 @@ export const focusRingControlError =
 /**
  * Wrapper boxes that own the border and ring for an input nested inside them.
  * The box is not itself focusable, so `:focus-visible` can never match it —
- * `:focus-within` is the mechanism, as in `MultiSelect.css:25`.
+ * `:focus-within` is the mechanism. `MultiSelect`'s control `<div>` is the
+ * canonical site; `TagInput` is the other.
  */
 export const focusRingWithin =
   "ring-2 ring-transparent focus-within:ring-border-focus focus-within:ring-offset-0 focus-within:border-border-focus";

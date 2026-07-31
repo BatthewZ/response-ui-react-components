@@ -36,6 +36,91 @@ import {
 } from "./color";
 import { useFieldError } from "./Field";
 
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `ColorPicker.css` keeps the hue rail and says why; everything else this
+ * component draws is here. Each constant is one flat string literal because
+ * `verify:component-docs` and `verify:focus-affordance` resolve hoisted
+ * constants textually and a composed one would not resolve.
+ *
+ * Nothing below re-states Tailwind Preflight. The deleted rules carried
+ * `font: inherit` twice — once on the trigger `<button>` and once on the hex
+ * `<input>` — and Preflight declares exactly that for `button, input, select,
+ * optgroup, textarea`; the preset button's `padding: 0` and `border: none` are
+ * Preflight's `*` rule. `Button.tsx` relies on the same rules and carries no
+ * reset of its own.
+ */
+const triggerClasses =
+  "inline-flex items-center gap-2 px-2.5 py-1.5 text-body-2 text-fg-primary bg-surface-0 border border-border-strong rounded-md cursor-pointer";
+
+const valueClasses = "tabular-nums uppercase tracking-[0.02em]";
+
+/**
+ * A flat fill of the committed colour. No checkerboard: the parser rejects
+ * 8-digit hex, so nothing here is ever translucent. The hairline is an inset
+ * `box-shadow` rather than a border so it costs the swatch no layout box.
+ */
+const swatchClasses =
+  "size-4.5 flex-none rounded-sm shadow-[inset_0_0_0_1px_rgb(0_0_0/0.15)]";
+
+const panelClasses =
+  "flex flex-col gap-3 w-60 p-3 bg-surface-0 border border-border-default rounded-md shadow-lg z-40 outline-none";
+
+/**
+ * The saturation/brightness square, and its focus ring.
+ *
+ * Focus lands on a hidden axis input, so the ring belongs to the square — the
+ * same wrapper-ring shape as `MultiSelect`'s control. It is spelled as an
+ * `outline` with a 2px offset rather than `focusRingWithin`, and that is not
+ * drift: Tailwind's ring offset paints a SOLID band of
+ * `--tw-ring-offset-color`, while this surface paints an arbitrary colour of the
+ * user's own. `outline-offset` is transparent, and the 2px gap is what keeps
+ * `--C-BORDER-FOCUS` legible against a fill that may be that exact colour.
+ * `:focus-within` also cannot distinguish the two axis inputs, and does not need
+ * to — one ring says the area has focus, and the focused input's own name and
+ * value say which axis.
+ *
+ * The gradient stays an arbitrary value: it is two stacked layers, one of them
+ * reading `--hue` from the element's inline style, which no named `bg-linear-*`
+ * utility can express (and those switch the interpolation space to `in oklab`,
+ * which this rail's stops are not authored for).
+ */
+const planeClasses =
+  "relative w-full h-36 rounded-sm cursor-crosshair touch-none bg-[linear-gradient(to_top,#000,transparent),linear-gradient(to_right,#fff,var(--hue,#f00))] focus-within:outline-2 focus-within:outline-border-focus focus-within:outline-offset-2";
+
+/**
+ * One `<input type="range">` per axis, taken off the screen but left in the tab
+ * order and in the accessibility tree: the browser owns the keyboard model, the
+ * square owns the pixels. `sr-only` is the clip; `[clip-path:inset(50%)]` is the
+ * modern half of it that `sr-only` does not carry.
+ *
+ * `outline-none` is declared rather than left to the clip, because an explicit
+ * reset is what `scripts/verify-focus-affordance.mjs` traces to the
+ * `focus-within:` ring on `planeClasses` — deleting that ring then fails the
+ * guard instead of silently leaving a focusable control with no affordance.
+ */
+const svInputClasses = "sr-only [clip-path:inset(50%)] outline-none";
+
+const planeThumbClasses =
+  "absolute size-3.5 -translate-x-1/2 -translate-y-1/2 border-2 border-white rounded-full shadow-[0_0_0_1px_rgb(0_0_0/0.35)] pointer-events-none";
+
+const hexClasses =
+  "flex-auto min-w-0 w-full px-2 py-1.5 text-body-2 tabular-nums text-fg-primary bg-surface-0 rounded-md";
+
+const presetClasses =
+  "aspect-square rounded-sm shadow-[inset_0_0_0_1px_rgb(0_0_0/0.15)] cursor-pointer focus-visible:outline-2 focus-visible:outline-border-focus focus-visible:outline-offset-1";
+
+/**
+ * The selected preset's double ring. Written as one `shadow-[…]` rather than as
+ * a second layer on top of `presetClasses`, because a `box-shadow` is a single
+ * property: a second utility would replace the hairline instead of adding to it.
+ */
+const presetActiveClasses =
+  "shadow-[inset_0_0_0_1px_rgb(0_0_0/0.15),0_0_0_2px_var(--C-SURFACE-0),0_0_0_4px_var(--C-TEXT-PRIMARY)]";
+
 type ColorPickerProps = {
   value?: string;
   defaultValue?: string;
@@ -281,16 +366,27 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
       // here rather than being inferable from the surrounding markup.
       className: cn(
         "colorpicker-trigger duration-fast",
+        triggerClasses,
         focusOutlineResetButton,
         focusRingButton,
-        invalid && "colorpicker-trigger--error",
+        // `--error` is a declaration-free marker now — `border-status-error` is
+        // what paints. Kept because a consumer stylesheet selects on it.
+        invalid && "colorpicker-trigger--error border-status-error",
+        // The disabled skin was a `.colorpicker[data-disabled] .colorpicker-trigger`
+        // descendant rule; the state is known here, so it is a conditional
+        // string that `cn()`'s tailwind-merge resolves against the error border
+        // above — the same order the stylesheet's specificity produced.
+        disabled && "bg-surface-3 cursor-not-allowed opacity-70",
         classNames?.trigger,
       ),
       ...ariaProps,
     });
 
     return (
-      <div className={cn("colorpicker", className)} data-disabled={disabled || undefined}>
+      <div
+        className={cn("colorpicker inline-block", className)}
+        data-disabled={disabled || undefined}
+      >
         <button
           {...getReferenceProps({
             ...triggerProps,
@@ -298,11 +394,11 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
           })}
         >
           <span
-            className={cn("colorpicker-swatch", classNames?.swatch)}
+            className={cn("colorpicker-swatch", swatchClasses, classNames?.swatch)}
             style={{ backgroundColor: hex }}
             aria-hidden="true"
           />
-          <span className={cn("colorpicker-trigger__value", classNames?.value)}>
+          <span className={cn("colorpicker-trigger__value", valueClasses, classNames?.value)}>
             {hex}
           </span>
         </button>
@@ -324,7 +420,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   // An object property rather than a JSX attribute, so a walk
                   // over JSX attributes never visits it: triage (c), recorded
                   // here because nothing in the markup around it says so.
-                  className: cn("colorpicker-panel", classNames?.panel),
+                  className: cn("colorpicker-panel", panelClasses, classNames?.panel),
                   style: floatingStyles,
                   "aria-label": panelLabel,
                 })}
@@ -338,7 +434,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     and the thumb is presentational. */}
                 <div
                   ref={svRef}
-                  className={cn("colorpicker-sv", classNames?.plane)}
+                  className={cn("colorpicker-sv", planeClasses, classNames?.plane)}
                   role="group"
                   aria-disabled={disabled || undefined}
                   aria-label={areaLabel}
@@ -355,7 +451,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     // lets a caller un-clip it and lay two raw range inputs
                     // across the picking surface, which is the arrangement the
                     // class was written to prevent.
-                    className="colorpicker-sv__input"
+                    className={cn("colorpicker-sv__input", svInputClasses)}
                     min={0}
                     max={100}
                     step={1}
@@ -372,7 +468,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     // slot:(a) the brightness axis's twin of the clip above, and
                     // unreachable for the same reason: un-hiding it puts a
                     // second raw range control over the picking surface.
-                    className="colorpicker-sv__input"
+                    className={cn("colorpicker-sv__input", svInputClasses)}
                     min={0}
                     max={100}
                     step={1}
@@ -385,7 +481,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     }
                   />
                   <span
-                    className={cn("colorpicker-sv__thumb", classNames?.thumb)}
+                    className={cn("colorpicker-sv__thumb", planeThumbClasses, classNames?.thumb)}
                     aria-hidden="true"
                     style={{
                       left: `${hsv.s * 100}%`,
@@ -417,11 +513,13 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                   // beside the hex field. Reflowing it does not produce a
                   // different picker, it produces a broken one, and the surface
                   // a caller actually restyles is `classNames.panel`.
-                  className="colorpicker-row"
+                  className="colorpicker-row flex items-center gap-2"
                 >
                   <span
                     className={cn(
                       "colorpicker-swatch colorpicker-swatch--lg",
+                      swatchClasses,
+                      "size-8 rounded-md",
                       classNames?.swatch
                     )}
                     style={{ backgroundColor: hex }}
@@ -436,6 +534,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
                     // with Phase 1 and the arrangement is still right.
                     className={cn(
                       "colorpicker-hex duration-fast",
+                      hexClasses,
                       "border border-border-strong",
                       focusOutlineResetControl,
                       focusRingControl,
@@ -458,12 +557,12 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
 
                 {/* Presets */}
                 {swatches.length > 0 && (
-                  <div className={cn("colorpicker-presets", classNames?.presets)}>
+                  <div className={cn("colorpicker-presets grid grid-cols-8 gap-1.5", classNames?.presets)}>
                     {swatches.map((swatch) => (
                       <button
                         key={swatch}
                         type="button"
-                        className={cn("colorpicker-preset", classNames?.preset)}
+                        className={cn("colorpicker-preset", presetClasses, swatch === hex && presetActiveClasses, classNames?.preset)}
                         aria-label={swatch}
                         aria-pressed={swatch === hex}
                         disabled={disabled}

@@ -41,7 +41,6 @@
 @import "./components/ui/Drawer.css" layer(components);
 @import "./components/ui/DropdownMenu.css" layer(components);
 @import "./components/ui/EmptyState.css" layer(components);
-@import "./components/ui/FileUpload.css" layer(components);
 @import "./components/ui/Hero.css" layer(components);
 @import "./components/ui/MediaCard.css" layer(components);
 @import "./components/ui/menu-internals.css" layer(components);
@@ -71,8 +70,6 @@
 
 /* form */
 @import "./components/form/ColorPicker.css" layer(components);
-@import "./components/form/Combobox.css" layer(components);
-@import "./components/form/MultiSelect.css" layer(components);
 @import "./components/form/Radio.css" layer(components);
 @import "./components/form/RangeSlider.css" layer(components);
 @import "./components/form/SearchInput.css" layer(components);

@@ -7,6 +7,22 @@ import { cn, type SlotClassNames } from "../../util/style";
 
 import { Input } from "./Input";
 
+/**
+ * The clear button. Preflight already gives a `<button>` `padding: 0`,
+ * `border: 0 solid` and `background-color: transparent` — the same rules
+ * `Button.tsx` relies on and carries no reset for — so none of those are
+ * restated here.
+ *
+ * `hover:` compiles to `@media (hover: hover) { &:hover }`, so the hover tint no
+ * longer fires on a coarse pointer. That matches the rest of the package.
+ *
+ * Nothing here resets the UA outline, so `verify:focus-affordance` has no reset
+ * to pair: the `focus-visible:outline-*` triple replaces the browser's ring
+ * rather than removing it.
+ */
+const clearClasses =
+  "search-input__clear absolute right-2 inline-flex items-center justify-center size-6 rounded-sm text-fg-muted cursor-pointer transition-colors duration-[var(--MOTION-DURATION-ENTER)] ease-[var(--MOTION-EASE-ENTER)] motion-reduce:transition-none hover:text-fg-primary hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-border-focus focus-visible:outline-offset-1";
+
 type SearchInputProps = {
   value: string;
   onChange: (value: string) => void;
@@ -103,10 +119,13 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     }
 
     return (
-      <div className={cn("search-input", className)}>
+      <div className={cn("search-input relative inline-flex w-full items-center", className)}>
         <Search
           size={iconSize}
-          className={cn("search-input__icon", classNames?.icon)}
+          className={cn(
+            "search-input__icon absolute left-3 text-fg-muted pointer-events-none",
+            classNames?.icon
+          )}
           aria-hidden="true"
         />
         <Input
@@ -142,7 +161,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
         {value && (
           <button
             type="button"
-            className={cn("search-input__clear", classNames?.clear)}
+            className={cn(clearClasses, classNames?.clear)}
             onClick={handleClear}
             disabled={locked}
             aria-label={clearLabel}

@@ -1,6 +1,38 @@
 /* ------------------------------------------------------------------ */
-/*  Slider — native range input                                        */
+/*  Slider — native range input. EXAMINED, AND IT STAYS WHOLE.         */
 /* ------------------------------------------------------------------ */
+
+/* This file is one control, and the half that looks convertible is pinned by
+   the half that is not. AGENTS.md "The test":
+
+   1. The thumb, in both engines, is a UA pseudo-element. `-webkit-appearance:
+      none` on `::-webkit-slider-thumb` is what stops WebKit painting its own,
+      and Tailwind's `appearance-none` emits only the UNPREFIXED property — a
+      loss nothing in this repo can measure and whose failure is visual only.
+      The focus ring is a `box-shadow` on the same pseudo-element, and
+      Tailwind's `shadow-*` resolves through five `@property`-registered
+      variables where the hand-written form has one; whether those registrations
+      resolve inside a UA pseudo-element is not measurable here. This is the
+      control's ONLY focus affordance, so guessing wrong is WCAG 2.4.7 with
+      every gate green.
+   2. `verify:focus-affordance` pairs the `:focus-visible { outline: none }`
+      reset below with those thumb rules. Move the reset to a utility and leave
+      the ring here and the pairing is across two files; write the ring as
+      `shadow-[0_0_0_2px_var(--C-BORDER-FOCUS)]` and the guard's token-name
+      regex does not match it — either way the control leaves coverage
+      SILENTLY, with the gate still printing OK.
+   3. The reset/restore pair at the bottom does not survive transposition at
+      all. `focus-visible:outline-none` writes `--tw-outline-style: none`, and
+      every `outline-<width>` utility reads that property back — so
+      `aria-invalid:focus-visible:outline-1` computes `outline-style: none`
+      however high its specificity. The repair is a fourth class,
+      `outline-solid`, which nobody writes because in hand-written CSS
+      `outline: 1px solid …` has no such indirection.
+
+   Converting only `.slider`'s base declarations would leave ~40 lines of exactly
+   the above, stripped of the paragraph that explains them. So: nothing moves.
+   The gradient would also have to stay arbitrary — `bg-linear-to-r` switches
+   interpolation to `in oklab`, which these stops are not authored for. */
 
 .slider {
   -webkit-appearance: none;

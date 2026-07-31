@@ -1,16 +1,17 @@
-.search-input {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  width: 100%;
-}
+/* ------------------------------------------------------------------ */
+/*  SearchInput — converted to utilities; two rules could not move      */
+/* ------------------------------------------------------------------ */
 
-.search-input__icon {
-  position: absolute;
-  left: 0.75rem;
-  color: var(--C-TEXT-MUTED);
-  pointer-events: none;
-}
+/* The wrapper, the magnifier and the clear button are all Tailwind utilities in
+   `SearchInput.tsx`. What survives here is the pair of vendor pseudo-element
+   rules that suppress the browser's own clear affordance, and they survive for
+   a reason a utility cannot work around: the property that does the suppressing
+   is `-webkit-appearance`, and Tailwind's `appearance-none` emits only the
+   UNPREFIXED `appearance: none`. The variant compiles
+   (`[&::-webkit-search-cancel-button]:appearance-none` generates the right
+   selector) and nothing in this repo — no probe, no test, no gate — can see
+   that the prefix went missing. The failure would be visual only: two "x"
+   glyphs in the field. AGENTS.md "The test", question 2. */
 
 /* The field's own geometry — the icon gutters, and the type and vertical
    padding that make `sm` shorter than `md` — is NOT written here. It is spelled
@@ -38,38 +39,4 @@
   display: none;
   width: 0;
   height: 0;
-}
-
-.search-input__clear {
-  position: absolute;
-  right: 0.5rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  padding: 0;
-  border: none;
-  border-radius: var(--RADIUS-SM);
-  background: transparent;
-  color: var(--C-TEXT-MUTED);
-  cursor: pointer;
-  transition: color var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER),
-    background var(--MOTION-DURATION-ENTER) var(--MOTION-EASE-ENTER);
-}
-
-.search-input__clear:hover {
-  color: var(--C-TEXT-PRIMARY);
-  background: var(--C-SURFACE-2);
-}
-
-.search-input__clear:focus-visible {
-  outline: 2px solid var(--C-BORDER-FOCUS);
-  outline-offset: 1px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .search-input__clear {
-    transition: none;
-  }
 }

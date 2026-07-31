@@ -19,6 +19,104 @@ import { composeEventHandlers } from "../../util/merge-props";
 import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `FileUpload.css` is gone; everything this component draws is here. Each
+ * constant is one flat string literal because `verify:component-docs` and
+ * `verify:focus-affordance` resolve hoisted constants textually and a composed
+ * one would not resolve.
+ *
+ * **Every state is a conditional string, not a variant.** The stylesheet had six
+ * `.file-upload--*` modifiers over one base rule on the same element — the shape
+ * a partial conversion inverts, because a lone base declaration in
+ * `@layer utilities` starts beating a modifier left in `@layer components`. It
+ * also had four descendant rules keyed off those modifiers. None of that needs a
+ * `data-*` variant: this component computes every one of those states in JS, so
+ * each is passed as a later argument to `cn()` and tailwind-merge resolves the
+ * pair at the call site. The argument order below reproduces the stylesheet's
+ * source order exactly — `--has-files` last, because it is what let a populated
+ * dropzone override the drag-over border and the disabled cursor.
+ *
+ * The `--modifier` class names are kept as declaration-free markers: they are
+ * selectors a consumer stylesheet may already target, and the mirrored `data-*`
+ * attributes remain the Tailwind-variant route from `className`.
+ *
+ * **`all: unset` did not need enumerating; it needed deleting.** It sat on the
+ * two action buttons, and what it bought over Tailwind Preflight was nothing
+ * this component wants: Preflight already gives a `<button>` `font: inherit`,
+ * `color: inherit`, `background-color: transparent`, `border: 0 solid`,
+ * `border-radius: 0`, `margin`, `padding` and `box-sizing` — which is exactly
+ * what `Button.tsx` relies on while carrying no reset of its own. What `all:
+ * unset` ADDED was `outline-style: none`, so those two buttons had no visible
+ * focus indicator at all and no gate here could see it (`verify:focus-affordance`
+ * reads `outline*` declarations, not `all`). Dropping the reset restores the UA
+ * outline. The one behavioural difference left is the UA's `text-align: center`
+ * and `display: inline-block`, and both are moot: the buttons are flex items in
+ * `actionsClasses` with a single text run.
+ *
+ * `hover:` compiles to `@media (hover: hover) { &:hover }`, so the hover tints
+ * no longer fire on a coarse pointer. That matches the rest of the package.
+ */
+const dropzoneClasses =
+  "relative flex flex-col items-center justify-center gap-r5 w-full min-h-40 p-r3 border-2 border-dashed border-border-default rounded-md bg-surface-2 cursor-pointer transition-[border-color,background-color] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-border-focus focus-visible:outline-offset-2 focus-visible:rounded-md";
+
+const iconClasses =
+  "text-fg-muted transition-colors duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none";
+
+const textClasses = "text-center text-body-2 text-fg-muted";
+const textEmphasisClasses = "font-semibold text-accent";
+const hintClasses = "text-body-3 text-fg-muted text-center";
+const errorClasses = "text-body-3 text-status-error text-center font-semibold";
+const successClasses = "text-body-3 text-status-success text-center font-semibold";
+
+/** Inset the three message slots take only inside the preview state. */
+const messageInsetClasses = "px-r4 pb-r5";
+
+const previewClasses = "flex flex-col w-full";
+
+const mediaLargeClasses =
+  "relative flex items-center justify-center h-40 bg-surface-2 rounded-t-md overflow-hidden";
+const mediaLargeContentClasses = "max-w-full max-h-full object-contain";
+const mediaRemoveClasses =
+  "absolute top-r5 right-r5 z-1 flex items-center justify-center size-7 rounded-full bg-surface-0 text-fg-muted cursor-pointer shadow-[0_1px_3px_rgb(0_0_0/0.15)] transition-colors duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none hover:bg-status-error-bg hover:text-status-error disabled:cursor-not-allowed disabled:opacity-50";
+const mediaCaptionClasses = "flex items-baseline gap-r5 px-r4 py-r5";
+
+const mediaGridClasses =
+  "grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-0.5";
+/** `group` is load-bearing: the cell's remove button reveals on cell hover, and
+ *  the first cell's thumbnail takes the container's top-left radius. */
+const mediaGridItemClasses = "group relative flex flex-col overflow-hidden";
+const mediaGridContentClasses =
+  "w-full aspect-square object-cover bg-surface-2 group-first:rounded-tl-[calc(var(--RADIUS-MD)-2px)]";
+const mediaGridRemoveClasses =
+  "absolute top-r6 right-r6 z-1 flex items-center justify-center size-6 rounded-full bg-surface-0 text-fg-muted cursor-pointer shadow-[0_1px_3px_rgb(0_0_0/0.15)] transition-[opacity,background-color,color] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none hover:bg-status-error-bg hover:text-status-error";
+const mediaGridNameClasses =
+  "text-body-3 text-fg-muted px-r5 py-r6 overflow-hidden text-ellipsis whitespace-nowrap";
+
+const previewListClasses = "flex flex-col";
+const previewItemClasses =
+  "flex items-center gap-r4 p-r4 not-first:border-t not-first:border-border-default";
+const previewThumbClasses =
+  "size-10 shrink-0 object-cover rounded-sm border border-border-default bg-surface-2";
+const previewFileIconClasses =
+  "flex items-center justify-center shrink-0 size-10 rounded-sm bg-surface-2 text-fg-muted";
+const previewInfoClasses = "flex flex-col gap-0.5 min-w-0 flex-1";
+const previewNameClasses =
+  "text-body-2 text-fg-primary font-semibold overflow-hidden text-ellipsis whitespace-nowrap";
+const previewSizeClasses = "text-body-3 text-fg-muted";
+const previewRemoveClasses =
+  "flex items-center justify-center shrink-0 size-7 rounded-full text-fg-muted cursor-pointer transition-colors duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none hover:bg-status-error-bg hover:text-status-error disabled:cursor-not-allowed disabled:opacity-50";
+
+const actionsClasses =
+  "flex items-center gap-r4 px-r4 py-r5 border-t border-border-default";
+const actionButtonClasses =
+  "text-body-3 font-semibold cursor-pointer rounded-sm px-1 py-0.5 transition-colors duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50";
+const replaceClasses = "text-accent hover:underline";
+const clearClasses = "text-fg-muted hover:text-status-error";
+
+/* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -323,7 +421,7 @@ function MediaPreviewLarge({
       // Which of the three preview components renders is chosen from the file
       // list and `previewMode`, so a class key here would name elements a given
       // caller may never see; the content channel is the honest one.
-      className="file-upload__media-large"
+      className={cn("file-upload__media-large", mediaLargeClasses)}
     >
       {onRemove && (
         <button
@@ -331,7 +429,7 @@ function MediaPreviewLarge({
           // slot:(e) inside `MediaPreviewLarge` — replaced wholesale by
           // `renderPreview`, which is handed `remove` and `removeLabel` to build
           // its own control from.
-          className="file-upload__media-remove"
+          className={cn("file-upload__media-remove", mediaRemoveClasses)}
           disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
@@ -350,7 +448,7 @@ function MediaPreviewLarge({
             // slot:(e) inside `MediaPreviewLarge`, and one of a video/image pair
             // no key could tell apart — `renderPreview` gets `previewUrl` and
             // the `file`, and decides what to draw with them.
-            className="file-upload__media-large-content"
+            className={cn("file-upload__media-large-content", mediaLargeContentClasses)}
             controls
             muted
           />
@@ -360,19 +458,19 @@ function MediaPreviewLarge({
             alt={file.name}
             // slot:(e) inside `MediaPreviewLarge` — the image half of the pair
             // above, replaced by `renderPreview` along with it.
-            className="file-upload__media-large-content"
+            className={cn("file-upload__media-large-content", mediaLargeContentClasses)}
           />
         ))}
 
       <div
         // slot:(e) inside `MediaPreviewLarge` — replaced wholesale by
         // `renderPreview`, which receives the `file` this caption is built from.
-        className="file-upload__media-caption"
+        className={cn("file-upload__media-caption", mediaCaptionClasses)}
       >
         <span
           // slot:(e) inside `MediaPreviewLarge` — replaced wholesale by
           // `renderPreview`; the name comes from `file.name`.
-          className="file-upload__preview-name"
+          className={cn("file-upload__preview-name", previewNameClasses)}
           title={file.name}
         >
           {file.name}
@@ -380,7 +478,7 @@ function MediaPreviewLarge({
         <span
           // slot:(e) inside `MediaPreviewLarge` — replaced wholesale by
           // `renderPreview`; the size comes from `file.size`.
-          className="file-upload__preview-size"
+          className={cn("file-upload__preview-size", previewSizeClasses)}
         >
           {formatBytes(file.size)}
         </span>
@@ -416,14 +514,23 @@ function MediaPreviewGrid({
       // cell; what a caller wants here is different content in the cell, which
       // is what the render prop hands them. The grid container around it keeps
       // `classNames.list`.
-      className="file-upload__media-grid-item"
+      className={cn("file-upload__media-grid-item", mediaGridItemClasses)}
     >
       {onRemove && (
         <button
           type="button"
           // slot:(e) inside `MediaPreviewGrid` — replaced wholesale by
           // `renderPreview`, which is handed `remove` and `removeLabel`.
-          className="file-upload__media-grid-remove"
+          className={cn(
+            "file-upload__media-grid-remove",
+            mediaGridRemoveClasses,
+            // A disabled cell control stays visible at half strength rather
+            // than only on hover — the reason it is unavailable has to be
+            // readable without a pointer. The stylesheet got this from its
+            // `:disabled` rule out-ranking the item-hover rule at equal
+            // specificity by source order; here the branch says it outright.
+            disabled ? "opacity-50 cursor-not-allowed" : "opacity-0 group-hover:opacity-100"
+          )}
           disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
@@ -442,7 +549,7 @@ function MediaPreviewGrid({
             // slot:(e) inside `MediaPreviewGrid`, and one of a video/image pair
             // no key could tell apart — `renderPreview` gets `previewUrl` and
             // the `file`, and decides what to draw with them.
-            className="file-upload__media-grid-content"
+            className={cn("file-upload__media-grid-content", mediaGridContentClasses)}
             muted
           />
         ) : (
@@ -451,14 +558,14 @@ function MediaPreviewGrid({
             alt={file.name}
             // slot:(e) inside `MediaPreviewGrid` — the image half of the pair
             // above, replaced by `renderPreview` along with it.
-            className="file-upload__media-grid-content"
+            className={cn("file-upload__media-grid-content", mediaGridContentClasses)}
           />
         ))}
 
       <span
         // slot:(e) inside `MediaPreviewGrid` — replaced wholesale by
         // `renderPreview`; the name comes from `file.name`.
-        className="file-upload__media-grid-name"
+        className={cn("file-upload__media-grid-name", mediaGridNameClasses)}
         title={file.name}
       >
         {file.name}
@@ -492,7 +599,7 @@ function FilePreviewItem({
       // non-media files — and over every file under `previewMode="compact"` — so
       // no slot key could address one row. The list container around it keeps
       // `classNames.list`.
-      className="file-upload__preview-item"
+      className={cn("file-upload__preview-item", previewItemClasses)}
     >
       {isImage && previewUrl ? (
         <img
@@ -501,13 +608,13 @@ function FilePreviewItem({
           // slot:(e) inside `FilePreviewItem`, and one of a thumbnail/glyph pair
           // chosen from the file's MIME type — `renderFile` gets both `file` and
           // `previewUrl` and makes the same choice itself.
-          className="file-upload__preview-thumb"
+          className={cn("file-upload__preview-thumb", previewThumbClasses)}
         />
       ) : (
         <span
           // slot:(e) inside `FilePreviewItem` — the glyph half of the pair above,
           // replaced by `renderFile` along with it.
-          className="file-upload__preview-file-icon"
+          className={cn("file-upload__preview-file-icon", previewFileIconClasses)}
         >
           <FileIcon />
         </span>
@@ -516,12 +623,12 @@ function FilePreviewItem({
       <div
         // slot:(e) inside `FilePreviewItem` — replaced wholesale by `renderFile`,
         // which receives the `file` this block is built from.
-        className="file-upload__preview-info"
+        className={cn("file-upload__preview-info", previewInfoClasses)}
       >
         <span
           // slot:(e) inside `FilePreviewItem` — replaced wholesale by
           // `renderFile`; the name comes from `file.name`.
-          className="file-upload__preview-name"
+          className={cn("file-upload__preview-name", previewNameClasses)}
           title={file.name}
         >
           {file.name}
@@ -529,7 +636,7 @@ function FilePreviewItem({
         <span
           // slot:(e) inside `FilePreviewItem` — replaced wholesale by
           // `renderFile`; the size comes from `file.size`.
-          className="file-upload__preview-size"
+          className={cn("file-upload__preview-size", previewSizeClasses)}
         >
           {formatBytes(file.size)}
         </span>
@@ -540,7 +647,7 @@ function FilePreviewItem({
           type="button"
           // slot:(e) inside `FilePreviewItem` — replaced wholesale by
           // `renderFile`, which is handed `remove` and `removeLabel`.
-          className="file-upload__preview-remove"
+          className={cn("file-upload__preview-remove", previewRemoveClasses)}
           disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
@@ -818,12 +925,20 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
       data-disabled={disabled || undefined}
       className={cn(
         "file-upload",
-        hasFiles && "file-upload--has-files",
-        dragOver && "file-upload--drag-over",
-        uploading && "file-upload--uploading",
-        success && "file-upload--success",
-        shownError && "file-upload--error",
-        disabled && "file-upload--disabled",
+        dropzoneClasses,
+        !disabled && "hover:border-border-focus",
+        dragOver && "file-upload--drag-over border-border-focus bg-surface-3",
+        // The controls carry `disabled`, which a keyboard also respects;
+        // `pointer-events: none` only ever hid the reason from the mouse.
+        uploading && "file-upload--uploading cursor-progress",
+        success && "file-upload--success border-status-success bg-status-success-bg",
+        shownError && "file-upload--error border-status-error bg-status-error-bg",
+        disabled && "file-upload--disabled opacity-50 cursor-not-allowed pointer-events-none",
+        // Last, and that is the stylesheet's own order: a populated dropzone
+        // draws a solid border and no inset whatever else is going on.
+        hasFiles &&
+          "file-upload--has-files border-solid border-border-default cursor-default min-h-auto p-0",
+        hasFiles && !disabled && "hover:border-border-default",
         className,
       )}
       onClick={composeEventHandlers(onClick, handleClick)}
@@ -836,7 +951,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
       {hasFiles ? (
         /* ---- Preview state ---- */
         <div
-          className={cn("file-upload__preview", classNames?.preview)}
+          className={cn("file-upload__preview", previewClasses, classNames?.preview)}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           role="presentation"
@@ -859,7 +974,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
 
           {/* Multiple media files — grid */}
           {mediaFiles.length > 1 && (
-            <div className={cn("file-upload__media-grid", classNames?.list)}>
+            <div className={cn("file-upload__media-grid", mediaGridClasses, classNames?.list)}>
               {mediaFiles.map((file, i) => (
                 <Fragment key={`${file.name}-${file.size}-${i}`}>
                   {renderPreview ? (
@@ -882,7 +997,15 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
 
           {/* Non-media / compact files — rows */}
           {otherFiles.length > 0 && (
-            <div className={cn("file-upload__preview-list", classNames?.list)}>
+            <div
+              className={cn(
+                "file-upload__preview-list",
+                previewListClasses,
+                // Separator where the rows follow a media preview, large or grid.
+                mediaFiles.length > 0 && "border-t border-border-default",
+                classNames?.list,
+              )}
+            >
               {otherFiles.map((file, i) => (
                 <Fragment key={`${file.name}-${file.size}-${i}`}>
                   {renderFile ? (
@@ -905,15 +1028,28 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
 
           {/* Uploading — otherwise the disabled actions below say nothing */}
           {uploading && (
-            <p className={cn("file-upload__hint", classNames?.hint)} role="status">
+            <p
+              className={cn(
+                "file-upload__hint",
+                hintClasses,
+                messageInsetClasses,
+                classNames?.hint,
+              )}
+              role="status"
+            >
               {text.uploading}
             </p>
           )}
 
-          <div className={cn("file-upload__preview-actions", classNames?.actions)}>
+          <div className={cn("file-upload__preview-actions", actionsClasses, classNames?.actions)}>
             <button
               type="button"
-              className={cn("file-upload__preview-replace", classNames?.replace)}
+              className={cn(
+                "file-upload__preview-replace",
+                actionButtonClasses,
+                replaceClasses,
+                classNames?.replace,
+              )}
               disabled={uploading || disabled}
               onClick={(e) => {
                 e.stopPropagation();
@@ -925,7 +1061,12 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
             {onClear && (
               <button
                 type="button"
-                className={cn("file-upload__preview-clear", classNames?.clear)}
+                className={cn(
+                  "file-upload__preview-clear",
+                  actionButtonClasses,
+                  clearClasses,
+                  classNames?.clear,
+                )}
                 disabled={uploading || disabled}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -939,7 +1080,16 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
 
           {/* Error message */}
           {shownError && (
-            <p id={errorId} role="alert" className={cn("file-upload__error", classNames?.error)}>
+            <p
+              id={errorId}
+              role="alert"
+              className={cn(
+                "file-upload__error",
+                errorClasses,
+                messageInsetClasses,
+                classNames?.error,
+              )}
+            >
               {shownError}
             </p>
           )}
@@ -949,7 +1099,12 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
             <p
               id={successId}
               role="status"
-              className={cn("file-upload__success", classNames?.success)}
+              className={cn(
+                "file-upload__success",
+                successClasses,
+                messageInsetClasses,
+                classNames?.success,
+              )}
             >
               {success}
             </p>
@@ -959,17 +1114,33 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
         /* ---- Empty / prompt state ---- */
         <>
           {/* Icon */}
-          <span className={cn("file-upload__icon", classNames?.icon)} aria-hidden="true">
+          <span
+            className={cn(
+              "file-upload__icon",
+              iconClasses,
+              dragOver && "text-border-focus",
+              success && "text-status-success",
+              shownError && "text-status-error",
+              classNames?.icon,
+            )}
+            aria-hidden="true"
+          >
             <UploadIcon />
           </span>
 
           {/* Main text */}
           {uploading ? (
-            <p className={cn("file-upload__text", classNames?.text)}>{text.uploading}</p>
+            <p className={cn("file-upload__text", textClasses, classNames?.text)}>{text.uploading}</p>
           ) : (
-            <p className={cn("file-upload__text", classNames?.text)}>
+            <p className={cn("file-upload__text", textClasses, classNames?.text)}>
               {text.prompt}{" "}
-              <span className={cn("file-upload__text-emphasis", classNames?.textEmphasis)}>
+              <span
+                className={cn(
+                  "file-upload__text-emphasis",
+                  textEmphasisClasses,
+                  classNames?.textEmphasis,
+                )}
+              >
                 {text.browse}
               </span>
             </p>
@@ -977,14 +1148,21 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
 
           {/* Hint / constraints */}
           {showHint && (
-            <p id={hintId} className={cn("file-upload__hint", classNames?.hint)}>
+            <p
+              id={hintId}
+              className={cn("file-upload__hint", hintClasses, classNames?.hint)}
+            >
               {computedHint}
             </p>
           )}
 
           {/* Error message */}
           {shownError && (
-            <p id={errorId} role="alert" className={cn("file-upload__error", classNames?.error)}>
+            <p
+              id={errorId}
+              role="alert"
+              className={cn("file-upload__error", errorClasses, classNames?.error)}
+            >
               {shownError}
             </p>
           )}
@@ -994,7 +1172,7 @@ export const FileUpload = forwardRef<HTMLDivElement, FileUploadProps>(function F
             <p
               id={successId}
               role="status"
-              className={cn("file-upload__success", classNames?.success)}
+              className={cn("file-upload__success", successClasses, classNames?.success)}
             >
               {success}
             </p>
