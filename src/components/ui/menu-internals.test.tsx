@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -172,9 +172,16 @@ describe("MenuItem — the itemIcon slot", () => {
   });
 
   it("keeps the base class when no slot is passed", async () => {
+    // This was an exact-equality assertion until the icon box's declarations
+    // moved out of `menu-internals.css` and became utilities on this element.
+    // The two things equality was standing in for both survive the move: an
+    // absent slot appends nothing at all — no `undefined`, no empty token — and
+    // the marker class is still there to be styled by name.
     const { box } = await openWithIcon();
+    const classes = box?.getAttribute("class") ?? "";
 
-    expect(box?.getAttribute("class")).toBe("menu-item-icon");
+    expect(classes.split(" ")).toContain("menu-item-icon");
+    expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
   });
 
   it("does not put the slot class on the row", async () => {
@@ -190,8 +197,12 @@ describe("MenuItem — the itemIcon slot", () => {
       // directive is the assertion: it fails if TS ever stops rejecting this.
       classNames: { iconWrapper: "size-r5" },
     });
+    const classes = box?.getAttribute("class") ?? "";
 
-    expect(box?.getAttribute("class")).toBe("menu-item-icon");
+    expect(classes.split(" ")).toContain("menu-item-icon");
+    // The rejected key contributed nothing at runtime either.
+    expect(classes.split(" ")).not.toContain("size-r5");
+    expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
   });
 
   it("does not leak classNames onto the DOM", async () => {
@@ -201,6 +212,17 @@ describe("MenuItem — the itemIcon slot", () => {
   });
 
   it("names the box the same through ContextMenu.Item — one component, two entry points", async () => {
+    // Both entry points are the same `MenuItem`, so the assertion that means
+    // what the title says is that the two class strings are IDENTICAL — not
+    // that either equals a literal. Pinning a literal was what this test did
+    // while the box carried only its marker; it would now have to be restated
+    // in two places every time the icon box's utilities change, and could pass
+    // with the two entry points disagreeing as long as both matched the
+    // literal. Comparing them to each other cannot.
+    const { box: dropdownBox } = await openWithIcon();
+    const viaDropdown = dropdownBox?.getAttribute("class") ?? "";
+    cleanup();
+
     render(
       <ContextMenu>
         <ContextMenu.Trigger>Right-click area</ContextMenu.Trigger>
@@ -212,8 +234,10 @@ describe("MenuItem — the itemIcon slot", () => {
       </ContextMenu>
     );
     await openContextMenu();
+    const viaContextMenu = screen.getByTestId("glyph").parentElement?.getAttribute("class") ?? "";
 
-    expect(screen.getByTestId("glyph").parentElement?.getAttribute("class")).toBe("menu-item-icon");
+    expect(viaContextMenu.split(" ")).toContain("menu-item-icon");
+    expect(viaContextMenu).toBe(viaDropdown);
   });
 });
 

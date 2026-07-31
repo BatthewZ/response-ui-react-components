@@ -136,12 +136,8 @@ a `className` or `classNames` of your own beats every one of them.
 | Spacing               | `py-r5` · `px-r3` (tab padding) · `pt-r3` (panel)                             | `--R-SIZE-5` · `--R-SIZE-3`                                                                       |
 | Type                  | `text-body-2` · `font-semibold`                                               | `--BodyText-2` · `--BodyText-2-line-height` · `--Semibold-Weight`                                 |
 | Motion                | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]`, both dropped under `prefers-reduced-motion` | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`     |
-
-Two more, named here rather than in the table because `verify:component-docs` cannot resolve
-a `top-*`/`bottom-*` utility or the `rounded-t-*` corner shorthand to a token — a row would
-claim something the gate could not check. The pill indicator's vertical inset is `top-r6
-bottom-r6`, so `--R-SIZE-6` sets it; the enclosed tab's top corners are `rounded-t-md`, so
-`--RADIUS-MD` rounds them.
+| Pill indicator inset  | `top-r6` · `bottom-r6`                                                        | `--R-SIZE-6`                                                                                      |
+| Enclosed tab corners  | `rounded-t-md`                                                                | `--RADIUS-MD`                                                                                     |
 
 The BEM class names (`.tabs-tab`, `.tabs-indicator--pill`, …) are all still emitted, and
 those the two surviving rules do not use are now **declaration-free markers**, so a consumer

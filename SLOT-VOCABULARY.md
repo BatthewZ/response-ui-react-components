@@ -29,6 +29,23 @@ superseded — a lane can read top-to-bottom.
 mechanism. `PLAN-overridability.md` §10 carries the owner's ruling list; it is not restated here
 (`memory/README.md` §20).
 
+> **2026-07-31 — the CSS-to-utilities sweep added, renamed and removed no slot, and this document
+> is unchanged in substance.** Five lanes converted 44 component stylesheets down to 26. All five
+> reported the same thing independently: no rule needed a new element to become reachable, so no
+> lane hit §6's "stop and record it as an owner decision" case. **What did change is where a class
+> name's declarations live, not the name** — every BEM class in a deleted stylesheet is retained
+> as a declaration-free marker, per `AGENTS.md` §"Class names outlive their declarations". So
+> **every anatomy ruling below still holds, and so does every class name it cites.**
+>
+> Read the `<Component>.css:NN` citations in the body as historical. Eighteen of the files they
+> point at no longer exist (`Breadcrumbs`, `Button`, `Carousel`, `CodeBlock`, `Collapsible`,
+> `Combobox`, `DropdownMenu`, `FileUpload`, `MediaCard`, `MultiSelect`, `ProgressRing`, `Rating`,
+> `Spotlight`, `StatCard`, `Swimlane`, `ThemeSwitcher`, `VirtualizedDataTable`, `Wizard`). They
+> are left in place rather than re-pointed because each records *why a decision was taken at the
+> time it was taken*, and re-pointing a citation at code that did not exist when the argument was
+> made is the defect `memory/README.md` §82 names. The class names in those citations are all
+> still emitted; grep for the class, not the file.
+
 **Greenfield when this was written, and no longer:**
 
 ```

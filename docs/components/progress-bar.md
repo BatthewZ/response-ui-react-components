@@ -264,10 +264,7 @@ declarations of their own any more, so each row names the utility beside the cla
 | Value ink · weight                 | `text-fg-primary` · `font-bold`  | `--C-TEXT-PRIMARY` · `--Bold-Weight`            |
 | Label / value type                 | `text-body-2`                    | `--BodyText-2` · `--BodyText-2-line-height`     |
 | Label / value bottom margin        | `mb-r6`                          | `--R-SIZE-6`                                    |
-
-**The three heights are `--R-SIZE-6` (`sm`), `--R-SIZE-5` (`md`) and `--R-SIZE-4` (`lg`).**
-They are named here rather than in the table because `verify:component-docs` cannot resolve
-an `h-*` utility to a token — the row would claim something the gate could not check.
+| Track height — `sm` · `md` · `lg`  | `h-r6` · `h-r5` · `h-r4`         | `--R-SIZE-6` · `--R-SIZE-5` · `--R-SIZE-4`      |
 
 Two of the three height tokens are responsive and one is not, which is why the sizes
 don't scale uniformly: `--R-SIZE-4` (`lg`) steps `0.75rem → 1.25rem` and `--R-SIZE-5`

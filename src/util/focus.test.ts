@@ -189,8 +189,18 @@ const sources = import.meta.glob<string>("../components/**/*.tsx", {
  * Tokens that only ever belong to the house focus recipe. A bare
  * `border-status-error` is deliberately absent: Alert and Toast use it for a
  * resting error border that has nothing to do with focus.
+ *
+ * `border-border-focus` needs the same carve-out, and for the same reason: the
+ * recipes only ever spell it under a focus variant (`focusRingControl`,
+ * `focusRingWithin`), while `--C-BORDER-FOCUS` is also the design system's
+ * generic attention-border colour. `FileUpload.css` used it for both the
+ * `:hover` and the drag-over border long before that file was converted, and a
+ * bare or `hover:`-qualified spelling is that, not a focus affordance. The
+ * variant list is the exhaustive set the recipes above use — widen it here and
+ * in `focus.ts` together, or the guard stops covering a recipe.
  */
-const HAND_WRITTEN = /(?:ring|border)-border-focus|ring-status-error/;
+const HAND_WRITTEN =
+  /ring-border-focus|ring-status-error|(?:focus|focus-visible|focus-within|group-focus-visible):border-border-focus/;
 
 describe("focus recipes are the only copy", () => {
   it("is not hand-written in any component", () => {

@@ -282,6 +282,38 @@ const PREFIX_NAMESPACES = [
   [["shadow"], ["shadow", "color"]],
   [["font"], ["font-weight"]],
   [["p", "px", "py", "pt", "pb", "pl", "pr", "m", "mx", "my", "mt", "mb", "ml", "mr", "gap"], ["spacing"]],
+  [["aspect"], ["aspect"]],
+];
+
+/**
+ * Prefixes whose utilities name a contract token only SOMETIMES, and are ordinary
+ * Tailwind otherwise. `size-r5` reads `--spacing-r5`; `max-w-90`, `min-h-16`, `w-full`
+ * and `h-8` read Tailwind's own numeric scale or a keyword and name no contract token
+ * at all — both spellings are correct, and there is no drift to catch in the second.
+ *
+ * They are separate from `PREFIX_NAMESPACES` because `isUtility`'s polarity is
+ * deliberately unforgiving there: an item matching a required prefix that resolves to
+ * nothing is an ERROR, which is what makes an invented `bg-nonexistent` fail instead of
+ * being waved through as prose. Applying that polarity to the geometry prefixes is what
+ * made adding them "not a one-liner" — it would have turned every `w-full` in the docs
+ * red. Here the rule is inverted: an item matching one of these is a utility **only if
+ * it resolves**, so a real token becomes tabulatable and a numeric utility stays prose,
+ * exactly as it is today. By construction this can only ever resolve more rows than
+ * before; it cannot redden one.
+ *
+ * The cost, stated: a *typo* in this family (`size-r55`) is read as prose rather than
+ * failing. That is the same treatment it gets today, so nothing regresses — but it is
+ * why the colour and spacing families are not moved here.
+ */
+const OPTIONAL_TOKEN_PREFIXES = [
+  [
+    ["size", "w", "h", "min-w", "min-h", "max-w", "max-h", "top", "bottom", "left", "right", "inset-x", "inset-y", "inset"],
+    ["spacing"],
+  ],
+  [
+    ["rounded-t", "rounded-b", "rounded-l", "rounded-r", "rounded-s", "rounded-e", "rounded-tl", "rounded-tr", "rounded-bl", "rounded-br"],
+    ["radius"],
+  ],
 ];
 
 // The `/` split drops an opacity modifier (`bg-primary/50`) — but only outside a bracket,
@@ -302,7 +334,12 @@ const bareUtility = (util) => {
 function isUtility(item) {
   if (item.startsWith("--") || item.startsWith(".") || /\s/.test(item)) return false;
   const bare = bareUtility(item);
-  return PREFIX_NAMESPACES.some(([prefixes]) => prefixes.some((p) => bare.startsWith(p + "-")));
+  if (PREFIX_NAMESPACES.some(([prefixes]) => prefixes.some((p) => bare.startsWith(p + "-")))) return true;
+  // See OPTIONAL_TOKEN_PREFIXES: these count as utilities only when they resolve.
+  return (
+    OPTIONAL_TOKEN_PREFIXES.some(([prefixes]) => prefixes.some((p) => bare.startsWith(p + "-"))) &&
+    resolveUtility(item).length > 0
+  );
 }
 
 /**
@@ -320,7 +357,7 @@ function resolveUtility(util) {
   const open = bare.indexOf("[");
   if (open !== -1) return varsIn(bare.slice(open)).filter((t) => definedTokens.has(t));
 
-  for (const [prefixes, namespaces] of PREFIX_NAMESPACES) {
+  for (const [prefixes, namespaces] of [...PREFIX_NAMESPACES, ...OPTIONAL_TOKEN_PREFIXES]) {
     for (const prefix of prefixes) {
       if (!bare.startsWith(prefix + "-")) continue;
       const rest = bare.slice(prefix.length + 1);

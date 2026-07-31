@@ -21,6 +21,21 @@
 // `outline-color: transparent` after a real `outline:` shorthand, and the Tailwind
 // `outline-none` / `focus-visible:outline-none` utilities (see `isOutlineReset`).
 //
+// `all: unset` and `all: initial` are outline resets too, and they were the one spelling
+// this script never read. `outline-style`'s initial value is `none`, so a rule whose
+// first declaration is `all: unset` deletes the UA focus ring on every element it
+// matches — and because the property never appears by name, `isOutlineReset` was never
+// even called. Found live on `FileUpload`'s Replace and Clear all buttons, which had no
+// focus indicator at all while every gate was green. Teaching it cost nothing and
+// brought six further controls (`Switch`, `Pagination`, `Tabs` and three `CalendarBase`
+// rules) under the guard that had been invisible to it.
+//
+// The reset and its replacement need not sit in the same FILE. A reset must stay
+// first-in-rule and `[all:unset]` sorts last in `@layer utilities`, so the common shape
+// after the CSS-to-utilities sweep is `all: unset` surviving in the stylesheet while the
+// ring is a `focus-visible:outline-border-focus` utility in the `.tsx`. Both halves are
+// paired by ELEMENT.
+//
 // "Paints a replacement" likewise requires pixels. `focus-visible:ring-border-focus`
 // with no `ring-2` leaves `--tw-ring-shadow` at `0 0 #0000`, and
 // `border-0 focus-visible:border-border-focus` recolours a border with no width; both
@@ -63,7 +78,10 @@
 // Utilities hoisted into a shared constant (`const FOCUS_RING = "focus:outline-none
 // focus:ring-2 focus:ring-border-focus"`, then `cn(FOCUS_RING)`) are resolved through
 // `buildConstStrings`, so moving the strings out of the component files does not
-// blind the check.
+// blind the check. That map is scoped PER FILE and widened only along real `import`
+// edges — it used to be one global identifier pool, which both raised false alarms and,
+// worse, silently exempted an element by lending it a same-named constant's ring from
+// an unrelated file. See `buildConstStrings`.
 //
 // Scope and non-goals, stated plainly:
 // - PRESENCE only. A rule that exists but is out-specified by a competing rule (the
@@ -102,15 +120,30 @@ const AFFORDANCE = /(?:box-shadow|outline):\s*[^;]*var\(--C-BORDER-FOCUS\)/g;
 const ZERO_LENGTH = /^0(?:px|rem|em|pt|%)?$/;
 
 /**
- * Whether an `outline*` declaration leaves nothing painted. Every spelling counts, not
- * just `outline: none`: the width can be zeroed (`outline: 0 solid red`), the style can
- * be dropped inside the shorthand (`outline: medium none`), and the colour can be made
- * invisible from a separate longhand (`outline: 2px solid; outline-color: transparent`)
- * — which is the form that used to vanish from the report entirely.
+ * Whether a declaration leaves nothing painted where the outline was. Every spelling
+ * counts, not just `outline: none`: the width can be zeroed (`outline: 0 solid red`),
+ * the style can be dropped inside the shorthand (`outline: medium none`), and the
+ * colour can be made invisible from a separate longhand (`outline: 2px solid;
+ * outline-color: transparent`) — which is the form that used to vanish from the report
+ * entirely.
+ *
+ * `all` is the spelling that does not name the property, and it was this script's one
+ * blind spot until 2026-07-31. `all: unset` resets every property including
+ * `outline-style`, whose initial value is `none` — so the rule deletes the UA focus
+ * ring on every element it matches while the word `outline` appears nowhere for
+ * `OUTLINE_DECL` to find. Found live on `FileUpload`'s Replace and Clear all buttons,
+ * which had no focus indicator at all while this gate stayed green. `initial` and
+ * `revert-layer` behave the same way; `revert` rolls back to the UA sheet, which for a
+ * `<button>` is `outline: auto` on `:focus-visible` and therefore NOT a reset —
+ * it is listed here anyway because a `revert` inside `@layer components` reverts to the
+ * layers below it, not to the UA origin, and this package's rules all sit in a layer.
  */
+const ALL_RESET = /^(?:unset|initial|revert|revert-layer)$/;
+
 function isOutlineReset(longhand, value) {
   const v = value.replace(/!important/gi, "").trim().toLowerCase();
   if (!v) return false;
+  if (longhand === "all") return ALL_RESET.test(v);
   if (longhand === "-offset") return false;
   if (longhand === "-style") return /^(?:none|hidden)$/.test(v);
   if (longhand === "-width") return ZERO_LENGTH.test(v);
@@ -121,13 +154,21 @@ function isOutlineReset(longhand, value) {
   );
 }
 
-const OUTLINE_DECL = /(?:^|;)[ \t\r\n]*outline(-style|-width|-color|-offset)?\s*:\s*([^;]*)/g;
+/**
+ * `all` is matched only at the head of a declaration, so a `transition: all 0.2s` value
+ * cannot be mistaken for it.
+ */
+const OUTLINE_DECL =
+  /(?:^|;)[ \t\r\n]*(?:(all)|outline(-style|-width|-color|-offset)?)\s*:\s*([^;]*)/g;
 
-/** Offset of the `outline` in the first outline-removing declaration of a block, or -1. */
+/** Offset of the property name in the first outline-removing declaration, or -1. */
 function resetIndex(decls) {
   OUTLINE_DECL.lastIndex = 0;
-  for (let m; (m = OUTLINE_DECL.exec(decls)); )
-    if (isOutlineReset(m[1] ?? "", m[2])) return m.index + m[0].indexOf("outline");
+  for (let m; (m = OUTLINE_DECL.exec(decls)); ) {
+    const longhand = m[1] ?? m[2] ?? "";
+    if (isOutlineReset(longhand, m[3]))
+      return m.index + m[0].indexOf(m[1] ? "all" : "outline");
+  }
   return -1;
 }
 
@@ -538,38 +579,102 @@ function classTokens(attrs, literals) {
   return tokens.flatMap((t) => (t.includes("${") ? expandTemplate(t, literals) : [t]));
 }
 
+const CONST_DECL = /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|`([^`]*)`)/g;
+
+/** `import { a, b as c } from "./x"` — the named bindings and the module they came from. */
+const IMPORT_DECL = /\bimport\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g;
+
 /**
- * `const NAME = "…"` string constants across src, expanded to a fixpoint so
- * `` const FOCUS_RING = `${FOCUS_RESET} ring-2` `` resolves. Deliberately narrower
- * than `buildLiteralMap`: object properties are excluded, because `className: "…"`
- * appears as a property all over this library and would then resolve the *parameter*
- * named `className` in every `cn(…, className)` call to some other file's classes.
+ * Resolve a relative specifier the way the bundler does, against the file list we
+ * already have. Extensionless and `/index` forms both occur in this package.
+ */
+function resolveSpecifier(fromFile, spec, known) {
+  if (!spec.startsWith(".")) return null;
+  const base = join(dirname(fromFile), spec);
+  for (const cand of [base, `${base}.tsx`, `${base}.ts`, join(base, "index.tsx"), join(base, "index.ts")])
+    if (known.has(cand)) return cand;
+  return null;
+}
+
+/**
+ * `const NAME = "…"` string constants, **scoped to the file that declares them** and
+ * widened only along real `import` edges. Deliberately narrower than `buildLiteralMap`:
+ * object properties are excluded, because `className: "…"` appears as a property all
+ * over this library and would then resolve the *parameter* named `className` in every
+ * `cn(…, className)` call to some other file's classes.
+ *
+ * **The scoping is the correctness property, not a tidy-up.** This map used to be one
+ * global identifier → value pool, so every file declaring `const panelClasses` shared
+ * one merged value. 42 top-level names are duplicated across `src/components` right now
+ * (`rootClasses`, `contentClasses`, `baseClasses`, `triggerClasses`, `panelClasses` …),
+ * and the pooling failed in BOTH directions:
+ *
+ * - Loudly — `Tabs.tsx`'s `panelClasses` ("pt-r3") pooled with `ColorPicker.tsx`'s
+ *   (which carries `outline-none`), and the gate reported a false `NO AFFORDANCE`
+ *   violation on a `tabIndex={0}` tabpanel that resets nothing.
+ * - Silently, which is worse — a pooled *ring* from an unrelated file satisfies an
+ *   element that has none, and the gate prints OK. Nothing distinguished the two cases,
+ *   and the quiet one leaves a real control with no focus indicator.
+ *
+ * Imports are followed so the shared recipes in `util/focus.ts` and `layout/shared.ts`
+ * still resolve at every consumer — which is the one thing the global pool got right,
+ * and the only reason it survived this long.
  */
 function buildConstStrings(files) {
-  const consts = new Map();
+  const known = new Set(files);
+  const own = new Map(); // file -> Map(name -> Set<string>)
+  const imports = new Map(); // file -> [{ local, imported, from }]
+
   for (const file of files) {
     const text = blankComments(readFileSync(file, "utf8"));
-    for (const m of text.matchAll(
-      /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|`([^`]*)`)/g,
-    )) {
-      if (!consts.has(m[1])) consts.set(m[1], new Set());
-      consts.get(m[1]).add(m[2] ?? m[3] ?? m[4]);
+    const declared = new Map();
+    for (const m of text.matchAll(CONST_DECL)) {
+      if (!declared.has(m[1])) declared.set(m[1], new Set());
+      declared.get(m[1]).add(m[2] ?? m[3] ?? m[4]);
     }
+    own.set(file, declared);
+
+    const edges = [];
+    for (const m of text.matchAll(IMPORT_DECL)) {
+      const from = resolveSpecifier(file, m[2], known);
+      if (!from) continue;
+      for (const clause of m[1].split(",")) {
+        const [imported, local] = clause.trim().split(/\s+as\s+/);
+        if (imported) edges.push({ local: (local ?? imported).trim(), imported: imported.trim(), from });
+      }
+    }
+    imports.set(file, edges);
   }
+
+  // Per-file view: own declarations win over an imported binding of the same name.
+  const scoped = new Map();
+  for (const file of files) {
+    const view = new Map(own.get(file));
+    for (const { local, imported, from } of imports.get(file) ?? []) {
+      if (view.has(local)) continue;
+      const values = own.get(from)?.get(imported);
+      if (values) view.set(local, new Set(values));
+    }
+    scoped.set(file, view);
+  }
+
+  // Expand `${…}` to a fixpoint, each file against its own view only.
   for (let pass = 0; pass < 4; pass++) {
-    for (const [name, values] of consts) {
-      const resolved = [...values].map((v) =>
-        v.replace(/\$\{\s*([A-Za-z_$][\w$]*)\s*\}/g, (whole, id) => {
-          const source = consts.get(id);
-          // An ambiguous or unknown name is left as written: it survives as a token
-          // that matches neither a reset nor a ring, which is inert either way.
-          return source?.size === 1 ? [...source][0] : whole;
-        }),
-      );
-      consts.set(name, new Set(resolved));
+    for (const view of scoped.values()) {
+      for (const [name, values] of view) {
+        const resolved = [...values].map((v) =>
+          v.replace(/\$\{\s*([A-Za-z_$][\w$]*)\s*\}/g, (whole, id) => {
+            const source = view.get(id);
+            // An ambiguous or unknown name is left as written: it survives as a token
+            // that matches neither a reset nor a ring, which is inert either way.
+            return source?.size === 1 ? [...source][0] : whole;
+          }),
+        );
+        view.set(name, new Set(resolved));
+      }
     }
   }
-  return consts;
+  return scoped;
 }
 
 /**
@@ -699,7 +804,7 @@ for (const file of tsxFiles.filter((p) => p.endsWith(".tsx"))) {
   const text = readFileSync(file, "utf8");
   if (text.includes("aria-activedescendant")) virtualFocusFiles.add(file);
   if (/useRole\([^)]*role:\s*["'](?:dialog|alertdialog)["']/.test(text)) dialogRoleFiles.add(file);
-  elements.push(...scanElements(file, text, literals, constStrings));
+  elements.push(...scanElements(file, text, literals, constStrings.get(file) ?? new Map()));
 }
 
 const carriersOf = (cls) => elements.filter((el) => el.classes.includes(cls));
@@ -888,12 +993,40 @@ for (const reset of resets.sort((a, b) => a.file.localeCompare(b.file) || a.line
     .flatMap((cls) => withinRingFor.get(cls) ?? []);
   const ring = own ?? (wrapper.length ? wrapper : null);
 
-  if (!ring) {
+  /**
+   * The replacement need not live in CSS, and after the CSS-to-utilities sweep it
+   * usually does not. A reset has to stay first-in-rule and `[all:unset]` would sort
+   * last in `@layer utilities`, so the common shape is now `all: unset` surviving in
+   * the stylesheet while the ring that answers it is a
+   * `focus-visible:outline-border-focus` utility in the `.tsx` — `Pagination` and
+   * `Tabs` are both exactly this. This half of the script only ever consulted CSS
+   * rings, so it called both of them unguarded. Pair by ELEMENT, not by file: the two
+   * halves are one control either way, and demanding they share a file would fail two
+   * correct components and teach the next author to put the reset back into the class
+   * list, which is the inversion the sweep exists to avoid.
+   */
+  const twSite = ring
+    ? null
+    : focusable
+        .map((el) => {
+          const token = twOwnRing(el.utilities) ?? twWithinRing(el.ancestorUtilities);
+          return token ? { el, token } : null;
+        })
+        .find(Boolean);
+
+  if (!ring && !twSite) {
     const el = focusable[0];
     violations.push(
       `NO AFFORDANCE  .${reset.cls} (${anchor}) resets the outline on a focusable control ` +
-        `(${focusability(el).why} at ${relative(ROOT, el.file)}:${el.line}) and no focus-keyed rule ` +
-        `paints a replacement in var(--C-BORDER-FOCUS).`,
+        `(${focusability(el).why} at ${relative(ROOT, el.file)}:${el.line}) and neither a ` +
+        `focus-keyed rule nor a focus-variant utility paints a replacement in var(--C-BORDER-FOCUS).`,
+    );
+    continue;
+  }
+  if (twSite) {
+    guarded.push(
+      `.${reset.cls} (${anchor}) — ${focusability(twSite.el).why} — ring \`${twSite.token}\` ` +
+        `at ${relative(ROOT, twSite.el.file)}:${twSite.el.line}`,
     );
     continue;
   }

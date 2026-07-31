@@ -22,8 +22,10 @@ upgrading.
 ### Breaking
 
 - **This package's component CSS is now in `@layer components`, so `className` overrides
-  work.** All 44 per-component imports in `src/styles.css` carry `layer(components)`, and
-  Tailwind orders that layer **below** `@layer utilities`. `<StatCard className="flex-row
+  work.** Every per-component import in `src/styles.css` carries `layer(components)` — there
+  were 44 when this landed and there are 26 now, because the same release then moved most of
+  that CSS into utilities (see *The stylesheets are mostly gone* below) — and Tailwind orders
+  that layer **below** `@layer utilities`. `<StatCard className="flex-row
   border-0 bg-surface-2">` now does what it looks like it does, on every component — previously
   a utility touching any property a component stylesheet already set landed in the DOM, changed
   nothing and reported no error, and the documented workaround was the important modifier
@@ -316,6 +318,82 @@ upgrading.
   focus-the-first-error path calls `.focus()` through that same `ref`. `classNames.input` and
   `classNames.tagRemove` are unchanged.
 
+- **The stylesheets are mostly gone, and what a caller's `className` now beats changed with
+  them.** Component CSS went from **44 stylesheets to 26** and from **2,048 declarations to
+  600**; eighteen files were deleted outright. This is not a tidy-up you can ignore: a
+  declaration that used to sit in `@layer components` and lose to your `className` at any
+  specificity is now a Tailwind utility in the component's class list, and `cn()`'s
+  tailwind-merge decides the winner instead of the cascade. **In practice you win more often,
+  not less** — merge resolves your `p-8` against a base `p-r3` cleanly, where before an
+  unrelated shorthand could still out-rank it — but the mechanism is different, and a
+  `className` that relied on layer order rather than on being a recognised conflicting utility
+  may now merge rather than override.
+
+  **Every class name survives.** A deleted stylesheet leaves its BEM classes emitted as
+  declaration-free markers, so a consumer stylesheet targeting `.stat-card__value`, devtools,
+  and Astro/Rails consumers of `@batthewz/response-ui-css` all keep working. What changed is
+  that those selectors no longer carry declarations of ours for you to fight.
+
+  Files deleted: `Breadcrumbs`, `Button`, `Carousel`, `CodeBlock`, `Collapsible`, `Combobox`,
+  `DropdownMenu`, `FileUpload`, `MediaCard`, `MultiSelect`, `ProgressRing`, `Rating`,
+  `Spotlight`, `StatCard`, `Swimlane`, `ThemeSwitcher`, `VirtualizedDataTable`, `Wizard`. The
+  26 that remain each carry a header comment naming why every surviving rule could not move —
+  a `@keyframes` block, a UA pseudo-element, a reset that must come first in its rule, a
+  `calc()` chain with no property to set, or an element you supply rather than we render.
+
+- **Tailwind Preflight is now load-bearing, and it was not before.** `Rating`, `ThemeSwitcher`
+  and `FileUpload` dropped their `all: unset` / `background: transparent` / `border: none`
+  resets, because Tailwind Preflight already gives a `<button>` `font: inherit`,
+  `color: inherit`, `background-color: transparent`, `border: 0 solid`, `border-radius: 0`,
+  `box-sizing`, `margin: 0` and `padding: 0`. `Button` has always relied on exactly this and
+  carried no reset; those three now share the exposure. **A build that disables Preflight will
+  see UA button chrome behind the stars, the theme options and the upload actions.** If you
+  disable Preflight, you need your own button reset.
+
+- **`RangeSlider`'s root now carries `data-invalid`**, and its invalid skin is keyed off that
+  rather than `[aria-invalid="true"]`. If you style `.range-slider[aria-invalid="true"]`,
+  retarget `[data-invalid]`. The root never carried `aria-invalid` — see *Fixed*.
+
+- **`Carousel.Track`'s drag state is `data-dragging`, not `.carousel-track--dragging`.** The
+  class was applied imperatively with `classList.add` and modified declarations that are now
+  utilities, so it could no longer win: `cursor-grab` in `@layer utilities` beats
+  `cursor-grabbing` in `@layer components` whatever the DOM says. Retarget `[data-dragging]`.
+
+- **`CalendarBase`'s month/year caption button drops the `calendar-label` class.** Its class
+  attribute goes from `"calendar-label calendar-label-button"` to `"calendar-label-button"`.
+  All six of `.calendar-label`'s declarations were already overridden by
+  `.calendar-label-button` on the same element at equal specificity and later source order, so
+  the class styled nothing and could not be made to. `button.calendar-label-button` is the name
+  the docs have always used.
+
+- **`Spotlight.Image` merges `imgProps.className` through `cn()`.** The `<img>` now carries
+  `size-full object-cover` of its own, so your class merges after it rather than being spread
+  raw — `object-contain` still wins. Its column alternation also moved from CSS `order` rules
+  onto the elements: a third child of a `Spotlight` item that is neither `Spotlight.Image` nor
+  `Spotlight.Content` now takes `order: 0` and sorts *first* instead of last.
+
+- **`Stepper`, `Table` and `VirtualizedDataTable` changed internals a consumer stylesheet may
+  have reached into.** `Stepper`'s hidden status word uses Tailwind's `sr-only` instead of a
+  hand-rolled clip (`clip` where the copy used `clip-path`); `Table` gained an internal
+  `stickyHeader` context so `.table--sticky-header .table-head` became utilities on the
+  elements themselves; `VirtualizedDataTable` lost its stylesheet entirely, with
+  `table-layout: fixed` moving to `Table`'s `tableProps` hatch.
+
+- **`hover:` is now `@media (hover: hover)`-gated on every converted control.** A converted
+  `:hover` rule compiles to `@media (hover: hover) { &:hover }`, so **it no longer fires on a
+  coarse pointer** — a tap no longer latches a hover style on menu items, breadcrumb links and
+  the breadcrumb ellipsis, `MediaCard`, `Tabs.Tab`, `Pagination`'s page numbers,
+  `Table.HeaderCell`, `AppShell`'s toggle and sidebar links, `FileUpload`'s dropzone and five
+  buttons, `SearchInput`'s clear button, `MultiSelect`'s chip remove, `ThemeSwitcher`'s option
+  wash and `Swimlane`'s "View all". This matches every component that was already
+  utility-based, and it is the behaviour the rest of the library has always had. If you relied
+  on a touch tap producing the hover appearance, it no longer does.
+
+- **`Hero` `size="full"` is `min-h-dvh` with no `100vh` fallback**, and **`MediaCard`'s hover
+  lift uses the `translate`/`scale` properties rather than the `transform` shorthand** — the
+  card rises by exactly `--MEDIA-CARD-HOVER-LIFT` rather than by that times the scale
+  (0.005rem at the shipped values).
+
 ### Added
 
 - **`classNames` — per-slot class overrides for a component's internals, and the exported
@@ -569,6 +647,35 @@ upgrading.
 
 ### Changed
 
+- **`MultiSelect`'s control uses the shared `focusRingWithin` / `focusRingWithinError`
+  recipes** from `src/util/focus.ts` instead of three local rules. Identical pixels, one writer.
+  The rule that existed solely to win a deliberate specificity tie
+  (`.multiselect-control--error:focus-within`) is gone, because tailwind-merge resolves the
+  base/error pair at the call site instead.
+
+- **`AppShell`'s toggle and sidebar link now honour `prefers-reduced-motion`.** Their colour
+  transitions had no guard at all; converting made `motion-reduce:transition-none` a one-word
+  addition, and leaving the two halves inconsistent was the worse option.
+
+- **`VirtualizedDataTable`'s loading and empty headers now truncate**, like the data one. Header
+  truncation used to be scoped to a class only the data branch emits, so the three states drew
+  different headers — invisibly, because the divergence was in CSS and the parity test compares
+  class attributes only. Columns no longer re-lay out between the loading state and the loaded
+  one. Body cells keep the old scoping deliberately: only the virtualised branch truncates them,
+  so the empty branch's `EmptyState` is not clipped.
+
+- **`EmptyState`'s sub-parts read `size` from context** rather than from `[data-size]`
+  descendant selectors. `data-size` is still written on the root as a marker; nothing reads it
+  back. A **nested** `EmptyState` now keeps its own size — the utility form of the old selector
+  (`in-[[data-size=sm]]:`) matches *any* ancestor and would have taken the outer one's step.
+
+- **`CodeBlock` no longer guesses at one token two different ways.** Its stylesheet read
+  `--BodyText-3` with two different literal fallbacks — `0.75rem` in the header and `0.8125rem`
+  in the code — plus `var(--Semibold-Weight, 600)`. Both are now `text-body-3` / `font-semibold`.
+  The fallbacks only ever applied when `@batthewz/response-ui-css` was not imported at all, which
+  is not a supported configuration; two rules disagreeing about one token is the kind of drift
+  that reads as intentional.
+
 - **`DataTable`'s expanded detail row moved from `--C-SURFACE-3` to `--C-SURFACE-2`, and gained a
   3px `--C-BORDER-STRONG` bar down its leading edge.** The old rung was chosen so a detail row
   could never be mistaken for a zebra band, which is the right worry answered in the wrong
@@ -583,6 +690,39 @@ upgrading.
   `--_table-marker-width` / `-side`, shared by both markers so their width and side cannot drift.
 
 ### Fixed
+
+- **`FileUpload`'s Replace and Clear all buttons had no focus indicator at all, and now have
+  one.** Their rule opened with `all: unset`, which resets `outline-style` to its initial value
+  of `none` — so two focusable `<button>`s shipped with no visible focus ring (WCAG 2.4.7). No
+  gate could see it: `verify:focus-affordance` read `outline*` declarations and `all` was outside
+  its vocabulary entirely. Dropping the reset restores the UA outline; the guard has since been
+  taught the spelling and now covers six further controls that were invisible to it.
+
+- **`RangeSlider`'s invalid state never painted.** The whole invalid skin — the fill's colour and
+  both engines' thumb colour — was gated on `.range-slider[aria-invalid="true"]`, and the root
+  has never carried that attribute: the component destructures it out of the rest props and
+  merges it onto the two `<input>` thumbs, where assistive tech actually reads it. Three rules,
+  never matched, for as long as the file existed, so an invalid `RangeSlider` painted exactly
+  like a valid one. The root now mirrors the state as `data-invalid` and the skin keys off that.
+
+- **A `Carousel` arrow at the end of the rail fades out again.** `.carousel-arrow[data-hidden]
+  { opacity: 0 }` had been beaten by `IconButton`'s `disabled:opacity-50` from a layer above
+  since this package's CSS was layered — `data-hidden` and `disabled` come from the same boolean
+  — so the arrow rendered as a half-visible, non-interactive ghost with its `pointer-events:
+  none` still alive. Its hover wash was also a dead rule: it had been rendering at 100% of
+  `--C-SURFACE-2` rather than the intended 75% mix, and the documented behaviour is the opaque
+  wash, so the source now agrees with the doc rather than the reverse.
+
+- **`CalendarBase` shipped a rule that had been inert since the caption became a button.**
+  `.calendar-label` and `.calendar-label-button` sat on the same element and the second restated
+  all six of the first's declarations at equal specificity and later source order. Removed; see
+  *Breaking*.
+
+- **`Tooltip`'s WCAG 1.4.13 test asserted nothing.** It read `Tooltip.css` through a
+  `?raw` import, which resolves to the **empty string** under this package's vitest config —
+  every CSS module is stubbed, `?raw` included — so the assertion had been vacuously green for
+  its whole life. It now asserts the bubble's real class list, which is the subject that can
+  actually be checked from a test.
 
 - **`SearchInput`'s placeholder sat underneath the magnifier, and `size="sm"` was the same
   height as `md` — both caused by the layer move above, and both caught before publish.**

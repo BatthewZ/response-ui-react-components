@@ -250,10 +250,7 @@ beats every one of them.
 | Corners          | `rounded-sm`          | `--RADIUS-SM`                               |
 | Drop shadow      | `shadow-sm`           | `--SHADOW-SM`                               |
 | Type scale       | `text-body-2`         | `--BodyText-2` · `--BodyText-2-line-height` |
-
-The arrow's box is `size-r5`, so `--R-SIZE-5` sizes it too. It is not a row above because
-`verify:component-docs` cannot resolve a `size-*` utility to a token — the table would claim
-something the gate could not check.
+| Arrow box        | `size-r5`             | `--R-SIZE-5`                                |
 
 The bubble paints its own background, so unlike most components here it is not at the mercy of
 whatever surface it lands on — and `--C-TEXT-ON-PRIMARY` on `--C-PRIMARY` is precisely the

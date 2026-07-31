@@ -73,8 +73,9 @@
 }
 
 /* A gradient has no logical direction, so the inline-start edge is chosen here
-   rather than baked into the gradient — same call Carousel.css makes with
-   `inset-inline-start` for its arrows. */
+   rather than baked into the gradient — the same call `Carousel` makes with
+   `start-*` for its arrows (`Carousel.css` is gone; the arrows are utilities in
+   `Carousel.tsx` now, and the logical-property choice survived the move). */
 .table-row--selected:dir(rtl),
 .data-table-expanded-cell:dir(rtl) {
   --_table-marker-side: to left;

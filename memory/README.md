@@ -62,12 +62,17 @@ to understand.
    cue against a theme of each polarity *and* each fill behaviour; the polarity is the obvious
    variable and the fill behaviour is not.
 12. **A reset cannot be transposed into a class list, and the reason generalises past resets.**
-   Tailwind emits arbitrary-property utilities *last* in `@layer utilities`, so `all: unset` and
-   `font: inherit` — correct in a rule precisely because they come first and everything after
-   rebuilds the control — invert, wiping the declarations they were meant to precede and beating
-   the caller they were meant to lose to. Measured on four disjoint sets of stylesheets, and it is
-   the single fact that decides most "can this file go?" questions. The general form: **ask what a
-   declaration's correctness depends on, not just what property it sets.** Where it depends on
+   Tailwind emits arbitrary-property utilities after every *bare* named utility in
+   `@layer utilities` — **not last overall: variant utilities still sort after them, and still
+   out-rank them on specificity.** So `[all:unset]` and `[font:inherit]` beat `p-4` and beat the
+   caller's `className`, which is the inversion that matters: declarations correct in a rule
+   *precisely because they come first and everything after rebuilds the control* end up wiping
+   what they were meant to precede and beating the caller they were meant to lose to. The half
+   the over-broad phrasing hid is useful too — a `data-[side=top]:border-r-0` emits after
+   `[border:inherit]` **and** out-ranks it at 0,2,0, so a variant-scoped conversion sitting on
+   top of an unconverted reset is safe. Measured on five disjoint sets of stylesheets, and it is
+   the single fact that decides most "can this file go?" questions. The general form: **ask what
+   a declaration's correctness depends on, not just what property it sets.** Where it depends on
    source order within a rule, a class list cannot hold it. [css-to-utilities.md](./css-to-utilities.md)
 
 13. **Measurement is not transitive to the sentence beside it.** A well-measured record can carry

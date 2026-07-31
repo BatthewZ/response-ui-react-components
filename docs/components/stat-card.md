@@ -229,10 +229,7 @@ them.
 | Trend arrow motion         | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` `--MOTION-EASE-SHIFT`                                    |
 | Sparkline tint (sentiment) | `text-trend-up` · `text-trend-down` · `text-fg-muted`                         | `--C-TREND-UP` `--C-TREND-DOWN` `--C-TEXT-MUTED`                                   |
 | Sparkline box              | an auto top margin on the wrapper, a full-width block on the chart            | — (pinned to the tile's floor; the chart fills the tile's width)                   |
-
-The icon chip's box is `size-r2`, so `--R-SIZE-2` sizes it too. It is not in the table
-because `verify:component-docs` cannot resolve a `size-*` utility to a token — the row would
-claim something the gate could not check.
+| Icon chip box              | `size-r2`                                                                     | `--R-SIZE-2`                                                                       |
 
 The BEM class names (`.stat-card`, `.stat-card__value`, `.stat-card__trend--positive`, …)
 are all still emitted as **declaration-free markers**, so a consumer stylesheet, devtools

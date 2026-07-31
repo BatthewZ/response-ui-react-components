@@ -181,24 +181,32 @@ an override but a broken rail.
 
 ## Theme tokens
 
-ActivityFeed uses **no Tailwind utilities** — all styling lives in `ActivityFeed.css` and
-reads contract variables directly, the same way Tabs does. Override any of these and the
-feed re-tints with the rest of the app, at runtime, with no rebuild.
+ActivityFeed splits its styling in two. **The rail** — the marker column, the connector, the
+`highlight` cue — stays in `ActivityFeed.css`, because its geometry is `calc()` over
+component-internal tokens, its connector is a `::before` pseudo-element with no element to put
+a class on, and its ring lands on markup *you* supply. **The content column** is Tailwind
+utilities in `ActivityFeed.tsx`. Both read contract variables, so overriding one re-tints the
+feed at runtime with no rebuild — and the utilities, sitting in `@layer utilities`, are beaten
+by any `className` or `classNames` you pass.
 
-| Where                        | Override                                     |
-| ---------------------------- | -------------------------------------------- |
-| Connector rail               | `--C-BORDER-DEFAULT`                         |
-| Icon-dot marker fill         | `--C-SURFACE-2`                              |
-| Icon-dot glyph ink           | `--C-TEXT-SECONDARY`                         |
-| Championed marker fill · glyph ink | `--C-ACCENT` · `--C-TEXT-ON-ACCENT`    |
-| Marker corners               | `--RADIUS-FULL`                             |
-| Actor & target               | `--C-TEXT-PRIMARY` · `--Bold-Weight`         |
-| Action & sentence base ink   | `--C-TEXT-SECONDARY`                         |
-| Sentence / body type         | `--BodyText-2` · `--BodyText-2-line-height`  |
-| Timestamp ink                | `--C-TEXT-MUTED`                            |
-| Timestamp type               | `--BodyText-3` · `--BodyText-3-line-height`  |
-| Column gutter · row gap      | `--R-SIZE-5` · `--R-SIZE-3`                  |
-| Sentence slot gap            | `--R-SIZE-6`                                |
+| Where                              | Utility / class                      | Override                                     |
+| ---------------------------------- | ------------------------------------ | -------------------------------------------- |
+| Connector rail                     | `.activity-feed-item::before`        | `--C-BORDER-DEFAULT`                         |
+| Icon-dot marker fill               | `.activity-feed-dot`                 | `--C-SURFACE-2`                              |
+| Icon-dot glyph ink                 | `.activity-feed-dot`                 | `--C-TEXT-SECONDARY`                         |
+| Championed marker fill · glyph ink | `.activity-feed-item[data-highlight]`| `--C-ACCENT` · `--C-TEXT-ON-ACCENT`          |
+| Marker corners                     | `.activity-feed-dot`                 | `--RADIUS-FULL`                              |
+| Actor & target                     | `text-fg-primary` · `font-bold`      | `--C-TEXT-PRIMARY` · `--Bold-Weight`         |
+| Action & sentence base ink         | `text-fg-secondary`                  | `--C-TEXT-SECONDARY`                         |
+| Sentence / body type               | `text-body-2`                        | `--BodyText-2` · `--BodyText-2-line-height`  |
+| Timestamp ink                      | `text-fg-muted`                      | `--C-TEXT-MUTED`                             |
+| Timestamp type                     | `text-body-3`                        | `--BodyText-3` · `--BodyText-3-line-height`  |
+| Column gutter · row gap            | `.activity-feed-item`                | `--R-SIZE-5` · `--R-SIZE-3`                  |
+| Sentence slot gap · body inset     | `gap-r6` · `mt-r5`                   | `--R-SIZE-6` · `--R-SIZE-5`                  |
+
+The BEM class names on the content column (`.activity-feed-sentence`, `.activity-feed-actor`,
+…) are still emitted as **declaration-free markers**, so a consumer stylesheet, devtools and
+the Astro/Rails consumers of `response-ui-css` still have one name per part.
 
 Two of these spacing tokens step up at the 40rem breakpoint along the responsive `r`-scale:
 the column gutter (`--R-SIZE-5`, `0.5rem` → `0.75rem`) and the row gap (`--R-SIZE-3`,

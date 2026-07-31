@@ -19,7 +19,10 @@
 
    Moving `.sparkline`'s two declarations alone is exactly the partial
    conversion that leaves the subtlest content here stripped of its context.
-   `StatCard.css` also selects `.sparkline`; that file belongs to StatCard. */
+   (`StatCard.css` used to select `.sparkline` too. That file is gone: the
+   `display: block; width: 100%` it applied now travels through the `className`
+   StatCard already forwards to this component, so nothing outside this file
+   competes for `.sparkline` any more.) */
 
 /*
  * Color flows through `--sparkline-color`, which falls back to `currentColor`

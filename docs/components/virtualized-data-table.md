@@ -351,8 +351,8 @@ container:
 Two things about that element specifically:
 
 - **`className` is appended to `table-virtual-scroll`, never a replacement.** That class is
-  the selector `VirtualizedDataTable.css` scopes its fixed-layout and truncation rules to —
-  see [Fixed row height](#fixed-row-height) — so it is written first and yours is added.
+  retained as a marker — see [Fixed row height](#fixed-row-height) — so it is written first
+  and yours is added.
 - **`style` is applied after the derived `height`/`overflow-y`**, so a value you set on the
   same key wins. `style={{ height }}` and the `height` prop do the same thing; prefer the
   prop, which is also what the virtualiser's initial-viewport estimate reads.
@@ -377,11 +377,14 @@ virtual window and cannot be restated correctly from outside:
 
 ## Theme tokens
 
-VirtualizedDataTable reads **no theme variables of its own**. `VirtualizedDataTable.css` is two
-rules of pure layout: `overflow-y: auto` on the scroll container, and `padding: 0; border: 0` on
-the spacer rows so they contribute nothing but height. There is no colour, radius or type token
-in it, and the `.tsx` uses no Tailwind utility that resolves to one — its only utility is a
-`w-10` fixed width on the checkbox header cell.
+VirtualizedDataTable reads **no theme variables of its own**, and it no longer ships a
+stylesheet at all — `VirtualizedDataTable.css` is gone. What it held was pure layout, and each
+rule went to the element that needed it: `table-layout: fixed` through `Table`'s `tableProps`
+hatch, `truncate` onto the header and body cells this component renders through `Table.Cell`
+and `Table.HeaderCell`, and `padding: 0; border: 0` onto the spacer rows so they contribute
+nothing but height. The `overflow-y: auto` rule was dead — the same element always carried an
+inline `overflowY`, which beats a class at every layer. None of it named a colour, radius or
+type token, and none of the utilities that replaced it resolves to one.
 
 Everything you can see is painted by the components it renders through, so there is no
 per-component variable to reach for and any override you make re-tints those components

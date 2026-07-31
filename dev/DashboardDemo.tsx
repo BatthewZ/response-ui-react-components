@@ -338,8 +338,12 @@ function DashboardNavbar({ onOpenPalette }: { onOpenPalette: () => void }) {
 
         {/* The navbar is a fixed-height, no-wrap flex row, so a wide control has
             to leave rather than reflow; the harness bar above keeps one either way.
-            The `hidden` goes on a wrapper because `.theme-switcher`'s own
-            `display: inline-flex` is unlayered and outranks the utility. */}
+            The wrapper is no longer load-bearing: it was here because
+            `.theme-switcher`'s `display: inline-flex` was an unlayered rule that
+            outranked the utility, and `ThemeSwitcher.css` is gone — the display is
+            a utility that `cn()` merges a caller's `hidden` against. Kept because
+            `hidden md:block` on a wrapper and on the control read the same, and
+            moving it would be churn for its own sake. */}
         <span className="hidden md:block">
           <ThemeSwitcher themes={EXAMPLE_THEMES} />
         </span>

@@ -182,9 +182,10 @@ describe("Collapsible", () => {
   });
 
   describe("focus affordance (#95)", () => {
-    // The trigger carries `.collapsible-trigger`, which Collapsible.css styles
-    // not at all, so the ring has to arrive as a utility. verify:focus-affordance
-    // reads stylesheets, so this is the check that covers the gap here.
+    // The trigger carries `.collapsible-trigger`, which no stylesheet styles at
+    // all — `Collapsible.css` is gone, and the class survives as a marker — so
+    // the ring has to arrive as a utility. verify:focus-affordance reads both
+    // halves now, but this is the check that pins the token from a test.
     it("gives the trigger a ring in the house focus token", () => {
       renderCollapsible();
       const cls = screen.getByRole("button", { name: "Toggle" }).className;
