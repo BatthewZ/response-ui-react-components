@@ -389,9 +389,12 @@ describe("CalendarBase", () => {
         const el = container.querySelector(`.${base}`);
         expect(el, `no .${base} rendered`).not.toBeNull();
         // `toBe`, not `toContain`: a merge that drops the library class when the
-        // slot is `undefined` passes `toContain` and fails here.
-        const expected = base === "calendar-label-button" ? "calendar-label calendar-label-button" : base;
-        expect(el!.getAttribute("class")).toBe(expected);
+        // slot is `undefined` passes `toContain` and fails here. Every base is now
+        // exactly one class — `.calendar-label-button` used to ship a second,
+        // `.calendar-label`, whose every declaration `.calendar-label-button`
+        // restated at equal specificity and later source order, so it styled
+        // nothing.
+        expect(el!.getAttribute("class")).toBe(base);
       }
     });
 

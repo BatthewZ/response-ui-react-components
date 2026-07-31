@@ -7,6 +7,40 @@
    consume `CalendarBase` — so the file is named after the component that owns
    it rather than after its most visible consumer. */
 
+/* WHY THIS FILE IS STILL A STYLESHEET. Adjudicated against AGENTS.md's four
+   questions; the file was examined whole, and the answer is not "nobody looked".
+
+   1. FOUR RESETS, and they are the file's four biggest rules.
+      `.calendar-label-button`, `.calendar-day`, `.calendar-picker-cell` and
+      `.calendar-today-button` each open with `all: unset` and are then rebuilt by
+      the declarations after it. Tailwind emits arbitrary-property utilities LAST
+      in `@layer utilities`, so `[all:unset]` in a class list would wipe the
+      rebuild AND start beating the caller's own `className`, which it currently
+      loses to. Resets stay in the component layer. The enumeration escape is real
+      — all four subjects are `<button>`, and Preflight already gives them
+      `font: inherit`, `color: inherit`, `background-color: transparent`,
+      `border: 0 solid`, `box-sizing`, `margin: 0`, `padding: 0` — but it does not
+      cover `appearance` (Preflight sets `appearance: button`; `all: unset` sets
+      `none`) or `text-align`, and nothing in this repo can see the difference.
+      Not attempted for a consistency gain.
+
+   2. THE SIZING CHAIN HAS NO PROPERTY TO SET. `--calendar-col-gap` and
+      `--calendar-months` are never applied as a property at all; their only reads
+      are inside `--calendar-month-width` and `--calendar-ideal-width`. A utility
+      sets a property, so there is nothing for one to take.
+
+   3. `.calendar-weekdays, .calendar-week` is deliberately ONE rule for TWO
+      elements, and `classNames.weekdays`/`classNames.row` address them
+      separately. As utilities it becomes two independently-overridable strings,
+      which is exactly the header-vs-rows desync the rule exists to prevent.
+
+   The leaves (`.calendar-header`, `.calendar-footer`, `.calendar-weekday`,
+   `.calendar-cell`, `.calendar-month-caption`) do convert. Converting only those
+   buys nothing — every class here already sits in a `cn()` beside a caller slot,
+   and this file is in `@layer components`, so a caller's utility already beats
+   every declaration below — and it would leave the four resets and the derivation
+   chain behind, stripped of the surrounding file that explains them. */
+
 .calendar {
   /* Sizing knobs. A month grid is 7 day cells + 6 gaps wide (`--calendar-month-width`);
      `--calendar-months` (set inline by CalendarBase) is how many months are shown.
@@ -68,14 +102,13 @@
   gap: var(--R-SIZE-5);
 }
 
-.calendar-label {
-  flex: 1;
-  text-align: center;
-  font-size: var(--BodyText-2);
-  font-weight: var(--Semibold-Weight);
-  line-height: var(--BodyText-2-line-height);
-  color: var(--C-TEXT-PRIMARY);
-}
+/* There is no `.calendar-label` rule and the element no longer carries the class.
+   It was the pre-button caption, and once the caption became a button the two
+   classes rode the same element with `.calendar-label-button` restating all six of
+   its declarations at equal specificity and later source order — so it styled
+   nothing, whether or not `all: unset` was there. Deleted rather than kept as a
+   marker: `.calendar-label-button` is already this element's one name, and it is
+   the one `docs/components/calendar.md` documents. */
 
 /* The caption acts as a button that opens the month/year quick-navigation views. */
 .calendar-label-button {

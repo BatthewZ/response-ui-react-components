@@ -2,6 +2,39 @@
 /*  Timeline                                                           */
 /* ------------------------------------------------------------------ */
 
+/* WHY THIS FILE IS STILL A STYLESHEET. Adjudicated against AGENTS.md's four
+   questions, so the next reader does not have to re-derive it.
+
+   SEVEN of the fourteen private `--_timeline-*` custom properties have a read
+   site inside ANOTHER CUSTOM PROPERTY's definition, so there is no property for a
+   utility to set: `dot-size`, `marker-size`, `highlight-ring`, `marker-radius`,
+   `marker-clearance`, `line-offset`, `gutter`. They are one chain, six deep —
+   dot-size → marker-radius → line-offset → gutter → rail-x → `left`/`right` — and
+   it is the chain that decides where the rail is drawn.
+
+   (Seven, not nine, and the difference is the test: AGENTS.md's discriminator is
+   what property the read SITS IN, not whether the value contains arithmetic.
+   Counting every read that merely appears inside a `calc()` gives ten. Neither
+   reading gives nine.)
+
+   The two `:has()` rules under "Marker reach" are the harder blocker. Their
+   correctness is a SOURCE-ORDER-plus-SPECIFICITY contract between two rules —
+   both deliberately (0,3,0), the second winning on order — and a class list has
+   no way to express "these two, in this order". A `has-[…]:` variant would emit
+   both at whatever order Tailwind chooses.
+
+   The density axis (`--_timeline-card-padding`, `--_timeline-item-gap`) is the
+   question-4 case and the SMALLEST obstacle here, not the operative one: three
+   definitions and one read each, so six `in-[[data-density=…]]:` classes instead
+   of one utility.
+
+   The leaves — `.timeline-date`, `.timeline-title`, `.timeline-body` — do
+   convert. Converting only them is the worst available outcome: they already sit
+   in a `cn()` beside a `classNames` slot and this file is in `@layer components`,
+   so a caller's utility already beats them; the conversion buys nothing and
+   breaks up a layout contract that is read as a whole. Payload figures for this
+   file are measured ONCE, in `PLAN-overridability.md` §2b — do not measure again. */
+
 /* Layout is selected by `data-align` on the root and nothing else. Everything
    below the root reads that attribute through a descendant selector, so no item
    is ever told which layout it is in — the same reason #342 stays closed. The

@@ -760,7 +760,7 @@ export const CalendarBase = forwardRef<HTMLDivElement, CalendarBaseProps>(functi
             per-month captions it used to defer to are `aria-hidden`. */}
         <button
           type="button"
-          className={cn("calendar-label calendar-label-button", classNames?.labelButton)}
+          className={cn("calendar-label-button", classNames?.labelButton)}
           aria-live="polite"
           onClick={onCaptionClick}
         >
