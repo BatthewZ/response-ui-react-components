@@ -89,7 +89,7 @@ function deriveEntries() {
   const componentImports = imports.filter((p) => !p.endsWith("tokens.css"));
   if (componentImports.length < 40) {
     throw new Error(
-      `expected ~45 component imports in src/styles.css, found ${componentImports.length} — the parser has drifted`
+      `expected ~43 component imports in src/styles.css, found ${componentImports.length} — the parser has drifted`
     );
   }
 
@@ -236,7 +236,10 @@ const FIXTURE = `<!doctype html>
   <h3 class="app-shell-sidebar-section-title sr-only" id="ct-3">section</h3>
 </div>
 <h3 class="app-shell-sidebar-section-title" id="ct-4">section, no sr-only</h3>
-<div class="masonry-grid"><div class="masonry-grid__item" id="ct-2">a</div></div>
+<!-- An #ct-2 .masonry-grid/.masonry-grid__item block stood here. No PROBES row
+     ever selected it, and Phase 2 deleted MasonryGrid.css, so both classes are
+     now declaration-free markers with nothing for this probe to measure. Left as
+     markup it would read as coverage this probe does not have. -->
 
 </body></html>
 `;

@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Breaking
 
 - **This package's component CSS is now in `@layer components`, so `className` overrides
-  work.** All 45 per-component imports in `src/styles.css` carry `layer(components)`, and
+  work.** All 43 per-component imports in `src/styles.css` carry `layer(components)`, and
   Tailwind orders that layer **below** `@layer utilities`. `<StatCard className="flex-row
   border-0 bg-surface-2">` now does what it looks like it does, on every component — previously
   a utility touching any property a component stylesheet already set landed in the DOM, changed
@@ -59,6 +59,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   now works directly: the old docs told you it lost to unlayered component CSS and that you
   needed `mb-0!`, which stopped being true once the margin became a utility.
 
+- **`Grid` and `MasonryGrid` ship no stylesheet, and `Grid`'s `columns` is a bounded union.**
+  `Grid.css` and `MasonryGrid.css` are deleted; their column scales are native Tailwind
+  utilities. `Grid.columns` goes from `number` to `1 | 2 | 3 | 4 | 5 | 6` — the exact range
+  `Grid.css` shipped a rule for — so `columns={7}` is now a compile error (see *Fixed*).
+  `MasonryGrid.columns` was already typed `1 | 2 | 3 | 4` and is unchanged.
+
+  **The rendered layout is unchanged.** `grid-cols-n` compiles to
+  `grid-template-columns: repeat(n, minmax(0, 1fr))`, byte-identical to the
+  `repeat(var(--rui-grid-columns, 1), minmax(0, 1fr))` it replaces, so the
+  wrap-instead-of-overflow promise survives; `columns-n` compiles to `columns: n`;
+  `break-inside-avoid` to `break-inside: avoid`; and Tailwind's `sm`/`md`/`lg`/`xl` are the same
+  40/48/64/80rem the two stylesheets hard-coded. The `rui-grid`, `masonry-grid` and
+  `masonry-grid__item` class names all stay on their elements as declaration-free markers, so a
+  consumer stylesheet, a devtools search and a non-React consumer of
+  `@batthewz/response-ui-css` all still have one name to target.
+
+  **Two things go away.** `--masonry-columns` and `--rui-grid-columns` no longer exist, so
+  setting either through `style` does nothing — pass a `columns-*` / `grid-cols-*` utility in
+  `className`, which reaches counts the props do not and is overridable per breakpoint, which
+  the variables never were. And because the count is now one utility *per breakpoint*, a bare
+  `className="grid-cols-2"` replaces the base step only: `columns={{ base: 1, md: 3 }}` plus
+  `grid-cols-2` is two columns below `48rem` and three above. Name every step to override every
+  step.
+
 - **`StatCard.Trend`'s colour moves off `direction` onto a new `sentiment` axis.** The
   `.stat-card__trend--up` / `--down` classes no longer carry any colour — they mark
   direction and drive the arrow only. Colour now comes from
@@ -87,7 +111,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `@import "./components/*.css"` in `src/styles.css` must carry `layer(components)`, `tokens.css`
   must carry none, and an import the script cannot classify fails the run rather than being
   skipped. No allowlist. It exists because the entire `@layer components` change is one keyword
-  repeated on 45 lines and **nothing read those lines**: `probe:cascade-layer` re-derives the
+  repeated on 43 lines and **nothing read those lines**: `probe:cascade-layer` re-derives the
   import list from that file, strips whatever `layer()` is written there and adds its own, so it
   compares "unlayered" against "layered" whatever the file says; `tsc` cannot read CSS; and vitest
   stubs CSS imports to an empty string. Deleting the keyword from one import left all ten gates
@@ -140,6 +164,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   source. Measured in the dev bundle: two `.rui-grid{` copies before, one after; three computed
   columns before, two after. `bun run verify:no-css-imports` now fails the build on any `.css`
   imported from a `.ts`/`.tsx`.
+
+- **`<Grid columns={7}>` silently rendered one column.** `columns` was typed `number`, so any
+  count outside 1–6 emitted a `rui-grid--base-7` class that no rule defined, and the grid fell
+  back to a single column through `var(--rui-grid-columns, 1)` — no error at compile time, none
+  at runtime. The bounded union makes it a type error. This is the same defect `MasonryGrid`
+  closed for counts above 4.
 
 - **`Stagger` writes its delay inline instead of duplicating a foundation rule.** The container
   resolves the step once into `--_stagger-step` and each item carries

@@ -42,6 +42,11 @@ with no error at compile time or runtime. Sibling `Grid.css` already ships 1–6
 same-shaped prop, so the two components accept the same object and disagree about what it means.
 **Fix:** narrow the type to `1 | 2 | 3 | 4`, or generate the missing rules.
 
+**The mechanism named above no longer exists.** `MasonryGrid.css` and
+`--masonry-columns` were deleted when the column scale moved to Tailwind's `columns-*`
+utilities; the type is still `1 | 2 | 3 | 4` and is now the *only* thing bounding the count,
+so there is no rule set left to fall out of step with it.
+
 ### 181 · MasonryGrid — a breakpoint can widen the grid but never narrow it to one column (med)
 
 `buildResponsiveClasses` does `if (count == null || count === 1) continue`, so a count of `1` at
@@ -50,3 +55,8 @@ any breakpoint emits no class at all. `<MasonryGrid columns={{ base: 3, md: 1 }}
 grid stays at three columns at every width instead of collapsing to one at 48rem. The skip is
 correct for `base` (one column is the CSS fallback) and wrong for every other key. **Fix:** emit
 `masonry-grid--<bp>-1` and add matching `--masonry-columns: 1` rules for sm/md/lg/xl.
+
+**Same note as #180:** the rules are gone. The count is a `columns-*` utility per breakpoint,
+emitted for `1` as for any other count, so the narrowing case is a class like every other. The
+helper named above is gone too — the loop is `columnClasses` in `components/layout/shared.ts`,
+shared with `Grid`, and the skip it now applies is only for a breakpoint the caller left unset.

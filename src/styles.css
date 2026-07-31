@@ -43,7 +43,6 @@
 @import "./components/ui/EmptyState.css" layer(components);
 @import "./components/ui/FileUpload.css" layer(components);
 @import "./components/ui/Hero.css" layer(components);
-@import "./components/ui/MasonryGrid.css" layer(components);
 @import "./components/ui/MediaCard.css" layer(components);
 @import "./components/ui/Pagination.css" layer(components);
 @import "./components/ui/Popover.css" layer(components);
@@ -67,8 +66,7 @@
 @import "./components/data-display/ProgressRing.css" layer(components);
 @import "./components/data-display/Sparkline.css" layer(components);
 
-/* layout */
-@import "./components/layout/Grid.css" layer(components);
+/* layout — no stylesheets: every layout primitive is utilities only. */
 
 /* form */
 @import "./components/form/ColorPicker.css" layer(components);

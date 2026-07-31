@@ -146,6 +146,20 @@ to understand.
    never about the class — it was about the *interval* the class marked, and an attribute marks
    the interval without borrowing anyone's vocabulary. It is also visible to jsdom, so the
    invariant became assertable in the test suite for the first time.
+24. **Tailwind cannot see a class name your code builds, so replacing a CSS scale with utilities
+   forces the scale into the type system — and that is the win, not the tax.** A component that
+   pushed `` `prefix--${breakpoint}-${count}` `` into an array generated nothing at all once the
+   stylesheet was deleted, because Tailwind finds candidates by scanning source *text*. There is
+   no map to swap; the lookup table has to be written out, one literal per cell, which means the
+   prop can only accept the counts the table has. The unbounded `number` it replaces was already
+   lying: an out-of-range count emitted a class no rule defined and the layout fell back through
+   a `var()` default with no error at compile time or runtime. Draw the bound from the scale the
+   deleted stylesheet actually shipped rather than inventing one, and expect two sibling
+   components to disagree about the bound — that disagreement was already in the CSS. Share the
+   loop and the breakpoint vocabulary between such siblings, never the table: the loop carries a
+   subtle invariant (the base step is always emitted, and a count of `1` is a real answer, not a
+   falsy one) that is wrong to state twice, while the table has to stay written out in the
+   component whose utility prefix it names.
 
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

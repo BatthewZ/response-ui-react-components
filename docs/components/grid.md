@@ -16,7 +16,7 @@ tidy, aligned tiles — dashboards, card decks, feature rows.
 
 | Prop        | Type                                                    | Default  |
 | ----------- | ------------------------------------------------------- | -------- |
-| `columns`   | `number \| { base?; sm?; md?; lg?; xl? }` (1–6 per step) | `1`      |
+| `columns`   | `1 \| 2 \| 3 \| 4 \| 5 \| 6`, or `{ base?, sm?, md?, lg?, xl? }` of the same | `1`      |
 | `gap`       | `"r1" \| "r2" \| "r3" \| "r4" \| "r5" \| "r6"`           | `"r4"`   |
 | `as`        | `ElementType`                                           | `"div"`  |
 | `className` | `string`                                                | —        |
@@ -74,16 +74,32 @@ colour tokens. The one themeable dimension is the gap, which reads the spacing s
 | Where            | Utility / CSS                          | Override                     |
 | ---------------- | -------------------------------------- | ---------------------------- |
 | Column & row gap | `gap-r1` … `gap-r6` (via the `gap` prop) | `--R-SIZE-1` … `--R-SIZE-6` |
+| Column count     | `grid-cols-1` … `xl:grid-cols-6` (via `columns`) | pass a `grid-cols-*` utility in `className` — one step at a time, see [Gotchas](#gotchas) |
 
-Column counts are applied by internal `.rui-grid--{breakpoint}-{n}` classes that drive a
-private `--rui-grid-columns` custom property. Those and the breakpoint widths are
-structural — they track the design system's responsive scale but are not override points.
+`Grid` ships **no stylesheet**. `columns` resolves to Tailwind's own `grid-cols-*` utilities —
+`repeat(n, minmax(0, 1fr))`, the same declaration the deleted `Grid.css` wrote — and the root
+carries `grid items-stretch` for the other two. `rui-grid` is still on the element, but as a
+declaration-free marker: it is there for your own stylesheet, for devtools, and so consumers of
+`@batthewz/response-ui-css` outside React have the same name to target. The breakpoint widths
+are Tailwind's `sm`/`md`/`lg`/`xl` and are structural, not override points.
 
 ## Gotchas
 
-- **1–6 columns only.** The CSS ships classes for counts 1 through 6 per breakpoint; a
-  `columns` value outside that range emits a class with no matching rule and silently falls
-  back to the `.rui-grid` default of 1 column.
+- **1–6 columns only, and the type says so.** `columns` is `1 | 2 | 3 | 4 | 5 | 6` at every
+  breakpoint, so `columns={7}` is a compile error. It used to be typed `number`: the class it
+  emitted matched no rule and the grid silently fell back to a single column, with no error at
+  compile time or runtime. For a wider grid, pass the utility yourself —
+  `className="grid-cols-8"`.
+- **A `grid-cols-*` in `className` replaces the step it names, not all of them.** `columns` now
+  emits one utility per breakpoint, and `cn()` dedupes per variant. So
+  `<Grid columns={{ base: 1, md: 3 }} className="grid-cols-2" />` is two columns below `48rem`
+  and three above it. To override every step, name every step
+  (`className="grid-cols-2 md:grid-cols-2"`).
+- **Leaving `base` out still means one column.** `columns={{ md: 3 }}` emits
+  `grid-cols-1 md:grid-cols-3`, so the grid is a single full-width column below `48rem` —
+  the same as writing `{ base: 1, md: 3 }`. The base step is never omitted, because a grid
+  with no column track at all sizes its implicit column to its widest content and a long
+  unbreakable word then pushes the grid past its container instead of wrapping.
 - **Equal heights are the whole point.** Every cell stretches to its row's tallest — so
   card footers line up. If you need content-sized, uneven cells, use [Row](row.md) with wrap; for
   deliberately uneven heights (masonry), use [MasonryGrid](masonry-grid.md).
@@ -91,8 +107,9 @@ structural — they track the design system's responsive scale but are not overr
   map — the chosen step applies at all widths. The step's *value* is still responsive:
   `gap-r*` reads `--R-SIZE-*`, which grows at the 40rem step-up (`r6` excepted). Override
   the underlying `--R-SIZE-*` to retune globally.
-- **Ships per-component CSS.** `Grid.css` must be loaded (it is, via the `styles` import),
-  alongside `@batthewz/response-ui-css` for the spacing tokens.
+- **Ships no per-component CSS.** `Grid.css` is deleted; every declaration it carried is a
+  Tailwind utility on the root. You still need `@batthewz/response-ui-css` for the spacing
+  tokens, and Tailwind v4 to generate the utilities — which this package already requires.
 - **Server-renderable.** No `"use client"` — it drops straight into an RSC tree.
 
 ## Accessibility

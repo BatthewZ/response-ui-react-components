@@ -9,7 +9,14 @@ import {
 } from "react";
 
 import { ScrollReveal } from "../animation/ScrollReveal";
-import { blockGapMap, type Gap, gapMap } from "../layout/shared";
+import {
+  blockGapMap,
+  type ColumnBreakpoints,
+  type ColumnClassMap,
+  columnClasses,
+  type Gap,
+  gapMap,
+} from "../layout/shared";
 import { cn } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
@@ -17,17 +24,18 @@ import { cn } from "../../util/style";
 /* ------------------------------------------------------------------ */
 
 /**
- * The counts `MasonryGrid.css` actually defines a rule for. Typed rather than
- * `number` because an undefined count silently fell back to a single column.
+ * The counts the grid can express. Bounded rather than `number` because every
+ * count has to exist as a literal `columns-*` class Tailwind can find in this
+ * file; an unbounded count silently fell back to a single column.
  */
 type ColumnCount = 1 | 2 | 3 | 4;
 
-type ColumnBreakpoints = {
-  base?: ColumnCount;
-  sm?: ColumnCount;
-  md?: ColumnCount;
-  lg?: ColumnCount;
-  xl?: ColumnCount;
+const columnClassMap: ColumnClassMap<ColumnCount> = {
+  base: { 1: "columns-1", 2: "columns-2", 3: "columns-3", 4: "columns-4" },
+  sm: { 1: "sm:columns-1", 2: "sm:columns-2", 3: "sm:columns-3", 4: "sm:columns-4" },
+  md: { 1: "md:columns-1", 2: "md:columns-2", 3: "md:columns-3", 4: "md:columns-4" },
+  lg: { 1: "lg:columns-1", 2: "lg:columns-2", 3: "lg:columns-3", 4: "lg:columns-4" },
+  xl: { 1: "xl:columns-1", 2: "xl:columns-2", 3: "xl:columns-3", 4: "xl:columns-4" },
 };
 
 type Animation = "fade-up" | "fade-in" | "fade-left" | "fade-right" | "scale";
@@ -53,26 +61,11 @@ function useMasonryContext() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-function buildResponsiveClasses(columns: ColumnBreakpoints): string[] {
-  const classes: string[] = [];
-  for (const [bp, count] of Object.entries(columns)) {
-    // `1` is a real answer at a breakpoint — skipping it meant a key could widen
-    // the grid but never narrow it back to a single column.
-    if (count == null) continue;
-    classes.push(`masonry-grid--${bp}-${count}`);
-  }
-  return classes;
-}
-
-/* ------------------------------------------------------------------ */
 /*  MasonryGrid (root)                                                 */
 /* ------------------------------------------------------------------ */
 
 type MasonryGridProps = {
-  columns?: ColumnBreakpoints | ColumnCount;
+  columns?: ColumnBreakpoints<ColumnCount> | ColumnCount;
   gap?: Gap;
   animate?: boolean;
   animation?: Animation;
@@ -90,16 +83,20 @@ const MasonryGridRoot = forwardRef<HTMLDivElement, MasonryGridProps>(function Ma
   },
   ref
 ) {
-  const resolved: ColumnBreakpoints = typeof columns === "number" ? { base: columns } : columns;
-
-  const responsiveClasses = buildResponsiveClasses(resolved);
-
   const items = Children.toArray(children);
 
   return (
     <div
       ref={ref}
-      className={cn("masonry-grid", gapMap[gap], ...responsiveClasses, className)}
+      // `masonry-grid` carries no declarations any more — it is kept as a marker
+      // so a consumer stylesheet, devtools and Astro/Rails consumers of
+      // `response-ui-css` all still have one name for every masonry grid.
+      className={cn(
+        "masonry-grid",
+        gapMap[gap],
+        ...columnClasses(columns, columnClassMap),
+        className
+      )}
       {...props}
     >
       {items.map((child, index) => (
@@ -132,12 +129,14 @@ const MasonryGridItem = forwardRef<HTMLDivElement, MasonryGridItemProps>(functio
   const index = ctx?.index ?? 0;
   const gap = ctx?.gap ?? "r4";
 
+  // `break-inside-avoid` keeps one card from being sliced at a column boundary
+  // — the item's only remaining declaration, now a utility a caller can undo.
   // `last:mb-0` is (0,1,1) and the block gap is (0,1,0), both in
   // `@layer utilities` — so the trailing-gap reset wins on specificity. It used
   // to need a rule in `MasonryGrid.css` only because that file out-ranked any
   // `mb-0` utility, first by being unlayered and now not at all; removing the
   // declaration removed the reason twice over.
-  const spacing = cn(blockGapMap[gap], "last:mb-0");
+  const spacing = cn("break-inside-avoid", blockGapMap[gap], "last:mb-0");
 
   if (!animate) {
     return (

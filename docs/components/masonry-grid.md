@@ -67,17 +67,19 @@ against the unpadded viewport.
 ## Columns and breakpoints
 
 `columns` is mobile-first: each key sets the count from its own min-width upward, and later
-breakpoints override earlier ones. Every emitted class has the same specificity, so it is the
-order of the rules inside `MasonryGrid.css` that decides — which means the order you write the
-keys in makes no difference.
+breakpoints override earlier ones. Each key becomes one Tailwind `columns-*` utility, and
+Tailwind emits its breakpoint media queries in ascending order — so the order you write the keys
+in makes no difference. **`base` is always emitted**, so `columns={{ md: 3 }}` is
+`columns-1 md:columns-3` — one column below `48rem`, exactly as if you had written
+`{ base: 1, md: 3 }`.
 
-| Key    | Applies from | Counts with a CSS rule |
-| ------ | ------------ | ---------------------- |
-| `base` | always       | 1 · 2 · 3 · 4          |
-| `sm`   | `40rem`      | 1 · 2 · 3 · 4          |
-| `md`   | `48rem`      | 1 · 2 · 3 · 4          |
-| `lg`   | `64rem`      | 1 · 2 · 3 · 4          |
-| `xl`   | `80rem`      | 1 · 2 · 3 · 4          |
+| Key    | Applies from | Counts   | Emits                    |
+| ------ | ------------ | -------- | ------------------------ |
+| `base` | always       | 1–4      | `columns-1` … `columns-4`       |
+| `sm`   | `40rem`      | 1–4      | `sm:columns-1` … `sm:columns-4` |
+| `md`   | `48rem`      | 1–4      | `md:columns-1` … `md:columns-4` |
+| `lg`   | `64rem`      | 1–4      | `lg:columns-1` … `lg:columns-4` |
+| `xl`   | `80rem`      | 1–4      | `xl:columns-1` … `xl:columns-4` |
 
 <!-- example:ResponsiveColumns -->
 ```tsx
@@ -101,7 +103,7 @@ keys in makes no difference.
 ```
 <!-- /example -->
 
-**Every count from `1` to `4` has a real rule at every breakpoint**, so a key can narrow the
+**Every count from `1` to `4` emits a real class at every breakpoint**, so a key can narrow the
 grid back to a single column as well as widen it. Counts above `4` are a compile error — the
 prop is typed `1 | 2 | 3 | 4` — not a silent one-column fallback. Both edges are covered under
 [Gotchas](#gotchas).
@@ -208,22 +210,30 @@ rest props are spread onto the reveal's rendered element. See the first gotcha f
 
 ## Theme tokens
 
-The column count lives in `MasonryGrid.css`; the spacing is Tailwind utilities driven by the
-`gap` prop.
+`MasonryGrid` ships **no stylesheet**. The column count, the gutter and `break-inside: avoid`
+are all Tailwind utilities.
 
 | Where                                        | Override                       |
 | -------------------------------------------- | ------------------------------ |
 | Column gutter (root)                          | `gap-r4` → `--R-SIZE-4`        |
 | Space under every item                        | `mb-r4` → `--R-SIZE-4`         |
+| Column count (root)                           | `columns-1` … `xl:columns-4` (via `columns`) — or a `columns-*` utility in `className`, one step at a time ([Gotchas](#gotchas)) |
+| Column-break guard (item)                     | `break-inside-avoid`           |
 
-Both default to `r4` and move together with the `gap` prop. `--R-SIZE-4` is on the responsive
-`r`-scale and steps up at the 40rem breakpoint (`0.75rem` → `1.25rem`), so the gutter widens on
-desktop without a breakpoint utility from you. Retint it and every other `--R-SIZE-4` consumer
-moves with it; for a grid-only value pass `gap`, or override a single half from the call site.
+The gap halves default to `r4` and move together with the `gap` prop. `--R-SIZE-4` is on the
+responsive `r`-scale and steps up at the 40rem breakpoint (`0.75rem` → `1.25rem`), so the gutter
+widens on desktop without a breakpoint utility from you. Retint it and every other `--R-SIZE-4`
+consumer moves with it; for a grid-only value pass `gap`, or override a single half from the
+call site.
 
-One variable in the CSS is **component-local, not a contract token**, and is spelled in
-lowercase to say so: `--masonry-columns`, which the responsive column classes set. You can also
-write it yourself through `style` to reach a count the classes do not ship.
+**`--masonry-columns` no longer exists.** The column count was a private custom property set by
+`MasonryGrid.css`'s own classes; both are deleted, and `columns` now resolves straight to
+`columns-*` utilities. Writing `--masonry-columns` through `style` does nothing — pass a
+`columns-*` utility in `className` instead, which is a better hook than the variable ever was:
+it is overridable per breakpoint and needs no `style` object. `masonry-grid` and
+`masonry-grid__item` are still on the elements as declaration-free markers, for your own
+stylesheet, for devtools, and so consumers of `@batthewz/response-ui-css` outside React have the
+same names to target.
 
 The gap is **not** a variable. `gap` resolves to a `gap-r*` utility on the root and an `mb-r*`
 utility on each item, because CSS multi-column has no row-gap and the block-direction half has
@@ -250,14 +260,17 @@ which is applied inline and is not themeable.
   `animationDelay` in your `style` lands unopposed, while a later item's own delay wins for
   as long as it is animating. See
   [ScrollReveal's gotchas](scroll-reveal.md#gotchas).
-- **`columns` stops at 4, and the type says so.** `MasonryGrid.css` defines rules for `1`–`4`
-  at each breakpoint and the prop is typed to match, so `columns={6}` is a compile error rather
-  than a grid that silently shows one column. For a wider grid, set the local variable
-  directly: `style={{ "--masonry-columns": 6 } as CSSProperties}`. Note that [Grid](grid.md)
-  takes a same-shaped `columns` prop but ships rules for `1`–`6`, so the two components accept
-  overlapping objects and disagree above 4.
+- **`columns` stops at 4, and the type says so.** The prop is typed `1 | 2 | 3 | 4`, so
+  `columns={6}` is a compile error rather than a grid that silently shows one column. For a
+  wider grid, pass the utility yourself: `className="columns-6"`. Note that [Grid](grid.md)
+  takes a same-shaped `columns` prop typed `1`–`6`, so the two components accept overlapping
+  objects and disagree above 4.
+- **A `columns-*` in `className` replaces the step it names, not all of them.** `columns` emits
+  one utility per breakpoint and `cn()` dedupes per variant, so
+  `<MasonryGrid columns={{ base: 1, md: 3 }} className="columns-6" />` is six columns below
+  `48rem` and three above it. To override every step, name every step.
 - **Narrowing back to one column works.** `columns={{ base: 3, md: 1 }}` emits
-  `masonry-grid--base-3 masonry-grid--md-1` and drops to a single column from `48rem` up.
+  `columns-3 md:columns-1` and drops to a single column from `48rem` up.
 - **Your `key`s on the children are honoured.** The root wraps each child in a provider keyed
   by the child's own key, so prepending to a grid mounts only the new item and leaves the rest
   — uncontrolled input values, video playback, component state — intact.
@@ -297,7 +310,7 @@ reach it — so `role`, `aria-label` and friends are yours to add, as the labell
 - **Reduced motion is honoured on both paths.** Under `prefers-reduced-motion: reduce` the
   media-query hook short-circuits the observer *and* the shared CSS resolves `.scroll-reveal-hidden`
   to `opacity: 1`, so those readers see a static, fully visible grid even without JavaScript.
-  Nothing in `MasonryGrid.css` animates at all.
+  MasonryGrid contributes no animation of its own — it ships no stylesheet at all.
 - **Roles and labels on an item reach the DOM on both paths.** `aria-label`,
   `aria-describedby`, `role` and `tabIndex` on a `MasonryGrid.Item` land on the rendered
   element whether the grid animates or not — [ScrollReveal](scroll-reveal.md) spreads its rest

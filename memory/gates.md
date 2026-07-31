@@ -221,7 +221,7 @@ good. These are the ways they have still let defects through.
   makes it structurally blind to *whether the shipped file is layered at all*. Delete
   `layer(components)` from one real import and the probe still compares "no layer" against "layer",
   reports every row unchanged, and exits 0; types, lint and every test agree, because jsdom applies
-  no stylesheets. A whole phase whose result was one keyword repeated on 45 lines had no gate
+  no stylesheets. A whole phase whose result was one keyword repeated on one line per component stylesheet had no gate
   reading those lines. The fix was ~100 lines of `@import` parsing with no allowlist, where an
   import it cannot classify is a *failure* rather than a skip. **Ask of any A/B instrument: does it
   construct the "before" or the "after" side itself? Whatever it constructs, it cannot observe.**
@@ -233,3 +233,34 @@ good. These are the ways they have still let defects through.
   the row at the foundation's own values, so the row still reddens if anyone re-adds a rule. An
   `accepted` row whose underlying rule has been deleted goes INERT, so "accept it" and "leave the
   CSS in place" cannot both be done.
+- **A class-string assertion is a test of the input, not of the outcome.** Replacing a component
+  stylesheet with utilities can be asserted in jsdom only as "the component now emits these class
+  names" — which is true of a typo, a class no build generates, and a class that generates
+  something else entirely. The suite is green either way, because CSS is stubbed to `""`. The
+  instrument that closes it is cheap and worth building for one afternoon: compile the *deleted*
+  stylesheet and the *new* utilities into one real Tailwind build, put both markups on one page,
+  and diff `getComputedStyle` across a few viewport widths so the breakpoints actually fire. One
+  build and one page means there is no build-to-build variance in the comparison at all. Prove it
+  has teeth by changing one count in the new markup and watching the row go red before believing
+  the green one.
+- **That one-build probe has a contamination trap, and passing teeth does not clear it.** If the
+  conversion *keeps* the BEM class as a declaration-free marker — which this package's convention
+  requires — then the new markup still carries the very selector the deleted stylesheet defined,
+  and inside the probe's single build that stylesheet is still loaded. The new side silently
+  inherits every declaration the utilities failed to replace, and the probe reports "no
+  difference" for exactly the cases it was built to catch. The deliberate-mismatch row still goes
+  red, because that row's difference does not depend on the leak. **Rename the deleted
+  stylesheet's selectors in the probe's copy** so the two sides cannot share a rule. Doing that
+  turned a clean 30-reading run into two real regressions on the same code.
+- **Take the "after" string from the component, not from your own fingers.** A fixture with
+  hand-retyped class strings measures what the author believed the component emits. Render the
+  real component with `renderToStaticMarkup` and read the class attribute; it costs three lines
+  and removes the only remaining place the probe can agree with a wrong belief.
+- **Port the `var(--x, N)` fallback, not just the `var(--x)` read.** A component stylesheet that
+  resolved its scale through `var(--scale, 1)` was answering two questions: what the caller asked
+  for, *and* what happens when they asked for nothing at that step. A lookup table keyed on the
+  caller's input answers only the first, so a prop like `columns={{ md: 3 }}` emits no base class
+  at all and the element falls back to the CSS *initial* value rather than the stylesheet's
+  default. `grid-template-columns: none` is not `repeat(1, minmax(0, 1fr))` — the implicit track
+  is `auto`-sized, so a long unbreakable word widens the grid past its container instead of
+  wrapping. Enumerate the fallbacks in a deleted stylesheet as declarations in their own right.

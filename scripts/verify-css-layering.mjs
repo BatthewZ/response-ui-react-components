@@ -4,7 +4,8 @@
 //
 // WHY
 //
-// Phase 1's entire result is one token repeated on 45 lines: `layer(components)`.
+// Phase 1's entire result is one token repeated on every component import line:
+// `layer(components)` (45 of them then, 43 now that Phase 2 deleted two stylesheets).
 // Delete it from one import and that component's CSS goes back to out-ranking
 // every caller utility at every specificity — silently, with no error and no
 // visual change in any environment a gate here can enter.

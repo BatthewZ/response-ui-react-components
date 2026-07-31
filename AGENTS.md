@@ -390,11 +390,11 @@ Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensib
 - Always wrap classNames with `cn(...)` from this package.
 - For polymorphic spacing in props, expose `r1..r6` as values: `<Stack gap="r3">`.
 - Components are forwardRef, with four generic exceptions — `DataTable`, `VirtualizedDataTable`, `Repeater` and `AvatarUpload` are plain function components taking React 19's `ref` prop, because `forwardRef` erases a type parameter. When composing, type props as `ComponentPropsWithRef<"div">` (or appropriate element) — correct for all of them either way.
-- **Uniform card grids → `Grid`, not `Row wrap` or `MasonryGrid`.** `Grid columns={{ base: 1, md: 3 }}` gives equal-width columns and equal-height rows (cells share the row height, so footer buttons line up). `Row wrap` sizes children to content (uneven widths); `MasonryGrid` is CSS multi-column (uneven heights *by design* — reach for it only when you want Pinterest-style masonry). `Grid` cells are `minmax(0, 1fr)`, so long words wrap instead of overflowing.
+- **Uniform card grids → `Grid`, not `Row wrap` or `MasonryGrid`.** `Grid columns={{ base: 1, md: 3 }}` gives equal-width columns and equal-height rows (cells share the row height, so footer buttons line up). `Row wrap` sizes children to content (uneven widths); `MasonryGrid` is CSS multi-column (uneven heights *by design* — reach for it only when you want Pinterest-style masonry). `Grid` cells are `minmax(0, 1fr)`, so long words wrap instead of overflowing. **Both take a bounded `columns` union** — `Grid` 1–6, `MasonryGrid` 1–4 — and neither ships a stylesheet: the count resolves to `grid-cols-*` / `columns-*` utilities from a written-out lookup table, because Tailwind scans source text and generates nothing for a template literal. Adding a count means adding its literal class strings to that table, not a CSS rule.
 
 ## This package's CSS is in `@layer components`, so `className` wins
 
-**Every component's stylesheet is layered.** All 45 per-component imports in `src/styles.css`
+**Every component's stylesheet is layered.** All 43 per-component imports in `src/styles.css`
 carry `layer(components)`, and Tailwind orders `@layer components` **below** `@layer utilities`.
 The consequence is the headline capability of this library:
 
