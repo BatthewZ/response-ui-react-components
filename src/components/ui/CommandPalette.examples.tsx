@@ -289,3 +289,47 @@ export function NarrowerPanel() {
     </>
   );
 }
+
+/**
+ * `children` is a function the palette calls once per row of the list it has already
+ * filtered and grouped, so `items` stays the only writer of that list. Return a
+ * `CommandPalette.Item`: it carries the row's `id`, `role`, active state and select
+ * handler, and everything inside it is yours.
+ */
+export function ComposedRow() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button type="button" onClick={() => setOpen(true)}>
+        Open command palette
+      </Button>
+      <CommandPalette
+        open={open}
+        onClose={() => setOpen(false)}
+        items={[
+          {
+            id: "new-project",
+            label: "New project",
+            group: "Create",
+            shortcut: "⌘N",
+            onSelect: () => window.location.assign("/projects/new"),
+          },
+          {
+            id: "billing",
+            label: "Billing settings",
+            group: "Settings",
+            onSelect: () => window.location.assign("/settings/billing"),
+          },
+        ]}
+      >
+        {({ item, active }) => (
+          <CommandPalette.Item>
+            <span className="flex-1 text-left">{item.label}</span>
+            {item.shortcut != null && <Kbd>{item.shortcut}</Kbd>}
+            {active && <span className="text-fg-muted">↵</span>}
+          </CommandPalette.Item>
+        )}
+      </CommandPalette>
+    </>
+  );
+}

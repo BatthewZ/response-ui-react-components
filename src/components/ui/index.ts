@@ -16,7 +16,11 @@ export { CodeBlock } from "./CodeBlock";
 export { Carousel } from "./Carousel";
 export { Collapsible } from "./Collapsible";
 export { type ColumnDef, DataTable, type DataTableProps, type SortState } from "./DataTable";
-export { CommandPalette, type CommandItem } from "./CommandPalette";
+export {
+  CommandPalette,
+  type CommandPaletteItem,
+  type CommandPaletteRenderArgs,
+} from "./CommandPalette";
 export { ContextMenu } from "./ContextMenu";
 export { CopyButton } from "./CopyButton";
 export { Dialog } from "./Dialog";

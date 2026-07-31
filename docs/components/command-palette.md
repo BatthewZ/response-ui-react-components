@@ -37,25 +37,29 @@ stacking are the platform's job rather than yours. You supply the commands and t
 | -------------- | ------------------------------------------------- | ---------------------------------- |
 | `open`         | `boolean`                                         | — _(required)_                     |
 | `onClose`      | `() => void`                                      | — _(required)_                     |
-| `items`        | `CommandItem[]`                                   | — _(required)_                     |
-| `filter`       | `(item: CommandItem, query: string) => boolean`   | case-insensitive substring over `label` + `keywords` |
+| `items`        | `CommandPaletteItem[]`                            | — _(required)_                     |
+| `filter`       | `(item, query) => boolean`                        | case-insensitive substring over `label` + `keywords` |
+| `children`     | `(args: CommandPaletteRenderArgs) => ReactNode`   | — (the standard row)               |
 | `placeholder`  | `string`                                          | `"Type a command or search…"`      |
 | `emptyMessage` | `ReactNode`                                       | `"No results"`                     |
 | `searchLabel`  | `string` — accessible name of the search input    | `"Search commands"`                |
 | `listLabel`    | `string` — accessible name of the listbox         | `"Commands"`                       |
 | `statusMessage`| `(count: number) => string` — announced when the result count changes | `"N commands"` / `"1 command"` |
-| `className`    | `string`                                          | —                                  |
+| `className`    | `string` — lands on the `<dialog>`, the panel itself | —                               |
+| `classNames`   | `{ search?, input?, list?, group?, groupHeader?, empty?, itemIcon?, itemLabel?, itemShortcut? }` | — (see [Slots](#slots)) |
 | `ref`          | `Ref<HTMLDialogElement>`                          | —                                  |
-| …rest          | `dialog` props, less `open`                       | —                                  |
+| …rest          | `dialog` props, less `open` / `children`          | —                                  |
 
 `open` is required, so the palette is **always** controlled — it opens itself with
 `showModal()` when the boolean flips to `true` and closes when it flips back. `onClose` fires
 on Escape, on a press that lands on the scrim outside the panel, and after any selection;
 nothing shuts unless that callback moves your state.
 
-### `CommandItem`
+### `CommandPaletteItem`
 
-`CommandItem` is exported alongside the component, so you can type the array you build.
+`CommandPaletteItem` is exported alongside the component, so you can type the array you build.
+It was called `CommandItem` before v0.12; the name now matches its component and the word
+*item* that every list in this library uses for a repeated unit.
 
 | Field       | Type            | What it does                                                                 |
 | ----------- | --------------- | ---------------------------------------------------------------------------- |
@@ -358,6 +362,110 @@ Those are literals in `CommandPalette.css`, not tokens. `className` merges throu
 this package's CSS is in `@layer components`, which Tailwind orders **below** `@layer utilities`.
 It used to need the important modifier (`max-w-[28rem]!`), because the stylesheet was unlayered
 and out-ranked every utility before specificity was consulted.
+
+## Composing a row
+
+The default row is icon, label, keycap. When you want something else in it — an avatar, a
+second line, a badge — pass a function as `children`. The palette calls it **once per row**
+of the list it has already filtered, grouped and ordered, and you return a
+`CommandPalette.Item`.
+
+<!-- example:ComposedRow -->
+```tsx
+<Button type="button" onClick={() => setOpen(true)}>
+  Open command palette
+</Button>
+<CommandPalette
+  open={open}
+  onClose={() => setOpen(false)}
+  items={[
+    {
+      id: "new-project",
+      label: "New project",
+      group: "Create",
+      shortcut: "⌘N",
+      onSelect: () => window.location.assign("/projects/new"),
+    },
+    {
+      id: "billing",
+      label: "Billing settings",
+      group: "Settings",
+      onSelect: () => window.location.assign("/settings/billing"),
+    },
+  ]}
+>
+  {({ item, active }) => (
+    <CommandPalette.Item>
+      <span className="flex-1 text-left">{item.label}</span>
+      {item.shortcut != null && <Kbd>{item.shortcut}</Kbd>}
+      {active && <span className="text-fg-muted">↵</span>}
+    </CommandPalette.Item>
+  )}
+</CommandPalette>
+```
+<!-- /example -->
+
+Three things this shape buys, and they are the reason it is a function rather than a
+`renderItem` prop or a flat `<CommandPalette.Item>` you place yourself:
+
+- **`items` stays the only writer of the list.** The palette filters, groups and numbers the
+  rows; you write what is inside one. There is no second place a row can come from, so the
+  keyboard order, the result count and the announced status cannot disagree with the screen.
+- **`CommandPalette.Item` takes no data prop at all.** It reads the row it is from the call
+  it was returned from — which is why it carries the `id`, `role="option"`,
+  `aria-selected`, `aria-disabled`, the `data-active` the focus ring hangs off, the
+  hover-tracking and the select-then-close handler without you supplying any of them.
+  Rendered anywhere else it throws, rather than producing an option the palette does not
+  know about.
+- **The listbox structure stays the palette's.** A listbox owns its options directly or
+  through a `role="group"` that is itself a direct child; the palette renders that scaffold
+  and calls you inside it, so a composed row cannot break the ownership chain.
+
+`args` is `{ item, index, active }` — `index` is the position in the rendered order, and
+`active` is whether the row currently holds the virtual keyboard cursor.
+
+**Return a `CommandPalette.Item`.** Returning a bare `<div>` gets you an element with no
+role, no id and no handler: the row will paint and do nothing. That failure is visible on
+the first keypress rather than silent.
+
+## Slots
+
+`className` is the `<dialog>` — the palette panel itself, which is the element carrying the
+border, radius, shadow and `max-width`. The result row is reached through
+`CommandPalette.Item`'s own `className`. Everything else is a slot:
+
+| Slot           | Element                             | What it addresses                   |
+| -------------- | ----------------------------------- | ----------------------------------- |
+| `search`       | `div.command-palette-search`        | the search row and its bottom rule  |
+| `input`        | `input.command-palette-input`       | the query field                     |
+| `list`         | `div.command-palette-list`          | the scrolling `role="listbox"`      |
+| `group`        | `div.command-palette-group`         | every group (applies to each)       |
+| `groupHeader`  | `div.command-palette-group-header`  | every group heading                 |
+| `empty`        | `div.command-palette-empty`         | the no-results row                  |
+| `itemIcon`     | `span.command-palette-option-icon`  | the **default** row's leading glyph |
+| `itemLabel`    | `span.command-palette-option-label` | the default row's text              |
+| `itemShortcut` | `.command-palette-option-shortcut`  | the default row's [Kbd](kbd.md)     |
+
+```tsx
+<CommandPalette
+  open={open}
+  onClose={close}
+  items={commands}
+  classNames={{ list: "max-h-[18rem]", groupHeader: "text-fg-secondary" }}
+/>
+```
+
+The keys are typed, so a misspelled one is a compile error rather than a prop that does
+nothing. The three `item*` keys land on the elements the **default** row renders; if you
+compose a row of your own, those elements are yours and the keys have nothing to reach.
+
+There is no `item` key, because `CommandPalette.Item` already reaches that element and two
+writers for one element is one too many. There is no key for the panel either — `className`
+is it.
+
+**Not a slot, deliberately.** The visually-hidden `role="status"` region that announces the
+result count carries `sr-only` and nothing else. That class is the whole mechanism: a route
+to it lets a caller drop it and print "7 commands" above the search field.
 
 ## Theme tokens
 

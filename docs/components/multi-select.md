@@ -1,8 +1,8 @@
 # MultiSelect
 
-Pick several values from a closed list: a chip-filled control over a floating listbox that
+Pick several values from a closed list: a tag-filled control over a floating listbox that
 stays open as you toggle options, with an inline filter, a `maxItems` cap, and Backspace to
-peel off the last chip. Reach for it when `<select multiple>` is the wrong shape and
+peel off the last tag. Reach for it when `<select multiple>` is the wrong shape and
 [Select](select.md) can only hold one value.
 
 <!-- example:Minimal -->
@@ -22,7 +22,7 @@ peel off the last chip. Reach for it when `<select multiple>` is the wrong shape
 
 | Prop            | Type                                                        | Default                     |
 | --------------- | ----------------------------------------------------------- | --------------------------- |
-| `options`       | `MultiSelectOption[]`                                       | — (required)                |
+| `options`       | `MultiSelectItem[]`                                         | — (required)                |
 | `value`         | `string[]`                                                  | — (uncontrolled)            |
 | `defaultValue`  | `string[]`                                                  | `[]`                        |
 | `onValueChange` | `(value: string[]) => void`                                 | —                           |
@@ -36,14 +36,24 @@ peel off the last chip. Reach for it when `<select multiple>` is the wrong shape
 | `error`         | `boolean`                                                   | `Field` state, else `false` |
 | `disabled`      | `boolean`                                                   | —                           |
 | `placement`     | `Placement` (floating-ui)                                   | `"bottom-start"`            |
+| `children`      | `(args: MultiSelectRenderArgs) => ReactNode`                | — (the standard tree)       |
 | `aria-label`    | `string`                                                    | —                           |
 | `className`     | `string`                                                    | — (lands on the wrapper)    |
+| `classNames`    | `{ control?, list?, input?, chevron? }`                     | — (see [Slots](#slots))     |
 | `ref`           | `Ref<HTMLDivElement>`                                       | —                           |
-| …rest           | `<div>` props minus `defaultValue` / `children`; `onChange` is re-typed above | —          |
+| …rest           | `<div>` props minus `defaultValue` / `children`; `onChange` and `children` are re-typed above | —          |
 
 An option is `{ value: string; label: string; disabled?: boolean }` — exported as
-`MultiSelectOption`. There is no sub-component and no render prop: `children` is omitted
-from the prop type, so the list is data, never JSX.
+`MultiSelectItem`. (It was `MultiSelectOption` before v0.12: one concept, one word, and the
+word is *item* — the same one `MultiSelect.Item` and every other list in this library uses.)
+
+**The list is data, and it stays data.** An earlier version of this page said there was "no
+sub-component and no render prop" — half of that is now wrong and the half that matters is
+not. `children` is a **function**, and the `options` it receives is the list MultiSelect has
+*already filtered*. You map it; you never author it. So `options` remains the single writer
+of the data and the parts you compose are the single writer of the presentation, which is
+why adding them did not need `options` to become optional or to acquire a second code path.
+See [Composition](#composition).
 
 One of those rows has a sharp edge. The rest props are `<div>` props and the spread lands on
 the **outer wrapper `<div>`**, not on the text input — but `id`, `aria-label` and
@@ -61,7 +71,7 @@ store-level error never reaches the `role="combobox"` input — wrap the control
 
 ## How a selection is made
 
-The control is one wrapping row of chips followed by a text input, with a chevron pinned to
+The control is one wrapping row of tags followed by a text input, with a chevron pinned to
 the right. Clicking the control opens the listbox and focuses the input.
 
 - **Clicking an option toggles it** and the listbox **stays open** — that is the whole
@@ -71,14 +81,14 @@ the right. Clicking the control opens the listbox and focuses the input.
 - **A committed pick consumes the query.** Selecting clears the filter text and resets the
   highlight, so the list returns to the full set and the next search starts fresh. A pick
   that is *blocked* by `maxItems` leaves the query alone.
-- **Backspace on an empty query deletes the last chip.** There is no confirm step, so
+- **Backspace on an empty query deletes the last tag.** There is no confirm step, so
   holding the key clears the selection from the end.
 - **`ArrowDown` opens the list and highlights the first option** in one press. Arrows move
   the highlight, skipping anything `aria-disabled`, and wrap around at both ends. `Enter`
   toggles the highlighted option; `Escape` closes the list, clears the query, and leaves
   focus in the input.
 
-Chips render in the order values were **added**, not in `options` order, and the array you
+Tags render in the order values were **added**, not in `options` order, and the array you
 get back from `onValueChange` is in that same order.
 
 ## Controlled
@@ -133,7 +143,7 @@ reached and nothing is shown next to the control, so put the limit in your own l
 placeholder text, as above.
 
 The cap is only enforced on the way in. A `value` of three items with `maxItems={2}` renders
-three chips; it just blocks a fourth.
+three tags; it just blocks a fourth.
 
 ## Disabled options
 
@@ -176,7 +186,7 @@ searches for it.
 
 `searchable={false}` marks the inner input `readOnly` rather than removing it: the caret
 still lands there, the full list shows every time, and **Backspace still deletes the last
-chip**. Keep the list short enough to scan when you turn the filter off.
+tag**. Keep the list short enough to scan when you turn the filter off.
 
 ## In a Field, and naming the control
 
@@ -245,7 +255,7 @@ errored [Field](field.md). Omit the prop to inherit.
 ```
 <!-- /example -->
 
-`disabled` reaches the input and every chip's remove button, and the control's own click
+`disabled` reaches the input and every tag's remove button, and the control's own click
 handler returns early — so the selection is displayed but frozen, and the list cannot be
 opened at all. The wrapper also carries `data-disabled`, which is what greys the fill.
 
@@ -271,6 +281,109 @@ opened at all. The wrapper also carries `data-disabled`, which is what greys the
 leaving the viewport. It renders through a portal appended to `<body>`, so an
 `overflow: hidden` or `transform` ancestor cannot clip it.
 
+## Composition
+
+Six parts cover everything MultiSelect renders that has *content* in it. Pass a function as
+`children` and compose them; omit it and you get exactly the tree below, which is the same
+composition written out in the component.
+
+| Part                       | Element                       | What it is                                    |
+| -------------------------- | ----------------------------- | --------------------------------------------- |
+| `MultiSelect.Tag`          | `span.multiselect-tag`        | one selected value, in the control's tag row   |
+| `MultiSelect.TagRemove`    | `button.multiselect-tag__remove` | that tag's ×, named `Remove <label>`        |
+| `MultiSelect.Content`      | `div.multiselect-content`     | the floating `role="listbox"`, in a portal      |
+| `MultiSelect.Item`         | `div.multiselect-item`        | one `role="option"` row                        |
+| `MultiSelect.ItemIndicator`| `span.multiselect-item__check`| that row's selection gutter                    |
+| `MultiSelect.Empty`        | `div.multiselect-empty`       | the "nothing matched" row                      |
+
+<!-- example:Composed -->
+```tsx
+<MultiSelect
+  aria-label="Reviewers"
+  placeholder="Add reviewers…"
+  options={[
+    { value: "ada", label: "Ada Lovelace" },
+    { value: "grace", label: "Grace Hopper" },
+    { value: "alan", label: "Alan Turing" },
+  ]}
+>
+  {({ options, selected }) => (
+    <>
+      {selected.map(({ value, label }, index) => (
+        <MultiSelect.Tag key={`${index}:${value}`} index={index} className="uppercase">
+          {label}
+          <MultiSelect.TagRemove />
+        </MultiSelect.Tag>
+      ))}
+      <MultiSelect.Content className="min-w-[16rem]">
+        {options.length === 0 ? (
+          <MultiSelect.Empty>Nobody by that name</MultiSelect.Empty>
+        ) : (
+          options.map((option) => (
+            <MultiSelect.Item key={option.value} option={option}>
+              <MultiSelect.ItemIndicator />
+              {option.label}
+              <span className="ml-auto text-fg-muted">@{option.value}</span>
+            </MultiSelect.Item>
+          ))
+        )}
+      </MultiSelect.Content>
+    </>
+  )}
+</MultiSelect>
+```
+<!-- /example -->
+
+Four things hold whatever you write:
+
+- **`options` inside the callback is MultiSelect's own filtered list.** Typing in the search
+  box narrows it before you see it, so your `.map` renders exactly the rows that should
+  exist. An option that did not come out of that list is not an option: passing one to
+  `MultiSelect.Item` throws, rather than quietly inserting a row the keyboard cannot reach.
+- **The parts carry the wiring.** `role`, `id`, `aria-selected`, `aria-disabled`, the
+  `data-active` the focus ring hangs off, the `maxItems` disabling, the list-navigation
+  registration and the toggle handler all come from context. You cannot omit or mis-wire
+  one, because you never write one.
+- **`MultiSelect.Tag` takes its `index`** in the `selected` array — `TagRemove` reads the
+  rest from there, which is what keeps the accessible name and the focus-to-successor
+  behaviour correct.
+- **Omitting `MultiSelect.Content` fails loudly**, on the first click: the listbox never
+  opens and `aria-controls` points at nothing. It is not a composition that looks finished
+  and quietly cannot express something.
+
+`MultiSelect.Content` renders through a portal, so where you declare it in the callback does
+not affect where it lands.
+
+## Slots
+
+`className` is the root — the positioned outer `<div>`. The six elements above are reached
+through their part's own `className`. That leaves four internals a consumer can only want to
+*restyle*, and those are the slots:
+
+| Slot      | Element                     | What it addresses                          |
+| --------- | --------------------------- | ------------------------------------------ |
+| `control` | `div.multiselect-control`   | the bordered box — border, radius, padding |
+| `list`    | `div.multiselect-tags`      | the wrapping tag row inside it             |
+| `input`   | `input.multiselect-input`   | the inline search field                    |
+| `chevron` | `span.multiselect-toggle`   | the disclosure glyph                       |
+
+```tsx
+<MultiSelect
+  aria-label="Skills"
+  options={options}
+  classNames={{ control: "rounded-none", chevron: "text-fg-muted" }}
+/>
+```
+
+The keys are typed, so a misspelled one is a compile error rather than a prop that does
+nothing — and there is no `panel`, `item`, `tag` or `empty` key, because the parts above
+already reach those elements and two writers for one element is one too many.
+
+**Not slots, deliberately.** The input carries four invariants a caller cannot see —
+`getReferenceProps`, the `aria-activedescendant` wiring, `readOnly` when `searchable` is
+false, and the Backspace peel — so it is a class route and not a part: there is no content
+in it for you to supply.
+
 ## Theme tokens
 
 Every colour, radius, shadow, type step and gap-with-a-name lives in `MultiSelect.css` and
@@ -287,10 +400,10 @@ at runtime with the rest of the app.
 | Disabled control fill              | `--C-SURFACE-3`                              |
 | Control padding                    | `--R-SIZE-5` · `--R-SIZE-4`                  |
 | Control & listbox corners          | `--RADIUS-MD`                                |
-| Chip fill                          | `--C-SURFACE-2`                              |
-| Chip label ink                     | `--C-TEXT-SECONDARY`                         |
-| Chip corners                       | `--RADIUS-SM`                                |
-| Chip type · weight                 | `--BodyText-3` · `--Semibold-Weight`         |
+| Tag fill                          | `--C-SURFACE-2`                              |
+| Tag label ink                     | `--C-TEXT-SECONDARY`                         |
+| Tag corners                       | `--RADIUS-SM`                                |
+| Tag type · weight                 | `--BodyText-3` · `--Semibold-Weight`         |
 | Remove glyph ink · its hover ink   | `--C-TEXT-MUTED` · `--C-TEXT-PRIMARY`        |
 | Query text ink                     | `--C-TEXT-PRIMARY`                           |
 | Placeholder ink                    | `--C-TEXT-MUTED`                             |
@@ -309,13 +422,13 @@ control's vertical padding (`--R-SIZE-5`, `0.5rem` → `0.75rem`) and its horizo
 `--BodyText-2` runs `0.8125rem` → `0.875rem`, `--BodyText-3` `0.75rem` → `0.8125rem`.
 
 **Off the contract.** The control's own padding is the only dimension on the `r`-scale;
-every other gap, size and inner padding is a hard literal: the chip row's
-`0.375rem` gap, the `0.5rem` chip-to-chevron gap, the `2.5rem` minimum control height, the
+every other gap, size and inner padding is a hard literal: the tag row's
+`0.375rem` gap, the `0.5rem` tag-to-chevron gap, the `2.5rem` minimum control height, the
 `1px` border, the `2px` focus ring, the listbox's `11.25rem` minimum width, `16rem` maximum
 height and `z-index: 40` (the same layer [Popover](popover.md) and
 [DropdownMenu](dropdown-menu.md) sit on), the `0.875rem` check gutter, and the three lucide
 icon sizes, which are `size` props in the `.tsx` rather than CSS. The two emphasised weights —
-the chip label and the selected option — read `--Semibold-Weight`, the same token a sibling
+the tag label and the selected option — read `--Semibold-Weight`, the same token a sibling
 like [TagInput](tag-input.md) reaches through a utility, so they track the theme and step
 `500` → `600` at 40rem with the rest of the design system.
 
@@ -330,7 +443,7 @@ default / `events` / `tech` / `grimdark`:
   `@batthewz/response-ui-css` **v0.10.1** retuned `--C-BORDER-FOCUS`. Those ring figures were
   taken while the wash was a rung-1 surface and have not been re-measured since it moved to
   rung 2. See [Accessibility](#accessibility).
-- The **remove glyph** on a chip is `--C-TEXT-MUTED` on `--C-SURFACE-2`: **4.50:1 in all four measured
+- The **remove glyph** on a tag is `--C-TEXT-MUTED` on `--C-SURFACE-2`: **4.50:1 in all four measured
   themes** — each theme was tuned to land exactly on the floor there, so it clears 3:1 for a
   graphical affordance with room to spare but has no headroom as body text. It was 1.94–2.31
   before **v0.10.0**. It still reaches `--C-TEXT-PRIMARY` on hover.
@@ -339,12 +452,12 @@ default / `events` / `tech` / `grimdark`:
   for body text. These read 2.10–2.59 before **v0.10.0**.
 - The **check glyph** is `--C-ACCENT` on `--C-SURFACE-0` — **5.17 / 4.89 / 14.84 / 5.69:1**,
   clearing 3:1 in every theme measured; it was 2.72 and 2.96 in `events` and `grimdark` before
-  **v0.10.0**. Selection is also carried by the chip and by the option's heavier weight, so
+  **v0.10.0**. Selection is also carried by the tag and by the option's heavier weight, so
   the check is corroboration rather than the only signal.
-- Chip fill (`--C-SURFACE-2`) against the control fill (`--C-SURFACE-0`) is **1.08–1.21:1**,
-  so a chip is delimited by its radius and its ink weight far more than by its background.
+- Tag fill (`--C-SURFACE-2`) against the control fill (`--C-SURFACE-0`) is **1.08–1.21:1**,
+  so a tag is delimited by its radius and its ink weight far more than by its background.
 
-Chip label ink is the one pairing with margin to spare: `--C-TEXT-SECONDARY` on
+Tag label ink is the one pairing with margin to spare: `--C-TEXT-SECONDARY` on
 `--C-SURFACE-2` measures **6.87 / 6.87 / 5.32 / 5.11:1**.
 
 Measured against the default theme and the worked examples; these numbers do not transfer to
@@ -364,12 +477,12 @@ your own theme — re-check them against your values. See the
   `<div>` as an inert attribute.
 - **`Enter` belongs to the open list.** While the list is open the key is consumed whether or
   not an option is highlighted, so it never submits the surrounding form by accident.
-- **A value that is not in `options` renders as a raw chip.** The label lookup falls back to
-  the value string, so `defaultValue={["rust"]}` against a list with no `rust` shows a chip
+- **A value that is not in `options` renders as a raw tag.** The label lookup falls back to
+  the value string, so `defaultValue={["rust"]}` against a list with no `rust` shows a tag
   reading `rust` — and because it has no row in the listbox, it can only be removed with its
   own × or by Backspace.
 - **Duplicate values in a controlled array render twice.** The component never de-duplicates
-  what you hand it, so `value={["react", "react"]}` shows two chips — a faithful picture of
+  what you hand it, so `value={["react", "react"]}` shows two tags — a faithful picture of
   your array, and no longer a React key collision. De-duplicate before you pass it if that is
   not what you meant.
 - **`maxItems` never trims.** It blocks additions and disables unselected options; an
@@ -394,16 +507,16 @@ highlighted option. The panel is a `role="listbox"` with `aria-multiselectable="
 rows are `role="option"` with `aria-selected`, and `aria-disabled` on anything blocked by
 `option.disabled` or by `maxItems`. DOM focus never leaves the input — the listbox is
 `tabIndex={-1}` and navigation is virtual — so `Escape` returns you to a control that never
-lost focus. Each chip's × is a real `<button type="button">` named `Remove <label>`.
+lost focus. Each tag's × is a real `<button type="button">` named `Remove <label>`.
 
 Four things to plan around:
 
 - **Name it with `aria-label`, `aria-labelledby` or `id` + `<Label htmlFor>`.** All three reach
   the combobox input; the rest of the spread stays on the wrapper. Omit all three and the
   combobox has no accessible name at all.
-- **Every chip's × is a tab stop.** `Tab` walks the chips before reaching the input, so any
-  chip can be removed from the keyboard, not just the last one via Backspace. Removing a chip
-  moves focus to the next chip's ×, or to the input when the last one goes.
+- **Every tag's × is a tab stop.** `Tab` walks the tags before reaching the input, so any
+  tag can be removed from the keyboard, not just the last one via Backspace. Removing a tag
+  moves focus to the next tag's ×, or to the input when the last one goes.
 - **The highlighted option is marked by a ring, not by its wash.** The `--C-SURFACE-2`
   background is 1.08–1.21:1 on the rung-0 popup and carries nothing on its own, so `.multiselect-item[data-active]`
   also draws a 2px `--C-BORDER-FOCUS` outline at `-2px` offset. It has to come from the
@@ -415,7 +528,7 @@ Four things to plan around:
   Screen-reader users are unaffected either way:
   `aria-activedescendant` is correct.
 - **Nothing announces a change.** There is no live region. Toggling an option, hitting the
-  `maxItems` cap, and Backspacing a chip away all happen silently; so does the "No options"
+  `maxItems` cap, and Backspacing a tag away all happen silently; so does the "No options"
   row, which is `role="presentation"` inside a listbox the user is not focused in.
 - **`aria-controls` is set only while the list is open**, because that is the only time the
   element it names is in the document. `searchable={false}` reports

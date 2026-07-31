@@ -28,7 +28,7 @@ import {
   ColorPicker,
   Combobox,
   CommandPalette,
-  type CommandItem,
+  type CommandPaletteItem,
   ContextMenu,
   CopyButton,
   DataTable,
@@ -301,7 +301,7 @@ export function App() {
     setDrawerOpen(true);
   };
 
-  const COMMANDS: CommandItem[] = [
+  const COMMANDS: CommandPaletteItem[] = [
     { id: "new-file", label: "New File", group: "Actions", icon: <FileText size={16} />, shortcut: "⌘N", keywords: ["create", "document"], onSelect: () => {} },
     { id: "copy", label: "Copy", group: "Actions", icon: <Copy size={16} />, shortcut: "⌘C", onSelect: () => {} },
     { id: "delete", label: "Delete", group: "Actions", icon: <Trash2 size={16} />, shortcut: "⌫", disabled: true, onSelect: () => {} },

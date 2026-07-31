@@ -150,6 +150,47 @@ export function Disabled() {
   );
 }
 
+/** `children` is a function, and the `options` it receives is the list MultiSelect has
+ *  already filtered — map it to compose the rows and the chips. The data prop stays the
+ *  only writer of the list; the parts carry the roles, ids and ARIA. */
+export function Composed() {
+  return (
+    <MultiSelect
+      aria-label="Reviewers"
+      placeholder="Add reviewers…"
+      options={[
+        { value: "ada", label: "Ada Lovelace" },
+        { value: "grace", label: "Grace Hopper" },
+        { value: "alan", label: "Alan Turing" },
+      ]}
+    >
+      {({ options, selected }) => (
+        <>
+          {selected.map(({ value, label }, index) => (
+            <MultiSelect.Tag key={`${index}:${value}`} index={index} className="uppercase">
+              {label}
+              <MultiSelect.TagRemove />
+            </MultiSelect.Tag>
+          ))}
+          <MultiSelect.Content className="min-w-[16rem]">
+            {options.length === 0 ? (
+              <MultiSelect.Empty>Nobody by that name</MultiSelect.Empty>
+            ) : (
+              options.map((option) => (
+                <MultiSelect.Item key={option.value} option={option}>
+                  <MultiSelect.ItemIndicator />
+                  {option.label}
+                  <span className="ml-auto text-fg-muted">@{option.value}</span>
+                </MultiSelect.Item>
+              ))
+            )}
+          </MultiSelect.Content>
+        </>
+      )}
+    </MultiSelect>
+  );
+}
+
 /** `placement` is the floating-ui preference for where the listbox opens; it still flips
  *  to the opposite side when there is no room. */
 export function Placement() {

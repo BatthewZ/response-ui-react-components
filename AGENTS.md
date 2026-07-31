@@ -29,8 +29,9 @@ Top-level barrel exports everything. The grouping below mirrors the source layou
 ```
 Accordion, Alert, AppShell, Avatar, AvatarGroup, AvatarUpload + types
 AvatarUploadProps/AvatarUploadResult, Badge, Breadcrumbs,
-Button, Calendar, RangeCalendar + type DateRange, Card, Carousel, CodeBlock, Collapsible, CommandPalette + type
-CommandItem, ContextMenu, CopyButton, DataTable + type DataTableProps + type ColumnDef + type SortState, Dialog, Drawer,
+Button, Calendar, RangeCalendar + type DateRange, Card, Carousel, CodeBlock, Collapsible,
+CommandPalette + CommandPalette.Item + types CommandPaletteItem/CommandPaletteRenderArgs,
+ContextMenu, CopyButton, DataTable + type DataTableProps + type ColumnDef + type SortState, Dialog, Drawer,
 DropdownMenu, EmptyState + EmptyState{Title,Description,Icon,Actions}, ErrorBoundary,
 FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination,
 Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper,
@@ -44,7 +45,8 @@ WizardProps/WizardStep/UseWizardOptions/UseWizardReturn
 
 ```
 Checkbox, ColorPicker, Combobox, DatePicker, DateRangePicker, Field, FieldError, FormActions, Input,
-Label, MultiSelect + type MultiSelectOption, NumberInput, OTPInput, Radio,
+Label, MultiSelect + MultiSelect.{Content,Item,ItemIndicator,Empty,Tag,TagRemove} + types
+MultiSelectItem/MultiSelectRenderArgs, NumberInput, OTPInput, Radio,
 RangeSlider + type RangeSliderValue, Repeater + type RepeaterItem, SearchInput, Select,
 Slider, Switch, TagInput, Textarea
 ```
