@@ -277,3 +277,28 @@ to understand.
 
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.
+
+55. **A subcomponent can only ship for an element the root's own `className` does not
+   already reach.** A ruling that a component "becomes a compound with `.Content`" has to be
+   checked against which element `.Content` would name: where the root *is* the surface —
+   a modal panel, not a floating child of one — `className` is already the single writer and
+   a `.Content` beside it is the two-writers defect the subcomponent-or-slot rule exists to
+   prevent. The asymmetry is in the anatomy, not in the ruling: a sibling whose surface is a
+   separate portalled element takes the subcomponent, and the two look identical in a table.
+56. **The arity of a compound's children function is derived from what the root must keep
+   owning, not chosen for symmetry with a sibling.** Where the root owns a structural ARIA
+   invariant — a listbox owning its options directly or through a `role="group"` that is
+   itself a direct child — the consumer's authoring point is strictly *inside* a row, so the
+   function is per-row. Where it owns no such tree, one whole-tree call is right. Copying the
+   sibling's shape instead hands the consumer a scaffold they can break.
+57. **The `className:` form inside a props-getter object is invisible to a reachability
+   classifier in both directions, and the grep offered for finding it undercounts.** Matching
+   only string-literal initialisers misses every `className: cn(…)`, which is what the form
+   looks like once it *has* a route. Re-grep as `className:\s*(cn\(|")` and hand-triage; a
+   green classifier says nothing about these sites either before or after the fix.
+58. **Rename an exported type in the same change that already breaks the component.** Two
+   names for one concept survive because each rename looks gratuitous on its own; once a
+   component is being rewritten the rename is free, and once its data type has become a
+   subcomponent's prop type it is not. Check the rename against the internals first — a data
+   type and a subcomponent competing for one identifier is a signal to move the *component*
+   name, since the exported one is the one consumers type.

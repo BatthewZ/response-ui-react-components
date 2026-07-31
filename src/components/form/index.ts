@@ -46,7 +46,11 @@ export {
 } from "./standard-schema";
 export { Input } from "./Input";
 export { Label } from "./Label";
-export { MultiSelect, type MultiSelectOption } from "./MultiSelect";
+export {
+  MultiSelect,
+  type MultiSelectItem,
+  type MultiSelectRenderArgs,
+} from "./MultiSelect";
 export { NumberInput } from "./NumberInput";
 export { OTPInput } from "./OTPInput";
 export { Radio } from "./Radio";

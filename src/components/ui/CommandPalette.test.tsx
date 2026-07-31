@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { CommandPalette, type CommandItem } from "./CommandPalette";
+import { CommandPalette, type CommandPaletteItem } from "./CommandPalette";
 
 // jsdom does not implement HTMLDialogElement.showModal / close, so we polyfill them.
 beforeAll(() => {
@@ -23,8 +23,8 @@ beforeAll(() => {
   }
 });
 
-function makeItems(overrides: Partial<CommandItem>[] = []): CommandItem[] {
-  const base: CommandItem[] = [
+function makeItems(overrides: Partial<CommandPaletteItem>[] = []): CommandPaletteItem[] {
+  const base: CommandPaletteItem[] = [
     { id: "new-file", label: "New File", group: "File", keywords: ["create"], onSelect: vi.fn() },
     { id: "open-file", label: "Open File", group: "File", onSelect: vi.fn() },
     { id: "copy", label: "Copy", group: "Edit", onSelect: vi.fn() },
@@ -329,7 +329,7 @@ describe("CommandPalette", () => {
 
   it("uses an injected filter when provided", async () => {
     const user = userEvent.setup();
-    const filter = (item: CommandItem, query: string) =>
+    const filter = (item: CommandPaletteItem, query: string) =>
       query === "" || item.id === "paste";
     renderPalette({ open: true, filter });
 
@@ -409,7 +409,7 @@ describe("CommandPalette", () => {
 
   it("arrows in rendered order when a group's members are not contiguous", async () => {
     const user = userEvent.setup();
-    const items: CommandItem[] = [
+    const items: CommandPaletteItem[] = [
       { id: "new", label: "New document", group: "File", onSelect: vi.fn() },
       { id: "copy", label: "Copy", group: "Edit", onSelect: vi.fn() },
       { id: "save", label: "Save", group: "File", onSelect: vi.fn() },
@@ -538,5 +538,251 @@ describe("CommandPalette", () => {
     renderPalette({ open: true });
     // Same hook Dialog uses; response-ui-css keys `body:has(dialog[open].no-body-scroll)` off it.
     expect(screen.getByRole("dialog")).toHaveClass("no-body-scroll");
+  });
+
+  /**
+   * The compound. `items` stays the only writer of the list: the root filters,
+   * groups and orders it, then calls `children` once per row it has produced.
+   * `CommandPalette.Item` takes no data prop at all, so a consumer can supply a
+   * row's content and cannot supply a row.
+   */
+  describe("compound composition", () => {
+    it("renders a composed row in place of the default one, keeping its identity", () => {
+      renderPalette({
+        open: true,
+        children: ({ item }) => (
+          <CommandPalette.Item>
+            <span data-testid={`row-${item.id}`}>{item.label.toUpperCase()}</span>
+          </CommandPalette.Item>
+        ),
+      });
+
+      const options = screen.getAllByRole("option");
+      expect(options).toHaveLength(4);
+      expect(screen.getByTestId("row-copy")).toHaveTextContent("COPY");
+      // The row keeps the library's own class, id and ARIA even though the
+      // consumer wrote its contents.
+      expect(options[0]).toHaveClass("command-palette-option");
+      expect(options[0].id).toBeTruthy();
+      expect(screen.getByRole("combobox")).toHaveAttribute(
+        "aria-activedescendant",
+        options[0].id
+      );
+      // And the group structure is still the root's.
+      expect(screen.getAllByRole("group")).toHaveLength(2);
+    });
+
+    it("hands children the root's own filtered rows, in rendered order", async () => {
+      const user = userEvent.setup();
+      const seen: string[][] = [];
+      let pass: string[] = [];
+      renderPalette({
+        open: true,
+        children: ({ item, index }) => {
+          if (index === 0) {
+            pass = [];
+            seen.push(pass);
+          }
+          pass.push(`${index}:${item.id}`);
+          return <CommandPalette.Item>{item.label}</CommandPalette.Item>;
+        },
+      });
+
+      expect(seen.at(-1)).toEqual([
+        "0:new-file",
+        "1:open-file",
+        "2:copy",
+        "3:paste",
+      ]);
+
+      await user.type(screen.getByRole("combobox"), "file");
+      expect(seen.at(-1)).toEqual(["0:new-file", "1:open-file"]);
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+    });
+
+    it("still selects and closes from a composed row", async () => {
+      const user = userEvent.setup();
+      const { items, onClose } = renderPalette({
+        open: true,
+        children: ({ item }) => (
+          <CommandPalette.Item>{item.label}</CommandPalette.Item>
+        ),
+      });
+
+      await user.click(screen.getByText("Copy"));
+      expect(items[2].onSelect).toHaveBeenCalledTimes(1);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * The property the whole design rests on. A row is one of the palette's own
+     * or it is not a row; if `CommandPalette.Item` ever starts working outside
+     * the children call, the consumer has become a second writer of the list.
+     */
+    it("refuses an Item rendered outside the children function", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() => render(<CommandPalette.Item>Ghost</CommandPalette.Item>)).toThrow(
+        /must be returned from CommandPalette's children function/
+      );
+      // Including inside the palette but outside a row.
+      expect(() =>
+        renderPalette({
+          open: true,
+          emptyMessage: <CommandPalette.Item>Ghost</CommandPalette.Item>,
+          items: [],
+        })
+      ).toThrow(/must be returned from CommandPalette's children function/);
+      consoleError.mockRestore();
+    });
+  });
+
+  /** One override test per slot, plus the four companions. */
+  describe("classNames slots", () => {
+    const slotItems: CommandPaletteItem[] = [
+      {
+        id: "copy",
+        label: "Copy",
+        group: "Edit",
+        icon: <span>c</span>,
+        shortcut: "⌘C",
+        onSelect: vi.fn(),
+      },
+    ];
+
+    function renderSlots(
+      classNames: React.ComponentProps<typeof CommandPalette>["classNames"]
+    ) {
+      return render(
+        <CommandPalette
+          open
+          onClose={vi.fn()}
+          items={slotItems}
+          classNames={classNames}
+        />
+      ).container;
+    }
+
+    it("lands classNames.search on the search row", () => {
+      const c = renderSlots({ search: "border-b-4" });
+      const el = c.querySelector(".command-palette-search")!;
+      expect(el.getAttribute("class")).toContain("command-palette-search");
+      expect(el.getAttribute("class")).toContain("border-b-4");
+    });
+
+    it("lands classNames.input on the query field", () => {
+      renderSlots({ input: "text-sm" });
+      const el = screen.getByRole("combobox");
+      expect(el.getAttribute("class")).toContain("command-palette-input");
+      expect(el.getAttribute("class")).toContain("text-sm");
+    });
+
+    it("lands classNames.list on the results container", () => {
+      renderSlots({ list: "max-h-40" });
+      const el = screen.getByRole("listbox");
+      expect(el.getAttribute("class")).toContain("command-palette-list");
+      expect(el.getAttribute("class")).toContain("max-h-40");
+    });
+
+    it("lands classNames.group on every group", () => {
+      renderSlots({ group: "mt-r2" });
+      const el = screen.getByRole("group");
+      expect(el.getAttribute("class")).toContain("command-palette-group");
+      expect(el.getAttribute("class")).toContain("mt-r2");
+    });
+
+    it("lands classNames.groupHeader on every group heading", () => {
+      const c = renderSlots({ groupHeader: "uppercase" });
+      const el = c.querySelector(".command-palette-group-header")!;
+      expect(el.getAttribute("class")).toContain("command-palette-group-header");
+      expect(el.getAttribute("class")).toContain("uppercase");
+    });
+
+    it("lands classNames.empty on the no-results row", () => {
+      const { container } = render(
+        <CommandPalette
+          open
+          onClose={vi.fn()}
+          items={[]}
+          classNames={{ empty: "py-r2" }}
+        />
+      );
+      const el = container.querySelector(".command-palette-empty")!;
+      expect(el.getAttribute("class")).toContain("command-palette-empty");
+      expect(el.getAttribute("class")).toContain("py-r2");
+    });
+
+    it("lands classNames.itemIcon on the default row's glyph", () => {
+      const c = renderSlots({ itemIcon: "size-r3" });
+      const el = c.querySelector(".command-palette-option-icon")!;
+      expect(el.getAttribute("class")).toContain("command-palette-option-icon");
+      expect(el.getAttribute("class")).toContain("size-r3");
+    });
+
+    it("lands classNames.itemLabel on the default row's text", () => {
+      const c = renderSlots({ itemLabel: "font-bold" });
+      const el = c.querySelector(".command-palette-option-label")!;
+      expect(el.getAttribute("class")).toContain("command-palette-option-label");
+      expect(el.getAttribute("class")).toContain("font-bold");
+    });
+
+    it("lands classNames.itemShortcut on the default row's Kbd", () => {
+      const c = renderSlots({ itemShortcut: "opacity-50" });
+      const el = c.querySelector(".command-palette-option-shortcut")!;
+      expect(el.getAttribute("class")).toContain("command-palette-option-shortcut");
+      expect(el.getAttribute("class")).toContain("opacity-50");
+    });
+
+    it("keeps every base class when no slot is passed", () => {
+      const c = renderSlots(undefined);
+      expect(c.querySelector(".command-palette-search")?.getAttribute("class")).toBe(
+        "command-palette-search"
+      );
+      expect(screen.getByRole("listbox").getAttribute("class")).toBe(
+        "command-palette-list"
+      );
+      expect(c.querySelector(".command-palette-group")?.getAttribute("class")).toBe(
+        "command-palette-group"
+      );
+      expect(
+        c.querySelector(".command-palette-option-label")?.getAttribute("class")
+      ).toBe("command-palette-option-label");
+    });
+
+    it("puts no slot class on the dialog", () => {
+      renderSlots({
+        search: "slot-search",
+        input: "slot-input",
+        list: "slot-list",
+        group: "slot-group",
+        groupHeader: "slot-group-header",
+        itemIcon: "slot-item-icon",
+        itemLabel: "slot-item-label",
+        itemShortcut: "slot-item-shortcut",
+      });
+      expect(screen.getByRole("dialog").getAttribute("class")).toBe(
+        "command-palette no-body-scroll"
+      );
+    });
+
+    it("rejects an unknown slot key at compile time", () => {
+      render(
+        <CommandPalette
+          open
+          onClose={vi.fn()}
+          items={slotItems}
+          // @ts-expect-error `item` is not a slot — CommandPalette.Item reaches
+          // that element, so a slot for it would be a second writer.
+          classNames={{ item: "p-4" }}
+        />
+      );
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("does not put classNames on the DOM", () => {
+      renderSlots({ list: "max-h-40" });
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.hasAttribute("classnames")).toBe(false);
+      expect(dialog.outerHTML).not.toContain("[object Object]");
+    });
   });
 });

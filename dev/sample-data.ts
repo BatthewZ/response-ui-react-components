@@ -1,8 +1,8 @@
-import type { MultiSelectOption } from "../src";
+import type { MultiSelectItem } from "../src";
 
 /** Sample data used by more than one dev view. View-local data stays in its view. */
 
-export const SKILL_OPTIONS: MultiSelectOption[] = [
+export const SKILL_OPTIONS: MultiSelectItem[] = [
   { value: "react", label: "React" },
   { value: "typescript", label: "TypeScript" },
   { value: "css", label: "CSS" },

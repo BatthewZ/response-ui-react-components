@@ -1,10 +1,12 @@
 "use client";
 import {
   type ComponentPropsWithRef,
+  createContext,
   forwardRef,
   Fragment,
   type ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useMemo,
@@ -13,11 +15,11 @@ import {
 } from "react";
 
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { Kbd } from "./Kbd";
 
-export type CommandItem = {
+export type CommandPaletteItem = {
   id: string;
   label: string;
   group?: string;
@@ -28,6 +30,33 @@ export type CommandItem = {
   onSelect: () => void;
 };
 
+/**
+ * What the root hands its children function, once per row of its **own**
+ * filtered and grouped list. `items` is the only writer of the data; this is the
+ * only writer of a row's content.
+ */
+export interface CommandPaletteRenderArgs {
+  item: CommandPaletteItem;
+  /** Position in the rendered order — filtered, then grouped. */
+  index: number;
+  /** Whether this row currently holds the virtual keyboard cursor. */
+  active: boolean;
+}
+
+/**
+ * Row identity, set by the root around each `children` call. `CommandPalette.Item`
+ * reads everything from it, so a consumer supplies a row's content and never its
+ * `id`, `role`, ARIA state or handlers — and cannot render a row that is not one
+ * of the root's own.
+ */
+const RowContext = createContext<
+  (CommandPaletteRenderArgs & {
+    optionId: (index: number) => string;
+    setActiveIndex: (index: number) => void;
+    onClose: () => void;
+  }) | null
+>(null);
+
 type CommandPaletteProps = {
   open: boolean;
   /**
@@ -35,9 +64,20 @@ type CommandPaletteProps = {
    * starts and ends on the scrim outside the panel.
    */
   onClose: () => void;
-  items: CommandItem[];
+  items: CommandPaletteItem[];
   /** Replaces the default case-insensitive substring filter over label + keywords. */
-  filter?: (item: CommandItem, query: string) => boolean;
+  filter?: (item: CommandPaletteItem, query: string) => boolean;
+  /**
+   * Composes one result row. Optional: omitted, the root renders the standard
+   * icon / label / shortcut row.
+   *
+   * It is a **function**, called by the root once per row of the list it has
+   * already filtered and grouped — so `items` stays the single writer of the
+   * data. Return a `CommandPalette.Item`: it carries the row's `id`, `role`,
+   * `aria-selected`, active state and select handler, none of which a consumer
+   * can supply or get wrong.
+   */
+  children?: (args: CommandPaletteRenderArgs) => ReactNode;
   placeholder?: string;
   emptyMessage?: ReactNode;
   /**
@@ -49,13 +89,32 @@ type CommandPaletteProps = {
   listLabel?: string;
   /** Announced whenever the result count changes. */
   statusMessage?: (count: number) => string;
-} & Omit<ComponentPropsWithRef<"dialog">, "open">;
+  /**
+   * Class overrides for the internals the root renders. `className` is the
+   * `<dialog>` — the palette surface itself — and the result row is reached
+   * through `CommandPalette.Item`, so the slots are the chrome around them. The
+   * three `item*` keys land on the **default** row; a row you compose yourself
+   * is yours to class. The union is written out here so an unknown key is a type
+   * error rather than a silently ignored one.
+   */
+  classNames?: SlotClassNames<
+    | "search"
+    | "input"
+    | "list"
+    | "group"
+    | "groupHeader"
+    | "empty"
+    | "itemIcon"
+    | "itemLabel"
+    | "itemShortcut"
+  >;
+} & Omit<ComponentPropsWithRef<"dialog">, "open" | "children">;
 
 /**
  * Default filter: case-insensitive substring match over `label` and `keywords`.
  * An empty/whitespace query matches everything.
  */
-function defaultFilter(item: CommandItem, query: string): boolean {
+function defaultFilter(item: CommandPaletteItem, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (q === "") return true;
   if (item.label.toLowerCase().includes(q)) return true;
@@ -88,19 +147,21 @@ function defaultStatusMessage(count: number): string {
  * then grouped — and surfaced through `aria-activedescendant`. Disabled items
  * are skipped.
  */
-export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>(
+const CommandPaletteRoot = forwardRef<HTMLDialogElement, CommandPaletteProps>(
   function CommandPalette(
     {
       open,
       onClose,
       items,
       filter = defaultFilter,
+      children,
       placeholder = "Type a command or search…",
       emptyMessage = "No results",
       searchLabel = "Search commands",
       listLabel = "Commands",
       statusMessage = defaultStatusMessage,
       className,
+      classNames,
       onClick,
       onPointerDown,
       ...props
@@ -135,7 +196,7 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
     // Groups appear in first-seen order; ungrouped items render on their own.
     const { groups, ordered } = useMemo(() => {
       const order: (string | undefined)[] = [];
-      const map = new Map<string | undefined, CommandItem[]>();
+      const map = new Map<string | undefined, CommandPaletteItem[]>();
       for (const item of filtered) {
         const key = item.group;
         if (!map.has(key)) {
@@ -145,7 +206,7 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
         map.get(key)!.push(item);
       }
 
-      const flat: CommandItem[] = [];
+      const flat: CommandPaletteItem[] = [];
       const built = order.map((key) => {
         const entries = map.get(key)!.map((item) => {
           const index = flat.length;
@@ -332,43 +393,46 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
     const hasResults = ordered.length > 0;
     const activeId = hasResults && isSelectable(activeIndex) ? optionId(activeIndex) : undefined;
 
+    /** The row the root renders when no children function is given. */
+    const defaultRow = ({ item }: CommandPaletteRenderArgs) => (
+      <Item>
+        {item.icon != null && (
+          <span
+            className={cn("command-palette-option-icon", classNames?.itemIcon)}
+            aria-hidden="true"
+          >
+            {item.icon}
+          </span>
+        )}
+        <span className={cn("command-palette-option-label", classNames?.itemLabel)}>
+          {item.label}
+        </span>
+        {item.shortcut != null && (
+          <Kbd className={cn("command-palette-option-shortcut", classNames?.itemShortcut)}>
+            {item.shortcut}
+          </Kbd>
+        )}
+      </Item>
+    );
+
     // A listbox owns its options directly, or through a `role="group"` that is
     // itself a direct child. An intervening list element breaks that ownership,
-    // so the structure is built from roles rather than from `<ul>`/`<li>`.
-    const renderOption = ({ item, index }: { item: CommandItem; index: number }) => {
+    // so the structure is built from roles rather than from `<ul>`/`<li>`, and
+    // the root keeps rendering it: the children function is invoked *inside* a
+    // row, never over the tree.
+    const renderRow = ({ item, index }: { item: CommandPaletteItem; index: number }) => {
       // Same predicate as `activeId`: when nothing is selectable `activeIndex`
       // still points at 0, and painting a highlight there would show a cursor no
       // screen reader can follow and that Enter will not act on.
       const active = index === activeIndex && isSelectable(index);
+      const args: CommandPaletteRenderArgs = { item, index, active };
       return (
-        <div
+        <RowContext.Provider
           key={item.id}
-          id={optionId(index)}
-          role="option"
-          aria-selected={active}
-          aria-disabled={item.disabled || undefined}
-          data-active={active || undefined}
-          data-disabled={item.disabled || undefined}
-          className="command-palette-option"
-          onMouseMove={() => {
-            if (!item.disabled) setActiveIndex(index);
-          }}
-          onClick={() => {
-            if (item.disabled) return;
-            item.onSelect();
-            onClose();
-          }}
+          value={{ ...args, optionId, setActiveIndex, onClose }}
         >
-          {item.icon != null && (
-            <span className="command-palette-option-icon" aria-hidden="true">
-              {item.icon}
-            </span>
-          )}
-          <span className="command-palette-option-label">{item.label}</span>
-          {item.shortcut != null && (
-            <Kbd className="command-palette-option-shortcut">{item.shortcut}</Kbd>
-          )}
-        </div>
+          {(children ?? defaultRow)(args)}
+        </RowContext.Provider>
       );
     };
 
@@ -385,12 +449,12 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
         onPointerDown={handlePointerDown}
         onClick={handleClick}
       >
-        <div className="command-palette-search">
+        <div className={cn("command-palette-search", classNames?.search)}>
           <input
             ref={inputRef}
             type="text"
             role="combobox"
-            className="command-palette-input"
+            className={cn("command-palette-input", classNames?.input)}
             placeholder={placeholder}
             aria-label={searchLabel}
             value={query}
@@ -408,7 +472,15 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
         {/* Mounted whether or not there are results, so a changed count arrives
             as a change *inside* an existing region. Filtering otherwise swaps
             the option list and the empty message with no announcement at all. */}
-        <div className="sr-only" role="status" aria-live="polite">
+        <div
+          // slot:(a) `sr-only` is the whole mechanism here, not decoration: the
+          // region has to be in the accessibility tree and out of the visual
+          // flow. A route to this class lets a caller drop it and print the
+          // result count above the search field.
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+        >
           {open ? statusMessage(ordered.length) : ""}
         </div>
 
@@ -417,7 +489,7 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
           id={listboxId}
           role="listbox"
           aria-label={listLabel}
-          className="command-palette-list"
+          className={cn("command-palette-list", classNames?.list)}
         >
           {hasResults ? (
             groups.map(({ group, entries }, groupIndex) => {
@@ -425,7 +497,7 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
               // a `role="group"` with no name invents a structure with nothing
               // to announce.
               if (group == null) {
-                return <Fragment key="__ungrouped__">{entries.map(renderOption)}</Fragment>;
+                return <Fragment key="__ungrouped__">{entries.map(renderRow)}</Fragment>;
               }
               const headerId = `${baseId}-group-${groupIndex}`;
               return (
@@ -433,17 +505,26 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
                   key={group}
                   role="group"
                   aria-labelledby={headerId}
-                  className="command-palette-group"
+                  className={cn("command-palette-group", classNames?.group)}
                 >
-                  <div id={headerId} className="command-palette-group-header">
+                  <div
+                    id={headerId}
+                    className={cn(
+                      "command-palette-group-header",
+                      classNames?.groupHeader,
+                    )}
+                  >
                     {group}
                   </div>
-                  {entries.map(renderOption)}
+                  {entries.map(renderRow)}
                 </div>
               );
             })
           ) : (
-            <div role="presentation" className="command-palette-empty">
+            <div
+              role="presentation"
+              className={cn("command-palette-empty", classNames?.empty)}
+            >
               {emptyMessage}
             </div>
           )}
@@ -452,3 +533,66 @@ export const CommandPalette = forwardRef<HTMLDialogElement, CommandPaletteProps>
     );
   }
 );
+
+/* ------------------------------------------------------------------ */
+/*  Item                                                              */
+/* ------------------------------------------------------------------ */
+
+type CommandPaletteItemProps = ComponentPropsWithRef<"div">;
+
+/**
+ * One result row. It takes no data prop: the row it is comes from the children
+ * call it was returned from, which is what keeps `items` the only writer of the
+ * list. Rendered anywhere else it throws rather than producing an option the
+ * palette does not know about.
+ *
+ * Declared under its compound key rather than a `CommandPalette`-prefixed one —
+ * `CommandPaletteItem` is the exported *data* type. The function name is what
+ * devtools shows.
+ */
+const Item = forwardRef<HTMLDivElement, CommandPaletteItemProps>(
+  function CommandPaletteItem(
+    { children, className, onClick, onMouseMove, ...props },
+    ref
+  ) {
+    const row = useContext(RowContext);
+    if (!row) {
+      throw new Error(
+        "CommandPalette.Item must be returned from CommandPalette's children function — it is one of the palette's own rows, not a row you author."
+      );
+    }
+    const { item, index, active, optionId, setActiveIndex, onClose } = row;
+
+    return (
+      <div
+        {...props}
+        ref={ref}
+        id={optionId(index)}
+        role="option"
+        aria-selected={active}
+        aria-disabled={item.disabled || undefined}
+        data-active={active || undefined}
+        data-disabled={item.disabled || undefined}
+        className={cn("command-palette-option", className)}
+        onMouseMove={(event) => {
+          onMouseMove?.(event);
+          if (!item.disabled) setActiveIndex(index);
+        }}
+        onClick={(event) => {
+          onClick?.(event);
+          if (item.disabled) return;
+          item.onSelect();
+          onClose();
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+
+/* ------------------------------------------------------------------ */
+/*  Export                                                            */
+/* ------------------------------------------------------------------ */
+
+export const CommandPalette = Object.assign(CommandPaletteRoot, { Item });

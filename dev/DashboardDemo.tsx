@@ -45,7 +45,7 @@ import {
   Card,
   Checkbox,
   CommandPalette,
-  type CommandItem,
+  type CommandPaletteItem,
   Container,
   DataTable,
   type ColumnDef,
@@ -986,7 +986,7 @@ function DashboardPage() {
   }, []);
 
   const { navigate } = useContext(DemoRouterContext);
-  const commands = useMemo<CommandItem[]>(
+  const commands = useMemo<CommandPaletteItem[]>(
     () => [
       ...(Object.keys(NAV) as NavPath[]).map((path) => ({
         id: path,

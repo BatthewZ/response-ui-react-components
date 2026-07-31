@@ -4,10 +4,10 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Field } from "./Field";
-import { MultiSelect, type MultiSelectOption } from "./MultiSelect";
+import { MultiSelect, type MultiSelectItem } from "./MultiSelect";
 import { useForm } from "./use-form";
 
-const OPTIONS: MultiSelectOption[] = [
+const OPTIONS: MultiSelectItem[] = [
   { value: "apple", label: "Apple" },
   { value: "banana", label: "Banana" },
   { value: "cherry", label: "Cherry" },
@@ -504,6 +504,248 @@ describe("MultiSelect", () => {
       // state in which it is non-empty.
       expect(input).toHaveAttribute("aria-invalid", "true");
       expect(input).toHaveClass("multiselect-input");
+    });
+  });
+
+  /**
+   * The compound. `options` stays the only writer of the list: `children` is a
+   * function the root calls over the list it has *already* filtered, and
+   * `MultiSelect.Item` will only take an option that came out of it.
+   */
+  describe("compound composition", () => {
+    it("renders a composed tree in the same places as the default one", async () => {
+      const user = userEvent.setup();
+      render(
+        <Harness>
+          {({ options, selected }) => (
+            <>
+              {selected.map(({ value, label }, index) => (
+                <MultiSelect.Tag key={`${index}:${value}`} index={index}>
+                  {label}
+                  <MultiSelect.TagRemove />
+                </MultiSelect.Tag>
+              ))}
+              <MultiSelect.Content>
+                {options.map((option) => (
+                  <MultiSelect.Item key={option.value} option={option}>
+                    <MultiSelect.ItemIndicator />
+                    <span data-testid={`row-${option.value}`}>{option.label}</span>
+                  </MultiSelect.Item>
+                ))}
+              </MultiSelect.Content>
+            </>
+          )}
+        </Harness>
+      );
+
+      const input = screen.getByRole("combobox");
+      await user.click(input);
+
+      const listbox = screen.getByRole("listbox");
+      expect(listbox).toHaveClass("multiselect-content");
+      expect(within(listbox).getAllByRole("option")).toHaveLength(4);
+      expect(screen.getByTestId("row-apple")).toBeInTheDocument();
+
+      await user.click(within(listbox).getByText("Apple"));
+
+      // The chip lands inside the control's chip row, not in the portal.
+      const remove = screen.getByRole("button", { name: "Remove Apple" });
+      expect(remove).toHaveClass("multiselect-tag__remove");
+      expect(remove.closest(".multiselect-tag")?.parentElement).toHaveClass(
+        "multiselect-tags"
+      );
+      // And the indicator is inside its own row.
+      const appleRow = screen.getByTestId("row-apple").closest('[role="option"]');
+      expect(appleRow?.querySelector(".multiselect-item__check")).not.toBeNull();
+    });
+
+    it("hands children the root's own filtered list, not the options prop", async () => {
+      const user = userEvent.setup();
+      const seen: string[][] = [];
+      render(
+        <Harness>
+          {({ options }) => {
+            seen.push(options.map((o) => o.value));
+            return (
+              <MultiSelect.Content>
+                {options.map((option) => (
+                  <MultiSelect.Item key={option.value} option={option}>
+                    {option.label}
+                  </MultiSelect.Item>
+                ))}
+              </MultiSelect.Content>
+            );
+          }}
+        </Harness>
+      );
+
+      const input = screen.getByRole("combobox");
+      await user.click(input);
+      expect(seen.at(-1)).toEqual(["apple", "banana", "cherry", "date"]);
+
+      await user.type(input, "ban");
+      expect(seen.at(-1)).toEqual(["banana"]);
+      expect(within(screen.getByRole("listbox")).getAllByRole("option")).toHaveLength(1);
+    });
+
+    /**
+     * The property the whole design rests on. If `MultiSelect.Item` ever starts
+     * accepting an option the root did not produce, the consumer has become a
+     * second writer of the list and this test is what says so.
+     */
+    it("refuses an option the root's list never contained", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() =>
+        render(
+          <Harness open>
+            {({ options }) => (
+              <MultiSelect.Content>
+                {options.map((option) => (
+                  <MultiSelect.Item key={option.value} option={option}>
+                    {option.label}
+                  </MultiSelect.Item>
+                ))}
+                <MultiSelect.Item option={{ value: "ghost", label: "Ghost" }}>
+                  Ghost
+                </MultiSelect.Item>
+              </MultiSelect.Content>
+            )}
+          </Harness>
+        )
+      ).toThrow(/not in the list MultiSelect handed to children/);
+      consoleError.mockRestore();
+    });
+
+    it("refuses a part rendered outside a MultiSelect", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() => render(<MultiSelect.Content />)).toThrow(
+        "MultiSelect.Content must be used within a MultiSelect"
+      );
+      expect(() => render(<MultiSelect.ItemIndicator />)).toThrow(
+        "MultiSelect.ItemIndicator must be used within a MultiSelect.Item"
+      );
+      expect(() => render(<MultiSelect.TagRemove />)).toThrow(
+        "MultiSelect.TagRemove must be used within a MultiSelect.Tag"
+      );
+      consoleError.mockRestore();
+    });
+
+    it("keeps toggling, chip removal and virtual focus working in a composed tree", async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <Harness onValueChange={onValueChange}>
+          {({ options, selected }) => (
+            <>
+              {selected.map(({ value, label }, index) => (
+                <MultiSelect.Tag key={`${index}:${value}`} index={index}>
+                  {label}
+                  <MultiSelect.TagRemove />
+                </MultiSelect.Tag>
+              ))}
+              <MultiSelect.Content>
+                {options.map((option) => (
+                  <MultiSelect.Item key={option.value} option={option}>
+                    {option.label}
+                  </MultiSelect.Item>
+                ))}
+              </MultiSelect.Content>
+            </>
+          )}
+        </Harness>
+      );
+
+      const input = screen.getByRole("combobox");
+      await user.click(input);
+      await user.keyboard("{ArrowDown}");
+      // A composed row still registers with the root's list navigation.
+      const activeId = input.getAttribute("aria-activedescendant");
+      expect(document.getElementById(activeId!)).toHaveTextContent("Apple");
+
+      await user.keyboard("{Enter}");
+      expect(onValueChange).toHaveBeenLastCalledWith(["apple"]);
+
+      await user.click(screen.getByRole("button", { name: "Remove Apple" }));
+      expect(onValueChange).toHaveBeenLastCalledWith([]);
+    });
+  });
+
+  /**
+   * One override test per slot, plus the four companions. `MultiSelect`'s other
+   * six internals are subcomponents, not slots — a slot beside one would be a
+   * second writer for the same element.
+   */
+  describe("classNames slots", () => {
+    it("lands classNames.control on the bordered box", () => {
+      const { container } = render(<Harness classNames={{ control: "border-4" }} />);
+      const control = container.querySelector(".multiselect-control")!;
+      expect(control.getAttribute("class")).toContain("multiselect-control");
+      expect(control.getAttribute("class")).toContain("border-4");
+    });
+
+    it("lands classNames.list on the chip row", () => {
+      const { container } = render(<Harness classNames={{ list: "gap-r2" }} />);
+      const tags = container.querySelector(".multiselect-tags")!;
+      expect(tags.getAttribute("class")).toContain("multiselect-tags");
+      expect(tags.getAttribute("class")).toContain("gap-r2");
+    });
+
+    it("lands classNames.input on the search field", () => {
+      render(<Harness classNames={{ input: "text-sm" }} />);
+      const input = screen.getByRole("combobox");
+      expect(input.getAttribute("class")).toContain("multiselect-input");
+      expect(input.getAttribute("class")).toContain("text-sm");
+    });
+
+    it("lands classNames.chevron on the disclosure glyph", () => {
+      const { container } = render(<Harness classNames={{ chevron: "rotate-180" }} />);
+      const chevron = container.querySelector(".multiselect-toggle")!;
+      expect(chevron.getAttribute("class")).toContain("multiselect-toggle");
+      expect(chevron.getAttribute("class")).toContain("rotate-180");
+    });
+
+    it("keeps every base class when no slot is passed", () => {
+      const { container } = render(<Harness />);
+      expect(container.querySelector(".multiselect-control")?.getAttribute("class")).toBe(
+        "multiselect-control"
+      );
+      expect(container.querySelector(".multiselect-tags")?.getAttribute("class")).toBe(
+        "multiselect-tags"
+      );
+      expect(container.querySelector(".multiselect-toggle")?.getAttribute("class")).toBe(
+        "multiselect-toggle"
+      );
+    });
+
+    it("puts no slot class on the root", () => {
+      const { container } = render(
+        <Harness
+          classNames={{
+            control: "slot-control",
+            list: "slot-list",
+            input: "slot-input",
+            chevron: "slot-chevron",
+          }}
+        />
+      );
+      const root = container.querySelector(".multiselect")!;
+      expect(root.getAttribute("class")).toBe("multiselect");
+    });
+
+    it("rejects an unknown slot key at compile time", () => {
+      render(
+        // @ts-expect-error `panel` is not a slot — MultiSelect.Content reaches
+        // that element, so a slot for it would be a second writer.
+        <Harness classNames={{ panel: "p-4" }} />
+      );
+      expect(screen.getByRole("combobox")).toBeInTheDocument();
+    });
+
+    it("does not put classNames on the DOM", () => {
+      const { container } = render(<Harness classNames={{ control: "border-4" }} />);
+      const root = container.querySelector(".multiselect")!;
+      expect(root.hasAttribute("classnames")).toBe(false);
+      expect(root.outerHTML).not.toContain("[object Object]");
     });
   });
 
