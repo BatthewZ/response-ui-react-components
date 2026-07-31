@@ -26,10 +26,20 @@ vi.mock("../animation/Parallax", () => ({
 
 // The real ScrollReveal only applies its animation class once an
 // IntersectionObserver fires, so the chosen direction is invisible in jsdom.
-// The stub keeps the pre-reveal class and records the direction.
+// The stub keeps the pre-reveal class and records the direction. It also has to
+// honour `className`: with `animate` on, this wrapper IS the grid item, so it is
+// what carries the column order.
 vi.mock("../animation/ScrollReveal", () => ({
-  ScrollReveal: ({ children, animation }: { children: React.ReactNode; animation?: string }) => (
-    <div className="scroll-reveal-hidden" data-animation={animation}>
+  ScrollReveal: ({
+    children,
+    animation,
+    className,
+  }: {
+    children: React.ReactNode;
+    animation?: string;
+    className?: string;
+  }) => (
+    <div className={["scroll-reveal-hidden", className].filter(Boolean).join(" ")} data-animation={animation}>
       {children}
     </div>
   ),
@@ -112,6 +122,63 @@ describe("Spotlight", () => {
     expect(item?.className).not.toContain("spotlight-item--reversed");
   });
 
+  /**
+   * The alternation used to be seven `order` rules in `Spotlight.css` selecting
+   * `.spotlight-item > *:not(.spotlight-image)` — the `:not()` was standing in
+   * for "whichever element is the grid item", which is the reveal wrapper when
+   * `animate` is on and `.spotlight-content` when it is off. Both columns order
+   * themselves now, so the `:not()` has nothing left to stand in for, and the
+   * classes are `sm:` because below 40rem the grid is one column and `order`
+   * would reshuffle the stack.
+   */
+  describe("column order", () => {
+    function renderRows(props: { animate?: boolean; reversed?: boolean } = {}) {
+      const { animate = false, reversed } = props;
+      return render(
+        <Spotlight animate={animate}>
+          <Spotlight.Item reversed={reversed}>
+            <Spotlight.Image src="/a.jpg" alt="A" />
+            <Spotlight.Content>First</Spotlight.Content>
+          </Spotlight.Item>
+          <Spotlight.Item reversed={reversed}>
+            <Spotlight.Image src="/b.jpg" alt="B" />
+            <Spotlight.Content>Second</Spotlight.Content>
+          </Spotlight.Item>
+        </Spotlight>,
+      );
+    }
+
+    it("alternates the image column row by row", () => {
+      const { container } = renderRows();
+      const images = container.querySelectorAll(".spotlight-image");
+      const contents = container.querySelectorAll(".spotlight-content");
+      expect(images[0].className.split(" ")).toContain("sm:order-1");
+      expect(contents[0].className.split(" ")).toContain("sm:order-2");
+      expect(images[1].className.split(" ")).toContain("sm:order-2");
+      expect(contents[1].className.split(" ")).toContain("sm:order-1");
+    });
+
+    it("reversed flips whatever the alternation decided", () => {
+      const { container } = renderRows({ reversed: true });
+      const images = container.querySelectorAll(".spotlight-image");
+      expect(images[0].className.split(" ")).toContain("sm:order-2");
+      expect(images[1].className.split(" ")).toContain("sm:order-1");
+    });
+
+    it("puts the copy's order on the reveal wrapper, which is the grid item", () => {
+      const { container } = renderRows({ animate: true });
+      const item = container.querySelector(".spotlight-item")!;
+      const gridItems = [...item.children];
+      const copyColumn = gridItems.find((el) => !el.classList.contains("spotlight-image"))!;
+
+      // The wrapper, not the copy box inside it, is what the grid orders.
+      expect(copyColumn.className.split(" ")).toContain("sm:order-2");
+      expect(copyColumn.querySelector(".spotlight-content")?.className.split(" ")).not.toContain(
+        "sm:order-2",
+      );
+    });
+  });
+
   it("applies spotlight-content class to content", () => {
     const { container } = render(
       <Spotlight animate={false}>
@@ -162,14 +229,14 @@ describe("Spotlight", () => {
   /* ------------------------------------------------------------------ */
 
   /**
-   * The pin on this hatch's one deviation from the house form: `imgProps` is
-   * spread **raw**, with no `cn()` merge, because this `<img>` carries no class
-   * of its own — every rule that shapes it hangs off `.spotlight-image` on the
-   * wrapper. `cn("one-literal")` returns that literal unchanged, so inventing a
-   * base class here to merge against would buy nothing. If a class is ever added
-   * to this element, the merge becomes mandatory and this test is what says so.
+   * This used to pin the opposite claim: that `imgProps` was spread **raw**,
+   * because the `<img>` carried no class of its own and every rule shaping it
+   * hung off `.spotlight-image img` in the stylesheet. That rule is now
+   * `size-full object-cover` on the `<img>` itself, so the deviation is gone and
+   * the hatch takes the house form — `cn()`, caller last, so `object-contain`
+   * beats the default. `Hero.Background` and `MediaCard.Image` already did this.
    */
-  it("gives the <img> exactly the class the bag asked for, and none of its own", () => {
+  it("merges imgProps.className after the <img>'s own crop classes", () => {
     const { container } = render(
       <Spotlight animate={false}>
         <Spotlight.Item>
@@ -177,16 +244,24 @@ describe("Spotlight", () => {
         </Spotlight.Item>
       </Spotlight>,
     );
-    expect(container.querySelector("img")?.hasAttribute("class")).toBe(false);
+    expect(container.querySelector("img")?.getAttribute("class")).toBe(
+      "size-full object-cover",
+    );
 
     const { container: withBag } = render(
       <Spotlight animate={false}>
         <Spotlight.Item>
-          <Spotlight.Image src="/photo.jpg" alt="A photo" imgProps={{ className: "rounded-lg" }} />
+          <Spotlight.Image
+            src="/photo.jpg"
+            alt="A photo"
+            imgProps={{ className: "object-contain" }}
+          />
         </Spotlight.Item>
       </Spotlight>,
     );
-    expect(withBag.querySelector("img")?.getAttribute("class")).toBe("rounded-lg");
+    expect(withBag.querySelector("img")?.getAttribute("class")).toBe(
+      "size-full object-contain",
+    );
   });
 
   // #193 — every other prop landed on the wrapper div, never on the <img>.

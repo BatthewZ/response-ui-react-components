@@ -20,6 +20,59 @@ import { cn, type SlotClassNames } from "../../util/style";
 
 import { IconButton } from "./IconButton";
 
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `Carousel.css` is gone; every rule it held is here. Each constant is one flat
+ * string literal because the docs and focus guards resolve hoisted constants
+ * textually and a composed one would not resolve.
+ *
+ * The scrollbar is hidden three ways because no one of them covers every engine:
+ * `[scrollbar-width:none]` is Firefox, `[&::-webkit-scrollbar]:hidden` is
+ * Chrome/Safari, and `[-webkit-overflow-scrolling:touch]` buys iOS momentum.
+ * `overflow-x: auto` forces `overflow-y` to clip, so `py-r5` reserves vertical
+ * room for item shadows and keyboard focus rings that would otherwise be cut off.
+ *
+ * The drag state is `data-dragging`, not the old `.carousel-track--dragging`
+ * class. A BEM modifier in `@layer components` and a base declaration in
+ * `@layer utilities` invert: `cursor-grab` would start beating `cursor-grabbing`
+ * whatever the DOM said. As an attribute variant the modifier emits at 0,2,0
+ * against the base's 0,1,0 and wins on specificity instead of on where Tailwind
+ * sorts it. Breaking, and named in the changelog: a consumer styling
+ * `.carousel-track--dragging` must retarget `[data-dragging]`.
+ */
+const carouselTrackClasses =
+  "flex cursor-grab snap-x snap-proximity gap-[var(--MEDIA-CAROUSEL-GAP)] overflow-x-auto scroll-smooth px-[var(--MEDIA-CAROUSEL-PEEK)] py-r5 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden motion-reduce:scroll-auto data-dragging:cursor-grabbing data-dragging:snap-none data-dragging:scroll-auto data-dragging:select-none";
+
+/**
+ * The arrows are `IconButton`s, so ink, ring, radius, press feedback — and the
+ * transition DURATION, through its `duration-fast` — all come from that
+ * component. Two declarations that used to sit here were already dead against
+ * it and are not revived:
+ *
+ * - `:hover { background-color: color-mix(…, --C-SURFACE-2 75%, transparent) }`
+ *   lost to `IconButton`'s opaque `hover:bg-surface-2` the moment this package's
+ *   CSS moved into `@layer components`. The opaque wash is what has shipped ever
+ *   since and `docs/components/carousel.md` already says so, so it is now the
+ *   intended rendering rather than a regression waiting to be undone.
+ * - `transition-duration: var(--MOTION-DURATION-ENTER)` lost to `duration-fast`
+ *   the same way. `transition-[…]` reads the duration back out of `--tw-duration`,
+ *   so IconButton still supplies it and the fade keeps the 100ms it ships with.
+ *   The EASE was never beaten — nothing in `IconButton` sets one — so it stays.
+ *
+ * `data-[hidden=true]:opacity-0` is the opposite call: that one is a live defect.
+ * `IconButton`'s `disabled:opacity-50` was beating it from a layer above and the
+ * end-of-rail arrow rendered as a half-visible, non-interactive ghost rather than
+ * fading out. As a utility the two are both 0,2,0 and the attribute variant is
+ * emitted after the pseudo-class one (measured with
+ * `probe-utility-exists.mjs --css`), so the hidden state wins; `cn()` keeps both,
+ * because tailwind-merge only collapses utilities sharing a modifier.
+ */
+const carouselArrowClasses =
+  "absolute top-1/2 z-10 -translate-y-1/2 transition-[opacity,background-color] ease-[var(--MOTION-EASE-ENTER)] motion-reduce:transition-none data-[hidden=true]:pointer-events-none data-[hidden=true]:opacity-0";
+
 /** +1 in LTR, -1 in RTL — the sign `scrollLeft` moves in to advance one frame. */
 function readingDirection(track: HTMLElement): 1 | -1 {
   return getComputedStyle(track).direction === "rtl" ? -1 : 1;
@@ -174,7 +227,7 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
     >
       <div
         ref={ref}
-        className={cn("carousel", className)}
+        className={cn("carousel relative", className)}
         // ARIA prohibits `aria-roledescription` and a name on the implicit
         // `generic` role, so the root has to carry a real one.
         role="group"
@@ -186,17 +239,19 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
         {...props}
       >
         {title && (
-          <div id={titleId} className={cn("carousel-title", classNames?.title)}>
+          <div id={titleId} className={cn("carousel-title mb-r4", classNames?.title)}>
             {title}
           </div>
         )}
-        {/* Viewport wraps the track + arrows so the arrows center on the
-            track itself, not the title-inclusive root. */}
-        <div className={cn("carousel-viewport", classNames?.viewport)}>
+        {/* Positioning context for the arrows so they centre on the track, not the
+            title-inclusive root, and are not thrown off by the title height. */}
+        <div className={cn("carousel-viewport relative", classNames?.viewport)}>
           {children}
           <IconButton
             aria-label={prevLabel}
-            className={cn("carousel-arrow carousel-arrow--prev", classNames?.prev)}
+            // Logical, not physical: under `dir="rtl"` the previous arrow belongs
+            // on the right and the next one on the left.
+            className={cn("carousel-arrow carousel-arrow--prev start-0", carouselArrowClasses, classNames?.prev)}
             // Hidden by opacity alone, an end-of-rail arrow stayed in the tab
             // order as an invisible no-op button.
             disabled={!canScrollPrev}
@@ -215,7 +270,7 @@ const CarouselRoot = forwardRef<HTMLDivElement, CarouselProps>(function Carousel
           </IconButton>
           <IconButton
             aria-label={nextLabel}
-            className={cn("carousel-arrow carousel-arrow--next", classNames?.next)}
+            className={cn("carousel-arrow carousel-arrow--next end-0", carouselArrowClasses, classNames?.next)}
             disabled={!canScrollNext}
             data-hidden={!canScrollNext}
             onClick={scrollNext}
@@ -279,7 +334,7 @@ const CarouselTrack = forwardRef<HTMLDivElement, CarouselTrackProps>(function Ca
         prevTime: now,
         velocity: 0,
       };
-      track.classList.add("carousel-track--dragging");
+      track.dataset.dragging = "true";
     },
     [onMouseDown, trackRef]
   );
@@ -312,7 +367,7 @@ const CarouselTrack = forwardRef<HTMLDivElement, CarouselTrackProps>(function Ca
       const state = dragState.current;
       if (!state.isDragging) return;
       state.isDragging = false;
-      track!.classList.remove("carousel-track--dragging");
+      delete track!.dataset.dragging;
 
       const elapsed = performance.now() - state.prevTime;
       const hasVelocity = elapsed < 100 && Math.abs(state.velocity) > 0.1;
@@ -354,7 +409,7 @@ const CarouselTrack = forwardRef<HTMLDivElement, CarouselTrackProps>(function Ca
       ref={mergeRefs(forwardedRef, trackRef)}
       role="region"
       aria-label="Carousel items"
-      className={cn("carousel-track", className)}
+      className={cn("carousel-track", carouselTrackClasses, className)}
       onMouseDown={handleMouseDown}
       onDragStart={composeEventHandlers(onDragStart, (e) => e.preventDefault())}
       onClickCapture={handleClickCapture}
@@ -378,7 +433,7 @@ const CarouselItem = forwardRef<HTMLDivElement, CarouselItemProps>(function Caro
       ref={ref}
       role="group"
       aria-roledescription="slide"
-      className={cn("carousel-item", className)}
+      className={cn("carousel-item w-[var(--carousel-item-width,100%)] shrink-0 snap-start", className)}
       {...props}
     />
   );

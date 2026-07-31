@@ -244,23 +244,34 @@ deferred loading and any card can opt back out:
 
 ## Theme tokens
 
-MediaCard styles almost everything from `MediaCard.css`, which reads the contract variables
-directly. Three of the Tailwind utilities in the `.tsx` also resolve to a token, and all
-three land on the responsive `r`-scale: `p-r3` for the caption padding, and `top-r5
-right-r5` for the corner-chip inset. Everything else in the `.tsx` — `absolute`, `inset-0`,
-`z-10`, `size-full`, `object-cover`, the flex classes — resolves to no token at all.
+`MediaCard.css` is gone: every rule it held is now a Tailwind utility on the element it
+paints, and each still resolves to the same contract variable.
 
-| Where                     | Utility | Override                                                 |
-| ------------------------- | ------- | -------------------------------------------------------- |
-| Card corners              | —       | `--RADIUS-LG`                                            |
-| Elevation, rest → hover   | —       | `--SHADOW-SM` → `--SHADOW-LG`                            |
-| Hover scale and lift      | —       | `--MEDIA-CARD-HOVER-SCALE` · `--MEDIA-CARD-HOVER-LIFT`   |
-| Transform / shadow timing | —       | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER`        |
-| Focus outline             | —       | `--C-BORDER-FOCUS`                                       |
-| Image box ratio           | —       | `--MEDIA-ASPECT-POSTER` · `--ASPECT-WIDE` · `--ASPECT-SQUARE` |
-| Overlay gradient          | —       | `--OVERLAY-GRADIENT-START` (top) · `--OVERLAY-GRADIENT-END` (bottom) |
-| `Content` padding         | `p-r3`  | `--R-SIZE-3`                                             |
+| Where                     | Utility                                        | Override                                                 |
+| ------------------------- | ---------------------------------------------- | -------------------------------------------------------- |
+| Card corners              | `rounded-lg`                                   | `--RADIUS-LG`                                            |
+| Elevation, rest → hover   | `shadow-sm` · `hover:shadow-lg`                | `--SHADOW-SM` → `--SHADOW-LG`                            |
+| Hover scale and lift      |                                                | `--MEDIA-CARD-HOVER-SCALE` · `--MEDIA-CARD-HOVER-LIFT`   |
+| Transform / shadow timing | `duration-[var(--MOTION-DURATION-ENTER)]`      | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER`        |
+| Focus outline             | `focus-visible:outline-border-focus`           | `--C-BORDER-FOCUS`                                       |
+| Image box ratio           |                                                | `--MEDIA-ASPECT-POSTER` · `--ASPECT-WIDE` · `--ASPECT-SQUARE` |
+| Overlay gradient          | `bg-[linear-gradient(to_top,var(--OVERLAY-GRADIENT-END),var(--OVERLAY-GRADIENT-START))]` | `--OVERLAY-GRADIENT-START` (top) · `--OVERLAY-GRADIENT-END` (bottom) |
+| `Content` padding         | `p-r3`                                         | `--R-SIZE-3`                                             |
 
+The scale, the lift and all three ratios are read as custom properties —
+`hover:scale-[var(--MEDIA-CARD-HOVER-SCALE)]`,
+`hover:translate-y-[var(--MEDIA-CARD-HOVER-LIFT)]`,
+`aspect-[var(--MEDIA-ASPECT-POSTER)]`, `aspect-[var(--ASPECT-WIDE)]`,
+`aspect-[var(--ASPECT-SQUARE)]`. The first two tokens sit in no Tailwind namespace at all;
+the ratios do (`aspect-wide` / `aspect-square` compile), but the bracket spelling is what
+`verify:component-docs` can trace back to a variable, so the table above can state the
+contract instead of under-reporting it.
+
+**The lift is now `translate` + `scale`, the individual transform properties**, because that
+is what Tailwind's `translate-y-*` and `scale-*` set. The transition list names them rather
+than `transform` — transitioning `transform` would animate nothing — and the lift applies
+before the scale rather than after it, so the card rises by exactly `--MEDIA-CARD-HOVER-LIFT`
+instead of by that times the scale. At the shipped values that is a 0.005rem difference.
 **`--MEDIA-CARD-HOVER-SCALE`, `--MEDIA-CARD-HOVER-LIFT` and `--MEDIA-ASPECT-POSTER` are
 domain tokens owned by this package**, defined in `src/tokens.css` — not in the
 `@batthewz/response-ui-css` foundation, which owns everything else in the table above.
@@ -278,11 +289,13 @@ The caption padding rides the responsive `r`-scale: `--R-SIZE-3` is `1rem` and s
 `Action`'s centring uses no spacing at all.
 
 The white ink `Content` applies is **not** a token you can re-point: it is a literal
-`oklch(1 0 0)` written onto `--C-TEXT-*` inside `.media-card__content`. To tint captions
-differently, override the rule or pass your own colour class.
+`oklch(1 0 0)` written onto six `--C-TEXT-*` variables by arbitrary-property utilities on
+`MediaCard.Content` itself. To tint captions differently, pass your own
+`className="[--C-TEXT-PRIMARY:…]"` — it merges last through `cn()`, so it collapses against
+the default rather than racing it in the cascade.
 
 Under `prefers-reduced-motion: reduce` the card keeps its `box-shadow` transition but drops
-the transform from the transition list and sets `transform: none` on hover — so on hover the
+the movement from the transition list and neutralises it on hover — so on hover the
 elevation change survives and the scale and lift do not. The `:focus-within` twin is not
 zeroed the same way: tabbing in still applies the transform, just untransitioned.
 

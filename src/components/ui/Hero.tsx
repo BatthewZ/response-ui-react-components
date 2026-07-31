@@ -12,18 +12,47 @@ import { cn, type SlotClassNames } from "../../util/style";
 type HeroSize = "sm" | "md" | "lg" | "full";
 type HeroAlign = "start" | "center" | "end";
 
+/**
+ * The BEM names survive as declaration-free markers — a consumer stylesheet,
+ * devtools and Astro/Rails consumers of `response-ui-css` still find one name
+ * per variant — and the utility beside each one is what paints it.
+ *
+ * `hero--full` was `min-height: 100vh` followed by `min-height: 100dvh`, a
+ * progressive-enhancement pair. Only `min-h-dvh` survives, and the fallback is
+ * not a loss: two utilities setting the same property resolve by Tailwind's sort
+ * order rather than by the browser dropping the one it cannot parse, so the pair
+ * does not transpose — and every engine Tailwind 4 itself supports (Safari 16.4,
+ * Chrome 111, Firefox 128) has had `dvh` since well before that. The fallback
+ * was already dead weight in a v4 build.
+ */
 const sizeClass: Record<HeroSize, string> = {
-  sm: "hero--sm",
-  md: "hero--md",
-  lg: "hero--lg",
-  full: "hero--full",
+  sm: "hero--sm min-h-[40vh]",
+  md: "hero--md min-h-[60vh]",
+  lg: "hero--lg min-h-[80vh]",
+  full: "hero--full min-h-dvh",
 };
 
 const alignClass: Record<HeroAlign, string> = {
-  start: "hero--align-start",
-  center: "hero--align-center",
-  end: "hero--align-end",
+  start: "hero--align-start items-start",
+  center: "hero--align-center items-center",
+  end: "hero--align-end items-end",
 };
+
+/**
+ * `Hero.css` keeps the two `.stagger-item` rules and says why; everything else
+ * is here. Each constant is one flat string literal because the docs and focus
+ * guards resolve hoisted constants textually and a composed one would not
+ * resolve.
+ */
+const heroClasses = "relative flex w-full overflow-hidden";
+
+/** It is a paint, not a hit target — anything under it stays clickable. The
+ *  fallback matches `CommandPalette`: without the token layer the scrim would
+ *  otherwise be transparent rather than 50% black. */
+const heroOverlayClasses =
+  "pointer-events-none absolute inset-0 bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]";
+
+const heroContentClasses = "relative z-10 w-full p-r3 sm:p-r2 lg:p-r1";
 
 /* ------------------------------------------------------------------ */
 /*  Hero (root)                                                        */
@@ -59,12 +88,12 @@ const HeroRoot = forwardRef<HTMLElement, HeroProps>(function Hero(
   return (
     <section
       ref={ref}
-      className={cn("hero", sizeClass[size], alignClass[align], className)}
+      className={cn("hero", heroClasses, sizeClass[size], alignClass[align], className)}
       {...props}
     >
       {children}
       {showOverlay && (
-        <div aria-hidden="true" className={cn("hero__overlay", classNames?.overlay)} />
+        <div aria-hidden="true" className={cn("hero__overlay", heroOverlayClasses, classNames?.overlay)} />
       )}
     </section>
   );
@@ -123,7 +152,15 @@ const HeroBackground = forwardRef<HTMLDivElement, HeroBackgroundProps>(function 
   return (
     <div
       ref={ref}
-      className={cn("hero__background", image && parallax && "hero__background--parallax", className)}
+      className={cn(
+        "hero__background absolute",
+        // Ternary, not `inset-0` plus an override: two utilities setting the same
+        // property resolve by Tailwind's sort order, and `cn()`'s merge does not
+        // treat `inset-y` as superseding `inset`. Emitting one or the other is
+        // the same computed box with nothing left to a tie-break.
+        image && parallax ? "hero__background--parallax -inset-y-1/2 inset-x-0" : "inset-0",
+        className
+      )}
       {...props}
     >
       {inner}
@@ -147,7 +184,7 @@ const HeroContent = forwardRef<HTMLDivElement, HeroContentProps>(function HeroCo
   ref
 ) {
   return (
-    <div ref={ref} className={cn("hero__content", className)} {...props}>
+    <div ref={ref} className={cn("hero__content", heroContentClasses, className)} {...props}>
       {animate ? (
         <ScrollReveal animation={animation}>
           <Stagger>{children}</Stagger>

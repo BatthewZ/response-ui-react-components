@@ -1,30 +1,22 @@
-.popover-trigger {
-  display: inline-flex;
-  width: fit-content;
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  cursor: pointer;
-}
+/* ------------------------------------------------------------------ */
+/*  Popover — converted to utilities; the arrow could not move          */
+/* ------------------------------------------------------------------ */
 
-.popover-content {
-  background: var(--C-SURFACE-0);
-  border: 1px solid var(--C-BORDER-DEFAULT);
-  border-radius: var(--RADIUS-MD);
-  box-shadow: var(--SHADOW-LG);
-  padding: 0.75rem 1rem;
-  z-index: 40;
-  outline: none;
-}
+/* The trigger and the panel are Tailwind utilities in `Popover.tsx`. What is
+   left is the pointer triangle, and the reason is `border: inherit`.
 
-/* The panel is a dialog with no tabbable content of its own, so FloatingFocusManager
-   gives it tabindex="0" and focuses it on open — the reset above would otherwise
-   leave a keyboard user with no focus affordance at all. */
-.popover-content:focus-visible {
-  outline: 2px solid var(--C-BORDER-FOCUS);
-  outline-offset: 2px;
-}
+   `border-inherit` is `border-color: inherit` ONLY, so it cannot carry a border
+   that inherits the panel's WIDTH and STYLE — which is exactly what the four
+   `[data-side]` rules below zero two edges of. `[border:inherit]` does compile,
+   and a `data-[side=…]:` variant would out-rank it on specificity (0,2,0 against
+   0,1,0), so the zeroing would survive; what does not survive is the caller.
+   Tailwind emits arbitrary-property utilities LAST in `@layer utilities`, so
+   `[border:inherit]` would beat `classNames={{ arrow: "border-2" }}` instead of
+   losing to it — and the docblock below is explicit that out-ranking this rule
+   is what `classNames.arrow` is for. AGENTS.md "The test", questions 3 and 5.
+
+   `.popover-arrow` is therefore the whole of this file, and its two `inherit`s
+   are the whole of the reason. */
 
 /* The pointer triangle, rendered only for <Popover.Content arrow>. A square
    rotated 45deg with half of it pushed past the panel edge: the two edges facing

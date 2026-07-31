@@ -254,15 +254,21 @@ describe("Hero", () => {
       expect(scrim?.getAttribute("class")).toContain("bg-status-error");
     });
 
-    it("leaves the scrim on its base class alone when no slot is passed", () => {
+    /**
+     * This used to assert the class attribute equalled the marker exactly, which
+     * stopped being expressible once the scrim carried its own utilities. The
+     * falsifier is unchanged: an absent slot appends *nothing* — no `undefined`,
+     * no `null`, no empty token.
+     */
+    it("leaves the scrim on its base classes alone when no slot is passed", () => {
       const { container } = render(
         <Hero overlay>
           <p>copy</p>
         </Hero>
       );
-      expect(container.querySelector(".hero__overlay")?.getAttribute("class")).toBe(
-        "hero__overlay"
-      );
+      const classes = container.querySelector(".hero__overlay")?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain("hero__overlay");
+      expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     });
 
     it("does not put the slot class on the section", () => {
@@ -287,9 +293,9 @@ describe("Hero", () => {
           <p>copy</p>
         </Hero>
       );
-      expect(container.querySelector(".hero__overlay")?.getAttribute("class")).toBe(
-        "hero__overlay"
-      );
+      expect(
+        container.querySelector(".hero__overlay")?.getAttribute("class")?.split(" ")
+      ).not.toContain("bg-status-error");
     });
 
     it("does not leak classNames onto the DOM", () => {

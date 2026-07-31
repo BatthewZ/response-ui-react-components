@@ -21,6 +21,24 @@ import {
   useMenuRoot,
 } from "./menu-internals";
 
+/**
+ * The trigger paints nothing: it lays a `<button>` out and gets out of the way,
+ * which is what makes `asChild` with a `Button` look like a Button and the bare
+ * trigger look like the text around it.
+ *
+ * `DropdownMenu.css` is gone rather than reduced. Its rule was three resets
+ * (`background: none`, `border: none`, `padding: 0`, `font: inherit`) and two
+ * positive declarations, and a reset cannot be transposed into a class list —
+ * Tailwind sorts arbitrary properties last, so `[font:inherit]` would beat a
+ * caller's `className` instead of losing to it. The escape is enumeration rather
+ * than transposition: Preflight already gives a `<button>` every one of those
+ * four (checked in the compiled base layer — `background-color: transparent`,
+ * `border: 0 solid`, `margin`/`padding: 0`, `font: inherit`), which is the same
+ * thing `Button.tsx` relies on while carrying no reset of its own. So only the
+ * two positive declarations were left to move.
+ */
+const dropdownTriggerClasses = "inline-flex w-fit cursor-pointer";
+
 /* ------------------------------------------------------------------ */
 /*  Root                                                              */
 /* ------------------------------------------------------------------ */
@@ -78,7 +96,11 @@ const DropdownMenuTrigger = forwardRef<HTMLButtonElement, DropdownMenuTriggerPro
     }
 
     return (
-      <button type="button" className={cn("dropdown-menu-trigger", className)} {...triggerProps}>
+      <button
+        type="button"
+        className={cn("dropdown-menu-trigger", dropdownTriggerClasses, className)}
+        {...triggerProps}
+      >
         {children}
       </button>
     );

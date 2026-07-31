@@ -29,13 +29,78 @@ import { cn, type SlotClassNames } from "../../util/style";
 import { useFadeDuration } from "./floating-motion";
 
 /*
- * Every element below carries a static `menu-*` class, painted by
- * `menu-internals.css`. The names are shared rather than per-consumer on
- * purpose: `DropdownMenu` and `ContextMenu` render the identical markup from the
- * identical components, so one family of names describes it honestly and stays
- * visible to Tailwind's scanner and to any static reader. Only the two triggers,
- * which each component renders itself, are component-specific.
+ * Every element below carries a static `menu-*` class. The names are shared
+ * rather than per-consumer on purpose: `DropdownMenu` and `ContextMenu` render
+ * the identical markup from the identical components, so one family of names
+ * describes it honestly and stays visible to Tailwind's scanner and to any
+ * static reader. Only the two triggers, which each component renders itself, are
+ * component-specific.
+ *
+ * The classes are now markers rather than selectors: everything the menu draws
+ * is a utility in this file. `menu-internals.css` keeps one rule and says why.
  */
+
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Each constant is one flat string literal because `verify:component-docs` and
+ * `verify:focus-affordance` resolve hoisted constants textually and a composed
+ * one would not resolve.
+ *
+ * Geometry stays in literal Tailwind rungs (`py-1`, `px-3`, `min-w-45`) rather
+ * than the responsive `r`-scale, exactly as the stylesheet had it: the menu's
+ * type steps at the 40rem breakpoint and its padding deliberately does not.
+ */
+const menuContentClasses =
+  "z-40 min-w-45 rounded-md border border-border-default bg-surface-0 py-1 shadow-lg outline-none";
+
+/**
+ * No reset here. Preflight already gives a `<button>` `background-color:
+ * transparent`, `border: 0 solid`, `font: inherit`, `color: inherit`, `margin`,
+ * `padding` and `appearance: button` — checked in the compiled base layer — so
+ * the stylesheet's `background: none`, `border: none` and `font: inherit` were
+ * re-stating it. `Button.tsx` relies on exactly the same thing and carries no
+ * reset either. `text-left` is NOT among them: the UA centres button text.
+ *
+ * The size is `text-[length:var(--BodyText-2)]`, not `text-body-2`, because the
+ * rule set a size and no line-height — the row's height is the padding plus the
+ * inherited leading, and `text-body-2` would have added `--BodyText-2-line-height`
+ * and grown every row.
+ *
+ * `outline-none` writes `--tw-outline-style: none`, and every `outline-<width>`
+ * utility reads that property back, so the ring needs `outline-solid` to set it
+ * again — without it `focus-visible:outline-2` computes `outline-style: none`
+ * and paints nothing. The hand-written `outline: 2px solid …` had no such
+ * indirection, which is why the fourth class looks redundant and is not.
+ *
+ * The wash is identical in both states, so it can never distinguish focus from
+ * hover however large the step gets; at rung 2 against the rung-0 panel it
+ * measures 1.08–1.21:1, an order below the 3:1 a state indicator owes. The ring,
+ * not the fill, carries focus. Inset, as `.app-shell-sidebar-link` uses for the
+ * same full-width-row shape.
+ */
+const menuItemClasses =
+  "flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-[length:var(--BodyText-2)] text-fg-primary outline-none hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focus aria-disabled:cursor-default aria-disabled:text-fg-muted";
+
+/**
+ * `em`, not `rem`: the row's own `--BodyText-2` steps at the theme's breakpoint,
+ * and a rem box holds still while the label around it grows — the glyph reads a
+ * size too large below the breakpoint and a size too small above it. Sized off
+ * the text it labels, the ratio is whatever the theme's type scale says, under
+ * any theme. As `Rating` and `StatCard` size theirs.
+ *
+ * The `> svg` rule that makes an icon fill this box is the one thing
+ * `menu-internals.css` keeps; see its header.
+ */
+const menuItemIconClasses = "flex size-[1.125em] shrink-0 text-fg-secondary";
+
+/** `border-none` is load-bearing: Preflight gives `<hr>` a 1px top border. */
+const menuDividerClasses = "my-1 h-px border-none bg-border-default";
+
+const menuGroupHeaderClasses =
+  "block px-3 py-1.5 text-[length:var(--BodyText-3)] font-semibold text-fg-muted";
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                           */
@@ -292,7 +357,7 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
           <div
             ref={mergeRefs(ref, refs.setFloating)}
             id={menuId}
-            className={cn("menu-content", className)}
+            className={cn("menu-content", menuContentClasses, className)}
             style={{ ...floatingStyles, ...transitionStyles, ...style }}
             {...getFloatingProps(props)}
           >
@@ -362,7 +427,7 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
         ref={mergeRefs(ref, itemRef)}
         type="button"
         role="menuitem"
-        className={cn("menu-item", className)}
+        className={cn("menu-item", menuItemClasses, className)}
         aria-disabled={disabled || undefined}
         tabIndex={activeIndex === index ? 0 : -1}
         {...getItemProps({
@@ -384,7 +449,7 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
           },
         })}
       >
-        {icon && <span className={cn("menu-item-icon", classNames?.itemIcon)}>{icon}</span>}
+        {icon && <span className={cn("menu-item-icon", menuItemIconClasses, classNames?.itemIcon)}>{icon}</span>}
         {children}
       </button>
     );
@@ -402,7 +467,7 @@ export const MenuDivider = forwardRef<HTMLHRElement, MenuDividerProps>(
     // Reads nothing from context; called for the outside-a-provider throw, which
     // is documented behaviour for every part of a menu.
     useMenuContext("MenuDivider");
-    return <hr ref={ref} role="separator" className={cn("menu-divider", className)} {...props} />;
+    return <hr ref={ref} role="separator" className={cn("menu-divider", menuDividerClasses, className)} {...props} />;
   }
 );
 
@@ -420,7 +485,7 @@ export const MenuGroupHeader = forwardRef<HTMLSpanElement, MenuGroupHeaderProps>
       <span
         ref={ref}
         role="presentation"
-        className={cn("menu-group-header", className)}
+        className={cn("menu-group-header", menuGroupHeaderClasses, className)}
         {...props}
       >
         {children}

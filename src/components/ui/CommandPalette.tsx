@@ -19,6 +19,70 @@ import { cn, type SlotClassNames } from "../../util/style";
 
 import { Kbd } from "./Kbd";
 
+/* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `CommandPalette.css` keeps its two `@keyframes` and nothing else; every rule
+ * it drew is here. Each constant is one flat string literal because the docs and
+ * focus guards resolve hoisted constants textually and a composed one would not
+ * resolve.
+ *
+ * `--MOTION-*` is in no Tailwind namespace, so the entrance is an arbitrary
+ * `animation` shorthand naming the keyframes and both tokens; `ease-enter` and
+ * `duration-motion-duration-enter` generate nothing.
+ *
+ * `p-0`, `m-0` and `list`'s `margin: 0` are not restated: Preflight zeroes
+ * padding and margin on every element including `<dialog>`, which is what the UA
+ * `padding: 1em` was being reset against.
+ */
+const paletteClasses =
+  "mx-auto mt-[12vh] w-full max-w-xl overflow-hidden rounded-lg border border-border-default bg-surface-0 text-fg-primary shadow-lg animate-[command-palette-in_var(--MOTION-DURATION-ENTER)_var(--MOTION-EASE-ENTER)] backdrop:bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))] backdrop:animate-[command-palette-backdrop-in_var(--MOTION-DURATION-ENTER)_var(--MOTION-EASE-ENTER)] motion-reduce:animate-none motion-reduce:backdrop:animate-none";
+
+const paletteSearchClasses = "border-b border-border-default";
+
+/**
+ * The input is the only element that ever holds DOM focus here — options are
+ * virtually focused via `aria-activedescendant` — so the reset cannot be left
+ * without a replacement. Inset so the ring stays inside the full-bleed search
+ * row.
+ *
+ * `outline-solid` is the third class the reset needs: `outline-none` writes
+ * `--tw-outline-style: none` and every `outline-<width>` utility reads that
+ * property back, so without it `focus-visible:outline-2` computes
+ * `outline-style: none` and paints nothing.
+ */
+const paletteInputClasses =
+  "w-full px-r3 py-r4 text-body-1 text-fg-primary outline-none placeholder:text-fg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focus";
+
+/** `overscroll-contain` keeps a scroll that reaches the end of this list off the
+ *  page behind the scrim, which is not itself a scroll blocker. */
+const paletteListClasses = "max-h-96 overflow-y-auto overscroll-contain p-r6";
+
+const paletteGroupHeaderClasses =
+  "px-r5 py-r6 text-body-3 font-semibold tracking-[0.04em] text-fg-muted uppercase";
+
+/**
+ * Virtual focus: DOM focus stays on the search input, so `:focus-visible` never
+ * matches an option and the keyboard cursor has to be drawn from the attribute
+ * instead. The `--C-SURFACE-2` step alone is 1.08–1.16:1 against the palette fill
+ * across the four themes — a fill-vs-fill cue no re-tint can rescue — so the
+ * ring, not the wash, is what marks the option. Same ring the rest of the library
+ * draws on `:focus-visible`, and `data-active:` emits at 0,2,0 so it wins on
+ * specificity rather than on where Tailwind sorts it.
+ */
+const paletteOptionClasses =
+  "flex cursor-pointer items-center gap-r4 rounded-md p-r5 text-body-2 text-fg-primary transition-colors duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none data-active:bg-surface-2 data-active:outline-2 data-active:-outline-offset-2 data-active:outline-border-focus data-disabled:cursor-not-allowed data-disabled:text-fg-muted data-disabled:opacity-60";
+
+const paletteOptionIconClasses = "inline-flex shrink-0 items-center justify-center text-fg-secondary";
+
+const paletteOptionLabelClasses = "min-w-0 flex-1 truncate text-left";
+
+const paletteOptionShortcutClasses = "ml-auto shrink-0";
+
+const paletteEmptyClasses = "px-r5 py-r3 text-center text-body-2 text-fg-muted";
+
 export type CommandPaletteItem = {
   id: string;
   label: string;
@@ -398,17 +462,17 @@ const CommandPaletteRoot = forwardRef<HTMLDialogElement, CommandPaletteProps>(
       <Item>
         {item.icon != null && (
           <span
-            className={cn("command-palette-option-icon", classNames?.itemIcon)}
+            className={cn("command-palette-option-icon", paletteOptionIconClasses, classNames?.itemIcon)}
             aria-hidden="true"
           >
             {item.icon}
           </span>
         )}
-        <span className={cn("command-palette-option-label", classNames?.itemLabel)}>
+        <span className={cn("command-palette-option-label", paletteOptionLabelClasses, classNames?.itemLabel)}>
           {item.label}
         </span>
         {item.shortcut != null && (
-          <Kbd className={cn("command-palette-option-shortcut", classNames?.itemShortcut)}>
+          <Kbd className={cn("command-palette-option-shortcut", paletteOptionShortcutClasses, classNames?.itemShortcut)}>
             {item.shortcut}
           </Kbd>
         )}
@@ -441,7 +505,7 @@ const CommandPaletteRoot = forwardRef<HTMLDialogElement, CommandPaletteProps>(
         ref={mergedRef}
         // `no-body-scroll` for the same reason Dialog carries it: the scrim is
         // not a scroll blocker, so without it the page scrolls behind the panel.
-        className={cn("command-palette no-body-scroll", className)}
+        className={cn("command-palette no-body-scroll", paletteClasses, className)}
         aria-label="Command palette"
         {...props}
         // After the spread: a caller's own handler is composed in above rather
@@ -449,12 +513,12 @@ const CommandPaletteRoot = forwardRef<HTMLDialogElement, CommandPaletteProps>(
         onPointerDown={handlePointerDown}
         onClick={handleClick}
       >
-        <div className={cn("command-palette-search", classNames?.search)}>
+        <div className={cn("command-palette-search", paletteSearchClasses, classNames?.search)}>
           <input
             ref={inputRef}
             type="text"
             role="combobox"
-            className={cn("command-palette-input", classNames?.input)}
+            className={cn("command-palette-input", paletteInputClasses, classNames?.input)}
             placeholder={placeholder}
             aria-label={searchLabel}
             value={query}
@@ -489,7 +553,7 @@ const CommandPaletteRoot = forwardRef<HTMLDialogElement, CommandPaletteProps>(
           id={listboxId}
           role="listbox"
           aria-label={listLabel}
-          className={cn("command-palette-list", classNames?.list)}
+          className={cn("command-palette-list", paletteListClasses, classNames?.list)}
         >
           {hasResults ? (
             groups.map(({ group, entries }, groupIndex) => {
@@ -505,12 +569,26 @@ const CommandPaletteRoot = forwardRef<HTMLDialogElement, CommandPaletteProps>(
                   key={group}
                   role="group"
                   aria-labelledby={headerId}
-                  className={cn("command-palette-group", classNames?.group)}
+                  // The gap between groups was `.command-palette-group +
+                  // .command-palette-group`, a rule about DOM adjacency. It is
+                  // computed here instead of hard-coding the BEM name into a
+                  // `[.command-palette-group+&]:` variant: entries render in
+                  // order and each is either a group box or a non-empty fragment
+                  // of ungrouped rows, so "the previous entry is a group" is
+                  // exactly "the previous element sibling is a group box".
+                  // `not-first:` would NOT be the same rule — a group preceded by
+                  // ungrouped rows is not first and took no margin.
+                  className={cn(
+                    "command-palette-group",
+                    groups[groupIndex - 1]?.group != null && "mt-r5",
+                    classNames?.group
+                  )}
                 >
                   <div
                     id={headerId}
                     className={cn(
                       "command-palette-group-header",
+                      paletteGroupHeaderClasses,
                       classNames?.groupHeader,
                     )}
                   >
@@ -523,7 +601,7 @@ const CommandPaletteRoot = forwardRef<HTMLDialogElement, CommandPaletteProps>(
           ) : (
             <div
               role="presentation"
-              className={cn("command-palette-empty", classNames?.empty)}
+              className={cn("command-palette-empty", paletteEmptyClasses, classNames?.empty)}
             >
               {emptyMessage}
             </div>
@@ -573,7 +651,7 @@ const Item = forwardRef<HTMLDivElement, CommandPaletteItemProps>(
         aria-disabled={item.disabled || undefined}
         data-active={active || undefined}
         data-disabled={item.disabled || undefined}
-        className={cn("command-palette-option", className)}
+        className={cn("command-palette-option", paletteOptionClasses, className)}
         onMouseMove={(event) => {
           onMouseMove?.(event);
           if (!item.disabled) setActiveIndex(index);

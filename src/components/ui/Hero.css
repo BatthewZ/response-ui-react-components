@@ -1,78 +1,24 @@
-.hero {
-  position: relative;
-  display: flex;
-  overflow: hidden;
-  width: 100%;
-}
+/* ------------------------------------------------------------------ */
+/*  Hero — converted to utilities; one block could not move             */
+/* ------------------------------------------------------------------ */
 
-.hero--sm {
-  min-height: 40vh;
-}
-.hero--md {
-  min-height: 60vh;
-}
-.hero--lg {
-  min-height: 80vh;
-}
-.hero--full {
-  min-height: 100vh;
-  /* dvh tracks a retracting mobile URL bar; vh above is the fallback. */
-  min-height: 100dvh;
-}
+/* Everything Hero paints is a Tailwind utility in `Hero.tsx`, and the `hero*`
+   class names survive as declaration-free markers. Two things did not move, and
+   they are the same thing twice:
 
-.hero--align-start {
-  align-items: flex-start;
-}
-.hero--align-center {
-  align-items: center;
-}
-.hero--align-end {
-  align-items: flex-end;
-}
+   1. The subject is `.stagger-item`, which is markup THE CONSUMER hand-authors.
+      A utility has to be put on something, and this package renders no element
+      that carries that class (AGENTS.md "What stays", row 4).
+   2. The guard below is one of the package's two `!important` declarations, and
+      it has to beat an UNLAYERED foundation rule. `@layer utilities` loses to
+      unlayered too, so converting it would not even preserve the ranking the
+      `!important` exists to win.
 
-.hero__background {
-  position: absolute;
-  inset: 0;
-}
-
-.hero__background--parallax {
-  inset: -50% 0;
-}
-
-.hero__background img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.hero__overlay {
-  position: absolute;
-  inset: 0;
-  /* Fallback matches Drawer.css / CommandPalette.css: without the token layer
-     the scrim would otherwise be transparent rather than 50% black. */
-  background: var(--OVERLAY-SCRIM-COLOR, rgb(0 0 0 / 0.5));
-  /* It is a paint, not a hit target — anything under it stays clickable. */
-  pointer-events: none;
-}
-
-.hero__content {
-  position: relative;
-  z-index: 10;
-  width: 100%;
-  padding: var(--R-SIZE-3);
-}
-
-@media (width >= 40rem) {
-  .hero__content {
-    padding: var(--R-SIZE-2);
-  }
-}
-
-@media (width >= 64rem) {
-  .hero__content {
-    padding: var(--R-SIZE-1);
-  }
-}
+   Also deleted rather than converted: `.hero__background img`, three
+   declarations that were already dead. `Hero.tsx` puts `size-full object-cover`
+   on the `<img>` itself, and `@layer utilities` beats `@layer components`
+   whatever the specificity, so the rule had not applied since this package's CSS
+   was layered. The values agreed, so nothing changes. */
 
 /* `Hero.Content animate` composes ScrollReveal > Stagger. Stagger sequences
    delays and ships no `animation-name` on purpose — the caller supplies the

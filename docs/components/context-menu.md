@@ -283,29 +283,36 @@ arrives; retime it with `--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT`.
 
 ## Theme tokens
 
-ContextMenu has no CSS file of its own, and its `.tsx` uses no Tailwind utilities. Its panel,
-items, dividers, and group headings render the shared `menu-*` classes — `menu-content`,
-`menu-item`, `menu-item-icon`, `menu-divider`, `menu-group-header` — painted by
-`menu-internals.css`, which `src/styles.css` imports for the package.
+ContextMenu has no CSS file of its own. Its panel, items, dividers and group headings are
+rendered — and now painted — by `menu-internals.tsx`, which carries the shared `menu-*` class
+names (`menu-content`, `menu-item`, `menu-item-icon`, `menu-divider`, `menu-group-header`) as
+declaration-free markers plus the Tailwind utilities that draw them.
 [DropdownMenu](dropdown-menu.md) renders the identical components and therefore the identical
-classes, so overriding those rules retints **both** at once. The full table lives with
-[DropdownMenu](dropdown-menu.md); in summary, that stylesheet reads `--C-SURFACE-0` and
-`--C-BORDER-DEFAULT` for the panel with `--RADIUS-MD` and `--SHADOW-LG`, `--C-TEXT-PRIMARY` at
-`--BodyText-2` for item labels, `--C-SURFACE-2` for the hover/focus row with a 2px
-`--C-BORDER-FOCUS` ring on `:focus-visible`, `--C-TEXT-SECONDARY` for item icons, and
-`--C-TEXT-MUTED` for disabled items and for the `--BodyText-3` group heading.
+utilities, so a change there retints **both** at once. The full table lives with
+[DropdownMenu](dropdown-menu.md); in summary: `bg-surface-0` and `border-border-default` for
+the panel with `rounded-md` and `shadow-lg`, `text-fg-primary` at
+`text-[length:var(--BodyText-2)]` for item labels, `bg-surface-2` for the hover/focus row with
+a 2px `outline-border-focus` ring on `:focus-visible`, `text-fg-secondary` for item icons, and
+`text-fg-muted` for disabled items and for the `text-[length:var(--BodyText-3)]` group heading.
+
+`menu-internals.css` survives with exactly one rule, `.menu-item-icon > svg`, which makes an
+icon fill its box. It stays in CSS on purpose: as `[&>svg]:size-full` it would emit at
+specificity 0,1,1 from `@layer utilities` and start beating a `size-4` you put on your own
+icon, where from `@layer components` your class wins.
 
 **Those classes used to be `dropdown-menu-*`, and they were rendered from a shared prefix both
 menus set to `"dropdown-menu"`.** A ContextMenu was therefore styled — and could only be
 restyled — through classes named after the other component, while its trigger carried a
 `context-menu-trigger` class no stylesheet anywhere defined. If you have CSS targeting either of
 those, retarget it: `.dropdown-menu-*` becomes `.menu-*`, and the trigger has no class of its own
-to hook, so give it one through `className`.
+to hook, so give it one through `className`. The `menu-*` names are markers now rather than
+selectors, but they are still in the DOM and a rule you write against them still wins —
+unlayered CSS out-ranks `@layer utilities`.
 
-Two things are *not* on the contract. The panel's geometry — its `0.25rem 0` padding, the items'
-`0.375rem 0.75rem`, the `0.5rem` icon gap, an `11.25rem` minimum width and `z-index: 40` — is
-hard literals in that stylesheet rather than the responsive `r`-scale, so the item **type** steps
-up at the 40rem breakpoint with the rest of the app while the padding around it does not. And the
+Two things are *not* on the contract. The panel's geometry — its `py-1`, the items' `py-1.5
+px-3`, the `gap-2` icon gap, a `min-w-45` minimum width and `z-40` — is literal Tailwind rungs
+rather than the responsive `r`-scale, so the item **type** steps up at the 40rem breakpoint
+with the rest of the app while the padding around it does not. And the
 part ContextMenu owns is unthemeable by design: the 4px pointer offset is a number in
 `menu-internals.tsx`, tied to no token. The open/close opacity fade is **not** — it reads
 `--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT` (150ms when no token layer is present) and

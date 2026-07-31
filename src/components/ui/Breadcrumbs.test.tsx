@@ -421,7 +421,14 @@ describe("Breadcrumbs · classNames slots", () => {
     expect(text?.getAttribute("class")).toContain("italic");
   });
 
-  it("leaves each internal on its base class alone when no slot is passed", () => {
+  /**
+   * These used to assert the class attribute equalled the marker exactly, which
+   * stopped being expressible once `Breadcrumbs.css` became utilities on the
+   * elements themselves. The falsifiers are unchanged and are what the equality
+   * was ever standing in for: an absent slot appends *nothing* — no `undefined`,
+   * no `null`, no empty token.
+   */
+  it("leaves each internal on its base classes alone when no slot is passed", () => {
     const { container } = renderWithRouter(
       <Breadcrumbs maxItems={2}>
         <Breadcrumbs.Item href="/a">A</Breadcrumbs.Item>
@@ -430,18 +437,16 @@ describe("Breadcrumbs · classNames slots", () => {
         <Breadcrumbs.Item current>D</Breadcrumbs.Item>
       </Breadcrumbs>,
     );
-    expect(container.querySelector(".breadcrumbs__list")?.getAttribute("class")).toBe(
+    for (const marker of [
       "breadcrumbs__list",
-    );
-    expect(container.querySelector(".breadcrumbs__ellipsis")?.getAttribute("class")).toBe(
       "breadcrumbs__ellipsis",
-    );
-    expect(container.querySelector(".breadcrumbs__link")?.getAttribute("class")).toBe(
       "breadcrumbs__link",
-    );
-    expect(container.querySelector(".breadcrumbs__current")?.getAttribute("class")).toBe(
       "breadcrumbs__current",
-    );
+    ]) {
+      const classes = container.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+      expect(classes.split(" ")).toContain(marker);
+      expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+    }
   });
 
   it("does not put a slot class on either root", () => {
@@ -452,10 +457,14 @@ describe("Breadcrumbs · classNames slots", () => {
         </Breadcrumbs.Item>
       </Breadcrumbs>,
     );
-    expect(container.firstElementChild?.getAttribute("class")).toBe("breadcrumbs");
-    expect(container.querySelector(".breadcrumbs__item")?.getAttribute("class")).toBe(
-      "breadcrumbs__item",
-    );
+    const root = container.firstElementChild?.getAttribute("class")?.split(" ") ?? [];
+    const item = container.querySelector(".breadcrumbs__item")?.getAttribute("class")?.split(" ") ?? [];
+    expect(root).toContain("breadcrumbs");
+    expect(item).toContain("breadcrumbs__item");
+    for (const slotClass of ["gap-r4", "underline", "font-bold"]) {
+      expect(root).not.toContain(slotClass);
+      expect(item).not.toContain(slotClass);
+    }
   });
 
   /**
@@ -472,9 +481,9 @@ describe("Breadcrumbs · classNames slots", () => {
         <Breadcrumbs.Item current>A</Breadcrumbs.Item>
       </Breadcrumbs>,
     );
-    expect(container.querySelector(".breadcrumbs__list")?.getAttribute("class")).toBe(
-      "breadcrumbs__list",
-    );
+    expect(
+      container.querySelector(".breadcrumbs__list")?.getAttribute("class")?.split(" "),
+    ).not.toContain("opacity-50");
   });
 
   it("does not leak classNames onto the DOM", () => {

@@ -202,13 +202,14 @@ for a stack — and it does not touch `parallax`, which is a per-image prop.
 Spotlight paints **no colour at all** — no background, no ink, no border. It inherits the
 text colour of whatever surface you drop it on, so there is no `--C-*` variable to override
 here; retint the [Text](text.md), [Button](button.md) or [Card](card.md) you put inside it
-instead. Its own CSS reads exactly three variables:
+instead. `Spotlight.css` is gone; the three variables it read are now Tailwind utilities on
+the elements they paint:
 
-| Where                                | Override      |
-| ------------------------------------ | ------------- |
-| Vertical gap between rows            | `--R-SIZE-2`  |
-| Column gutter **and** copy padding   | `--R-SIZE-4`  |
-| Image corner radius                  | `--RADIUS-MD` |
+| Where                                | Utility              | Override      |
+| ------------------------------------ | -------------------- | ------------- |
+| Vertical gap between rows            | `gap-r2`             | `--R-SIZE-2`  |
+| Column gutter **and** copy padding   | `gap-r4` · `p-r4`    | `--R-SIZE-4`  |
+| Image corner radius                  | `rounded-md`         | `--RADIUS-MD` |
 
 Both spacing values are on the responsive `r`-scale and step up at the `40rem` breakpoint:
 `--R-SIZE-2` goes `1.25rem` → `2rem`, `--R-SIZE-4` goes `0.75rem` → `1.25rem`. They are

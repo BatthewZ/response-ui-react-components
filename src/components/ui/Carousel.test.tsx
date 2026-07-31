@@ -418,6 +418,73 @@ describe("Carousel", () => {
     });
   });
 
+  describe("the drag state is an attribute, not a BEM modifier", () => {
+    /**
+     * `.carousel-track--dragging` was a component-layer modifier of a base rule
+     * that is now a utility. A base in `@layer utilities` beats a modifier in
+     * `@layer components`, so `cursor-grab` would have won whatever the DOM said.
+     * `data-dragging` emits at 0,2,0 against the base's 0,1,0 and wins on
+     * specificity instead. Breaking: a consumer styling the old class must
+     * retarget `[data-dragging]`.
+     */
+    it("marks and clears data-dragging across a press", () => {
+      render(
+        <Carousel>
+          <Carousel.Track>
+            <Carousel.Item>Slide 1</Carousel.Item>
+          </Carousel.Track>
+        </Carousel>,
+      );
+      const track = screen.getByRole("region", { name: "Carousel items" });
+
+      expect(track).not.toHaveAttribute("data-dragging");
+      fireEvent.mouseDown(track, { button: 0, clientX: 10 });
+      expect(track).toHaveAttribute("data-dragging", "true");
+      fireEvent.mouseUp(window);
+      expect(track).not.toHaveAttribute("data-dragging");
+      expect(track.className).not.toContain("carousel-track--dragging");
+    });
+
+    it("ignores a non-left press", () => {
+      render(
+        <Carousel>
+          <Carousel.Track>
+            <Carousel.Item>Slide 1</Carousel.Item>
+          </Carousel.Track>
+        </Carousel>,
+      );
+      const track = screen.getByRole("region", { name: "Carousel items" });
+
+      fireEvent.mouseDown(track, { button: 2, clientX: 10 });
+      expect(track).not.toHaveAttribute("data-dragging");
+    });
+  });
+
+  /**
+   * The end-of-rail arrow used to render as a half-visible ghost:
+   * `.carousel-arrow[data-hidden="true"] { opacity: 0 }` sat in
+   * `@layer components` and `IconButton`'s own `disabled:opacity-50` beat it from
+   * `@layer utilities`. As a utility on the same element the two are both 0,2,0
+   * and the attribute variant is emitted last, so the fade-out is restored.
+   * `cn()` keeps both because tailwind-merge only collapses utilities that share
+   * a modifier.
+   */
+  it("carries the hidden-state utilities on the arrows", () => {
+    render(
+      <Carousel>
+        <Carousel.Track>
+          <Carousel.Item>Slide 1</Carousel.Item>
+        </Carousel.Track>
+      </Carousel>,
+    );
+    for (const name of ["Previous", "Next"]) {
+      const classes = screen.getByRole("button", { name }).className.split(" ");
+      expect(classes).toContain("data-[hidden=true]:opacity-0");
+      expect(classes).toContain("data-[hidden=true]:pointer-events-none");
+      expect(classes).toContain("disabled:opacity-50");
+    }
+  });
+
   // #189 — aria-roledescription and a name are prohibited on the implicit
   // `generic` role, so a conforming reader announced neither.
   it("#189: the root carries a real role alongside its roledescription", () => {
@@ -558,6 +625,12 @@ describe("Carousel", () => {
       expect(next.className).not.toContain("bg-status-error");
     });
 
+    /**
+     * This used to assert the class attribute equalled the marker exactly, which
+     * stopped being expressible once `Carousel.css` became utilities on the
+     * elements themselves. The falsifier is unchanged: an absent slot appends
+     * *nothing* — no `undefined`, no `null`, no empty token.
+     */
     it("leaves the internals on their base classes when no slot is passed", () => {
       const { container } = render(
         <Carousel title="Featured">
@@ -566,12 +639,11 @@ describe("Carousel", () => {
           </Carousel.Track>
         </Carousel>,
       );
-      expect(container.querySelector(".carousel-title")?.getAttribute("class")).toBe(
-        "carousel-title",
-      );
-      expect(container.querySelector(".carousel-viewport")?.getAttribute("class")).toBe(
-        "carousel-viewport",
-      );
+      for (const marker of ["carousel-title", "carousel-viewport"]) {
+        const classes = container.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+        expect(classes.split(" ")).toContain(marker);
+        expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+      }
     });
 
     it("does not put a slot class on the root", () => {
@@ -605,9 +677,9 @@ describe("Carousel", () => {
           </Carousel.Track>
         </Carousel>,
       );
-      expect(container.querySelector(".carousel-track")?.getAttribute("class")).toBe(
-        "carousel-track",
-      );
+      expect(
+        container.querySelector(".carousel-track")?.getAttribute("class")?.split(" "),
+      ).not.toContain("gap-r3");
     });
 
     it("does not leak classNames onto the DOM", () => {

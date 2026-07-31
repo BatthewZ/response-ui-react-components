@@ -294,15 +294,16 @@ a heading, point `aria-labelledby` at it and let the two stay in sync.
 
 ## Theme tokens
 
-Popover uses **no Tailwind utilities at all** — `Popover.tsx` sets two class names and nothing
-else, and every painted value lives in `Popover.css`, reading the contract variables directly.
+`Popover.css` is down to the arrow. The trigger and the panel are Tailwind utilities in
+`Popover.tsx`, each resolving to a contract variable.
 
-| Where         | Override             |
-| ------------- | -------------------- |
-| Panel surface | `--C-SURFACE-0`      |
-| Panel border  | `--C-BORDER-DEFAULT` |
-| Corners       | `--RADIUS-MD`        |
-| Elevation     | `--SHADOW-LG`        |
+| Where         | Utility                  | Override             |
+| ------------- | ------------------------ | -------------------- |
+| Panel surface | `bg-surface-0`           | `--C-SURFACE-0`      |
+| Panel border  | `border-border-default`  | `--C-BORDER-DEFAULT` |
+| Corners       | `rounded-md`             | `--RADIUS-MD`        |
+| Elevation     | `shadow-lg`              | `--SHADOW-LG`        |
+| Focus ring    | `focus-visible:outline-border-focus` | `--C-BORDER-FOCUS` |
 
 Four variables is the whole contract. The rest of the panel's appearance is off it:
 
@@ -326,10 +327,13 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   `useTransitionStyles` writes `transition-duration` as an inline style, and an inline
   declaration outranks any stylesheet rule. It is re-read on each open, so switching theme at
   runtime reaches the next one.
-- **`.popover-trigger` paints nothing.** It resets the button (`background: none`, `border:
-  none`, `padding: 0`, `font: inherit`) and lays it out `inline-flex`. It reads no token, which
-  is why `asChild` with a [Button](button.md) looks like a Button and the default trigger looks
-  like text.
+- **`.popover-trigger` paints nothing.** It lays the button out `inline-flex w-fit` and
+  reads no token, which is why `asChild` with a [Button](button.md) looks like a Button and
+  the default trigger looks like text. It carries **no reset**: Preflight already gives a
+  `<button>` the `background`, `border`, `padding` and `font: inherit` the old rule restated,
+  and a reset could not have been transposed anyway — Tailwind sorts arbitrary-property
+  utilities last, so `[font:inherit]` in a class list would beat your `className` instead of
+  losing to it.
 - **`.popover-content` sets `outline: none` and then paints the ring back** under
   `:focus-visible` — a `2px solid var(--C-BORDER-FOCUS)` outline at `outline-offset: 2px`,
   the house recipe. That rule is load-bearing rather than decorative: the panel is the

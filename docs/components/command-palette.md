@@ -356,12 +356,11 @@ link in there is reachable by pointer, or by pressing Tab once from the input.
 ```
 <!-- /example -->
 
-The panel is `width: 100%` capped at `36rem`, pinned `12vh` from the top rather than centred.
-Those are literals in `CommandPalette.css`, not tokens. `className` merges through
-`tailwind-merge` and lands on the `<dialog>`, and `max-w-[28rem]` on its own now wins:
-this package's CSS is in `@layer components`, which Tailwind orders **below** `@layer utilities`.
-It used to need the important modifier (`max-w-[28rem]!`), because the stylesheet was unlayered
-and out-ranked every utility before specificity was consulted.
+The panel is `w-full` capped at `max-w-xl` (36rem), pinned `mt-[12vh]` from the top rather
+than centred. Those are literals, not tokens. `className` merges through `tailwind-merge` and
+lands on the `<dialog>`, so `max-w-[28rem]` on its own collapses the default and wins. It used
+to need the important modifier (`max-w-[28rem]!`), because the stylesheet was unlayered and
+out-ranked every utility before specificity was consulted.
 
 ## Composing a row
 
@@ -469,33 +468,41 @@ to it lets a caller drop it and print "7 commands" above the search field.
 
 ## Theme tokens
 
-Every colour, radius, size and duration in `CommandPalette.css` is a contract variable read
-through `var()` — the component's `.tsx` carries no Tailwind utilities at all, only the
-`command-palette` class names. Override any of these and the palette re-tints at runtime.
+`CommandPalette.css` is down to its two `@keyframes` blocks — the one thing no utility can
+express, because a utility sets properties on an element and a keyframe block has none.
+Everything else is a Tailwind utility on the element it paints, and every colour, radius,
+size and duration still resolves to a contract variable. Override any of these and the
+palette re-tints at runtime.
 
-| Where                                                          | Override                                                          |
-| -------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Panel surface                                                   | `--C-SURFACE-0`                                                   |
-| Panel border · divider under the search box                     | `--C-BORDER-DEFAULT`                                              |
-| Panel corners                                                   | `--RADIUS-LG`                                                     |
-| Panel elevation                                                 | `--SHADOW-LG`                                                     |
-| Backdrop scrim                                                  | `--OVERLAY-SCRIM-COLOR`                                           |
-| Query text · option label                                       | `--C-TEXT-PRIMARY`                                                |
-| Leading icon slot                                               | `--C-TEXT-SECONDARY`                                              |
-| Placeholder · group header · empty message · disabled option    | `--C-TEXT-MUTED`                                                  |
-| Highlighted option — wash · ring                                | `--C-SURFACE-2` · `--C-BORDER-FOCUS`                              |
-| Search input focus ring                                         | `--C-BORDER-FOCUS`                                                |
-| Option corners                                                  | `--RADIUS-MD`                                                     |
-| Query type                                                      | `--BodyText-1` · `--BodyText-1-line-height`                       |
-| Option and empty-message type                                   | `--BodyText-2` · `--BodyText-2-line-height`                       |
-| Group header type                                               | `--BodyText-3` · `--BodyText-3-line-height` · `--Semibold-Weight` |
-| Search box padding                                              | `--R-SIZE-4` (block) · `--R-SIZE-3` (inline)                      |
-| List inset · group header padding                               | `--R-SIZE-6` · `--R-SIZE-5`                                       |
-| Option padding · gap between groups                             | `--R-SIZE-5`                                                      |
-| Icon-to-label gap                                               | `--R-SIZE-4`                                                      |
-| Empty-message padding                                           | `--R-SIZE-3` · `--R-SIZE-5`                                       |
-| Panel entrance                                                  | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER`                 |
-| Option highlight transition                                     | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`                 |
+| Where                                                          | Utility                                             | Override                                                          |
+| -------------------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------- |
+| Panel surface                                                   | `bg-surface-0`                                      | `--C-SURFACE-0`                                                   |
+| Panel border · divider under the search box                     | `border-border-default`                             | `--C-BORDER-DEFAULT`                                              |
+| Panel corners                                                   | `rounded-lg`                                        | `--RADIUS-LG`                                                     |
+| Panel elevation                                                 | `shadow-lg`                                         | `--SHADOW-LG`                                                     |
+| Backdrop scrim                                                  | `backdrop:bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]` | `--OVERLAY-SCRIM-COLOR`                                   |
+| Query text · option label                                       | `text-fg-primary`                                   | `--C-TEXT-PRIMARY`                                                |
+| Leading icon slot                                               | `text-fg-secondary`                                 | `--C-TEXT-SECONDARY`                                              |
+| Placeholder · group header · empty message · disabled option    | `placeholder:text-fg-muted` · `text-fg-muted`       | `--C-TEXT-MUTED`                                                  |
+| Highlighted option — wash · ring                                | `data-active:bg-surface-2` · `data-active:outline-border-focus` | `--C-SURFACE-2` · `--C-BORDER-FOCUS`                   |
+| Search input focus ring                                         | `focus-visible:outline-border-focus`                | `--C-BORDER-FOCUS`                                                |
+| Option corners                                                  | `rounded-md`                                        | `--RADIUS-MD`                                                     |
+| Query type                                                      | `text-body-1`                                       | `--BodyText-1` · `--BodyText-1-line-height`                       |
+| Option and empty-message type                                   | `text-body-2`                                       | `--BodyText-2` · `--BodyText-2-line-height`                       |
+| Group header type                                               | `text-body-3` · `font-semibold`                     | `--BodyText-3` · `--BodyText-3-line-height` · `--Semibold-Weight` |
+| Search box padding                                              | `py-r4` · `px-r3`                                   | `--R-SIZE-4` (block) · `--R-SIZE-3` (inline)                      |
+| List inset · group header padding                               | `p-r6` · `py-r6` · `px-r5`                          | `--R-SIZE-6` · `--R-SIZE-5`                                       |
+| Option padding · gap between groups                             | `p-r5` · `mt-r5`                                    | `--R-SIZE-5`                                                      |
+| Icon-to-label gap                                               | `gap-r4`                                            | `--R-SIZE-4`                                                      |
+| Empty-message padding                                           | `py-r3` · `px-r5`                                   | `--R-SIZE-3` · `--R-SIZE-5`                                       |
+| Panel entrance                                                  |                                                     | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER`                 |
+| Option highlight transition                                     | `duration-[var(--MOTION-DURATION-SHIFT)]`           | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`                 |
+
+The entrance is an arbitrary `animation` shorthand naming the keyframes and both motion
+tokens — `animate-[command-palette-in_var(--MOTION-DURATION-ENTER)_var(--MOTION-EASE-ENTER)]`,
+and its `backdrop:` twin — because `--MOTION-*` sits in no Tailwind namespace and there is no
+`ease-enter` or `duration-enter` to write. Reduced motion drops both with
+`motion-reduce:animate-none`.
 
 All four spacing tokens sit on the responsive `r`-scale, and three step up at the 40rem
 breakpoint: `--R-SIZE-3` (`1rem` → `1.5rem`), `--R-SIZE-4` (`0.75rem` → `1.25rem`) and
@@ -539,10 +546,9 @@ palette's colour, spacing and timing but not its shape.
   agree; but the index is positional, so if `items` itself changes while the palette is open,
   the highlight stays on the same *row*, whatever command now occupies it. (It snaps back to
   the first selectable row whenever the query changes.)
-- **`className` utilities beat `CommandPalette.css`.** This package's CSS is in
-  `@layer components`, which Tailwind orders below `@layer utilities`, so a plain utility wins
-  at any specificity. It used to lose and need the important modifier — see
-  [Sizing the panel](#sizing-the-panel).
+- **`className` utilities beat the component's own.** They merge through `cn()` at the call
+  site, so a conflicting utility collapses the default rather than racing it. It used to lose
+  and need the important modifier — see [Sizing the panel](#sizing-the-panel).
 - **Light dismiss is handled in React, not by `closedby`.** A press on the scrim is dispatched
   at the `<dialog>` itself, so "outside" is measured as the pointer landing beyond the panel's
   own border box — padding you add in `className` still counts as inside. Both ends of the

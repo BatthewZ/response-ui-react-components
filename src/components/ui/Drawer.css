@@ -1,6 +1,42 @@
 /* Drawer — a side sheet built on the native <dialog> element.
    The dialog *is* the panel: margins pin it to one edge and stretch it
-   across the cross axis, so the top-layer modal reads as a side sheet. */
+   across the cross axis, so the top-layer modal reads as a side sheet.
+
+   ------------------------------------------------------------------
+   EXAMINED AND KEPT, deliberately. No declaration here is individually
+   immovable; the file stays on AGENTS.md "What stays" row 6 — *the utility form
+   is N variant-scoped classes, not one* — and row 7, *a layout contract read as
+   a whole*. The cost, counted rather than asserted:
+
+   - Everything below the first rule is a four-way `[data-side]` table. Each side
+     owns a margin quartet, a size pair, a radius quartet and an off-edge
+     translate; as utilities that is `data-[side=…]:` × ~9 × 4 sides, and the
+     table stops being readable as a table.
+   - Two more axes multiply it. `:not([open])` becomes `not-open:`, `@starting-style`
+     becomes `starting:`, and the `::backdrop` rules become `backdrop:` — so the
+     exit translate alone is four classes, the entrance another four, and the
+     reduced-motion reset a further four.
+   - That last set only works FULLY QUALIFIED:
+     `motion-reduce:data-[side=right]:not-open:translate-none` × 4. `translate-x-full`
+     sets the `translate` property, not `transform`, so a bare `transform: none`
+     equivalent would not reach it, and `motion-reduce:` adds no specificity —
+     it survives only because Tailwind emits every media-variant utility in one
+     block at the END of `@layer utilities` (measured, `probe-utility-exists.mjs
+     --css`). Drop one qualifier and the reduced-motion path silently stops
+     applying, with no gate in this repo able to see it.
+   - The base rule pairs `opacity: 1` with `transform: translate(0, 0)`, and the
+     exit rules override the shorthand. Converting splits one property across a
+     shorthand and two longhands (`translate`, `scale`) whose interaction is the
+     subtlest thing in the file.
+
+   ~45 variant classes on one element, to delete a file that reads as four
+   symmetrical stanzas today. That is a worse artefact, not a better one.
+
+   None of the above is a claim that a rule here is unreachable: `className`
+   lands on this element and `@layer components` sits below `@layer utilities`,
+   so `<Drawer className="w-[32rem] p-0">` already wins against every rule in
+   this file.
+   ------------------------------------------------------------------ */
 
 .drawer {
   padding: var(--R-SIZE-2);

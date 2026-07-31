@@ -30,6 +30,42 @@ import { cn, type SlotClassNames } from "../../util/style";
 import { useFadeDuration } from "./floating-motion";
 
 /* ------------------------------------------------------------------ */
+/*  Classes                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `Popover.css` keeps the arrow and says why; the trigger and the panel are
+ * here. Each constant is one flat string literal because the docs and focus
+ * guards resolve hoisted constants textually and a composed one would not
+ * resolve.
+ *
+ * The trigger paints nothing — it inherits the surrounding font and ink, which
+ * is what makes `asChild` with a `Button` look like a Button and the bare
+ * trigger look like text. Its four resets (`background: none`, `border: none`,
+ * `padding: 0`, `font: inherit`) are gone rather than transposed: a reset sorted
+ * last in `@layer utilities` beats the caller instead of losing to them, and
+ * Preflight already gives a `<button>` every one of the four.
+ */
+const popoverTriggerClasses = "inline-flex w-fit cursor-pointer";
+
+/**
+ * Padding is a literal `0.75rem 1rem`, not the responsive `r`-scale, so the
+ * panel does not step up at the 40rem breakpoint the way `Dialog`'s `p-r2` does.
+ * `z-40` is the same layer DropdownMenu, Combobox, MultiSelect and ColorPicker
+ * sit on.
+ *
+ * The ring is load-bearing rather than decorative: the panel is a dialog with no
+ * tabbable content of its own, so `FloatingFocusManager` gives it `tabindex="0"`
+ * and focuses it on open, and `outline-none` alone would leave a keyboard user
+ * with no affordance at all. `outline-solid` is the third class that reset needs
+ * — `outline-none` writes `--tw-outline-style: none` and every `outline-<width>`
+ * utility reads that property back, so without it `focus-visible:outline-2`
+ * computes `outline-style: none` and paints nothing.
+ */
+const popoverContentClasses =
+  "z-40 rounded-md border border-border-default bg-surface-0 px-4 py-3 shadow-lg outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus";
+
+/* ------------------------------------------------------------------ */
 /*  Context                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -195,7 +231,11 @@ const PopoverTrigger = forwardRef<HTMLButtonElement, PopoverTriggerProps>(
     }
 
     return (
-      <button type="button" className={cn("popover-trigger", className)} {...triggerProps}>
+      <button
+        type="button"
+        className={cn("popover-trigger", popoverTriggerClasses, className)}
+        {...triggerProps}
+      >
         {children}
       </button>
     );
@@ -253,7 +293,7 @@ const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
           <div
             ref={mergeRefs(ref, refs.setFloating)}
             id={contentId}
-            className={cn("popover-content", className)}
+            className={cn("popover-content", popoverContentClasses, className)}
             style={{ ...floatingStyles, ...transitionStyles, ...style }}
             {...getFloatingProps(props)}
           >

@@ -230,40 +230,52 @@ it with `--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT`.
 
 ## Theme tokens
 
-DropdownMenu uses **no Tailwind utilities**. The trigger's own rule lives in `DropdownMenu.css`;
-the panel and everything in it is painted by `menu-internals.css`, the shared stylesheet named
-after the module that renders those elements — [ContextMenu](context-menu.md) is painted by the
-same file. Both read contract variables directly, the way [Tabs](tabs.md) and
-[ActivityFeed](activity-feed.md) do. Override any of these and the menu re-tints with the rest of
-the app, at runtime, with no rebuild.
+`DropdownMenu.css` is gone and `menu-internals.css` is down to a single rule: the panel, the
+items, the icons, the dividers and the group headings are Tailwind utilities in
+`menu-internals.tsx`, the shared module that renders them — so [ContextMenu](context-menu.md)
+is painted by the identical utilities. Every one of them resolves to a contract variable.
+Override any of these and the menu re-tints with the rest of the app, at runtime, with no
+rebuild.
 
-| Where                     | Override                                                          |
-| ------------------------- | ----------------------------------------------------------------- |
-| Menu surface              | `--C-SURFACE-0` · `--C-BORDER-DEFAULT` · `--RADIUS-MD` · `--SHADOW-LG` |
-| Item label                | `--C-TEXT-PRIMARY` · `--BodyText-2`                               |
-| Item hover / focus wash   | `--C-SURFACE-2`                                                   |
-| Item focus ring           | `--C-BORDER-FOCUS`                                                |
-| Item icon                 | `--C-TEXT-SECONDARY`                                              |
-| Disabled item label       | `--C-TEXT-MUTED`                                                  |
-| Divider rule              | `--C-BORDER-DEFAULT`                                              |
-| Group heading             | `--C-TEXT-MUTED` · `--BodyText-3` · `--Semibold-Weight`           |
+| Where                     | Utility                                                             | Override                                                               |
+| ------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Menu surface              | `bg-surface-0` · `border-border-default` · `rounded-md` · `shadow-lg` | `--C-SURFACE-0` · `--C-BORDER-DEFAULT` · `--RADIUS-MD` · `--SHADOW-LG` |
+| Item label                | `text-fg-primary` · `text-[length:var(--BodyText-2)]`               | `--C-TEXT-PRIMARY` · `--BodyText-2`                                    |
+| Item hover / focus wash   | `hover:bg-surface-2` · `focus-visible:bg-surface-2`                 | `--C-SURFACE-2`                                                        |
+| Item focus ring           | `focus-visible:outline-border-focus`                                | `--C-BORDER-FOCUS`                                                     |
+| Item icon                 | `text-fg-secondary`                                                 | `--C-TEXT-SECONDARY`                                                   |
+| Disabled item label       | `aria-disabled:text-fg-muted`                                       | `--C-TEXT-MUTED`                                                       |
+| Divider rule              | `bg-border-default`                                                 | `--C-BORDER-DEFAULT`                                                   |
+| Group heading             | `text-fg-muted` · `text-[length:var(--BodyText-3)]` · `font-semibold` | `--C-TEXT-MUTED` · `--BodyText-3` · `--Semibold-Weight`               |
+
+The two type sizes are written `text-[length:var(--BodyText-N)]` rather than `text-body-N`
+deliberately: the old rules set a font-size and **no** line-height, and `text-body-N` would
+have added the scale's line-height companion and grown every row.
 
 `--BodyText-2` and `--BodyText-3` are responsive and step up at the 40rem breakpoint, so menu
 type grows on desktop with no work from you.
 
 Several values are **not** on the contract and cannot be themed: item padding
-(`0.375rem 0.75rem`), the icon gap (`0.5rem`), the icon box (`1.125em`), the menu's `min-width`
-(`11.25rem`), the divider's `1px` rule, and the surface `z-index` (`40`). Override the class in
-your own CSS if any of those matter — or pass a utility through the part's `className`, which
-after the move to `@layer components` wins against these rules. The trigger sets no colour at
-all: it inherits the surrounding font and ink, which is what makes `asChild` and a bare trigger
-both look right.
+(`py-1.5 px-3`), the icon gap (`gap-2`), the icon box (`size-[1.125em]`), the menu's minimum
+width (`min-w-45`), the divider's `h-px` rule, and the surface `z-40`. Pass a utility through
+the part's `className` if any of those matter: it merges last through `cn()`, so it wins. The
+trigger sets no colour at all: it inherits the surrounding font and ink, which is what makes
+`asChild` and a bare trigger both look right — and it carries **no reset**, because Preflight
+already gives a `<button>` the `background`, `border`, `padding` and `font: inherit` the old
+rule restated.
 
-The whole panel is styled from a single `menu-*` class family — `menu-content`, `menu-item`,
+The `menu-*` class names survive as declaration-free markers — `menu-content`, `menu-item`,
 `menu-item-icon`, `menu-divider`, `menu-group-header` — shared with
-[ContextMenu](context-menu.md), which renders the identical components. Restyle these classes and
-both move together; that is deliberate, and it is why they are named after the menu rather than
-after either component. Only `.dropdown-menu-trigger` is this component's alone.
+[ContextMenu](context-menu.md), which renders the identical components. They are still what a
+consumer stylesheet, devtools or an Astro/Rails consumer of `response-ui-css` hooks; a rule
+you write against them wins, because unlayered CSS out-ranks `@layer utilities`. Only
+`.dropdown-menu-trigger` is this component's alone.
+
+**`menu-internals.css` keeps exactly one rule**, `.menu-item-icon > svg { width: 100%;
+height: 100% }`, and it stays there on purpose. Written as `[&>svg]:size-full` it would emit
+at specificity 0,1,1 from `@layer utilities` and start beating a `size-4` you put on your own
+icon; from `@layer components` your class wins, which is the right way round for content you
+supply.
 
 ## Gotchas
 

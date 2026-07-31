@@ -330,27 +330,38 @@ Hero touches the contract in exactly two places — the scrim colour and the con
 It sets **no background of its own and no text colour**, so everything inside inherits
 whatever ink the surrounding page established, which is why the section above matters.
 
-| Where           | Override                                                                 |
-| --------------- | ------------------------------------------------------------------------ |
-| Overlay scrim   | `--OVERLAY-SCRIM-COLOR`                                                   |
-| Content padding | `--R-SIZE-3` below `40rem` · `--R-SIZE-2` from `40rem` · `--R-SIZE-1` from `64rem` |
-| Stagger entrance | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER`                        |
+| Where            | Utility                            | Override                                     |
+| ---------------- | ---------------------------------- | -------------------------------------------- |
+| Overlay scrim    | `bg-[var(--OVERLAY-SCRIM-COLOR,rgb(0_0_0_/_0.5))]` | `--OVERLAY-SCRIM-COLOR`      |
+| Content padding  | `p-r3` · `sm:p-r2` · `lg:p-r1`     | `--R-SIZE-3` below `40rem` · `--R-SIZE-2` from `40rem` · `--R-SIZE-1` from `64rem` |
+| Stagger entrance |                                    | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER` |
 
-`Hero.css` reads all of those variables directly. The component's only Tailwind
-utilities are the `size-full` / `object-cover` pair on the background `<img>`, and neither
-resolves to a token. The two motion variables are shared enter tokens, so retiming them
-retimes every entrance in the system — there is no Hero-only duration. The *gap* between
-the staggered items is not Hero's at all: it comes from `.stagger-item`, so retime it with
-[Stagger](stagger.md)'s three sources.
+The scrim and the padding ramp are Tailwind utilities in `Hero.tsx`. The stagger entrance is
+the one thing left in `Hero.css`, because its subject is `.stagger-item` — markup **you**
+hand-author, so there is no element of ours to put a class on. The two motion variables are
+shared enter tokens, so retiming them retimes every entrance in the system; there is no
+Hero-only duration. The *gap* between the staggered items is not Hero's at all: it comes from
+`.stagger-item`, so retime it with [Stagger](stagger.md)'s three sources.
 
-The padding ramp is responsive twice over. `Hero.css` swaps *which* `r`-token it reads at
+The padding ramp is responsive twice over. The class list swaps *which* `r`-token it reads at
 `40rem` and again at `64rem`, and the `r`-scale itself steps up at `40rem`. Net effect:
 `1rem` below `40rem`, `2rem` from `40rem`, `6rem` from `64rem` — a wide hero gets six times
 the gutter of a phone-width one, with no breakpoint utilities from you.
 
-`Hero.css` reads `var(--OVERLAY-SCRIM-COLOR, rgb(0 0 0 / 0.5))`, the same fallback
-`Drawer.css` and `CommandPalette.css` write — so without the token layer the scrim degrades
-to 50% black rather than vanishing.
+The scrim keeps the `rgb(0 0 0 / 0.5)` fallback `Drawer.css` and `CommandPalette` also write,
+so without the token layer it degrades to 50% black rather than vanishing.
+
+**`hero--full` is `min-h-dvh` alone.** The old rule paired `min-height: 100vh` with
+`min-height: 100dvh` so an engine without `dvh` fell back. Two utilities setting the same
+property do not transpose that pattern — they resolve by Tailwind's sort order, not by the
+browser discarding the one it cannot parse — and every engine Tailwind 4 supports at all
+(Safari 16.4, Chrome 111, Firefox 128) has had `dvh` for longer than that. The fallback was
+already dead weight.
+
+**`.hero__background img` was deleted, not converted.** Its three declarations were the same
+`size-full object-cover` `Hero.tsx` already puts on the `<img>` itself, and a rule in
+`@layer components` cannot beat a utility whatever its specificity — so it had stopped
+applying when this package's CSS was layered. Nothing changes.
 
 ## Gotchas
 

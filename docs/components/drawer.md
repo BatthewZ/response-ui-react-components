@@ -210,7 +210,11 @@ DOM event yourself.)
 
 Drawer uses **no Tailwind utilities** — its class list is `drawer no-body-scroll` plus
 whatever you pass, and everything visual lives in `Drawer.css` reading contract variables
-directly.
+directly. That is deliberate rather than unfinished: the file is a four-way `[data-side]`
+table crossed with `:not([open])`, `@starting-style` and `::backdrop`, so the utility form is
+roughly forty-five variant-scoped classes on one element, and the reduced-motion reset only
+survives fully qualified (`motion-reduce:data-[side=right]:not-open:translate-none`, ×4).
+`Drawer.css`'s header carries the whole count.
 
 | Where                    | Override                 |
 | ------------------------ | ------------------------ |

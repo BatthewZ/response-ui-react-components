@@ -1,91 +1,27 @@
-/* The menu surface shared by DropdownMenu and ContextMenu.
-   Named after `menu-internals.tsx`, which renders every selector below; the two
-   public components render only their own triggers. These rules used to live in
-   `DropdownMenu.css` under `.dropdown-menu-*` names, which meant a ContextMenu
-   was painted by — and could only be restyled through — classes named after the
-   other component. */
+/* The menu surface shared by DropdownMenu and ContextMenu — converted to
+   utilities in `menu-internals.tsx`; one rule could not move.
 
-.menu-content {
-  background: var(--C-SURFACE-0);
-  border: 1px solid var(--C-BORDER-DEFAULT);
-  border-radius: var(--RADIUS-MD);
-  box-shadow: var(--SHADOW-LG);
-  padding: 0.25rem 0;
-  min-width: 11.25rem;
-  z-index: 40;
-  outline: none;
-}
+   The `menu-*` class names all survive as declaration-free markers: they are the
+   one family of names that describes markup BOTH public components render, and
+   consumer stylesheets, devtools and Astro/Rails consumers of `response-ui-css`
+   still find them. Append to them, never replace.
 
-.menu-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.375rem 0.75rem;
-  background: none;
-  border: none;
-  color: var(--C-TEXT-PRIMARY);
-  font: inherit;
-  font-size: var(--BodyText-2);
-  cursor: pointer;
-  outline: none;
-  text-align: left;
-}
+   The survivor targets an element THE CONSUMER supplies — the `icon` prop is
+   arbitrary content and the box around it is ours. `[&>svg]:size-full` compiles
+   and emits the right selector, but at `.cls > svg` = 0,1,1, and from
+   `@layer utilities` that beats a consumer's own `size-4` on that svg (0,1,0)
+   both on specificity and on sort order (measured with
+   `probe-utility-exists.mjs --css`). From `@layer components` their utility wins,
+   which is the right way round when the child is a component in its own right —
+   `memory/css-to-utilities.md`, "`> *` is not `*:`". AGENTS.md "The test",
+   question 3.
 
-.menu-item:hover,
-.menu-item:focus-visible {
-  background: var(--C-SURFACE-2);
-}
-
-/* The wash above is identical in both states, so it can never distinguish focus
-   from hover however large the step gets; and at rung 2 against the rung-0 panel
-   it measures 1.08–1.21:1, still an order below the 3:1 a state indicator owes.
-   The ring, not the fill, carries focus. Inset, as `.app-shell-sidebar-link`
-   uses for the same full-width-row shape. */
-.menu-item:focus-visible {
-  outline: 2px solid var(--C-BORDER-FOCUS);
-  outline-offset: -2px;
-}
-
-.menu-item[aria-disabled="true"] {
-  color: var(--C-TEXT-MUTED);
-  cursor: default;
-}
-
-/* `em`, not `rem`: the row's own `--BodyText-2` steps at the theme's breakpoint,
-   and a rem box holds still while the label around it grows — the glyph reads a
-   size too large below the breakpoint and a size too small above it. Sized off
-   the text it labels, the ratio is whatever the theme's type scale says, under
-   any theme. As `Rating` and `StatCard` size theirs. */
-.menu-item-icon {
-  display: flex;
-  width: 1.125em;
-  height: 1.125em;
-  flex-shrink: 0;
-  color: var(--C-TEXT-SECONDARY);
-}
-
-/* The box owns the glyph size, as Timeline and ActivityFeed do for theirs. The
-   `icon` prop is arbitrary content wrapped in our span, so sizing the span alone
-   moved nothing: an svg carrying its own width/height attributes — every
-   lucide-react icon renders 24px — overflowed the box and closed the row's gap.
-   Direct `svg` children only: wrap your icon in anything and you keep control. */
+   Why the rule exists at all: the box owns the glyph size, as Timeline and
+   ActivityFeed do for theirs. Sizing the span alone moved nothing — an svg
+   carrying its own width/height attributes (every lucide-react icon renders
+   24px) overflowed the box and closed the row's gap. Direct `svg` children only:
+   wrap your icon in anything and you keep control. */
 .menu-item-icon > svg {
   width: 100%;
   height: 100%;
-}
-
-.menu-divider {
-  height: 1px;
-  background: var(--C-BORDER-DEFAULT);
-  border: none;
-  margin: 0.25rem 0;
-}
-
-.menu-group-header {
-  display: block;
-  padding: 0.375rem 0.75rem;
-  font-size: var(--BodyText-3);
-  color: var(--C-TEXT-MUTED);
-  font-weight: var(--Semibold-Weight);
 }

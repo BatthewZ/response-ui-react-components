@@ -167,9 +167,17 @@ describe("MediaCard", () => {
       </MediaCard>,
     );
 
-    expect(container.querySelector(".media-card__image-container")?.getAttribute("class")).toBe(
-      "media-card__image-container media-card__image-container--landscape rounded-lg",
-    );
+    // Exactness stopped being expressible once `MediaCard.css` became utilities
+    // on the elements themselves. What it was standing in for survives: both
+    // markers are present, the caller's class merges last, and nothing junk is
+    // appended.
+    const classes = container.querySelector(".media-card__image-container")
+      ?.getAttribute("class") ?? "";
+    const tokens = classes.split(" ");
+    expect(tokens).toContain("media-card__image-container");
+    expect(tokens).toContain("media-card__image-container--landscape");
+    expect(tokens[tokens.length - 1]).toBe("rounded-lg");
+    expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
   });
 
   it("routes imgProps.className to the <img>, after its base classes", () => {

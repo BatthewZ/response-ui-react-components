@@ -133,6 +133,13 @@ The track swallows the click that ends a drag — a pointer that moved more than
 flag, and the next `click` is stopped in the capture phase — so dragging past a link never
 navigates. A genuine click still goes through:
 
+While a drag is in progress the track carries **`data-dragging="true"`**, which is what
+switches the cursor to `grabbing`, suspends scroll-snap and disables text selection. It used
+to be a `carousel-track--dragging` class; **if you style that class, retarget
+`[data-dragging]`.** The attribute is not cosmetic bookkeeping — a BEM modifier in
+`@layer components` cannot out-rank a base declaration that is now a utility in
+`@layer utilities`, whereas an attribute variant gains a specificity step and wins.
+
 <!-- example:ActionableSlides -->
 ```tsx
 <Carousel title="Browse by genre" style={{ "--carousel-item-width": "12rem" } as CSSProperties}>
@@ -219,25 +226,30 @@ it is `disabled` plus `data-hidden`, not a class.
 
 ## Theme tokens
 
-`Carousel.css` reads the contract directly for the rail's geometry and the arrow fade. The
-arrows themselves are [IconButton](icon-button.md)s, so their ink, ring, radius and press
-feedback come from that component's utilities — listed here because they are what you
-actually override to re-tint the arrows.
+`Carousel.css` is gone: every rule it held is now a Tailwind utility on the element it
+paints. The arrows are [IconButton](icon-button.md)s, so their ink, ring, radius, press
+feedback **and transition duration** come from that component — listed here because they are
+what you actually override to re-tint the arrows.
 
 | Where                                  | Utility                           | Override                                       |
 | -------------------------------------- | --------------------------------- | ---------------------------------------------- |
 | Gap between slides                     |                                   | `--MEDIA-CAROUSEL-GAP`                         |
 | Peek inset at both ends of the track   |                                   | `--MEDIA-CAROUSEL-PEEK`                        |
-| Space under the title                  |                                   | `--R-SIZE-4`                                   |
-| Track vertical padding · arrow padding | `p-r5`                            | `--R-SIZE-5`                                   |
-| Arrow fade in / out                    |                                   | `--MOTION-DURATION-ENTER` `--MOTION-EASE-ENTER` |
+| Space under the title                  | `mb-r4`                           | `--R-SIZE-4`                                   |
+| Track vertical padding · arrow padding | `py-r5` · `p-r5`                  | `--R-SIZE-5`                                   |
+| Arrow fade easing                      |                                   | `--MOTION-EASE-ENTER`                          |
 | Arrow hover wash                       | `hover:bg-surface-2`              | `--C-SURFACE-2`                                |
 | Arrow pressed wash                     | `active:bg-surface-3`             | `--C-SURFACE-3`                                |
 | Arrow glyph ink                        | `text-fg-secondary`               | `--C-TEXT-SECONDARY`                           |
 | Arrow focus ring                       | `focus-visible:ring-border-focus` | `--C-BORDER-FOCUS`                             |
 | Arrow corners                          | `rounded-md`                      | `--RADIUS-MD`                                  |
-| Arrow hover / press timing             | `duration-fast`                   | `--DURATION-FAST`                              |
+| Arrow fade · hover · press timing      | `duration-fast`                   | `--DURATION-FAST`                              |
 | Slide width (component local)          |                                   | `--carousel-item-width`                        |
+
+The gap, the peek and the easing are read as custom properties
+(`gap-[var(--MEDIA-CAROUSEL-GAP)]`, `px-[var(--MEDIA-CAROUSEL-PEEK)]`,
+`ease-[var(--MOTION-EASE-ENTER)]`): none of those three tokens sits in a Tailwind namespace,
+so there is no name-resolved utility for them.
 
 `--MEDIA-CAROUSEL-PEEK` (`3rem`) and `--MEDIA-CAROUSEL-GAP` (`var(--R-SIZE-5)`) are
 declared in this package's own `src/tokens.css`, and unlike the media-card feel tokens
@@ -246,12 +258,21 @@ arrow buttons off the slide content, and that is a geometry decision, not a look
 does move: `--R-SIZE-5` is on the responsive `r`-scale and steps `0.5rem` → `0.75rem` at
 the 40rem breakpoint, taking the track's vertical padding with it.
 
-Two of the arrow rows overlap on purpose. `Carousel.css` restates the hover background as
-`--C-SURFACE-2` at 75% opacity through `color-mix`, so a slide stays faintly visible behind
-a hovered arrow. That rule used to beat IconButton's opaque `hover:bg-surface-2` because the
-component stylesheet was unlayered; it is now in `@layer components`, **below** `@layer utilities`,
-so a `hover:bg-*` utility on the arrow wins instead. Both read the same variable, so re-tinting is
-a one-line change either way.
+**Two arrow declarations were deleted rather than converted, because they had stopped
+applying.** `Carousel.css` used to restate the hover background as `--C-SURFACE-2` at 75%
+opacity through `color-mix`, and to set the fade duration to `--MOTION-DURATION-ENTER`. Both
+beat IconButton while this package's stylesheet was unlayered; once it moved into
+`@layer components`, **below** `@layer utilities`, IconButton's own `hover:bg-surface-2` and
+`duration-fast` won instead. The opaque wash and the 100ms fade are therefore what has
+shipped ever since, and they are now what the source says. The easing was never beaten —
+nothing in IconButton sets one — so it survives.
+
+**One was a live defect and is fixed.** An end-of-rail arrow is `data-hidden="true"` *and*
+`disabled`, and `.carousel-arrow[data-hidden="true"] { opacity: 0 }` lost to IconButton's
+`disabled:opacity-50` the same way — so instead of fading out, the arrow rendered as a
+half-visible, non-interactive ghost. As a utility on the same element,
+`data-[hidden=true]:opacity-0` and `disabled:opacity-50` are both specificity 0,2,0 and the
+attribute variant is emitted last, so the fade-out is restored.
 
 `--carousel-item-width` is lowercase because it is a component-internal local, not part of
 the theme contract: it is per-instance layout, the thing you set at the call site, not
@@ -325,9 +346,9 @@ Everything else needs a decision from you:
   `aria-label="Carousel"`, so the name and the role description both count — ARIA prohibits
   them only on the implicit `generic` role. `role` still passes through if you want
   `region` instead.
-- **The root is a tab stop with no focus style of its own.** `Carousel.css` defines nothing
-  for `.carousel:focus-visible`, so you get the browser's default outline drawn around the
-  whole component, title included.
+- **The root is a tab stop with no focus style of its own.** Nothing sets a
+  `focus-visible:` ring on `.carousel`, so you get the browser's default outline drawn around
+  the whole component, title included.
 - **Every carousel adds a landmark.** `Carousel.Track` is `role="region"` with
   `aria-label="Carousel items"`, so three rails on a page put three identically-named regions
   in the landmark list. Give each `Track` its own `aria-label`, or drop the `role`.

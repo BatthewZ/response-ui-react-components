@@ -166,23 +166,26 @@ Prefer a token where the change is a value: the whole trail re-inks from the var
 
 ## Theme tokens
 
-Breadcrumbs uses **no Tailwind utilities** — every rule lives in `Breadcrumbs.css` and
-reads a contract variable directly, the way [Tabs](tabs.md) and
-[ActivityFeed](activity-feed.md) do. Override any of these and the trail re-tints with the
-rest of the app, at runtime, with no rebuild.
+`Breadcrumbs.css` is gone: every rule it held is now a Tailwind utility on the element it
+paints, and each one resolves to a contract variable. Override any of these and the trail
+re-tints with the rest of the app, at runtime, with no rebuild.
 
-| Where                     | Override                                                            |
-| ------------------------- | ------------------------------------------------------------------- |
-| Link ink                  | `--C-TEXT-SECONDARY` at rest · `--C-ACCENT` on hover                |
-| Non-link crumb ink        | `--C-TEXT-SECONDARY`                                                 |
-| Current crumb             | `--C-TEXT-PRIMARY` · `--Semibold-Weight`                             |
-| Separator ink             | `--C-TEXT-MUTED`                                                     |
-| Ellipsis button           | `--C-TEXT-MUTED` at rest · `--C-TEXT-SECONDARY` and `--C-SURFACE-2` on hover |
-| Focus outline             | `--C-BORDER-FOCUS`                                                   |
-| Corners                   | `--RADIUS-SM`                                                        |
-| Item gap · ellipsis inset | `--R-SIZE-6`                                                         |
-| Type                      | `--BodyText-2` · `--BodyText-2-line-height`                          |
-| Motion                    | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`                    |
+| Where                     | Utility                                                          | Override                                            |
+| ------------------------- | ---------------------------------------------------------------- | --------------------------------------------------- |
+| Link ink                  | `text-fg-secondary` · `hover:text-accent`                        | `--C-TEXT-SECONDARY` at rest · `--C-ACCENT` on hover |
+| Non-link crumb ink        | `text-fg-secondary`                                              | `--C-TEXT-SECONDARY`                                 |
+| Current crumb             | `text-fg-primary` · `font-semibold`                              | `--C-TEXT-PRIMARY` · `--Semibold-Weight`             |
+| Separator ink             | `text-fg-muted`                                                  | `--C-TEXT-MUTED`                                     |
+| Ellipsis at rest          | `text-fg-muted`                                                  | `--C-TEXT-MUTED`                                     |
+| Ellipsis on hover         | `hover:text-fg-secondary` · `hover:bg-surface-2`                 | `--C-TEXT-SECONDARY` · `--C-SURFACE-2`               |
+| Focus outline             | `focus-visible:outline-border-focus`                             | `--C-BORDER-FOCUS`                                   |
+| Corners                   | `rounded-sm`                                                     | `--RADIUS-SM`                                        |
+| Item gap · ellipsis inset | `gap-r6` · `px-r6`                                               | `--R-SIZE-6`                                         |
+| Type                      | `text-body-2`                                                    | `--BodyText-2` · `--BodyText-2-line-height`          |
+| Motion                    | `duration-[var(--MOTION-DURATION-SHIFT)]`                        | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT`    |
+
+The easing is `ease-[var(--MOTION-EASE-SHIFT)]`; `--MOTION-*` sits in no Tailwind namespace,
+so both halves of the motion pair are read as custom properties rather than by token name.
 
 The trail sets **no background**: it inks text tokens onto whatever surface you drop it on.
 `--R-SIZE-6` is the one rung of the responsive `r`-scale that holds at `0.25rem` on both
@@ -192,10 +195,16 @@ type does (`--BodyText-2` steps `0.8125rem` → `0.875rem`, its line-height `1.5
 responsive (`500` → `600`). The link's colour transition and the ellipsis's colour and
 background transitions are all dropped under `prefers-reduced-motion: reduce`.
 
-The ellipsis button starts from `all: unset` and rebuilds itself from those tokens, so it
-inherits nothing from a UA stylesheet — but its `1.5em` min-width and `0.1em`
-letter-spacing are `em`-relative literals rather than contract variables, tracking
-`--BodyText-2` instead of being themeable in their own right.
+The ellipsis button used to start from `all: unset` and rebuild itself in fourteen
+declarations. It now carries no reset at all: Tailwind's Preflight already gives a
+`<button>` every property that rule restated — `box-sizing`, `margin`, `padding`, `border`,
+`background-color`, `font`, `letter-spacing`, `color`, `border-radius` and `appearance` —
+which is the same thing [Button](button.md) has always relied on. A reset could not have
+been transposed anyway: Tailwind sorts arbitrary-property utilities last, so `[all:unset]`
+in a class list lands *after* the declarations it is meant to precede and wipes them.
+
+Its `1.5em` min-width and `0.1em` letter-spacing stay `em`-relative literals rather than
+contract variables, tracking `--BodyText-2` instead of being themeable in their own right.
 
 ## Gotchas
 
@@ -241,9 +250,9 @@ letter-spacing are `em`-relative literals rather than contract variables, tracki
   `<ol>` (see [Accessibility](#accessibility)) and no `target`, `rel` or `download` on a
   crumb's anchor. **The class half is now answered:** `classNames` reaches the `<ol>`, the
   expand control, and each of the three shapes a crumb's inner element takes — see
-  [Slots](#slots). The root's own `.breadcrumbs` class still carries **no rules at all** —
-  every declaration in `Breadcrumbs.css` targets a `.breadcrumbs__*` descendant — so
-  `className` on the root positions the block and a slot restyles the part.
+  [Slots](#slots). The root's own `.breadcrumbs` class still carries **no styling at all** —
+  every utility lands on a `.breadcrumbs__*` part — so `className` on the root positions the
+  block and a slot restyles the part.
 - **Both sub-parts throw outside the root.** `Item` and `Divider` call the context hook
   and throw `"Breadcrumbs compound components must be used within <Breadcrumbs>"`. Neither
   actually *uses* what the context carries — the check is the whole point of it — so wrapping

@@ -362,6 +362,36 @@ describe("CommandPalette", () => {
     expect(within(groups[1]).getAllByRole("option")).toHaveLength(2);
   });
 
+  /**
+   * The gap between groups was `.command-palette-group + .command-palette-group`,
+   * a rule about DOM adjacency. It is computed in the root now, and these two
+   * cases are what distinguish that computation from the two shortcuts that look
+   * like it: `not-first:` would give the second block a margin in the ungrouped
+   * case below, and `[.command-palette-group+&]:` would hard-code the BEM name
+   * into a utility.
+   */
+  describe("gap between adjacent groups", () => {
+    it("spaces a group that directly follows another", () => {
+      renderPalette({ open: true });
+      const groups = screen.getAllByRole("group");
+      expect(groups[0].className.split(" ")).not.toContain("mt-r5");
+      expect(groups[1].className.split(" ")).toContain("mt-r5");
+    });
+
+    it("does not space a group whose preceding sibling is an ungrouped row", () => {
+      renderPalette({
+        open: true,
+        items: [
+          { id: "loose", label: "Loose command", onSelect: vi.fn() },
+          { id: "copy", label: "Copy", group: "Edit", onSelect: vi.fn() },
+        ],
+      });
+      const group = screen.getByRole("group");
+      expect(group.previousElementSibling?.getAttribute("role")).toBe("option");
+      expect(group.className.split(" ")).not.toContain("mt-r5");
+    });
+  });
+
   // `data-active` is the only hook the stylesheet has for the virtual-focus
   // ring: DOM focus never leaves the input, so `:focus-visible` cannot match an
   // option. jsdom applies no stylesheets, so this locks the DOM contract the
@@ -732,20 +762,26 @@ describe("CommandPalette", () => {
       expect(el.getAttribute("class")).toContain("opacity-50");
     });
 
+    /**
+     * This used to assert each class attribute equalled its marker exactly, which
+     * stopped being expressible once `CommandPalette.css` became utilities on the
+     * elements themselves. The falsifier is unchanged: an absent slot appends
+     * *nothing* — no `undefined`, no `null`, no empty token.
+     */
     it("keeps every base class when no slot is passed", () => {
       const c = renderSlots(undefined);
-      expect(c.querySelector(".command-palette-search")?.getAttribute("class")).toBe(
-        "command-palette-search"
-      );
-      expect(screen.getByRole("listbox").getAttribute("class")).toBe(
-        "command-palette-list"
-      );
-      expect(c.querySelector(".command-palette-group")?.getAttribute("class")).toBe(
-        "command-palette-group"
-      );
-      expect(
-        c.querySelector(".command-palette-option-label")?.getAttribute("class")
-      ).toBe("command-palette-option-label");
+      const listbox = screen.getByRole("listbox").getAttribute("class") ?? "";
+      expect(listbox.split(" ")).toContain("command-palette-list");
+      expect(listbox).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+      for (const marker of [
+        "command-palette-search",
+        "command-palette-group",
+        "command-palette-option-label",
+      ]) {
+        const classes = c.querySelector(`.${marker}`)?.getAttribute("class") ?? "";
+        expect(classes.split(" ")).toContain(marker);
+        expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
+      }
     });
 
     it("puts no slot class on the dialog", () => {
@@ -759,9 +795,10 @@ describe("CommandPalette", () => {
         itemLabel: "slot-item-label",
         itemShortcut: "slot-item-shortcut",
       });
-      expect(screen.getByRole("dialog").getAttribute("class")).toBe(
-        "command-palette no-body-scroll"
-      );
+      const classes = screen.getByRole("dialog").getAttribute("class")?.split(" ") ?? [];
+      expect(classes).toContain("command-palette");
+      expect(classes).toContain("no-body-scroll");
+      expect(classes.filter((c) => c.startsWith("slot-"))).toEqual([]);
     });
 
     it("rejects an unknown slot key at compile time", () => {
