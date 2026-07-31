@@ -33,6 +33,13 @@ non-modal mode — a Drawer is always a `showModal()` dialog — and the native 
 replaced by the component's own callback. Neither `DrawerProps` nor the `side` union is
 exported; a wrapper of your own re-declares them.
 
+**There is no `classNames` either — deliberately.** Drawer renders exactly one element, the
+`<dialog>`, and puts your `children` straight inside it. There is nothing between `className`
+and your own markup for a slot to name: a `header`, `footer` or `closeButton` key would be
+naming *your* structure, not the component's. The scrim is the one thing Drawer paints that
+`className` cannot reach as a class, because `::backdrop` takes no class name — it is a theme
+value instead, `--OVERLAY-SCRIM-COLOR`. See [Theme tokens](#theme-tokens).
+
 ## Controlled, and only controlled
 
 One effect watches `open`: it calls `showModal()` when you ask for open and the element isn't,

@@ -6,10 +6,12 @@ import {
   type ReactNode,
   useId,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 import {
+  floatingArrowProps,
   FloatingPortal,
   type Placement,
   safePolygon,
@@ -22,6 +24,7 @@ import {
   useTransitionStyles,
 } from "../../hooks/use-floating";
 import { mergeRefs } from "../../util/merge-refs";
+import { cn, type SlotClassNames } from "../../util/style";
 
 interface TooltipProps {
   content: ReactNode;
@@ -34,6 +37,28 @@ interface TooltipProps {
    * it) for a tooltip used inside `Dialog`/`Drawer`/`CommandPalette`.
    */
   container?: HTMLElement | null;
+  /**
+   * Classes for the bubble — the only element this component constructs. Its
+   * `padding`, `max-width`, `word-wrap` and `z-index` had no override path at
+   * any level before this prop existed; the rest of its appearance is themeable
+   * as well, through the contract variables the stylesheet reads.
+   *
+   * It is not spread anywhere else: `children` is cloned untouched, so this
+   * cannot reach the trigger.
+   */
+  className?: string;
+  /**
+   * Render the pointer triangle that points back at the trigger. Off by default,
+   * because it is the one option here that changes what is painted.
+   */
+  arrow?: boolean;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * bubble, so the only slot is the arrow — which exists only under `arrow`, and
+   * which a caller has no other route to. The union is written out here so an
+   * unknown key is a type error rather than a silently ignored one.
+   */
+  classNames?: SlotClassNames<"arrow">;
   children: ReactElement;
 }
 
@@ -43,14 +68,28 @@ export function Tooltip({
   delay = 300,
   offset: offsetPx = 8,
   container,
+  className,
+  arrow = false,
+  classNames,
   children,
 }: TooltipProps) {
   const [open, setOpen] = useState(false);
   const id = useId();
+  // Handed to the hook unconditionally: floating-ui's `arrow` middleware reads
+  // the ref at position time and returns nothing while `current` is null, so a
+  // tooltip without an arrow pays no behavioural cost.
+  const arrowRef = useRef<HTMLDivElement>(null);
 
-  const { refs, floatingStyles, context } = useFloating({
+  const {
+    refs,
+    floatingStyles,
+    context,
+    placement: resolvedPlacement,
+    middlewareData,
+  } = useFloating({
     placement,
     offsetPx,
+    arrowRef,
     open,
     onOpenChange: setOpen,
   });
@@ -113,7 +152,7 @@ export function Tooltip({
         <FloatingPortal root={container}>
           <div
             ref={refs.setFloating}
-            className="tooltip"
+            className={cn("tooltip", className)}
             style={{ ...floatingStyles, ...transitionStyles }}
             {...getFloatingProps()}
             // After the spread on purpose: `getFloatingProps` supplies an `id`
@@ -122,6 +161,14 @@ export function Tooltip({
             id={id}
           >
             {content}
+            {arrow && (
+              <div
+                ref={arrowRef}
+                aria-hidden="true"
+                {...floatingArrowProps(resolvedPlacement, middlewareData.arrow)}
+                className={cn("tooltip-arrow", classNames?.arrow)}
+              />
+            )}
           </div>
         </FloatingPortal>
       )}

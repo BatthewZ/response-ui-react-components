@@ -10,10 +10,12 @@ import {
   useContext,
   useId,
   useMemo,
+  useRef,
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
 import {
+  floatingArrowProps,
   FloatingPortal,
   type Placement,
   safePolygon,
@@ -27,7 +29,7 @@ import {
 } from "../../hooks/use-floating";
 import { mergeProps } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { useFadeDuration } from "./floating-motion";
 
 /* ------------------------------------------------------------------ */
@@ -44,6 +46,11 @@ interface HoverCardContextValue {
   getFloatingProps: ReturnType<typeof useInteractions>["getFloatingProps"];
   /** `string | undefined` because Floating UI types its own id that way. */
   contentId: string | undefined;
+  /** The arrow element the middleware measures; `HoverCard.Content` fills it in. */
+  arrowRef: React.RefObject<HTMLDivElement | null>;
+  /** The *resolved* placement, so a flip carries the arrow to the other edge. */
+  placement: Placement;
+  middlewareData: ReturnType<typeof useFloating>["middlewareData"];
 }
 
 const HoverCardContext = createContext<HoverCardContextValue | null>(null);
@@ -83,9 +90,20 @@ function HoverCardRoot({
     onChange: onOpenChange,
   });
   const triggerId = useId();
+  // Handed to the hook unconditionally: floating-ui's `arrow` middleware reads
+  // the ref at position time and returns nothing while `current` is null, so a
+  // card whose Content never asks for an arrow pays no behavioural cost.
+  const arrowRef = useRef<HTMLDivElement>(null);
 
-  const { refs, floatingStyles, context } = useFloating({
+  const {
+    refs,
+    floatingStyles,
+    context,
+    placement: resolvedPlacement,
+    middlewareData,
+  } = useFloating({
     placement,
+    arrowRef,
     open,
     onOpenChange: setOpen,
   });
@@ -121,6 +139,9 @@ function HoverCardRoot({
       getReferenceProps,
       getFloatingProps,
       contentId,
+      arrowRef,
+      placement: resolvedPlacement,
+      middlewareData,
     }),
     [
       open,
@@ -131,6 +152,8 @@ function HoverCardRoot({
       getReferenceProps,
       getFloatingProps,
       contentId,
+      resolvedPlacement,
+      middlewareData,
     ]
   );
 
@@ -207,12 +230,55 @@ const HoverCardTrigger = forwardRef<HTMLButtonElement, HoverCardTriggerProps>(
 /*  Content                                                           */
 /* ------------------------------------------------------------------ */
 
-type HoverCardContentProps = ComponentPropsWithRef<"div">;
+type HoverCardContentProps = ComponentPropsWithRef<"div"> & {
+  /**
+   * Render the pointer triangle that points back at the trigger. Off by default,
+   * because it is the one option here that changes what is painted.
+   */
+  arrow?: boolean;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * card itself, so the only slot is the arrow — an element a caller has no other
+   * route to. The union is written out here so an unknown key is a type error
+   * rather than a silently ignored one.
+   */
+  classNames?: SlotClassNames<"arrow">;
+};
+
+/**
+ * Utilities rather than a BEM class, because `HoverCard` ships no stylesheet and
+ * the card itself is styled the same way. `bg-inherit` + `border-inherit` follow
+ * whatever the card is painted with — including a consumer's own utility on
+ * `className`, which wins from `@layer components` — instead of inventing a
+ * second writer for a value the card already publishes. Rotating the square
+ * moves its edges, so the two that face *out* are the top and left ones for an
+ * arrow sitting on the card's top edge, and so on round.
+ */
+const hoverCardArrowClasses = cn(
+  "absolute size-r5 rotate-45 bg-inherit border border-inherit",
+  "data-[side=top]:border-r-0 data-[side=top]:border-b-0",
+  "data-[side=bottom]:border-t-0 data-[side=bottom]:border-l-0",
+  "data-[side=left]:border-t-0 data-[side=left]:border-r-0",
+  "data-[side=right]:border-b-0 data-[side=right]:border-l-0"
+);
 
 const HoverCardContent = forwardRef<HTMLDivElement, HoverCardContentProps>(
-  function HoverCardContent({ children, className, style, ...props }, ref) {
-    const { open, refs, floatingStyles, context, getFloatingProps, contentId, triggerId } =
-      useHoverCardContext();
+  function HoverCardContent(
+    { children, className, style, arrow = false, classNames, ...props },
+    ref
+  ) {
+    const {
+      open,
+      refs,
+      floatingStyles,
+      context,
+      getFloatingProps,
+      contentId,
+      triggerId,
+      arrowRef,
+      placement,
+      middlewareData,
+    } = useHoverCardContext();
 
     // Only as a default: an explicit name from the caller must not be beaten by
     // `aria-labelledby`, which wins the name computation wherever both appear.
@@ -244,6 +310,14 @@ const HoverCardContent = forwardRef<HTMLDivElement, HoverCardContentProps>(
           {...getFloatingProps(props)}
         >
           {children}
+          {arrow && (
+            <div
+              ref={arrowRef}
+              aria-hidden="true"
+              {...floatingArrowProps(placement, middlewareData.arrow)}
+              className={cn(hoverCardArrowClasses, classNames?.arrow)}
+            />
+          )}
         </div>
       </FloatingPortal>
     );

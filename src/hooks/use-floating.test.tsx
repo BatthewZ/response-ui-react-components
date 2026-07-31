@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { useLayoutEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useFloating } from "./use-floating";
+import { floatingArrowProps, useFloating } from "./use-floating";
 
 type FloatingConfig = Parameters<typeof useFloating>[0];
 
@@ -177,5 +177,78 @@ describe("useFloating", () => {
 
     expect(onOpenChange).toHaveBeenCalledTimes(1);
     expect(onOpenChange.mock.calls[0]?.[0]).toBe(false);
+  });
+
+  it("adds the arrow middleware only when given an arrowRef", async () => {
+    const without = renderFloating();
+    await waitFor(() => expect(without.result.current.isPositioned).toBe(true));
+    expect(without.result.current.middlewareData.arrow).toBeUndefined();
+
+    const arrowRef = { current: spawn() };
+    const withRef = renderFloating({ arrowRef });
+    await waitFor(() => expect(withRef.result.current.isPositioned).toBe(true));
+    expect(withRef.result.current.middlewareData.arrow).toBeDefined();
+  });
+
+  it("reads a null arrowRef as no arrow, so the option costs nothing unused", async () => {
+    const { result } = renderFloating({ arrowRef: { current: null } });
+
+    await waitFor(() => expect(result.current.isPositioned).toBe(true));
+
+    // The middleware is in the stack but contributes *no offset* while `current`
+    // is null — which is what lets a surface pass the ref unconditionally and
+    // render the element only on request.
+    expect(result.current.middlewareData.arrow).toEqual({});
+    expect(floatingArrowProps("bottom", result.current.middlewareData.arrow).style).not.toHaveProperty(
+      "left",
+    );
+    expect(result.current.floatingStyles.transform).toBe("translate(125px, 128px)");
+  });
+});
+
+describe("floatingArrowProps", () => {
+  /**
+   * The arrow sits on the edge of the floating element that *faces* the
+   * reference, which is the opposite of the placement — and it takes the
+   * resolved placement, so a `flip()` carries the arrow across with the panel.
+   */
+  it("pins the arrow to the edge opposite the resolved placement", () => {
+    expect(floatingArrowProps("bottom", undefined)["data-side"]).toBe("top");
+    expect(floatingArrowProps("top-start", undefined)["data-side"]).toBe("bottom");
+    expect(floatingArrowProps("left-end", undefined)["data-side"]).toBe("right");
+    expect(floatingArrowProps("right", undefined)["data-side"]).toBe("left");
+  });
+
+  it("half-overlaps the panel with a percentage of the arrow's own box", () => {
+    // A percentage rather than a measured length, so a consumer resizing the
+    // element through `classNames.arrow` stays correctly seated.
+    expect(floatingArrowProps("bottom", undefined).style).toMatchObject({
+      top: 0,
+      translate: "0 -50%",
+    });
+    expect(floatingArrowProps("left", undefined).style).toMatchObject({
+      right: 0,
+      translate: "50% 0",
+    });
+  });
+
+  it("takes the cross-axis offset from the middleware, and only that axis", () => {
+    expect(floatingArrowProps("bottom", { x: 42 }).style).toMatchObject({
+      left: "42px",
+      top: 0,
+    });
+    expect(floatingArrowProps("right", { y: 12 }).style).toMatchObject({
+      top: "12px",
+      left: 0,
+    });
+  });
+
+  it("keeps the edge pin when the middleware reports both axes", () => {
+    // Defensive: floating-ui reports one axis per placement today. If that ever
+    // changed, the pin has to win or the arrow floats off the edge.
+    expect(floatingArrowProps("bottom", { x: 42, y: 99 }).style).toMatchObject({
+      left: "42px",
+      top: 0,
+    });
   });
 });

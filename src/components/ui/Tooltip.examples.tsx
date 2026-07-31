@@ -61,6 +61,17 @@ export function Timing() {
   );
 }
 
+/** `arrow` points the bubble at its trigger; `className` reaches the bubble itself. */
+export function Arrow() {
+  return (
+    <Tooltip content="Runs on every push to main" arrow className="max-w-r1">
+      <Button type="button" variant="secondary">
+        Nightly build
+      </Button>
+    </Tooltip>
+  );
+}
+
 /** `content` is a `ReactNode`, so it can carry markup — as long as none of it is interactive. */
 export function RichContent() {
   return (

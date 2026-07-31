@@ -49,7 +49,7 @@ gives you, with the positioning included. It is not in the DOM at all while clos
 | ------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `HoverCard`         | nothing — a context provider                          | `open?` · `defaultOpen?` · `onOpenChange?` · `openDelay?` · `closeDelay?` · `placement?` · `children` |
 | `HoverCard.Trigger` | `<button type="button">`, or its own child when `asChild` | `asChild?` (+ all `button` props)                                              |
-| `HoverCard.Content` | `<div role="dialog">`, portalled into `<body>`        | all `div` props                                                                    |
+| `HoverCard.Content` | `<div role="dialog">`, portalled into `<body>`        | `arrow?` · `classNames?` (+ all `div` props)                                        |
 
 | Root prop      | Type                      | Default    |
 | -------------- | ------------------------- | ---------- |
@@ -171,10 +171,65 @@ and resize while open.
 ```
 <!-- /example -->
 
-There is no arrow, and neither it nor the 8px offset is exposed as a prop — the gap is all that
-ties the card back to its trigger, so prefer a placement that keeps them visually adjacent. The
-card is a fixed `w-72` (18rem); override it with a width in `className`. While it is mounted it
-carries `data-state="open"` or `"closed"`, which is the hook to hang your own CSS on.
+The 8px offset is not exposed as a prop, so a placement that keeps card and trigger visually
+adjacent still matters. The card is a fixed `w-72` (18rem); override it with a width in
+`className`. While it is mounted it carries `data-state="open"` or `"closed"`, which is the hook
+to hang your own CSS on.
+
+## The arrow
+
+`<HoverCard.Content arrow>` draws a pointer triangle on the card edge that faces the trigger.
+It is **off by default** and is the one thing on this page that changes what is painted.
+
+<!-- example:Arrow -->
+```tsx
+<HoverCard placement="top">
+  <HoverCard.Trigger asChild>
+    <a href="/people/alan-turing">Alan Turing</a>
+  </HoverCard.Trigger>
+  <HoverCard.Content arrow aria-label="About Alan Turing">
+    <p>Mathematician. Formalised computation, and broke Enigma at Bletchley Park.</p>
+  </HoverCard.Content>
+</HoverCard>
+```
+<!-- /example -->
+
+- **It follows a flip.** The edge comes from the *resolved* placement, so a `top` card pushed to
+  `bottom` moves its arrow with it. The element carries `data-side="top" | "right" | "bottom" |
+  "left"` naming that edge, and `arrow()` keeps it centred on the trigger after `shift()` has run.
+- **It takes the card's own paint.** `bg-inherit` and `border-inherit` follow whatever the card
+  is painted with — including a `bg-*` or `border-*` you put on `className`, which wins from
+  `@layer components`. There is deliberately no arrow variable: one that could be set without
+  the card's own would let the two drift apart.
+- **Resize it with `classNames.arrow`**, not with a token. The middleware measures the element,
+  so `classNames={{ arrow: "size-r4" }}` stays correctly centred and correctly seated. Because
+  the card ships no stylesheet, the arrow is utilities too — which makes this a *real*
+  tailwind-merge conflict: your `size-*` replaces the default rather than layering over it. See
+  [Slots](#slots).
+- **It is `aria-hidden`,** so it changes nothing about the card's name or description.
+- **Forced colours are fine.** Both `inherit`s resolve to whatever the substituted palette gave
+  the card, so the arrow stays a continuation of the card outline.
+
+## Slots
+
+`className` addresses the element each part renders. `classNames` addresses the elements a part
+renders *inside* itself — class strings only, and the keys are typed, so a misspelled one is a
+compile error rather than a prop that does nothing.
+
+| Part                | Slot    | Element                          | What it addresses                          |
+| ------------------- | ------- | -------------------------------- | ------------------------------------------ |
+| `HoverCard.Content` | `arrow` | the pointer `div`, `[data-side]` | the pointer triangle, present only under `arrow` |
+
+```tsx
+<HoverCard.Content arrow classNames={{ arrow: "size-r4" }} aria-label="About Alan Turing" />
+```
+
+**Deliberately not slots.** `HoverCard.Trigger` and `HoverCard.Content` are subcomponents, so
+their own `className` already reaches them — a slot beside a subcomponent would be a second
+writer for one element. And **there is no slot for the fade**: `useTransitionStyles` writes
+`transition-duration` as an inline style, so a `duration-*` utility on the card, in a slot or
+inlined from CSS is silently dead no matter where it is written. That tempo is
+`--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT` and nothing else.
 
 ## Controlled
 

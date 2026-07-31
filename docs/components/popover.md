@@ -29,7 +29,7 @@ not exist in the DOM until you open it.
 | ----------------- | ------------------- | ------------------------------------------------------------------------------ |
 | `Popover`         | nothing             | `open?` · `onOpenChange?` · `defaultOpen?` · `placement?` · `offset?` · `children` |
 | `Popover.Trigger` | `<button>`          | `asChild?` (+ all `button` props)                                              |
-| `Popover.Content` | `<div>` in a portal | all `div` props                                                                |
+| `Popover.Content` | `<div>` in a portal | `arrow?` · `classNames?` (+ all `div` props)                                   |
 
 The root's six props are its **whole** type — it takes no `className`, `style`, `id` or `ref`,
 because there is no element to put them on:
@@ -82,8 +82,10 @@ stack for every floating component in the library:
   rotates onto the perpendicular axis, so `bottom` becomes `top`, never `right`.
 - **`shift({ padding: 8 })`** — slides the panel along the other axis so it stays at least 8px
   inside the viewport. This is what saves a `bottom-end` popover on a narrow phone.
-- **`arrow()`** — added only when the wrapper is given an `arrowRef`. `Popover` passes none, so
-  there is no arrow element and nothing to position.
+- **`arrow()`** — centres a pointer triangle on the trigger, and reports how far off-centre it
+  had to sit once `shift()` has moved the panel. `Popover` always hands the wrapper its
+  `arrowRef`, so the middleware is live; whether anything is *drawn* is the `arrow` prop's
+  decision. See [The arrow](#the-arrow).
 
 `whileElementsMounted: autoUpdate` keeps all of that live: the panel re-anchors on scroll, on
 resize, and when either element changes size.
@@ -106,6 +108,72 @@ content its own `max-height` and `overflow-y: auto`.
 </Popover>
 ```
 <!-- /example -->
+
+## The arrow
+
+`<Popover.Content arrow>` draws a pointer triangle on the panel edge that faces the trigger.
+It is **off by default** and is the one thing on this page that changes what is painted, so
+adding it is a decision rather than an upgrade.
+
+<!-- example:Arrow -->
+```tsx
+<Popover placement="top">
+  <Popover.Trigger>Build status</Popover.Trigger>
+  <Popover.Content arrow classNames={{ arrow: "size-r4" }} aria-label="Build status">
+    <p>All 412 checks passed on 4f21a9c.</p>
+  </Popover.Content>
+</Popover>
+```
+<!-- /example -->
+
+- **It follows a flip.** The edge is chosen from the *resolved* placement, not the one you
+  asked for, so a `top` popover pushed to `bottom` moves its arrow to the top edge with it. The
+  element carries `data-side="top" | "right" | "bottom" | "left"` naming that edge.
+- **It is centred on the trigger, and stays inside the panel.** `arrow()` reports the offset
+  after `shift()` has run, so the arrow tracks the trigger along the panel rather than sitting
+  at a fixed midpoint.
+- **It takes the panel's own paint.** `background-color` and `border` are `inherit`, so it
+  follows `--C-SURFACE-0` / `--C-BORDER-DEFAULT` — and follows a `bg-*` or `border-*` you put on
+  `Popover.Content` instead. There is deliberately no `--popover-arrow-*` variable: one that
+  could be set without the panel's own would let the two drift apart.
+- **Resize it with `classNames.arrow`**, not with a token. The middleware measures the element,
+  so `classNames={{ arrow: "size-r4" }}` stays correctly centred and correctly seated. See
+  [Slots](#slots).
+- **It is `aria-hidden`,** so it changes nothing about the panel's name or description.
+- **Forced colours are fine.** Both `inherit`s resolve to whatever the substituted palette gave
+  the panel, so the arrow stays a continuation of the panel outline rather than a shape painted
+  in a colour the palette no longer contains.
+
+One edge worth knowing: the middleware is given no corner padding, so an arrow anchored to a
+trigger at the very end of a long panel can sit against the panel's `--RADIUS-MD` corner. Keep
+`placement` centred (`"top"`, `"bottom"`) rather than `-start` / `-end` when the arrow matters.
+
+## Slots
+
+`className` addresses the element each part renders. `classNames` addresses the elements a part
+renders *inside* itself — class strings only, and the keys are typed, so a misspelled one is a
+compile error rather than a prop that does nothing.
+
+| Part               | Slot    | Element                    | What it addresses                          |
+| ------------------ | ------- | -------------------------- | ------------------------------------------ |
+| `Popover.Content`  | `arrow` | `div.popover-arrow`        | the pointer triangle, present only under `arrow` |
+
+```tsx
+<Popover.Content arrow classNames={{ arrow: "size-r4" }} aria-label="Build status" />
+```
+
+The slot class is merged after the base class, and both survive the merge — `cn()` resolves
+conflicts between utilities, not between a utility and a component class. A utility touching a
+property `.popover-arrow` already sets (`width`, `height`, `background-color`) replaces it
+rather than stacking with it, because the base class lives in `@layer components` and yours does
+not.
+
+**Deliberately not slots.** `Popover.Trigger` and `Popover.Content` are subcomponents, so their
+own `className` already reaches them — a slot beside a subcomponent would be a second writer for
+one element. And **there is no slot for the fade**: `useTransitionStyles` writes
+`transition-duration` as an inline style, so a `duration-*` utility on the panel, in a slot or
+inlined from CSS is silently dead no matter where it is written. That tempo is
+`--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT` and nothing else.
 
 ## Controlled
 
