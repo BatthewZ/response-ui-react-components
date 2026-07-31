@@ -13,8 +13,6 @@ const variantClassMap: Record<Variant, string> = {
 
 type SkeletonProps = {
   variant?: Variant;
-  width?: string | number;
-  height?: string | number;
 } & ComponentPropsWithRef<"span">;
 
 /**
@@ -29,9 +27,15 @@ type SkeletonProps = {
  *   <Skeleton>Chargement du profil…</Skeleton>
  *   <Skeleton />
  *   <Skeleton />
+ *
+ * Geometry is `className`, both axes. `w-full` is in the class list rather than
+ * an inline default so `cn` collapses it against the caller's own `w-*`; height
+ * stays with `.skeleton { height: 1em }` in `@layer components`, which sits
+ * below `@layer utilities`, so `h-*` beats it. An inline `style` still outranks
+ * both, which is the hatch for a width only known at runtime.
  */
 export const Skeleton = forwardRef<HTMLSpanElement, SkeletonProps>(function Skeleton(
-  { variant = "text", width = "100%", height, className, style, children, ...props },
+  { variant = "text", className, children, ...props },
   ref
 ) {
   const announces = children != null;
@@ -40,8 +44,7 @@ export const Skeleton = forwardRef<HTMLSpanElement, SkeletonProps>(function Skel
       ref={ref}
       role={announces ? "status" : undefined}
       aria-hidden={announces ? undefined : true}
-      className={cn("skeleton", variantClassMap[variant], className)}
-      style={{ width, height, ...style }}
+      className={cn("skeleton w-full", variantClassMap[variant], className)}
       {...props}
     >
       {announces && (

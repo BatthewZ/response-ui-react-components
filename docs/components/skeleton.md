@@ -14,20 +14,18 @@ shapes, colour and corners straight off the theme contract, and a pulse that sto
 | Prop        | Type                                                     | Default  |
 | ----------- | -------------------------------------------------------- | -------- |
 | `variant`   | `"text" \| "circular" \| "rectangular" \| "rounded"`      | `"text"` |
-| `width`     | `string \| number`                                       | `"100%"` |
-| `height`    | `string \| number`                                       | —        |
 | `className` | `string`                                                 | —        |
-| `style`     | `CSSProperties`                                          | —        |
 | `children`  | `ReactNode` — visually hidden label; makes this one a `role="status"` | — |
 | `ref`       | `Ref<HTMLSpanElement>`                                   | —        |
-| …rest       | props of `span`                                          | —        |
+| …rest       | props of `span` (including `style`)                      | —        |
 
-`variant` picks the corner treatment; a default height comes with the base rule — `1em`,
-except on `circular`, which derives its height from its width instead. Size otherwise
-comes from `width` and `height`, which are written straight into the element's inline
-`style`: a bare number becomes `px`, a string is used verbatim. Between the inline style
-and the component stylesheet, **neither dimension can be set from a class**. See
-[Gotchas](#gotchas) — `variant`, `width` and `height` each have a sharp edge.
+`variant` picks the corner treatment. **Size is `className`, both axes** — `w-64`, `h-48`,
+`size-4`, `max-w-*`, all of it. There are no `width`/`height` props: a full-width default
+(`w-full`) rides in the class list where `cn` collapses it against whatever `w-*` you pass,
+and the default height stays in CSS (`.skeleton { height: 1em }`, in `@layer components`)
+where a `h-*` utility out-ranks it. An inline `style` still beats both, which is the hatch
+for a dimension you only know at runtime. See [Gotchas](#gotchas) — `variant` and the
+one-line default height each have a sharp edge.
 
 ## Skeleton or Spinner?
 
@@ -52,22 +50,24 @@ motion under `prefers-reduced-motion`, so neither of those is a tiebreaker.
 <!-- example:Variants -->
 ```tsx
 <Skeleton variant="text" />
-<Skeleton variant="rectangular" height="8rem" />
-<Skeleton variant="rounded" height="8rem" />
-<Skeleton variant="circular" width={40} height={40} />
+<Skeleton variant="rectangular" className="h-32" />
+<Skeleton variant="rounded" className="h-32" />
+<Skeleton variant="circular" className="w-10" />
 ```
 <!-- /example -->
 
 Every variant has a default height. The base rule sets `1em`, so a bare skeleton tracks
 the font size of whatever it sits in — right for a line of text, and the reason
-`rectangular` and `rounded` usually want an explicit `height`, since a block placeholder
-one line tall is rarely the shape you meant.
+`rectangular` and `rounded` usually want an `h-*`, since a block placeholder one line tall
+is rarely the shape you meant.
 
 `circular` is `border-radius: 50%` with `aspect-ratio: 1` and `height: auto`, so its
-height derives from its width and a circle stays circular. Pass an explicit `height` and
-the ratio no longer governs: with the default `width: "100%"` still in place,
-`<Skeleton variant="circular" height={40} />` is a full-width ellipse — pass a matching
-`width`, or only a `width` and let the ratio set the height.
+height derives from its width and a circle stays circular — give it a width and nothing
+else. That still holds now the width is a utility rather than an inline value: measured
+in Chromium against the real built CSS, `.skeleton.skeleton--circular.w-10` is **40×40**,
+the same square the old `width={40} height={40}` produced. Give it an `h-*` as well and
+the ratio stops governing: `h-10` alone, with the `w-full` default still in the class
+list, is a full-width ellipse. One dimension, not two.
 
 ## Composing a skeleton screen
 
@@ -78,7 +78,7 @@ Several `text` skeletons with a ragged last line read as a paragraph:
 <div className="flex flex-col gap-r6">
   <Skeleton />
   <Skeleton />
-  <Skeleton width="65%" />
+  <Skeleton className="w-[65%]" />
 </div>
 ```
 <!-- /example -->
@@ -99,11 +99,11 @@ invisible.
 ```tsx
 <Card>
   <div className="flex items-start gap-r5">
-    <Skeleton variant="circular" width={40} height={40} />
+    <Skeleton variant="circular" className="w-10" />
     <div className="flex flex-1 flex-col gap-r6">
-      <Skeleton width="35%" />
+      <Skeleton className="w-[35%]" />
       <Skeleton />
-      <Skeleton width="70%" />
+      <Skeleton className="w-[70%]" />
     </div>
   </div>
 </Card>
@@ -121,9 +121,9 @@ own language:
 
 ```tsx
 <div className="flex flex-col gap-r6">
-  <Skeleton width="35%">Chargement des commentaires…</Skeleton>
+  <Skeleton className="w-[35%]">Chargement des commentaires…</Skeleton>
   <Skeleton />
-  <Skeleton width="70%" />
+  <Skeleton className="w-[70%]" />
 </div>
 ```
 
@@ -133,9 +133,9 @@ Or own the region yourself and leave every skeleton decorative:
 ```tsx
 <div role="status" className="flex flex-col gap-r6">
   <span className="sr-only">Loading recent comments</span>
-  <Skeleton aria-hidden width="35%" />
+  <Skeleton aria-hidden className="w-[35%]" />
   <Skeleton aria-hidden />
-  <Skeleton aria-hidden width="70%" />
+  <Skeleton aria-hidden className="w-[70%]" />
 </div>
 ```
 <!-- /example -->
@@ -148,34 +148,42 @@ the user must be told about, render the region up front and change what is insid
 
 ## Sizing with a class
 
-`className` is appended through `cn`. None of the base classes are Tailwind utilities, so
-`tailwind-merge` has nothing to collapse and a height utility simply lands on the
-element — and since Phase 1 it also wins:
+Both dimensions come from `className`, and they get there by two different routes — worth
+knowing, because the routes are what make each one overridable:
 
 <!-- example:SizedFromClassName -->
 ```tsx
-<Skeleton variant="rounded" width="18rem" className="h-48" />
+<Skeleton variant="rounded" className="h-48 w-72" />
 ```
 <!-- /example -->
 
-The `h-48` there is live, and it used to be dead code. `height` is the one dimension the
-component leaves to CSS when you omit the prop, and `.skeleton`'s `height: 1em` is in
-`@layer components` — below Tailwind's `@layer utilities` — so the utility beats it at any
-specificity. That is exactly the override Phase 1 exists to deliver.
+**Width is a class the component ships and `cn` collapses.** `w-full` sits in the root
+class list, so `tailwind-merge` sees your `w-72` conflict with it and drops the default
+outright — one `width` declaration reaches the element, never two racing on source order.
+That is why `size-4` works too: it conflicts with both `w-*` and `h-*`, so it replaces the
+default and sets the other axis in the same class.
 
-`width` is the one that stays inert: it defaults to `"100%"` and always ships as an **inline
-style**, which beats any class in any layer, so `w-64` never applies however this package's
-CSS is layered. Size the width with the `width` prop or `style`; height you can do either
-way, and the `height` prop still wins over a utility because it too goes inline. See
-[Gotchas](#gotchas).
+**Height is a declaration the component leaves to CSS.** Nothing emits a height, so
+`.skeleton { height: 1em }` applies — and it is in `@layer components`, below Tailwind's
+`@layer utilities`, so `h-48` beats it at any specificity.
+
+Both are measured, not assumed. Against the real built CSS in Chromium, in a 400px column:
+a bare skeleton is 400×16, `w-20` gives **80×16**, `h-48` gives **400×192**, `size-4` gives
+**16×16**. Remove the `@layer components` and `h-48` measures 16px again; the `w-*` half is
+newer — before the `width` prop was dropped, `w-20` alongside the inline `width: 100%`
+default measured **400px**, which is the silent loss this API change exists to end.
+
+`style` still outranks both — `style={{ width: 200 }}` measures 200px with `w-20` on the
+same element. Reach for it when the number is genuinely dynamic; reach for a class the rest
+of the time. See [Gotchas](#gotchas).
 
 ## Theme tokens
 
 Every visible rule lives in `Skeleton.css` and reads contract variables directly, the way
-[Tabs](tabs.md) and [ActivityFeed](activity-feed.md) do. The component's only Tailwind class
-is `sr-only`, on the hidden label it renders when you pass `children`, and it resolves to
-no token. Override these and every
-placeholder in the app re-tints, at runtime, with no rebuild.
+[Tabs](tabs.md) and [ActivityFeed](activity-feed.md) do. The component emits two Tailwind
+classes and neither resolves to a token: `w-full` on the root, and `sr-only` on the hidden
+label it renders when you pass `children`. Override these and every placeholder in the app
+re-tints, at runtime, with no rebuild.
 
 | Where                            | Override        |
 | -------------------------------- | --------------- |
@@ -206,23 +214,24 @@ That is the whole contract surface, and three things are deliberately *outside* 
 
 - **A one-line default height on block shapes.** Every variant falls back to the base
   rule's `1em` (`circular` to its aspect ratio), so nothing renders at 0px — but a
-  `rectangular` or `rounded` placeholder without an explicit `height` is a text-line-sized
-  sliver, almost never the block you meant. Pass `height` for anything that isn't a line
-  of text.
-- **`width` can't come from a class.** It defaults to `"100%"` and is always emitted as an
-  inline style, which outranks any utility — `w-64` and `w-full` never apply. Set the `width`
-  prop, or `style`. `width={undefined}` just re-applies the `"100%"` default — to drop the
-  inline width you have to go through `style`, which spreads last: `style={{ width: undefined }}`
-  overwrites it with nothing and React omits the property, so a Skeleton with no `height` renders
-  with no `style` attribute at all. (`max-w-*` is the exception that proves the rule: it sets a
-  different property, so it clamps the inline `100%` and does work.)
-- **`height` *can* come from a class — unlike `width`.** There is no default, so a Skeleton
-  without the prop emits no inline `height` and falls through to `.skeleton { height: 1em }`,
-  which is in `@layer components`. A utility sits in `@layer utilities` and beats it, so
-  `className="h-48"` applies. Pass the `height` prop (or `style`) and that goes inline instead,
-  which beats the utility — so the two routes do not compose: pick one.
-- **`style` beats both size props.** The caller's `style` spreads *after* `{ width, height }`,
-  so `style={{ height: "2rem" }}` wins. Deliberate, and the escape hatch for `variant="text"`.
+  `rectangular` or `rounded` placeholder without an `h-*` is a text-line-sized sliver,
+  almost never the block you meant. Give a height class to anything that isn't a line of
+  text.
+- **`w-auto` is 0px wide, and that is the honest answer to "shrink to fit".** A Skeleton has
+  no visible content — only an optional `sr-only` label, which is taken out of flow — so
+  `width: auto` on an `inline-block` resolves to **0px**, measured. `w-fit` is the same. They
+  are only useful where something else supplies the size: a flex or grid parent, `flex-1`, or
+  a `min-w-*`. In normal flow they render nothing, silently. (This is also what the old
+  `style={{ width: undefined }}` trick actually did — it dropped the inline `100%` and landed
+  on `width: auto`, i.e. on nothing. It is gone with the props, and `w-64` now simply works.)
+- **`style` beats every size class.** It is an ordinary `span` prop and goes inline, so
+  `style={{ height: "2rem" }}` wins over `h-48` and `style={{ width: 200 }}` wins over `w-20`.
+  Deliberate, and the escape hatch for a dimension computed at runtime — but it is also the
+  one route a consumer's own `className` cannot get past, so prefer a class where you can.
+- **`w-full` is a real utility in the class list, so `tailwind-merge` is now live here.** It
+  was not before: none of the base classes were utilities, so `cn` had nothing to collapse.
+  Now a `w-*` you pass *replaces* the default rather than joining it — which is the point,
+  and worth knowing if you were relying on `cn` being a no-op.
 - **A skeleton announces nothing unless you give it `children`.** By default it is
   `aria-hidden` with no role, so a card of four placeholders adds nothing to the
   accessibility tree. Passing `children` turns *that* one into a `role="status"` whose
@@ -252,7 +261,8 @@ screen-reader user less than one region does.
   render your own region up front and change what is inside it — see
   [Announcing the wait](#announcing-the-wait).
 - **Your props win.** `…rest` spreads *after* `role` and `aria-hidden`, so both are
-  replaceable; `className` and `style` are merged rather than replaced.
+  replaceable. `className` is merged through `cn`; `style` is not touched at all — the
+  component writes none, so yours is the only one.
 
 **Motion.** `Skeleton.css` ships a `@media (prefers-reduced-motion: reduce)` block that sets
 `animation: none` and pins `opacity: 0.7`, so a reader who has asked their OS for reduced

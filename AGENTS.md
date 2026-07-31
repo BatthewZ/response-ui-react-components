@@ -504,11 +504,14 @@ jsdom applies no stylesheets, so every other gate is blind to the cascade.
 
 Three things a `className` still cannot beat, so nobody reads a leftover as drift:
 
-- **Anything written as an inline `style`.** `Skeleton`'s `width`, `ScrollReveal`'s `delay`, and
-  floating-surface fade durations are inline; an inline declaration beats every class at every
-  layer. That is a different defect with a different fix, not a layering question. Check the
-  emitted `style` rather than assuming: `Skeleton`'s `height` has no default, so a Skeleton
-  without the prop emits none and `h-48` now *does* win against `.skeleton { height: 1em }`.
+- **Anything written as an inline `style`.** `ScrollReveal`'s `delay` and floating-surface fade
+  durations are inline; an inline declaration beats every class at every layer. That is a
+  different defect with a different fix, not a layering question. Check the emitted `style`
+  rather than assuming — and note that an inline *default* is the version of this worth hunting,
+  because it makes the override unreachable for every caller rather than only the one who asked
+  for it. `Skeleton` used to carry one (`width = "100%"`) and no longer does: both its axes are
+  now `className`, `w-full` in the class list where `cn` can collapse it, height left to
+  `.skeleton { height: 1em }` in `@layer components` where `h-*` out-ranks it.
 - **Unlayered rules in `@batthewz/response-ui-css`.** The foundation is unlayered almost
   everywhere, so `.mono-font`, the `.fade-*` entrance classes and the universal
   `*::-webkit-scrollbar*` rules out-rank everything this package writes. Where that mattered we

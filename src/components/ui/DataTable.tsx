@@ -447,12 +447,28 @@ export function DataTable<T>({
       <Table.Row key={i}>
         {expandable && (
           <Table.Cell>
-            <Skeleton variant="rectangular" width={16} height={16} aria-hidden="true" />
+            <Skeleton
+              variant="rectangular"
+              // slot:(a) the placeholder is 16px because the chevron it stands in
+              // for is 16px, in a column pinned to `w-10` above. A skeleton earns
+              // its place by reserving the exact space the real control takes, so
+              // varying this size reintroduces the reflow the loading state exists
+              // to prevent. Not a style choice — an arithmetic one.
+              className="size-4"
+              aria-hidden="true"
+            />
           </Table.Cell>
         )}
         {selectable && (
           <Table.Cell>
-            <Skeleton variant="rectangular" width={16} height={16} aria-hidden="true" />
+            <Skeleton
+              variant="rectangular"
+              // slot:(a) same arithmetic as the expander above, standing in for the
+              // `Checkbox` — a shared primitive this component renders with no
+              // props hatch, so its real size is unreachable from out here too.
+              className="size-4"
+              aria-hidden="true"
+            />
           </Table.Cell>
         )}
         {columns.map((col) => (

@@ -38,19 +38,63 @@ describe("Skeleton", () => {
     expect(el).not.toHaveAttribute("aria-label");
   });
 
-  it("width prop applies correctly via inline style", () => {
-    render(<Skeleton width={200} data-testid="sk" />);
-    expect(screen.getByTestId("sk").style.width).toBe("200px");
-  });
+  // Geometry moved from inline `width`/`height` props onto `className`. jsdom
+  // applies no stylesheets, so these assert the INPUT to the cascade — which
+  // declaration reaches the element — and never which one paints. The painted
+  // half is measured with real Tailwind + getComputedStyle; see `Skeleton.css`
+  // and the notes on `SizedFromClassName`.
 
-  it("height prop applies correctly via inline style", () => {
-    render(<Skeleton height="3rem" data-testid="sk" />);
-    expect(screen.getByTestId("sk").style.height).toBe("3rem");
-  });
-
-  it("defaults width to 100%", () => {
+  it("defaults to w-full in the class list, not an inline width", () => {
     render(<Skeleton data-testid="sk" />);
-    expect(screen.getByTestId("sk").style.width).toBe("100%");
+    const el = screen.getByTestId("sk");
+    expect(el.className).toContain("w-full");
+    expect(el.style.width).toBe("");
+  });
+
+  it("className='w-20' replaces the default — the override the inline default made impossible", () => {
+    render(<Skeleton className="w-20" data-testid="sk" />);
+    const el = screen.getByTestId("sk");
+    expect(el.className).toContain("w-20");
+    // `cn` collapses the conflict rather than emitting both, so there is no
+    // source-order coin-flip between the default and the caller.
+    expect(el.className).not.toContain("w-full");
+    expect(el.style.width).toBe("");
+  });
+
+  it("className='h-48' has nothing inline to beat — the CSS default is layered below it", () => {
+    render(<Skeleton className="h-48" data-testid="sk" />);
+    const el = screen.getByTestId("sk");
+    expect(el.className).toContain("h-48");
+    expect(el.style.height).toBe("");
+  });
+
+  it("emits no height of its own, so `.skeleton { height: 1em }` is what applies", () => {
+    render(<Skeleton data-testid="sk" />);
+    const el = screen.getByTestId("sk");
+    expect(el.style.height).toBe("");
+    expect(el.className).not.toMatch(/(^|\s)h-/);
+  });
+
+  it("style still wins — the hatch for a width only known at runtime", () => {
+    render(<Skeleton style={{ width: 200 }} className="w-20" data-testid="sk" />);
+    const el = screen.getByTestId("sk");
+    expect(el.style.width).toBe("200px");
+    expect(el.className).toContain("w-20");
+  });
+
+  it("size-4 collapses both axes at once", () => {
+    render(<Skeleton className="size-4" data-testid="sk" />);
+    const el = screen.getByTestId("sk");
+    expect(el.className).toContain("size-4");
+    expect(el.className).not.toContain("w-full");
+  });
+
+  it("circular emits no inline geometry, so aspect-ratio derives the height from the width", () => {
+    render(<Skeleton variant="circular" className="w-10" data-testid="sk" />);
+    const el = screen.getByTestId("sk");
+    expect(el.className).toContain("skeleton--circular");
+    expect(el.className).toContain("w-10");
+    expect(el.getAttribute("style")).toBeNull();
   });
 
   it("text variant applies correct class", () => {

@@ -844,10 +844,10 @@ function ActivityPanel({ loading }: { loading: boolean }) {
           <span className="sr-only">Loading team activity</span>
           {[0, 1, 2, 3].map((i) => (
             <Row key={i} gap="r5" align="start">
-              <Skeleton aria-hidden variant="circular" width={32} height={32} />
+              <Skeleton aria-hidden variant="circular" className="w-8" />
               <Stack gap="r6" className="flex-1">
-                <Skeleton aria-hidden width="55%" />
-                <Skeleton aria-hidden width="30%" />
+                <Skeleton aria-hidden className="w-[55%]" />
+                <Skeleton aria-hidden className="w-[30%]" />
               </Stack>
             </Row>
           ))}
