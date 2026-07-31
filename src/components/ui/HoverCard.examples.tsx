@@ -84,6 +84,20 @@ export function Placement() {
   );
 }
 
+/** `arrow` draws a pointer back at the trigger, in the card's own fill and border. */
+export function Arrow() {
+  return (
+    <HoverCard placement="top">
+      <HoverCard.Trigger asChild>
+        <a href="/people/alan-turing">Alan Turing</a>
+      </HoverCard.Trigger>
+      <HoverCard.Content arrow aria-label="About Alan Turing">
+        <p>Mathematician. Formalised computation, and broke Enigma at Bletchley Park.</p>
+      </HoverCard.Content>
+    </HoverCard>
+  );
+}
+
 /** Controlled: hover only asks, through `onOpenChange`, and your `open` state decides. */
 export function Controlled() {
   const [open, setOpen] = useState(false);

@@ -37,6 +37,13 @@ That is the whole API — no header slot, no size preset, no close button, no `d
 `open` is required, so Dialog is **always** controlled; if `onClose` does not change the
 boolean you hold, nothing closes. See [Closing it](#closing-it).
 
+**And there is no `classNames` either — deliberately.** Dialog renders exactly one element, the
+`<dialog>`, and puts your `children` straight inside it. There is nothing between `className`
+and your own markup for a slot to name: a `header`, `footer` or `closeButton` key would be
+naming *your* structure, not the component's. The scrim is the one thing Dialog paints that
+`className` cannot reach as a class, because `::backdrop` takes no class name — it is a theme
+value instead, `--OVERLAY-SCRIM-COLOR`. See [Theme tokens](#theme-tokens).
+
 ## A destructive confirmation
 
 The panel is an empty box. A heading, the body copy, the button row and the accessible name

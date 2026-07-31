@@ -210,3 +210,128 @@ describe("fade timing", () => {
     await waitFor(() => expect(panel.style.transitionDuration).toBe("380ms"));
   });
 });
+
+/**
+ * The arrow, and its one slot. `HoverCard` ships no stylesheet, so the arrow is
+ * utilities like the card itself — which makes its slot merge a true
+ * tailwind-merge one: a caller's `size-*` *replaces* the base size rather than
+ * sitting beside it, unlike the BEM-classed `Popover` and `Tooltip`.
+ */
+describe("arrow", () => {
+  const ARROW_BASE =
+    "absolute size-r5 rotate-45 bg-inherit border border-inherit " +
+    "data-[side=top]:border-r-0 data-[side=top]:border-b-0 " +
+    "data-[side=bottom]:border-t-0 data-[side=bottom]:border-l-0 " +
+    "data-[side=left]:border-t-0 data-[side=left]:border-r-0 " +
+    "data-[side=right]:border-b-0 data-[side=right]:border-l-0";
+
+  function openWith(props: Record<string, unknown>) {
+    return render(
+      <HoverCard open>
+        <HoverCard.Trigger>@octocat</HoverCard.Trigger>
+        <HoverCard.Content {...props}>Card body</HoverCard.Content>
+      </HoverCard>
+    );
+  }
+
+  /** The arrow is the only element the card gives a `data-side`. */
+  async function findArrow() {
+    const panel = await screen.findByRole("dialog");
+    return { panel, arrow: panel.querySelector<HTMLElement>("[data-side]") };
+  }
+
+  it("renders no arrow unless asked for one", async () => {
+    openWith({});
+
+    const { arrow } = await findArrow();
+    expect(arrow).toBeNull();
+  });
+
+  /**
+   * The falsifier for the middleware wiring: `left` is present only because
+   * `HoverCard` hands `arrowRef` to `useFloating`, which is what adds
+   * floating-ui's `arrow` middleware and fills `middlewareData.arrow`. Drop the
+   * `arrowRef` from that call and the element still renders — pinned, but never
+   * centred — so this assertion is the one that reddens.
+   */
+  it("renders the arrow and positions it from the middleware", async () => {
+    openWith({ arrow: true });
+
+    const { arrow } = await findArrow();
+    expect(arrow).not.toBeNull();
+    expect(arrow).toHaveAttribute("aria-hidden", "true");
+    // Default placement is `bottom`, so the arrow sits on the card's top edge.
+    expect(arrow).toHaveAttribute("data-side", "top");
+    expect(arrow?.style.top).toBe("0px");
+    expect(arrow?.style.translate).toBe("0 -50%");
+    expect(arrow?.style.left).not.toBe("");
+  });
+
+  it("pins the arrow to the edge facing the trigger, not to the placement", async () => {
+    render(
+      <HoverCard open placement="right">
+        <HoverCard.Trigger>@octocat</HoverCard.Trigger>
+        <HoverCard.Content arrow>Card body</HoverCard.Content>
+      </HoverCard>
+    );
+
+    const { arrow } = await findArrow();
+    expect(arrow).toHaveAttribute("data-side", "left");
+    expect(arrow?.style.left).toBe("0px");
+    expect(arrow?.style.translate).toBe("-50% 0");
+  });
+
+  it("lands classNames.arrow on the arrow, beside the base classes", async () => {
+    openWith({ arrow: true, classNames: { arrow: "size-r3" } });
+
+    const { arrow } = await findArrow();
+    const cls = arrow?.getAttribute("class") ?? "";
+    expect(cls).toContain("bg-inherit");
+    expect(cls).toContain("size-r3");
+    // Two utilities in one group: the caller's wins outright, which is the point.
+    expect(cls).not.toContain("size-r5");
+  });
+
+  it("leaves the arrow on its base classes alone when no slot is passed", async () => {
+    openWith({ arrow: true });
+
+    const { arrow } = await findArrow();
+    expect(arrow?.getAttribute("class")).toBe(ARROW_BASE);
+  });
+
+  it("does not put the slot class on the card itself", async () => {
+    openWith({ arrow: true, classNames: { arrow: "size-r3" } });
+
+    const { panel } = await findArrow();
+    expect(panel.className).not.toContain("size-r3");
+  });
+
+  /**
+   * The reason for a per-component inline slot union rather than a
+   * `Record<string, string>` helper: an unknown key is a *type* error, not a
+   * silent no-op. The `@ts-expect-error` is the assertion — it fails if
+   * TypeScript ever stops rejecting the key. Do not "clean it up".
+   */
+  it("rejects an unknown slot key at compile time", async () => {
+    render(
+      <HoverCard open>
+        <HoverCard.Trigger>@octocat</HoverCard.Trigger>
+        {/* @ts-expect-error — `pointer` is not a slot; only untyped JS gets here. */}
+        <HoverCard.Content arrow classNames={{ pointer: "size-r3" }}>
+          Card body
+        </HoverCard.Content>
+      </HoverCard>
+    );
+
+    const { arrow } = await findArrow();
+    expect(arrow?.getAttribute("class")).toBe(ARROW_BASE);
+  });
+
+  it("does not leak arrow or classNames onto the DOM", async () => {
+    openWith({ arrow: true, classNames: { arrow: "size-r3" } });
+
+    const { panel } = await findArrow();
+    expect(panel.hasAttribute("classnames")).toBe(false);
+    expect(panel.hasAttribute("arrow")).toBe(false);
+  });
+});

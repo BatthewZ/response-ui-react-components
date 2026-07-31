@@ -25,3 +25,48 @@
   outline: 2px solid var(--C-BORDER-FOCUS);
   outline-offset: 2px;
 }
+
+/* The pointer triangle, rendered only for <Popover.Content arrow>. A square
+   rotated 45deg with half of it pushed past the panel edge: the two edges facing
+   out continue the panel's border, and the fill covers the border segment behind
+   it, so the outline reads as one shape with a mouth.
+
+   `inherit` on both, rather than a --popover-arrow-* token: the panel already
+   publishes its background and border, and a second writer would let a caller
+   retint one without the other. It also carries a consumer's own background or
+   border utility on `Popover.Content` — which wins from @layer components — to
+   the arrow for free, and survives forced colours, where the substituted
+   Canvas/CanvasText are what the parent computes to as well.
+
+   Position is inline, from floating-ui's measurement; only what a consumer might
+   reasonably vary is here, so `classNames.arrow` can out-rank it. */
+.popover-arrow {
+  position: absolute;
+  width: var(--R-SIZE-5);
+  height: var(--R-SIZE-5);
+  background-color: inherit;
+  border: inherit;
+  rotate: 45deg;
+}
+
+/* Which two edges face out depends on the resolved placement, and rotation moves
+   them: after 45deg the box's top and left edges are the two upper ones. */
+.popover-arrow[data-side="top"] {
+  border-right-width: 0;
+  border-bottom-width: 0;
+}
+
+.popover-arrow[data-side="bottom"] {
+  border-top-width: 0;
+  border-left-width: 0;
+}
+
+.popover-arrow[data-side="left"] {
+  border-top-width: 0;
+  border-right-width: 0;
+}
+
+.popover-arrow[data-side="right"] {
+  border-bottom-width: 0;
+  border-left-width: 0;
+}

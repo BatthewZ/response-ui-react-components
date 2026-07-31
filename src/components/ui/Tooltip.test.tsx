@@ -184,3 +184,148 @@ describe("Tooltip", () => {
     host.remove();
   });
 });
+
+/**
+ * The bubble is the one element `Tooltip` constructs, so it is what `className`
+ * addresses — the house rule, not a slot. Before this prop existed the bubble's
+ * `padding`, `max-width`, `word-wrap` and `z-index` had no override path at any
+ * level, and passing a class was a compile error rather than a silent drop.
+ */
+describe("className", () => {
+  async function openTooltip(props: Record<string, unknown> = {}) {
+    const user = userEvent.setup();
+    render(
+      <Tooltip content="Tooltip text" delay={0} {...props}>
+        <button>Hover me</button>
+      </Tooltip>,
+    );
+    await user.hover(screen.getByRole("button", { name: "Hover me" }));
+    return screen.findByRole("tooltip");
+  }
+
+  it("merges onto the bubble, beside the base class", async () => {
+    const tip = await openTooltip({ className: "max-w-r1" });
+
+    expect(tip.getAttribute("class")).toContain("tooltip");
+    expect(tip.getAttribute("class")).toContain("max-w-r1");
+  });
+
+  it("leaves the bubble on its base class alone when nothing is passed", async () => {
+    const tip = await openTooltip();
+
+    expect(tip.getAttribute("class")).toBe("tooltip");
+  });
+
+  it("never reaches the cloned trigger", async () => {
+    await openTooltip({ className: "max-w-r1" });
+
+    expect(screen.getByRole("button", { name: "Hover me" }).className).not.toContain(
+      "max-w-r1",
+    );
+  });
+});
+
+/**
+ * The arrow, and its one slot. The arrow element exists at all only because
+ * `useFloating`'s `arrowRef` option was live, exported and documented while no
+ * component in the package rendered anything for it to position.
+ */
+describe("arrow", () => {
+  async function openTooltip(props: Record<string, unknown> = {}) {
+    const user = userEvent.setup();
+    render(
+      <Tooltip content="Tooltip text" delay={0} {...props}>
+        <button>Hover me</button>
+      </Tooltip>,
+    );
+    await user.hover(screen.getByRole("button", { name: "Hover me" }));
+    return screen.findByRole("tooltip");
+  }
+
+  it("renders no arrow unless asked for one", async () => {
+    const tip = await openTooltip();
+
+    expect(tip.querySelector(".tooltip-arrow")).toBeNull();
+  });
+
+  /**
+   * The falsifier for the middleware wiring: `left` is present only because
+   * `Tooltip` hands `arrowRef` to `useFloating`, which is what adds floating-ui's
+   * `arrow` middleware and fills `middlewareData.arrow`. Drop the `arrowRef` from
+   * that call and the element still renders — pinned, but never centred — so this
+   * assertion is the one that reddens.
+   */
+  it("renders the arrow and positions it from the middleware", async () => {
+    const tip = await openTooltip({ arrow: true });
+
+    const arrow = tip.querySelector<HTMLElement>(".tooltip-arrow");
+    expect(arrow).not.toBeNull();
+    expect(arrow).toHaveAttribute("aria-hidden", "true");
+    // Default placement is `top`, so the arrow sits on the bubble's bottom edge.
+    expect(arrow).toHaveAttribute("data-side", "bottom");
+    expect(arrow?.style.bottom).toBe("0px");
+    expect(arrow?.style.translate).toBe("0 50%");
+    expect(arrow?.style.left).not.toBe("");
+  });
+
+  it("pins the arrow to the edge facing the trigger, not to the placement", async () => {
+    const tip = await openTooltip({ arrow: true, placement: "left" });
+
+    const arrow = tip.querySelector<HTMLElement>(".tooltip-arrow");
+    expect(arrow).toHaveAttribute("data-side", "right");
+    expect(arrow?.style.right).toBe("0px");
+    expect(arrow?.style.translate).toBe("50% 0");
+  });
+
+  it("lands classNames.arrow on the arrow, beside the base class", async () => {
+    const tip = await openTooltip({ arrow: true, classNames: { arrow: "size-r3" } });
+
+    const arrow = tip.querySelector(".tooltip-arrow");
+    expect(arrow?.getAttribute("class")).toContain("tooltip-arrow");
+    expect(arrow?.getAttribute("class")).toContain("size-r3");
+  });
+
+  it("leaves the arrow on its base class alone when no slot is passed", async () => {
+    const tip = await openTooltip({ arrow: true });
+
+    expect(tip.querySelector(".tooltip-arrow")?.getAttribute("class")).toBe(
+      "tooltip-arrow",
+    );
+  });
+
+  it("does not put the slot class on the bubble itself", async () => {
+    const tip = await openTooltip({ arrow: true, classNames: { arrow: "size-r3" } });
+
+    expect(tip.className).not.toContain("size-r3");
+  });
+
+  /**
+   * The reason for a per-component inline slot union rather than a
+   * `Record<string, string>` helper: an unknown key is a *type* error, not a
+   * silent no-op. The `@ts-expect-error` is the assertion — it fails if
+   * TypeScript ever stops rejecting the key. Do not "clean it up".
+   */
+  it("rejects an unknown slot key at compile time", async () => {
+    const user = userEvent.setup();
+    render(
+      // @ts-expect-error — `pointer` is not a slot; only untyped JS gets here.
+      <Tooltip content="Tooltip text" delay={0} arrow classNames={{ pointer: "size-r3" }}>
+        <button>Hover me</button>
+      </Tooltip>,
+    );
+    await user.hover(screen.getByRole("button", { name: "Hover me" }));
+
+    const tip = await screen.findByRole("tooltip");
+    expect(tip.querySelector(".tooltip-arrow")?.getAttribute("class")).toBe(
+      "tooltip-arrow",
+    );
+  });
+
+  it("keeps the arrow out of the bubble's accessible description", async () => {
+    const tip = await openTooltip({ arrow: true });
+
+    // The arrow is `aria-hidden`, so the description is the content and nothing else.
+    expect(tip).toHaveTextContent("Tooltip text");
+    expect(tip.textContent).toBe("Tooltip text");
+  });
+});

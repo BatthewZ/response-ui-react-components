@@ -104,6 +104,18 @@ export function InsideAForm() {
   );
 }
 
+/** `arrow` draws a pointer back at the trigger; `classNames.arrow` resizes it. */
+export function Arrow() {
+  return (
+    <Popover placement="top">
+      <Popover.Trigger>Build status</Popover.Trigger>
+      <Popover.Content arrow classNames={{ arrow: "size-r4" }} aria-label="Build status">
+        <p>All 412 checks passed on 4f21a9c.</p>
+      </Popover.Content>
+    </Popover>
+  );
+}
+
 /** The panel is a `dialog` with no name of its own — point `aria-labelledby` at its heading. */
 export function NamedByHeading() {
   return (

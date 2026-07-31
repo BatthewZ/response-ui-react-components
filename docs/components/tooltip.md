@@ -14,21 +14,25 @@ names it, and it should hold nothing interactive.
 ```
 <!-- /example -->
 
-| Prop        | Type                     | Default   |
-| ----------- | ------------------------ | --------- |
-| `content`   | `ReactNode` — required   | —         |
-| `children`  | `ReactElement` — required, exactly one | — |
-| `placement` | `Placement`              | `"top"`   |
-| `delay`     | `number` (ms)            | `300`     |
-| `offset`    | `number` (px)            | `8`       |
-| `container` | `HTMLElement \| null`    | `<body>`  |
+| Prop         | Type                     | Default   |
+| ------------ | ------------------------ | --------- |
+| `content`    | `ReactNode` — required   | —         |
+| `children`   | `ReactElement` — required, exactly one | — |
+| `placement`  | `Placement`              | `"top"`   |
+| `delay`      | `number` (ms)            | `300`     |
+| `offset`     | `number` (px)            | `8`       |
+| `container`  | `HTMLElement \| null`    | `<body>`  |
+| `className`  | `string`                 | —         |
+| `arrow`      | `boolean`                | `false`   |
+| `classNames` | `{ arrow?: string }`     | —         |
 
 That is the entire surface. There is no `open`/`onOpenChange` (the component owns its own
-state), no `className`, no `id`, and no `disabled`. `container` redirects the portal — the
-prop to reach for inside a [Dialog](dialog.md) or [Drawer](drawer.md); see
-[Gotchas](#gotchas). `TooltipProps` is internal, so a wrapper of your own re-declares the six
-props; `Placement` **is** exported from the package barrel, so a variable holding one can be
-typed.
+state), no `id`, and no `disabled` — and no rest spread, so anything not in that table is a
+compile error rather than a prop that quietly does nothing. `container` redirects the portal —
+the prop to reach for inside a [Dialog](dialog.md) or [Drawer](drawer.md); see
+[Gotchas](#gotchas). `className` reaches the bubble and nothing else; see [Slots](#slots).
+`TooltipProps` is internal, so a wrapper of your own re-declares the props; `Placement` **is**
+exported from the package barrel, so a variable holding one can be typed.
 
 `children` is cloned, not wrapped — Tooltip renders no element of its own around the trigger,
 so it never disturbs your layout. The clone is also where its sharpest edge lives; see
@@ -72,7 +76,8 @@ stops you.
 `placement` takes any of Floating UI's twelve values — `"top"`, `"top-start"`, `"top-end"`,
 and the same three for `"right"`, `"bottom"`, `"left"`. It is a **preference, not a promise**:
 the `flip` and `shift` middleware move the bubble when the viewport is tight, and an
-`autoUpdate` loop keeps it anchored while you scroll or resize. There is no arrow.
+`autoUpdate` loop keeps it anchored while you scroll or resize. Pass `arrow` for a pointer back
+at the trigger — see [The arrow](#the-arrow).
 
 <!-- example:Placement -->
 ```tsx
@@ -173,10 +178,67 @@ This is the same trade [IconButton](icon-button.md#accessibility) documents. The
 yours to supply — `disabled:opacity-50` is keyed off the real attribute, which you are no
 longer setting.
 
+## The arrow
+
+`arrow` draws a pointer triangle on the bubble edge that faces the trigger. It is **off by
+default** and is the one thing on this page that changes what is painted.
+
+<!-- example:Arrow -->
+```tsx
+<Tooltip content="Runs on every push to main" arrow className="max-w-r1">
+  <Button type="button" variant="secondary">
+    Nightly build
+  </Button>
+</Tooltip>
+```
+<!-- /example -->
+
+- **It follows a flip.** The edge comes from the *resolved* placement, so a `top` tooltip pushed
+  to `bottom` moves its arrow with it. The element carries `data-side="top" | "right" |
+  "bottom" | "left"` naming that edge, and stays centred on the trigger after `shift()` has run.
+- **It takes the bubble's own paint.** `background-color` and `border` are `inherit`, so it
+  follows `--C-PRIMARY` and any border a theme gives `.tooltip` — which today is none. There is
+  deliberately no arrow variable: one that could be set without the bubble's own would let the
+  two drift apart.
+- **Resize it with `classNames.arrow`**, not with a token. The middleware measures the element,
+  so `classNames={{ arrow: "size-r4" }}` stays correctly centred and correctly seated. See
+  [Slots](#slots).
+- **It is `aria-hidden`,** so the bubble's text is still exactly what gets announced.
+- **Forced colours are fine.** Both `inherit`s resolve to whatever the substituted palette gave
+  the bubble.
+
+## Slots
+
+`className` addresses the bubble — the only element Tooltip constructs, since `children` is
+cloned rather than wrapped. `classNames` addresses what the bubble renders inside itself: class
+strings only, with typed keys, so a misspelled one is a compile error rather than a prop that
+does nothing.
+
+| Slot    | Element              | What it addresses                                |
+| ------- | -------------------- | ------------------------------------------------ |
+| `arrow` | `div.tooltip-arrow`  | the pointer triangle, present only under `arrow`  |
+
+```tsx
+<Tooltip content="Runs on every push to main" arrow classNames={{ arrow: "size-r4" }}>
+  <Button type="button" variant="secondary">Nightly build</Button>
+</Tooltip>
+```
+
+`className` is what makes the four values below that no theme variable reaches — the padding,
+the wrap width, `word-wrap` and the stack level — overridable per instance. Before it existed
+they had no route at *any* level. The slot class and `className` are both merged after the base
+class and both survive it: `cn()` resolves conflicts between utilities, not between a utility
+and a component class. A utility touching a property `.tooltip` already sets replaces it,
+because the base class lives in `@layer components` and yours does not.
+
+**There is no slot for the fade.** `useTransitionStyles` writes `transition-duration` as an
+inline style, so a `duration-*` utility on the bubble, in a slot or inlined from CSS is silently
+dead no matter where it is written.
+
 ## Theme tokens
 
-Tooltip uses **no Tailwind utilities**. Every visual value lives in `Tooltip.css` under one
-class, `.tooltip`, and reads contract variables directly.
+Tooltip uses **no Tailwind utilities of its own**. Every visual value lives in `Tooltip.css`
+under two classes, `.tooltip` and `.tooltip-arrow`, and reads contract variables directly.
 
 | Where            | Override                                    |
 | ---------------- | ------------------------------------------- |
@@ -203,7 +265,13 @@ default theme.
 Four values are hard literals rather than contract variables: the padding (`0.25rem 0.625rem`),
 the wrap width (`17.5rem`, with long words broken rather than overflowing), the stack level
 (50), and the 150 ms fade, which is set inline from JavaScript rather than in the stylesheet.
-None are themeable, and two of them have consequences worth knowing — see [Gotchas](#gotchas).
+None are themeable. The first three are reachable **per instance** through `className` — see
+[Slots](#slots) — and the fade is reachable by neither route, because an inline
+`transition-duration` outranks every stylesheet rule and every utility. Two of them have
+consequences worth knowing — see [Gotchas](#gotchas).
+
+The arrow adds no variable of its own: it inherits the bubble's fill and border, so it re-tints
+with `--C-PRIMARY` and needs no separate row above.
 
 ## Gotchas
 

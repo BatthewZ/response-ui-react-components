@@ -338,3 +338,122 @@ describe("mode lock", () => {
     expect(onOpenChange).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * The arrow, and its one slot. The arrow element exists at all only because
+ * `useFloating`'s `arrowRef` option was live, exported and documented while no
+ * component in the package rendered anything for it to position.
+ */
+describe("arrow", () => {
+  function openWith(props: Record<string, unknown>) {
+    return render(
+      <Popover defaultOpen>
+        <Popover.Trigger>Toggle popover</Popover.Trigger>
+        <Popover.Content {...props}>
+          <p>Popover body content</p>
+        </Popover.Content>
+      </Popover>,
+    );
+  }
+
+  it("renders no arrow unless asked for one", async () => {
+    openWith({});
+
+    const panel = await screen.findByRole("dialog");
+    expect(panel.querySelector(".popover-arrow")).toBeNull();
+  });
+
+  /**
+   * The falsifier for the middleware wiring: `left` is present only because
+   * `Popover` hands `arrowRef` to `useFloating`, which is what adds floating-ui's
+   * `arrow` middleware and fills `middlewareData.arrow`. Drop the `arrowRef` from
+   * that call and the element still renders — pinned, but never centred — so
+   * this assertion is the one that reddens.
+   */
+  it("renders the arrow and positions it from the middleware", async () => {
+    openWith({ arrow: true });
+
+    const panel = await screen.findByRole("dialog");
+    const arrow = panel.querySelector<HTMLElement>(".popover-arrow");
+    expect(arrow).not.toBeNull();
+    expect(arrow).toHaveAttribute("aria-hidden", "true");
+    // Default placement is `bottom`, so the arrow sits on the panel's top edge.
+    expect(arrow).toHaveAttribute("data-side", "top");
+    expect(arrow?.style.top).toBe("0px");
+    expect(arrow?.style.translate).toBe("0 -50%");
+    expect(arrow?.style.left).not.toBe("");
+  });
+
+  it("pins the arrow to the edge facing the trigger, not to the placement", async () => {
+    render(
+      <Popover defaultOpen placement="right">
+        <Popover.Trigger>Toggle popover</Popover.Trigger>
+        <Popover.Content arrow>
+          <p>Popover body content</p>
+        </Popover.Content>
+      </Popover>,
+    );
+
+    const panel = await screen.findByRole("dialog");
+    const arrow = panel.querySelector<HTMLElement>(".popover-arrow");
+    expect(arrow).toHaveAttribute("data-side", "left");
+    expect(arrow?.style.left).toBe("0px");
+    expect(arrow?.style.translate).toBe("-50% 0");
+  });
+
+  it("lands classNames.arrow on the arrow, beside the base class", async () => {
+    openWith({ arrow: true, classNames: { arrow: "size-r3" } });
+
+    const panel = await screen.findByRole("dialog");
+    const arrow = panel.querySelector(".popover-arrow");
+    expect(arrow?.getAttribute("class")).toContain("popover-arrow");
+    expect(arrow?.getAttribute("class")).toContain("size-r3");
+  });
+
+  it("leaves the arrow on its base class alone when no slot is passed", async () => {
+    openWith({ arrow: true });
+
+    const panel = await screen.findByRole("dialog");
+    expect(panel.querySelector(".popover-arrow")?.getAttribute("class")).toBe(
+      "popover-arrow",
+    );
+  });
+
+  it("does not put the slot class on the panel itself", async () => {
+    openWith({ arrow: true, classNames: { arrow: "size-r3" } });
+
+    const panel = await screen.findByRole("dialog");
+    expect(panel.className).not.toContain("size-r3");
+  });
+
+  /**
+   * The reason for a per-component inline slot union rather than a
+   * `Record<string, string>` helper: an unknown key is a *type* error, not a
+   * silent no-op. The `@ts-expect-error` is the assertion — it fails if
+   * TypeScript ever stops rejecting the key. Do not "clean it up".
+   */
+  it("rejects an unknown slot key at compile time", async () => {
+    render(
+      <Popover defaultOpen>
+        <Popover.Trigger>Toggle popover</Popover.Trigger>
+        {/* @ts-expect-error — `pointer` is not a slot; only untyped JS gets here. */}
+        <Popover.Content arrow classNames={{ pointer: "size-r3" }}>
+          <p>Popover body content</p>
+        </Popover.Content>
+      </Popover>,
+    );
+
+    const panel = await screen.findByRole("dialog");
+    expect(panel.querySelector(".popover-arrow")?.getAttribute("class")).toBe(
+      "popover-arrow",
+    );
+  });
+
+  it("does not leak arrow or classNames onto the DOM", async () => {
+    openWith({ arrow: true, classNames: { arrow: "size-r3" } });
+
+    const panel = await screen.findByRole("dialog");
+    expect(panel.hasAttribute("classnames")).toBe(false);
+    expect(panel.hasAttribute("arrow")).toBe(false);
+  });
+});

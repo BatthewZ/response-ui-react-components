@@ -112,3 +112,39 @@ layout that mirrors or alternates. A card that sits on the *other* side of the r
 massively negative gap, and the probe cries collision where there is ample air. Measure to
 whichever edge actually faces the thing, and treat a surprising collision report as a suspect
 probe until the layout is confirmed — a false alarm here costs a real fix being reverted.
+
+## A decoration on a surface should inherit the surface's paint, not get its own token
+
+A pointer, a tail, a notch — anything drawn *as part of* another element's outline — must take
+its fill and border from that element, with `background-color: inherit` and `border: inherit`,
+rather than from a variable of its own. A separate variable is a second writer for a value the
+surface already publishes, so a caller can set one and not the other and get a shape in a colour
+the surface no longer uses. Inheriting also carries a consumer's own background or border
+utility on the surface to the decoration for free, and it is the only version that survives
+forced colours: the substituted system colours are computed on parent and child alike, so the
+decoration stays a continuation of the outline instead of a block painted in a colour the
+palette no longer contains.
+
+Size and shape are the opposite case, and belong in a class rather than a token wherever the
+positioning code *measures* the element — then a caller's `size-*` stays correctly seated,
+because the measurement is taken after their class applies.
+
+## A rotated square is a triangle, and rotation moves which borders you want
+
+The standard pointer is a square turned 45°, half of it pushed past the surface's edge: the two
+edges facing outward continue the surface's border, and the fill covers the border segment
+behind it, so the outline reads as one shape with a mouth. Two things bite. The two edges you
+want are **not** the two facing the same way before rotation — after 45° the box's *top* and
+*left* edges are the two upper ones — so the "zero these two widths" map has to be derived, not
+guessed. And an absolutely-positioned child is laid out against the **padding** box, so pinning
+it to the surface's edge with `inset: 0` puts it a border-width inside; a percentage `translate`
+of the element's own box is what keeps the overlap correct at any size the caller chooses.
+
+## An inline style written by a positioning library cannot be overridden by any class
+
+Where a hook writes a property inline — a transition duration, a transform — that property is
+unreachable from CSS at every layer, so a utility for it is silently dead whether it arrives by
+`className`, by a slot, or from a stylesheet. Do not ship a slot or document an override that
+lands on such a property. Split the element's inline surface deliberately: only genuinely
+measured, per-instance geometry goes inline, and everything a caller might reasonably vary stays
+in a class where their utility can still out-rank it.

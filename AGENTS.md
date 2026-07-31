@@ -401,7 +401,9 @@ Use instead of `DataTable` when you want continuous scrolling rather than pagina
 
 ### `useFloating` — Floating UI wrapper
 
-Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensible defaults (auto-update, flip, shift, offset). Used internally by `Popover` and `Tooltip`. Type `Placement` is also re-exported.
+Re-exports a configured `useFloating` hook from `@floating-ui/react` with sensible defaults (auto-update, flip, shift, offset), plus `arrow` when the config carries an `arrowRef`. Used internally by `Popover`, `HoverCard`, `Tooltip`, both menus, `Combobox`, `MultiSelect`, `ColorPicker`, `DatePicker` and `DateRangePicker`. Type `Placement` is also re-exported.
+
+**`arrowRef` positions an element you render.** The three surfaces that render one — `Popover.Content`, `HoverCard.Content`, `Tooltip` — do it behind an opt-in `arrow` prop, default off, and style it from the panel's own `background-color`/`border` via `inherit` rather than an arrow-specific variable. The geometry lives once in `floatingArrowProps` (`src/hooks/use-floating.ts`): it turns the *resolved* placement plus `middlewareData.arrow` into a `data-side` and the inline offsets, so a flip carries the arrow across. The menus are deliberately excluded — `ContextMenu` positions against a 0×0 virtual reference at the cursor and shares one hook with `DropdownMenu`, so an arrow there would point at nothing.
 
 ## Naming conventions for AI-generated code
 
