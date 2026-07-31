@@ -718,7 +718,7 @@ it and break initials sizing.**
 
 ## 5. Triage — not every gap is slot-shaped
 
-Each verified gap resolves to **one of five**, and a lane must say which before writing code.
+Each verified gap resolves to **one of six**, and a lane must say which before writing code.
 
 | | Resolution | Tell |
 | --- | --- | --- |
@@ -727,6 +727,9 @@ Each verified gap resolves to **one of five**, and a lane must say which before 
 | **c** | Slot | The consumer must change *which utilities apply* on an element this component renders. |
 | **d** | Compound subcomponent | The element has independent identity a consumer would address by name, **and** it has *no* override path at all. |
 | **e** | Render prop | The element is **loop-generated**, so no name can address one instance — and what the consumer wants is different *content*, not a different class. |
+| **f** | Just `className` | The component renders **one** element and it has no `className` prop at all. §4b's house rule already answers it: add `className` and merge it on that element. No slot, no compound, no rest spread. |
+
+**(f) was missing, and its absence pushed a lane toward (d).** `Tooltip` is the worked case: 1 class literal, all 10 `Tooltip.css` declarations unreachable, and a passed `className` was a **TypeScript error** because the props type is closed. Under a five-way table the only bucket that fits "the element has independent identity and no override path" is (d) — which prescribes a compound rewrite for a component that renders a single `<div>`. The right answer was the cheapest one: give it `className`. Ask (f) before (d), always: **a missing prop is not a missing subcomponent.**
 
 **Apply the loop test first.** Are the internals loop-generated? If yes, (d) is *structurally
 impossible* — no compound API can name "the 15th cell" — and the answer is **(e)**.
