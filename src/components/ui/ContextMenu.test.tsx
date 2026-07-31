@@ -17,7 +17,7 @@ function renderMenu(
       <ContextMenu onOpenChange={onOpenChange}>
         <ContextMenu.Trigger>Right-click area</ContextMenu.Trigger>
         <ContextMenu.Content>
-          <ContextMenu.Label>Actions</ContextMenu.Label>
+          <ContextMenu.GroupHeader>Actions</ContextMenu.GroupHeader>
           <ContextMenu.Item index={0} onSelect={onSelect}>
             Edit
           </ContextMenu.Item>
@@ -354,5 +354,71 @@ describe("ContextMenu", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+/**
+ * The menu surface used to be built from a `classPrefix` both menus set to
+ * `"dropdown-menu"`, so a ContextMenu emitted `dropdown-menu-*` classes — styles
+ * named after the other component — plus one `context-menu-trigger` that no
+ * stylesheet defined. Both halves are asserted here because both were invisible:
+ * the names were template-concatenated, so nothing static could read them.
+ */
+describe("ContextMenu is named after itself, not after DropdownMenu", () => {
+  /**
+   * Asserted with class *selectors*, not substrings of the markup: `.menu-content`
+   * matches a whole class token, whereas `toContain("menu-content")` is satisfied
+   * by the very string this change removes — `dropdown-menu-content` contains it.
+   */
+  async function openFullMenu() {
+    render(
+      <ContextMenu>
+        <ContextMenu.Trigger>Right-click area</ContextMenu.Trigger>
+        <ContextMenu.Content>
+          <ContextMenu.GroupHeader>Actions</ContextMenu.GroupHeader>
+          <ContextMenu.Item index={0} icon={<svg />}>
+            Edit
+          </ContextMenu.Item>
+          <ContextMenu.Divider />
+          <ContextMenu.Item index={1}>Delete</ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu>,
+    );
+    fireEvent.contextMenu(screen.getByText("Right-click area"));
+    await screen.findByRole("menu");
+    return (selector: string) => [...document.body.querySelectorAll(selector)].length;
+  }
+
+  it("emits no dropdown-menu-* class anywhere", async () => {
+    const count = await openFullMenu();
+
+    expect(count('[class*="dropdown-menu"]')).toBe(0);
+  });
+
+  it("no longer emits the orphan context-menu-trigger class", async () => {
+    const count = await openFullMenu();
+
+    expect(count(".context-menu-trigger")).toBe(0);
+  });
+
+  it("emits the shared menu-* family instead", async () => {
+    const count = await openFullMenu();
+
+    expect(count(".menu-content")).toBe(1);
+    expect(count(".menu-item")).toBe(2);
+    expect(count(".menu-item-icon")).toBe(1);
+    expect(count(".menu-divider")).toBe(1);
+    expect(count(".menu-group-header")).toBe(1);
+  });
+
+  it("leaves the trigger carrying only the caller's own class", () => {
+    const { container } = render(
+      <ContextMenu>
+        <ContextMenu.Trigger className="rounded-md border">Region</ContextMenu.Trigger>
+        <ContextMenu.Content />
+      </ContextMenu>,
+    );
+
+    expect(container.querySelector("div")?.getAttribute("class")).toBe("rounded-md border");
   });
 });

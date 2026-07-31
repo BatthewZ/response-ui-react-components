@@ -467,10 +467,16 @@ const hasAttr = (attrs, name) => new RegExp(`(?:^|[\\s{])${name}\\b`, "i").test(
 
 /**
  * Identifier -> the string literals it can hold, resolved to a fixpoint across every
- * non-test module. This is what turns menu-internals' `` `${classPrefix}-item` `` into
- * the concrete `dropdown-menu-item` (via `classPrefix: CLASS_PREFIX` in DropdownMenu
- * and ContextMenu, and `const CLASS_PREFIX = "dropdown-menu"`). Without it a template
- * class is an unanchored wildcard that would wrongly claim `.combobox-item` too.
+ * non-test module, so a template class such as `` `${PREFIX}-item` `` resolves to the
+ * concrete names it can actually emit. Without it a template class is an unanchored
+ * wildcard that would wrongly claim `.combobox-item` too.
+ *
+ * The case this was written for — `menu-internals`' `` `${classPrefix}-item` ``,
+ * resolved through `CLASS_PREFIX` in DropdownMenu and ContextMenu — **no longer
+ * exists**: those five class names are static now, precisely because a template class
+ * is invisible to Tailwind's scanner and to every static reader including this one.
+ * The resolver stays because the shape can recur and because an unresolvable
+ * interpolation is dropped rather than widened (see `expandTemplate`).
  */
 function buildLiteralMap(files) {
   const literals = new Map(); // name -> Set<string>

@@ -25,8 +25,17 @@ import {
   useTypeahead,
 } from "../../hooks/use-floating";
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 import { useFadeDuration } from "./floating-motion";
+
+/*
+ * Every element below carries a static `menu-*` class, painted by
+ * `menu-internals.css`. The names are shared rather than per-consumer on
+ * purpose: `DropdownMenu` and `ContextMenu` render the identical markup from the
+ * identical components, so one family of names describes it honestly and stays
+ * visible to Tailwind's scanner and to any static reader. Only the two triggers,
+ * which each component renders itself, are component-specific.
+ */
 
 /* ------------------------------------------------------------------ */
 /*  Context                                                           */
@@ -46,8 +55,6 @@ export interface MenuContextValue {
   activeIndex: number | null;
   /** `string | undefined` because Floating UI types its own id that way. */
   menuId: string | undefined;
-  /** kebab-case class-name root, e.g. "dropdown-menu" or "context-menu". */
-  classPrefix: string;
 }
 
 export const MenuContext = createContext<MenuContextValue | null>(null);
@@ -267,7 +274,7 @@ export type MenuContentProps = ComponentPropsWithRef<"div">;
 
 export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
   function MenuContent({ children, className, style, ...props }, ref) {
-    const { open, refs, floatingStyles, context, getFloatingProps, menuId, classPrefix } =
+    const { open, refs, floatingStyles, context, getFloatingProps, menuId } =
       useMenuContext("MenuContent");
 
     const duration = useFadeDuration(open);
@@ -285,7 +292,7 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
           <div
             ref={mergeRefs(ref, refs.setFloating)}
             id={menuId}
-            className={cn(`${classPrefix}-content`, className)}
+            className={cn("menu-content", className)}
             style={{ ...floatingStyles, ...transitionStyles, ...style }}
             {...getFloatingProps(props)}
           >
@@ -306,11 +313,23 @@ export interface MenuItemProps extends Omit<ComponentPropsWithRef<"button">, "on
   icon?: React.ReactNode;
   disabled?: boolean;
   onSelect?: () => void;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * row itself, so the only slot is the box the `icon` prop is rendered into —
+   * the one element in a menu no caller could reach at all, because the icon is
+   * handed over as content and the box around it is ours. The union is written
+   * out here so an unknown key is a type error rather than a silently ignored
+   * one.
+   */
+  classNames?: SlotClassNames<"itemIcon">;
 }
 
 export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
-  function MenuItem({ children, className, index, icon, disabled = false, onSelect, ...props }, ref) {
-    const { setOpen, getItemProps, listRef, listContentRef, activeIndex, classPrefix } =
+  function MenuItem(
+    { children, className, classNames, index, icon, disabled = false, onSelect, ...props },
+    ref
+  ) {
+    const { setOpen, getItemProps, listRef, listContentRef, activeIndex } =
       useMenuContext("MenuItem");
 
     const handleSelect = useCallback(() => {
@@ -343,7 +362,7 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
         ref={mergeRefs(ref, itemRef)}
         type="button"
         role="menuitem"
-        className={cn(`${classPrefix}-item`, className)}
+        className={cn("menu-item", className)}
         aria-disabled={disabled || undefined}
         tabIndex={activeIndex === index ? 0 : -1}
         {...getItemProps({
@@ -365,7 +384,7 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
           },
         })}
       >
-        {icon && <span className={`${classPrefix}-item-icon`}>{icon}</span>}
+        {icon && <span className={cn("menu-item-icon", classNames?.itemIcon)}>{icon}</span>}
         {children}
       </button>
     );
@@ -380,32 +399,28 @@ export type MenuDividerProps = ComponentPropsWithRef<"hr">;
 
 export const MenuDivider = forwardRef<HTMLHRElement, MenuDividerProps>(
   function MenuDivider({ className, ...props }, ref) {
-    const { classPrefix } = useMenuContext("MenuDivider");
-    return (
-      <hr
-        ref={ref}
-        role="separator"
-        className={cn(`${classPrefix}-divider`, className)}
-        {...props}
-      />
-    );
+    // Reads nothing from context; called for the outside-a-provider throw, which
+    // is documented behaviour for every part of a menu.
+    useMenuContext("MenuDivider");
+    return <hr ref={ref} role="separator" className={cn("menu-divider", className)} {...props} />;
   }
 );
 
 /* ------------------------------------------------------------------ */
-/*  Label                                                             */
+/*  Group header                                                      */
 /* ------------------------------------------------------------------ */
 
-export type MenuLabelProps = ComponentPropsWithRef<"span">;
+export type MenuGroupHeaderProps = ComponentPropsWithRef<"span">;
 
-export const MenuLabel = forwardRef<HTMLSpanElement, MenuLabelProps>(
-  function MenuLabel({ children, className, ...props }, ref) {
-    const { classPrefix } = useMenuContext("MenuLabel");
+export const MenuGroupHeader = forwardRef<HTMLSpanElement, MenuGroupHeaderProps>(
+  function MenuGroupHeader({ children, className, ...props }, ref) {
+    // As above: context is read only for the outside-a-provider throw.
+    useMenuContext("MenuGroupHeader");
     return (
       <span
         ref={ref}
         role="presentation"
-        className={cn(`${classPrefix}-label`, className)}
+        className={cn("menu-group-header", className)}
         {...props}
       >
         {children}

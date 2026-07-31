@@ -351,7 +351,7 @@ function DashboardNavbar({ onOpenPalette }: { onOpenPalette: () => void }) {
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Content>
-            <DropdownMenu.Label>ada@meridian.example</DropdownMenu.Label>
+            <DropdownMenu.GroupHeader>ada@meridian.example</DropdownMenu.GroupHeader>
             <DropdownMenu.Item index={0} icon={<Users aria-hidden="true" />}>
               Profile
             </DropdownMenu.Item>
@@ -1075,7 +1075,7 @@ function DashboardPage() {
                     </Button>
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Content>
-                    <DropdownMenu.Label>Download</DropdownMenu.Label>
+                    <DropdownMenu.GroupHeader>Download</DropdownMenu.GroupHeader>
                     <DropdownMenu.Item
                       index={0}
                       icon={<FileSpreadsheet aria-hidden="true" />}

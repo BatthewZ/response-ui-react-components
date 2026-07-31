@@ -2,6 +2,12 @@
 
 Status lives in [`../LEDGER.md`](../LEDGER.md), never here.
 
+**Class names below are as they were when each finding was measured.** The menu surface has since
+been renamed: the `classPrefix` mechanism is gone, and `.dropdown-menu-content` / `-item` /
+`-item-icon` / `-divider` / `-label` are now the static, shared `.menu-content` / `.menu-item` /
+`.menu-item-icon` / `.menu-divider` / `.menu-group-header`. Grep the new names when re-checking a
+row; the findings themselves are unchanged.
+
 ### 116 · DropdownMenu · ContextMenu — the keyboard cursor is a 1.02:1 wash (med)
 
 `.dropdown-menu-item` sets `outline: none` (DropdownMenu.css:34) and gives `:hover`

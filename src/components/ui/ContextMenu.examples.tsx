@@ -26,7 +26,7 @@ export function Minimal() {
   );
 }
 
-/** `Label` and `Divider` take no `index` and are never focused — only `Item`s are counted. */
+/** `GroupHeader` and `Divider` take no `index` and are never focused — only `Item`s are counted. */
 export function GroupedActions() {
   return (
     <ContextMenu>
@@ -34,7 +34,7 @@ export function GroupedActions() {
         <p>Q3-forecast.xlsx</p>
       </ContextMenu.Trigger>
       <ContextMenu.Content>
-        <ContextMenu.Label>Q3-forecast.xlsx</ContextMenu.Label>
+        <ContextMenu.GroupHeader>Q3-forecast.xlsx</ContextMenu.GroupHeader>
         <ContextMenu.Item index={0} icon={<Pencil size={16} aria-hidden="true" />}>
           Rename
         </ContextMenu.Item>
