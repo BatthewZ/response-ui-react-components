@@ -21,6 +21,7 @@ and honors reduced-motion from your theme without a line of CSS from you.
 | `color`     | `"accent" \| "success" \| "warning" \| "error"`  | `"accent"`   |
 | `children`  | `ReactNode` (centered slot)                      | —            |
 | `className` | `string`                                         | —            |
+| `classNames`| `{ svg?, track?, indicator?, center? }` — see [Slots](#slots) | —  |
 | `ref`       | `Ref<HTMLDivElement>`                            | —            |
 | …rest       | props of `div` (minus `children`)                | —            |
 
@@ -82,6 +83,30 @@ ambient text color; set your own type and ink on the inner elements.
 </ProgressRing>
 ```
 <!-- /example -->
+
+## Slots
+
+`className` addresses the positioned box the ring and its centre content stack inside.
+`classNames` addresses the four elements it renders there. Class strings only, and the keys
+are typed, so a misspelled one is a compile error rather than a prop that does nothing.
+
+| Slot        | Element                            | What it addresses                        |
+| ----------- | ---------------------------------- | ---------------------------------------- |
+| `svg`       | `svg.progress-ring__svg`           | the drawing surface itself                |
+| `track`     | `circle.progress-ring__track`      | the unfilled groove behind the arc        |
+| `indicator` | `circle.progress-ring__indicator`  | the progress arc, beside its `--accent`/`--success`/`--warning`/`--error` modifier |
+| `center`    | `div.progress-ring__slot`          | the centre region `children` renders in   |
+
+```tsx
+<ProgressRing value={3} max={5} classNames={{ track: "opacity-40" }}>
+  3/5
+</ProgressRing>
+```
+
+The arc's fraction is `stroke-dasharray`/`stroke-dashoffset`, computed from `value`, `max`,
+`size` and `thickness`, so a class on `indicator` changes how the stroke looks and never how
+much of it is drawn. Its colour is the `color` prop; prefer that, or a token from
+[Theme tokens](#theme-tokens), where the change is a hue.
 
 ## Theme tokens
 

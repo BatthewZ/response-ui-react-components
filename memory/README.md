@@ -299,6 +299,55 @@ to understand.
    both a shared internal module's classes *and* one consumer's own, either name is wrong for half
    the file. Two sheets, each beside the module that renders it, is one added import line and
    leaves nothing misfiled; the aggregate stylesheet's import count is a report, not a contract.
+54. **A slot key for a marker whose emphasis cue is a token pair plus a private width is a
+   route back to the defect the width prevents — unless the element is also a container.**
+   Two components put their marker's fill and ink in public custom properties and kept the
+   ring width private, so one write reaches every marker and nobody can reduce the cue to
+   colour. Both markers therefore get no key. The one exception is the variant that *wraps a
+   caller's glyph*: the consumer sizing their own icon has nothing else to reach, so the
+   wrapper takes a key while the bare disc beside it does not. Say in the docs that a
+   background set there re-tints the disc but not the ring, or the exception quietly becomes
+   the defect.
+55. **One key can cover an element the component renders in two different tags, and must,
+   whenever the *component* picks the tag.** A step's marker is a `<button>` where the root
+   decided the step is navigable and a `<span>` where it did not. Splitting that into two keys
+   hands the caller a class that vanishes on a decision they did not make; one key, asserted
+   in a test that renders both forms at once, is the shape.
+56. **Where one class sits on N structurally different controls, the slot count is N, not
+   one.** Four paginator controls shared a class; four `aria-label`s already named four roles.
+   A single key cannot express "hide the edge jumps but keep the steps", which is exactly the
+   override the component's own conditional rendering leaves you wanting. Count roles, not
+   class literals.
+57. **A `<thing>Props` bag and a class slot are not interchangeable, and the discriminator is
+   whether the wrapper put its own classes on the target.** Where the wrapper does — the
+   utilities that keep a nested control's hover off the surrounding tint — a slot has a base
+   class to merge with and is right; a bag would additionally hand the caller a handler the
+   wrapper owns. Where it does not, the bag is right (§37). Two documents disagreed about one
+   such target and this is what settled it.
+58. **The fail-on-purpose run is cheap enough to automate, and automating it is what found the
+   two duplicating companions.** A ~40-line throwaway that deletes one slot's merge by regex,
+   runs that component's test file, reads the failure tally and restores, gave 51 verdicts in
+   one pass. Two came back `2 failed` — both companions asserting the slot landed *and* that a
+   variant modifier survived. Folding the modifier assertion into the override test leaves one
+   test per slot with strictly more coverage. Doing this by hand, you stop reading the tally
+   after the first few.
+59. **A prescribed footgun fix can collide with a documented escape hatch, and the collision
+   is a finding rather than a licence.** Swapping an always-emitted inline `width: 100%`
+   default for a base utility does make a caller's width class win — and it also breaks
+   `style={{ width: undefined }}`, which that component's own Gotchas document as *the* way to
+   drop the inline width. Distinguishing the two needs `"width" in style`, which is the adapter
+   shape rule 3 forbids. Report the collision; do not ship the half that looks like the fix.
+60. **A frozen vocabulary can omit an element that is genuinely (a), and the omission reads
+   like a gap.** A row's content column had no key in its family table; at source its whole
+   stylesheet contribution was `min-width: 0`, the declaration that lets text wrap inside a
+   grid track instead of widening it. That is the class *being* the mechanism, so the absence
+   was right — but only reading the CSS proves it. Re-derive the elements, then check the
+   table, never the reverse.
+61. **Repointing a ledger anchor after a purely additive edit is a two-command job and the
+   fingerprint proves it.** Find the described line by its text in the new file, write that
+   number into the row, and the stored fingerprint validates unchanged — because it is a hash
+   of the line's content, not of its position. If it does not validate, the code did not merely
+   move and the row needs re-reading.
 
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

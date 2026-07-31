@@ -208,5 +208,124 @@ describe("#152 · reaching the copy button", () => {
     expect(writeText).toHaveBeenCalledTimes(1);
     expect(writeText).toHaveBeenCalledWith("the real code");
   });
+
+  describe("classNames slots", () => {
+    /**
+     * One slot-override test per slot, and each is the falsifier for its own
+     * merge: delete that element's `cn()` and exactly this test must go red.
+     */
+    it("lands classNames.header on the header row, beside the base class", () => {
+      const { container } = render(
+        <CodeBlock code="x" filename="a.ts" classNames={{ header: "justify-start" }} />,
+      );
+      const header = container.querySelector(".code-block-header");
+      expect(header?.getAttribute("class")).toContain("code-block-header");
+      expect(header?.getAttribute("class")).toContain("justify-start");
+    });
+
+    it("lands classNames.filename on the filename, beside the base class", () => {
+      const { container } = render(
+        <CodeBlock code="x" filename="a.ts" classNames={{ filename: "italic" }} />,
+      );
+      const filename = container.querySelector(".code-block-filename");
+      expect(filename?.getAttribute("class")).toContain("code-block-filename");
+      expect(filename?.getAttribute("class")).toContain("italic");
+    });
+
+    it("lands classNames.language on the language tag, beside the base class", () => {
+      const { container } = render(
+        <CodeBlock code="x" language="TS" classNames={{ language: "uppercase" }} />,
+      );
+      const language = container.querySelector(".code-block-language");
+      expect(language?.getAttribute("class")).toContain("code-block-language");
+      expect(language?.getAttribute("class")).toContain("uppercase");
+    });
+
+    it("lands classNames.pre on the scrollport, beside the base class", () => {
+      const { container } = render(<CodeBlock code="x" classNames={{ pre: "max-h-40" }} />);
+      const pre = container.querySelector("pre");
+      expect(pre?.getAttribute("class")).toContain("code-block-pre");
+      expect(pre?.getAttribute("class")).toContain("max-h-40");
+    });
+
+    it("lands classNames.code on the <code>, beside the base class", () => {
+      const { container } = render(<CodeBlock code="x" classNames={{ code: "text-body-3" }} />);
+      const code = container.querySelector("code");
+      expect(code?.getAttribute("class")).toContain("code-block-code");
+      expect(code?.getAttribute("class")).toContain("text-body-3");
+    });
+
+    it("lands classNames.line on every numbered line, beside the base class", () => {
+      const { container } = render(
+        <CodeBlock code={"a\nb\nc"} showLineNumbers classNames={{ line: "bg-surface-2" }} />,
+      );
+      const lines = container.querySelectorAll(".code-block-line");
+      expect(lines).toHaveLength(3);
+      for (const line of lines) {
+        expect(line.getAttribute("class")).toContain("code-block-line");
+        expect(line.getAttribute("class")).toContain("bg-surface-2");
+      }
+    });
+
+    it("leaves each internal on its base class alone when no slot is passed", () => {
+      const { container } = render(
+        <CodeBlock code={"a\nb"} filename="a.ts" language="ts" showLineNumbers />,
+      );
+      expect(container.querySelector(".code-block-header")?.getAttribute("class")).toBe(
+        "code-block-header",
+      );
+      expect(container.querySelector(".code-block-filename")?.getAttribute("class")).toBe(
+        "code-block-filename",
+      );
+      expect(container.querySelector(".code-block-language")?.getAttribute("class")).toBe(
+        "code-block-language",
+      );
+      expect(container.querySelector("pre")?.getAttribute("class")).toBe("code-block-pre");
+      expect(container.querySelector("code")?.getAttribute("class")).toBe("code-block-code");
+      expect(container.querySelector(".code-block-line")?.getAttribute("class")).toBe(
+        "code-block-line",
+      );
+    });
+
+    it("does not put a slot class on the root", () => {
+      const { container } = render(
+        <CodeBlock
+          code={"a\nb"}
+          filename="a.ts"
+          language="ts"
+          showLineNumbers
+          classNames={{
+            header: "justify-start",
+            filename: "italic",
+            language: "uppercase",
+            pre: "max-h-40",
+            code: "text-body-3",
+            line: "bg-surface-2",
+          }}
+        />,
+      );
+      expect(container.firstElementChild?.getAttribute("class")).toBe("code-block");
+    });
+
+    /**
+     * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+     * compile error. It fails if TypeScript ever stops rejecting the key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        <CodeBlock
+          code="x"
+          // @ts-expect-error — `copy` is not a slot; the copy button takes `copyButtonProps`.
+          classNames={{ copy: "italic" }}
+        />,
+      );
+      expect(container.querySelector("pre")?.getAttribute("class")).toBe("code-block-pre");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(<CodeBlock code="x" classNames={{ pre: "max-h-40" }} />);
+      expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+    });
+  });
 });
 

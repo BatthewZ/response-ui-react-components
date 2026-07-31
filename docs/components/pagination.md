@@ -21,6 +21,7 @@ page number, it tells you when the user wants a different one.
 | `showEdges`    | `boolean`                       | `true` when the effective variant is `compact` |
 | `compactBelow` | `number` (px) \| `string` (CSS length) | —                   |
 | `className`    | `string`                        | —                          |
+| `classNames`   | `{ list?, first?, prev?, next?, last?, page?, ellipsis?, info? }` — see [Slots](#slots) | — |
 | `ref`          | `Ref<HTMLElement>`              | —                          |
 | …rest          | every `<nav>` prop except `children` | —                     |
 
@@ -170,6 +171,45 @@ the pager a sibling is still the clearer shape — the form owns the filters, yo
 </div>
 ```
 <!-- /example -->
+
+## Slots
+
+`className` addresses the `<nav>`; `Pagination` takes no children, so everything inside it is
+this component's own. `classNames` is how you reach it. Class strings only, and the keys are
+typed, so a misspelled one is a compile error rather than a prop that does nothing.
+
+| Slot       | Element                          | What it addresses                             |
+| ---------- | -------------------------------- | --------------------------------------------- |
+| `list`     | `ul.pagination__list`            | the row the controls sit in                    |
+| `first`    | the "First page" `IconButton`    | jump to page 1 — rendered only when `showEdges` |
+| `prev`     | the "Previous page" `IconButton` | step back one                                  |
+| `next`     | the "Next page" `IconButton`     | step forward one                               |
+| `last`     | the "Last page" `IconButton`     | jump to the end — rendered only when `showEdges` |
+| `page`     | every `button.pagination__page`  | the numbered buttons, in `full` only            |
+| `ellipsis` | every `li.pagination__ellipsis`  | the gap markers, in `full` only                 |
+| `info`     | `li.pagination__info`            | the "Page X of Y" readout, in `compact` only    |
+
+```tsx
+<Pagination
+  page={page}
+  totalPages={12}
+  onPageChange={setPage}
+  showEdges
+  classNames={{ page: "rounded-full", first: "hidden sm:inline-flex", last: "hidden sm:inline-flex" }}
+/>
+```
+
+**The four stepping controls take four keys, not one.** They share the class
+`pagination__nav` today, but they are four different roles: hiding the edge jumps while
+keeping the steps has no route under a single key, and that is exactly the override the
+`showEdges`/`compactBelow` pair leaves you wanting.
+
+`page` and `ellipsis` land on **every** instance — both are generated from `page` and
+`totalPages`, so no key can name one. `first`, `last` and `info` render conditionally, so a
+class on them is silent rather than wrong when the control is not on screen.
+
+Prefer a token where the change is a value — the whole control re-inks from the variables in
+[Theme tokens](#theme-tokens), which reaches every paginator rather than one call site.
 
 ## Theme tokens
 

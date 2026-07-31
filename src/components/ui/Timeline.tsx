@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import { ScrollReveal } from "../animation/ScrollReveal";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
 /*  Context (passes the animate flag to items)                         */
@@ -165,10 +165,32 @@ type TimelineItemProps = {
    * @default false
    */
   highlight?: boolean;
+  /**
+   * Class overrides for the internals this entry renders. `className` is the
+   * entry itself, so these reach the card and its text, which a caller cannot
+   * otherwise address.
+   *
+   * The marker is deliberately absent. Its fill, ink and border are the three
+   * public custom properties documented on `highlight` — one write that reaches
+   * every marker in the list — and its ring width is private on purpose, so a
+   * class route here would let a caller re-tint the disc and lose the width cue
+   * that survives greyscale.
+   */
+  classNames?: SlotClassNames<"icon" | "card" | "timestamp" | "title" | "body">;
 } & Omit<ComponentPropsWithRef<"div">, "title">;
 
 const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(function TimelineItem(
-  { date, title, titleAs: Heading = "h3", icon, highlight = false, className, children, ...props },
+  {
+    date,
+    title,
+    titleAs: Heading = "h3",
+    icon,
+    highlight = false,
+    className,
+    classNames,
+    children,
+    ...props
+  },
   ref
 ) {
   const ctx = useTimelineItemContext();
@@ -182,13 +204,29 @@ const TimelineItem = forwardRef<HTMLDivElement, TimelineItemProps>(function Time
   // which is what the `:has()` rule reserving their width descends to find.
   const inner = (
     <>
-      <div className="timeline-node">
-        {icon ? <span className="timeline-icon">{icon}</span> : <div className="timeline-dot" />}
+      <div
+        // slot:(a) a fixed grid track, not decoration: the rail's origin is
+        // measured from its width and the root's `:has()` rules reserve the
+        // marker column from it, so a caller class here moves the line rather
+        // than restyling the node.
+        className="timeline-node"
+      >
+        {icon ? (
+          <span className={cn("timeline-icon", classNames?.icon)}>{icon}</span>
+        ) : (
+          <div
+            // slot:(b) the marker's ink is `--timeline-highlight-fill` paired
+            // with `--timeline-highlight-ink`, both public and both inherited
+            // from one write on the entry; its ring width is private so the
+            // emphasis cue cannot be reduced to colour alone.
+            className="timeline-dot"
+          />
+        )}
       </div>
-      <div className="timeline-card">
-        {date && <span className="timeline-date">{date}</span>}
-        <Heading className="timeline-title">{title}</Heading>
-        {children && <div className="timeline-body">{children}</div>}
+      <div className={cn("timeline-card", classNames?.card)}>
+        {date && <span className={cn("timeline-date", classNames?.timestamp)}>{date}</span>}
+        <Heading className={cn("timeline-title", classNames?.title)}>{title}</Heading>
+        {children && <div className={cn("timeline-body", classNames?.body)}>{children}</div>}
       </div>
     </>
   );

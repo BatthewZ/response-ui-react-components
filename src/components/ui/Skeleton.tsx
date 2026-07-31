@@ -44,7 +44,16 @@ export const Skeleton = forwardRef<HTMLSpanElement, SkeletonProps>(function Skel
       style={{ width, height, ...style }}
       {...props}
     >
-      {announces && <span className="sr-only">{children}</span>}
+      {announces && (
+        <span
+          // slot:(a) the announcement itself, and `sr-only` is the mechanism:
+          // this text exists to be read and not seen, so a route here lets a
+          // caller print the loading sentence inside the shimmer.
+          className="sr-only"
+        >
+          {children}
+        </span>
+      )}
     </span>
   );
 });

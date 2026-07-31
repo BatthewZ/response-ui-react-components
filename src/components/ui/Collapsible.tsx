@@ -138,7 +138,15 @@ const CollapsibleContent = forwardRef<HTMLDivElement, CollapsibleContentProps>(
         className={cn("collapsible-content", className)}
         {...props}
       >
-        <div className="collapsible-content-inner">{children}</div>
+        <div
+          // slot:(a) the clipper, and the class is the whole of it: the outer
+          // box animates `grid-template-rows` and this one only sets
+          // `overflow: hidden`. Varying that is not a restyle — it is the open
+          // and close transition stopping working.
+          className="collapsible-content-inner"
+        >
+          {children}
+        </div>
       </div>
     );
   }

@@ -112,3 +112,99 @@ describe("ProgressRing", () => {
     ).toBe(true);
   });
 });
+
+describe("ProgressRing · classNames slots", () => {
+  /**
+   * One slot-override test per slot, and each is the falsifier for its own
+   * merge: delete that element's `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.svg on the <svg>, beside the base class", () => {
+    const { container } = render(<ProgressRing value={50} classNames={{ svg: "rotate-45" }} />);
+    const svg = container.querySelector(".progress-ring__svg");
+    expect(svg?.getAttribute("class")).toContain("progress-ring__svg");
+    expect(svg?.getAttribute("class")).toContain("rotate-45");
+  });
+
+  it("lands classNames.track on the groove, beside the base class", () => {
+    const { container } = render(<ProgressRing value={50} classNames={{ track: "opacity-50" }} />);
+    const track = container.querySelector(".progress-ring__track");
+    expect(track?.getAttribute("class")).toContain("progress-ring__track");
+    expect(track?.getAttribute("class")).toContain("opacity-50");
+  });
+
+  it("lands classNames.indicator on the arc, beside the base and colour classes", () => {
+    const { container } = render(
+      <ProgressRing value={50} color="success" classNames={{ indicator: "opacity-75" }} />,
+    );
+    const indicator = container.querySelector(".progress-ring__indicator");
+    expect(indicator?.getAttribute("class")).toContain("progress-ring__indicator");
+    expect(indicator?.getAttribute("class")).toContain("progress-ring__indicator--success");
+    expect(indicator?.getAttribute("class")).toContain("opacity-75");
+  });
+
+  it("lands classNames.center on the centre region, beside the base class", () => {
+    const { container } = render(
+      <ProgressRing value={50} classNames={{ center: "text-body-3" }}>
+        50%
+      </ProgressRing>,
+    );
+    const center = container.querySelector(".progress-ring__slot");
+    expect(center?.getAttribute("class")).toContain("progress-ring__slot");
+    expect(center?.getAttribute("class")).toContain("text-body-3");
+  });
+
+  it("leaves each internal on its base class alone when no slot is passed", () => {
+    const { container } = render(<ProgressRing value={50}>50%</ProgressRing>);
+    expect(container.querySelector(".progress-ring__svg")?.getAttribute("class")).toBe(
+      "progress-ring__svg",
+    );
+    expect(container.querySelector(".progress-ring__track")?.getAttribute("class")).toBe(
+      "progress-ring__track",
+    );
+    expect(container.querySelector(".progress-ring__indicator")?.getAttribute("class")).toBe(
+      "progress-ring__indicator progress-ring__indicator--accent",
+    );
+    expect(container.querySelector(".progress-ring__slot")?.getAttribute("class")).toBe(
+      "progress-ring__slot",
+    );
+  });
+
+  it("does not put a slot class on the root", () => {
+    const { container } = render(
+      <ProgressRing
+        value={50}
+        classNames={{
+          svg: "rotate-45",
+          track: "opacity-50",
+          indicator: "opacity-75",
+          center: "text-body-3",
+        }}
+      >
+        50%
+      </ProgressRing>,
+    );
+    expect(container.firstElementChild?.getAttribute("class")).toBe("progress-ring");
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = render(
+      <ProgressRing
+        value={50}
+        // @ts-expect-error — `slot` is a banned key; the centre region is `center`.
+        classNames={{ slot: "text-body-3" }}
+      />,
+    );
+    expect(container.querySelector(".progress-ring__slot")?.getAttribute("class")).toBe(
+      "progress-ring__slot",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = render(<ProgressRing value={50} classNames={{ svg: "rotate-45" }} />);
+    expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+  });
+});

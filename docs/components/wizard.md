@@ -47,6 +47,7 @@ Finish for you. The index is controllable, so cross-step validation stays yours.
 | `nextLabel`           | `string`                        | `"Next"`       |
 | `finishLabel`         | `string`                        | `"Finish"`     |
 | `className`           | `string`                        | —              |
+| `classNames`          | `{ body?, footer? }` — see [Slots](#slots) | —   |
 | …rest                 | `div` props, minus `children`; `onChange` is a compile error | — |
 
 Rest props are spread onto the root `<div class="wizard">`, so `id`, `aria-label`,
@@ -263,6 +264,26 @@ itself calls it with `count: steps.length`.
 The `isLast || isComplete` in that label is not belt-and-braces: `isLast` goes false the
 moment you finish, so testing it alone would flip the button back to "Next" while it sits
 disabled. `Wizard` writes the same pair for the same reason.
+
+## Slots
+
+`className` addresses the outer `<div>`. `classNames` addresses the two regions below the
+header. Class strings only, and the keys are typed, so a misspelled one is a compile error
+rather than a prop that does nothing.
+
+| Slot     | Element                 | What it addresses                                     |
+| -------- | ----------------------- | ----------------------------------------------------- |
+| `body`   | `div.wizard__content`   | the panel holding the active step's `content` — the `role="group"` that takes focus on each advance |
+| `footer` | `div.wizard__footer`    | the Back / Next row                                    |
+
+```tsx
+<Wizard steps={steps} classNames={{ body: "min-h-80", footer: "justify-between" }} />
+```
+
+The header is a [Stepper](stepper.md) with its own documented surface, so it takes no slot
+here. If you need to reach inside it, drive the flow yourself with
+[`useWizard`](#usewizard--the-headless-core) and render the `Stepper` — the section below
+shows the whole shape, and it is the same markup `Wizard` emits.
 
 ## Theme tokens
 

@@ -36,6 +36,7 @@ that association, and will not compile without it: see [Naming the bar](#naming-
 | `animate`   | `boolean`                                       | `true`       |
 | `statusLabel` | `string`                                      | the word for `color` |
 | `className` | `string`                                        | —            |
+| `classNames`| `{ fill? }` — see [Slots](#slots)               | —            |
 | `ref`       | `Ref<HTMLDivElement>`                           | —            |
 | …rest       | props of `div` (minus `children`)               | —            |
 
@@ -196,6 +197,27 @@ written before the rest props are spread, so a phrasing of your own still wins o
 />
 ```
 <!-- /example -->
+
+## Slots
+
+`className` addresses the track — the `role="progressbar"` element. `ProgressBar.Label` and
+`ProgressBar.Value` are the bar's siblings and carry their own `className`. That leaves the
+fill, which nothing else reaches, and `classNames` is its route. Class strings only, and the
+key is typed, so a misspelled one is a compile error rather than a prop that does nothing.
+
+| Slot   | Element                     | What it addresses                                       |
+| ------ | --------------------------- | ------------------------------------------------------- |
+| `fill` | `div.progress-bar__fill`    | the filled bar, beside its colour and variant modifiers  |
+
+```tsx
+<ProgressBar value={64} aria-label="Upload" classNames={{ fill: "rounded-none" }} />
+```
+
+The fill's `width` is the percentage and is written as inline style every render, so a class
+here changes the paint and never the reading. **Prefer a token where the change is a colour**
+— `--progress-bar-fill` and `--progress-bar-fill-end` are the ramp's two ends and the
+`gradient` variant reads both, so setting one without the other is how a gradient ends up
+half-branded. See [Theme tokens](#theme-tokens) for where they currently resolve.
 
 ## Theme tokens
 

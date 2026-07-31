@@ -20,6 +20,7 @@ anywhere in it.
 | `copyable`        | `boolean`                                                    | `true`       |
 | `copyButtonProps` | every [CopyButton](copy-button.md) prop except `value`        | —            |
 | `className`       | `string` — merged onto the root's `code-block` class          | —            |
+| `classNames`      | `{ header?, filename?, language?, pre?, code?, line? }` — see [Slots](#slots) | — |
 | `ref`             | `Ref<HTMLDivElement>`                                        | —            |
 | …rest             | every `div` prop except `children`                           | —            |
 
@@ -127,6 +128,36 @@ replaces the filename:
 
 Worth doing whenever more than one block shares a page, since otherwise they all announce
 identically.
+
+## Slots
+
+`className` addresses the root. `classNames` addresses the six elements inside it. Class
+strings only, and the keys are typed, so a misspelled one is a compile error rather than a
+prop that does nothing.
+
+| Slot       | Element                        | What it addresses                                |
+| ---------- | ------------------------------ | ------------------------------------------------ |
+| `header`   | `div.code-block-header`        | the header bar, present when `filename`, `language` or `copyable` gives it something to hold |
+| `filename` | `span.code-block-filename`     | the filename label, when `filename` is set        |
+| `language` | `span.code-block-language`     | the language tag, when `language` is set          |
+| `pre`      | `pre.code-block-pre`           | the scrollport — the element a keyboard user focuses and scrolls |
+| `code`     | `code.code-block-code`         | the code element inside it                        |
+| `line`     | every `span.code-block-line`   | each numbered line, under `showLineNumbers`       |
+
+```tsx
+<CodeBlock
+  code={snippet}
+  filename="server.ts"
+  showLineNumbers
+  classNames={{ pre: "max-h-80", line: "hover:bg-surface-2" }}
+/>
+```
+
+`line` lands on **every** line — `showLineNumbers` generates them from `code`, so no key can
+name one. The copy button takes no slot: it is another component, and `copyButtonProps` is
+its channel, with `className` merged onto `code-block-copy` rather than replacing it. Prefer
+a token where the change is a value — the block re-tints from the variables in
+[Theme tokens](#theme-tokens).
 
 ## Theme tokens
 

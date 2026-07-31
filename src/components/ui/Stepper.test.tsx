@@ -312,3 +312,141 @@ describe("Stepper · isStepClickable", () => {
     expect(document.querySelectorAll("button.stepper-indicator")).toHaveLength(2);
   });
 });
+
+describe("Stepper · classNames slots", () => {
+  /**
+   * One slot-override test per slot, and each is the falsifier for its own
+   * merge: delete that element's `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.indicator on the marker in both its forms", () => {
+    // Step 0 is clickable (a <button>), step 1 is not (a <span>) — one key
+    // has to cover both or the class vanishes when a flow becomes navigable.
+    const { container } = render(
+      <Stepper activeStep={1} onStepClick={vi.fn()} isStepClickable={(i) => i === 0}>
+        <Stepper.Step title="One" classNames={{ indicator: "ring-2" }} />
+        <Stepper.Step title="Two" classNames={{ indicator: "ring-2" }} />
+      </Stepper>,
+    );
+    const markers = container.querySelectorAll(".stepper-indicator");
+    expect(markers).toHaveLength(2);
+    expect(markers[0].tagName).toBe("BUTTON");
+    expect(markers[1].tagName).toBe("SPAN");
+    for (const marker of markers) {
+      expect(marker.getAttribute("class")).toContain("stepper-indicator");
+      expect(marker.getAttribute("class")).toContain("ring-2");
+    }
+  });
+
+  it("lands classNames.itemBody on the text block, beside the base class", () => {
+    const { container } = render(
+      <Stepper activeStep={0}>
+        <Stepper.Step title="One" classNames={{ itemBody: "gap-r6" }} />
+      </Stepper>,
+    );
+    const body = container.querySelector(".stepper-content");
+    expect(body?.getAttribute("class")).toContain("stepper-content");
+    expect(body?.getAttribute("class")).toContain("gap-r6");
+  });
+
+  it("lands classNames.title on the step title, beside the base class", () => {
+    const { container } = render(
+      <Stepper activeStep={0}>
+        <Stepper.Step title="One" classNames={{ title: "font-bold" }} />
+      </Stepper>,
+    );
+    const title = container.querySelector(".stepper-title");
+    expect(title?.getAttribute("class")).toContain("stepper-title");
+    expect(title?.getAttribute("class")).toContain("font-bold");
+  });
+
+  it("lands classNames.description on the step description, beside the base class", () => {
+    const { container } = render(
+      <Stepper activeStep={0}>
+        <Stepper.Step title="One" description="Detail" classNames={{ description: "italic" }} />
+      </Stepper>,
+    );
+    const description = container.querySelector(".stepper-description");
+    expect(description?.getAttribute("class")).toContain("stepper-description");
+    expect(description?.getAttribute("class")).toContain("italic");
+  });
+
+  it("lands classNames.connector on the joining rule, beside the base class", () => {
+    const { container } = render(
+      <Stepper activeStep={0}>
+        <Stepper.Step title="One" classNames={{ connector: "opacity-50" }} />
+      </Stepper>,
+    );
+    const connector = container.querySelector(".stepper-connector");
+    expect(connector?.getAttribute("class")).toContain("stepper-connector");
+    expect(connector?.getAttribute("class")).toContain("opacity-50");
+  });
+
+  it("leaves each internal on its base class alone when no slot is passed", () => {
+    const { container } = render(
+      <Stepper activeStep={0}>
+        <Stepper.Step title="One" description="Detail" />
+      </Stepper>,
+    );
+    expect(container.querySelector(".stepper-indicator")?.getAttribute("class")).toBe(
+      "stepper-indicator",
+    );
+    expect(container.querySelector(".stepper-content")?.getAttribute("class")).toBe(
+      "stepper-content",
+    );
+    expect(container.querySelector(".stepper-title")?.getAttribute("class")).toBe("stepper-title");
+    expect(container.querySelector(".stepper-description")?.getAttribute("class")).toBe(
+      "stepper-description",
+    );
+    expect(container.querySelector(".stepper-connector")?.getAttribute("class")).toBe(
+      "stepper-connector",
+    );
+  });
+
+  it("does not put a slot class on the step root", () => {
+    const { container } = render(
+      <Stepper activeStep={0}>
+        <Stepper.Step
+          title="One"
+          description="Detail"
+          classNames={{
+            indicator: "ring-2",
+            itemBody: "gap-r6",
+            title: "font-bold",
+            description: "italic",
+            connector: "opacity-50",
+          }}
+        />
+      </Stepper>,
+    );
+    expect(container.querySelector(".stepper-step")?.getAttribute("class")).toBe("stepper-step");
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = render(
+      <Stepper activeStep={1}>
+        <Stepper.Step
+          title="One"
+          // @ts-expect-error — the hidden status word is (a); `sr-only`-style
+          // clipping is the mechanism and takes no override.
+          classNames={{ status: "not-sr-only" }}
+        />
+      </Stepper>,
+    );
+    expect(container.querySelector(".stepper-status")?.getAttribute("class")).toBe(
+      "stepper-status",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = render(
+      <Stepper activeStep={0}>
+        <Stepper.Step title="One" classNames={{ title: "font-bold" }} />
+      </Stepper>,
+    );
+    expect(container.querySelector(".stepper-step")?.hasAttribute("classnames")).toBe(false);
+  });
+});

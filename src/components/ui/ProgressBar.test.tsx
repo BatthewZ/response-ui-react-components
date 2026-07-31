@@ -252,3 +252,65 @@ describe("ProgressBar · the bar has to be named", () => {
     expect(screen.queryByRole("progressbar")).toBeNull();
   });
 });
+
+describe("ProgressBar · classNames slots", () => {
+  /**
+   * The slot-override test, and the falsifier for its merge: delete the fill's
+   * `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.fill on the fill, beside the base, colour and variant classes", () => {
+    const { container } = render(
+      <ProgressBar
+        value={40}
+        color="success"
+        variant="striped"
+        aria-label="Upload"
+        classNames={{ fill: "rounded-none" }}
+      />,
+    );
+    const fill = container.querySelector(".progress-bar__fill");
+    expect(fill?.getAttribute("class")).toContain("progress-bar__fill");
+    expect(fill?.getAttribute("class")).toContain("progress-bar__fill--success");
+    expect(fill?.getAttribute("class")).toContain("progress-bar__fill--striped");
+    expect(fill?.getAttribute("class")).toContain("rounded-none");
+  });
+
+  it("leaves the fill on its base classes alone when no slot is passed", () => {
+    const { container } = render(<ProgressBar value={40} aria-label="Upload" />);
+    expect(container.querySelector(".progress-bar__fill")?.getAttribute("class")).toBe(
+      "progress-bar__fill progress-bar__fill--accent",
+    );
+  });
+
+  it("does not put the slot class on the root", () => {
+    const { container } = render(
+      <ProgressBar value={40} aria-label="Upload" classNames={{ fill: "rounded-none" }} />,
+    );
+    expect(container.firstElementChild?.getAttribute("class")).toBe("progress-bar progress-bar--md");
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = render(
+      <ProgressBar
+        value={40}
+        aria-label="Upload"
+        // @ts-expect-error — the outer groove is `className`, not a slot.
+        classNames={{ track: "bg-surface-2" }}
+      />,
+    );
+    expect(container.querySelector(".progress-bar__fill")?.getAttribute("class")).toBe(
+      "progress-bar__fill progress-bar__fill--accent",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = render(
+      <ProgressBar value={40} aria-label="Upload" classNames={{ fill: "rounded-none" }} />,
+    );
+    expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+  });
+});

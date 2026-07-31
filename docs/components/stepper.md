@@ -33,7 +33,7 @@ stops at the step you are on and never runs ahead of it.
 | Part            | Renders | Props                                                                                 |
 | --------------- | ------- | ------------------------------------------------------------------------------------- |
 | `Stepper`       | `<ol>`  | `activeStep` · `orientation?` · `onStepClick?` · `isStepClickable?` · `statusLabels?` (+ all `ol` props) |
-| `Stepper.Step`  | `<li>`  | `title` · `description?` · `icon?` (+ all `li` props but `title`)                      |
+| `Stepper.Step`  | `<li>`  | `title` · `description?` · `icon?` · `classNames?` — see [Slots](#slots) (+ all `li` props but `title`) |
 
 `activeStep` is a required `number`. `orientation` is `"horizontal" | "vertical"`,
 defaulting to `"horizontal"`. `onStepClick` is `(index: number) => void` and
@@ -141,6 +141,41 @@ carries `aria-current` — the "flow complete" state. (`-1` inverts it: everythi
 </Stepper>
 ```
 <!-- /example -->
+
+## Slots
+
+`className` addresses the step's `<li>`. `classNames` addresses the five parts it renders
+inside. Class strings only, and the keys are typed, so a misspelled one is a compile error
+rather than a prop that does nothing.
+
+| Slot          | Element                        | What it addresses                              |
+| ------------- | ------------------------------ | ---------------------------------------------- |
+| `indicator`   | `.stepper-indicator`           | the marker — **both** its forms, see below      |
+| `itemBody`    | `span.stepper-content`         | the title + description block beside the marker |
+| `title`       | `span.stepper-title`           | the step's title line                           |
+| `description` | `span.stepper-description`     | the description line, when `description` is set |
+| `connector`   | `span.stepper-connector`       | the rule reaching to the next step              |
+
+```tsx
+<Stepper.Step
+  title="Payment"
+  description="Card or transfer"
+  classNames={{ indicator: "size-r2", connector: "opacity-50" }}
+/>
+```
+
+**`indicator` covers both forms of the marker.** A step renders it as a `<button>` where the
+root's `onStepClick`/`isStepClickable` make it navigable and as a `<span>` where they do not
+— a decision that belongs to the root, not to the caller of the step. One key has to cover
+both, or the class disappears the moment a flow becomes navigable.
+
+**The hidden status word takes no slot.** `Stepper.css` hand-rolls its visually-hidden clip
+rather than using the `sr-only` utility, so a caller's utility arriving there would out-rank
+the clip and print "completed" beside the numeral. Its wording is the `statusLabels` prop,
+covered under [Accessibility](#accessibility).
+
+Prefer a token where the change is a value: `--stepper-progress-color` re-inks the whole
+track at once, which reaches every step rather than one call site.
 
 ## Theme tokens
 

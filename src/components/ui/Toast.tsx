@@ -9,7 +9,7 @@ import {
 import { CircleCheck, CircleX, Info, TriangleAlert } from "lucide-react";
 
 import { mergeRefs } from "../../util/merge-refs";
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 import { IconButton } from "./IconButton";
 
@@ -84,10 +84,44 @@ const statusLabelMap: Record<ToastVariant, string> = {
  * `currentColor`, which is the variant's own `text-status-*` ink.
  */
 const statusIconMap: Record<ToastVariant, ReactNode> = {
-  success: <CircleCheck size={16} aria-hidden="true" className="shrink-0" />,
-  warning: <TriangleAlert size={16} aria-hidden="true" className="shrink-0" />,
-  error: <CircleX size={16} aria-hidden="true" className="shrink-0" />,
-  info: <Info size={16} aria-hidden="true" className="shrink-0" />,
+  success: (
+    <CircleCheck
+      size={16}
+      aria-hidden="true"
+      // slot:(a) a *default* glyph — the override route is `statusIcon`, which
+      // replaces the node outright. `shrink-0` is the one thing any replacement
+      // must keep: the row is a flex line, and a shrinking glyph deforms beside
+      // a long message.
+      className="shrink-0"
+    />
+  ),
+  warning: (
+    <TriangleAlert
+      size={16}
+      aria-hidden="true"
+      // slot:(a) as `success` above — replaced through `statusIcon`, never
+      // restyled through a class.
+      className="shrink-0"
+    />
+  ),
+  error: (
+    <CircleX
+      size={16}
+      aria-hidden="true"
+      // slot:(a) as `success` above — replaced through `statusIcon`, never
+      // restyled through a class.
+      className="shrink-0"
+    />
+  ),
+  info: (
+    <Info
+      size={16}
+      aria-hidden="true"
+      // slot:(a) as `success` above — replaced through `statusIcon`, never
+      // restyled through a class.
+      className="shrink-0"
+    />
+  ),
 };
 
 /** The dismiss button's name when the caller supplies none. */
@@ -115,6 +149,17 @@ type ToastProps = {
    * name would leave it unnamed rather than quieter.
    */
   dismissLabel?: string;
+  /**
+   * Class overrides for the internals this component renders. `className` is the
+   * card, so these reach the four parts inside it: the glyph's first-line box,
+   * the message column, the title line, and the dismiss button.
+   *
+   * `dismiss` is a class slot rather than a props bag even though its target is
+   * an `IconButton`, because the button already carries this component's own
+   * classes — the tint that keeps its hover off a neutral surface. A bag would
+   * hand a caller `onClick`, which the toast owns.
+   */
+  classNames?: SlotClassNames<"icon" | "body" | "title" | "dismiss">;
 } & Omit<ComponentPropsWithRef<"div">, "title">;
 
 export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
@@ -127,6 +172,7 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
     statusIcon,
     dismissLabel,
     className,
+    classNames,
     children,
     onFocus,
     ...props
@@ -180,21 +226,39 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
       {...ariaMap[variant]}
       {...props}
     >
-      {icon && <span className={firstLineClasses}>{icon}</span>}
-      <div className="flex-1 min-w-0">
-        {statusText && <span className="sr-only">{statusText}</span>}
-        {title && <p className="font-semibold">{title}</p>}
+      {icon && <span className={cn(firstLineClasses, classNames?.icon)}>{icon}</span>}
+      <div className={cn("flex-1 min-w-0", classNames?.body)}>
+        {statusText && (
+          <span
+            // slot:(a) the severity word, read ahead of the message. `sr-only`
+            // is the mechanism — the tint is the visible channel — so a route
+            // here lets a caller print "Error" above their own error text.
+            className="sr-only"
+          >
+            {statusText}
+          </span>
+        )}
+        {title && <p className={cn("font-semibold", classNames?.title)}>{title}</p>}
         <p>{children}</p>
       </div>
       {/* The button is taller than one line; centring it overflows into the
           card's own padding rather than growing the toast past its text. */}
-      <span className={firstLineClasses}>
+      <span
+        // slot:(a) the same first-line box as the glyph's, and the class is the
+        // whole of it: `h-[1lh]` is what keeps the ✕ and the glyph on one line
+        // when the message wraps. `classNames.dismiss` reaches the button.
+        className={firstLineClasses}
+      >
         <IconButton
           aria-label={dismissText}
           onClick={handleDismiss}
-          className={cn("shrink-0 -mr-r6", dismissClasses)}
+          className={cn("shrink-0 -mr-r6", dismissClasses, classNames?.dismiss)}
         >
           <svg
+            // slot:(a) the mark's ink, and the value is a measured one: the
+            // neutral grey holds 6.9–7.3:1 on these tints where the variant ink
+            // would hold 3.1–4.8, so a route here is a route below the 3:1
+            // floor for a graphical object.
             className="text-fg-secondary"
             width="16"
             height="16"

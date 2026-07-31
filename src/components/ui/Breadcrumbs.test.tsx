@@ -239,15 +239,15 @@ describe("Breadcrumbs", () => {
   });
 
   /* ---------------------------------------------------------------- */
-  /*  #146 · a caller-rendered Separator replaces the auto one         */
+  /*  #146 · a caller-rendered Divider replaces the auto one         */
   /* ---------------------------------------------------------------- */
 
-  describe("Breadcrumbs.Separator rendered by the caller", () => {
+  describe("Breadcrumbs.Divider rendered by the caller", () => {
     it("replaces the auto separator for that gap instead of tripling it", () => {
       const { container } = renderWithRouter(
         <Breadcrumbs>
           <Breadcrumbs.Item href="/a">A</Breadcrumbs.Item>
-          <Breadcrumbs.Separator>&rsaquo;</Breadcrumbs.Separator>
+          <Breadcrumbs.Divider>&rsaquo;</Breadcrumbs.Divider>
           <Breadcrumbs.Item current>B</Breadcrumbs.Item>
         </Breadcrumbs>,
       );
@@ -261,7 +261,7 @@ describe("Breadcrumbs", () => {
       renderWithRouter(
         <Breadcrumbs maxItems={3}>
           <Breadcrumbs.Item href="/a">A</Breadcrumbs.Item>
-          <Breadcrumbs.Separator>&rsaquo;</Breadcrumbs.Separator>
+          <Breadcrumbs.Divider>&rsaquo;</Breadcrumbs.Divider>
           <Breadcrumbs.Item href="/b">B</Breadcrumbs.Item>
           <Breadcrumbs.Item current>C</Breadcrumbs.Item>
         </Breadcrumbs>,
@@ -351,5 +351,141 @@ describe("Breadcrumbs", () => {
       renderWithRouter(<Breadcrumbs.Item>Orphan</Breadcrumbs.Item>),
     ).toThrow();
     spy.mockRestore();
+  });
+});
+
+describe("Breadcrumbs · classNames slots", () => {
+  /**
+   * One slot-override test per slot, and each is the falsifier for its own
+   * merge: delete that element's `cn()` and exactly this test must go red.
+   */
+  it("lands classNames.list on the <ol>, beside the base class", () => {
+    const { container } = renderWithRouter(
+      <Breadcrumbs classNames={{ list: "gap-r4" }}>
+        <Breadcrumbs.Item current>A</Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    const list = container.querySelector(".breadcrumbs__list");
+    expect(list?.getAttribute("class")).toContain("breadcrumbs__list");
+    expect(list?.getAttribute("class")).toContain("gap-r4");
+  });
+
+  it("lands classNames.ellipsis on the expand control, beside the base class", () => {
+    const { container } = renderWithRouter(
+      <Breadcrumbs maxItems={2} classNames={{ ellipsis: "underline" }}>
+        <Breadcrumbs.Item href="/a">A</Breadcrumbs.Item>
+        <Breadcrumbs.Item href="/b">B</Breadcrumbs.Item>
+        <Breadcrumbs.Item href="/c">C</Breadcrumbs.Item>
+        <Breadcrumbs.Item current>D</Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    const ellipsis = container.querySelector(".breadcrumbs__ellipsis");
+    expect(ellipsis?.getAttribute("class")).toContain("breadcrumbs__ellipsis");
+    expect(ellipsis?.getAttribute("class")).toContain("underline");
+  });
+
+  it("lands classNames.current on the current crumb, beside the base class", () => {
+    const { container } = renderWithRouter(
+      <Breadcrumbs>
+        <Breadcrumbs.Item current classNames={{ current: "font-bold" }}>
+          A
+        </Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    const current = container.querySelector(".breadcrumbs__current");
+    expect(current?.getAttribute("class")).toContain("breadcrumbs__current");
+    expect(current?.getAttribute("class")).toContain("font-bold");
+  });
+
+  it("lands classNames.link on a linked crumb, beside the base class", () => {
+    const { container } = renderWithRouter(
+      <Breadcrumbs>
+        <Breadcrumbs.Item href="/a" classNames={{ link: "no-underline" }}>
+          A
+        </Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    const link = container.querySelector(".breadcrumbs__link");
+    expect(link?.getAttribute("class")).toContain("breadcrumbs__link");
+    expect(link?.getAttribute("class")).toContain("no-underline");
+  });
+
+  it("lands classNames.text on a plain crumb, beside the base class", () => {
+    const { container } = renderWithRouter(
+      <Breadcrumbs>
+        <Breadcrumbs.Item classNames={{ text: "italic" }}>A</Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    const text = container.querySelector(".breadcrumbs__text");
+    expect(text?.getAttribute("class")).toContain("breadcrumbs__text");
+    expect(text?.getAttribute("class")).toContain("italic");
+  });
+
+  it("leaves each internal on its base class alone when no slot is passed", () => {
+    const { container } = renderWithRouter(
+      <Breadcrumbs maxItems={2}>
+        <Breadcrumbs.Item href="/a">A</Breadcrumbs.Item>
+        <Breadcrumbs.Item>B</Breadcrumbs.Item>
+        <Breadcrumbs.Item href="/c">C</Breadcrumbs.Item>
+        <Breadcrumbs.Item current>D</Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    expect(container.querySelector(".breadcrumbs__list")?.getAttribute("class")).toBe(
+      "breadcrumbs__list",
+    );
+    expect(container.querySelector(".breadcrumbs__ellipsis")?.getAttribute("class")).toBe(
+      "breadcrumbs__ellipsis",
+    );
+    expect(container.querySelector(".breadcrumbs__link")?.getAttribute("class")).toBe(
+      "breadcrumbs__link",
+    );
+    expect(container.querySelector(".breadcrumbs__current")?.getAttribute("class")).toBe(
+      "breadcrumbs__current",
+    );
+  });
+
+  it("does not put a slot class on either root", () => {
+    const { container } = renderWithRouter(
+      <Breadcrumbs classNames={{ list: "gap-r4", ellipsis: "underline" }}>
+        <Breadcrumbs.Item current classNames={{ current: "font-bold" }}>
+          A
+        </Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    expect(container.firstElementChild?.getAttribute("class")).toBe("breadcrumbs");
+    expect(container.querySelector(".breadcrumbs__item")?.getAttribute("class")).toBe(
+      "breadcrumbs__item",
+    );
+  });
+
+  /**
+   * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+   * compile error. It fails if TypeScript ever stops rejecting the key.
+   */
+  it("rejects an unknown slot key at compile time", () => {
+    const { container } = renderWithRouter(
+      <Breadcrumbs
+        // @ts-expect-error — the rule between crumbs is `Breadcrumbs.Divider`,
+        // the subcomponent, so there is no `divider` slot.
+        classNames={{ divider: "opacity-50" }}
+      >
+        <Breadcrumbs.Item current>A</Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    expect(container.querySelector(".breadcrumbs__list")?.getAttribute("class")).toBe(
+      "breadcrumbs__list",
+    );
+  });
+
+  it("does not leak classNames onto the DOM", () => {
+    const { container } = renderWithRouter(
+      <Breadcrumbs classNames={{ list: "gap-r4" }}>
+        <Breadcrumbs.Item current classNames={{ current: "font-bold" }}>
+          A
+        </Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+    expect(container.querySelector(".breadcrumbs__item")?.hasAttribute("classnames")).toBe(false);
   });
 });

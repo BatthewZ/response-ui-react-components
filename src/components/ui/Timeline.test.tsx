@@ -411,4 +411,133 @@ describe("Timeline", () => {
     const item = container.querySelector(".timeline-item") as HTMLElement;
     expect(item.dataset.highlight).toBe("false");
   });
+
+  describe("classNames slots", () => {
+    /**
+     * One slot-override test per slot, and each is the falsifier for its own
+     * merge: delete that element's `cn()` and exactly this test must go red.
+     */
+    it("lands classNames.icon on the glyph wrapper, beside the base class", () => {
+      const { container } = render(
+        <Timeline animate={false}>
+          <Timeline.Item title="A" icon={<span>★</span>} classNames={{ icon: "text-chart-1" }} />
+        </Timeline>,
+      );
+      const icon = container.querySelector(".timeline-icon");
+      expect(icon?.getAttribute("class")).toContain("timeline-icon");
+      expect(icon?.getAttribute("class")).toContain("text-chart-1");
+    });
+
+    it("lands classNames.card on the card, beside the base class", () => {
+      const { container } = render(
+        <Timeline animate={false}>
+          <Timeline.Item title="A" classNames={{ card: "shadow-lg" }} />
+        </Timeline>,
+      );
+      const card = container.querySelector(".timeline-card");
+      expect(card?.getAttribute("class")).toContain("timeline-card");
+      expect(card?.getAttribute("class")).toContain("shadow-lg");
+    });
+
+    it("lands classNames.timestamp on the date, beside the base class", () => {
+      const { container } = render(
+        <Timeline animate={false}>
+          <Timeline.Item title="A" date="Jan" classNames={{ timestamp: "tabular-nums" }} />
+        </Timeline>,
+      );
+      const date = container.querySelector(".timeline-date");
+      expect(date?.getAttribute("class")).toContain("timeline-date");
+      expect(date?.getAttribute("class")).toContain("tabular-nums");
+    });
+
+    it("lands classNames.title on the heading, beside the base class", () => {
+      const { container } = render(
+        <Timeline animate={false}>
+          <Timeline.Item title="A" classNames={{ title: "text-heading-4" }} />
+        </Timeline>,
+      );
+      const title = container.querySelector(".timeline-title");
+      expect(title?.getAttribute("class")).toContain("timeline-title");
+      expect(title?.getAttribute("class")).toContain("text-heading-4");
+    });
+
+    it("lands classNames.body on the detail block, beside the base class", () => {
+      const { container } = render(
+        <Timeline animate={false}>
+          <Timeline.Item title="A" classNames={{ body: "text-body-3" }}>
+            detail
+          </Timeline.Item>
+        </Timeline>,
+      );
+      const body = container.querySelector(".timeline-body");
+      expect(body?.getAttribute("class")).toContain("timeline-body");
+      expect(body?.getAttribute("class")).toContain("text-body-3");
+    });
+
+    it("leaves each internal on its base class alone when no slot is passed", () => {
+      const { container } = render(
+        <Timeline animate={false}>
+          <Timeline.Item title="A" date="Jan" icon={<span>★</span>}>
+            detail
+          </Timeline.Item>
+        </Timeline>,
+      );
+      expect(container.querySelector(".timeline-icon")?.getAttribute("class")).toBe("timeline-icon");
+      expect(container.querySelector(".timeline-card")?.getAttribute("class")).toBe("timeline-card");
+      expect(container.querySelector(".timeline-date")?.getAttribute("class")).toBe("timeline-date");
+      expect(container.querySelector(".timeline-title")?.getAttribute("class")).toBe(
+        "timeline-title",
+      );
+      expect(container.querySelector(".timeline-body")?.getAttribute("class")).toBe("timeline-body");
+    });
+
+    it("does not put a slot class on the item root", () => {
+      const { container } = render(
+        <Timeline animate={false}>
+          <Timeline.Item
+            title="A"
+            date="Jan"
+            icon={<span>★</span>}
+            classNames={{
+              icon: "text-chart-1",
+              card: "shadow-lg",
+              timestamp: "tabular-nums",
+              title: "text-heading-4",
+              body: "text-body-3",
+            }}
+          >
+            detail
+          </Timeline.Item>
+        </Timeline>,
+      );
+      expect(container.querySelector(".timeline-item")?.getAttribute("class")).toBe("timeline-item");
+    });
+
+    /**
+     * The `@ts-expect-error` is the assertion — an unknown slot key must stay a
+     * compile error. It fails if TypeScript ever stops rejecting the key.
+     */
+    it("rejects an unknown slot key at compile time", () => {
+      const { container } = render(
+        <Timeline animate={false}>
+          <Timeline.Item
+            title="A"
+            // @ts-expect-error — `dot` is reserved and granted to no component;
+            // the marker's route is `--timeline-highlight-*`.
+            classNames={{ dot: "bg-chart-1" }}
+          />
+        </Timeline>,
+      );
+      expect(container.querySelector(".timeline-dot")?.getAttribute("class")).toBe("timeline-dot");
+    });
+
+    it("does not leak classNames onto the DOM", () => {
+      const { container } = render(
+        <Timeline animate={false}>
+          <Timeline.Item title="A" classNames={{ card: "shadow-lg" }} />
+        </Timeline>,
+      );
+      expect(container.querySelector(".timeline-item")?.hasAttribute("classnames")).toBe(false);
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import { type ComponentPropsWithRef, forwardRef, type ReactNode } from "react";
 
-import { cn } from "../../util/style";
+import { cn, type SlotClassNames } from "../../util/style";
 
 /* ------------------------------------------------------------------ */
 /*  ActivityFeed (root)                                                */
@@ -53,11 +53,36 @@ type ActivityFeedItemProps = {
    * @default false
    */
   highlight?: boolean;
+  /**
+   * Class overrides for the parts of the row this component renders.
+   * `className` is the `<li>`, so these reach the sentence, its four spans and
+   * the detail block under it — none of which a caller can otherwise address.
+   *
+   * The marker is deliberately absent, on the same reasoning as `highlight`
+   * above: its fill and ink are public custom properties that one write reaches
+   * every row with, and its ring width is private so the cue cannot be reduced
+   * to colour alone.
+   */
+  classNames?: SlotClassNames<
+    "sentence" | "actor" | "action" | "target" | "timestamp" | "body"
+  >;
 } & ComponentPropsWithRef<"li">;
 
 const ActivityFeedItem = forwardRef<HTMLLIElement, ActivityFeedItemProps>(
   function ActivityFeedItem(
-    { avatar, icon, actor, action, target, timestamp, highlight = false, className, children, ...props },
+    {
+      avatar,
+      icon,
+      actor,
+      action,
+      target,
+      timestamp,
+      highlight = false,
+      className,
+      classNames,
+      children,
+      ...props
+    },
     ref,
   ) {
     return (
@@ -70,17 +95,50 @@ const ActivityFeedItem = forwardRef<HTMLLIElement, ActivityFeedItemProps>(
         data-highlight={highlight ? "true" : undefined}
         {...props}
       >
-        <div className="activity-feed-aside">
-          {avatar ?? <div className="activity-feed-dot">{icon}</div>}
+        <div
+          // slot:(a) a fixed grid track, not decoration: the rail's origin is
+          // measured from its width, so a caller class here moves the line down
+          // the whole feed rather than restyling one row's marker column.
+          className="activity-feed-aside"
+        >
+          {avatar ?? (
+            <div
+              // slot:(b) the marker's ink is `--activity-feed-highlight-fill`
+              // paired with `--activity-feed-highlight-ink`, both public and
+              // both inherited from one write on the row; its ring width is
+              // private so the emphasis cue cannot be reduced to colour alone.
+              className="activity-feed-dot"
+            >
+              {icon}
+            </div>
+          )}
         </div>
-        <div className="activity-feed-main">
-          <div className="activity-feed-sentence">
-            {actor != null && <span className="activity-feed-actor">{actor}</span>}
-            {action != null && <span className="activity-feed-action">{action}</span>}
-            {target != null && <span className="activity-feed-target">{target}</span>}
-            {timestamp != null && <span className="activity-feed-timestamp">{timestamp}</span>}
+        <div
+          // slot:(a) the content column, and `min-width: 0` is the whole of it —
+          // the one declaration that lets long text wrap inside the `1fr` track
+          // instead of widening it. Every part a consumer would restyle is a key
+          // below.
+          className="activity-feed-main"
+        >
+          <div className={cn("activity-feed-sentence", classNames?.sentence)}>
+            {actor != null && (
+              <span className={cn("activity-feed-actor", classNames?.actor)}>{actor}</span>
+            )}
+            {action != null && (
+              <span className={cn("activity-feed-action", classNames?.action)}>{action}</span>
+            )}
+            {target != null && (
+              <span className={cn("activity-feed-target", classNames?.target)}>{target}</span>
+            )}
+            {timestamp != null && (
+              <span className={cn("activity-feed-timestamp", classNames?.timestamp)}>
+                {timestamp}
+              </span>
+            )}
           </div>
-          {children != null && <div className="activity-feed-body">{children}</div>}
+          {children != null && (
+            <div className={cn("activity-feed-body", classNames?.body)}>{children}</div>
+          )}
         </div>
       </li>
     );
