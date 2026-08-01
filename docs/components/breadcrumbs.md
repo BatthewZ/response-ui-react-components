@@ -291,12 +291,14 @@ trail, or if the UI isn't in English.
   change it: it stays English in a localised app.
 - **Muted ink clears AA on the usual surfaces, and one use of it is interactive.** Separators
   and the ellipsis button both paint `--C-TEXT-MUTED`, measured against
-  `@batthewz/response-ui-css` **v0.10.1** at **4.85:1–5.23:1** on `--C-SURFACE-0` across the
-  four measured themes — over AA's 4.5:1, where it read 2.10–2.59 before **v0.10.0** retuned that
-  token. **On `--C-SURFACE-3` it still falls short at 3.92:1–4.10:1**, so a trail rendered on the
-  deepest surface rung is under AA though over AA-large's 3:1. Decorative separators can live
-  with that either way; the ellipsis is the one control on the trail a user has to find, so if
-  you place breadcrumbs on `--C-SURFACE-3`, give it its own ink.
+  `@batthewz/response-ui-css` **v0.13.0** at **4.95:1** on `--C-SURFACE-0` in the default theme
+  and **4.85 / 4.50 / 4.50** in `events` / `tech` / `grimdark` — over AA's 4.5:1 everywhere, but
+  in two of the examples by nothing at all. (It read 2.10–2.59 before **v0.10.0** retuned that
+  token.) **On `--C-SURFACE-3` it falls short in the default theme at 4.00:1**, and at 4.10 in
+  `events`; the two dark examples clear it there (5.09 `tech`, 5.63 `grimdark`). So a trail on
+  the deepest rung is under AA out of the box, though over AA-large's 3:1. Decorative separators
+  can live with that; the ellipsis is the one control on the trail a user has to find, so if you
+  place breadcrumbs on `--C-SURFACE-3`, give it its own ink.
 - **Nothing marks a crumb as clickable at rest.** A link and a plain text crumb are both
   `--C-TEXT-SECONDARY` with no underline; the underline and `--C-ACCENT` arrive only on hover.
   Only the current crumb is visually distinct (primary ink, semibold). If which crumbs

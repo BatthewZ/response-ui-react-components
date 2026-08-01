@@ -373,7 +373,7 @@ it at runtime with no rebuild — and because the utilities sit in `@layer utili
 | Drag-over fill                                | `bg-surface-3`                                        | `--C-SURFACE-3`                                 |
 | Overlay remove buttons                        | `bg-surface-0`                                        | `--C-SURFACE-0`                                 |
 | Dashed border · row separators · action bar   | `border-border-default`                               | `--C-BORDER-DEFAULT`                            |
-| Hover + drag-over border · glyph · focus ring | `hover:border-border-focus` `text-border-focus` `focus-visible:outline-border-focus` | `--C-BORDER-FOCUS` |
+| Hover + drag-over border · glyph · focus ring | `hover:border-border-focus` `border-border-focus` `text-border-focus` `focus-visible:outline-border-focus` | `--C-BORDER-FOCUS` |
 | Prompt · hint · size · glyphs · Clear all     | `text-fg-muted`                                       | `--C-TEXT-MUTED`                                |
 | File name in a preview row                    | `text-fg-primary`                                     | `--C-TEXT-PRIMARY`                              |
 | "browse" emphasis · Replace                   | `text-accent`                                         | `--C-ACCENT`                                    |
@@ -404,46 +404,53 @@ leaves nothing animating.
 from `--C-TEXT-PRIMARY`, so it holds the theme's body colour regardless of what an ancestor
 sets — everything else in a preview row reads from `--C-TEXT-MUTED`.
 
-**Contrast numbers worth knowing before you ship this.** Computed from the OKLCH values of
-the default theme and the three worked examples, each pair against the background the
-component itself paints behind it:
+**Contrast numbers worth knowing before you ship this.** The column that decides whether this
+component is accessible out of the box is **`default`** — it is the only theme the design system
+defines, and it is what you get if you never write a theme. The three example columns are there to
+show how far a retune moves each pair, not to be lived up to: `events`, `grimdark` and `tech` are
+worked examples that nothing imports, and a theme of your own replaces those numbers entirely.
 
-| Pair                                                          | default | events | tech  | grimdark |
-| ------------------------------------------------------------- | ------- | ------ | ----- | -------- |
-| Prompt · hint · size · glyph, on the zone fill                 | 4.74    | 4.70   | 4.78  | 4.90     |
-| Dashed dropzone border, on the zone fill                       | 1.18    | 1.18   | 1.18  | 1.26     |
-| Success message, on the success fill                           | 4.57    | 4.57   | 13.39 | 6.70     |
-| Error message, on the error fill                               | 4.41    | 4.41   | 5.35  | 4.59     |
+Each pair is measured against the background this component actually paints behind it, taken from
+the class strings in `FileUpload.tsx` rather than from the token names:
 
-Measured against `@batthewz/response-ui-css` **v0.10.1**. The three text rows are set in
-`--BodyText-2`/`--BodyText-3` — 12–14px, so AA asks 4.5:1. **Row one now clears it in every
-theme measured** (it read 2.06–2.43 before v0.10.0 retuned `--C-TEXT-MUTED`, and missed even the 3:1
-large-text floor while being the component's *only* instruction). **Row three now clears it
-too**, at 4.57 where it read 3.15 in the two light themes. **Row four is the one still under
-the floor**: the error message is 4.41 in `default` and `events`, and that pairing —
-`--C-STATUS-ERROR` on `--C-STATUS-ERROR-BG` — is the contract's own designated ink/fill pair,
-so the component is doing the right thing and the fix belongs upstream.
+| Pair                                            | Painted on             | default   | events | tech  | grimdark |
+| ----------------------------------------------- | ---------------------- | --------- | ------ | ----- | -------- |
+| Prompt · hint · size · glyph                     | zone fill `SURFACE-2`  | **4.50**  | 4.50   | 5.00  | 5.45     |
+| Dashed dropzone border                           | zone fill `SURFACE-2`  | **1.13**  | 1.13   | 1.23  | 1.40     |
+| Success message                                  | success fill           | **4.57**  | 4.57   | 13.39 | 6.70     |
+| Error message                                    | error fill             | **4.41**  | 4.41   | 5.35  | 4.59     |
+| Drag-over border                                 | drag-over fill `SURFACE-3` | **2.97** | 2.87 | 15.49 | 3.94     |
 
-**Row two is the other one still failing, and it is not text.** The dashed border is the entire
-affordance that says "you can drop here", and at 1.18–1.26:1 it is far under the 3:1 WCAG 1.4.11
-asks of a graphical object, in every theme measured. Unlike row four this one cannot be fixed in the
-palette either: it pairs `--C-BORDER-DEFAULT` against the zone fill, and the whole surface
-ramp — rung 0 to rung 3 — spans **1.13–1.25:1** by design. Retint through
-`--C-BORDER-DEFAULT` or `className` if it matters for your audience.
+Computed from OKLCH against `@batthewz/response-ui-css` **v0.13.0**, the version this package
+depends on. The three message rows are set in `--BodyText-2`/`--BodyText-3` — 12–14px, so AA asks
+4.5:1; the two non-text rows answer to WCAG 1.4.11's 3:1.
+
+**In the default theme, three of the five clear their floor and two do not.**
+
+- **The prompt row clears AA by 0.0009** — 4.5009:1, which rounds to the 4.50 in the table and is
+  effectively sitting on the line. It is the component's only instruction, so treat any retune of
+  `--C-TEXT-MUTED` or `--C-SURFACE-2` as something that needs re-measuring rather than eyeballing.
+  (It read 2.06–2.43 before `--C-TEXT-MUTED` was retuned, missing even the 3:1 large-text floor.)
+- **The dashed border is the furthest under**, at 1.13:1 against a 3:1 floor, and it is the entire
+  affordance that says "you can drop here". No palette retune reaches it: it pairs
+  `--C-BORDER-DEFAULT` against a surface rung, and the whole ramp — `SURFACE-0` to `SURFACE-3` —
+  spans only **1.13–1.25:1** by design, so no rung can bound another. The fix is a token from a
+  different family. `className="border-fg-muted"` puts the dashed edge at **4.50:1** on the zone
+  fill; `--C-BORDER-DEFAULT` itself can be retinted if you want it everywhere.
+- **The drag-over border is just under**, at 2.97:1. The fill itself carries almost none of the
+  signal — `SURFACE-2` → `SURFACE-3` is a **1.02–1.13:1** step nobody can see — so the border
+  going `--C-BORDER-FOCUS` is the whole of it, and in the default theme it lands 0.03 short of the
+  floor a non-text cue owes. Same remedy: override `--C-BORDER-FOCUS`, or reach the zone's drag
+  state directly — `className="data-drag-over:border-fg-primary"` measures **14.33:1** on the
+  drag-over fill.
+- **The error message is 4.41 against AA's 4.5**, and that pairing — `--C-STATUS-ERROR` on
+  `--C-STATUS-ERROR-BG` — is the contract's own designated ink/fill pair, used the way it is meant
+  to be used. The component is not doing anything unusual here; closing it is a change to the
+  token, upstream, not to this component.
 
 The contract promises a ratio for none of these pairings, which is exactly why they are worth
-measuring — and why two of the four moved without this component changing. The two "zone fill"
-rows were measured while the dropzone was a rung-1 surface and have not been re-taken since it
-moved to rung 2. Measured against the default theme and the worked examples; these numbers do
-not transfer to your own theme — re-check them against your values.
-
-Drag-over feedback rests on the same arithmetic: the fill drops one rung deeper,
-`--C-SURFACE-2` → `--C-SURFACE-3`, a **1.02–1.13:1** change nobody can see, so the whole signal is the border going
-`--C-BORDER-FOCUS`. Measured against `@batthewz/response-ui-css` **v0.10.1**, that border
-clears the 3:1 floor on the drag-over fill in every theme measured — **3.34** default · **3.15**
-`events` · **13.70** `tech` · **3.15** `grimdark`. The two low values used to be 2.52 and
-2.55, because those themes copied their *pre-retune* accent into the focus token; v0.10.1
-retuned it and left `default` and `tech` untouched, which is why only two of the four measured themes moved.
+measuring — and why several moved without a line of this component changing. Re-measure against
+your own values: none of these numbers transfer to a theme you write.
 
 A few values are deliberately hard literals rather than tokens: the 10rem minimum zone height
 and large-preview height, the 8rem grid column floor, the 2.5rem thumbnail, the 1.75rem and

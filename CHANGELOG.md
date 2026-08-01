@@ -4,25 +4,7 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
-## [Unreleased]
-
-### Changed
-
-- **Tailwind Preflight is now a stated requirement, and the declarations that duplicated it are
-  gone.** Every component already leaned on Preflight; the README now says so ("import
-  `tailwindcss` whole, not just `tailwindcss/utilities`") and AGENTS.md carries the rule that a
-  declaration only restating Preflight is deleted rather than converted. Removed as redundant: the
-  sort button's `margin`/`padding`/`border`/`background`/`font`/`color` (its `text-align: inherit`
-  and `cursor: inherit` stay — Preflight covers neither), `box-sizing` on `.calendar` and
-  `.timeline-icon`, `border: none` on `.drawer`, `margin` on the three range inputs and
-  `background: transparent` on the RangeSlider overlays, `margin` on `.accordion-heading`,
-  `vertical-align` on `.sparkline`, and the `::-webkit-search-decoration` half of SearchInput's
-  clear-affordance rule. Verified by a computed-style A/B in Chromium across every touched element:
-  no rendered difference. The one computed delta is `border-style` moving from `none` to `solid` at
-  a used width of `0px` on the sort button and drawer — invisible, and it makes a caller's
-  `border-2` utility work on those elements where it previously computed to nothing.
-
-## [0.12.0] — 2026-07-31
+## [0.12.0] — 2026-08-01
 
 This release is the whole of the "sensible defaults, overridable" work: component CSS moved into
 `@layer components` so a caller's utility wins, the two column-scale stylesheets were deleted in
@@ -665,6 +647,20 @@ upgrading.
 
 ### Changed
 
+- **Tailwind Preflight is now a stated requirement, and the declarations that duplicated it are
+  gone.** Every component already leaned on Preflight; the README now says so ("import
+  `tailwindcss` whole, not just `tailwindcss/utilities`") and AGENTS.md carries the rule that a
+  declaration only restating Preflight is deleted rather than converted. Removed as redundant: the
+  sort button's `margin`/`padding`/`border`/`background`/`font`/`color` (its `text-align: inherit`
+  and `cursor: inherit` stay — Preflight covers neither), `box-sizing` on `.calendar` and
+  `.timeline-icon`, `border: none` on `.drawer`, `margin` on the three range inputs and
+  `background: transparent` on the RangeSlider overlays, `margin` on `.accordion-heading`,
+  `vertical-align` on `.sparkline`, and the `::-webkit-search-decoration` half of SearchInput's
+  clear-affordance rule. Verified by a computed-style A/B in Chromium across every touched element:
+  no rendered difference. The one computed delta is `border-style` moving from `none` to `solid` at
+  a used width of `0px` on the sort button and drawer — invisible, and it makes a caller's
+  `border-2` utility work on those elements where it previously computed to nothing.
+
 - **`MultiSelect`'s control uses the shared `focusRingWithin` / `focusRingWithinError`
   recipes** from `src/util/focus.ts` instead of three local rules. Identical pixels, one writer.
   The rule that existed solely to win a deliberate specificity tie
@@ -954,18 +950,14 @@ package's 0.13.0 entry first — everything here follows from it.
   carried — the wash now genuinely reinforces the ring instead of being a no-op, though it is still
   short of the 3:1 a non-text cue must clear on its own.
 
-> **Note.** `0.10.0` is published but was never documented here, and the `[0.9.0] — unreleased`
-> section below still describes itself as unpublished. This entry does not attempt to reconstruct
-> either; the gap is pre-existing.
+## [0.10.0] — 2026-07-29 — not documented
 
-## [0.9.0] — unreleased
+Published to npm and never recorded here. Nothing has been reconstructed for it after the fact: no
+record of its contents was kept at release time, and inventing one would be worse than the gap —
+the same call made for 0.6.0 through 0.8.2 below. The published tarball and this repository's
+commit history between the 0.9.0 and 0.10.0 releases are the only account of what changed.
 
-`package.json` is at `0.9.0`, but **nothing has been published**: `npm view
-@batthewz/response-ui-react-components version` returns `0.8.2`, and the version list runs
-`… 0.8.0, 0.8.1, 0.8.2` with no 0.8.3 and no 0.9.0. Everything below is what 0.9.0 will
-carry when it is cut; it accumulates here rather than under a second `[Unreleased]`
-heading, because a section for an unreleased version above an unreleased version is a
-distinction with no consumer on the other side of it. The date goes in when it ships.
+## [0.9.0] — 2026-07-28
 
 > **Reading older entries below:** they say "the four shipped themes" and quote per-theme
 > contrast tables. That phrasing predates this release. `default` is the only theme the design
@@ -1362,7 +1354,7 @@ distinction with no consumer on the other side of it. The date goes in when it s
 
 Five versions — 0.6.0, 0.7.0, 0.8.0, 0.8.1 and 0.8.2 — were published to npm and none was recorded here, so this file jumps from 0.5.0 to 0.9.0. Nothing has been reconstructed for them after the fact: no record of their contents was kept at release time, and inventing one would be worse than the gap. The published tarballs and this repository's commit history between the 0.5.0 and 0.8.2 releases are the only account of what changed.
 
-A sixth version, **0.8.3, was bumped in `package.json` but never published** — and neither was 0.9.0, so npm's `latest` is still **0.8.2**. Whatever 0.8.3 carried is part of 0.9.0 above.
+A sixth version, **0.8.3, was bumped in `package.json` but never published**. Whatever 0.8.3 carried is part of 0.9.0 above.
 
 ## [0.5.0] — 2026-06-13
 

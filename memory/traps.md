@@ -439,6 +439,15 @@ collision, left alone because briefs in flight cite the later one by letter.)
   ratios became false statements shipped to npm. Any measured claim needs its input version
   named in the row, or nobody can tell later whether it was re-checked or merely re-read.
 
+- **Naming a version is not the same as naming the right one, and the wrong label is worse than
+  none.** Two shipped doc pages recorded post-fix focus-ring ratios "measured against v0.10.1"
+  when the fix shipped in 0.11.0 — the label was the version installed while the prose was
+  written, not the one containing the change being measured. It reads as diligence and defeats
+  the rule above: a later reader trusts the label, matches it against a `package.json` range that
+  has since moved on, and concludes the figure is stale when it is current, or current when it is
+  stale. Name the version that *contains the change*, and check it against that package's own
+  changelog rather than against what is in `node_modules`.
+
 ## O · From the pass that was asked whether a dialog's padding was too big
 
 - **When a padded surface looks over-padded, measure before you retune the token.** A surface

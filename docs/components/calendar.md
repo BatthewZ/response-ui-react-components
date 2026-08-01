@@ -294,12 +294,12 @@ of the app at runtime, with no rebuild.
 The selected-day ink is written `var(--C-TEXT-ON-ACCENT, var(--C-TEXT-INVERSE))`, so a
 theme that defines only `--C-TEXT-INVERSE` still gets an ink colour rather than falling
 back to the inherited one. Measured against `--C-ACCENT` in `@batthewz/response-ui-css`
-**v0.10.0**, the selected day's digit clears AA for body-size text in the default theme and
-in all three examples: **5.17:1** default, **5.04:1** `events`, **5.69:1** `grimdark`,
-**14.84:1** `tech`. The `events` and `grimdark` values were 2.80:1 and 3.81:1 before that
-release and were repaired in the palette, not here. One edge remains: the `:hover` fill swaps
-to `--C-ACCENT-HOVER` while the ink does not, which lands at **4.49:1** in `grimdark` — a
-hair under, and a reminder that this pair has no headroom there.
+**v0.13.0**, the selected day's digit clears AA for body-size text in the default theme at
+**5.17:1**, and in all three examples: **5.04:1** `events`, **5.69:1** `grimdark`,
+**14.84:1** `tech`. The `events` and `grimdark` values were 2.80:1 and 3.81:1 before the
+v0.10.0 palette retune and were repaired there, not here. One edge remains: the `:hover`
+fill swaps to `--C-ACCENT-HOVER` while the ink does not, which lands at **4.50:1** in
+`grimdark` — exactly AA and not a point over, so that pair has no headroom there.
 
 Measured against the default theme and the worked examples; these numbers do not transfer to
 your own theme — re-check them against your values.
@@ -382,24 +382,35 @@ date — `"June 13, 2026"` — so a screen reader never reads a bare `"13"`.
   it rather than desyncing from it.
 - **Today is `aria-current="date"`,** and only ever on the in-month instance, so it is
   announced once even in a multi-month view. Its *visual* marker is a 1px
-  `--C-BORDER-STRONG` inset ring, which measures **3.23–3.49:1** against `--C-SURFACE-0`
-  across the four measured themes in `@batthewz/response-ui-css` **v0.10.0** — clearing the
-  3:1 floor WCAG 1.4.11 sets for a non-text indicator, where it used to sit at 1.41–1.79:1
-  and be effectively invisible. It is a hairline at exactly the floor, not a bold marker, so
-  if finding today quickly matters in your product, still add your own.
+  `--C-BORDER-STRONG` inset ring on the calendar body's `--C-SURFACE-0`. Against
+  `@batthewz/response-ui-css` **v0.13.0** it measures **3.30:1** in the default theme and
+  **3.23 / 3.00 / 3.00** in `events` / `tech` / `grimdark` — so it meets the 3:1 floor WCAG
+  1.4.11 sets for a non-text indicator, but in two of the examples it meets it *exactly*, with
+  no margin at all. (It used to sit at 1.41–1.79:1 and be effectively invisible.) A hairline at
+  the floor is not a bold marker: if finding today quickly matters in your product, add your own
+  cue, and re-measure this pair if you retune `--C-BORDER-STRONG` or `--C-SURFACE-0` — there is
+  no room under it.
 - **Month changes announce through `aria-live="polite"`** on the header caption, at every
   `numberOfMonths`; in a multi-month view it reads the whole visible span.
 - **Disabled days remain focusable** by design: `aria-disabled` rather than `disabled`, so
   a keyboard user can discover *why* a range is closed instead of arrowing over a hole.
 - **The focus indicator is a 2px `--C-BORDER-FOCUS` outline** at `2px` offset on days,
-  caption, picker cells and the Today button. Measured against `@batthewz/response-ui-css`
-  **v0.10.1**, that token clears the 3:1 non-text floor on every surface a calendar sits on:
-  **3.68** default · **3.39** `events` · **14.84** `tech` · **3.66** `grimdark` on
-  `--C-SURFACE-0`, and 3.34 / 3.15 / 13.70 / 3.15 on `--C-SURFACE-2`. It used to read 2.72
-  and 2.96 in `events` and `grimdark` — those themes copied their *pre-retune* accent into
-  the focus token, and v0.10.1 retuned it. **On `--C-SURFACE-3` it still falls short**
-  (2.97 / 2.87 / 12.37 / 2.74), so a calendar rendered on the deepest surface rung
-  has a focus ring under the floor in three of the four measured themes.
+  caption, picker cells and the Today button. A day cell can sit on three different rungs, so
+  the ring is worth measuring against each. Against `@batthewz/response-ui-css` **v0.13.0**:
+
+  | Ring on…                                | default  | events | tech  | grimdark |
+  | --------------------------------------- | -------- | ------ | ----- | -------- |
+  | `--C-SURFACE-0` — the calendar body      | **3.68** | 3.39   | 13.70 | 3.15     |
+  | `--C-SURFACE-2` — the hover wash          | **3.34** | 3.15   | 15.21 | 3.82     |
+  | `--C-SURFACE-3` — the range band          | **2.97** | 2.87   | 15.49 | 3.94     |
+
+  **In the default theme the ring clears 3:1 on the calendar body and on the hover wash, and
+  falls under it on the range band** — 2.97, three hundredths short — so in a `RangeCalendar`
+  a focused day inside the selected range has a focus ring below the floor WCAG 1.4.11 sets.
+  `events` behaves the same way (2.87); the two dark examples clear it on all three rungs.
+  If that matters for your audience, override `--C-BORDER-FOCUS` or give the range band a
+  lighter rung — this is a palette question, not something the component can resolve, since
+  it is the contract's own focus token used the way it is meant to be used.
 - **The root has no role or name.** It is a bare `<div>`; if the calendar needs to be a
   labelled region, pass `role` and `aria-label` through — they reach the root untouched.
 - Every transition in the stylesheet is switched off under `prefers-reduced-motion: reduce`.

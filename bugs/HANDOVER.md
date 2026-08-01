@@ -221,12 +221,14 @@ Their doc pages carried the stale ratios as *measured claims* and `docs/` ships 
   in any theme; the widest step available is 1.25.
 - **#446** — factual claims all re-verified against installed v0.10.0. Stands unchanged.
 
-#### The one thing needing the owner: a release call
+#### Resolved: the release call was made
 
-`--C-BORDER-FOCUS` **has already been fixed** in the `response-ui-css` working tree — commit
-`2b41af9`, "fix(themes): the focus ring meets 1.4.11 in events and grimdark". It was deliberately
-left unreleased: `package.json` stays at 0.10.0 and the entry sits under *Unreleased*, its message
-saying "The release call, and the dependent's range, are the owner's."
+`--C-BORDER-FOCUS` was fixed in the `response-ui-css` working tree by commit `2b41af9`,
+"fix(themes): the focus ring meets 1.4.11 in events and grimdark", and held back from release
+while this section was written. **It shipped in `@batthewz/response-ui-css@0.11.0`** and this
+package's range is now `^0.13.0`, so the retuned values reach every consumer — verified in the
+installed tree, where `events` and `grimdark` carry the retuned `oklch(0.6474 0.1867 47.6)` and
+`oklch(0.5549 0.1905 27.52)`. Read the rest of this section as the record of a closed decision.
 
 Verified here, reading both trees:
 
@@ -239,14 +241,49 @@ Verified here, reading both trees:
 alone — the default theme's ring differs from its accent in lightness, chroma *and* hue, so the
 "stale copy" story never applied to it.
 
-**So the fix is correct, verified, and reaching nobody.** It is not in the published artifact this
-package resolves, so every consumer still gets a focus ring that fails 1.4.11 in two shipped themes.
-The remaining work is not engineering:
+The three steps this section listed have all been taken: `response-ui-css` was published, this
+package's range was bumped, and `calendar.md` and `file-upload.md` were re-stated against the
+post-fix values. **Both pages then attributed those values to `v0.10.1`, which is wrong** —
+0.10.1 predates the fix and the figures are the 0.11.0 ones.
 
-1. **Bump and publish `response-ui-css`** (0.10.1 — it is a fix, no contract change).
-2. **Bump this package's dependency range** to match, per the repo-root `CLAUDE.md` rule.
-3. Then update `calendar.md` and `file-upload.md`, whose `--C-BORDER-FOCUS` tables are **currently
-   correct** and become false the moment that release lands.
+**`file-upload.md`, `calendar.md` and `breadcrumbs.md` have all since been re-measured against
+the installed v0.13.0 and rewritten, and #493 has been corrected in the ledger.** The re-measure
+validated its harness by reproducing eight published values exactly — the success and error rows
+across all four themes — and then found:
+
+- **The drag-over paragraph was measuring the wrong surface.** It quoted `--C-BORDER-FOCUS`
+  against `SURFACE-2` for a fill that `FileUpload.tsx` paints `bg-surface-3` on drag-over.
+  Against the correct backdrop the default theme reads **2.97**, i.e. *under* 1.4.11's 3:1 —
+  where the page had claimed it cleared the floor in every theme.
+- **The two "zone fill" rows had never been re-taken after the dropzone moved rung.** Prompt ink
+  moves 4.74 → **4.50** (clearing AA by 0.0009, now stated as such) and the dashed border
+  1.18 → **1.13**.
+- **The dark-theme columns were stale in the safe direction**, from 0.13.0's ramp redefinition:
+  `grimdark` drag-over 3.15 → 3.94, `tech` 13.70 → 15.49.
+- **#493 was re-measured and both of its counts were wrong.** Not "three of four themes" under
+  1.4.11 but **two**, and not "all four" under AA but **two** — `tech` and `grimdark` moved out
+  of failure while `default` and `events` reproduced to the digit. The row was **not** closed:
+  the two still failing are the default theme and one example, and a row that fails in the only
+  theme the system defines is higher priority than one failing in three examples, not lower.
+- **`calendar.md` had two further stale claims** that had nothing to do with `SURFACE-3`. Its
+  focus-ring figures had the dark themes' `SURFACE-0` and `SURFACE-2` columns effectively
+  swapped (0.13.0 reversed the ramp direction in dark themes), and its "today" ring claimed
+  3.23–3.49:1 where the real range is **3.00–3.30**, with `tech` and `grimdark` sitting at
+  **exactly 3.00** — meeting 1.4.11 with zero margin. The `--C-ACCENT-HOVER` edge case also
+  inverted: 4.49 "a hair under" AA is now 4.5017, a hair over.
+
+**The pattern worth carrying forward:** in every one of these pages the *light*-theme figures
+reproduced exactly and the *dark*-theme ones had moved, because 0.13.0 reassigned dark rungs
+without touching light ones. A spot-check on the default theme would have shown green and
+concluded the page was current. The method: resolve each theme's overrides over `:root` from the
+**installed** package, compute every pair, and validate the harness against figures already
+published before trusting any that move.
+
+Still un-re-taken, found while doing this and deliberately not chased: **#315** quotes the
+in-range wash against the calendar body as 1.24 / 1.18 / 1.34 / 1.20, where it now measures
+1.24 / 1.18 / **1.13** / **1.25**. Same dark-theme drift, and it changes nothing about that
+row's verdict — 1.13–1.25 is still an order below the 3:1 a non-text boundary owes — which is
+why it was left for whoever re-reads the row rather than patched in passing.
 
 Worth doing at the same time, and still absent: **a contrast gate in `response-ui-css`.** Every ratio
 in this work came from throwaway scripts. A gate asserting each theme clears its floors would have
