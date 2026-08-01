@@ -872,3 +872,26 @@ collision, left alone because briefs in flight cite the later one by letter.)
   and the type scale supplies the rest. Neither half of this is visible to a unit test: jsdom
   performs no layout, so the box, the overflow and the breakpoint are all unobservable there —
   the instrument is a screenshot at each side of the breakpoint.
+
+## X · From the pass that assembled a *second* whole site out of the library
+
+- **The router adapter is a second navigation path, and an app's own link handlers do not cover
+  it.** Anything the library renders as a navigational link — a breadcrumb crumb, a sidebar link —
+  goes through the adapter's `Link`, never through the click handler an app puts on its own
+  anchors. So an app that wraps navigation in a view transition, a scroll reset, or an analytics
+  call by decorating *its* links gets none of that on the library's, and the omission is silent:
+  the navigation still works, it just lands mid-page or without the transition. Cross-cutting
+  navigation effects belong either inside the adapter's `Link` or in an effect keyed on the
+  location — the one place both paths converge.
+- **A component that owns trailing margin double-counts inside a gap-spaced parent.** A section
+  shell carrying its own bottom margin, dropped into a `flex flex-col gap-*` page container,
+  produces margin + gap between it and the next section and gap alone everywhere else — so one
+  seam reads as a dropped section while the rest read as a rhythm. The tell is a single gap that
+  looks wrong at a spacing token everyone else uses correctly; the fix is to size the parent's gap
+  knowing what the child already contributes, not to special-case the child.
+- **A second assembly of a different genre catches a different set.** The first one (§T) was a
+  dense console and found the coordination and cap failures; an editorial site at reading measure
+  found none of those and instead surfaced spacing that only misreads across a full-bleed section
+  boundary, and hit the adapter's split navigation path, which a shell whose links are all inside
+  one component never exercises. One assembly is not a substitute for another any more than a
+  specimen is a substitute for an assembly.

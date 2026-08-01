@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Button, EXAMPLE_THEMES, ThemeSwitcher } from "../src";
+import { BlogDemo } from "./BlogDemo";
 import { CuratedGallery } from "./CuratedGallery";
 import { DashboardDemo } from "./DashboardDemo";
 import { ExamplesGallery } from "./ExamplesGallery";
@@ -24,9 +25,18 @@ const TABS = {
   gallery: "Gallery",
   forms: "Forms",
   dashboard: "Dashboard",
+  blog: "Blog",
   examples: "Examples",
 };
 type TabKey = keyof typeof TABS;
+
+/**
+ * Tabs that render a whole site rather than a page of specimens: they own their
+ * own masthead or navbar, pin it at `top: 0`, and are responsive in their own
+ * right. So the harness bar above them does not stick — a second sticky bar
+ * would swallow the one being demoed — and the viewport clamp does not apply.
+ */
+const OWNS_PAGE_SHELL = new Set<TabKey>(["dashboard", "blog"]);
 
 /* ------------------------------------------------------------------ */
 /*  Viewport harness                                                   */
@@ -47,6 +57,8 @@ function TabView({ tab, maxWidth }: { tab: TabKey; maxWidth?: string }) {
       /* Not viewport-constrained: AppShell is the page shell, and it owns its
          own responsive behaviour. Narrow the browser to exercise it. */
       return <DashboardDemo />;
+    case "blog":
+      return <BlogDemo />;
     case "forms":
       return <FormsTab />;
     case "gallery":
@@ -63,11 +75,9 @@ export function App() {
       {/* Top bar: theme switcher + a light/dark note + a viewport toggle. The
           switcher is handed EXAMPLE_THEMES because this gallery imports the
           example theme CSS (see dev/styles.css); an app passes its own list. */}
-      {/* Not sticky on the dashboard tab: AppShell pins its own navbar at top:0,
-          and a second sticky bar above it would swallow the one being demoed. */}
       <header
         className={`${
-          tab === "dashboard" ? "" : "sticky top-0 z-50 "
+          OWNS_PAGE_SHELL.has(tab) ? "" : "sticky top-0 z-50 "
         }flex flex-wrap items-center justify-between gap-r4 border-b border-border-default bg-surface-1 px-r3 py-r4`}
       >
         <div className="flex flex-col gap-r6">

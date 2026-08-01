@@ -23,15 +23,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import {
-  createContext,
-  forwardRef,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   ActivityFeed,
@@ -69,8 +61,6 @@ import {
   ProgressBar,
   ProgressRing,
   Row,
-  RouterAdapterProvider,
-  type RouterLinkProps,
   SearchInput,
   Select,
   Skeleton,
@@ -87,46 +77,7 @@ import {
   cn,
   EXAMPLE_THEMES,
 } from "../src";
-
-/* ------------------------------------------------------------------ */
-/*  Demo router                                                        */
-/* ------------------------------------------------------------------ */
-
-/**
- * A router in ~15 lines, so the sidebar's `aria-current` and active styling are
- * real rather than hard-coded, and the mobile drawer's close-on-navigate fires.
- * An app passes its own framework's Link + location hook here instead.
- */
-const DemoRouterContext = createContext<{ pathname: string; navigate: (to: string) => void }>({
-  pathname: "/overview",
-  navigate: () => {},
-});
-
-function useDemoPathname() {
-  return useContext(DemoRouterContext).pathname;
-}
-
-const DemoLink = forwardRef<HTMLAnchorElement, RouterLinkProps>(function DemoLink(
-  { to, replace: _replace, children, onClick, ...rest },
-  ref,
-) {
-  const { navigate } = useContext(DemoRouterContext);
-  return (
-    <a
-      ref={ref}
-      href={to}
-      onClick={(event) => {
-        onClick?.(event);
-        if (event.defaultPrevented) return;
-        event.preventDefault();
-        navigate(to);
-      }}
-      {...rest}
-    >
-      {children}
-    </a>
-  );
-});
+import { DemoRouter, useDemoPathname, useDemoRouter } from "./demo-router";
 
 /* ------------------------------------------------------------------ */
 /*  Sample data                                                        */
@@ -989,7 +940,7 @@ function DashboardPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const { navigate } = useContext(DemoRouterContext);
+  const { navigate } = useDemoRouter();
   const commands = useMemo<CommandPaletteItem[]>(
     () => [
       ...(Object.keys(NAV) as NavPath[]).map((path) => ({
@@ -1175,17 +1126,11 @@ function DashboardPage() {
  * tile but wrong beside its neighbours, this is where that shows up.
  */
 export function DashboardDemo() {
-  const [pathname, setPathname] = useState("/overview");
-  const router = useMemo(() => ({ pathname, navigate: setPathname }), [pathname]);
-  const adapter = useMemo(() => ({ Link: DemoLink, usePathname: useDemoPathname }), []);
-
   return (
-    <DemoRouterContext.Provider value={router}>
-      <RouterAdapterProvider value={adapter}>
-        <ToastProvider>
-          <DashboardPage />
-        </ToastProvider>
-      </RouterAdapterProvider>
-    </DemoRouterContext.Provider>
+    <DemoRouter initialPath="/overview">
+      <ToastProvider>
+        <DashboardPage />
+      </ToastProvider>
+    </DemoRouter>
   );
 }
