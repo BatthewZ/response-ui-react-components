@@ -140,14 +140,30 @@ on the parent as an ordinary utility and let inheritance carry it: a child's own
 it normally, which is the right way round and needs no `> *` at all. Only the non-inherited
 properties are stuck.
 
-## Preflight is already a dependency, undocumented
+## Preflight is a formal dependency, and it is now stated
 
 The package's most-used component carries no reset of its own and relies on Tailwind Preflight for
 `background-color: transparent`, `border: 0`, `font: inherit`, `box-sizing`, `margin`, `padding`
 and `appearance` on `<button>`. So "drop the reset, keep the positive declarations" is consistent
-with what already ships, and a hand-written reset is usually re-stating Preflight. Worth knowing
-before treating a reset as load-bearing — but also worth writing down somewhere consumer-facing,
-because nothing in the docs says a consumer must not disable Preflight.
+with what already ships, and a hand-written reset is usually re-stating Preflight.
+
+**This is no longer an implicit lean, for this package.** Both packages import `tailwindcss` whole —
+so no consumer of the foundation can be running without Preflight in the first place — this
+package's README now says so, and AGENTS.md carries the rule: a declaration that only repeats
+Preflight is deleted, not converted. **The foundation has NOT adopted the same rule**: its own
+`h1`–`h6`, `p { margin: 0; padding: 0 }` duplicates Preflight exactly and was deliberately kept.
+Do not "fix" it here — that is the foundation's call, and it is open.
+The exposure it leaves is the cherry-pick case the root `CLAUDE.md` promises: components taken
+without the foundation, against a hand-rolled Tailwind entry that imports only `tailwindcss/utilities`.
+
+**Two things a follow-up sweep should not re-derive.** First, `*` does **not** reach UA
+pseudo-elements, so a slider thumb still needs its own `box-sizing` while the control that owns it
+does not — the same word in two rules of one file, one redundant and one load-bearing. Second,
+deleting `border: 0` / `border: none` in favour of Preflight's `border: 0 solid` **changes computed
+`border-style` from `none` to `solid` at a used width of `0px`**. It paints nothing, and it is
+closer to correct: Tailwind's `border-2` sets width only and assumes Preflight's `solid`, so under
+the old declaration a consumer adding a border utility to those elements got a computed style of
+`none` and no border at all. Do not read it as a regression when a computed-style A/B surfaces it.
 
 **`font: inherit` on a form control is Preflight restated, not a reset that has to stay.**
 Preflight's form-element rule (`button, input, select, optgroup, textarea, ::file-selector-button`)
@@ -164,8 +180,9 @@ Preflight on a `<button>` is `appearance: none` (against Preflight's `appearance
 `text-align: inherit` and `align-items: normal`. Whether those matter is a per-file question:
 on `FileUpload`'s flex-item action buttons with one text run they are moot and the reset was
 deleted; on `Switch` the reset stays for an unrelated reason. If you enumerate, say in a comment
-what you checked — and note that the component now depends on Preflight, which is a real
-dependency the docs did not previously state.
+what you checked. **`text-align` is the one that bites, and it is measured:** deleting
+`text-align: inherit` from the enumerated sort-button reset computes `center` in Chromium, not the
+cell's `right` — so an enumerated button reset that omits it silently re-centres its label.
 
 ## The tokens that have no namespace
 

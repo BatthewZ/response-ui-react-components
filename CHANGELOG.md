@@ -4,6 +4,24 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [Unreleased]
+
+### Changed
+
+- **Tailwind Preflight is now a stated requirement, and the declarations that duplicated it are
+  gone.** Every component already leaned on Preflight; the README now says so ("import
+  `tailwindcss` whole, not just `tailwindcss/utilities`") and AGENTS.md carries the rule that a
+  declaration only restating Preflight is deleted rather than converted. Removed as redundant: the
+  sort button's `margin`/`padding`/`border`/`background`/`font`/`color` (its `text-align: inherit`
+  and `cursor: inherit` stay — Preflight covers neither), `box-sizing` on `.calendar` and
+  `.timeline-icon`, `border: none` on `.drawer`, `margin` on the three range inputs and
+  `background: transparent` on the RangeSlider overlays, `margin` on `.accordion-heading`,
+  `vertical-align` on `.sparkline`, and the `::-webkit-search-decoration` half of SearchInput's
+  clear-affordance rule. Verified by a computed-style A/B in Chromium across every touched element:
+  no rendered difference. The one computed delta is `border-style` moving from `none` to `solid` at
+  a used width of `0px` on the sort button and drawer — invisible, and it makes a caller's
+  `border-2` utility work on those elements where it previously computed to nothing.
+
 ## [0.12.0] — 2026-07-31
 
 This release is the whole of the "sensible defaults, overridable" work: component CSS moved into

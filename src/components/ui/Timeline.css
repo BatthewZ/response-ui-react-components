@@ -295,11 +295,6 @@
    Rung 2 is recessed, so the puck reads as a well the rail runs into rather than
    a chip sitting on top of it. */
 .timeline-icon {
-  /* Stated, not inherited: `highlight` draws its ring with `box-shadow`, but a
-     future cue that used a border would grow the disc past
-     `--_timeline-marker-size` under content-box and pull it off the rail, which
-     is positioned from that variable. */
-  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;

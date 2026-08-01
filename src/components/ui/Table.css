@@ -111,18 +111,13 @@
    unstyled on purpose: `text-align` on the cell still positions it, and the
    hover/active wash stays the cell's, so the whole header remains the target.
 
-   A reset, so it stays here — see note 2 at the top of this file. `display` and
-   `align-items` ride along rather than being split into the class list: half a
-   rule in each home is how the two drift. */
+   A reset, so it stays here — see note 2 at the top of this file, which is also
+   where the Preflight split is argued. `display` and `align-items` ride along
+   rather than being split into the class list: half a rule in each home is how
+   the two drift. */
 .table-header-cell__sort-button {
   display: inline-flex;
   align-items: center;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
   text-align: inherit;
   cursor: inherit;
 }

@@ -51,6 +51,8 @@ Then two CSS imports in your app's CSS entry — foundation (tokens, the `defaul
 
 Order matters: each per-component file reads `var(--…)` tokens defined by `response-ui-css`, so the foundation has to load first.
 
+**Import `tailwindcss` whole, not just `tailwindcss/utilities`.** These components depend on Preflight, Tailwind's base reset, and do not restate it: it is what makes a `<button>` a blank rectangle inheriting the page's font, and what gives every element `box-sizing: border-box` and no margin. Opt out of Preflight and buttons, inputs and headings across the library render with the browser's own chrome. `@import "@batthewz/response-ui-css"` pulls in `tailwindcss` whole, so the pairing above already satisfies this; it only bites if you wire Tailwind up yourself.
+
 The `styles` import also registers this package's sources with Tailwind v4 (a self-relative `@source`), so the utility classes used inside the components are generated automatically — no manual `@source` workaround needed, regardless of package manager or `node_modules` layout (hoisted npm, bun's isolated store, pnpm).
 
 ```tsx

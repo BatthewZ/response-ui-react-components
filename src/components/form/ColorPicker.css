@@ -36,7 +36,6 @@
   appearance: none;
   width: 100%;
   height: 0.75rem;
-  margin: 0;
   border-radius: var(--RADIUS-FULL);
   cursor: pointer;
   background: linear-gradient(

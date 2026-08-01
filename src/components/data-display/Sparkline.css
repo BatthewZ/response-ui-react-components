@@ -36,9 +36,11 @@
  * byte-identical where nothing sets the property, and reachable from a theme where
  * something does (`memory/README.md` §27). Do not re-add it.
  */
+/* `display` only: Preflight gives every `svg` `vertical-align: middle` already,
+   and `display: block` — which this deliberately reverses so the chart can sit
+   in a line of text. */
 .sparkline {
   display: inline-block;
-  vertical-align: middle;
 }
 
 /* Line / area stroke.

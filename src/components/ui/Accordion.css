@@ -20,7 +20,6 @@
    also that `font-[inherit]` is not this declaration at all: it compiles to
    `font-family: inherit`, not the shorthand. */
 .accordion-heading {
-  margin: 0;
   font: inherit;
   color: inherit;
 }

@@ -160,8 +160,9 @@ set `headingLevel` on the root (`1`–`6`) to match your page outline — it app
 trigger in the set.
 
 The wrapper is presentation-neutral by design, but not perfectly: `.accordion-heading`
-zeroes the margin and sets `font: inherit`, which strips the theme's heading face, size and
-weight — the trigger keeps its own `--BodyText-2` type. `letter-spacing` and
+sets `font: inherit`, which strips the theme's heading face, size and weight — the trigger
+keeps its own `--BodyText-2` type. The margin is zero because Tailwind's Preflight zeroes
+it on every element, not because this rule restates it. `letter-spacing` and
 `text-transform` are *not* part of the `font` shorthand, though, and `response-ui-css` sets
 both on `h1`–`h6`, so those two still reach the trigger. The default theme leaves both at
 their neutral values; of the worked examples only `grimdark` sets them to anything visible,

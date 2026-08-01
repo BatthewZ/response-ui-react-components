@@ -35,8 +35,6 @@
   right: 0;
   width: 100%;
   height: 1.25rem;
-  margin: 0;
-  background: transparent;
   /* Let clicks fall through the rail to whichever thumb is underneath. */
   pointer-events: none;
   -webkit-appearance: none;
