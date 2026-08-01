@@ -207,7 +207,7 @@ const StatCardValue = forwardRef<HTMLSpanElement, StatCardValueProps>(function S
         <span
           // slot:(a) the accessible twin of the ticking figure. A slot here hands a
           // caller the one class that keeps the real value out of the visual flow,
-          // and dropping `sr-only` prints the number twice (SLOT-VOCABULARY §11).
+          // and dropping `sr-only` prints the number twice (docs/project-docs/slot-vocabulary.md §11).
           className="sr-only"
         >
           {formatValue(to)}
@@ -384,7 +384,7 @@ const StatCardSparkline = forwardRef<SVGSVGElement, StatCardSparklineProps>(
         // caller who wants the chart elsewhere moves the element, not the margin.
         // `className` stays on the wrapped chart (this component's props ARE
         // `Sparkline`'s, and its `ref` is the `<svg>`), so re-pointing it here is a
-        // breaking API change and an owner call. See PHASE3-PATTERN.md "The wrapper case".
+        // breaking API change and an owner call. See docs/project-docs/slot-convention.md "The wrapper case".
         className={cn("stat-card__sparkline", sparklineWrapperClasses)}
       >
         <Sparkline

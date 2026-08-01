@@ -39,7 +39,7 @@
 //     `createCn` twice, once bare and once with the list, and diff the two
 //     outputs over that cross product.) The reason is visible in
 //     `getDefaultConfig().theme` — `color: [isAny]` — so
-//     an unmirrored COLOUR token still dedupes, and PLAN-overridability.md §8's
+//     an unmirrored COLOUR token still dedupes, and docs/project-docs/cascade-and-slots.md §8's
 //     "a named token value … is the only real drift" is refuted for the only
 //     namespace this package currently uses. The controls hold and are the
 //     other half of that measurement: the default `spacing` scale is

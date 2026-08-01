@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Guard + report over the BUGS.md findings table.
+ * Guard + report over the bugs/LEDGER.md findings table.
  *
- * Nothing read BUGS.md before this existed, so 420 hand-maintained rows had no
+ * Nothing read the ledger before this existed, so 420 hand-maintained rows had no
  * oracle at all — and the moment a patch lands, every `file:line` anchor below it
  * shifts with nothing to notice. That is the defect class this catches.
  *
@@ -302,7 +302,7 @@ for (const r of rows) {
   }
 
   if ((r.sev === "high" || r.sev === "med") && !covered.has(r.id)) {
-    v(r, `${r.sev} finding has no detail block (BUGS.md format requires one)`);
+    v(r, `${r.sev} finding has no detail block (the row format requires one — see bugs/TAXONOMY.md)`);
   }
 }
 

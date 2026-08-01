@@ -139,7 +139,7 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(function Spar
           // computed from `values`/`width`/`height`. Residue: `rx`/`ry` are geometry
           // properties CSS can set and nothing here does, so rounded bar caps have no
           // route — judged too small a want to spend a permanent slot key on
-          // (SLOT-VOCABULARY §5).
+          // (docs/project-docs/slot-vocabulary.md §5).
           className="sparkline-bar"
           x={round(i * slot + gap)}
           y={round(Math.min(p.y, baseline))}
@@ -155,7 +155,7 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(function Spar
       content = (
         <circle
           // slot:(b) same route as `.sparkline-bar` — `--sparkline-color` carries the
-          // ink, the radius is `strokeWidth` (SLOT-VOCABULARY §5).
+          // ink, the radius is `strokeWidth` (docs/project-docs/slot-vocabulary.md §5).
           className="sparkline-point"
           cx={round(point.x)}
           cy={round(point.y)}
@@ -176,7 +176,7 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(function Spar
             <path
               // slot:(b) `--sparkline-color` carries the ink; `fill-opacity` is what
               // makes an area read as an area beneath its own line, so it is (a) —
-              // a caller varying it is drawing a different chart (SLOT-VOCABULARY §5).
+              // a caller varying it is drawing a different chart (docs/project-docs/slot-vocabulary.md §5).
               className="sparkline-area"
               d={`${linePath} L ${round(width)} ${round(height - pad)} L 0 ${round(height - pad)} Z`}
             />
@@ -186,7 +186,7 @@ export const Sparkline = forwardRef<SVGSVGElement, SparklineProps>(function Spar
             // class buys is the draw-in, whose dash pattern the `.sparkline--animate`
             // rule normalises against the `pathLength=1` below. A caller class setting
             // a dash, a cap or a `vector-effect` fragments the settled line
-            // (`Sparkline.css` header, SLOT-VOCABULARY §5).
+            // (`Sparkline.css` header, docs/project-docs/slot-vocabulary.md §5).
             className="sparkline-line"
             d={linePath}
             fill="none"

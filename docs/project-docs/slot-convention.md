@@ -1,11 +1,11 @@
 # Phase 3 — the copyable convention
 
-The written half of `PLAN-overridability.md` §9's *"the written convention plus one worked
+The written half of `cascade-and-slots.md` §9's *"the written convention plus one worked
 reference component"*. The worked half is **`StatCard` + `Sparkline`**, shipped in this commit;
 every skeleton below is lifted from it rather than written for the page.
 
-**Read order.** `PLAN-overridability.md` §4a, §4b, §4d, §5, §7 (items 1–12) and §9 for the *rules*;
-`SLOT-VOCABULARY.md` in full for the *names*; this file for the *shape*. Where this file and
+**Read order.** `cascade-and-slots.md` §4a, §4b, §4d, §5, §7 (items 1–12) and §9 for the *rules*;
+`slot-vocabulary.md` in full for the *names*; this file for the *shape*. Where this file and
 either of those disagree, they win and this file is the bug.
 
 **This file does not add a rule.** It records how the rules resolve into code, and one decision
@@ -23,7 +23,7 @@ accident.
 - **Not "every internal gets a slot".** The reference lane's triage returned **one** slot across
   two components and six not-a-gap rulings. That ratio is normal. §6 Phase 3: *"a lane that 'fixes'
   a non-gap costs more than one that misses a real one, because the fix lands in public API."*
-- **Not a place to invent a name.** Every slot key comes from `SLOT-VOCABULARY.md` §6 or that
+- **Not a place to invent a name.** Every slot key comes from `slot-vocabulary.md` §6 or that
   component's family table in §7. If the element you need has no name there, **that is an owner
   decision (§1.5, last line), not a lane's** — stop and report it.
 - **Not visual.** Phase 3 is additive and a no-op on screen, and every assertion it needs is a
@@ -65,7 +65,7 @@ Five things that are load-bearing, each with the plan's reason:
 | 2 | The union is **inline and per-component** | §4a rejects an `extractSlotClassNames` helper by name. A helper typed `Record<string, string>` gives no autocomplete and turns a typo into a no-op; the inline union makes it `TS2353` |
 | 3 | **No `root` key** | `className` is the root. Two writers for one element is `CLAUDE.md` rule 3 |
 | 4 | **Class strings only** | Where a caller needs handlers or `aria-*` on an internal, that is a `<thing>Props` hatch (§4). A general `slotProps` invites wiring `onClick` into an element tree the consumer should not depend on |
-| 5 | **A slot per element, never beside a subcomponent** | `SLOT-VOCABULARY.md` §1.5a: a component gets `X` the subcomponent **or** `x` the slot for a given element, never both. This is why `StatCard` has no `value`, `label`, `icon` or `sparkline` slot — `.Value`, `.Label`, `.Icon` and `.Sparkline` already reach those elements |
+| 5 | **A slot per element, never beside a subcomponent** | `slot-vocabulary.md` §1.5a: a component gets `X` the subcomponent **or** `x` the slot for a given element, never both. This is why `StatCard` has no `value`, `label`, `icon` or `sparkline` slot — `.Value`, `.Label`, `.Icon` and `.Sparkline` already reach those elements |
 
 ---
 
@@ -106,7 +106,7 @@ const TrendArrow = ({ className }: { className?: string }) => (
   (`memory/affordances.md`) and a lane adding one has done nothing but hide which elements have a
   route.
 - **A slot on a repeated element lands on every instance.** That is documented in the slots table,
-  not encoded in the key (`SLOT-VOCABULARY.md` §1.3). No slot names "the 15th one".
+  not encoded in the key (`slot-vocabulary.md` §1.3). No slot names "the 15th one".
 
 **Where the internal is a private component in the same file** — `TrendArrow` here — pass the slot
 value down as a plain `className` and let the leaf do the `cn()`. The merge stays next to the base
@@ -116,7 +116,7 @@ class it is merging with, which is what keeps the fail-on-purpose procedure in �
 
 ## 3. Naming a slot
 
-**Defer entirely to `SLOT-VOCABULARY.md`. Do not open a second vocabulary.** The procedure, in
+**Defer entirely to `slot-vocabulary.md`. Do not open a second vocabulary.** The procedure, in
 order, is that document's §1.6 and it is not a lane's to shortcut:
 
 1. Is the concept in **§6**, the frozen cross-family table? Then that is the name, and a synonym
@@ -132,7 +132,7 @@ Three traps the reference lane hit or nearly hit:
 - **The class name and the slot key are different namespaces.** Classes stay kebab-case
   (`stat-card__trend-icon`); keys are camelCase (`trendIcon`). They must share a *stem*, not a
   spelling (§1.1).
-- **Check the ban list before the family table, not after.** `SLOT-VOCABULARY.md` §3 and §3.6
+- **Check the ban list before the family table, not after.** `slot-vocabulary.md` §3 and §3.6
   together ban `root`, `wrapper`, `container`, `outer`, `box`, `content`, `label`, `chip`,
   `adornment`, `prefix`/`suffix`, `announcer`, `backdrop`, `separator`, `option`, `aside`, `node`,
   `subtitle`, `titles`, `inner`, `nav`, `affordance`, `slot`, `slots`, `slotProps`, `check`,
@@ -167,11 +167,11 @@ Four rules:
 4. **Name it `<camelCaseTargetName>Props`**, singular. Never `slotProps` (§4a).
 
 A class-free target may take a raw spread with no `cn()`, and its docblock must say so —
-`Spotlight.tsx:111` is the package's one such carve-out (`SLOT-VOCABULARY.md` §13.1).
+`Spotlight.tsx:111` is the package's one such carve-out (`slot-vocabulary.md` §13.1).
 
 ### ▸ judgement — when a hatch is *wrong*, and how the reference lane found out
 
-`SLOT-VOCABULARY.md` §13.3 listed `sparklineProps` for `StatCard.Sparkline`. **It does not survive
+`slot-vocabulary.md` §13.3 listed `sparklineProps` for `StatCard.Sparkline`. **It does not survive
 at source, and the row is now withdrawn there.** `StatCardSparklineProps` is
 
 ```ts
@@ -265,7 +265,7 @@ A comment **inside the JSX opening tag**, in the `className` attribute's leading
 <span
   // slot:(a) the accessible twin of the ticking figure. A slot here hands a
   // caller the one class that keeps the real value out of the visual flow,
-  // and dropping `sr-only` prints the number twice (SLOT-VOCABULARY §11).
+  // and dropping `sr-only` prints the number twice (slot-vocabulary.md §11).
   className="sr-only"
 >
 ```
@@ -461,7 +461,7 @@ inlining the leaf.
 
 ### ▸ judgement — (c) is proved by the code, so it needs no annotation
 
-`SLOT-VOCABULARY.md` §9 asks for *every* element in §7 to carry its letter, including (c). The
+`slot-vocabulary.md` §9 asks for *every* element in §7 to carry its letter, including (c). The
 reference lane annotated **only (a) and (b)** — the package now also carries (e) — and (c) is
 omitted deliberately, for two reasons:
 
@@ -500,7 +500,7 @@ withdrawn (`<label for>` binds only to labelable elements, `div.focus()` is a no
 
 `StatCard.Sparkline` renders `<div className="stat-card__sparkline">` around a `<Sparkline>`, and
 `className` lands on the chart, not the box. Read literally, §4b re-points it — and that is what
-`SLOT-VOCABULARY.md` §7.7 and §11 rule for the structurally similar `MediaCard.Image`. The lane
+`slot-vocabulary.md` §7.7 and §11 rule for the structurally similar `MediaCard.Image`. The lane
 ruled the box **(a)** instead. The reasoning, because a lane meeting a wrapper will meet this
 choice:
 
@@ -524,7 +524,7 @@ choice:
 **What a lane should copy is the procedure, not the verdict.** Ask, in order: (1) is the wrapper
 bare and unstyled, with `className` landing on an inner element the component itself renders? Then
 §4b, unambiguously — that was `TagInput` (cited as `:378`; `Select.tsx:30` and `NumberInput.tsx:170`
-are the same shape, from `SLOT-VOCABULARY.md` §11). **`TagInput` is now the worked example rather
+are the same shape, from `slot-vocabulary.md` §11). **`TagInput` is now the worked example rather
 than the open case**: the owner ruled, `className` moved to the outer block and the field box became
 `classNames.control`. §4b's other citation, `DatePicker.tsx:280`, is a *different* half of the same
 rule — that element took `className` raw with no `cn()`, so it had no base class rather than no
@@ -589,7 +589,7 @@ Three consequences to carry:
 ## 9. What a lane must not do
 
 1. **Do not invent a slot name.** No §6 row, no family-table row → stop and report. Adding a
-   cross-family concept is an owner decision (`SLOT-VOCABULARY.md` §1.5).
+   cross-family concept is an owner decision (`slot-vocabulary.md` §1.5).
 2. **Do not ship a slot beside a subcomponent for the same element**, or a render prop beside one.
    §1.5a. That is the two-writers defect wearing three different hats.
 3. **Do not add `classNames.root`, a `$` prefix, `slots`, or `slotProps`.** All four are ruled out
@@ -631,7 +631,7 @@ Per component, in order:
       is blind to them and they are unreachable for the same reason: `StatCard.Value`'s
       `<span aria-hidden>` is one, and it is (a) — but a lane that only reads the probe's output
       will never have asked.
-- [ ] Confirm each ruling against `SLOT-VOCABULARY.md` §7 and §11 — the (a) rulings are enumerated
+- [ ] Confirm each ruling against `slot-vocabulary.md` §7 and §11 — the (a) rulings are enumerated
       there and a disagreement is a finding, not a licence.
 - [ ] Add `classNames?: SlotClassNames<"…">` with the union inline; destructure it; merge with
       `cn()`, base first.
@@ -687,7 +687,7 @@ walk plus the three vacuous-pass guards, the malformed-marker report, the props-
 listing, and the `{a, b, e}` settling rule — so the `[a-e]` below is the *proposal's* grammar and
 not the enforced one, and this probe still reads a bare `(c)` as settling where the gate fails it.
 It reports three states and exits are the caller's to add; the gate does not cross-check slot keys
-against `SLOT-VOCABULARY.md` §7 either, which stays a review job.
+against `slot-vocabulary.md` §7 either, which stays a review job.
 
 ```js
 import ts from "typescript";

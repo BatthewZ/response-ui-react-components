@@ -92,7 +92,7 @@ type TagInputProps = {
    *
    * - `control` — the bordered field box. The same word `Select`, `NumberInput`,
    *   `DatePicker` and `MultiSelect` spend on the same element
-   *   (`SLOT-VOCABULARY.md` §6, §7.1). It is where `className` used to land.
+   *   (`docs/project-docs/slot-vocabulary.md` §6, §7.1). It is where `className` used to land.
    * - `input` — the text `<input>` a tag is typed into.
    * - `tagRemove` — a chip's remove button.
    *

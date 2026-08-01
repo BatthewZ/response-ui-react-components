@@ -10,6 +10,33 @@ they answer different questions; conflating any two of them is how triage goes w
 | Mechanism | What shape is the fix, and what else shares it? | [`PLAN.md`](./PLAN.md) §5 |
 | Evidence | Do we believe it, and is it closed? | the ledger's `Status` column |
 
+## Row format
+
+`node scripts/bugs-ledger.mjs --check` enforces the shape; this is what the columns mean.
+
+```
+| # | Status | Component | File:line | Sev | Summary |
+| 34 | unaudited · spot-checked | Foo | [Foo.tsx:42](src/components/ui/Foo.tsx#L42) | med | One-line statement of the defect |
+```
+
+- **`Sev`** — `high` / `med` / `low`. Read it as an inherited prior, not as priority: it blends
+  kind, harm and reach into one word, which is why #7 (text unreadable) and #4 (no user can see
+  it) both read `med`. **Axis 2 below is the priority**, and `Sev` has never been re-derived
+  against it.
+- **`Status`** — a verdict plus a confidence tag. `corroborated` (two independent passes found
+  it) · `spot-checked` (confirmed by hand) · `candidate` (single-source, unverified) · `caveat`
+  (a passing guard disagrees — say so) · `source` / `measured` (re-verified against the code or
+  by instrument) · `deferred` (an owner declined it; the reason goes in the status, and
+  re-deciding needs the owner rather than a re-measurement).
+- **Detail block** — required for `high` and `med`, and the validator fails without one. A
+  concrete failure scenario (inputs → wrong result) plus a one-line fix direction. Lows may be
+  table rows alone.
+- **Anchors carry a content fingerprint** (`"fp:…"`). `--reanchor` slides a line number when the
+  code merely moved and prints the rows whose content actually changed; only a reader can judge
+  those.
+- **Ids are never reused and never renumbered.** Published `AGENTS.md` cites `#378`, and roughly
+  70 ids are cited in prose across these files.
+
 **No per-row column, here or in the ledger.** Membership is assigned by reading and joined at
 report time, exactly as PLAN.md §5 requires of clusters — a `Kind` column over 400+ rows would
 be a second truth that decays silently. If a tally is ever needed, **enumerate the ids**; a count

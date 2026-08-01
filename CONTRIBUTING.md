@@ -174,8 +174,10 @@ Code defects found while documenting are recorded, not fixed inline, in
 never reused and nothing is deleted, because a refutation is a result. Findings about the
 *checking* rather than the shipped code — a gate that reads the wrong thing, a test that passes
 for the wrong reason — belong in [bugs/AUDIT.md](./bugs/AUDIT.md), since a ledger row should be
-something a user could notice. [bugs/PLAN.md](./bugs/PLAN.md) is **retired** and survives only as
-a section map for the archived rows that cite it by number.
+something a user could notice. What a row *is* — its kind, its harm, and the format the validator
+enforces — is [bugs/TAXONOMY.md](./bugs/TAXONOMY.md). [bugs/PLAN.md](./bugs/PLAN.md) is **retired**
+and survives only as a section map: ten evidence files under `bugs/components/`, nine archived rows
+and `scripts/verify-omit-discipline.mjs` still cite its `§2`/`§3`/`§5` by number.
 `verify:bugs` ([scripts/bugs-ledger.mjs](./scripts/bugs-ledger.mjs)) is the oracle over
 it: unique and ordered ids, statuses in the lifecycle enum, terminal statuses carrying
 their evidence, `src/` anchors resolving to a real file and an in-range line, a **content
@@ -190,8 +192,10 @@ itself needs re-reading, not just its line number. A prior reconcile had to do t
 157 rows by hand because no gate could tell the two cases apart.
 
 It is intentionally absent from `prepublishOnly`: every guard in that chain checks a
-shipped artifact, and `bugs/` is not in `package.json` `files`. The workflow for taking a
-finding from logged to fixed is the workspace-root `BUG_TRIAGE_PLAYBOOK.md`.
+shipped artifact, and `bugs/` is not in `package.json` `files`. That is deliberate and it has a
+cost — the gate runs in no chain at all, and was red for a whole sweep with nobody noticing
+(`bugs/AUDIT.md` #501). The workflow for taking a finding from logged to fixed —
+partition, verify at source, fix, gate — is [bugs/HANDOVER.md](./bugs/HANDOVER.md).
 
 ## Build & publish
 

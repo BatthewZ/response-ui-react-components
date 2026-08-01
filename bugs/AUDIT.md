@@ -20,5 +20,23 @@ the ledger is only as good as the thing that verified it.
 | 473 | confirmed · measured | **library-wide** | library-wide | low | `verify:omit-discipline` attributes a nested prop bag's `Omit` to the component itself. It matches the `Omit<ComponentPropsWithRef<E>, K…>` shape anywhere in a props module, so `viewAllProps?: Omit<ComponentPropsWithRef<"a">, "href" \| "children">` — the type of Swimlane's *anchor* prop bag — was reported as `Swimlane.href` reaching the `<section>`, and failed the gate. Nothing is wrong with Swimlane: it supplies that anchor's href from `viewAllHref`. Exempted with the reasoning in `ALLOWLIST` rather than answered in source, because the alternative was adding a meaningless `href?: never` to satisfy a check asking the wrong question. **The real fix is to bind the scan to the type the component's signature actually uses**; until then any component that types a sub-prop bag this way will fail the same way, and the pattern is spreading — `viewAllProps`, `imgProps`, `tableProps` all arrived this pass |
 
 
+| 500 | confirmed · measured | **library-wide** | library-wide | med | No gate catches a stale cross-reference, so a `X.css:NN` citation keeps pointing at a file the sweep deleted. Found by hand after the five-lane CSS-to-utilities sweep: `Sparkline.css:22` cited `StatCard.css`, `Table.css:76` cited `Carousel.css`, `Collapsible.test.tsx:185` cited `Collapsible.css`, and `virtualized-data-table.md` described a deleted stylesheet's rules as live. All four were repaired by grep, and nothing would have caught a fifth. **The check is about ten lines** — extract `[A-Za-z]+\.css` from `src`, `docs` and `*.md`, assert the file exists in `src` or in `response-ui-css` — and it would have caught four of those five automatically. The same shape as #464: the guards check that an anchor resolves, not that the prose beside it is still true |
+| 501 | confirmed · measured | **library-wide** | [package.json](package.json) | low | `verify:bugs` is in no chain that runs automatically. It is deliberately out of `prepublishOnly` — it guards `bugs/`, which is not published — but that left it in nothing at all, and it was **red on arrival** at the five-lane consolidation with nobody having noticed. A ledger whose anchors are unverified is a ledger that quietly stops describing the code, and a multi-lane sweep is exactly the shape that shifts anchors. Keep it out of the publish chain; it needs to be in whatever runs at the land gate |
+| 502 | confirmed · measured | **library-wide** | [scripts/probe-cascade-layer.mjs](scripts/probe-cascade-layer.mjs) | low | Two declarations survive only because a *fixture* needs them, not because the cascade does — `.tabs-list`'s `overflow-x` and `.app-shell-sidebar-section-title`'s padding, both kept by Lane 3 for the probe's benefit. Both probe rows still pass, so nothing is broken; the hazard is that a later reader converts either file, sees green, and does not learn that the fixture was the reason. Separately, three `all: unset` sites (`Switch`, `Radio`, `Slider`, `ColorPicker`) are guarded but unconverted, and converting the first two requires the hand-written fixture in `scripts/` to carry the component's real class string **first** — `switch-ring-vs-consumer-reset` carries a recorded owner decision that must not be silently re-accepted |
+
 Closed audit findings — including the refutations and the phantom-row post-mortem — are in
 [`ARCHIVE.md`](./ARCHIVE.md).
+
+## Not findings — measured and deliberately left alone
+
+- **A test cannot assert stylesheet content, and that is CSS-specific rather than `?raw`-general.**
+  A `?raw` glob of `Tabs.css` yields length **0**; the same glob of `Tabs.tsx` yields **15947**. The
+  two surviving `?raw` uses (`focus.test.ts`, `AppShell.test.tsx`) read `.tsx` and are live. No
+  vacuous CSS assertion remains — `Tooltip`'s was rewritten and `ProgressBar.test.tsx` documents the
+  limitation instead of pretending. Enabling `test: { css: true }` is a config decision with a blast
+  radius well past any one sweep, and the instruments that *can* see CSS (`verify:*`,
+  `probe:cascade-layer`) already cover the invariants that matter.
+- **`Popover.css`'s arrow block is ruled, not examined.** Two independent lanes reached the same
+  verdict from opposite ends and it is folded into `AGENTS.md`, but no lane owned the file's
+  remaining 64 lines the way one owned `Tooltip`'s 55. A short pass on `Popover.css` alone would
+  close it, expecting no change.

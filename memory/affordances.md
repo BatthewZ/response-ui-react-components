@@ -12,7 +12,7 @@ rail. Self-contained on purpose: nothing below needs another file to be legible.
 > component CSS is imported unlayered**, which is the state any new package in this repo starts in.
 > This one is no longer in that state: its component CSS moved into `@layer components`, which
 > deleted the premise and with it the objection. `classNames` is now a valid API here and ships —
-> see `PHASE3-PATTERN.md`. **The two sub-rules at the end of this section survive the change
+> see `docs/project-docs/slot-convention.md`. **The two sub-rules at the end of this section survive the change
 > untouched**, because they are about contrast and cues, not about the cascade.
 
 When a caller asks to restyle something *inside* a component, the obvious answer — a

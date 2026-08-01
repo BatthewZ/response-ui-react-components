@@ -14,7 +14,7 @@
    `@layer components` it loses to the caller instead, which is correct.
    `border-inherit` is no escape: it is `border-color: inherit` only, and cannot
    carry a width or a style. That settles the open question in
-   `PLAN-overridability.md` §2b about the two arrow blocks — the answer is no.
+   `docs/project-docs/cascade-and-slots.md` §2b about the two arrow blocks — the answer is no.
 
    `inherit` rather than a --tooltip-arrow-* token: the bubble already publishes
    its background, and a second writer would let a caller retint one without the

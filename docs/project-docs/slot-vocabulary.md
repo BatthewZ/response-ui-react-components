@@ -1,6 +1,6 @@
 # Slot vocabulary — frozen
 
-Closes `PLAN-overridability.md` §10 (**▲ ONE-WAY DOOR**) and the §9 blocker *"sequence+tabular and
+Closes `cascade-and-slots.md` §10 (**▲ ONE-WAY DOOR**) and the §9 blocker *"sequence+tabular and
 layout+media are not [settled], and Phase 3 cannot start for those two until they are."*
 
 **Status: frozen. Seven owner decisions folded in; nothing open.** **This line has now read three
@@ -26,7 +26,7 @@ resolved-against, with the reason (plan §13, `memory/README.md` §20). Nothing 
 superseded — a lane can read top-to-bottom.
 
 **This document is authoritative for *anatomy*** — which element gets which name, and by which
-mechanism. `PLAN-overridability.md` §10 carries the owner's ruling list; it is not restated here
+mechanism. `cascade-and-slots.md` §10 carries the owner's ruling list; it is not restated here
 (`memory/README.md` §20).
 
 > **2026-07-31 — the CSS-to-utilities sweep added, renamed and removed no slot, and this document
@@ -2089,8 +2089,8 @@ slots for non-gaps — the exact cost §6 Phase 3 warns is higher than a miss.
 before any fan-out (**§8** vocabulary)."* §8 is **Gates**. The vocabulary is **§10**. Both pointers
 were off by one section, and §10 is the one marked ▲ ONE-WAY DOOR.
 
-**Outcome: corrected.** `grep -n 'slot vocabulary frozen first\|Settle the convention' PLAN-overridability.md`
-now returns *"(§10, `SLOT-VOCABULARY.md`)"* and *"(§10 vocabulary)"*. Kept here as a closed item, not
+**Outcome: corrected.** `grep -n 'slot vocabulary frozen first\|Settle the convention' cascade-and-slots.md`
+now returns *"(§10, `slot-vocabulary.md`)"* and *"(§10 vocabulary)"*. Kept here as a closed item, not
 as a live defect.
 
 ### 15.11 `Combobox.tsx:537-542` is `:538-543`
@@ -2230,7 +2230,7 @@ document asserted and Phase 3 refuted, without reading the sixteen sections abov
 is §15's: one row per claim, named not counted, with the outcome.
 
 **None of these is a deletion.** Every one is corrected in place, with the superseded wording quoted
-so a lane that half-remembers it can tell which half died (`PLAN-overridability.md` `Maintenance`).
+so a lane that half-remembers it can tell which half died (`cascade-and-slots.md` `Maintenance`).
 
 | # | The claim this document made | Outcome | Where it lives now |
 | --- | --- | --- | --- |
@@ -2265,6 +2265,6 @@ empty.
 
 **An empty list is a state, not a section to keep alive.** Do not manufacture an item to fill it,
 and do not read the emptiness as completeness: it means every question *this document* raised has an
-answer, not that the package has no open questions — `PLAN-overridability.md` §11 owns those, and
+answer, not that the package has no open questions — `cascade-and-slots.md` §11 owns those, and
 its "Recorded follow-ups" list is where a genuinely open item belongs. If a lane finds a new one,
 add it here **and** to §14 as a numbered decision, in that order.

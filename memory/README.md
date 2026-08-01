@@ -3,10 +3,21 @@
 Lessons from previous passes on this package, kept because they cost real time and none are
 obvious in advance.
 
-**Not a bug tracker and not a TODO list.** Open work belongs in the findings ledger; conventions
-and API rules belong in the package's own documentation. If a line here is *status*, it has
-decayed — delete it. Each spoke is self-contained: no lesson should require opening another file
-to understand.
+**Not a bug tracker and not a TODO list.** If a line here is *status*, it has decayed — delete it.
+Each spoke is self-contained: no lesson should require opening another file to understand.
+
+**Four homes, and the question that picks one.** Getting this wrong is how the same claim ended up
+in three places, disagreeing:
+
+| Home | Ask |
+| --- | --- |
+| `AGENTS.md` / `CONTRIBUTING.md` | *Must someone follow this?* — rules and conventions, and they ship |
+| **here** | *Is it generalisable, and would you otherwise repeat the mistake?* |
+| `../bugs/` | *Could a user notice it, or is it a gap in the checking?* |
+| `../docs/project-docs/` | *Would someone re-derive this at cost, and is it too specific to be a rule or a lesson?* |
+
+A lesson belongs here; the measurement it rests on belongs in `../docs/project-docs/`. Keep the
+lesson readable without the measurement, and cite rather than restate.
 
 | Spoke                      | The lesson                                                  |
 | -------------------------- | ------------------------------------------------------------ |

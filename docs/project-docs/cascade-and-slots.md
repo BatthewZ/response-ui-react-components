@@ -1,70 +1,37 @@
-# Plan — "sensible defaults, overridable"
+# Cascade and slots — the decision record
 
-**✔ PHASES 1 AND 2 ARE CLOSED. Phase 3 is next, and its cascade precondition is met.** This
-package's component CSS is in `@layer components`, so `<StatCard className="flex-row">` works today
-on every component; `Grid.css` and `MasonryGrid.css` are deleted and both column scales are native
-Tailwind utilities behind a bounded `columns` union. `scripts/probe-cascade-layer.mjs` measures
-**0 regressions, 0 inert rows, 3 accepted deltas and 16 verified rows** across 19 rows. Both phases'
-lessons are in `memory/gates.md` and `memory/README.md`; their settled outcomes are rows in §13.
+The measurements, refutations and settled outcomes behind this package's override story:
+component CSS in `@layer components`, `className` on the outermost element, and
+`classNames` for internals. **The work is done.** What survives here is what nobody should
+have to re-derive — and the plan narration that produced it has been deleted.
 
 ```
 bun run probe:cascade-layer     # regressions: 0  inert: 0  accepted: 3  verified: 16
 bun run verify:css-layering     # 44 component imports, all layer(components); tokens.css unlayered
 ```
 
-**Phase 3's remaining blocker is the slot vocabulary (§10), and it is now written down.**
-`SLOT-VOCABULARY.md` is the frozen naming contract, the per-family slot tables, the ban list with
-every reason re-verified at source, and the owner rulings taken since this plan was written. **It is
-authoritative; this plan points at it and does not restate it** (`memory/README.md` §20 — a plan
-restating what already lives somewhere authoritative is a second source of truth, not diligence).
+**The rules this produced live in `AGENTS.md`; the names live in
+[`slot-vocabulary.md`](./slot-vocabulary.md); the shape lives in
+[`slot-convention.md`](./slot-convention.md); the lessons live in `../../memory/`.** This file
+holds only the evidence. Where it and any of those disagree, they win and this file is the bug.
 
 ## How to read this document
-
-It states what is true now, in the imperative. There is nothing to read defensively and no
-struck-out text to step around.
 
 - **Every quantitative claim carries the command that reproduces it.** A bare number in this file is
   a bug in this file. Re-run rather than trust: this document's numbers have been wrong before,
   including numbers measured correctly and then mis-transcribed into the sentence beside them.
 - **Numbers whose value depends on how you count say so, and name the method.** A method-dependent
-  number quoted bare is how this plan previously sized work off a figure no method reproduces.
-- **`◆ DECISION` marks something the owner must settle.** They block. They are collected in §3.
-- **`▲ ONE-WAY DOOR` marks a choice that becomes permanent public API.** Freeze it before fan-out.
-- Refuted claims are not kept here. **§13 lists what has been settled** and where the reasoning
-  lives, so nobody re-derives it. `bugs/ARCHIVE.md` #497/#498 own the Phase 0 detail in full.
+  number quoted bare is how this work previously sized itself off a figure no method reproduces.
+- **Section numbers are load-bearing.** `AGENTS.md`, two component stylesheets and three scripts
+  cite `§`s in this file by number, and §11 and §13 cite each other. The numbering has gaps where
+  dead sections were removed; **do not renumber to close them.**
+- **§13 lists what has been settled** and where the reasoning lives, so nobody re-derives it.
+  `../../bugs/ARCHIVE.md` #497/#498 own the audit detail in full.
 
 ---
 
-## 0. Before you start
+## 0. What will bite you
 
-**Run this first:**
-
-```
-bun run probe:cascade-layer
-```
-
-**It passes** — `regressions: 0, inert: 0, accepted: 3, verified: 16` — and reading its 19 rows is
-still the fastest way into this problem, because each row's `note` carries the collision it
-reproduces and how to make it come back red. It is the only instrument in the repo that can see this
-class of bug: `vitest` stubs CSS to `""` and jsdom applies no stylesheets, so every other gate is
-blind to the cascade.
-
-Two things in that output a newcomer will misread:
-
-- **The first section still prints a build error, and that is the *pass* condition.** It proves
-  `@import "./styles.css" layer(components)` cannot compile — `@source` may not be nested — which is
-  why the 44 per-component imports each carry `layer()` instead. It is a measurement, not a failure.
-- **`accepted: 3` is not `verified: 3`.** An accepted row is a *changed* value the owner signed off,
-  pinned to that value. Read each one's reason before anything else: they are the rows whose green
-  means "decided", not "safe" (§3a, and the two `hero-*` rows).
-
-**Then run `bun run verify:css-layering`.** It is ~130 lines, half of them the reason why, and it
-asserts the one thing Phase 1 actually did — `layer(components)` on every component import, and none
-on `tokens.css`. The probe **cannot** assert that: it re-derives the import list from
-`src/styles.css` and adds `layer()` *itself* to build its layered variant, so deleting
-`layer(components)` from a real import leaves the probe green and every other gate silent.
-
-### The five things that will bite you
 
 1. **Phase 1 is closed, and it was not mechanical.** The eight measured regressions are gone, and
    *how* is the part to read before touching anything CSS-shaped. **Five of the eight were fixed by
@@ -93,48 +60,6 @@ on `tokens.css`. The probe **cannot** assert that: it re-derives the import list
    only to labelable elements, `div.focus()` is a no-op so `focusFirstError()` dies silently, and an
    `inputProps` hatch restores neither `mergeProps` nor `SearchInput`'s `id` guard. The asymmetry
    looks wrong and is correct. See §4b.
-
-### Sequencing
-
-```
-Phase 1  ──►  Phase 2  ──►  Phase 3  ──►  Phase 5 (release)
-✔ CLOSED      ✔ CLOSED      (lanes,
-(owned        (2 files       fan-out)     Phase 4 is not a project — it is a
- styles.css)   deleted)                   standing convention, and it is now
-                                          written down: AGENTS.md, "Decision:
-                                          what stays in CSS…". No lanes, no
-                                          completion criterion.
-```
-
-**The prize is Phases 1–3.** Phase 1 alone made `<StatCard className="flex-row">` work. Stop after
-3 and the package is coherent and the feature is delivered.
-
----
-
-## 1. The goal
-
-A consumer can use any component with no arguments and get a sensible result, **and** override any
-visual decision it makes without reaching for a stylesheet:
-
-```tsx
-<StatCard>…</StatCard>
-<StatCard className="flex-row items-center border-0 bg-surface-2">…</StatCard>
-```
-
-Before Phase 1 the first worked everywhere and the second worked only on components with no `.css`
-file. **That inconsistency — not the CSS itself — was the defect.** Phase 1 removed it for
-`className`; Phase 3 removes it for internals via `classNames`. Phase 4 exists to reduce the CSS —
-a separate, optional goal that neither phase depends on.
-
-### Guiding principle
-
-> Do the right thing today to make tomorrow better. Prioritise the project long-term over what is
-> convenient now. The package is pre-v1, so a breaking API change is an acceptable price for the
-> correct design — it will never be cheaper than it is today.
-
-Concrete consequence for the §5 triage: **do not default to (c) slot because it is less
-disruptive.** Where an internal element has real identity, (d) compound is right even though it
-breaks the API.
 
 ---
 
@@ -540,7 +465,7 @@ not** — it spreads `imgProps` onto an `<img>` that carries no library class an
 merge.
 
 > **Settled as the carve-out, and it is no longer an exception.** "No library class ⇒ raw spread is
-> fine" is the rule, stated in `SLOT-VOCABULARY.md` §13.1, and the prop's docblock must say so.
+> fine" is the rule, stated in `slot-vocabulary.md` §13.1, and the prop's docblock must say so.
 > **Five hatches now spread class-free** — `Spotlight.imgProps`, `TagInput.badgeProps`,
 > `DataTable.paginationProps`, `Repeater.itemActionProps` and `Repeater.addButtonProps`. The
 > denominator is method-dependent, so state which: **9 distinct hatch names across 13 declaration
@@ -940,7 +865,7 @@ three element trees that may not even render. Right design: export those three (
 
 | Component | Internals | Proved by |
 | --- | --- | --- |
-| `MultiSelect` | 10 | **✔ ruled (d) by the owner.** `Combobox` does **not** prove it — see below. The shape that does is in `SLOT-VOCABULARY.md` §10.1 |
+| `MultiSelect` | 10 | **✔ ruled (d) by the owner.** `Combobox` does **not** prove it — see below. The shape that does is in `slot-vocabulary.md` §10.1 |
 | `ColorPicker` | 12 (largest in `form/`) | `Combobox` — trigger+panel is compound-shaped |
 | `CommandPalette` | 10 + a `renderOption` closure a consumer could not replace (`git show 0a61e01:src/components/ui/CommandPalette.tsx \| sed -n '338p'`; the closure is gone — the ruling below shipped and `CommandPalette.Item` replaced it) | **✔ ruled (d) by the owner**, for consistency of one anatomy under one mechanism. `DropdownMenu` exposes `Trigger`/`Content`/`Item`/`Divider`/`GroupHeader` for *the same anatomy*, from JSX instead of an array — and `Trigger` is the piece `CommandPalette` most conspicuously lacks |
 | `Tooltip` | 1 literal, and at `0a61e01` all **10** `Tooltip.css` declarations were unreachable (`git show 0a61e01:src/components/ui/Tooltip.css`). The file is **24** declarations now, because owner ruling 4's opt-in arrow landed there | `Popover` — identical hook, portal and fade, with the API present |
@@ -966,7 +891,7 @@ sed -n '93,106p' src/components/form/Combobox.tsx        # 11 optional props + c
 
 So the sibling proves a listbox compound is **achievable**; it proves nothing about coexisting with a
 required `options` prop, which was the entire difficulty. A lane that copies `Combobox` inherits a
-design with no answer for the filter, the chip labels or the cap. **`SLOT-VOCABULARY.md` §10.1 and
+design with no answer for the filter, the chip labels or the cap. **`slot-vocabulary.md` §10.1 and
 §15.12 carry the shape that does answer it** — one writer for the option list, children invoked as a
 function over the root's own filtered list. §13 carries the refutation.
 
@@ -978,7 +903,7 @@ since, so read it by name — `sed -n "/^type RepeaterProps/,/^};/p" src/compone
 — because adjusting the number is the wrong repair), so it is a
 **TypeScript error**: loud, at compile time. The defect is *"there is no override path"*, not *"the
 override path is broken."* That is the same distinction that sank both Phase 0 claims (§10). Do not
-re-inflate it. (`SLOT-VOCABULARY.md` §15.6 narrows this further: it holds for `Tooltip` and not for
+re-inflate it. (`slot-vocabulary.md` §15.6 narrows this further: it holds for `Tooltip` and not for
 `Repeater`.)
 
 ---
@@ -1251,11 +1176,11 @@ lands in public API. In particular, confirm a caller's `className` can actually 
 element: **a bare static class on an element no caller `className` reaches is not a defect.**
 
 **Its Phase 1 precondition is met** (§0 constraint 2), so the blocker was the slot vocabulary
-(§10), not the cascade — and **that vocabulary is now frozen in `SLOT-VOCABULARY.md`**, with the
+(§10), not the cascade — and **that vocabulary is now frozen in `slot-vocabulary.md`**, with the
 per-family tables, the ban list re-verified at source, and the anatomy of every ruling. The two
 items its §14.2 records as *still open* have since been ruled on by the owner and are listed in §10
 here; **where the two documents disagree on a decision's status, this list is the later one, and
-`SLOT-VOCABULARY.md` is still authoritative for the anatomy each ruling implies.** One carry-over:
+`slot-vocabulary.md` is still authoritative for the anatomy each ruling implies.** One carry-over:
 the two accepted `hero-*` probe rows are pinned on the premise that
 nothing this package renders can put a class on a `.stagger-item`. **Giving `Stagger` a
 `classNames.item` falsifies that premise**, so re-examine those two rows in the same commit.
@@ -1356,7 +1281,7 @@ earlier version.
 Why this matters beyond bookkeeping: `memory/README.md` §16 — prose describing a footgun reads as a
 *decision*, and the next reader treats the workaround as the API. Answer the prose; do not delete it.
 
-**The terminology collision this plan created is closed**, and the `classPrefix` doc question with
+**The terminology collision this work created is closed**, and the `classPrefix` doc question with
 it. Both were discharged in Phase 3; §13 carries the outcomes and the commands that show it.
 
 **Release shape: ship per phase.** "Each phase is independently shippable" and "one deliberate
@@ -1376,7 +1301,7 @@ is.
 | --- | --- | --- |
 | **1 ✔ CLOSED** | §3a recorded in `AGENTS.md`; `probe:cascade-layer` shows **zero regressions and zero inert rows** (accepted deltas allowed, each pinned to its `expectAfter`); the property-intersection search recorded with direction per rule; `src/styles.css` owned by this one commit — **and with it `Grid.tsx`'s `import "./Grid.css"`**, because a stylesheet reached through the JS graph is injected unlayered and defeats the file's entire purpose for that one component; **and the two gates that make the result assertable**, `verify:no-css-imports` (the JS door) and `verify:css-layering` (the registry door) | yes — and it alone made `<StatCard className="flex-row">` work |
 | **2 ✔ CLOSED** | `Grid.css` deleted; `MasonryGrid.css` deleted (its gap already landed — §3b); `columns={7}` proven to be a type error rather than a silent 1-column fallback, **and** proven to still land on the base cell when it arrives from untyped JS; **every deleted declaration accounted for by name** (item 2 below applies to Phase 2 as much as to 3/4); **and the computed-style measurement, because a class string is the input and not the outcome** — one Tailwind build carrying the deleted stylesheet and the new utilities, both markups on one page, `getComputedStyle` diffed across viewport widths, with the "after" string taken from the component and **the deleted stylesheet's selectors renamed in the probe's copy** so §12's retained marker class cannot leak declarations onto the new side (§6 Phase 2). A teeth-check passing does **not** clear that trap | yes |
-| **3** | items **3–9** below, per component; slot vocabulary frozen first (§10, `SLOT-VOCABULARY.md`) | yes, per family |
+| **3** | items **3–9** below, per component; slot vocabulary frozen first (§10, `slot-vocabulary.md`) | yes, per family |
 | **4** | items 1–5 below, per file. **Its one non-per-file deliverable — the CSS/utility boundary written down with its reason — is ✔ done**, in `AGENTS.md` under *"Decision: what stays in CSS, what becomes a utility, and how to tell which you are looking at"*; that section is authoritative and §6 does not restate it | yes, per file — **and abandonable at any point** |
 
 > **"Green" now means zero regressions and zero inert rows — not zero changes.** §3a accepted one
@@ -1556,7 +1481,7 @@ no allowlist, and cannot be satisfied by a lie.
 **It needs class literals to be statically visible, so the runtime-built names had to go — and they
 have.** `grep -rn classPrefix src` returns **0**: the mechanism is deleted, `menu-internals.tsx`
 emits five static `menu-*` literals, and `menu-internals.css` defines them. The names are
-`SLOT-VOCABULARY.md` §8.2's. §13 carries the outcome and the anchors, which are all dead.
+`slot-vocabulary.md` §8.2's. §13 carries the outcome and the anchors, which are all dead.
 
 ### What a green gate here does not mean
 
@@ -1577,7 +1502,7 @@ Read `memory/gates.md` in full before resting on any tick. The three that bear h
 
 **Lanes are derived from structural family, not from a count**, because the same analysis that groups
 components also finds the (d) candidates and fixes the slot vocabulary across siblings. **All
-families' vocabularies are now settled and frozen in `SLOT-VOCABULARY.md` §7**, which also finds
+families' vocabularies are now settled and frozen in `slot-vocabulary.md` §7**, which also finds
 that this section's four families do not partition the package — it lists **ten**, summing to the
 same 95 modules §2c counts. Take the family list from there, not from the four names below.
 
@@ -1617,7 +1542,7 @@ most of its inflated numbers. This document's own history is the case study.
 
 ---
 
-## 10. ▲ ONE-WAY DOOR: slot vocabulary — ✔ FROZEN in `SLOT-VOCABULARY.md`
+## 10. ▲ ONE-WAY DOOR: slot vocabulary — ✔ FROZEN in `slot-vocabulary.md`
 
 Freeze this before any fan-out. When this section was written `grep -rn classNames src/components`
 returned **zero**, so the vocabulary was the whole public API — greenfield, and permanent once
@@ -1627,28 +1552,28 @@ while Phase 3 lanes land** (806 at the time of writing): the
 vocabulary is frozen and Phase 3 is spending it, so the freeze is a constraint on new names rather
 than a description of an empty field. §13 carries the row.
 
-> **`SLOT-VOCABULARY.md` is the contract; this section is the summary that produced it.** Every
+> **`slot-vocabulary.md` is the contract; this section is the summary that produced it.** Every
 > name, every per-family table, the ban list with each reason re-verified at source, and eleven
-> claims from this plan it could not reproduce all live there. **Read it before writing a slot
+> claims from this record it could not reproduce all live there. **Read it before writing a slot
 > name**, and do not copy it back into this file (`memory/README.md` §20).
 
 ### ✔ Owner rulings taken since this section was written
 
 Recorded here because this is where a reader meets the vocabulary. **The detail — anatomy, prop
-shapes, which slots stop shipping, which doc lines change — is in `SLOT-VOCABULARY.md` and is
+shapes, which slots stop shipping, which doc lines change — is in `slot-vocabulary.md` and is
 deliberately not restated.**
 
 | # | Ruling | Consequence, and where the detail lives |
 | --- | --- | --- |
-| 1 | **`MultiSelect` becomes a compound** — `.Content` / `.Item` / `.ItemIndicator` / `.Empty` / `.Tag` / `.TagRemove`, render-prop-shaped so `options` stays the sole writer of the data. | **Reverses the "zero (d)" implication of §5's triage.** The `CLAUDE.md` rule 3 objection is engineered around, not waived. **`MultiSelect`'s `item` / `panel` / `empty` slots must not ship** — §1.5a there makes subcomponent and slot mutually exclusive. `SLOT-VOCABULARY.md` §10.1, §7.1, §11. |
-| 2 | **`CommandPalette` also becomes a compound**, for consistency: one anatomy under one mechanism. | Closes the second item its §14.2 lists as open. `SLOT-VOCABULARY.md` §10.2. |
-| 3 | **`Breadcrumbs.Separator` → `.Divider`; `DropdownMenu.Label` / `ContextMenu.Label` → `.GroupHeader`.** | Both are breaking renames and both move an internal identity check, not just a name. `label` stays **hard-banned** as a slot name in every family. `SLOT-VOCABULARY.md` §8.5, §8.8. |
-| 4 | **`arrowRef` is covered** — the arrow element is actually rendered, behind an opt-in `arrow` prop on the floating surfaces. | **Reverses the ban below**, whose stated reason was that no such element is rendered. The name is **narrowed, not un-banned**: still banned for a direction control, granted to the floating-surface pointer. **`docs/components/popover.md` would have become a *false cannot* the moment this shipped** — `memory/README.md` §21, the worst doc-rot shape — and it did not: the page documents the arrow (`grep -n 'The arrow' docs/components/popover.md`). The `:85` this row cited is now the `arrow()` middleware bullet. `SLOT-VOCABULARY.md` §4, §3.3. |
-| 5 | **`MultiSelectOption` / `CommandItem` are being harmonised** before Phase 3 authors the compound props types. | Ruling 1 makes the type name *more* public, not less — it moves from a data-prop element type to a subcomponent prop type. Do it first or the rename gets more expensive. `SLOT-VOCABULARY.md` §14.2. |
+| 1 | **`MultiSelect` becomes a compound** — `.Content` / `.Item` / `.ItemIndicator` / `.Empty` / `.Tag` / `.TagRemove`, render-prop-shaped so `options` stays the sole writer of the data. | **Reverses the "zero (d)" implication of §5's triage.** The `CLAUDE.md` rule 3 objection is engineered around, not waived. **`MultiSelect`'s `item` / `panel` / `empty` slots must not ship** — §1.5a there makes subcomponent and slot mutually exclusive. `slot-vocabulary.md` §10.1, §7.1, §11. |
+| 2 | **`CommandPalette` also becomes a compound**, for consistency: one anatomy under one mechanism. | Closes the second item its §14.2 lists as open. `slot-vocabulary.md` §10.2. |
+| 3 | **`Breadcrumbs.Separator` → `.Divider`; `DropdownMenu.Label` / `ContextMenu.Label` → `.GroupHeader`.** | Both are breaking renames and both move an internal identity check, not just a name. `label` stays **hard-banned** as a slot name in every family. `slot-vocabulary.md` §8.5, §8.8. |
+| 4 | **`arrowRef` is covered** — the arrow element is actually rendered, behind an opt-in `arrow` prop on the floating surfaces. | **Reverses the ban below**, whose stated reason was that no such element is rendered. The name is **narrowed, not un-banned**: still banned for a direction control, granted to the floating-surface pointer. **`docs/components/popover.md` would have become a *false cannot* the moment this shipped** — `memory/README.md` §21, the worst doc-rot shape — and it did not: the page documents the arrow (`grep -n 'The arrow' docs/components/popover.md`). The `:85` this row cited is now the `arrow()` middleware bullet. `slot-vocabulary.md` §4, §3.3. |
+| 5 | **`MultiSelectOption` / `CommandItem` are being harmonised** before Phase 3 authors the compound props types. | Ruling 1 makes the type name *more* public, not less — it moves from a data-prop element type to a subcomponent prop type. Do it first or the rename gets more expensive. `slot-vocabulary.md` §14.2. |
 
 **Banned names, with reasons. This list matters as much as the chosen names.**
 
-> **`SLOT-VOCABULARY.md` is authoritative for this list; the table below is a summary and has already
+> **`slot-vocabulary.md` is authoritative for this list; the table below is a summary and has already
 > drifted once.** It carried `header`/`footer`/`closeButton` as a package-wide ban after §3.5 of that
 > file had scoped them to the overlay family, and `arrow` as banned after decision 4 narrowed it. Both
 > are corrected in place below. `memory/README.md` §20: a plan restating what already lives somewhere
@@ -1666,7 +1591,7 @@ deliberately not restated.**
 | `announcer` | `sr-only role="status"` regions — one each in `TagInput.tsx` and `Repeater.tsx` (`grep -rn 'role="status"' src/components/form/TagInput.tsx src/components/form/Repeater.tsx`; cited as `TagInput.tsx:471` and `Repeater.tsx:308`, both rotted in Phase 3). Exposing invites a consumer to drop `sr-only`. Triage **(a)**. |
 | `arrow` | **Narrowed by owner ruling 4, not lifted.** The stated reason — *"no such element is rendered"* — was false twice over: `Carousel` renders `.carousel-arrow` today, and the floating surfaces render one under ruling 4. It stays banned as a name for a **direction control** (use `prev`/`next`/`first`/`last`) and is granted to the **floating-surface pointer**. |
 | `backdrop`/`scrim` | `::backdrop` takes no class. **(b) token** — `--OVERLAY-SCRIM-COLOR` exists in `response-ui-css/src/tokens/overlay.css:2` (still exact). |
-| `header`/`footer`/`closeButton` | **Overlay family only — see `SLOT-VOCABULARY.md` §3.5, which is authoritative.** The reason is a fact about `Dialog`/`Drawer` (they render `{children}` only, so that structure is consumer-supplied), not about the words: `CalendarBase`, `CodeBlock` and `Wizard` each render a real header/footer element and each legitimately names it. Three lanes reached that independently. |
+| `header`/`footer`/`closeButton` | **Overlay family only — see `slot-vocabulary.md` §3.5, which is authoritative.** The reason is a fact about `Dialog`/`Drawer` (they render `{children}` only, so that structure is consumer-supplied), not about the words: `CalendarBase`, `CodeBlock` and `Wizard` each render a real header/footer element and each legitimately names it. Three lanes reached that independently. |
 
 ¹ `box` is permitted for exactly one thing: `OTPInput`'s N homogeneous entry boxes.
 
@@ -1683,7 +1608,7 @@ deliberately not restated.**
 **Cross-family collision, settled:** the menus call the leading glyph `item-icon`, the form family
 proposed `itemIndicator` for the check mark, and `SearchInput`/`Toast` use `icon` for a leading
 glyph. These are **two concepts** — a leading glyph and a selection indicator — and the two-concept
-reading is **confirmed** at source. `SLOT-VOCABULARY.md` §8.1 carries the ruling and refines the
+reading is **confirmed** at source. `slot-vocabulary.md` §8.1 carries the ruling and refines the
 prescription; §15.2 and §15.3 record that this paragraph's own survey missed two of the six usages
 and got the `SearchInput`/`Toast` half wrong. Take the names from there.
 
@@ -1703,13 +1628,13 @@ and got the `SearchInput`/`Toast` half wrong. Take the names from there.
   instrument, name the question it would answer and check that your objection is about *that*
   question.
 - **Every other package in the repo — `response-ui-css`, `response-ui-tw-merge`,
-  `response-ui-renderer`.** This plan changes **this package only.** That includes the two follow-up
+  `response-ui-renderer`.** This work changed **this package only.** That includes the two follow-up
   scales below, and the cheaper foundation-side fixes for Stagger and ScrollReveal (Phase 1), which
   are genuinely cheaper and still out of bounds. `memory/README.md` §6: scope is this package only,
   *not even to add a script*, and that boundary was crossed once and reverted in full.
-  - **Downstream consumers are not this plan's problem, but the version bump is.** `CLAUDE.md`'s
+  - **Downstream consumers were not this work's problem, but the version bump is.** `CLAUDE.md`'s
     dependency rule means whoever ships a version here bumps the packages that depend on it. That is
-    a release step, not a design input, and nothing in this plan should be shaped by it.
+    a release step, not a design input, and nothing here should be shaped by it.
 - **`VirtualizedDataTable`'s cross-component selectors** as an *architectural* fix. The migration
   exposes the coupling; untangling it is its own work.
 - **Container queries.** Available and unused; adopting them is a behaviour change.
@@ -1844,7 +1769,7 @@ class that styles nothing — both Phase 2 components carry that comment.
 | "We need a gate asserting tw-merge knows every utility" | **Mostly unnecessary.** Only a *named token value* can drift. **The gate was built anyway, and this outcome is now itself refuted — see the row below.** | §8 `verify:token-mirror` |
 | "A named token value added to `tokens.css` and not to `createCn` is the only real drift" | **Refuted by measurement, and the gate survives the refutation.** For `color` — the only namespace this package currently uses — tailwind-merge's default scale accepts anything, so adding the 9 `@theme` names to `createCn` changes **nothing**: 8,640 colour pairs tested (16 colour-taking prefixes × 9 tokens × 20 neighbours, both orders, plus a variant-scoped form), **0 differences**. The controls are what make that a finding rather than a null result: `cn("p-gutter","p-r3")` and `cn("text-display","text-fg-primary")` *do* differ with and without their theme entry, because the default `spacing` and `text` scales are not generic. **The mirror is load-bearing for any non-colour namespace and documentation-grade for `color`** — which is the opposite of "gate that and nothing more", and is why the shipped gate is namespace-aware and bidirectional rather than a `tokens.css`-only name check. | §8 |
 | "A component needing 15–27 slots is really a compound" | **Refuted by `CalendarBase`.** High slot count means the element tree is the API, but the resolution may be (d), (e), or a mix. | §5 |
-| "`arrowRef` is dead code; delete it" | **Refuted twice over.** It is exported, documented public API — and the ban on the name `arrow` that rested on *"no such element is rendered"* was false even before owner ruling 4, because `Carousel` renders `.carousel-arrow` today. Ruling 4 covers `arrowRef` and narrows the ban to direction controls. | §10; `SLOT-VOCABULARY.md` §3.3, §4 |
+| "`arrowRef` is dead code; delete it" | **Refuted twice over.** It is exported, documented public API — and the ban on the name `arrow` that rested on *"no such element is rendered"* was false even before owner ruling 4, because `Carousel` renders `.carousel-arrow` today. Ruling 4 covers `arrowRef` and narrows the ban to direction controls. | §10; `slot-vocabulary.md` §3.3, §4 |
 | "`Hero.css` is a cross-package collision site" | **Confirmed by measurement**, and the hidden-state rule is worse than predicted — the entrance fires while the reveal is still hidden, so it is spent before the content appears. Found by grepping for foundation-owned class names, not by the hand-written probe list. It is the one that took an `!important`; its sibling four lines above was accepted instead. | §6 Phase 1 |
 | "Hero's plain-fade rule loses to any foundation `.fade-*` class" | **Imprecise as stated, and the precision decided the disposition.** The foundation's `.stagger-item` sets no `animation-name`, so the collision needs a `.fade-*` class *on the item* — real, but conditional on markup **a consumer authors**, since nothing this package renders can put a class there. That is why it was accepted rather than fixed: an explicit consumer instruction beating an aesthetic default is the feature. The acceptance is scoped to that premise and must be revisited when `Stagger` gains a slot. | §6 Phase 1 |
 | Byte offsets into compiled CSS as evidence for the unlayered claim | **Self-invalidating.** The claim survives re-checking; every offset moved with the build. Cite the command. | §2a |
@@ -1868,18 +1793,18 @@ class that styles nothing — both Phase 2 components carry that comment.
 | Moving a shadowing custom property up to the component root makes it themeable | **Refuted where anything redeclares it, which §4d's own worked case did.** `ProgressBar`'s four colour modifiers redeclare the pair on the reading element and `color` defaults to `"accent"`, so relocating the base declaration changes nothing for **100%** of bars. Measured at `fadcd60`: a consumer setting `--progress-bar-fill` at `:root` already got the unchanged default, so the documented override route was dead before anyone touched it. The fix that works is to **delete** the token and let a utility read the theme var — shadowing is the defect, not the location. `--sparkline-color` relocated fine only because nothing else redeclared it. | §4d; §4c |
 | A token consumed by `calc()` or `color-mix()` is "computed" and must be kept | **Refuted — the discriminator is the read *site*, not the arithmetic.** §4c spares a token because *"there is no property there for a utility to set"*, which means one consumed inside another custom property's definition. `--progress-bar-fill-end` was read inside `background-image`; a utility takes that whole declaration, `color-mix()` included, so it was deleted. Ask what property the read sits in. | §4c |
 | `<Skeleton style={{ width: undefined }} />` shrinks the box to fit | **Refuted by measurement — it produced a 0px-wide box, and always had.** A Skeleton's only child is `sr-only` and out of flow, so dropping the inline `100%` landed on `width: auto`, which on an `inline-block` resolves to zero. `w-auto` and `w-fit` measure the same **0×16**. The documented escape hatch never worked, which is worth more than the fix: it was the objection that deferred this change through two phases. | §4d |
-| `Combobox` proves `MultiSelect` can become a compound | **Refuted, and it changes what a lane builds.** `ComboboxRootProps` has **no required data prop at all** — eleven optional props plus `children` — and its option data exists only as registrations from its own children. So it proves a listbox compound is *achievable*; it says nothing about coexisting with a required `options` prop, which was the entire difficulty. A lane that copies it inherits a design with no answer for the filter, the chip labels or the cap. | §5; `SLOT-VOCABULARY.md` §15.12, §10.1 |
+| `Combobox` proves `MultiSelect` can become a compound | **Refuted, and it changes what a lane builds.** `ComboboxRootProps` has **no required data prop at all** — eleven optional props plus `children` — and its option data exists only as registrations from its own children. So it proves a listbox compound is *achievable*; it says nothing about coexisting with a required `options` prop, which was the entire difficulty. A lane that copies it inherits a design with no answer for the filter, the chip labels or the cap. | §5; `slot-vocabulary.md` §15.12, §10.1 |
 | `grep -c 'layer(' src/styles.css` counts the layered component imports | **Refuted — it is a trap that has now been quoted wrong three times, and its *own* correction was wrong too.** It returns 47 against 44 imports, because the file's own header prose mentions the token on three lines, and the two halves move independently. The correction this row shipped — filter the imports out with `grep -v '@import'` — finds only two of the three, because one prose line quotes an `@import`. Filter on the import *shape*: `grep -v '^[0-9]*:@import "\./components'`. The count is `grep -c '^@import "\./components'`; the *check* is `verify:css-layering`, which classifies every import and fails on one it cannot classify. | §2a |
 | "There are zero blank lines inside comment blocks, so §2b's comment/blank caveat is inert" | **Refuted — there are 55 (51 when this row was written), and the caveat is live.** The two readings of §2b's blank percentage genuinely differ (13.2% counting them, 12.3% not), so the figure has to say which it is. The claim was false when written and survived because nothing recomputed it — **and the obvious re-measurement reproduces the same falsehood**: a blank line inside a comment carries no masked *character*, so a "does this line retain a masked character" test returns zero for exactly the lines in question. Test the comment state at the line's position. | §2b |
 | Line references into files a phase touched | **Repointed by content, never by adjusting the number.** Phase 2 moved `MasonryGrid.tsx:23` (the `columns` union is now `:31`, and still is) and deleted `Grid.css` entirely, so every citation into it is now a `git show 81888c2:` invocation. `Combobox.tsx:537-542` had drifted to `:538-543` and is now a grep (it is `:578` today, which is the point). **Phase 3 rotted anchors on a scale Phase 2 did not**: `Calendar.css` → `CalendarBase.css`, `Repeater.tsx:77-127` → `:77-137`, and most `.tsx` line citations in §4a–§5, §10 and §11 moved by tens of lines. All are now greps, or `git show <sha>:` where the cited code is deleted. `memory/ledger.md`: adjusting a rotted anchor is the wrong repair — cite the quoted phrase. | §6 Phase 2; §6 Phase 3; §10 |
-| "`grep -rn classNames src/components` returns zero, so the slot vocabulary is greenfield" | **True when written, false now — the vocabulary is being spent.** That grep returns ~800 and is still climbing as Phase 3 lanes land, so it is not a figure to quote; re-run it. The freeze still holds and §10's argument for it is unchanged; what has changed is that the field is no longer empty, so a new name is now a consistency question against shipped API rather than a free choice. `SLOT-VOCABULARY.md` stays authoritative. | §10 |
+| "`grep -rn classNames src/components` returns zero, so the slot vocabulary is greenfield" | **True when written, false now — the vocabulary is being spent.** That grep returns ~800 and is still climbing as Phase 3 lanes land, so it is not a figure to quote; re-run it. The freeze still holds and §10's argument for it is unchanged; what has changed is that the field is no longer empty, so a new name is now a consistency question against shipped API rather than a free choice. `slot-vocabulary.md` stays authoritative. | §10 |
 | `AGENTS.md` tells readers to *"always wrap classNames with `cn(...)`"*, which §4a's prop makes self-contradictory | **Discharged — already reworded.** `grep -n 'wrap classNames' AGENTS.md` returns nothing; the sentence now reads *"Always wrap class strings with `cn(...)` … Class **strings** — `classNames` is a prop name … and `cn()` on that object reads it as clsx's conditional form"*. The cited `AGENTS.md:390` is dead. | §6 Phase 5 |
-| `classPrefix` is a generalisation with one value, is already violated by `ContextMenu`, and must be deleted | **Discharged in Phase 3, and every anchor the argument used is dead.** `grep -rn classPrefix src --include=*.tsx --include=*.ts \| grep -v '\.test\.'` → 0 (the one remaining hit in the tree is a `ContextMenu.test.tsx` comment recording the removal), `grep -rl classPrefix docs` → 0 (it was undocumented, which was the other half of the finding). `menu-internals.tsx` emits five *static* `menu-*` literals and `menu-internals.css` defines them; the orphan `context-menu-trigger` class is gone and `ContextMenu.test.tsx` pins its absence. The names came from `SLOT-VOCABULARY.md` §8.2, not from §8's earlier guess. Cited anchors, all rotted: `menu-internals.tsx:288,346,368,388,408`, `DropdownMenu.tsx:26`, `ContextMenu.tsx:25,81`. | §8; §6 Phase 5 |
+| `classPrefix` is a generalisation with one value, is already violated by `ContextMenu`, and must be deleted | **Discharged in Phase 3, and every anchor the argument used is dead.** `grep -rn classPrefix src --include=*.tsx --include=*.ts \| grep -v '\.test\.'` → 0 (the one remaining hit in the tree is a `ContextMenu.test.tsx` comment recording the removal), `grep -rl classPrefix docs` → 0 (it was undocumented, which was the other half of the finding). `menu-internals.tsx` emits five *static* `menu-*` literals and `menu-internals.css` defines them; the orphan `context-menu-trigger` class is gone and `ContextMenu.test.tsx` pins its absence. The names came from `slot-vocabulary.md` §8.2, not from §8's earlier guess. Cited anchors, all rotted: `menu-internals.tsx:288,346,368,388,408`, `DropdownMenu.tsx:26`, `ContextMenu.tsx:25,81`. | §8; §6 Phase 5 |
 | `docs/components/popover.md:85` becomes a *false cannot* when the arrow ships; `multi-select.md:45` becomes a lie after Phase 3 | **Both discharged — the doc edits landed with the code.** `popover.md` documents the `arrow` prop, `classNames.arrow` and the middleware; `multi-select.md` records its own earlier "no subcomponent" sentence as superseded. Recorded because `memory/README.md` §21 rates the false-cannot the worst doc-rot shape, and this is the case where it was caught in the same commit rather than after release. | §10; §6 Phase 5 |
 | "~300 of 478 class literals fail the literal reachability gate" | **Unreproducible, and dropped.** No method tried yields 478; the shipped gate's own method gives **274 failing of 425 `className` attributes** at `0a61e01` and `81888c2`, and **103 of 435** at HEAD. The 2:1 shape the re-scoping argument rests on is real at the pre-Phase-3 tree and has since inverted *because* the prescribed order was followed. An unreproducible bound is not evidence, even for a conclusion that is right. | §8 |
 | "`~76` sites share the focus-ring-width literal" | **Unreproducible, and dropped.** The reproducible readings are 41 (ring widths: 32 `outline: 2px` declarations + 9 `outline-2`/`ring-2` utilities) or 62 (adding the 21 `outline-offset: 2px` declarations, which is a different concept). Both carry their command in §11. The rule-width half of the same bullet — 5 rail tokens + the table marker — re-derives exactly. | §11 |
 | "`CalendarBase` has 15 internals: 9 loop-generated, 6 chrome — so 6 slots + 3 applied-to-every-instance + `renderDay`, **not** 15 slots and **not** a compound" | **The category was right; the census was wrong; the prescription failed as a consequence. Owner-reviewed and settled: the shipped 15 keys stay.** Both *counts* re-derive (6 once-rendered, 9 not) and both *memberships* were wrong by one swap: `calendar-month-caption` was filed as once-rendered chrome when it is per-month-grid and conditional on `monthCount > 1`; the actual 6th once-rendered element is `calendar-picker-grid`, never named; and the 9 are not all `renderMonthGrid`'s — `calendar-picker-cell` comes from `QuickNavGrid` in a different view. "15 internals" does re-derive on the **element** reading (16 non-root names sit on 15 elements — `"calendar-label calendar-label-button"` is one element with two names); the failure was **not stating the unit and not carrying the command**, which is the `Maintenance` rule this file now enforces. **The prescription's real error was assuming `renderDay` answers the loop set** — it renders the day button's *children only*, so it reaches none of the eight non-day elements assigned to it, and "6 + 3 + `renderDay`" would have left six elements with no route at all. What shipped is **15 × (c) + 1 × (e)**, every repeated-element key merged uniformly inside its map, so **no key addresses a single instance** and the loop test is not violated. "Not a compound" held unchanged. | §5; §9 |
-| "The `CalendarSlotClassNames` union is aliased by `Calendar`, `RangeCalendar`, `DatePicker` and `DateRangePicker`" | **False for the two pickers, and it was false on the type's own docblock** — which ships to consumers through the generated `.d.ts`, so it is worse than prose rot. `DatePicker` and `DateRangePicker` declare their own unions (`"control" \| "actions" \| "panel"` and `"control" \| "panel"`) and pass an explicit prop list to `Calendar`/`RangeCalendar` carrying neither `classNames` nor `renderDay`. A picker consumer gets **3** keys, not 18. `docs/components/date-picker.md` and `date-range-picker.md` already stated this correctly; the type did not. Whether the pickers should forward a second `calendarClassNames` prop is a **new public API** and an open owner question, not a bug fix. | §5; `SLOT-VOCABULARY.md` §7.2 |
+| "The `CalendarSlotClassNames` union is aliased by `Calendar`, `RangeCalendar`, `DatePicker` and `DateRangePicker`" | **False for the two pickers, and it was false on the type's own docblock** — which ships to consumers through the generated `.d.ts`, so it is worse than prose rot. `DatePicker` and `DateRangePicker` declare their own unions (`"control" \| "actions" \| "panel"` and `"control" \| "panel"`) and pass an explicit prop list to `Calendar`/`RangeCalendar` carrying neither `classNames` nor `renderDay`. A picker consumer gets **3** keys, not 18. `docs/components/date-picker.md` and `date-range-picker.md` already stated this correctly; the type did not. Whether the pickers should forward a second `calendarClassNames` prop is a **new public API** and an open owner question, not a bug fix. | §5; `slot-vocabulary.md` §7.2 |
 
 > **The lesson that governs Phase 3.** The first two rows were the `className` audit's *only* two
 > active-defect claims — its highest-confidence output — and both dissolved on contact with the
@@ -1901,5 +1826,5 @@ class that styles nothing — both Phase 2 components carry that comment.
 - **When a phase closes, mark it and move its lessons to `memory/`.** `bugs/PLAN.md` was retired with
   the note *"a stale plan is worse than no plan, because it is still believed."*
 - **For each phase, name what would prove you wrong and build that before you start — then make it
-  fail on purpose once.** A check that cannot come back red is not evidence. This plan's worst
+  fail on purpose once.** A check that cannot come back red is not evidence. This work's worst
   failure was never a wrong fact; it was being unfalsifiable while looking rigorous.

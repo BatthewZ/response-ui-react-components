@@ -472,7 +472,7 @@ describe("StatCard", () => {
     });
 
     /**
-     * The slot-override test for `classNames.trendIcon` (PHASE3-PATTERN.md §5). It
+     * The slot-override test for `classNames.trendIcon` (docs/project-docs/slot-convention.md §5). It
      * is the falsifier as well as the feature: delete the `cn()` merge in
      * `TrendArrow` and this must go red. A slot that still passes with the merge
      * removed is a prop that lands in the type and nowhere else.
@@ -524,7 +524,7 @@ describe("StatCard", () => {
 
     /**
      * The reason for a per-component inline slot union rather than a
-     * `Record<string, string>` helper (PHASE3-PATTERN.md §1): an unknown key is a
+     * `Record<string, string>` helper (docs/project-docs/slot-convention.md §1): an unknown key is a
      * *type* error, not a silent no-op. The `@ts-expect-error` is the assertion — it
      * fails if TypeScript ever stops rejecting the key. Do not "clean it up".
      */
@@ -615,7 +615,7 @@ describe("StatCard", () => {
      * ruling: `className` addresses the chart, not the wrapper, because this
      * component's props ARE `Sparkline`'s and its `ref` is the `<svg>`. Moving it
      * to the wrapper under the §4b house rule is a breaking API change and an
-     * owner call — see PHASE3-PATTERN.md "The wrapper case". If that call is
+     * owner call — see docs/project-docs/slot-convention.md "The wrapper case". If that call is
      * taken, this test is the one that must be rewritten rather than deleted.
      *
      * IT HAS BEEN REWRITTEN, AND THE RULING IS UNCHANGED. The equality stopped

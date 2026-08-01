@@ -201,7 +201,7 @@ describe("MultiSelect", () => {
 
   /**
    * `atMax` counts the **selection**, not the rendered rows — one of the four
-   * things `SLOT-VOCABULARY.md` §10.1 says `options` is load-bearing for, and
+   * things `docs/project-docs/slot-vocabulary.md` §10.1 says `options` is load-bearing for, and
    * the only one that had no gate. The test above cannot see it: it never types
    * a query, so every selected row is still mounted and a node-counting `atMax`
    * agrees with a data-counting one. Filtering the first pick out of the DOM is

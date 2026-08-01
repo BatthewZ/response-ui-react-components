@@ -13,7 +13,7 @@
 //
 // WHY THIS GATE AND NOT THE OBVIOUS ONE
 //
-// `PLAN-overridability.md` §8 ("Why `verify:slot-reachability` was re-scoped")
+// `docs/project-docs/cascade-and-slots.md` §8 ("Why `verify:slot-reachability` was re-scoped")
 // rejected the literal version — "every class literal must be reachable". It
 // fails ~300 of 478 literals and needs an allowlist roughly TWICE THE SIZE of
 // the clean set it guards, which is the exact anti-pattern
@@ -45,7 +45,7 @@
 //
 //   (c) slot         — the route is `cn(base, classNames?.key)` right here, so a
 //                      settled (c) is REACHABLE and needs no comment
-//                      (`PHASE3-PATTERN.md` §6: "(c) is proved by the code")
+//                      (`docs/project-docs/slot-convention.md` §6: "(c) is proved by the code")
 //   (d) compound     — the route is the subcomponent's own `className`, at a
 //                      different and reachable attribute. Annotated here, it
 //                      means the compound was named and not built
@@ -54,7 +54,7 @@
 //
 // So `slot:(c)`, `slot:(d)` and `slot:(f)` on an unreachable attribute are each
 // a contradiction, reported as their own failure rather than silently accepted
-// or silently ignored. `PHASE3-PATTERN.md` §6 predates the (e) rulings — it lists
+// or silently ignored. `docs/project-docs/slot-convention.md` §6 predates the (e) rulings — it lists
 // the grammar as `[a-e]` and discusses only (a)/(b), because at the time the only
 // shipped annotations were (a) and (b). `FileUpload`'s `renderPreview`/`renderFile`
 // subtrees are the worked (e) case and the reason this set is three, not two.
@@ -73,7 +73,7 @@
 //       - `const { item } = classNames ?? {}` then `className={cn("x", item)}`:
 //         same shape, one level down. Same false alarm.
 //       - `<Leaf tone={classNames?.item} />` — a leaf taking the slot under
-//         another prop name. Same false alarm; `PHASE3-PATTERN.md` §2 requires
+//         another prop name. Same false alarm; `docs/project-docs/slot-convention.md` §2 requires
 //         the value be passed down as `className`, and this is the enforcement.
 //       - `const className = "static"` in scope then `className={className}`
 //         reads as REACHABLE when it is not. THE ONE SILENT FALSE PASS.
@@ -109,7 +109,7 @@
 //     initialisers and misses every `className: cn(…)`.
 //
 //  4. IT CANNOT DISTINGUISH "(c), DECIDED" FROM "REACHABLE, NEVER CONSIDERED".
-//     Accepted by `PHASE3-PATTERN.md` §6, and the same cost §7 item 3 already
+//     Accepted by `docs/project-docs/slot-convention.md` §6, and the same cost §7 item 3 already
 //     takes by treating reachability as sufficient.
 //
 //  5. IT READS THE TEXT OF THE INITIALISER, NOT THE RUNTIME. `className={cond ?
@@ -145,7 +145,7 @@ const root = resolve(REPO, args.find((a) => !a.startsWith("--")) ?? "src");
 
 // `slot:(<letter>) <reason>` with a NON-EMPTY reason. An empty reason fails the
 // pattern, which is what stops `// slot:(a)` on its own from discharging
-// anything (`PHASE3-PATTERN.md` §6: "not a restatement of the class").
+// anything (`docs/project-docs/slot-convention.md` §6: "not a restatement of the class").
 const ANNOTATION = /^\s*slot:\(([a-f])\)\s+\S/;
 // Anything that looks like an attempt at one. A marker that matches this and not
 // ANNOTATION is MALFORMED — reported as such rather than falling through to

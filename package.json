@@ -8,6 +8,7 @@
     "dist",
     "src",
     "docs",
+    "!docs/project-docs",
     "AGENTS.md",
     "CHANGELOG.md",
     "README.md",

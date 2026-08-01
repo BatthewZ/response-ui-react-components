@@ -33,7 +33,7 @@
    in a `cn()` beside a `classNames` slot and this file is in `@layer components`,
    so a caller's utility already beats them; the conversion buys nothing and
    breaks up a layout contract that is read as a whole. Payload figures for this
-   file are measured ONCE, in `PLAN-overridability.md` §2b — do not measure again. */
+   file are measured ONCE, in `docs/project-docs/cascade-and-slots.md` §2b — do not measure again. */
 
 /* Layout is selected by `data-align` on the root and nothing else. Everything
    below the root reads that attribute through a descendant selector, so no item

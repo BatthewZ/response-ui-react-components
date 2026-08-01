@@ -36,9 +36,14 @@ The generalisable lessons:
   causes named elsewhere in its own document, and the pass that followed it inherited the gap.
 - **An audit that lives outside the repo is an audit you will redo.** One pass's per-row verdicts
   were never written into the tracked record; only a summary survived, in a file no repository
-  contained. All of it was re-done from scratch. The handover and brief documents for this
-  package still sit in the workspace root, outside every git repository — unversioned, unowned,
-  and no more reliable than the ones above.
+  contained. All of it was re-done from scratch. For a long time the handover and brief documents
+  for this package sat in the workspace root, outside every git repository — unversioned, unowned,
+  and no more reliable than the ones above. **They have since been deleted**, and deleting them was
+  only safe because everything in them that was still true had first been moved *into* the repo:
+  the corrections above, the gate lessons in `gates.md`, the settled outcomes in
+  `../docs/project-docs/cascade-and-slots.md` §13. **Write the finding where the next reader will
+  look, at the time you find it** — a document outside the tree is a draft, however carefully
+  written, and its deletion should cost nothing.
 - **A wrong claim is not always a mis-sized one.** Re-counting catches an inflated number; it
   cannot catch a claim pointing the opposite way. One brief asserted the shared state hook was
   bypassed "wherever the value is not a plain scalar" — the opposite was true in every case, and

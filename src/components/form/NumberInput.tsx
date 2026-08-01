@@ -44,9 +44,9 @@ type NumberInputProps = {
    *
    * `control` is the framing box, the same word `DatePicker`,
    * `DateRangePicker`, `Select` and `MultiSelect` spend on the same element
-   * (`SLOT-VOCABULARY.md` §6, §7.1). It is a slot rather than a re-pointed
+   * (`docs/project-docs/slot-vocabulary.md` §6, §7.1). It is a slot rather than a re-pointed
    * `className` because moving a documented `className` target is breaking and
-   * is the owner's call, not a lane's (`PHASE3-PATTERN.md` §7).
+   * is the owner's call, not a lane's (`docs/project-docs/slot-convention.md` §7).
    */
   classNames?: SlotClassNames<"control" | "chevron">;
 } & Omit<

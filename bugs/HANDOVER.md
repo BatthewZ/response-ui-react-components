@@ -9,7 +9,7 @@ someone arriving cold.
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | [`LEDGER.md`](./LEDGER.md)     | **24 open defects.** The work list. Every row believed true at source.                                                      |
 | [`ARCHIVE.md`](./ARCHIVE.md)   | ~400 closed rows — fixed, declined, refuted. Ids never reused. Anchors deliberately not maintained.                         |
-| [`AUDIT.md`](./AUDIT.md)       | 6 open findings about the _checking_ — gates, tests, the record. Not component defects.                                     |
+| [`AUDIT.md`](./AUDIT.md)       | 9 open findings about the _checking_ — gates, tests, the record. Not component defects.                                     |
 | [`TAXONOMY.md`](./TAXONOMY.md) | What a row _is_ (kind) and who it hurts (harm). Work order comes from harm.                                                 |
 | [`PLAN.md`](./PLAN.md)         | **Retired.** Kept only as a section map, because ~30 archived rows cite it by number. Do not rewrite it into a new plan.   |
 | `../memory/`                   | Traps, testing failure modes, ledger failure modes. **Read `traps.md` before planning.**                                    |
