@@ -653,6 +653,19 @@ Ask these in order, of one declaration:
    rules), has no class-list form at all — a class list cannot express "these two, in this order".
    Yes → **stays**, or must be enumerated against Preflight rather than transposed.
 
+**Preflight is assumed, and never restated.** Both packages `@import "tailwindcss"` whole, and this
+package's README states the requirement, so Tailwind's base reset is a dependency rather than a
+coincidence. (The foundation has not adopted the same rule and still restates the heading margins;
+that is its call, not a licence to restate anything here.) A declaration that only repeats it is
+**deleted, not converted**: `box-sizing` anywhere,
+`margin`/`padding` on any element, `border`/`background`/`font`/`color` on a `<button>` or `<input>`,
+`vertical-align` on an `svg`, `border-collapse` on a `<table>`. What Preflight does *not* cover is
+exactly what the resets here exist for — the UA's `text-align: center` and `cursor` on a button
+(which is why `Tabs`, `Pagination`, `Switch` and `CalendarBase` open with `all: unset`), `appearance`
+on anything that is not a button, and every UA pseudo-element (`*` does not reach them, so a thumb
+still needs its own `box-sizing`). Check the claim against
+`node_modules/tailwindcss/preflight.css`, not memory.
+
 Survive all five and it is a straight transposition to a utility. **Leftover CSS is not a backlog:** a
 file that *has* been converted keeps a header comment naming why each surviving rule cannot move; a
 file nobody has touched has no such comment, and that is the expected state rather than drift.
