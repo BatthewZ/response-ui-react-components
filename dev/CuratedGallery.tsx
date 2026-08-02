@@ -25,6 +25,7 @@ import {
   Carousel,
   Checkbox,
   CodeBlock,
+  Markdown,
   Collapsible,
   ColorPicker,
   Combobox,
@@ -85,7 +86,7 @@ import {
 import * as ButtonExamples from "../src/components/ui/Button.examples";
 import * as TabsExamples from "../src/components/ui/Tabs.examples";
 import { Group, Tile } from "./gallery-ui";
-import { COLOR_PRESETS, SKILL_OPTIONS } from "./sample-data";
+import { COLOR_PRESETS, SAMPLE_MARKDOWN, SKILL_OPTIONS } from "./sample-data";
 
 /* Group and Tile live in ./gallery-ui so the generated examples gallery shares them.
    To add a component to THIS curated view, drop a <Tile> (or a new <Group>) in the
@@ -507,6 +508,12 @@ export function App() {
               showLineNumbers
             />
             <CodeBlock code={`bun add @batthewz/response-ui-react-components`} language="bash" />
+          </div>
+        </Tile>
+
+        <Tile label="Markdown">
+          <div className="w-full min-w-0 max-w-3xl">
+            <Markdown codeBlockProps={{ copyable: false }}>{SAMPLE_MARKDOWN}</Markdown>
           </div>
         </Tile>
 

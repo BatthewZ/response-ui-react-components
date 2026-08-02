@@ -47,6 +47,7 @@ export { Hero } from "./Hero";
 export { HoverCard, type HoverCardContentProps } from "./HoverCard";
 export { IconButton } from "./IconButton";
 export { Kbd } from "./Kbd";
+export { Markdown, type MarkdownProps } from "./Markdown";
 export { MasonryGrid } from "./MasonryGrid";
 export { MediaCard } from "./MediaCard";
 export { Pagination } from "./Pagination";

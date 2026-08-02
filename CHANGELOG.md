@@ -4,6 +4,36 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.13.0] — 2026-08-02
+
+### Added
+
+- **`Markdown`** — renders a documented subset of Markdown as real components. Fenced blocks
+  become [CodeBlock](docs/components/code-block.md), tables become
+  [Table](docs/components/table.md), and everything else becomes the semantic element it should
+  be, so a rendered document is the same design system as the rest of the app.
+
+  The parser is hand-written and produces an **AST, never an HTML string** — there is no
+  `dangerouslySetInnerHTML` in the path and no sanitizer to configure wrongly. URLs pass a
+  scheme **allowlist** (`http`, `https`, `mailto`, `tel`, plus non-SVG `data:image/*`); a refused
+  URL drops the element and keeps the author's text. Raw HTML renders as literal text, which is
+  what lets type syntax like `Omit<ComponentPropsWithRef<"a">, "href">` survive a table cell.
+
+  The subset is the contract and is written down in
+  [docs/components/markdown.md](docs/components/markdown.md). Not supported, deliberately:
+  reference links, setext headings, lazy continuation, indented code blocks, footnotes, task
+  lists, raw HTML.
+
+  Bounded against hostile input: nesting caps at 32 levels and a link label at 999 characters
+  (CommonMark's own limit), so neither deep `>` runs nor long bracket runs can exhaust the stack
+  or the main thread.
+
+- `Table` now also exports `TableHead`, `TableBody`, `TableRow`, `TableHeaderCell` and
+  `TableCell` as named exports. **Not** added to the barrel — `Table` stays the one public
+  spelling. They exist because a directive-neutral module cannot dot into a `"use client"` one
+  under RSC without throwing, and `Markdown` renders tables while staying server-renderable.
+  See the `## RSC` note in [AGENTS.md](AGENTS.md).
+
 ## [0.12.0] — 2026-08-01
 
 This release is the whole of the "sensible defaults, overridable" work: component CSS moved into

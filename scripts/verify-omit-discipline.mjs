@@ -113,6 +113,21 @@ const ALLOWLIST = new Map([
       "module and cannot tell a nested prop bag from the component's own type.",
   ],
   [
+    "src/components/ui/Markdown.tsx:Markdown.code",
+    "FALSE POSITIVE, same shape as the CodeBlock entry below (AUDIT.md #473). The " +
+      "`Omit<ComponentPropsWithRef<typeof CodeBlock>, \"code\" | \"language\">` this fires on " +
+      "types the `codeBlockProps` *sub-prop bag* for the block each fenced section " +
+      "becomes, not Markdown's own props — Markdown supplies that block's `code` from the " +
+      "fence body, so omitting it there is the point. `code` is not a Markdown prop at " +
+      "all, and the <div> the scanner names renders no attribute from it.",
+  ],
+  [
+    "src/components/ui/Markdown.tsx:Markdown.language",
+    "FALSE POSITIVE, the other half of the Markdown entry above (AUDIT.md #473). " +
+      "`language` comes from the fence's info string for the same reason `code` comes " +
+      "from its body; neither is a Markdown prop.",
+  ],
+  [
     "src/components/ui/CodeBlock.tsx:CodeBlock.value",
     "FALSE POSITIVE, same shape as the Swimlane entry above (AUDIT.md #473). The " +
       "`Omit<ComponentPropsWithRef<typeof CopyButton>, \"value\">` this fires on types the " +

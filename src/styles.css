@@ -36,6 +36,7 @@
 @import "./components/ui/Drawer.css" layer(components);
 @import "./components/ui/EmptyState.css" layer(components);
 @import "./components/ui/Hero.css" layer(components);
+@import "./components/ui/Markdown.css" layer(components);
 @import "./components/ui/menu-internals.css" layer(components);
 @import "./components/ui/Pagination.css" layer(components);
 @import "./components/ui/Popover.css" layer(components);

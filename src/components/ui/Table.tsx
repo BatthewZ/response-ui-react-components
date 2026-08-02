@@ -492,3 +492,21 @@ export const Table = Object.assign(TableRoot, {
   HeaderCell: TableHeaderCell,
   Cell: TableCell,
 });
+
+/**
+ * The same parts as named exports, for one caller that cannot use the compound
+ * form: a **directive-neutral** module.
+ *
+ * This file is `"use client"`, so under RSC a bundler replaces it with a client
+ * reference proxy, and React throws on any property access outside its
+ * whitelist — "You cannot dot into a client module from a server component."
+ * `Table.Head` from a server module is therefore a render-time crash, and a
+ * content-dependent one: it fires only when the rendered document happens to
+ * contain a table, so it passes every smoke test that does not. No test here
+ * covers it — the repo has no RSC harness — so this comment is the record.
+ *
+ * Importing the name directly is the fix React documents. Deliberately NOT
+ * re-exported from the barrel — `Table` stays the one public spelling, and
+ * these exist so `Markdown` can stay server-renderable.
+ */
+export { TableBody, TableCell, TableHead, TableHeaderCell, TableRow };

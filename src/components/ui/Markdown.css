@@ -1,0 +1,100 @@
+/* Markdown — the flow-content rhythm, and the tags Preflight flattened.
+ *
+ * Deliberately NOT a type scale. `@batthewz/response-ui-css` already styles bare
+ * `h1`–`h6` and `p` with the responsive scale, the paired line-heights and
+ * `--HEADING-FONT`, so restating any of that here would be a second source of
+ * truth for the same question.
+ *
+ * What is here is the complement: what Tailwind's Preflight strips and the
+ * foundation does not restore, because a component library is right not to. A
+ * list has no markers, a blockquote has no indent, and `p { margin: 0 }` — all
+ * correct when `Stack` and `gap` own spacing, all wrong inside a document,
+ * where the author's only spacing instruction is a blank line.
+ *
+ * Everything is a token. The one bare number is `--markdown-flow`, which is a
+ * local alias for a spacing token, declared once so the rhythm can be retuned
+ * from the call site without a utility for every element.
+ */
+
+.markdown {
+  --markdown-flow: var(--R-SIZE-4);
+}
+
+/* Rhythm. The owl selector spaces siblings without giving the first or last
+   child an outer margin, so a `.markdown` sits flush inside whatever box the
+   caller put it in — a Card's padding stays the Card's decision. */
+.markdown > * + * {
+  margin-block-start: var(--markdown-flow);
+}
+
+/* A heading binds to the prose beneath it: more space above than below, so the
+   section reads as one unit rather than as evenly spaced lines. */
+.markdown > :is(h1, h2, h3, h4, h5, h6) + * {
+  margin-block-start: var(--R-SIZE-5);
+}
+
+.markdown > * + :is(h1, h2, h3, h4, h5, h6) {
+  margin-block-start: var(--R-SIZE-3);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Lists                                                              */
+/* ------------------------------------------------------------------ */
+
+.markdown-list {
+  padding-inline-start: var(--R-SIZE-3);
+  list-style-position: outside;
+}
+
+.markdown-list ul,
+.markdown-list ol {
+  margin-block-start: var(--R-SIZE-6);
+}
+
+.markdown ul.markdown-list {
+  list-style-type: disc;
+}
+
+.markdown ol.markdown-list {
+  list-style-type: decimal;
+}
+
+/* A nested unordered list changes marker so two levels are distinguishable
+   without indentation alone carrying the whole signal. */
+.markdown ul.markdown-list ul.markdown-list {
+  list-style-type: circle;
+}
+
+.markdown-list-item + .markdown-list-item {
+  margin-block-start: var(--R-SIZE-6);
+}
+
+/* A marker inherits `color` from its `li`, so this is the only way to tint it
+   without tinting the item's text with it. */
+.markdown-list-item::marker {
+  color: var(--C-TEXT-MUTED);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Blockquote                                                         */
+/* ------------------------------------------------------------------ */
+
+.markdown-blockquote {
+  padding-inline-start: var(--R-SIZE-4);
+  border-inline-start: 2px solid var(--C-BORDER-STRONG);
+  color: var(--C-TEXT-SECONDARY);
+}
+
+.markdown-blockquote > * + * {
+  margin-block-start: var(--R-SIZE-5);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Rule                                                               */
+/* ------------------------------------------------------------------ */
+
+/* Preflight gives `hr` `border-top-width: 1px` and `currentColor`, so it paints
+   in the text colour — a black bar on a light theme. Only the colour is wrong. */
+.markdown-hr {
+  border-color: var(--C-BORDER-DEFAULT);
+}

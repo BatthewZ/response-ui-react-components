@@ -40,12 +40,16 @@ export function Tile({
   return (
     <div
       id={id}
-      className="flex flex-col gap-r5 rounded-md border border-border-default bg-surface-1 p-r4"
+      // `min-w-0 max-w-full`: a flex item defaults to `min-width: auto`, so
+      // without these a tile whose content is intrinsically wide — a table, a
+      // long code line — pushes past the row and gives the whole page a
+      // horizontal scrollbar, which defeats the Mobile (375) toggle above.
+      className="flex min-w-0 max-w-full flex-col gap-r5 rounded-md border border-border-default bg-surface-1 p-r4"
     >
       <span className="text-body-3 font-semibold text-fg-muted uppercase tracking-wide">
         {label}
       </span>
-      <div className="flex flex-wrap items-center gap-r4">{children}</div>
+      <div className="flex min-w-0 flex-wrap items-center gap-r4">{children}</div>
     </div>
   );
 }

@@ -18,13 +18,15 @@ Machine-readable reference for AI assistants **using** this package — its publ
 
 ## RSC
 
-`"use client"` is applied selectively to interactive modules; barrels and pure presentational components (Button, Text, layout) stay directive-neutral, so they're server-renderable in RSC frameworks (Next.js App Router, etc.) with no extra wiring. These are presentational Client Components — props serialize to the browser, so **never pass server-only secrets as props.**
+`"use client"` is applied selectively to interactive modules; barrels and pure presentational components (Button, Text, layout) stay directive-neutral, so they're server-renderable in RSC frameworks (Next.js App Router, etc.) with no extra wiring.
+
+**A directive-neutral component must not dot into a `"use client"` one.** Under RSC a client module is replaced by a reference proxy, and `Table.Head` from a server module throws "You cannot dot into a client module from a server component" — at render time, and only when the rendered content happens to reach that branch. Import the part by its own name instead (`Table.tsx` exports `TableHead`, `TableRow`, `TableHeaderCell`, `TableBody`, `TableCell` for exactly this). No gate catches this. These are presentational Client Components — props serialize to the browser, so **never pass server-only secrets as props.**
 
 ## Public surface
 
 Top-level barrel exports everything. The grouping below mirrors the source layout (`src/`).
 
-### components/ui (50)
+### components/ui (51)
 
 ```
 Accordion, Alert, AppShell, Avatar, AvatarGroup, AvatarUpload + types
@@ -33,7 +35,8 @@ Button, Calendar, RangeCalendar + type DateRange, Card, Carousel, CodeBlock, Col
 CommandPalette + CommandPalette.Item + types CommandPaletteItem/CommandPaletteRenderArgs,
 ContextMenu, CopyButton, DataTable + type DataTableProps + type ColumnDef + type SortState, Dialog, Drawer,
 DropdownMenu, EmptyState + EmptyState{Title,Description,Icon,Actions}, ErrorBoundary,
-FileUpload, Hero, HoverCard, IconButton, Kbd, MasonryGrid, MediaCard, Pagination,
+FileUpload, Hero, HoverCard, IconButton, Kbd, Markdown + type MarkdownProps, MasonryGrid,
+MediaCard, Pagination,
 Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper,
 Swimlane, Table + type TableProps, Tabs, Text, ThemeSwitcher, Timeline, Toast + type ToastVariant,
 ToastProvider, useToast, Tooltip, VirtualizedDataTable + type
