@@ -350,3 +350,21 @@ good. These are the ways they have still let defects through.
   closed it. None of those contain the count, so a count sweep leaves all three standing and
   each is now a confident statement of something false. Re-derive every number from the tool
   that produces it, and grep for the *claim of absence* separately.
+- **A browser is a gate too, and it goes stale in a way no other gate does.** No check here can
+  see a pixel, so a motion or contrast change ends up verified by looking. That check silently
+  passes on the wrong code if the dev server you are looking at was started before your edits and
+  its file watcher missed them: `curl` of the module URL returns the *new* source, because the
+  transform runs per request, while the page keeps rendering the *old* module it was handed at
+  load — so the two obvious sanity checks disagree without either looking wrong. It is worse than
+  a plain cache, because a partial HMR update can leave the DOM carrying new class strings from
+  one edit and old markup from the next, which reads as a real bug in your change and is not one.
+  Before believing a visual verdict, assert something in the DOM that **only** the new code can
+  produce, and if it is absent start your own server rather than debugging the render.
+- **The measurement that finds a rendering defect is the one that must confirm the fix.** A
+  1px ring that snapped in the final frame of a transition was found on a luminance scanline
+  through the marker's centre — `[33,24,234,…]` at 395ms against `[33,24,24,234,…]` at 399ms —
+  and the fix was re-run through the identical scanline rather than through a screenshot that
+  looked fine. Screenshots taken around such a change are near-useless on their own: the default
+  is to *finish* animations before capture, and even with that off, a paused-at-final-value frame
+  is pixel-identical to the resting one, which reads as "no defect" for a defect that is entirely
+  about the frame in between.

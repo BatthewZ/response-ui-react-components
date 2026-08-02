@@ -142,15 +142,40 @@ carries `aria-current` — the "flow complete" state. (`-1` inverts it: everythi
 ```
 <!-- /example -->
 
+## Motion
+
+Advancing the flow is a state change on three or four markers at once, so it is animated
+rather than repainted. Two things move, both guarded by `prefers-reduced-motion: reduce`:
+
+- **The colours cross-fade.** The marker's ink, fill and ring, the rail behind it and the
+  step title all transition over `--MOTION-DURATION-SHIFT`, so a step arriving at `done`
+  fills rather than flicks.
+- **The marker's content pulses once.** The numeral or glyph fades in from `opacity: 0` and
+  scales `0.5 → 1.02 → 1` over `--MOTION-DURATION-ENTER`, marking which markers just changed.
+
+The pulse runs whenever a step's status changes **and on first render**, which is what makes
+a stepper appearing mid-flow read as arriving rather than as already-stale. It is keyed on
+the status, so a re-render that leaves a step where it was does not re-animate it — and it
+carries a caller's `icon` with it, so an icon holding its own state would be reset. Pass
+`classNames={{ glyph: "animate-none" }}` to opt one step out.
+
+The ring's **width** is not transitioned, and that is deliberate. The current step's ring is
+one pixel heavier than the rest, and at 1x device pixel ratio a circular border cannot draw a
+fraction of a pixel: the browser holds the old width for the whole transition and flips it in
+the final frame, landing a visible jump after the colours have settled. Unlisted, the width
+lands at once, under the cover of the pulse. It also suits the cue, which exists to survive
+greyscale — arriving immediately beats crawling in.
+
 ## Slots
 
-`className` addresses the step's `<li>`. `classNames` addresses the five parts it renders
+`className` addresses the step's `<li>`. `classNames` addresses the six parts it renders
 inside. Class strings only, and the keys are typed, so a misspelled one is a compile error
 rather than a prop that does nothing.
 
 | Slot          | Element                        | What it addresses                              |
 | ------------- | ------------------------------ | ---------------------------------------------- |
 | `indicator`   | `.stepper-indicator`           | the marker — **both** its forms, see below      |
+| `glyph`       | `span.stepper-glyph`           | the box around the numeral or icon, and the one the pulse scales |
 | `itemBody`    | `span.stepper-content`         | the title + description block beside the marker |
 | `title`       | `span.stepper-title`           | the step's title line                           |
 | `description` | `span.stepper-description`     | the description line, when `description` is set |
@@ -169,10 +194,10 @@ root's `onStepClick`/`isStepClickable` make it navigable and as a `<span>` where
 — a decision that belongs to the root, not to the caller of the step. One key has to cover
 both, or the class disappears the moment a flow becomes navigable.
 
-**The hidden status word takes no slot.** `Stepper.css` hand-rolls its visually-hidden clip
-rather than using the `sr-only` utility, so a caller's utility arriving there would out-rank
-the clip and print "completed" beside the numeral. Its wording is the `statusLabels` prop,
-covered under [Accessibility](#accessibility).
+**The hidden status word takes no slot.** Its class *is* the mechanism that hides it —
+`sr-only` — so a caller's utility arriving there would out-rank the clip and print
+"completed" beside the numeral. Its wording is the `statusLabels` prop, covered under
+[Accessibility](#accessibility).
 
 Prefer a token where the change is a value: `--stepper-progress-color` re-inks the whole
 track at once, which reaches every step rather than one call site.
@@ -203,6 +228,8 @@ you pass.
 | Step description                   | `text-fg-secondary`                                | `--C-TEXT-SECONDARY`                          |
 | Title type                         | `text-body-2`                                      | `--BodyText-2` · `--BodyText-2-line-height`   |
 | Number and description type        | `text-body-3`                                      | `--BodyText-3` · `--BodyText-3-line-height`   |
+| Status cross-fade (marker · rail · title) | `duration-[var(--MOTION-DURATION-SHIFT)]` · `ease-[var(--MOTION-EASE-SHIFT)]` | `--MOTION-DURATION-SHIFT` · `--MOTION-EASE-SHIFT` |
+| Glyph pulse                        | `animate-[stepper-glyph-pulse_…]`                  | `--MOTION-DURATION-ENTER` · `--MOTION-EASE-ENTER` |
 | Marker → content gap               | `gap-r5`                                           | `--R-SIZE-5`                                  |
 | Title → description gap            | `gap-r6`                                           | `--R-SIZE-6`                                  |
 | Horizontal rail inset              | `.stepper-connector`                               | `--R-SIZE-4`                                  |
@@ -268,9 +295,9 @@ is a visible fill, because the neighbouring done steps are then solid discs rath
 sibling rings, and the current marker ends up the highest-contrast object in the component
 — outweighing the steps already completed. Where `--C-PRIMARY` sits near the surface the
 done chip renders as a ring instead, the three markers read as one family, and the same
-`4px` looked deliberate. `1.5` is the value that holds in both cases. The clickable
-marker's hover transition is likewise a hard-coded `duration-150 ease-[ease]` rather than a
-motion token.
+`4px` looked deliberate. `1.5` is the value that holds in both cases. That ring width is the
+one property the marker does *not* transition — see [Motion](#motion) for the measurement
+behind that.
 
 Upcoming numbers and titles are deliberately `--C-TEXT-MUTED` (hint-level contrast), so
 treat what is still ahead as supplementary rather than load-bearing text.
@@ -361,8 +388,10 @@ markers are ordinary tab stops in DOM order.
 - **Focus is visible and non-shifting.** The button marker takes a 2px `--C-BORDER-FOCUS`
   outline at 2px offset on `:focus-visible` only. The non-clickable `<span>` marker takes no
   `tabindex`, which is right for a marker that does nothing.
-- **Reduced motion is handled.** The single transition — border and background on the
-  clickable marker — is dropped under `prefers-reduced-motion: reduce`.
+- **Reduced motion is handled.** Under `prefers-reduced-motion: reduce` every transition is
+  dropped and the glyph pulse is nulled, leaving the marker at full opacity and its own
+  scale — measured, not assumed: an entrance animation that is disabled rather than
+  completed is how a component ships an element stuck at `opacity: 0`.
 
 ## Related
 

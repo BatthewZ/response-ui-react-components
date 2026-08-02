@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------ */
-/*  Stepper — converted to utilities; three things could not move      */
+/*  Stepper — converted to utilities; four things could not move       */
 /* ------------------------------------------------------------------ */
 
 /* Everything this component draws is a Tailwind utility in `Stepper.tsx` except
@@ -21,7 +21,13 @@
       base-vs-modifier pair in one layer, and converting only the base would put
       it in `@layer utilities` above the modifier that has to beat it.
 
-   3. `.stepper-indicator svg`. The svg is `icon ?? <Check />` — a consumer's
+   3. `@keyframes stepper-glyph-pulse`. A utility sets properties on an element
+      and there is no variant for a block (AGENTS.md §"What stays", row 1). The
+      `animation` shorthand that drives it IS a utility — `animate-[…]` on
+      `.stepper-glyph` in `Stepper.tsx`, alongside the `motion-reduce:animate-none`
+      that nulls it — so only the block is left here.
+
+   4. `.stepper-indicator svg`. The svg is `icon ?? <Check />` — a consumer's
       element in the case that matters. Today a caller's `icon={<X className=
       "size-6" />}` wins, because their utility out-ranks this layer. As
       `[&_svg]:size-4` it would emit at 0,1,1 in `@layer utilities` and start
@@ -64,11 +70,39 @@
 }
 
 /* The dot's glyph. The dot owns its glyph size so consumers don't have to
-   hand-tune an icon `size` prop to match the marker — and see note 3 above for
-   why this is a rule rather than an `[&_svg]:` variant. */
+   hand-tune an icon `size` prop to match the marker — and see note 4 above for
+   why this is a rule rather than an `[&_svg]:` variant. Still a descendant
+   selector, so it reaches the icon through `.stepper-glyph`. */
 .stepper-indicator svg {
   width: 1rem;
   height: 1rem;
+}
+
+/* The marker's content arriving at a new status: a fade with a single overshoot,
+   so the check landing on a completed step reads as an event rather than a
+   repaint. The overshoot is in the keyframes rather than in an easing curve
+   because --MOTION-EASE-ENTER does not overshoot and --MOTION-EASE-BOUNCE
+   overshoots on the way OUT of the marker's own diameter — this stops at 1.02
+   and settles, which is the same beat at a tenth of the amplitude.
+   Animates `scale`, not `transform`, so a caller's `classNames.glyph` transform
+   composes with it instead of being overwritten. Reduced motion is handled on
+   the utility side (`motion-reduce:animate-none`), not by nulling it here: this
+   block declares nothing on an element, so there is nothing here to null. */
+@keyframes stepper-glyph-pulse {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+
+  70% {
+    opacity: 1;
+    scale: 1.02;
+  }
+
+  to {
+    opacity: 1;
+    scale: 1;
+  }
 }
 
 /* ------------------------------------------------------------------ */

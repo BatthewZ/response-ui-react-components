@@ -174,3 +174,32 @@ unreachable from CSS at every layer, so a utility for it is silently dead whethe
 lands on such a property. Split the element's inline surface deliberately: only genuinely
 measured, per-instance geometry goes inline, and everything a caller might reasonably vary stays
 in a class where their utility can still out-rank it.
+
+## A cue that is motion: what re-fires it, and which properties can carry it
+
+Two things decide whether a state change animates correctly, and neither is about the easing.
+
+**A CSS animation restarts when it is applied to a *new* element, never when a second selector
+applies the same `animation-name` to the element already carrying it.** So keying the animation
+on a state attribute — `[data-status="done"] .glyph { animation: … }` — fires once and then goes
+quiet for the rest of the flow, because the name is already in the computed value by the time the
+next state arrives. Giving each state its own copy of the keyframes works and is a duplication
+you then own forever. Re-keying the element on the state in React is one prop, restarts on every
+change including a reversal, and puts the restart where the state lives. It has one cost worth
+stating in the docs: it remounts whatever the caller passed as content, so content holding its own
+state is reset. Key the smallest node that carries the animation — keying an interactive ancestor
+rebuilds it under the user's focus.
+
+**Not every property in a state recipe can be transitioned, and the one that cannot is the one
+that reads as a defect.** A cue that is a *single device pixel* — a ring one pixel heavier, a
+divider one pixel thicker — cannot be drawn fractionally on a rounded element at 1x DPR. The
+browser holds the old value for the whole duration and flips it in the final frame, so listing it
+in `transition-property` does not smooth it; it *delays* it, and lands the jump after every
+colour has settled and the eye is back at rest. Leave such a property out of the list. It then
+changes at t=0, under the cover of the motion that is starting, and the cue arrives when it is
+supposed to — which is also what a width cue is *for*, since it exists to survive greyscale.
+The general form: transition what has continuous intermediate values, and let the quantised
+part of a recipe land at once.
+
+Both are invisible to every gate in this package, and to a screenshot of the start or the end
+state. Only a frame *between* them shows either one.

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Stepper } from "./Stepper";
@@ -389,9 +390,12 @@ describe("Stepper · classNames slots", () => {
    * appends NOTHING — no `undefined`, no empty token — and each element keeps its
    * own marker.
    *
-   * `.stepper-connector` is the one still on its marker alone, because its
+   * `.stepper-connector` is the one still enumerable in full, because its
    * geometry could not move: it is `calc()` over `--_stepper-gap` and friends,
-   * whose only read sites are inside that `calc()`.
+   * whose only read sites are inside that `calc()`. The four utilities it does
+   * carry are the fill transition and nothing else — spell them out, so a later
+   * conversion that moves a position declaration onto the class list has to come
+   * through here rather than landing in `@layer utilities` unnoticed.
    */
   it("leaves each internal on its base classes alone when no slot is passed", () => {
     const { container } = render(
@@ -401,6 +405,7 @@ describe("Stepper · classNames slots", () => {
     );
     for (const marker of [
       "stepper-indicator",
+      "stepper-glyph",
       "stepper-content",
       "stepper-title",
       "stepper-description",
@@ -410,9 +415,15 @@ describe("Stepper · classNames slots", () => {
       expect(classes.split(" ")).toContain(marker);
       expect(classes).not.toMatch(/undefined|null|\s{2,}|^\s|\s$/);
     }
-    expect(container.querySelector(".stepper-connector")?.getAttribute("class")).toBe(
+    expect(
+      container.querySelector(".stepper-connector")?.getAttribute("class")?.split(" "),
+    ).toEqual([
       "stepper-connector",
-    );
+      "transition-[background-color]",
+      "duration-[var(--MOTION-DURATION-SHIFT)]",
+      "ease-[var(--MOTION-EASE-SHIFT)]",
+      "motion-reduce:transition-none",
+    ]);
   });
 
   it("does not put a slot class on the step root", () => {
@@ -461,6 +472,22 @@ describe("Stepper · classNames slots", () => {
     expect(classes).not.toContain("not-sr-only");
   });
 
+  it("lands classNames.glyph on the box the pulse scales", () => {
+    const { container } = render(
+      <Stepper activeStep={0}>
+        <Stepper.Step title="One" classNames={{ glyph: "animate-none" }} />
+      </Stepper>,
+    );
+    const tokens = (container.querySelector(".stepper-glyph")?.getAttribute("class") ?? "").split(
+      " ",
+    );
+    expect(tokens).toContain("stepper-glyph");
+    // Last in the `cn()`, so tailwind-merge drops the base `animate-[…]` rather
+    // than emitting both and leaving the winner to source order: a caller
+    // cancelling the pulse has to actually cancel it.
+    expect(tokens.filter((t) => t.startsWith("animate-"))).toEqual(["animate-none"]);
+  });
+
   it("does not leak classNames onto the DOM", () => {
     const { container } = render(
       <Stepper activeStep={0}>
@@ -468,5 +495,98 @@ describe("Stepper · classNames slots", () => {
       </Stepper>,
     );
     expect(container.querySelector(".stepper-step")?.hasAttribute("classnames")).toBe(false);
+  });
+});
+
+/**
+ * The status change is the thing being animated, so these assert the two
+ * mechanisms that make it visible — a transition every marker carries, and a
+ * glyph React replaces so the entrance animation can run a second time. Class
+ * strings are the only observable here (jsdom computes no animations), so each
+ * test pairs the string with the DOM behaviour it depends on.
+ */
+describe("Stepper · status motion", () => {
+  it("transitions the marker's status recipe in both its forms, not just the clickable one", () => {
+    const { container } = render(
+      <Stepper activeStep={1} onStepClick={vi.fn()} isStepClickable={(i) => i === 0}>
+        <Stepper.Step title="One" />
+        <Stepper.Step title="Two" />
+      </Stepper>,
+    );
+    const markers = container.querySelectorAll(".stepper-indicator");
+    expect(markers[0].tagName).toBe("BUTTON");
+    expect(markers[1].tagName).toBe("SPAN");
+    for (const marker of markers) {
+      const tokens = (marker.getAttribute("class") ?? "").split(" ");
+      // Every property the three status recipes move, minus `border-width` — see
+      // `Stepper.tsx` for the 1px snap that kept it off the list.
+      expect(tokens).toContain("transition-[color,background-color,border-color]");
+      expect(tokens).toContain("duration-[var(--MOTION-DURATION-SHIFT)]");
+      expect(tokens).toContain("motion-reduce:transition-none");
+    }
+  });
+
+  it("wraps the numeral and the check in a glyph box carrying the pulse", () => {
+    const { container } = renderStepper(1);
+    const done = container.querySelector('.stepper-step[data-status="done"] .stepper-glyph');
+    const active = container.querySelector('.stepper-step[data-status="active"] .stepper-glyph');
+    // A bare text node has no box to scale, so the numeral needs the wrapper as
+    // much as the icon does.
+    expect(active?.textContent).toBe("2");
+    expect(done?.querySelector("svg")).toBeInTheDocument();
+    for (const glyph of [done, active]) {
+      const tokens = (glyph?.getAttribute("class") ?? "").split(" ");
+      expect(tokens).toContain(
+        "animate-[stepper-glyph-pulse_var(--MOTION-DURATION-ENTER)_var(--MOTION-EASE-ENTER)]",
+      );
+      expect(tokens).toContain("motion-reduce:animate-none");
+    }
+  });
+
+  it("replaces the glyph node when a step changes status, and only then", () => {
+    const tree = (activeStep: number) => (
+      <Stepper activeStep={activeStep}>
+        <Stepper.Step title="One" />
+        <Stepper.Step title="Two" />
+        <Stepper.Step title="Three" />
+      </Stepper>
+    );
+    const { container, rerender } = render(tree(0));
+    const glyphs = () => [...container.querySelectorAll(".stepper-glyph")];
+    const [firstBefore, , thirdBefore] = glyphs();
+
+    rerender(tree(1));
+
+    const [firstAfter, , thirdAfter] = glyphs();
+    // Step one went active -> done. A CSS animation restarts on a NEW element,
+    // never by having the same `animation-name` re-applied to the one already
+    // carrying it, so this identity change IS the second pulse.
+    expect(firstAfter).not.toBe(firstBefore);
+    expect(firstBefore?.isConnected).toBe(false);
+    // Step three did not move, so nothing about it may re-animate.
+    expect(thirdAfter).toBe(thirdBefore);
+  });
+
+  it("keeps focus on a clickable marker across the status change it caused", async () => {
+    const user = userEvent.setup();
+    function Flow() {
+      const [step, setStep] = useState(0);
+      return (
+        <Stepper activeStep={step} onStepClick={setStep}>
+          <Stepper.Step title="One" />
+          <Stepper.Step title="Two" />
+        </Stepper>
+      );
+    }
+    const { container } = render(<Flow />);
+    const [first] = screen.getAllByRole("button");
+
+    await user.click(screen.getByRole("button", { name: /Two/ }));
+
+    // The key that re-fires the pulse is on the glyph, not on the marker: keying
+    // the <button> would rebuild the element under the user's own focus.
+    expect(container.querySelectorAll(".stepper-step")[0]).toHaveAttribute("data-status", "done");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /Two/ }));
+    expect(first.isConnected).toBe(true);
   });
 });

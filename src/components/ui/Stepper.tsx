@@ -41,6 +41,18 @@ const defaultStatusLabels: Partial<Record<StepStatus, string>> = {
  * because `verify:component-docs` and `verify:focus-affordance` resolve hoisted
  * constants textually.
  *
+ * `border-width` is NOT among the transitioned properties, and its absence is
+ * deliberate: the active ring is one pixel heavier than the others, and at 1x
+ * device pixel ratio a circular border cannot render a fraction of that. Chrome
+ * holds the ring at 2px for the whole 400ms and flips it to 3px in the FINAL
+ * frame — measured on a centre scanline of the marker, `[33,24,234,…]` at 395ms
+ * against `[33,24,24,234,…]` at 399ms. That lands a hard 1px jump after the
+ * colours have already settled, which reads as the ring clicking into place.
+ * Unlisted, the width changes at t=0 instead, under the cover of the pulse and
+ * the cross-fade both starting. It also serves the cue better: the heavier ring
+ * is the non-colour half of "you are here" (`Stepper.css`), so arriving at once
+ * beats crawling in over 400ms.
+ *
  * The `[data-status]` and `[data-orientation]` rules are resolved in JS rather
  * than as `in-[…]:` variants: those match ANY ancestor carrying the attribute,
  * so a Stepper nested inside a step would take the outer step's status. Both
@@ -73,7 +85,7 @@ const stepOrientationClass: Record<StepperOrientation, string> = {
  * ring, not fill.
  */
 const stepIndicatorClasses =
-  "relative z-1 flex-none box-border inline-flex items-center justify-center size-[var(--_stepper-indicator-size)] rounded-full border-[length:var(--_stepper-line-width)] border-border-default bg-surface-2 text-fg-muted text-body-3 font-bold";
+  "relative z-1 flex-none box-border inline-flex items-center justify-center size-[var(--_stepper-indicator-size)] rounded-full border-[length:var(--_stepper-line-width)] border-border-default bg-surface-2 text-fg-muted text-body-3 font-bold transition-[color,background-color,border-color] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none";
 
 /**
  * The clickable marker. `padding: 0` and `font-family: inherit` were in the
@@ -82,11 +94,33 @@ const stepIndicatorClasses =
  * `color: inherit`, `background-color: transparent`, `background-image: none`
  * and `border: 0 solid` — checked against `node_modules/tailwindcss/preflight.css`
  * — which is the same reliance `Button.tsx` already ships with no reset at all.
- * What Preflight does NOT give is the pointer cursor and the transition, so
- * those are here.
+ * What Preflight does NOT give is the pointer cursor, so that is here. The
+ * transition is NOT: hover moves `border-color`, which the three status recipes
+ * move too, and one property can only carry one timing. Stating it once on the
+ * base is what lets a NON-clickable marker — the default, and every marker in a
+ * `Stepper` without `onStepClick` — cross-fade when its status changes at all.
  */
 const indicatorButtonClasses =
-  "cursor-pointer transition-[border-color,background-color] duration-150 ease-[ease] motion-reduce:transition-none hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus";
+  "cursor-pointer hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus";
+
+/**
+ * The marker's content — the numeral or the glyph — wrapped so both can be
+ * scaled. The numeral is a bare text node otherwise, and a text node has no box
+ * to animate; scaling the marker itself is the wrong subject, since it masks the
+ * rail behind it (`relative z-1`) and would uncover the line at 0.5.
+ *
+ * `scale` rather than `transform: scale()` so a caller's `classNames.glyph`
+ * transform (a rotate, say) composes instead of being overwritten. It costs no
+ * layout either way.
+ *
+ * The animation re-runs because `Step` re-keys this element on `status`, not
+ * because the rule re-matches: an `animation-name` that is already applied does
+ * not restart when a second selector applies the same name, so keying on
+ * `[data-status]` in CSS would fire once and then go quiet for the rest of the
+ * flow. See `Stepper.css` for the keyframes.
+ */
+const stepGlyphClasses =
+  "inline-flex items-center justify-center animate-[stepper-glyph-pulse_var(--MOTION-DURATION-ENTER)_var(--MOTION-EASE-ENTER)] motion-reduce:animate-none";
 
 /**
  * Status, on the marker. Each entry is passed AFTER `stepIndicatorClasses`, so
@@ -117,9 +151,20 @@ const indicatorStatusClass: Record<StepStatus, string> = {
   upcoming: "border-border-default bg-surface-2 text-fg-muted",
 };
 
+/**
+ * The rail. Its two `background-color` declarations stay in `Stepper.css` — base
+ * and `[data-status="done"]` fill are one base-vs-modifier pair in one layer —
+ * but the transition between them is a single unqualified declaration on an
+ * element this component renders, so it converts (AGENTS.md "The test").
+ */
+const connectorClasses =
+  "transition-[background-color] duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none";
+
 const stepContentClasses = "flex flex-col gap-r6";
 
-const stepTitleClasses = "text-body-2 font-bold text-fg-primary";
+/** Timed with the marker: the label un-mutes as the same step advances. */
+const stepTitleClasses =
+  "text-body-2 font-bold text-fg-primary transition-colors duration-[var(--MOTION-DURATION-SHIFT)] ease-[var(--MOTION-EASE-SHIFT)] motion-reduce:transition-none";
 
 /** Base-vs-modifier again, and again both halves convert. */
 const titleUpcomingClasses = "text-fg-muted";
@@ -228,9 +273,13 @@ type StepProps = {
    * step is clickable, a `<span>` where it is not. Which one renders is the
    * root's `onStepClick`/`isStepClickable` decision, not the caller's, so one key
    * has to cover both or the class disappears when a flow becomes navigable.
+   *
+   * `glyph` is the box around the numeral or icon, and the one the status-change
+   * pulse scales — so `{ glyph: "animate-none" }` drops that animation for a
+   * step without touching the colour transitions or a global motion token.
    */
   classNames?: SlotClassNames<
-    "indicator" | "itemBody" | "title" | "description" | "connector"
+    "indicator" | "glyph" | "itemBody" | "title" | "description" | "connector"
   >;
 } & Omit<ComponentPropsWithRef<"li">, "title">;
 
@@ -248,6 +297,22 @@ const Step = forwardRef<HTMLLIElement, StepProps>(function Step(
 
   const indicatorContent: ReactNode =
     icon ?? (status === "done" ? <Check aria-hidden="true" /> : index + 1);
+
+  // Keyed on `status` so React replaces the node on every status change and the
+  // entrance animation runs again — a CSS animation restarts when it is applied
+  // to a NEW element, not when a second selector re-applies the same
+  // `animation-name` to the one already carrying it. It re-keys the caller's
+  // `icon` node with it, which is why the key is here rather than on the marker:
+  // remounting a glyph is cheap, remounting the `<button>` would drop focus
+  // mid-flow.
+  const glyph = (
+    <span
+      key={status}
+      className={cn("stepper-glyph", stepGlyphClasses, classNames?.glyph)}
+    >
+      {indicatorContent}
+    </span>
+  );
 
   const statusText = statusLabels[status];
 
@@ -291,7 +356,7 @@ const Step = forwardRef<HTMLLIElement, StepProps>(function Step(
           aria-label={indicatorLabel}
           onClick={() => onStepClick(index)}
         >
-          {indicatorContent}
+          {glyph}
         </button>
       ) : (
         <span
@@ -302,7 +367,7 @@ const Step = forwardRef<HTMLLIElement, StepProps>(function Step(
             classNames?.indicator
           )}
         >
-          {indicatorContent}
+          {glyph}
           {hiddenStatus && (
             <span
               // slot:(a) the class *is* the visually-hidden mechanism. The
@@ -339,7 +404,10 @@ const Step = forwardRef<HTMLLIElement, StepProps>(function Step(
           </span>
         )}
       </span>
-      <span className={cn("stepper-connector", classNames?.connector)} aria-hidden="true" />
+      <span
+        className={cn("stepper-connector", connectorClasses, classNames?.connector)}
+        aria-hidden="true"
+      />
     </li>
   );
 });

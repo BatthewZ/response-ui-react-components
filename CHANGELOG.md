@@ -4,6 +4,46 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.14.0] — 2026-08-02
+
+### Added
+
+- **[Stepper](docs/components/stepper.md) animates its status change**, so advancing a flow
+  reads as movement along the track rather than as a repaint — and
+  [Wizard](docs/components/wizard.md) gets it for free, since it draws its header through
+  `Stepper`. Two things move. The marker's ink, fill and ring, the rail behind it and the step
+  title all **cross-fade** over `--MOTION-DURATION-SHIFT`. The marker's content **pulses once**:
+  a fade from `opacity: 0` with a `0.5 → 1.02 → 1` scale over `--MOTION-DURATION-ENTER`, which
+  marks exactly the markers that just changed. Both are dropped under
+  `prefers-reduced-motion: reduce`, leaving the glyph at full opacity rather than stuck at zero.
+
+  The pulse runs on a status change **and on first render**, so a stepper appearing mid-flow
+  reads as arriving. It re-fires because the glyph is keyed on its status: a CSS animation
+  restarts when it is applied to a *new* element, never when a second selector re-applies the
+  same `animation-name` to the one already carrying it, so a `[data-status]` rule would have
+  fired once and gone quiet for the rest of the flow. The key is on the glyph and not on the
+  marker, so a clickable marker is never rebuilt under the user's own focus — with the cost
+  that a caller's `icon` is remounted with it.
+
+  The marker's ring **width** is deliberately not transitioned. The current step's ring is one
+  pixel heavier than the rest, and at 1x device pixel ratio a circular border cannot draw a
+  fraction of a pixel: measured on a centre scanline of the marker, Chrome held the ring at 2px
+  for 395ms of a 400ms transition and flipped it to 3px in the final frame, landing a visible
+  jump after every colour had already settled. Off the list, the width lands at t=0 under the
+  cover of the pulse — which is also what that cue is for, since it is the half of "you are
+  here" that survives greyscale.
+
+- **`Stepper.Step` gains a `glyph` slot** — `span.stepper-glyph`, the box around the numeral or
+  icon and the one the pulse scales. `classNames={{ glyph: "animate-none" }}` opts a step out of
+  the pulse without reaching for a global motion token.
+
+### Changed
+
+- The clickable marker's hover feedback was a hard-coded `duration-150 ease-[ease]`, called out
+  as a deviation in its own docs. It is now the same `--MOTION-DURATION-SHIFT` /
+  `--MOTION-EASE-SHIFT` pair as every other colour transition in the package — one property
+  cannot carry two timings, and hover and status both move `border-color`.
+
 ## [0.13.0] — 2026-08-02
 
 ### Added
