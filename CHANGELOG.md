@@ -28,6 +28,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   (CommonMark's own limit), so neither deep `>` runs nor long bracket runs can exhaust the stack
   or the main thread.
 
+  **Prose is on the body scale, and the rhythm is one rule.** The foundation styles `h1`–`h6`
+  but zeroes `p` and leaves its size alone, so a document measured 16px/24px — Preflight's
+  `line-height: 1.5`, not the design language's. The root now carries `text-body-1`, which puts
+  `--BodyText-1` and its paired line-height under paragraphs, list items and quotes at once;
+  headings are unaffected, and so is `CodeBlock`, which pins its own leading. A
+  [Table](docs/components/table.md) leaves cell line-height to inherit, so rows measured 9px
+  taller inside a document — intended, since a table in a document keeps the document's rhythm,
+  and `classNames.table` is the way back. Spacing is now a single inherited value,
+  `--markdown-flow`, meaning "the space above me": one rule spends it for the whole document and
+  every other rule only names a value. Not a `gap` — `gap` is uniform and flex margins add
+  rather than collapse, so the heading asymmetry would return as `calc()` against no token.
+
 - `Table` now also exports `TableHead`, `TableBody`, `TableRow`, `TableHeaderCell` and
   `TableCell` as named exports. **Not** added to the barrel — `Table` stays the one public
   spelling. They exist because a directive-neutral module cannot dot into a `"use client"` one

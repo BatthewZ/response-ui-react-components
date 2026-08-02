@@ -15,11 +15,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } fro
 /* ------------------------------------------------------------------ */
 
 /**
- * Bare `h1`–`h6` and `p` already carry the responsive type scale: the element
- * rules in `@batthewz/response-ui-css` set font-size, the paired line-height,
- * the weight and `--HEADING-FONT` on the tags themselves. So nothing here
- * restates the scale — measured, a bare `<h1>` renders 64px/72px/700 at the
- * wide breakpoint with no class at all.
+ * Bare `h1`–`h6` already carry the responsive type scale: the element rules in
+ * `@batthewz/response-ui-css` set font-size, the paired line-height, the weight
+ * and `--HEADING-FONT` on the tags themselves. So nothing here restates the
+ * heading scale — measured, a bare `<h1>` renders 64px/72px/700 at the wide
+ * breakpoint with no class at all.
+ *
+ * `p` is **not** in that set: the foundation zeroes its margin and leaves its
+ * size alone. Measured in the gallery, a paragraph here computed to 16px/24px —
+ * Preflight's `line-height: 1.5`, the browser's rhythm rather than the design
+ * language's. `text-body-1` is the container's voice and every block inherits
+ * it, which is what puts `--BodyText-1-line-height` (32px at the wide
+ * breakpoint) under paragraphs, list items and quotes in one declaration.
+ *
+ * Headings are immune — their own element rules beat an inherited value — and so
+ * is `CodeBlock`, which pins its own leading. A `Table` is not: it sets cell
+ * font-size and leaves line-height to inherit, so rows measured 9px taller
+ * inside a document. That is the intent, not a side effect — a table in a
+ * document keeps the document's rhythm — and `classNames.table` is the way out
+ * for a caller who wants the app's row height instead.
  *
  * What the tags do NOT get is everything Preflight flattened and the foundation
  * deliberately never restored: list markers, blockquote indent, a link colour,
@@ -27,7 +41,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } fro
  * component library and wrong for a document). That gap is `Markdown.css`, and
  * it is the whole reason this component carries a stylesheet.
  */
-const rootClasses = "text-fg-primary";
+const rootClasses = "text-body-1 text-fg-primary";
 
 const codeClasses =
   "font-[family-name:var(--DEFAULT-MONO-FONT)] text-[0.9em] rounded-sm px-r6 py-[0.1em] bg-surface-2 text-fg-primary";

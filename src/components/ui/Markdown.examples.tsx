@@ -27,9 +27,14 @@ export function Tables() {
 }
 
 /** Lists nest by indentation, and a one-paragraph item renders without a `<p>` so the
- *  bullets keep list rhythm rather than paragraph rhythm. */
+ *  bullets keep list rhythm rather than paragraph rhythm. A blank line between items
+ *  makes the list loose, and an item may then hold blocks of its own. */
 export function Lists() {
-  return <Markdown>{"- One\n- Two\n  - Nested\n- Three\n\n1. First\n2. Second"}</Markdown>;
+  return (
+    <Markdown>
+      {"- One\n- Two\n  - Nested\n- Three\n\n1. First\n\n   Its second paragraph.\n\n2. Second"}
+    </Markdown>
+  );
 }
 
 /** `codeBlockProps` reaches every fenced block at once. `copyable: false` is the

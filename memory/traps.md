@@ -895,3 +895,37 @@ collision, left alone because briefs in flight cite the later one by letter.)
   boundary, and hit the adapter's split navigation path, which a shell whose links are all inside
   one component never exercises. One assembly is not a substitute for another any more than a
   specimen is a substitute for an assembly.
+
+## Y · From the pass that asked why a document's rhythm needed so many margins
+
+- **The foundation sizes headings and not body copy, so anything that renders prose must state
+  its own body voice.** Bare `h1`–`h6` arrive with the responsive scale and their paired
+  line-heights; `p` arrives with its margin zeroed and its size untouched, which means prose
+  falls back to Preflight's `line-height: 1.5` — the browser's rhythm, not the design language's.
+  It reads as *nearly* right, which is why it survives review: the letters are the correct size,
+  only the leading is foreign. Any component that renders author text rather than labels wants a
+  body token on its container, and the container is the cheap place to say it because every block
+  inside inherits it at once. Check what that inheritance reaches before spending it — a
+  component that deliberately leaves `line-height` to inherit (a table's cells do) will change
+  height, and whether that is a bug or the point is a decision, not an accident.
+- **An inherited spacing variable resolves on the element that carries the margin, not on the
+  container that declared it.** Writing one as "the space between my children" works until a
+  child is itself a container — a list item is both a sibling in its list and a parent of its own
+  blocks — and then the value the container set for its children is the value that element uses
+  for its own margin, and the two meanings silently collide. Model it as **"the space above me"**,
+  set on the element that wants it: containers then retune their children through a `> *` rule
+  and nothing reads its own declaration by mistake.
+- **`gap` cannot express an asymmetric rhythm, and the asymmetry is usually the part worth
+  keeping.** Prose rhythm is not uniform — a heading binds to the text beneath it by taking more
+  space above than below — and `gap` is uniform by construction while flex margins *add* rather
+  than collapse, so restoring the asymmetry means `calc()` between two responsive tokens whose
+  difference is itself no token. The trade is also not only spacing: it moves `ul`/`ol` into flex
+  layout, where list semantics stop being a question with one answer. Consolidating a pile of
+  flow margins is the right instinct; the way to do it is one rule spending one inherited value,
+  not a layout mode change.
+- **A spacing rule that no specimen renders is invisible to every gate.** Blocks inside a
+  multi-block list item had no flow rule at all, and it survived because every example rendered
+  single-paragraph items: typecheck, lint and jsdom tests are all blind to layout, and the
+  gallery can only show what an example asks for. When a stylesheet's rules are enumerated,
+  enumerate the *content shapes* they are meant to cover as well, and add the specimen for any
+  shape nothing renders — the specimen is the only thing that will notice next time.

@@ -111,7 +111,9 @@ fence, so they are not yours to set:
 
 <!-- example:Lists -->
 ```tsx
-<Markdown>{"- One\n- Two\n  - Nested\n- Three\n\n1. First\n2. Second"}</Markdown>
+<Markdown>
+  {"- One\n- Two\n  - Nested\n- Three\n\n1. First\n\n   Its second paragraph.\n\n2. Second"}
+</Markdown>
 ```
 <!-- /example -->
 
@@ -200,13 +202,24 @@ tint silently restyle every block on the page.
 
 `Markdown.css` holds only what Preflight strips and the foundation deliberately never restores
 — list markers, a blockquote indent, a rule colour, and the rhythm between blocks. It restates
-no type scale: `@batthewz/response-ui-css` already gives bare `h1`–`h6` and `p` the responsive
+no heading scale: `@batthewz/response-ui-css` already gives bare `h1`–`h6` the responsive
 sizes, their paired line-heights, the weight and `--HEADING-FONT`.
+
+Body copy is the one piece of type the root does set, as a utility. `p` carries no size in the
+foundation — it is zeroed and left alone — so prose would otherwise inherit Preflight's
+`line-height: 1.5` rather than the design language's. `text-body-1` on the container gives
+paragraphs, list items and quotes `--BodyText-1` and its paired line-height in one declaration.
+Headings are unaffected, because an element's own rule beats an inherited value, and so is
+[CodeBlock](code-block.md), which pins its own leading. A [Table](table.md) **is** affected: it
+leaves cell line-height to inherit, so rows in a document are taller than the same table on a
+dashboard. That is intended — a table inside a document keeps the document's rhythm — and
+`classNames.table` is the way back to the app's row height.
 
 Utilities, read from `Markdown.tsx`:
 
 | Where                       | Utility                                       | Override             |
 | --------------------------- | --------------------------------------------- | -------------------- |
+| Body type                   | `text-body-1`                                 | `--BodyText-1`, `--BodyText-1-line-height` |
 | Body ink                    | `text-fg-primary`                             | `--C-TEXT-PRIMARY`   |
 | Inline code background      | `bg-surface-2`                                | `--C-SURFACE-2`      |
 | Inline code ink             | `text-fg-primary`                             | `--C-TEXT-PRIMARY`   |
@@ -226,16 +239,24 @@ Variables `Markdown.css` reads directly, for the elements no utility can reach:
 | Space above a heading       | `--R-SIZE-3`         |
 | List indent                 | `--R-SIZE-3`         |
 | Space between list items, and above a nested list | `--R-SIZE-6` |
+| Space inside a quote or a multi-block list item | `--R-SIZE-5` |
 | List marker ink             | `--C-TEXT-MUTED`     |
 | Blockquote rule             | `--C-BORDER-STRONG`  |
 | Blockquote indent           | `--R-SIZE-4`         |
 | Blockquote ink              | `--C-TEXT-SECONDARY` |
-| Space inside a blockquote   | `--R-SIZE-5`         |
 | Thematic break              | `--C-BORDER-DEFAULT` |
 
-`--markdown-flow` is a local alias declared on `.markdown`. It sets the gap between top-level
-blocks and nothing else — the tighter space under a heading and between list items is fixed at
-its own token, so retuning this changes paragraph rhythm without disturbing those.
+`--markdown-flow` is a local alias declared on `.markdown`, and it reads as **the space above
+me**: it is set on the element that wants it and inherits down, so one rule spends it for the
+whole document and a block that agrees with the rhythm says nothing at all. Setting it at the
+call site — `style={{ "--markdown-flow": "var(--R-SIZE-3)" }}` — retunes the space between
+top-level blocks; the tighter steps under a heading, between list items and inside a quote name
+their own token, so they hold.
+
+It is not a `gap`, deliberately. `gap` is uniform by construction and flex margins add rather
+than collapse, so the heading asymmetry — which is what binds a heading to the prose beneath it
+— would come back as `calc()` against no token at each breakpoint, and `ul`/`ol` would move
+into flex layout, where list semantics stop being a settled question.
 
 ## Gotchas
 
