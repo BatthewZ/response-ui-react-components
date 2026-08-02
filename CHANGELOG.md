@@ -40,6 +40,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   every other rule only names a value. Not a `gap` — `gap` is uniform and flex margins add
   rather than collapse, so the heading asymmetry would return as `calc()` against no token.
 
+  Ordered markers ask for **tabular figures** so their digit columns line up. Whether they get
+  them is the theme's font's answer, not this component's: a face carrying a `tnum` table evens
+  the columns exactly (`Inter` and `Space Grotesk` go from 0.9em of raggedness to zero), and a
+  face without one — the default included — renders identically with the declaration and
+  without. Markers are right-aligned regardless, so the periods align either way. The library
+  does not swap the face to force the issue: that would put a second typeface in the middle of
+  prose to fix a problem the consumer's own font choice decides.
+
 - `Table` now also exports `TableHead`, `TableBody`, `TableRow`, `TableHeaderCell` and
   `TableCell` as named exports. **Not** added to the barrel — `Table` stays the one public
   spelling. They exist because a directive-neutral module cannot dot into a `"use client"` one

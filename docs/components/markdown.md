@@ -246,6 +246,13 @@ Variables `Markdown.css` reads directly, for the elements no utility can reach:
 | Blockquote ink              | `--C-TEXT-SECONDARY` |
 | Thematic break              | `--C-BORDER-DEFAULT` |
 
+Ordered markers ask for **tabular figures**, which is a request the theme's font either answers
+or ignores. Markers are right-aligned, so the periods line up on their own and only the digits'
+left edges go ragged — visible from ten onwards, and between a `1` and a `2` before that. A face
+carrying a `tnum` table evens the columns exactly; one without it renders identically with the
+declaration and without, so a theme whose numerals look ragged is telling you about its font,
+not about this component.
+
 `--markdown-flow` is a local alias declared on `.markdown`, and it reads as **the space above
 me**: it is set on the element that wants it and inherits down, so one rule spends it for the
 whole document and a block that agrees with the rhythm says nothing at all. Setting it at the

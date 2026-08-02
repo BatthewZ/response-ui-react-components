@@ -36,7 +36,9 @@
    The owl selector spaces siblings without giving the first or last child an
    outer margin, so a `.markdown` sits flush inside whatever box the caller put
    it in — a Card's padding stays the Card's decision. */
-:is(.markdown, .markdown-blockquote, .markdown-list, .markdown-list-item) > * + * {
+:is(.markdown, .markdown-blockquote, .markdown-list, .markdown-list-item)
+  > *
+  + * {
   margin-block-start: var(--markdown-flow);
 }
 
@@ -66,6 +68,15 @@
 /*  Lists                                                              */
 /* ------------------------------------------------------------------ */
 
+/* One indent for both kinds of list, so a document whose bullets and numbers
+   both appear keeps them in a single column — that shared edge is the alignment
+   worth protecting, and it is why the gutter is not sized to the widest marker
+   instead. The cost is that a number from ten up hangs further left than a
+   bullet does, into the padding of whatever box the document sits in: an
+   `outside` marker hangs outside by definition, so this is a question of degree
+   until an ancestor clips its overflow. Sizing the gutter to fit `99.` was tried
+   and reverted — it buys a contained marker and spends the shared column, which
+   is the wrong way round. */
 .markdown-list {
   padding-inline-start: var(--R-SIZE-3);
   list-style-position: outside;
@@ -103,9 +114,21 @@
 }
 
 /* A marker inherits `color` from its `li`, so this is the only way to tint it
-   without tinting the item's text with it. */
+   without tinting the item's text with it.
+
+   `tabular-nums` is what evens the digit columns: markers are right-aligned, so
+   the periods line up on their own and only the digits' left edges go ragged —
+   `1` is 0.32em narrower than `9` in the default face, which is visible from
+   ten onwards. It is a request the face has to answer, and the default one has
+   no `tnum` table, so it is inert there (measured: identical advance widths with
+   and without). It is not dead weight either — `Inter` and `Space Grotesk` both
+   go from 0.9em of raggedness to zero — which is the point: it costs one
+   declaration and pays out for whichever face a consumer's theme names. Setting
+   it on the `li` instead would reach the item's prose too, where tabular figures
+   are not wanted; the marker is the only thing here that sets a column. */
 .markdown-list-item::marker {
   color: var(--C-TEXT-MUTED);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ------------------------------------------------------------------ */

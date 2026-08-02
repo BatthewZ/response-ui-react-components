@@ -923,6 +923,17 @@ collision, left alone because briefs in flight cite the later one by letter.)
   layout, where list semantics stop being a question with one answer. Consolidating a pile of
   flow margins is the right instinct; the way to do it is one rule spending one inherited value,
   not a layout mode change.
+- **A typographic property is a request the face has to answer, and half of them cannot.**
+  `font-variant-numeric: tabular-nums` computes, inherits and reports itself applied while
+  changing nothing at all, because the font carries no `tnum` table — measured, four `1`s and
+  four `9`s set to the same two different widths with the declaration on and off. So the visible
+  symptom of "the feature is not working" is identical to "the feature is not supported", and no
+  gate distinguishes them: the property is valid CSS and every check passes. Before promising a
+  typographic behaviour, measure the shipped face; before removing a declaration that appears
+  inert, measure another face, because the same line can be dead in one theme and load-bearing
+  in the next. The corollary is where the decision belongs: a face-dependent feature is the
+  consumer's choice to make, so ship the request and document what answers it rather than
+  changing the face on their behalf.
 - **A spacing rule that no specimen renders is invisible to every gate.** Blocks inside a
   multi-block list item had no flow rule at all, and it survived because every example rendered
   single-paragraph items: typecheck, lint and jsdom tests are all blind to layout, and the
