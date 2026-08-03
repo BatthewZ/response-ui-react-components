@@ -588,5 +588,26 @@ lesson readable without the measurement, and cite rather than restate.
    with the docs asserting the opposite of the measurement. Prose about which declaration wins is
    a claim to re-measure, never a decision to trust.
 
+109. **Prose an author cannot see the column of has to be allowed to break inside a word, and a
+   scrollport is the exception rather than the rule.** A document carries runs no line break can
+   fall inside — a scoped package name, a custom property, a bare URL — and left alone one sets
+   its block's minimum width and scrolls the whole page sideways at a phone's width. Headings are
+   the worst case, because a responsive type scale multiplies the run by the largest step in it,
+   and they are also the case nobody tests: the same string is unremarkable at body size. Prefer
+   `overflow-wrap: anywhere` over `break-word` — only `anywhere` lowers the min-content
+   contribution, which is what lets the container shrink inside a flex or grid parent instead of
+   pushing it wide, and in normal flow the two are indistinguishable. Do **not** extend it to
+   anything that owns a scrollport: a table cell's long run should widen the table and let the
+   wrapper scroll, and breaking the text there trades a scrollbar for a one-character column.
+
+110. **A horizontal overflow inside a scroller is invisible to the usual measurement.** `overflow-y:
+   auto` makes `overflow-x` compute to `auto` too, so a pane that scrolls vertically is a
+   horizontal scrollport as well — and it absorbs the overflow, leaving
+   `documentElement.scrollWidth === clientWidth` while the user is plainly dragging the content
+   sideways. Measure the element that actually scrolls, and attribute the overflow by diffing
+   `scrollWidth - clientWidth` per block with the candidate rule injected and removed: that names
+   the one guilty block instead of the dozens of legitimately-wider descendants a naive
+   right-edge scan returns, every one of which is scrolled content doing its job.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

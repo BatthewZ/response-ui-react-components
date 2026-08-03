@@ -65,6 +65,29 @@
 }
 
 /* ------------------------------------------------------------------ */
+/*  Overflow                                                           */
+/* ------------------------------------------------------------------ */
+
+/* An author cannot see the column their document lands in, and prose carries
+   runs no line break can fall inside: a scoped package name, a token, a bare
+   URL. Left alone such a run sets the block's minimum width and the whole page
+   scrolls sideways at a phone's width — headings worst, because the responsive
+   type scale multiplies the run by the largest step in it.
+
+   `anywhere` rather than `break-word` because only `anywhere` also lowers the
+   min-content contribution, which is what lets a `.markdown` in a flex or grid
+   parent shrink instead of pushing its container wide. In normal flow the two
+   are indistinguishable: both break a word only once it has nowhere left to go.
+
+   Tables are deliberately absent. A long run there should widen the table and
+   let the wrapper's `overflow-x` scroll it, which is `Table`'s contract;
+   breaking the text instead trades a scrollbar for a one-character column.
+   `CodeBlock` is exempt by its own `white-space`, and scrolls its `<pre>`. */
+:is(.markdown-heading, .markdown-paragraph, .markdown-list-item, .markdown-blockquote) {
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Lists                                                              */
 /* ------------------------------------------------------------------ */
 

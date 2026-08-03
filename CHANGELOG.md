@@ -4,6 +4,29 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.14.1] — 2026-08-03
+
+### Fixed
+
+- **A long unbreakable run in [Markdown](docs/components/markdown.md) prose scrolled the whole
+  page sideways at a phone's width.** A document carries runs no line break can fall inside — a
+  scoped package name, a custom property, a bare URL — and one of them set its block's minimum
+  width, pushing every ancestor past the viewport. Headings were the worst case and the one least
+  likely to be caught: the responsive type scale multiplies the run by the largest step in it, so
+  a string that is unremarkable in a paragraph overflows as an `<h1>`. Measured on a 375px column,
+  a heading holding a scoped package name overflowed its box by 175px; it now wraps.
+
+  `overflow-wrap: anywhere` on headings, paragraphs, list items and blockquotes — not
+  `break-word`, because only `anywhere` also lowers the min-content contribution, which is what
+  lets a `.markdown` inside a flex or grid parent shrink rather than push its container wide. In
+  normal flow the two are indistinguishable; neither breaks a word that fits.
+
+  **Tables and code blocks are deliberately excluded**, and their behaviour is unchanged. A long
+  run in a cell should widen the table and let the wrapper's `overflow-x` scroll it — that is
+  `Table`'s contract — and breaking the text there trades a scrollbar for a one-character column.
+  `CodeBlock` is exempt by its own `white-space` and scrolls its `<pre>`. A caller who wants a
+  cell to break can still say so through `classNames.table`.
+
 ## [0.14.0] — 2026-08-02
 
 ### Added
