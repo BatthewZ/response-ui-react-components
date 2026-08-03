@@ -940,3 +940,58 @@ collision, left alone because briefs in flight cite the later one by letter.)
   gallery can only show what an example asks for. When a stylesheet's rules are enumerated,
   enumerate the *content shapes* they are meant to cover as well, and add the specimen for any
   shape nothing renders — the specimen is the only thing that will notice next time.
+- **State derived during render must survive React re-invoking that render, and two `useState`
+  atoms do not.** The "swap one panel for another" machine held `prevActive` and `exiting`
+  separately and updated both in one render-phase branch. React invokes a component more than
+  once per update and discards the earlier invocations — reliably on the **first update after
+  mount** — and the replay applied one setter and reverted the other. Net effect: the exit was
+  set and unset inside a single frame, so the very first swap of a component's life had no exit
+  animation while every later one did. Two properties fix it and both are needed: **one state
+  atom**, which cannot half-apply, and a **functional updater**, which recomputes from what React
+  actually committed instead of from a stale render closure. The general form: if a render-phase
+  update reads a value the same branch is also updating, a replay reads your own half-applied
+  output as input.
+- **A defect can be invisible to the DOM, the computed style AND the test suite, and still be
+  the only thing the user sees.** The above shipped in `Tabs` across releases with every gate
+  green. The exiting class *did* reach the DOM and `getComputedStyle` reported the right
+  animation name, duration and easing at that instant — every assertion a test could write was
+  true — but the element was replaced before the browser started the animation, so no animation
+  ever ran. jsdom does not reproduce React's replay, so no test could go red either; reverting
+  the fix left the whole suite green. The only instrument that could see it was
+  `animationstart`/`animationend` timings in a real browser. **For motion, assert the events, not
+  the classes** — a class assertion proves the intent was expressed, never that it played.
+- **"It works" from the owner can mean "the half I can see works".** The tabs swap was reported
+  as working well and was, for the entrance; the exit had never run on a first switch. When
+  asked to copy a behaviour somewhere else, measure the behaviour before propagating it —
+  copying is when a latent defect gets a second home.
+- **Outside the render loop, a functional updater's `prev` is the COMMITTED base, not the state
+  the render you are reacting to was built from — so "undo whatever is in flight" silently does
+  nothing.** Having fixed the panel swap's tearing with one atom and a functional updater, the
+  same hook grew a layout effect that ended the exit with a *relative* updater: collapse whatever
+  is exiting. Measured in Chromium, that effect fires on the exit commit and receives
+  `{ rendered: 0, active: 0 }` while the panel on screen is rendering from
+  `{ rendered: 0, active: 1 }` — so it correctly concludes nothing is exiting and bails out, and
+  the exit it exists to end survives. The fix is to name an **absolute target** ("settle on this
+  value") instead of a relative correction: absolute means the same thing from any base, and a
+  replay applying it twice lands in the same place. Read `prev` only to ask whether it is
+  *already* the target. The general rule: a functional updater is replay-safe about *ordering*,
+  not about *premises* — if the update's meaning depends on state the current base may not have,
+  it is not safe just because it is a function.
+- **Two bugs in one hook, both invisible to the same 75 tests, is a property of the environment
+  rather than a run of bad luck.** The tearing and the relative-updater bug were each verified
+  unfalsifiable by reverting the fix and watching the whole suite stay green. jsdom commits
+  render-phase updates before layout effects where a browser may not, and implements no animation
+  engine at all, so anything whose symptom is *when* React committed or *whether* an animation
+  ran is untestable here by construction. When a change lives in that space, the browser
+  measurement is not extra diligence — it is the only gate, and the tests around it must say in
+  writing which half they do not cover, or the next reader will trust them for it.
+- **Check that the opt-out you are hardening against is even reachable before designing for it.**
+  The stall was reported as "a consumer passing `animate-none` strands the panel". Measured:
+  `animate-none` suppresses nothing, because the `fade-*` classes are unlayered foundation CSS
+  and out-rank `@layer utilities`. The real routes were a consumer stylesheet using `!important`
+  and a `display: none` ancestor — and the instrument mattered too, since under `display: none`
+  the computed `animation-name` still reads `fade-out` while no animation exists, so a
+  computed-style check would have stalled in exactly the case it was written to fix.
+  `getAnimations()` answers both. A worthwhile side-finding: the panel's animation class is the
+  one declaration in this library a caller's utility cannot beat, which is worth documenting
+  wherever the "`className` wins" promise is made.

@@ -183,6 +183,23 @@ read as *not* selected; a raised hover would say the opposite.
 - **Panels do not mount eagerly.** A `Tabs.Panel` renders only while it is active or animating
   out; otherwise it returns `null`. So panel state is discarded when you switch away — hoist
   anything that must survive a tab change, and expect a panel's effects to re-run on return.
+- **The panel swap is two beats, and it is shared.** The outgoing panel fades out on
+  `--MOTION-DURATION-EXIT`, and only once that lands does the incoming one mount and fade in
+  on `--MOTION-DURATION-ENTER` — via `fade-out` / `fade-in` from `@batthewz/response-ui-css`,
+  which is why neither token is in the table above: Tabs never names them. Switching again
+  mid-fade abandons the running exit and shows the newest panel at once, and under
+  `prefers-reduced-motion: reduce` there is no exit at all. Where no animation is going to run —
+  a stylesheet of yours winning with `animation: none !important`, or the tabs sitting under a
+  `display: none` ancestor — there is nothing to wait for and the panel swaps before the next
+  paint. That machinery is `usePanelTransition`, which [Wizard](wizard.md) drives its step panel
+  with too — so the two cannot drift, and you can reach for it directly in a component of your
+  own.
+- **The panel's fade is the one thing a `className` cannot override.** `fade-in` / `fade-out`
+  come from `@batthewz/response-ui-css` **unlayered**, and unlayered CSS out-ranks
+  `@layer utilities` — so an `animate-none` on `Tabs.Panel` does nothing, even though the rest of
+  this component's styling lives in `@layer components` and loses to your utility by design. A
+  stylesheet rule is the way to suppress it, and doing so gives you an instant swap rather than a
+  stalled one.
 
 ## Accessibility
 

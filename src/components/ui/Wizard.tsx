@@ -10,6 +10,8 @@ import {
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
+import { usePanelTransition } from "../../hooks/use-panel-transition";
+import { mergeRefs } from "../../util/merge-refs";
 import { cn, type SlotClassNames } from "../../util/style";
 
 import { Button } from "./Button";
@@ -180,7 +182,20 @@ export function Wizard({
   // content lookup — the last step's panel stays visible while its indicator
   // shows done.
   const activeIndex = Math.min(wizard.activeStep, steps.length - 1);
-  const active = steps[activeIndex];
+
+  // The panel swap is `Tabs`' — the outgoing step fades out, and the incoming
+  // one mounts and fades in only once that lands. Driven from the CLAMPED index
+  // so pressing Finish, which moves `activeStep` past the last step without
+  // changing which panel is on screen, animates nothing.
+  const {
+    renderedValue: renderedIndex,
+    transitionClass,
+    onPanelAnimationEnd,
+    panelRef,
+  } = usePanelTransition(activeIndex);
+  // Everything the panel says about itself — its key, its name, the effect that
+  // focuses it — is the step actually on screen, not the one being navigated to.
+  const rendered = steps[renderedIndex];
 
   // Only *earlier* steps are reachable from the header. Clamped to `activeIndex`
   // rather than `activeStep` so the completed state does not make the last
@@ -203,13 +218,17 @@ export function Wizard({
   // Advancing a step replaces the panel with no announcement and no focus move,
   // which is silent for assistive tech. Focusing the named panel is what tells a
   // screen reader user where they now are.
+  //
+  // Keyed on the RENDERED index, not the active one: during the outgoing step's
+  // fade the panel still holds the old content under the old name, and focusing
+  // it there would announce a step the user has already left.
   useEffect(() => {
     if (isInitialRef.current) {
       isInitialRef.current = false;
       return;
     }
     contentRef.current?.focus();
-  }, [activeIndex]);
+  }, [renderedIndex]);
 
   return (
     <div className={cn("wizard flex flex-col gap-r3", className)} {...props}>
@@ -225,20 +244,28 @@ export function Wizard({
       </Stepper>
 
       {/* Keyed so each step's content remounts: without it React reconciles
-          adjacent steps whose content shares a root type, and state bleeds. */}
+          adjacent steps whose content shares a root type, and state bleeds.
+          The key is the RENDERED index, so the fade-out runs on the element the
+          outgoing content is already in — a remount would restart it from the
+          new step's markup and there would be nothing left to fade. Consecutive
+          renders of the same index are the same panel, which is what lets the
+          exit class replace the enter class in place. */}
       <div
-        key={activeIndex}
-        ref={contentRef}
+        key={renderedIndex}
+        ref={mergeRefs(contentRef, panelRef)}
         id={contentId}
         role="group"
-        aria-label={active?.title}
+        aria-label={rendered?.title}
         tabIndex={-1}
         // `min-h-16` is `4rem`, and it is not on the contract on purpose: it
         // reserves enough room that the footer does not jump between a one-line
         // step and a long form. Steps taller than that still grow the panel.
-        className={cn("wizard__content min-h-16 text-fg-primary", classNames?.body)}
+        className={cn(transitionClass, "wizard__content min-h-16 text-fg-primary", classNames?.body)}
+        // `animationend` is not cancelable, so this must not be skippable — a
+        // dropped one strands the outgoing step on screen until the next move.
+        onAnimationEnd={onPanelAnimationEnd}
       >
-        {active?.content}
+        {rendered?.content}
       </div>
 
       <div

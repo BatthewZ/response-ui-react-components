@@ -21,7 +21,7 @@ lesson readable without the measurement, and cite rather than restate.
 
 | Spoke                      | The lesson                                                  |
 | -------------------------- | ------------------------------------------------------------ |
-| [traps.md](./traps.md)     | What every fix pass so far got wrong. Read before planning.  |
+| [traps.md](./traps.md)     | What every fix pass so far got wrong. Read before planning — including why state derived during render tears when React replays it, and why a motion defect can be invisible to the DOM, the computed style and the suite at once. |
 | [state.md](./state.md)     | Where one fact ends up stored twice, and which copies are deliberate. |
 | [gates.md](./gates.md)     | What a green gate does *not* mean.                           |
 | [ledger.md](./ledger.md)   | How a written record goes wrong, and which errors are worst. |

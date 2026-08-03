@@ -265,6 +265,52 @@ The `isLast || isComplete` in that label is not belt-and-braces: `isLast` goes f
 moment you finish, so testing it alone would flip the button back to "Next" while it sits
 disabled. `Wizard` writes the same pair for the same reason.
 
+### Animating a panel you render yourself
+
+`useWizard` gives you the index; it does not render a panel, so it cannot animate one. If
+your hand-rolled flow has content that changes with the step, `usePanelTransition` is the
+other half — the same hook `Wizard` and [Tabs](tabs.md) drive their panels with, so a flow
+you assemble yourself gets the identical two-beat swap rather than an approximation of it.
+
+```tsx
+const wizard = useWizard({ count: steps.length });
+const { renderedValue, transitionClass, onPanelAnimationEnd, panelRef } =
+  usePanelTransition(wizard.activeStep);
+
+<Stepper activeStep={wizard.activeStep}>{/* … */}</Stepper>
+<div
+  key={renderedValue}
+  ref={panelRef}
+  className={transitionClass}
+  onAnimationEnd={onPanelAnimationEnd}
+>
+  {steps[renderedValue].content}
+</div>
+```
+
+Four things it needs from you, and each one is load-bearing:
+
+- **Render only `renderedValue`.** It lags the active index for the length of the exit, and
+  that lag *is* the animation. Rendering the active index instead swaps the content out
+  from under the fade.
+- **Key the panel by `renderedValue`.** Two consecutive renders of the same step are the
+  same panel, which is what lets the exit class replace the enter class on an element that
+  is already there. Keying by anything that changes mid-fade restarts the element and there
+  is nothing left to fade.
+- **Wire `onPanelAnimationEnd`, and do not make it skippable.** It is what ends the exit.
+  If you compose it with a handler of your own, pass `{ checkDefaultPrevented: false }` to
+  [`composeEventHandlers`](../extending.md) — `animationend` is not cancelable, so honouring
+  `preventDefault()` there would invent an opt-out that strands the outgoing panel.
+- **Attach `panelRef`**, alongside any ref of your own via
+  [`mergeRefs`](../extending.md). It is what lets the hook ask the browser whether an exit is
+  actually going to animate, and skip the wait entirely when nothing will — see below. Leave it
+  off and the swap still works, but it can only take an `animationend` on trust.
+
+`transitionClass` is `undefined` under `prefers-reduced-motion: reduce`, and no exit is
+started at all, so the reduced-motion path costs you nothing extra. Pass
+`{ enterClass, exitClass }` to swap the `fade-*` pair for any other animation classes —
+`slide-in-right` / `slide-out-right` from the foundation, or your own.
+
 ## Slots
 
 `className` addresses the outer `<div>`. `classNames` addresses the two regions below the
@@ -284,6 +330,53 @@ The header is a [Stepper](stepper.md) with its own documented surface, so it tak
 here. If you need to reach inside it, drive the flow yourself with
 [`useWizard`](#usewizard--the-headless-core) and render the `Stepper` — the section below
 shows the whole shape, and it is the same markup `Wizard` emits.
+
+## Motion
+
+A step change swaps the panel in **two beats, not one**: the outgoing step fades out, and
+only once that has landed does the incoming step mount and fade in. The two are never on
+screen together, so the panel never has to hold both heights at once and nothing
+cross-dissolves into unreadable text. It is the same swap a [Tabs](tabs.md) panel makes —
+both drive it from `usePanelTransition`, so the timing is written once — and it runs the
+same way whether you press Next, press Back, or click an earlier marker in the header.
+
+The classes are `fade-in` and `fade-out` from `@batthewz/response-ui-css`, so the beats are
+`--MOTION-DURATION-ENTER` / `--MOTION-EASE-ENTER` and `--MOTION-DURATION-EXIT` /
+`--MOTION-EASE-EXIT`. They are not in the table below because Wizard does not name them:
+the foundation's stylesheet reads them, and re-timing the swap means re-timing the whole
+app's entrances and exits — which is the point of a contract token.
+
+Three behaviours are worth knowing, because each one is a decision:
+
+- **The header moves first.** The marker advances immediately while the old panel is still
+  fading; the panel is the thing that lags. Progress should acknowledge the click at once.
+- **Moving faster than the animation drops the queue.** A second step change arriving
+  mid-fade abandons the running exit and shows the newest step at once — click Next three
+  times quickly and you land on the fourth step, not watch three fades drain.
+- **Pressing Finish animates nothing.** It moves the index past the last step without
+  changing which panel is on screen, so the last step's content stays put under the newly
+  completed header.
+
+Under `prefers-reduced-motion: reduce` the exit is **skipped entirely**, not shortened: the
+new step mounts on the same tick the index changes. An exit that merely runs fast still
+defers the mount, and a deferred mount is latency rather than motion, which is not what the
+preference asked for.
+
+**No animation means no wait.** An exit exists to let an animation finish, so where none is
+going to run there is nothing to wait for and the step swaps at once — before the browser
+paints, so the outgoing step is never shown for even a frame on its way out. The wizard asks
+the browser directly (`getAnimations()` on the panel) rather than assuming, which covers the
+two ways it legitimately happens: your own stylesheet winning with `animation: none
+!important`, and the whole wizard sitting under a `display: none` ancestor when the step
+changes. An animation that starts and is then cut short is handled too — that fires
+`animationcancel` rather than `animationend`, and either one ends the exit.
+
+One spelling that does **not** suppress it, despite looking like it should: a Tailwind
+`animate-none` in `classNames.body`. The `fade-in` / `fade-out` classes come from
+`@batthewz/response-ui-css` unlayered, and unlayered CSS out-ranks `@layer utilities`, so the
+utility never wins. That makes the panel's animation the one thing here a `className` cannot
+override — unlike every other declaration this library paints, which sits in
+`@layer components` and loses to yours by design. Use a stylesheet rule if you need it gone.
 
 ## Theme tokens
 
@@ -317,13 +410,15 @@ step and a long form. Steps taller than that still grow the panel.
 
 ## Gotchas
 
-- **Step content remounts on every step change.** The panel is keyed by the active index, so
-  moving between steps unmounts the outgoing content and mounts the incoming content fresh —
-  which is what stops two steps sharing a root element type from sharing a fiber and bleeding
-  state into each other. The cost is the other side of the same coin: nothing inside a step's
-  `content` survives leaving it. A `useState` draft, a scroll position, an uncontrolled
-  `<input>`'s value are all gone when the user presses Back and returns. Hold anything that has
-  to persist across steps in the parent that renders the `Wizard`, not inside a step.
+- **Step content remounts on every step change.** The panel is keyed by the step on screen,
+  so moving between steps unmounts the outgoing content and mounts the incoming content
+  fresh — which is what stops two steps sharing a root element type from sharing a fiber and
+  bleeding state into each other. The cost is the other side of the same coin: nothing inside
+  a step's `content` survives leaving it. A `useState` draft, a scroll position, an
+  uncontrolled `<input>`'s value are all gone when the user presses Back and returns. Hold
+  anything that has to persist across steps in the parent that renders the `Wizard`, not
+  inside a step. The remount happens when the *fade-out finishes*, not when the index changes
+  — see [Motion](#motion) — so the outgoing step keeps its state for the length of its exit.
 - **`onComplete` follows the state, not the click.** It is edge-triggered on *entering* the
   completed state, so a controlled parent that declines the final `onStepChange` never
   receives it, and while the flow sits complete it does not re-fire. It is still not
@@ -346,7 +441,9 @@ step and a long form. Steps taller than that still grow the panel.
 - **The step panel remount also remounts its focus.** Every step change moves DOM focus to
   the panel itself (`tabIndex={-1}`), including a Back — so a keyboard user's position is
   always the new content, not the button they pressed. The initial mount does not steal
-  focus.
+  focus. The move waits for the new panel: during the outgoing step's fade the panel still
+  holds the old content under the old name, and focus stays where the user left it until
+  there is something new to land on.
 - **`steps={[]}` renders quietly.** You get an empty header, an empty content region, and
   both footer buttons disabled — no throw, no warning.
 - **Client component.** `Wizard.tsx` opens with `"use client"`, so it needs a client boundary
@@ -360,9 +457,11 @@ whole from [Stepper](stepper.md) — including its known gaps. The footer is two
 submit it, and the disabled states are the native attribute rather than a styling trick.
 
 - **A step change moves focus to the panel and announces it.** The content region is a
-  `role="group"` named with the active step's `title`, holds `tabIndex={-1}`, and receives
-  DOM focus on every step change after the initial mount — so a screen-reader user lands on
-  the new content instead of hunting backwards from the Next button.
+  `role="group"` named with the `title` of the step it is actually showing, holds
+  `tabIndex={-1}`, and receives DOM focus on every step change after the initial mount — so a
+  screen-reader user lands on the new content instead of hunting backwards from the Next
+  button. The name and the focus move together and both wait for the panel swap, so the
+  region is never announced under a title whose content has already left.
 - **In the completed state nothing is current.** Every marker reads `done` and no element
   carries `aria-current` (measured), so "where am I" has no answer in the accessibility tree
   once the flow is finished.

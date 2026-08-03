@@ -110,6 +110,9 @@ useActiveSection, useClickOutside, useControllableState + type
 UseControllableStateParams + type UseControllableStateReturn, useDebounce,
 useDocumentTitle, useFloating + type Placement, useFocusTrap, useLightDismiss,
 useMediaQuery,
+usePanelTransition + type UsePanelTransitionOptions + type UsePanelTransitionReturn
+  + type PanelTransitionPhase (the two-beat panel swap Tabs and Wizard both drive:
+  the outgoing panel leaves, then the incoming one mounts and arrives),
 usePrefersReducedMotion, useRovingFocus,
 useTheme + type UseThemeOptions + type UseThemeReturn, STORAGE_KEY,
 EXAMPLE_THEMES + type ExampleTheme (sample data for demos — NOT a default,

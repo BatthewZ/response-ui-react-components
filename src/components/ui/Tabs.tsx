@@ -15,7 +15,7 @@ import {
 } from "react";
 
 import { useControllableState } from "../../hooks/use-controllable-state";
-import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
+import { usePanelTransition } from "../../hooks/use-panel-transition";
 import { composeEventHandlers } from "../../util/merge-props";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn, type SlotClassNames } from "../../util/style";
@@ -31,8 +31,11 @@ type TabsContextValue = {
   onValueChange: (value: string) => void;
   variant: Variant;
   baseId: string;
-  exitingValue: string | null;
-  onExitComplete: () => void;
+  /** The panel on screen — the outgoing one until its exit lands. */
+  renderedValue: string;
+  transitionClass: string | undefined;
+  onPanelAnimationEnd: (event: AnimationEvent<Element>) => void;
+  panelRef: (node: HTMLElement | null) => void;
 };
 
 const TabsContext = createContext<TabsContextValue | null>(null);
@@ -72,7 +75,6 @@ const TabsRoot = forwardRef<HTMLDivElement, TabsProps>(function Tabs(
   ref
 ) {
   const baseId = useId();
-  const reducedMotion = usePrefersReducedMotion();
 
   // Only `useControllableState` reads the raw prop; this ref is the mode lock's
   // one job here — keep feeding the hook a defined value once controlled, so a
@@ -84,28 +86,10 @@ const TabsRoot = forwardRef<HTMLDivElement, TabsProps>(function Tabs(
     onChange: onValueChange,
   });
 
-  /* -- Exit coordination ------------------------------------------------ */
-  const [exitingValue, setExitingValue] = useState<string | null>(null);
-  const [prevActiveValue, setPrevActiveValue] = useState(activeValue);
-
-  if (activeValue !== prevActiveValue) {
-    setPrevActiveValue(activeValue);
-    if (reducedMotion) {
-      // Skip exit animation entirely — new panel shows instantly
-      setExitingValue(null);
-    } else if (exitingValue === null) {
-      // No exit in progress — animate the old panel out
-      setExitingValue(prevActiveValue);
-    } else {
-      // Rapid switch while an exit is in progress — skip the queued animation
-      // and let the new active panel appear immediately
-      setExitingValue(null);
-    }
-  }
-
-  const onExitComplete = useCallback(() => {
-    setExitingValue(null);
-  }, []);
+  // The panel swap — one beat out, one beat in — is `usePanelTransition`'s, and
+  // `Wizard` drives its step panel with the same hook.
+  const { renderedValue, transitionClass, onPanelAnimationEnd, panelRef } =
+    usePanelTransition(activeValue);
 
   return (
     <TabsContext.Provider
@@ -114,8 +98,10 @@ const TabsRoot = forwardRef<HTMLDivElement, TabsProps>(function Tabs(
         onValueChange: setActiveValue,
         variant,
         baseId,
-        exitingValue,
-        onExitComplete,
+        renderedValue,
+        transitionClass,
+        onPanelAnimationEnd,
+        panelRef,
       }}
     >
       <div ref={ref} className={cn("w-full", className)} {...props}>
@@ -407,41 +393,25 @@ const TabsPanel = forwardRef<HTMLDivElement, TabsPanelProps>(function TabsPanel(
   { value, className, children, onAnimationEnd, ...props },
   ref
 ) {
-  const { activeValue, baseId, exitingValue, onExitComplete } = useTabsContext();
-  const reducedMotion = usePrefersReducedMotion();
+  const { baseId, renderedValue, transitionClass, onPanelAnimationEnd, panelRef } =
+    useTabsContext();
 
-  const isActive = activeValue === value;
-  const isExiting = exitingValue === value;
-
-  // Render if: exiting (fade-out), or active with no pending exit (fade-in)
-  const shouldRender = isExiting || (isActive && exitingValue === null);
-  if (!shouldRender) return null;
-
-  const animClass = reducedMotion
-    ? undefined
-    : isExiting
-      ? "fade-out"
-      : "fade-in";
-
-  function handleAnimationEnd(e: AnimationEvent<HTMLDivElement>) {
-    // Ignore bubbled animation events from children
-    if (e.target !== e.currentTarget) return;
-    if (isExiting) {
-      onExitComplete();
-    }
-  }
+  // Exactly one panel is on screen at a time: the leaving one while its exit
+  // runs, the active one otherwise. Every other panel returns null, so a
+  // panel's state is discarded when you switch away from it.
+  if (value !== renderedValue) return null;
 
   return (
     <div
-      ref={ref}
+      ref={mergeRefs(ref, panelRef)}
       id={`${baseId}-panel-${value}`}
       role="tabpanel"
       aria-labelledby={`${baseId}-tab-${value}`}
       tabIndex={0}
-      className={cn(animClass, "tabs-panel", tabsPanelClasses, className)}
+      className={cn(transitionClass, "tabs-panel", tabsPanelClasses, className)}
       // `animationend` is not cancelable, so a caller's `preventDefault()` must not
       // be read as an opt-out — that would strand the exiting panel forever.
-      onAnimationEnd={composeEventHandlers(onAnimationEnd, handleAnimationEnd, {
+      onAnimationEnd={composeEventHandlers(onAnimationEnd, onPanelAnimationEnd, {
         checkDefaultPrevented: false,
       })}
       {...props}

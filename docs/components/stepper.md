@@ -166,6 +166,13 @@ the final frame, landing a visible jump after the colours have settled. Unlisted
 lands at once, under the cover of the pulse. It also suits the cue, which exists to survive
 greyscale — arriving immediately beats crawling in.
 
+Everything above is the *track*. `Stepper` renders no panel — it is the progress indicator and
+nothing else — so if your flow shows content that changes with the step, that content's motion
+is not Stepper's to animate. `usePanelTransition` is the piece that does it, and it is the same
+hook [Wizard](wizard.md) and [Tabs](tabs.md) drive their panels with: the outgoing content fades
+out, and only once that lands does the incoming content mount and fade in. See
+[animating a panel you render yourself](wizard.md#animating-a-panel-you-render-yourself).
+
 ## Slots
 
 `className` addresses the step's `<li>`. `classNames` addresses the six parts it renders

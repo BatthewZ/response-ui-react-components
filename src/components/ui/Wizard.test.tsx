@@ -1,9 +1,42 @@
-import { act, render, renderHook, screen } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useWizard, Wizard, type WizardStep } from "./Wizard";
+
+// Defaults to reduced motion for every test — the step panel's exit animation is
+// opt-in per test via `motion.reduced = false`, the same split `Tabs.test.tsx`
+// uses. Without it every assertion about *which step is on screen* would also be
+// an assertion about the animation, and a step-logic regression could hide
+// behind a timing one. `window.matchMedia` is deliberately unstubbed in
+// test-setup, so the real hook reports "no preference" and motion would be ON.
+const motion = vi.hoisted(() => ({ reduced: true }));
+
+vi.mock("../../hooks/use-reduced-motion", () => ({
+  usePrefersReducedMotion: () => motion.reduced,
+}));
+
+afterEach(() => {
+  motion.reduced = true;
+});
+
+// jsdom exposes no `AnimationEvent` constructor, and React resolves animation
+// event names through vendor-prefix detection — so it registers exactly one of
+// these two and a single-name dispatch silently reaches nothing. Dispatch both.
+// Kept local rather than shared: `src/` ships to npm and only `*.test.*` is
+// excluded, so a `src/test-utils/` module would be published.
+function fireAnimationEnd(el: Element) {
+  for (const name of ["animationend", "webkitAnimationEnd"]) {
+    fireEvent(el, new Event(name, { bubbles: true }));
+  }
+}
+
+function panel(container: HTMLElement) {
+  const el = container.querySelector(".wizard__content");
+  if (!el) throw new Error("no wizard panel rendered");
+  return el;
+}
 
 function StatefulField({ label }: { label: string }) {
   const [value, setValue] = useState("");
@@ -308,5 +341,136 @@ describe("Wizard · classNames slots", () => {
   it("does not leak classNames onto the DOM", () => {
     const { container } = render(<Wizard steps={STEPS} classNames={{ body: "min-h-40" }} />);
     expect(container.firstElementChild?.hasAttribute("classnames")).toBe(false);
+  });
+});
+
+/**
+ * The step panel swaps in two beats, the same way a `Tabs` panel does: the
+ * outgoing step fades out, and only once that lands does the incoming one mount
+ * and fade in. Every test here sets `motion.reduced = false` — the rest of the
+ * file runs with the exit skipped, which is what keeps those assertions about
+ * step logic rather than about timing.
+ */
+describe("Wizard · step transition", () => {
+  it("holds the incoming step off screen until the outgoing one has faded out", async () => {
+    motion.reduced = false;
+    const user = userEvent.setup();
+    const { container } = render(<Wizard steps={STEPS} />);
+
+    const outgoing = panel(container);
+    expect(outgoing).toHaveClass("fade-in");
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    // The header has already advanced; the panel has not.
+    expect(container.querySelectorAll(".stepper-step")[1]).toHaveAttribute(
+      "data-status",
+      "active",
+    );
+    expect(outgoing).toHaveClass("fade-out");
+    expect(screen.getByText("Step one body")).toBeInTheDocument();
+    expect(screen.queryByText("Step two body")).not.toBeInTheDocument();
+
+    fireAnimationEnd(outgoing);
+
+    expect(screen.getByText("Step two body")).toBeInTheDocument();
+    expect(screen.queryByText("Step one body")).not.toBeInTheDocument();
+    expect(panel(container)).toHaveClass("fade-in");
+  });
+
+  it("animates Back the same way it animates Next", async () => {
+    motion.reduced = false;
+    const user = userEvent.setup();
+    const { container } = render(<Wizard steps={STEPS} defaultStep={1} />);
+
+    const outgoing = panel(container);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(outgoing).toHaveClass("fade-out");
+    expect(screen.queryByText("Step one body")).not.toBeInTheDocument();
+
+    fireAnimationEnd(outgoing);
+    expect(screen.getByText("Step one body")).toBeInTheDocument();
+  });
+
+  it("drops the queued exit when a second move arrives mid-animation, landing on the newest step", async () => {
+    motion.reduced = false;
+    const user = userEvent.setup();
+    const { container } = render(<Wizard steps={STEPS} />);
+
+    // Two advances with no `animationend` between them: the first step's exit is
+    // still running when the second arrives. Someone clicking through a flow
+    // faster than the animation must land on the newest step, not watch a
+    // backlog drain — and must not be stranded on a panel that never leaves.
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByText("Step three body")).toBeInTheDocument();
+    expect(screen.queryByText("Step one body")).not.toBeInTheDocument();
+    expect(screen.queryByText("Step two body")).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".wizard__content")).toHaveLength(1);
+    expect(panel(container)).toHaveClass("fade-in");
+  });
+
+  it("keeps the remount invariant across the animated swap, so adjacent steps still cannot bleed", async () => {
+    motion.reduced = false;
+    const user = userEvent.setup();
+    const sharedRootSteps: WizardStep[] = [
+      { title: "Account", content: <StatefulField label="Email" /> },
+      { title: "Plan", content: <StatefulField label="Coupon" /> },
+    ];
+    const { container } = render(<Wizard steps={sharedRootSteps} />);
+
+    await user.type(screen.getByLabelText("Email"), "typed-into-step-one");
+    const outgoing = panel(container);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    // The outgoing content is still mounted, and still holds its own state —
+    // the fade runs on the element it is already in.
+    expect(screen.getByLabelText("Email")).toHaveValue("typed-into-step-one");
+
+    fireAnimationEnd(outgoing);
+    expect(screen.getByLabelText("Coupon")).toHaveValue("");
+  });
+
+  it("moves focus once the new panel is on screen, not while the old one is leaving", async () => {
+    motion.reduced = false;
+    const user = userEvent.setup();
+    const { container } = render(<Wizard steps={STEPS} />);
+
+    const outgoing = panel(container);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    // Mid-exit the panel still holds step one under step one's name, so focusing
+    // it here would announce a step the user has already left.
+    expect(outgoing).toHaveAccessibleName("Account");
+    expect(outgoing).not.toHaveFocus();
+
+    fireAnimationEnd(outgoing);
+    expect(screen.getByRole("group", { name: "Plan" })).toHaveFocus();
+  });
+
+  it("does not animate the panel when Finish only moves the index past the last step", async () => {
+    motion.reduced = false;
+    const user = userEvent.setup();
+    const { container } = render(<Wizard steps={STEPS} defaultStep={2} />);
+
+    await user.click(screen.getByRole("button", { name: "Finish" }));
+
+    // Which panel is on screen did not change, so there is nothing to fade — and
+    // the completed header must not be sitting above a panel mid-exit.
+    expect(panel(container)).not.toHaveClass("fade-out");
+    expect(screen.getByText("Step three body")).toBeInTheDocument();
+  });
+
+  it("swaps instantly under reduced motion, with no exit class at all", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Wizard steps={STEPS} />);
+
+    expect(panel(container)).not.toHaveClass("fade-in");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByText("Step two body")).toBeInTheDocument();
+    expect(panel(container)).not.toHaveClass("fade-out");
   });
 });

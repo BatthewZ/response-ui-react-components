@@ -4,6 +4,80 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.16.0] — 2026-08-04
+
+### Added
+
+- **[Wizard](docs/components/wizard.md) animates its step panel**, with the swap
+  [Tabs](docs/components/tabs.md) panels already used: the outgoing step fades out, and only once
+  that lands does the incoming step mount and fade in. Sequential rather than a cross-fade, so the
+  two are never on screen together and the panel never holds both heights at once. Back animates
+  like Next, and so does clicking an earlier marker in the header. Pressing **Finish** animates
+  nothing — it moves the index past the last step without changing which panel is showing.
+
+  Two consequences worth knowing, both documented under
+  [Motion](docs/components/wizard.md#motion). The panel now remounts when the fade-out *finishes*
+  rather than when the index changes, so an outgoing step keeps its state for the length of its
+  exit; and the focus move that lands a screen-reader user on the new step waits for that panel,
+  instead of announcing the old content under the new step's name. Under
+  `prefers-reduced-motion: reduce` the exit is skipped outright, not shortened, and the new step
+  mounts on the same tick as before.
+
+  **This will break your tests before it breaks your app.** A test that presses Next and asserts
+  the next step's content in the same tick now finds the outgoing step, because the incoming one
+  has not mounted yet — this package's own `Wizard` suite failed in exactly four places on the way
+  in. Either drive the assertion past the exit by firing `animationend` on `.wizard__content`
+  (dispatch **both** `animationend` and `webkitAnimationEnd`; jsdom exposes no `AnimationEvent`
+  constructor and React registers only one of the two names), or stub
+  `prefers-reduced-motion: reduce` for the suite and keep the assertions synchronous. The second
+  is what this package does, so that step-logic tests stay about step logic.
+
+- **`usePanelTransition` is exported** — the machine behind both, so a flow you assemble yourself
+  out of [`useWizard`](docs/components/wizard.md#usewizard--the-headless-core) and a
+  [Stepper](docs/components/stepper.md) gets the identical two-beat swap rather than an
+  approximation of it. It returns the value whose panel belongs on screen, the class for the
+  current beat, the `animationend` handler that ends the exit, and a `panelRef` to attach;
+  `{ enterClass, exitClass }` swaps the `fade-*` pair for any other animation classes.
+
+- **A panel that is not going to animate swaps instantly**, in `Tabs` and `Wizard` alike. An exit
+  exists to let an animation finish, so where none will run there is nothing to wait for: the
+  swap lands in the same commit, before the browser paints, and the outgoing panel is never shown
+  for a frame on its way out. Both components ask the browser directly (`getAnimations()` on the
+  panel) rather than assuming one will run, which covers a consumer stylesheet winning with
+  `animation: none !important` and the component sitting under a `display: none` ancestor when the
+  value changes. An animation cut short mid-flight fires `animationcancel` rather than
+  `animationend`, and either one now ends the exit.
+
+  Worth knowing, because it reads the other way round: a Tailwind `animate-none` on the panel
+  suppresses **nothing**. `fade-in` / `fade-out` come from `@batthewz/response-ui-css` unlayered,
+  and unlayered CSS out-ranks `@layer utilities`, so the utility never wins — which makes the
+  panel's animation the one declaration in this library a caller's `className` cannot beat. Both
+  component docs now say so next to the "`className` wins" promise.
+
+### Fixed
+
+- **The first panel swap after mount had no exit animation** — in `Tabs`, on every first tab
+  switch, for as long as the exit has existed. The outgoing panel's class reached the DOM and the
+  browser never started the animation, so the content changed instantly and only then faded in;
+  every later switch in that component's life animated correctly.
+
+  The cause was the swap being held as two `useState` atoms updated together during render. React
+  invokes a component more than once per update and discards the earlier invocations — reliably on
+  the first update after mount — and the replay applied one setter and reverted the other, setting
+  and clearing the exit inside a single frame. It is now one state atom written through a
+  functional updater, so a replay converges on the same answer instead of losing half of it.
+
+  Nothing could see this: the class was present, `getComputedStyle` reported the right animation
+  name, duration and easing, and jsdom does not reproduce the replay, so the full suite stayed
+  green with the defect in place. It was found by measuring `animationstart` / `animationend` in a
+  real browser, which is the only instrument that can.
+
+  A second instance of the same trap was found and fixed while hardening the above: outside the
+  render loop a functional updater receives the **committed base**, not the state the render it is
+  reacting to was built from, so the layout effect that ends an exit had to name an absolute
+  target rather than undo whatever was in flight. That one was also invisible to the suite —
+  verified by reverting it and watching all 75 relevant tests stay green.
+
 ## [0.15.0] — 2026-08-03
 
 ### Added

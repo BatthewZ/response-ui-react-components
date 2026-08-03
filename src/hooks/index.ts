@@ -11,6 +11,12 @@ export { type Placement, useFloating } from "./use-floating";
 export { useFocusTrap } from "./use-focus-trap";
 export { useLightDismiss } from "./use-light-dismiss";
 export { useMediaQuery } from "./use-media-query";
+export {
+  type PanelTransitionPhase,
+  usePanelTransition,
+  type UsePanelTransitionOptions,
+  type UsePanelTransitionReturn,
+} from "./use-panel-transition";
 export { usePrefersReducedMotion } from "./use-reduced-motion";
 export { useRovingFocus } from "./use-roving-focus";
 export {
