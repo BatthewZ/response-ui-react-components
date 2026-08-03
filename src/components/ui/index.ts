@@ -31,7 +31,7 @@ export {
 } from "./CommandPalette";
 export { ContextMenu } from "./ContextMenu";
 export { CopyButton } from "./CopyButton";
-export { Dialog } from "./Dialog";
+export { Dialog, DialogBody, DialogHeader } from "./Dialog";
 export { Drawer } from "./Drawer";
 export { DropdownMenu } from "./DropdownMenu";
 export { EmptyState, EmptyStateActions, EmptyStateDescription, EmptyStateIcon, EmptyStateTitle } from "./EmptyState";

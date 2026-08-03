@@ -14,6 +14,7 @@ import {
   useState,
 } from "react";
 
+import { useLightDismiss } from "../../hooks/use-light-dismiss";
 import { mergeRefs } from "../../util/merge-refs";
 import { cn, type SlotClassNames } from "../../util/style";
 
@@ -415,44 +416,15 @@ const CommandPaletteRoot = forwardRef<HTMLDialogElement, CommandPaletteProps>(
       [moveActive, findSelectable, ordered.length, selectActive]
     );
 
-    // Light dismiss. A press on the scrim is dispatched at the `<dialog>` itself,
-    // so `useClickOutside` cannot see it — the target *is* the element it guards.
-    // "Outside" is therefore the pointer landing beyond the panel's own box, which
-    // also keeps a caller's padding on the panel counting as inside.
-    const pressedOutside = useRef(false);
-
-    const isOutsidePanel = useCallback((e: React.MouseEvent<HTMLDialogElement>) => {
-      const dialog = dialogRef.current;
-      if (!dialog || e.target !== dialog) return false;
-      const rect = dialog.getBoundingClientRect();
-      return (
-        e.clientX < rect.left ||
-        e.clientX > rect.right ||
-        e.clientY < rect.top ||
-        e.clientY > rect.bottom
-      );
-    }, []);
-
-    const handlePointerDown = useCallback(
-      (e: React.PointerEvent<HTMLDialogElement>) => {
-        onPointerDown?.(e);
-        pressedOutside.current = isOutsidePanel(e);
-      },
-      [onPointerDown, isOutsidePanel]
-    );
-
-    // Both ends of the press are required: dragging a selection out of the input
-    // and releasing on the scrim lands a click on the `<dialog>` too, and closing
-    // there would throw away the query the user was busy editing.
-    const handleClick = useCallback(
-      (e: React.MouseEvent<HTMLDialogElement>) => {
-        onClick?.(e);
-        const startedOutside = pressedOutside.current;
-        pressedOutside.current = false;
-        if (!e.defaultPrevented && startedOutside && isOutsidePanel(e)) onClose();
-      },
-      [onClick, isOutsidePanel, onClose]
-    );
+    // Light dismiss, shared with Dialog: a press on the scrim is dispatched at
+    // the `<dialog>` itself, so the tell is geometry rather than containment, and
+    // both ends of the press have to land outside. The hook holds why.
+    const { onPointerDown: handlePointerDown, onClick: handleClick } = useLightDismiss({
+      ref: dialogRef,
+      onDismiss: onClose,
+      onPointerDown,
+      onClick,
+    });
 
     const hasResults = ordered.length > 0;
     const activeId = hasResults && isSelectable(activeIndex) ? optionId(activeIndex) : undefined;

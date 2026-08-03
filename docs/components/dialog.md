@@ -25,24 +25,29 @@ and `onClose`; everything inside the panel is yours.
 ```
 <!-- /example -->
 
-| Prop        | Type                       | Default        |
-| ----------- | -------------------------- | -------------- |
-| `open`      | `boolean`                  | — _(required)_ |
-| `onClose`   | `() => void`               | — _(required)_ |
-| `className` | `string`                   | —              |
-| `ref`       | `Ref<HTMLDialogElement>`   | —              |
-| …rest       | `dialog` props, less `open` and the native `onClose` | — |
+| Prop           | Type                       | Default        |
+| -------------- | -------------------------- | -------------- |
+| `open`         | `boolean`                  | — _(required)_ |
+| `onClose`      | `() => void`               | — _(required)_ |
+| `lightDismiss` | `boolean`                  | `false`        |
+| `className`    | `string`                   | —              |
+| `ref`          | `Ref<HTMLDialogElement>`   | —              |
+| …rest          | `dialog` props, less `open` and the native `onClose` | — |
 
-That is the whole API — no header slot, no size preset, no close button, no `defaultOpen`.
-`open` is required, so Dialog is **always** controlled; if `onClose` does not change the
-boolean you hold, nothing closes. See [Closing it](#closing-it).
+That is the whole API — no size preset and no `defaultOpen`. `open` is required, so Dialog is
+**always** controlled; if `onClose` does not change the boolean you hold, nothing closes. See
+[Closing it](#closing-it).
 
-**And there is no `classNames` either — deliberately.** Dialog renders exactly one element, the
-`<dialog>`, and puts your `children` straight inside it. There is nothing between `className`
-and your own markup for a slot to name: a `header`, `footer` or `closeButton` key would be
-naming *your* structure, not the component's. The scrim is the one thing Dialog paints that
-`className` cannot reach as a class, because `::backdrop` takes no class name — it is a theme
-value instead, `--OVERLAY-SCRIM-COLOR`. See [Theme tokens](#theme-tokens).
+Two optional parts sit inside it — [DialogHeader and DialogBody](#the-parts) — for the one
+piece of structure that cannot be assembled correctly from the outside: a panel whose middle
+scrolls while its title and its actions stay put.
+
+**And there is no `classNames` — deliberately.** The panel is the root, so `className` is
+already the single writer for it; a slot object would be a second one for the same element.
+Where Dialog does own elements you cannot reach — the header row, the scroll region — they are
+parts you render and put your own `className` on, not keys in a bag. The scrim is the one thing
+Dialog paints that `className` cannot reach as a class, because `::backdrop` takes no class
+name — it is a theme value instead, `--OVERLAY-SCRIM-COLOR`. See [Theme tokens](#theme-tokens).
 
 ## A destructive confirmation
 
@@ -92,10 +97,12 @@ means the four behaviours below always hold.
 | A real focus trap      | Tab and Shift-Tab cycle inside the dialog. Opening moves focus to the `autofocus` element, or the first focusable descendant, or the dialog itself when it has none; closing returns it to whatever was focused before. |
 | Escape                 | The browser raises a `cancel` event, which the component turns into your `onClose`. |
 
-And the things it does **not** give you, which you have to decide about: a close button, an
-accessible name, dismissal by clicking the scrim, an exit animation, and — despite the
-inertness — body-scroll locking. The last one is solved separately; see
-[Theme tokens](#theme-tokens).
+And the things the element does **not** give you, which you have to decide about: an accessible
+name, a close button, dismissal by clicking the scrim, an exit animation, and — despite the
+inertness — body-scroll locking. The middle two are what `DialogHeader`'s `onClose` and
+`lightDismiss` answer, and both are opt-in rather than assumed. The name is yours in every
+case; body-scroll locking is solved separately, see [Theme tokens](#theme-tokens); and the exit
+animation is not solved at all here — [Drawer](drawer.md) is the component that has one.
 
 ## Closing it
 
@@ -149,39 +156,70 @@ you want the data before anything closes:
 
 ## Dismissing by clicking outside
 
-Native modal dialogs do not light-dismiss, and the component adds no click handler and sets
-no `closedby` attribute — so Escape is the only dismissal you get for free. If you want the
-scrim to close it, add it yourself. A backdrop click still targets the `<dialog>` element, so
-the only reliable tell is whether the pointer landed inside the panel's box:
+Native modal dialogs do not light-dismiss and the component sets no `closedby` attribute, so
+`lightDismiss` is the opt-in:
 
-<!-- example:DismissOnBackdropClick -->
+<!-- example:LightDismiss -->
 ```tsx
 <Button type="button" onClick={() => setOpen(true)}>
   Keyboard shortcuts
 </Button>
-<Dialog
-  open={open}
-  onClose={() => setOpen(false)}
-  aria-labelledby="shortcuts-title"
-  onClick={(event) => {
-    const panel = event.currentTarget.getBoundingClientRect();
-    const insidePanel =
-      event.clientX >= panel.left &&
-      event.clientX <= panel.right &&
-      event.clientY >= panel.top &&
-      event.clientY <= panel.bottom;
-    if (!insidePanel) setOpen(false);
-  }}
->
+<Dialog open={open} onClose={() => setOpen(false)} lightDismiss aria-labelledby="shortcuts-title">
   <h2 id="shortcuts-title">Keyboard shortcuts</h2>
   <p>Press Command-K to open the command palette, or Escape to close this dialog.</p>
 </Dialog>
 ```
 <!-- /example -->
 
-Test the coordinates rather than `event.target === event.currentTarget`: the panel's `p-r2`
-padding belongs to the dialog element too, so the simpler check also fires on a click inside
-the panel that happens to land on whitespace.
+**Off is the default, and the default is the decision.** A panel that light-dismisses is a panel
+a misplaced press throws away: right for something you are reading, wrong for a destructive
+confirmation and wrong for anything holding a half-finished form. Only the call site knows
+which it has.
+
+What it does is narrower than "closes on a click outside", because the naive version has two
+bugs the platform hands you for free:
+
+- **It is geometry, not containment.** A press on the scrim is dispatched at the `<dialog>`
+  element itself, so `event.target === event.currentTarget` is true for the scrim *and* for the
+  panel's own `p-r2` padding — and `useClickOutside` is blind here for the same reason,
+  reporting "inside" for every press it sees, including the ones on the scrim. The tell is
+  whether the pointer landed beyond the panel's border box.
+- **Both ends of the press must land outside.** Keyed on the release alone, selecting text in
+  the panel and dragging past its edge dismisses it and throws away what you were editing: the
+  click resolves to the dialog and its coordinates read "outside". A pointer-only manual pass
+  never finds that one.
+
+Both live in `useLightDismiss`, which is exported — the same hook
+[CommandPalette](command-palette.md) uses, and the one to reach for if you build your own
+top-layer panel.
+
+**`onClick` and `onPointerDown` behave unlike every other prop here.** The component needs both,
+so they are composed rather than spread: yours runs first, then the component's. That means
+passing one cannot silently delete light dismiss — and calling `preventDefault()` in yours is
+the per-event opt-out.
+
+## The parts
+
+Two optional children, for the panel that is longer than the screen it opens on. Neither is
+required — a short dialog puts its children straight inside, as every example above does.
+
+| Part           | Prop         | Type         | Default   |
+| -------------- | ------------ | ------------ | --------- |
+| `DialogHeader` | `onClose`    | `() => void` | —         |
+|                | `closeLabel` | `string`     | `"Close"` |
+|                | …rest        | `div` props  | —         |
+| `DialogBody`   | …rest        | `div` props  | —         |
+
+`DialogHeader` renders a close control at the end of its row when you pass `onClose`, and no
+control at all when you don't — a panel that has to be read to the end is entitled to withhold
+one. It is first in the DOM on purpose: `showModal()` puts focus on the first focusable
+descendant, so a dismissal at the *end* of the content is also what decides where a scrolling
+panel opens.
+
+`DialogBody` is the only part that scrolls. It carries no padding — the panel's `p-r2` is
+already the gutter — and it is a containing block, because the library's visually-hidden text
+is `position: absolute` with no offsets and would otherwise escape the clip and stretch the
+page. See [Long content](#long-content).
 
 ## Sizing
 
@@ -222,8 +260,13 @@ over `w-full` and keeps `max-w-[40rem]`.
 Dialog sets no `max-height` of its own — but the browser does: the UA rule
 `dialog:modal { max-height: calc(100% - 6px - 2em) }` caps the panel just short of the
 viewport, and the UA's `overflow: auto` then scrolls the **whole panel**, padding and heading
-included. (That cap is exactly what `Drawer.css` re-declares to get a full-height sheet.) Give
-the middle of the panel its own scroll region so the heading and the actions stay put:
+included. (That cap is exactly what `Drawer.css` re-declares to get a full-height sheet.)
+Scrolling the whole panel is rarely what you want: the title that says what is being read
+leaves the screen, and so does every control that dismisses it — which on a phone is the
+difference between a dismissal you can reach and one you have to go and find.
+
+The panel is a **column** while it is open, so `DialogBody` is the one part that gives and the
+header and the actions hold their places either side of it:
 
 <!-- example:ScrollingBody -->
 ```tsx
@@ -231,11 +274,13 @@ the middle of the panel its own scroll region so the heading and the actions sta
   Review terms
 </Button>
 <Dialog open={open} onClose={() => setOpen(false)} aria-labelledby="terms-title">
-  <h2 id="terms-title">Terms of service</h2>
-  <div className="max-h-[50vh] overflow-y-auto">
+  <DialogHeader onClose={() => setOpen(false)}>
+    <h2 id="terms-title">Terms of service</h2>
+  </DialogHeader>
+  <DialogBody>
     <p>Acme Marketing processes your deploy logs to render the activity feed.</p>
     <p>Logs are retained for 90 days, then deleted from primary and backup storage.</p>
-  </div>
+  </DialogBody>
   <FormActions>
     <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
       Decline
@@ -248,8 +293,12 @@ the middle of the panel its own scroll region so the heading and the actions sta
 ```
 <!-- /example -->
 
-Keep that scroll region on a **child**. A `display` utility on the Dialog itself unhides it
-while closed — see [Gotchas](#gotchas).
+Rolling your own instead of using the parts is fine, but keep the scroll region on a **child**
+and give it `min-h-0` — a flex item's floor is its own content, so without that the region
+grows to fit and pushes the panel past the viewport rather than scrolling inside it. What you
+must not do is reach for the panel: a `display` utility on the Dialog itself unhides it while
+closed — see [Gotchas](#gotchas). That is the trap the column exists to spare you, which is why
+it is declared as `open:flex`, qualified so it cannot apply to a closed panel.
 
 ## Theme tokens
 
@@ -291,8 +340,9 @@ scroll, so if you have not imported that package's CSS, the page scrolls behind 
 ## Gotchas
 
 - **Nothing closes it but your own state.** `open` is required and there is no internal
-  fallback. An `onClose` that logs but doesn't flip the boolean leaves Escape looking broken,
-  and there is no built-in close button to fall back on — render your own.
+  fallback. Every route out — Escape, `lightDismiss`, the control `DialogHeader` renders — calls
+  your `onClose` and nothing else, so an `onClose` that logs without flipping the boolean leaves
+  all three looking broken at once.
 - **`<form method="dialog">` cannot desync it.** That form, `formmethod="dialog"`, and
   `ref.current.close()` all close the element natively and fire `close` — which the component
   listens for, calling `onClose` whenever the element closes while your `open` is still
@@ -308,13 +358,19 @@ scroll, so if you have not imported that package's CSS, the page scrolls behind 
 - **A `display` utility unhides it.** Browsers hide a closed dialog with a UA-stylesheet rule,
   `dialog:not([open]) { display: none }`. Author declarations beat the UA origin no matter how
   low their specificity, so `className="flex"`, `"grid"` or `"block"` makes the dialog render
-  its children inline on the page while closed. Put layout classes on a wrapper inside it.
+  its children inline on the page while closed — in flow, with no backdrop and no top layer,
+  over whatever it lands on. Put layout classes on a wrapper inside it, or qualify them with
+  the `open:` variant, which is how the component's own column is declared. The corollary: a
+  bare `display` utility no longer overrides that column either, since `open:flex` outranks it
+  while the panel is open. Reach for `open:grid` and the like instead.
 - **The children are always mounted.** The `<dialog>` and everything in it render on every
   pass, open or closed — the browser just hides them. So a closed dialog's contents are in the
   DOM and in the server-rendered HTML, and any expensive subtree inside it mounts and fetches
   up front. Gate the children on `open` yourself if either matters.
-- **No light dismiss and no `closedby`.** Clicking the scrim does nothing until you wire it —
-  see [Dismissing by clicking outside](#dismissing-by-clicking-outside).
+- **Light dismiss is opt-in, and no `closedby` is set.** Clicking the scrim does nothing until
+  you pass `lightDismiss`; the component sets no `closedby` attribute, so nothing depends on
+  that attribute's browser support either — see
+  [Dismissing by clicking outside](#dismissing-by-clicking-outside).
 - **Edge-to-edge under 40rem.** `w-full` plus the `max-w-[40rem]` override leaves no viewport
   gutter on a phone. See [Sizing](#sizing).
 - **The scroll lock can shift the page.** It works by putting `overflow: hidden` on `<body>`,
@@ -340,8 +396,11 @@ close, and Tab is trapped in between — all native.
 - **The scrim needs no `aria-hidden`.** It is `::backdrop`, a pseudo-element, so it never
   enters the accessibility tree. A hand-built scrim `<div>` — the kind [Portal](portal.md)
   documents — does need marking; this one does not.
-- **Escape is the only built-in dismissal**, and it is keyboard-only. Always render a visible
-  close or cancel control for pointer and touch users; the component provides none.
+- **Escape is the only dismissal that is always there**, and it is keyboard-only. `lightDismiss`
+  is pointer-only, so it is not a substitute either: a panel wired with nothing else is
+  undismissable by a touch user who cannot find the scrim, and by a screen-reader user who has
+  no pointer at all. Render a visible close or cancel control — `DialogHeader`'s `onClose` is
+  the shortest route to one, and it is named, focusable and first in the tab order.
 - **The fade respects `prefers-reduced-motion`.** The reduced-motion block in
   `response-ui-css` guards the `.fade-in` *class*, not the Tailwind utility Dialog uses — so
   the component carries its own `motion-reduce:animate-none`, and the panel appears without
@@ -352,5 +411,5 @@ close, and Tab is trapped in between — all native.
 ## Related
 
 [Drawer](drawer.md) · [Portal](portal.md) · [Popover](popover.md) · [CommandPalette](command-palette.md) · `useFocusTrap` ·
-[Button](button.md) · [FormActions](form-actions.md) · [Field](field.md) ·
+`useLightDismiss` · [Button](button.md) · [FormActions](form-actions.md) · [Field](field.md) ·
 [Extending components](../extending.md) · [Theme contract](../theme-contract.md)

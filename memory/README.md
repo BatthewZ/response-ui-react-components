@@ -609,5 +609,27 @@ lesson readable without the measurement, and cite rather than restate.
    the one guilty block instead of the dozens of legitimately-wider descendants a naive
    right-edge scan returns, every one of which is scrolled content doing its job.
 
+111. **Setting `display` on a `<dialog>` from anywhere — the component or a caller — unhides it
+   while closed.** What hides one is `dialog:not([open]) { display: none }` in the user-agent
+   sheet, and an author declaration beats the user agent at any specificity, so a single
+   unqualified `flex` renders the panel in flow on the page, with no backdrop and no top layer,
+   over whatever it lands on. Qualify it: the `open:` variant compiles to
+   `:is([open], :popover-open, :open)`, so a closed panel matches nothing. The generalisation is
+   worth more than the rule — styling a component's own root from the call site can defeat rules
+   the component never wrote and cannot defend, and a dialog's are the browser's. It is also a
+   bug that only exists in the state nobody looks at: every check of a panel you have just
+   changed is a check of the open one.
+
+112. **A modal panel taller than the viewport hides its own exits, and opening focus decides
+   which end you land on.** Left as one scrolling block, the title that says what is being read
+   scrolls away with every control that dismisses it — and because `showModal()` focuses the
+   first focusable descendant, a dismissal placed at the end of the content also opens the panel
+   at the end of the content. A column with the header and the actions pinned and one scrolling
+   region between them fixes both, and the region needs `min-h-0`: a flex item's floor is its own
+   content, so without it the region grows to fit and pushes the panel past the viewport instead
+   of scrolling inside it. The siblings need `shrink-0` for the mirror reason — a shortfall is
+   distributed across every item, so the button row is squeezed by the content above it. This is
+   a phone-first failure a desktop window never shows you.
+
 Add a lesson when a pass teaches one. Prune anything that has expired: a memory file that has
 gone stale is worse than an empty one, because it is still believed.

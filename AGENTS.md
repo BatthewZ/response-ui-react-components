@@ -33,7 +33,8 @@ Accordion, Alert, AppShell, Avatar, AvatarGroup, AvatarUpload + types
 AvatarUploadProps/AvatarUploadResult, Badge, Breadcrumbs,
 Button, Calendar, RangeCalendar + type DateRange, Card, Carousel, CodeBlock, Collapsible,
 CommandPalette + CommandPalette.Item + types CommandPaletteItem/CommandPaletteRenderArgs,
-ContextMenu, CopyButton, DataTable + type DataTableProps + type ColumnDef + type SortState, Dialog, Drawer,
+ContextMenu, CopyButton, DataTable + type DataTableProps + type ColumnDef + type SortState,
+Dialog + DialogHeader + DialogBody, Drawer,
 DropdownMenu, EmptyState + EmptyState{Title,Description,Icon,Actions}, ErrorBoundary,
 FileUpload, Hero, HoverCard, IconButton, Kbd, Markdown + type MarkdownProps, MasonryGrid,
 MediaCard, Pagination,
@@ -107,7 +108,8 @@ type RouterAdapterValue, type RouterLinkComponent, type RouterLinkProps
 ```
 useActiveSection, useClickOutside, useControllableState + type
 UseControllableStateParams + type UseControllableStateReturn, useDebounce,
-useDocumentTitle, useFloating + type Placement, useFocusTrap, useMediaQuery,
+useDocumentTitle, useFloating + type Placement, useFocusTrap, useLightDismiss,
+useMediaQuery,
 usePrefersReducedMotion, useRovingFocus,
 useTheme + type UseThemeOptions + type UseThemeReturn, STORAGE_KEY,
 EXAMPLE_THEMES + type ExampleTheme (sample data for demos — NOT a default,

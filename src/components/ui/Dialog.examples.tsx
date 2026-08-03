@@ -5,7 +5,7 @@ import { FormActions } from "../form/FormActions";
 import { Input } from "../form/Input";
 import { Label } from "../form/Label";
 import { Button } from "./Button";
-import { Dialog } from "./Dialog";
+import { Dialog, DialogBody, DialogHeader } from "./Dialog";
 
 /** Fully controlled: `open` drives `showModal()`, and `onClose` is your cue to flip it back. */
 export function Minimal() {
@@ -101,30 +101,17 @@ export function WithForm() {
 }
 
 /**
- * There is no light dismiss. Add one by testing whether the click landed outside the panel box —
- * a backdrop click still targets the dialog element, so the coordinates are the only tell.
+ * `lightDismiss` closes on a press that both begins and ends on the scrim. Right for a panel you
+ * are reading; leave it off for one holding a decision or a half-finished form.
  */
-export function DismissOnBackdropClick() {
+export function LightDismiss() {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button type="button" onClick={() => setOpen(true)}>
         Keyboard shortcuts
       </Button>
-      <Dialog
-        open={open}
-        onClose={() => setOpen(false)}
-        aria-labelledby="shortcuts-title"
-        onClick={(event) => {
-          const panel = event.currentTarget.getBoundingClientRect();
-          const insidePanel =
-            event.clientX >= panel.left &&
-            event.clientX <= panel.right &&
-            event.clientY >= panel.top &&
-            event.clientY <= panel.bottom;
-          if (!insidePanel) setOpen(false);
-        }}
-      >
+      <Dialog open={open} onClose={() => setOpen(false)} lightDismiss aria-labelledby="shortcuts-title">
         <h2 id="shortcuts-title">Keyboard shortcuts</h2>
         <p>Press Command-K to open the command palette, or Escape to close this dialog.</p>
       </Dialog>
@@ -159,8 +146,9 @@ export function CustomWidth() {
 }
 
 /**
- * Long content: scroll the middle, not the dialog, so the heading and actions stay put. Keep the
- * scroll region on a child — a `display` utility on the dialog itself unhides it while closed.
+ * Long content: the panel is a column, `DialogBody` is the only part of it that scrolls, and the
+ * title and the actions stay put either side. On a phone that is the difference between a
+ * dismissal you can reach and one you have to go and find.
  */
 export function ScrollingBody() {
   const [open, setOpen] = useState(false);
@@ -170,11 +158,13 @@ export function ScrollingBody() {
         Review terms
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} aria-labelledby="terms-title">
-        <h2 id="terms-title">Terms of service</h2>
-        <div className="max-h-[50vh] overflow-y-auto">
+        <DialogHeader onClose={() => setOpen(false)}>
+          <h2 id="terms-title">Terms of service</h2>
+        </DialogHeader>
+        <DialogBody>
           <p>Acme Marketing processes your deploy logs to render the activity feed.</p>
           <p>Logs are retained for 90 days, then deleted from primary and backup storage.</p>
-        </div>
+        </DialogBody>
         <FormActions>
           <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
             Decline

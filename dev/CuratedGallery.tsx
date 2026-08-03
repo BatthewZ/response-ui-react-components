@@ -39,9 +39,12 @@ import {
   DateRangePicker,
   DescriptionList,
   Dialog,
+  DialogBody,
+  DialogHeader,
   Drawer,
   DropdownMenu,
   Field,
+  FormActions,
   FormProvider,
   HoverCard,
   Input,
@@ -402,19 +405,39 @@ export function App() {
 
         <Tile label="Dialog">
           <Button onClick={() => setDialogOpen(true)}>Open dialog</Button>
-          <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-            <div className="flex flex-col gap-r4">
-              <h3 className="text-h4">Dialog title</h3>
+          {/* The parts and `lightDismiss` together, because the failure they
+              exist to prevent is a composed one: a panel longer than the screen
+              scrolls its own title and every dismissal out of reach. */}
+          <Dialog
+            open={dialogOpen}
+            onClose={() => setDialogOpen(false)}
+            lightDismiss
+            aria-labelledby="gallery-dialog-title"
+          >
+            <DialogHeader onClose={() => setDialogOpen(false)}>
+              <h3 id="gallery-dialog-title" className="text-h4">
+                Dialog title
+              </h3>
+            </DialogHeader>
+            <DialogBody className="flex flex-col gap-r4 py-r4">
               <p className="text-body-2 text-fg-secondary">
-                This is a native &lt;dialog&gt; rendered by the library.
+                This is a native &lt;dialog&gt; rendered by the library. The panel is a column:
+                this middle section is the only part that scrolls, so the title above and the
+                actions below hold their places.
               </p>
-              <div className="flex justify-end gap-r5">
-                <Button variant="ghost" onClick={() => setDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => setDialogOpen(false)}>Confirm</Button>
-              </div>
-            </div>
+              {Array.from({ length: 8 }, (_, i) => (
+                <p key={i} className="text-body-2 text-fg-secondary">
+                  Filler paragraph {i + 1}, here to make the body longer than the panel so the
+                  scroll region has something to do.
+                </p>
+              ))}
+            </DialogBody>
+            <FormActions>
+              <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => setDialogOpen(false)}>Confirm</Button>
+            </FormActions>
           </Dialog>
         </Tile>
         <Tile label="Popover">

@@ -4,6 +4,69 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.15.0] — 2026-08-03
+
+### Added
+
+- **[Dialog](docs/components/dialog.md) takes `lightDismiss`**, closing on a press that both
+  begins and ends outside the panel. Off by default, and the default is the decision: a modal
+  that light-dismisses is one a misplaced press can throw away, which is right for something you
+  are reading and wrong for a destructive confirmation or anything holding a half-finished form.
+  Only the call site knows which it has.
+
+  What it does is narrower than "close on a click outside", because the obvious spelling has two
+  bugs. A press on the scrim is dispatched at the `<dialog>` element itself, so a containment
+  test — `event.target === event.currentTarget`, or `useClickOutside`, which reaches for
+  containment internally — is true for the scrim *and* for the panel's own `p-r2` padding; the
+  tell has to be geometry, the pointer landing beyond the panel's border box. And keyed on the
+  release alone, selecting text in the panel and dragging past its edge dismisses it and throws
+  away what was being edited, because that click resolves to the dialog with coordinates
+  outside. Both ends of the press are therefore required.
+
+  `onClick` and `onPointerDown` are **composed rather than spread** for this, so passing either
+  cannot silently delete the behaviour, and `preventDefault()` in yours is the opt-out. Those
+  two props behave unlike every other prop on the element, and the doc says so.
+
+- **`useLightDismiss` is exported**, which is the same behaviour as a hook for anything else the
+  browser puts in the top layer. `CommandPalette` had this logic inline and now shares it, so
+  the two cannot drift; it is also the answer to the trap `useClickOutside` sets on a modal
+  `<dialog>`, where containment can never report "outside" and the hook silently never fires.
+
+- **`DialogHeader` and `DialogBody`**, for the one piece of structure that cannot be assembled
+  correctly from outside the component: a panel whose middle scrolls while its title and its
+  actions stay put. `DialogHeader` renders a close control when given `onClose` (named through
+  `closeLabel`, defaulting to "Close") and none when not — a panel that must be read to the end
+  is entitled to withhold one. It is first in the DOM deliberately, because `showModal()` puts
+  focus on the first focusable descendant, so a dismissal at the *end* of the content is also
+  what decides where a scrolling panel opens: at the end of the content.
+
+  `DialogBody` carries `min-h-0`, which is the load-bearing half — a flex item's floor is its own
+  content, so without it the region grows to fit and pushes the panel past the viewport instead
+  of scrolling inside it. It adds no padding of its own (the panel's `p-r2` is already the
+  gutter) and is a containing block, because the library's visually-hidden text is
+  `position: absolute` with no offsets and would otherwise escape the clip and stretch the page
+  to the height of content scrolled out of sight.
+
+### Changed
+
+- **The Dialog panel is a flex column while it is open** — `open:flex open:flex-col`, and the
+  qualifier is the whole point. A `display` an author declares beats the user agent's
+  `dialog:not([open]) { display: none }` at any specificity, so the same two utilities without
+  `open:` would render every closed dialog in the library inline on the page, in flow, with no
+  backdrop and no top layer. The variant compiles to `:is([open], :popover-open, :open)`, so a
+  closed panel matches nothing.
+
+  Two consequences for existing call sites. Children of an open panel are flex items now rather
+  than blocks; the base reset already zeroes margins, so spacing is unchanged, but a child
+  relying on block-layout behaviour may not be. And a bare `display` utility in `className` no
+  longer overrides the panel's own, since `open:flex` outranks it while the panel is open —
+  `open:grid` and the like do.
+
+- **`FormActions` no longer shrinks.** As a Dialog's footer it is a flex item beside a scrolling
+  body, and a shortfall is distributed across every item, so the button row was squeezed by the
+  content above it rather than the content scrolling. In normal flow, which is everywhere else it
+  is used, `shrink-0` declares nothing.
+
 ## [0.14.1] — 2026-08-03
 
 ### Fixed
