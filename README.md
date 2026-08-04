@@ -380,7 +380,7 @@ For tens of thousands of rows, reach for `VirtualizedDataTable` instead of pagin
   data={tenThousandRows}
   columns={columns}
   rowKey={(r) => r.id}
-  rowHeight={44}
+  rowHeight={48}
   height={480}
 />
 ```

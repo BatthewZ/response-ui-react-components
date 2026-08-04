@@ -1213,7 +1213,7 @@ export function App() {
             columns={COLUMNS}
             rowKey={(r) => r.id}
             defaultSort={{ key: "name", direction: "asc" }}
-            rowHeight={44}
+            rowHeight={48}
             height={480}
             selectable
             selectedKeys={virtualSelection}

@@ -29,7 +29,7 @@ const invoices: Invoice[] = Array.from({ length: 50000 }, (_, i) => ({
 
 const loadNextPage = () => {};
 
-/** Fifty thousand invoices, a fixed 44px row, a 480px viewport — only the visible slice mounts. */
+/** Fifty thousand invoices, a fixed 48px row, a 480px viewport — only the visible slice mounts. */
 export function Minimal() {
   return (
     <VirtualizedDataTable
@@ -40,7 +40,7 @@ export function Minimal() {
         { key: "amount", header: "Amount", align: "right", width: 120 },
       ]}
       rowKey={(invoice) => invoice.id}
-      rowHeight={44}
+      rowHeight={48}
       height={480}
     />
   );
@@ -57,7 +57,7 @@ export function ClientSorting() {
         { key: "amount", header: "Amount", align: "right", width: 120, sortable: true },
       ]}
       rowKey={(invoice) => invoice.id}
-      rowHeight={44}
+      rowHeight={48}
       height={480}
       defaultSort={{ key: "amount", direction: "desc" }}
     />
@@ -77,7 +77,7 @@ export function ServerSorting() {
         { key: "issuedAt", header: "Issued", width: 200, sortable: true },
       ]}
       rowKey={(invoice) => invoice.id}
-      rowHeight={44}
+      rowHeight={48}
       height={480}
       sort={sort}
       onSortChange={(next) => setSort(next ?? { key: "issuedAt", direction: "desc" })}
@@ -98,7 +98,7 @@ export function RowSelection() {
         { key: "amount", header: "Amount", align: "right", width: 120 },
       ]}
       rowKey={(invoice) => invoice.id}
-      rowHeight={44}
+      rowHeight={48}
       height={480}
       selectable
       selectedKeys={selected}
@@ -117,7 +117,7 @@ export function InfiniteScroll() {
         { key: "customer", header: "Customer" },
       ]}
       rowKey={(invoice) => invoice.id}
-      rowHeight={44}
+      rowHeight={48}
       height={480}
       onEndReached={loadNextPage}
       endReachedThreshold={20}
@@ -152,7 +152,7 @@ export function CustomCells() {
         },
       ]}
       rowKey={(invoice) => invoice.id}
-      rowHeight={44}
+      rowHeight={48}
       height={480}
     />
   );
@@ -185,7 +185,7 @@ export function Loading() {
         { key: "customer", header: "Customer" },
       ]}
       rowKey={(invoice) => invoice.id}
-      rowHeight={44}
+      rowHeight={48}
       height={480}
       loading
       loadingRowCount={8}
@@ -203,7 +203,7 @@ export function CustomEmptyState() {
         { key: "customer", header: "Customer" },
       ]}
       rowKey={(invoice) => invoice.id}
-      rowHeight={44}
+      rowHeight={48}
       height={480}
       emptyContent={
         <EmptyState size="md">

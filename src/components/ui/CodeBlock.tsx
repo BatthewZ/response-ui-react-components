@@ -56,8 +56,17 @@ const languageClasses =
  * `tab-size` utility to carry the prefix for it, and Firefox only understood
  * the unprefixed property from 91.
  */
+/**
+ * `relative` is the containing-block guard every scrollport in this library
+ * carries — see `scripts/verify-scrollport-containing-block.mjs`. Nothing the
+ * `<pre>` can hold today is absolutely positioned (its content is a `code`
+ * STRING, rendered as in-flow line spans whose numbers are a `::before`
+ * `inline-block`), so this changes nothing now. It is here because the rule that
+ * catches the defect is "every scrollport, no exceptions" — the version with an
+ * exemption list is the version that let `.table-wrapper` ship without it.
+ */
 const preClasses =
-  "p-r5 overflow-x-auto font-[family-name:var(--DEFAULT-MONO-FONT)] text-body-3 leading-[1.6] text-fg-primary [tab-size:2] [-moz-tab-size:2] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focus";
+  "relative p-r5 overflow-x-auto font-[family-name:var(--DEFAULT-MONO-FONT)] text-body-3 leading-[1.6] text-fg-primary [tab-size:2] [-moz-tab-size:2] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focus";
 
 /**
  * `font-[inherit]` is `font-family: inherit` and nothing else — the shorthand

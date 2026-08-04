@@ -58,8 +58,18 @@ const paletteInputClasses =
   "w-full px-r3 py-r4 text-body-1 text-fg-primary outline-none placeholder:text-fg-muted focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-border-focus";
 
 /** `overscroll-contain` keeps a scroll that reaches the end of this list off the
- *  page behind the scrim, which is not itself a scroll blocker. */
-const paletteListClasses = "max-h-96 overflow-y-auto overscroll-contain p-r6";
+ *  page behind the scrim, which is not itself a scroll blocker.
+ *
+ *  `relative` is the containing-block guard every scrollport in this library
+ *  carries (`Table`'s wrapper, `Carousel.Track`, `DialogBody`): `children`
+ *  composes a row's content, so a row can hold anything — including a `Badge`,
+ *  whose visually-hidden variant word is `position: absolute` with no offsets.
+ *  Without it that word resolves against the `<dialog>` and is laid out at its
+ *  static position in the list's UNSCROLLED coordinates, so row 200's copy sits
+ *  200 rows below the panel. The panel's `overflow-hidden` bounds the damage to
+ *  the dialog rather than the page — which is why this one is a correctness fix
+ *  and not a bug report. */
+const paletteListClasses = "relative max-h-96 overflow-y-auto overscroll-contain p-r6";
 
 const paletteGroupHeaderClasses =
   "px-r5 py-r6 text-body-3 font-semibold tracking-[0.04em] text-fg-muted uppercase";

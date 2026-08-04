@@ -8,7 +8,7 @@ import { Swimlane } from "./Swimlane";
 export function Minimal() {
   return (
     <Swimlane title="Continue watching">
-      <Row className="overflow-x-auto px-r5 pb-r5">
+      <Row className="relative overflow-x-auto px-r5 pb-r5">
         <Card className="w-56 shrink-0">The Ascent — 24 min left</Card>
         <Card className="w-56 shrink-0">Blue Planet II — 12 min left</Card>
         <Card className="w-56 shrink-0">Chef's Table — 41 min left</Card>
@@ -25,7 +25,7 @@ export function HeaderSlots() {
       subtitle="Added in the last seven days"
       viewAllHref="/browse/new-releases"
     >
-      <Row className="overflow-x-auto px-r5 pb-r5">
+      <Row className="relative overflow-x-auto px-r5 pb-r5">
         <Card className="w-56 shrink-0">Dune: Part Two</Card>
         <Card className="w-56 shrink-0">Poor Things</Card>
         <Card className="w-56 shrink-0">The Zone of Interest</Card>
@@ -34,7 +34,13 @@ export function HeaderSlots() {
   );
 }
 
-/** Swimlane adds no overflow, no snap points and no tabindex — put all three on your own body element. */
+/**
+ * Swimlane adds no overflow, no snap points and no tabindex — put all three on your own body
+ * element, and `relative` with them. A scrollport that is not a containing block lets every
+ * absolutely-positioned descendant resolve outside its own clip and stretch the page; the
+ * library's visually-hidden text is `position: absolute` with no offsets, so one `Badge` on a
+ * card is enough to trigger it.
+ */
 export function ScrollSnapLane() {
   return (
     <Swimlane title="Because you watched Arrival">
@@ -42,7 +48,7 @@ export function ScrollSnapLane() {
         tabIndex={0}
         role="group"
         aria-label="Because you watched Arrival"
-        className="flex gap-r4 overflow-x-auto snap-x snap-mandatory px-r5 pb-r5"
+        className="relative flex gap-r4 overflow-x-auto snap-x snap-mandatory px-r5 pb-r5"
       >
         <Card className="w-56 shrink-0 snap-start">Interstellar</Card>
         <Card className="w-56 shrink-0 snap-start">Annihilation</Card>
@@ -78,17 +84,17 @@ export function RevealAnimations() {
   return (
     <>
       <Swimlane title="Award winners" animation="fade-up">
-        <Row className="overflow-x-auto px-r5 pb-r5">
+        <Row className="relative overflow-x-auto px-r5 pb-r5">
           <Card className="w-56 shrink-0">Oppenheimer</Card>
         </Row>
       </Swimlane>
       <Swimlane title="Documentaries" animation="fade-right">
-        <Row className="overflow-x-auto px-r5 pb-r5">
+        <Row className="relative overflow-x-auto px-r5 pb-r5">
           <Card className="w-56 shrink-0">Free Solo</Card>
         </Row>
       </Swimlane>
       <Swimlane title="Short films" animation="scale">
-        <Row className="overflow-x-auto px-r5 pb-r5">
+        <Row className="relative overflow-x-auto px-r5 pb-r5">
           <Card className="w-56 shrink-0">The Silent Child</Card>
         </Row>
       </Swimlane>
@@ -100,7 +106,7 @@ export function RevealAnimations() {
 export function ReplayOnEveryScroll() {
   return (
     <Swimlane title="Keep watching" once={false}>
-      <Row className="overflow-x-auto px-r5 pb-r5">
+      <Row className="relative overflow-x-auto px-r5 pb-r5">
         <Card className="w-56 shrink-0">Slow Horses</Card>
         <Card className="w-56 shrink-0">Severance</Card>
       </Row>

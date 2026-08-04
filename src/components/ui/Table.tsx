@@ -59,7 +59,27 @@ function useTableContext() {
  * header's wash no longer paints on a coarse pointer; that matches the rest of
  * the package.
  */
-const wrapperClasses = "overflow-x-auto border border-border-default rounded-md";
+/**
+ * `relative` is the load-bearing one, and it is not decoration: the wrapper is
+ * a scrollport (`overflow-x-auto` makes `overflow-y` compute to `auto` too), so
+ * without it every absolutely-positioned descendant resolves against a
+ * containing block OUTSIDE the scroller and escapes the clip. The library's own
+ * visually-hidden text is `position: absolute` with no offsets — `Badge` puts
+ * one in any status cell — so its static position is taken in the scroller's
+ * unscrolled content coordinates and lands that far down (or across) the
+ * DOCUMENT. `VirtualizedDataTable` makes it spectacular: measured at 375×800
+ * over 10 000 rows, scrolling the scrollport to its end took
+ * `document.documentElement.scrollHeight` from 1332 to 530 060. It is not
+ * virtualization-specific — a plain `Table` wide enough to scroll sideways
+ * pushes the page's `scrollWidth` past the viewport the same way.
+ *
+ * The same declaration for the same reason as `DialogBody`'s `relative`.
+ * `z-index` stays `auto`, so no stacking context is created. It DOES change paint
+ * order — a positioned box with `z-index: auto` moves from Appendix E step 4 to step
+ * 8 — so this wrapper now paints over an earlier-in-tree positioned element that has
+ * no `z-index`. Measured on a consumer `sticky` toolbar; see the 0.17.0 changelog.
+ */
+const wrapperClasses = "relative overflow-x-auto border border-border-default rounded-md";
 
 const tableClasses = "w-full border-collapse bg-surface-0";
 

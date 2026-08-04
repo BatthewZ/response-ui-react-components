@@ -105,7 +105,8 @@ scripts/                    (repo-only; none of these are published — `ls scri
   verify-css-layering.mjs   verify-directives.mjs       verify-docs.mjs
   verify-example-themes.mjs verify-focus-affordance.mjs verify-no-css-imports.mjs
   verify-omit-discipline.mjs verify-slot-annotations.mjs verify-token-mirror.mjs
-  bugs-ledger.mjs           probe-cascade-layer.mjs
+  bugs-ledger.mjs           probe-cascade-layer.mjs     probe-scrollport-containing-block.mjs
+  verify-scrollport-containing-block.mjs
 ```
 
 ## The focus ring lives in one place
@@ -125,6 +126,53 @@ were collapsed, and the divergence they had drifted into (`focus:` vs `focus-vis
   [`verify-focus-affordance.mjs`](./scripts/verify-focus-affordance.mjs) resolves hoisted class
   constants *textually*, so a `${…}`-composed one would not resolve and would blind the guard
   to every site that consumes it.
+
+## Every scrollport is a containing block
+
+Any element you give `overflow: auto` or `overflow: scroll` — in a class list or in a
+stylesheet — must also carry `relative`. Not "if it might hold something absolutely
+positioned": **always**, and
+[`verify-scrollport-containing-block.mjs`](./scripts/verify-scrollport-containing-block.mjs)
+fails the build otherwise.
+
+The reason, since the symptom never points at the cause. An absolutely-positioned box with no
+offsets is laid out at its static position, *in the coordinates of its containing block* — the
+nearest positioned ancestor. An unpositioned scroller is not one, so the box is neither clipped
+by the scroller nor expressed in its scrolled coordinates: scroll the scrollport and the box is
+stranded that far down the document, stretching the page by the whole scroll range. This library
+manufactures the trigger itself, because `sr-only` is `position: absolute` with no offsets — so
+a `Badge` in a table cell was enough to take a consumer's page from 800px to 530 060px.
+
+Three notes on the shape of the rule:
+
+- **Total, not judged.** `DialogBody` carried this declaration, with this reason in its docblock,
+  three releases before `.table-wrapper` shipped without it — and then `Carousel.Track`,
+  `.app-shell-main`, `CommandPalette`'s listbox and `CodeBlock`'s `<pre>`. Deciding per component
+  whether the content *could* be absolutely positioned is the step that failed. A dead `relative`
+  on a closed-content scrollport costs nothing; say in a comment that it is dead.
+- **`relative`, not `contain` or a `transform`.** It leaves `z-index` at `auto`, so it creates no
+  stacking context, and it does not capture a consumer's
+  `position: fixed`. The other two do both.
+- **The exception needs evidence, not a note.** A floating element gets `position: absolute` and
+  a `transform` at runtime from `floatingStyles`; `relative` there would be a dead rule an inline
+  style always beats. The gate accepts that only when `floatingStyles` is actually in that
+  element's `style`.
+
+**Two gates, and the linter is the weaker one.** `bun run verify:scrollport-containing-block`
+reads source strings, so it enumerates the population cheaply but decides a layout property by
+pattern-matching text — it cannot see a scrollport styled through a descendant variant
+(`[&>ul]:overflow-y-auto`), one with no `className` at all, a class string built by a helper, or
+a consumer's unlayered `.table-wrapper { position: static }` beating the utility from outside the
+package. `bun run probe:scrollport` is the real check: it builds a fixture, renders it in
+Chromium, enumerates what the BROWSER treats as a scrollport, and asserts both that each is a
+containing block and that scrolling it to its end leaves `document.documentElement.scrollHeight`
+and `scrollWidth` untouched. Run it before publishing — it is not in `prepublishOnly`, for the
+same reason `probe:cascade-layer` is not: it needs a globally-installed Playwright, and a missing
+one must not read as a pass. `--self-test` forces every scrollport back to `static` and requires
+the probe to go red, which is the only evidence a green run means anything.
+
+The unit suite cannot help you at all: jsdom applies no stylesheets and performs no layout, so
+every one of those five defects was green across all 2792 tests, before and after.
 
 ## Testing
 

@@ -64,7 +64,9 @@ export function Sides() {
 /**
  * The panel's height is fixed, so overflowing content scrolls the panel itself — padding
  * included. A full-height flex child with one scrolling region keeps the title and the action
- * still instead.
+ * still instead. That region carries `relative` for the same reason `DialogBody` does: a
+ * scrollport that is not a containing block lets absolutely-positioned descendants — the
+ * library's visually-hidden text included — escape its clip.
  */
 export function ScrollingPanel() {
   const [open, setOpen] = useState(true);
@@ -74,7 +76,7 @@ export function ScrollingPanel() {
         <h2 id="notifications-title" className="shrink-0">
           Notifications
         </h2>
-        <ul className="flex-1 overflow-y-auto">
+        <ul className="relative flex-1 overflow-y-auto">
           {[
             "Ada Lovelace approved Pull request #42",
             "Grace Hopper deployed v2.4.0 to production",

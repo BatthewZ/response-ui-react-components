@@ -4,6 +4,152 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.17.0] — 2026-08-04
+
+### Fixed
+
+- **Every scrollport in the library is now a containing block**, which stops absolutely-positioned
+  descendants escaping the scroll clip and stretching the page. Reported from a consuming app as
+  "a huge empty space at the bottom of the site that grows the further you scroll a
+  `VirtualizedDataTable`". The report's diagnosis of *this* defect was right in every particular,
+  including the parts it flagged as guesses — verified by ablation, not just agreement: with the
+  same table and the same 530 042px scroll range but every `Badge` rendered `statusLabel=""`, so
+  no `sr-only` box exists, the page does not grow at all. (One of its four numbered symptoms,
+  "console errors 2 → 0", is **not** this defect — a `position` declaration cannot resolve a
+  console error, and that line almost certainly belongs to the separate placeholder-image change
+  in the same report.)
+
+  The mechanism, because the symptom is nowhere near the cause. An absolutely-positioned box with
+  no offsets is laid out at its *static position* — but in the coordinates of its containing
+  block, which is the nearest **positioned** ancestor. A scroll container that is `position: static`
+  is not one, so two things happen at once: the box is not clipped by the scroller, and its
+  coordinates are the scroller's **unscrolled** content coordinates. Scroll the scrollport and the
+  escaped box is left sitting that far down the page. This library's visually-hidden text is
+  `position: absolute` with no offsets — that is what `sr-only` *is* — and
+  [Badge](docs/components/badge.md) renders one by default, so rendering a status column was enough
+  to trigger it. The consumer did nothing wrong.
+
+  Measured in Chromium at 375×800, before → after:
+
+  | | before | after |
+  | --- | --- | --- |
+  | [VirtualizedDataTable](docs/components/virtualized-data-table.md), 10 000 rows, scrolled to the end — `documentElement.scrollHeight` | 530 060 | 800 |
+  | [Table](docs/components/table.md), three rows, wide enough to scroll sideways — `documentElement.scrollWidth` | 620 | 375 |
+  | [Carousel](docs/components/carousel.md).Track, 40 slides inside `AppShell.Main` — `.app-shell-main` `scrollWidth` | 11 266 | 4 000 |
+  | [AppShell](docs/components/app-shell.md).Main, one Badge at the end of 4000px of content — `documentElement.scrollWidth` | 3 885 | 375 |
+
+  **It was never virtualization-specific**, which is the part most likely to be missed: a plain
+  `Table` hits it too, and `VirtualizedDataTable` only makes it spectacular because the escaped
+  boxes sit at coordinates inside a ~530 000px scroll range. Five elements take `relative`, and
+  they are not all the same severity — stated per element rather than as a count:
+
+  - `.table-wrapper`, `Carousel.Track` and `.app-shell-main` — **page-stretching, measured above.**
+  - `CommandPalette`'s results listbox — **real but bounded.** `children` composes a row's content,
+    so a row can hold a `Badge`; row 200's visually-hidden word was laid out 200 rows below the
+    panel. The open `<dialog>` is `position: fixed` with `overflow-hidden`, so the damage stopped
+    at the panel instead of reaching the page. Not measured in a browser, unlike the three above.
+  - `CodeBlock`'s `<pre>` — **preventive only, and it changes nothing today.** Its content is a
+    `code` *string* rendered as in-flow line spans. It is here because the rule the new gate
+    enforces is "every scrollport, no exceptions".
+
+  `relative` rather than `contain` or a `transform`: it leaves `z-index` at `auto`, so no stacking
+  context is created, and unlike those two it does **not** capture a consumer's `position: fixed`
+  overlay.
+
+  **It does change paint order, though, and an earlier draft of this entry wrongly said it did
+  not.** No stacking context is not the same as no paint-order change: a positioned element with
+  `z-index: auto` moves from step 4 of CSS 2.1 Appendix E (in-flow, non-positioned) to step 8
+  (positioned descendants), and step 8 paints in tree order. So one of these five now paints
+  **over** an earlier-in-tree positioned element that has no `z-index` of its own. Measured: a
+  consumer's `position: sticky; top: 0` toolbar written above a `<Table>`, with no `z-index` — the
+  ordinary way to write one — is `elementFromPoint`-topmost before the change and completely
+  covered by the table after it. Nothing in the library regresses this way (its own overlapping
+  parts all carry a `z-index`, and every floating element portals), but **your markup can**. The
+  fix is one declaration on your own element: give it a `z-index`.
+
+  **The trade, in both directions — this is why it is a minor and not a patch.** Nothing the
+  library itself renders moves. But these five elements are now the containing block for
+  `position: absolute` content **you** put inside them, and that is three changes, not one.
+  Measured in Chromium at 375×800 on an overlay inside `AppShell.Main`:
+
+  - **Origin.** It resolves against the scrollport rather than against whatever ancestor it
+    previously reached (usually the viewport).
+  - **It is now clipped.** An overlay overhanging the region's edge used to paint and hit-test
+    outside it; at identical geometry it no longer does — `elementFromPoint` 20px above the
+    region's top edge returned the overlay before and returns the navbar now.
+  - **It now scrolls with the content.** `top: 0; right: 0` inside `AppShell.Main` used to sit
+    still at `left: 255` through a 1500px horizontal scroll; it now travels with it, to
+    `left: −1245`.
+
+  If you were relying on any of those three, the fix is to position that element against an
+  ancestor you control instead — or `position: fixed`, which is **unaffected**, since only
+  `absolute` resolves against a `relative` ancestor.
+
+### Added
+
+- **Two new checks for this defect class, because the unit suite is blind to it.** jsdom applies no
+  stylesheets and performs no layout, so all 2792 tests were green with all five instances in place
+  *and* green after fixing them. `tsc` cannot see CSS, and a screenshot at rest misses it too,
+  because it is the **scroll** that displaces the box.
+
+  **`bun run probe:scrollport`** is the real one, and it is the check the bug report asked for:
+  *"assert `document.documentElement.scrollHeight` is unchanged after scrolling a tall table's
+  scrollport to its end."* It builds a fixture holding every scrollport-owning component in the
+  library, renders it in Chromium at 375×800, enumerates what the **browser** treats as a
+  scrollport, and asserts each is a containing block and that scrolling it to its end moves neither
+  `scrollHeight` nor `scrollWidth`. `--self-test` forces every scrollport back to `static` and
+  requires the probe to go red — it does, by +94 458px on the virtualized table. Not in
+  `prepublishOnly`, matching `probe:cascade-layer`: it needs a globally-installed Playwright, and a
+  missing one must never read as a pass.
+
+  **`bun run verify:scrollport-containing-block`** is a cheap source-level lint that *is* in
+  `prepublishOnly`. It reads both halves of the codebase — utilities in `className` and
+  declarations in `.css` — pairs a scrollport with its containing block by element rather than by
+  file, resolves class strings hoisted into module constants including across `import` edges, and
+  reads `className` written as an object property (`getFloatingProps({ className: … })`) as well as
+  as a JSX attribute; without those last two it silently reported OK over six real scrollports.
+
+  **What the lint cannot do, stated plainly, because a gate with a false negative is worse than
+  none.** It decides a layout property by matching text. It cannot see a scrollport styled through
+  a descendant variant (`[&>ul]:overflow-y-auto` — where the parent's `relative` actually *hides*
+  the defect), an element with no `className` at all, a class string built by a helper or by
+  concatenation, or a consumer's unlayered `.table-wrapper { position: static }` out-ranking the
+  utility from outside the package entirely. It rejects variant-prefixed positions (`print:relative`
+  leaves the element static on every screen) and accepts `transform`/`contain` utilities, both of
+  which it got wrong at first. Treat it as a spelling check and the probe as the measurement.
+
+  `overflow: hidden` is deliberately out of scope for both, and the scripts' headers say why, so
+  its absence does not read as an oversight.
+
+### Changed
+
+- **`VirtualizedDataTable`'s `rowHeight` guidance no longer offers a constant it cannot honour.**
+  Examples that used `rowHeight={44}` at the default `comfortable` density now use `48` (44 renders
+  45px rows), `README.md` included. But the substantive change is the advice, because the old
+  recipe — "double the cell padding, add a line of text, round up" — cannot work:
+
+  - **Row height moves with the viewport.** Cells set font-size via
+    `text-[length:var(--BodyText-*)]`, which steps at `@media (min-width: 40rem)`, and the
+    inherited line-height follows it. No single constant is right on both sides of that step.
+  - **Cell content dominates, and this library's own components change it.**
+    [Text](docs/components/text.md) applies `text-body-1`, which brings the *paired*
+    `--BodyText-1-line-height` (2rem) with it — so a `<Text>` in a `render` makes a `comfortable`
+    row **53px** against ~45px for the same row as a bare string. That is the reported case,
+    reproduced exactly, and it means the `48` above is 5px short for it. There is no number this
+    changelog can print that survives what you put in the cell.
+  - **The failure is bounded, not unbounded** — an earlier draft of this entry said otherwise and
+    was wrong. Both spacers are `index * rowHeight` and the index math divides by the same
+    `rowHeight`, so the error cannot accumulate. Measured at `rowHeight={44}` over 10 000 rows:
+    `scrollHeight` 440 072 against a nominal 440 045 — a 27px excess plus a few pixels of
+    misalignment inside the mounted window, not the five-figure loss first claimed here. The last
+    row stays reachable.
+
+  So the docs now tell you to measure your own worst row rather than to copy a figure.
+  **`rowHeight` remains declared-only:** nothing checks that what you declared matches what
+  rendered. A dev-mode warning comparing a mounted `<tr>`'s height to `rowHeight` would catch every
+  variant of this — theme, viewport, and cell content alike — and is the obvious next step, but it
+  is a component behaviour change rather than a documentation fix and is not in this release.
+
 ## [0.16.0] — 2026-08-04
 
 ### Added

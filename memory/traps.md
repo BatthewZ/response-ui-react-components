@@ -995,3 +995,84 @@ collision, left alone because briefs in flight cite the later one by letter.)
   `getAnimations()` answers both. A worthwhile side-finding: the panel's animation class is the
   one declaration in this library a caller's utility cannot beat, which is worth documenting
   wherever the "`className` wins" promise is made.
+
+## Z · From the pass that chased a consumer's "huge empty space at the bottom of the page"
+
+- **A scroll container that is not a containing block leaks its contents into the page, and the
+  symptom lands nowhere near the cause.** An absolutely-positioned box with no offsets is laid
+  out at its static position *in the coordinates of its containing block* — the nearest
+  positioned ancestor. If the scroller is `position: static`, that ancestor is outside the clip,
+  so the box is both unclipped and expressed in the scroller's **unscrolled** coordinates: scroll
+  the scrollport and the box is stranded that far down the document. This library manufactures
+  the trigger itself, because `sr-only` is `position: absolute` with no offsets, so any component
+  that renders visually-hidden text plants one in every consumer's scroller. The report that
+  found it arrived as "your package makes my whole site scrollable", from someone who had already
+  had to stash their own diff to prove it was not theirs.
+- **Writing the reason down next to one fix does not generalise it; only a gate does.** This
+  exact diagnosis, in these words, was already in a component's docblock and in a released
+  changelog — and three releases later the same defect shipped in a different component, then in
+  three more. Prose teaches the reader who happens to open that file. If a lesson is worth a
+  paragraph, ask what would have caught the *next* instance, and note that the answer is usually
+  a check that enumerates the population rather than a note attached to one member of it.
+- **Prefer a total rule to a well-judged one when the judgement is what failed.** "Every
+  scrollport is a containing block" is enforceable and needs no thought at the call site;
+  "every scrollport that could hold something absolutely positioned" is truer, unenforceable, and
+  is precisely the reasoning that let the instances through. Paying one dead declaration on a
+  component whose content is closed is cheaper than re-litigating the question per component,
+  and the dead one should say in writing that it is dead so nobody mistakes it for evidence.
+- **A static analyser over `className` is not done when it goes green — it is done when you have
+  seen it name the population.** The first working version reported OK while silently skipping
+  six real scrollports: four wrote `className` as an object property rather than a JSX attribute
+  (`getFloatingProps({ className: … })`) and two resolved their class string across an `import`
+  edge from a `.ts` file. Both holes were invisible from the pass/fail line and obvious the
+  moment the script was made to *print what it had found*. A gate with a false negative is worse
+  than no gate, because it converts "unchecked" into "checked and fine".
+- **Mutate every instance and watch the gate redden, including the ones you did not write.**
+  Reverting each of the eight positioned scrollports one at a time — the five fixed here plus the
+  two that were already correct plus the one exemption — is what proved the rule covers the class
+  rather than the diff, and that the exemption rests on positive evidence instead of passing
+  everything nearby.
+- **A "fixed row height" prop cannot be answered with a constant, and publishing one is how you
+  reproduce the reporter's bug in your own docs.** The same report carried a second finding: rows
+  measured taller than the declared `rowHeight`. Three things went wrong chasing it, and the
+  third is the one worth remembering. (1) The stated mechanism was wrong — the cells apply
+  `text-[length:…]`, which sets font-size ONLY, and a comment in the very file being edited said
+  so. (2) The magnitude was wrong: "unbounded, tens of thousands of pixels" was arithmetic, while
+  the measurement sitting in the same tool output said 440 072 against a nominal 440 045 — a 27px
+  excess, structurally bounded because both spacers and the index math divide by the same
+  `rowHeight`. **Reasoning past your own measurement is worse than not measuring**, because the
+  number carries the authority of a measurement and the content of a guess. (3) The replacement
+  advice — a table of measured heights, "48 is exact" — was refuted by the library's own `Text`
+  component: it applies `text-body-1`, which DOES drag the paired line-height in, making a
+  comfortable row 53px and the new advice 5px short. That was the reporter's number all along.
+  **Where a prop must match a rendered dimension that consumer content controls, the answer is a
+  runtime check, not a better number.** Every table you publish is wrong for someone's cell.
+- **"No stacking context" is not "no paint-order change", and the difference is visible.** Adding
+  `position: relative` to make a scrollport a containing block was justified — in six places,
+  including a gate's own failure message — as free because `z-index` stays `auto`. It is not:
+  a positioned box with `z-index: auto` moves from CSS 2.1 Appendix E step 4 to step 8, and step 8
+  paints in tree order, so the element now covers an earlier-in-tree positioned sibling that has no
+  `z-index`. Measured on the ordinary shape — a consumer's `sticky` toolbar above a `Table` —
+  the toolbar goes from topmost to entirely hidden. The library's own parts were safe only by
+  accident of already carrying `z-index`. Two general lessons: a reassurance repeated into six
+  files is *harder* to correct than a claim made once, so check it before propagating; and
+  "creates no stacking context" is a narrower guarantee than it sounds, worth stating as what it
+  actually covers (`z-index`-ordered content) rather than as "nothing changes".
+- **A static analyser over class strings cannot decide a layout property, and the honest response
+  is a second instrument, not a better regex.** The source-level gate written here passed
+  `print:relative` (never positioned on screen), `false && "relative"` (a dead branch), and
+  `className="relative [&>ul]:overflow-y-auto"` — where the scrollport is the `<ul>` and the
+  parent's `relative` is precisely the defect, so applying the gate's own remediation advice is
+  what silences it. That last one measured 79 960px at rest. It also could not see an element with
+  no `className`, or a consumer's unlayered rule beating the utility from outside the package.
+  A browser probe reading computed style answers all of them at once and does not care how the
+  class was spelled. Keep both — the linter enumerates the population cheaply at authoring time,
+  the probe is the measurement — but do not let the cheap one's green stand in for the other's.
+- **"There is no browser-test infrastructure here" is worth grepping before you say it.** That
+  sentence was used to justify substituting a linter for the browser assertion a bug report had
+  explicitly specified — while `probe-cascade-layer.mjs`, 879 lines of checked-in Playwright with
+  its own npm script, sat in the same `scripts/` directory, and `memory/testing.md` already said
+  *"two findings sat open for months labelled 'needs a real browser' while a real browser was one
+  command away."* The trap is not ignorance of the tooling; it is that "we don't have X" is a
+  conclusion that feels like a fact and is never checked. When a requester names an instrument,
+  the burden is to look for it, not to argue the substitute is broadly better.

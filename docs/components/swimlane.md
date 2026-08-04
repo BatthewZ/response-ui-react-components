@@ -9,7 +9,7 @@ supply.
 <!-- example:Minimal -->
 ```tsx
 <Swimlane title="Continue watching">
-  <Row className="overflow-x-auto px-r5 pb-r5">
+  <Row className="relative overflow-x-auto px-r5 pb-r5">
     <Card className="w-56 shrink-0">The Ascent — 24 min left</Card>
     <Card className="w-56 shrink-0">Blue Planet II — 12 min left</Card>
     <Card className="w-56 shrink-0">Chef's Table — 41 min left</Card>
@@ -42,9 +42,15 @@ both the animated and the `animate={false}` path. See [Gotchas](#gotchas) for ho
 ## The body is yours
 
 Swimlane styles the header and nothing else. Its body wrapper is `width: 100%` with no
-`overflow`, no `scroll-snap-type` and no `tabindex`, so children lay out in ordinary flow
-— three `<div>`s stack vertically, they do not become a lane. Whatever scrolls, snaps and
-takes keyboard focus has to come from you:
+`overflow`, no `scroll-snap-type`, no `tabindex` and no `position`, so children lay out in
+ordinary flow — three `<div>`s stack vertically, they do not become a lane. Whatever scrolls,
+snaps, takes keyboard focus **and establishes a containing block** has to come from you. That
+last one is easy to miss and is not cosmetic: a scroll container that is not `relative` lets
+absolutely-positioned descendants escape its clip and stretch the page (see
+[Gotchas](#gotchas)), and the library's own visually-hidden text is exactly such a descendant —
+one [Badge](badge.md) on a card is enough. Measured at 375px with 20 badge-bearing cards in an
+unpositioned lane: `document.documentElement.scrollWidth` 4620 against a correct 1277. Every
+example below carries `relative` for that reason.
 
 <!-- example:ScrollSnapLane -->
 ```tsx
@@ -53,7 +59,7 @@ takes keyboard focus has to come from you:
     tabIndex={0}
     role="group"
     aria-label="Because you watched Arrival"
-    className="flex gap-r4 overflow-x-auto snap-x snap-mandatory px-r5 pb-r5"
+    className="relative flex gap-r4 overflow-x-auto snap-x snap-mandatory px-r5 pb-r5"
   >
     <Card className="w-56 shrink-0 snap-start">Interstellar</Card>
     <Card className="w-56 shrink-0 snap-start">Annihilation</Card>
@@ -106,7 +112,7 @@ same inline padding to it. The hand-rolled examples here use `px-r5` for exactly
   subtitle="Added in the last seven days"
   viewAllHref="/browse/new-releases"
 >
-  <Row className="overflow-x-auto px-r5 pb-r5">
+  <Row className="relative overflow-x-auto px-r5 pb-r5">
     <Card className="w-56 shrink-0">Dune: Part Two</Card>
     <Card className="w-56 shrink-0">Poor Things</Card>
     <Card className="w-56 shrink-0">The Zone of Interest</Card>
@@ -131,17 +137,17 @@ renders a plain `<section>` instead. The other ScrollReveal options —
 <!-- example:RevealAnimations -->
 ```tsx
 <Swimlane title="Award winners" animation="fade-up">
-  <Row className="overflow-x-auto px-r5 pb-r5">
+  <Row className="relative overflow-x-auto px-r5 pb-r5">
     <Card className="w-56 shrink-0">Oppenheimer</Card>
   </Row>
 </Swimlane>
 <Swimlane title="Documentaries" animation="fade-right">
-  <Row className="overflow-x-auto px-r5 pb-r5">
+  <Row className="relative overflow-x-auto px-r5 pb-r5">
     <Card className="w-56 shrink-0">Free Solo</Card>
   </Row>
 </Swimlane>
 <Swimlane title="Short films" animation="scale">
-  <Row className="overflow-x-auto px-r5 pb-r5">
+  <Row className="relative overflow-x-auto px-r5 pb-r5">
     <Card className="w-56 shrink-0">The Silent Child</Card>
   </Row>
 </Swimlane>
@@ -151,7 +157,7 @@ renders a plain `<section>` instead. The other ScrollReveal options —
 <!-- example:ReplayOnEveryScroll -->
 ```tsx
 <Swimlane title="Keep watching" once={false}>
-  <Row className="overflow-x-auto px-r5 pb-r5">
+  <Row className="relative overflow-x-auto px-r5 pb-r5">
     <Card className="w-56 shrink-0">Slow Horses</Card>
     <Card className="w-56 shrink-0">Severance</Card>
   </Row>
@@ -185,7 +191,7 @@ body you author, so `classNames` covers the five elements Swimlane builds in bet
   subtitle="Added in the last seven days"
   classNames={{ header: "items-end", description: "text-fg-muted" }}
 >
-  <Row className="overflow-x-auto px-r5 pb-r5">…</Row>
+  <Row className="relative overflow-x-auto px-r5 pb-r5">…</Row>
 </Swimlane>
 ```
 
@@ -248,6 +254,14 @@ the spacing inside your scroller is entirely yours to pick.
 - **It does not scroll.** Nothing in Swimlane sets `overflow`, `scroll-snap-type` or
   `scroll-behavior` — despite the name and despite a test called "renders a scrollable
   container". Bring your own scroller (see [above](#the-body-is-yours)).
+- **Your scroller needs `relative`, and every example here has it.** A scroll container that is
+  not a containing block lets absolutely-positioned descendants resolve against an ancestor
+  *outside* its clip, laid out in the scroller's unscrolled coordinates — so scrolling the lane
+  strands them down the page and grows `document.documentElement.scrollHeight` by the scroll
+  range. This bites even if you never write `position: absolute`: the library's visually-hidden
+  text is exactly that, and a [Badge](badge.md) on a card plants one. `relative` and not
+  `contain`/`transform`, which additionally create a stacking context and capture
+  `position: fixed`.
 - **Server-rendered output is `opacity: 0` until the bundle executes.** The reveal's initial
   markup carries `scroll-reveal-hidden`. Two of the three ways that used to strand it are now
   covered: a browser with **no `IntersectionObserver`** reveals the lane statically, and with

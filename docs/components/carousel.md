@@ -26,7 +26,14 @@ fade themselves out at each end of the rail. There is no autoplay — no timer, 
 **Anatomy.** `Carousel` is the root: it owns the scroll state, renders your `title`, and
 paints the two arrow buttons over the rail. `Carousel.Track` is the element that actually
 scrolls — it registers itself with the root through context, so the arrows and the arrow
-keys have something to drive. `Carousel.Item` is one snap-aligned slide. The root also
+keys have something to drive. It also carries `relative`, which is not decoration: a scrollport
+that is not a containing block lets absolutely-positioned descendants of a slide resolve against
+the viewport *outside* the clip, laid out in the track's unscrolled coordinates, so scrolling the
+rail strands them across the page. (Measured before 0.17.0: 40 slides each holding a
+[Badge](badge.md) — whose visually-hidden variant word is `position: absolute` with no offsets —
+took the enclosing scroller's `scrollWidth` from a true 4000 to 11 266.) The arrows are
+unaffected, being siblings of the track rather than children. `Carousel.Item` is one
+snap-aligned slide. The root also
 takes the keyboard: it renders with `tabIndex={0}` and, while that tab stop holds focus, maps
 <kbd>←</kbd>/<kbd>→</kbd> onto the same scroll the arrow buttons perform.
 

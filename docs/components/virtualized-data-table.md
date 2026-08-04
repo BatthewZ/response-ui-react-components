@@ -15,7 +15,7 @@ the visible slice — plus a small overscan — is ever mounted in the DOM. Same
     { key: "amount", header: "Amount", align: "right", width: 120 },
   ]}
   rowKey={(invoice) => invoice.id}
-  rowHeight={44}
+  rowHeight={48}
   height={480}
 />
 ```
@@ -106,7 +106,7 @@ out as an empty string.** Nested data needs a `render`.
     },
   ]}
   rowKey={(invoice) => invoice.id}
-  rowHeight={44}
+  rowHeight={48}
   height={480}
 />
 ```
@@ -131,7 +131,40 @@ its row will be taller than `rowHeight` again, and the arithmetic will drift aga
 
 Budget for the density you picked. Cell padding is `0.25rem` top and bottom at `dense`,
 `0.625rem` at `comfortable`, `1rem` at `spacious` — double that, add a line of text, and round
-up:
+up.
+
+**Round up, and do the arithmetic at the WIDE end of the type scale.** A row's natural height is
+not one number: cell font-size is `text-[length:var(--BodyText-*)]`, which carries a base value
+and a larger one from `@media (min-width: 40rem)`, and the inherited unitless line-height follows
+it. (Font-size only — the paired `--BodyText-*-line-height` is deliberately not applied to cells,
+so that a table row is not ~1.85em tall.) Row height therefore **changes at that breakpoint**,
+and no single constant is correct on both sides of it.
+
+**The single biggest factor is what you put in the cell, and one case deserves naming.** Cells
+apply font-size *only*, so a bare string inherits the page's line-height. But
+[Text](text.md) applies `text-body-1`, which brings its **paired** `--BodyText-1-line-height`
+with it — `2rem`, i.e. 32px. So `<Text>` in a `render` makes a `comfortable` row
+**32 + 10 + 10 + 1 = 53px**, against roughly 45px for the same row as a bare string. Putting the
+design system's own text component in a cell is about the most ordinary thing a consumer of this
+library can do, and it costs 8px a row.
+
+That is exactly the case this guidance was written in response to, so it is worth being blunt
+about the consequence: **there is no constant this page can give you that is right for every
+cell.** `rowHeight={48}` fits `comfortable` rows of bare strings and `rowHeight={32}` fits
+`dense` ones (both verified in Chromium at 375px and 1280px), and both are **5px short** the
+moment a `<Text>` goes in the row. Measure your own worst row — one `getBoundingClientRect()` on
+a rendered `<tr>` settles it in seconds — and round *up*: a row taller than its content is exact,
+a row shorter than its content is not.
+
+**What goes wrong when it is too small, stated accurately.** `height` on a `<tr>` is a minimum,
+so a too-small value is silently ignored: the rows render taller than you declared and the
+mounted window stops lining up with the spacers. The error is **bounded by the mounted window,
+not by the dataset** — both spacers are `index * rowHeight` and the index math divides by the
+same `rowHeight`, so nothing accumulates. Measured at `rowHeight={44}` over 10 000 `comfortable`
+rows: `scrollHeight` 440 072 against a nominal 440 045, i.e. a 27px excess and a few pixels of
+drift inside the visible window. The last row stays reachable. Worth fixing, but it is a
+misalignment, not a runaway — an earlier version of this page claimed a five-figure loss here
+and that was wrong.
 
 <!-- example:DenseRows -->
 ```tsx
@@ -167,7 +200,7 @@ different column restarts at `asc`.
     { key: "amount", header: "Amount", align: "right", width: 120, sortable: true },
   ]}
   rowKey={(invoice) => invoice.id}
-  rowHeight={44}
+  rowHeight={48}
   height={480}
   defaultSort={{ key: "amount", direction: "desc" }}
 />
@@ -190,7 +223,7 @@ this particular server always sorts by something.
     { key: "issuedAt", header: "Issued", width: 200, sortable: true },
   ]}
   rowKey={(invoice) => invoice.id}
-  rowHeight={44}
+  rowHeight={48}
   height={480}
   sort={sort}
   onSortChange={(next) => setSort(next ?? { key: "issuedAt", direction: "desc" })}
@@ -226,7 +259,7 @@ and `setSelected` are a `useState<Set<string | number>>(new Set())`.
     { key: "amount", header: "Amount", align: "right", width: 120 },
   ]}
   rowKey={(invoice) => invoice.id}
-  rowHeight={44}
+  rowHeight={48}
   height={480}
   selectable
   selectedKeys={selected}
@@ -255,7 +288,7 @@ small to push the window back out of the threshold. It never fires while `loadin
     { key: "customer", header: "Customer" },
   ]}
   rowKey={(invoice) => invoice.id}
-  rowHeight={44}
+  rowHeight={48}
   height={480}
   onEndReached={loadNextPage}
   endReachedThreshold={20}
@@ -293,7 +326,7 @@ in the loading branch acts on whatever is still in `data`.
     { key: "customer", header: "Customer" },
   ]}
   rowKey={(invoice) => invoice.id}
-  rowHeight={44}
+  rowHeight={48}
   height={480}
   loading
   loadingRowCount={8}
@@ -313,7 +346,7 @@ in the loading branch acts on whatever is still in `data`.
     { key: "customer", header: "Customer" },
   ]}
   rowKey={(invoice) => invoice.id}
-  rowHeight={44}
+  rowHeight={48}
   height={480}
   emptyContent={
     <EmptyState size="md">

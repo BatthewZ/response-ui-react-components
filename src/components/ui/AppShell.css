@@ -90,6 +90,21 @@
   grid-row: 2;
   min-width: 0;
   overflow-x: auto;
+
+  /* `overflow-x: auto` makes this a scrollport, and a scrollport that is not a
+     containing block lets every absolutely-positioned descendant resolve
+     against something OUTSIDE its own clip — so the box is laid out at its
+     static position in UNSCROLLED content coordinates and stretches the
+     document instead. This holds the whole app's content, so the descendant is
+     anything a consumer renders; the library's own visually-hidden text is
+     `position: absolute` with no offsets, and `Badge` puts one in the page by
+     default. Measured at a 375px viewport with one `Badge` at the far end of
+     4000px of content: `documentElement.scrollWidth` 3885 without this
+     declaration, 375 with it. `relative` and not `contain`, because it must not
+     change where a consumer's `position: fixed` overlay lands — only `absolute`
+     resolves against a `relative` ancestor. Same fix, same reason, as
+     `Table`'s wrapper, `Carousel.Track` and `DialogBody`. */
+  position: relative;
 }
 
 /* ── Sidebar section heading ── */

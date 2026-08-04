@@ -125,7 +125,7 @@ full-height flex child with a single scrolling region when you want anything to 
     <h2 id="notifications-title" className="shrink-0">
       Notifications
     </h2>
-    <ul className="flex-1 overflow-y-auto">
+    <ul className="relative flex-1 overflow-y-auto">
       {[
         "Ada Lovelace approved Pull request #42",
         "Grace Hopper deployed v2.4.0 to production",

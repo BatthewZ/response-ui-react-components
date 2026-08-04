@@ -38,7 +38,14 @@ colour of it on the theme contract. Reach for it when you own the rows; reach fo
 
 **Anatomy.** `Table` renders a wrapper `<div class="table-wrapper">` — the horizontal
 scroller, the border and the rounded corners — around a `<table>` that holds your
-`children`. It is also the provider: `density` and `striped` are set once on the root and
+`children`. **Its base class list includes `relative`, and that is load-bearing**: the wrapper
+is a scrollport, so without it every absolutely-positioned descendant would resolve against an
+ancestor outside the scroll clip and be laid out in the wrapper's *unscrolled* coordinates —
+stranding it down the page as you scroll. The library's visually-hidden text is
+`position: absolute` with no offsets, so a [Badge](badge.md) in a status cell was enough to take
+a consumer's page to a 530 060px `scrollHeight` before 0.17.0. `z-index` stays `auto`, so it
+creates no stacking context; passing `static`/`absolute`/`fixed` in `className` overrides it and
+brings the defect back. It is also the provider: `density` and `striped` are set once on the root and
 travel by context, so the five sub-parts never take them. `Table.Head` and `Table.Body`
 are near-passthroughs for `<thead>`/`<tbody>` — `Table.Body` also numbers its direct
 `Table.Row` children so the zebra can key off data position. `Table.Row` is the `<tr>` that

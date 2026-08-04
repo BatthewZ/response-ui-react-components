@@ -368,3 +368,13 @@ good. These are the ways they have still let defects through.
   is to *finish* animations before capture, and even with that off, a paused-at-final-value frame
   is pixel-identical to the resting one, which reads as "no defect" for a defect that is entirely
   about the frame in between.
+- **A `className` gate's pass/fail line hides its own coverage, so make it print the population.**
+  A new scrollport guard reported OK while skipping six real elements: `className` written as an
+  object property (`getFloatingProps({ className: … })`) never matched a regex looking for
+  `className=`, and a class string shared from a `.ts` sibling never resolved because the constant
+  map was per-file. Neither hole is visible from the exit code — a gate with a false negative
+  reads exactly like a clean one, and is worse than none, because it converts "unchecked" into
+  "checked and fine". The cheap habit that found both: before trusting a new gate, make it list
+  what it matched and compare that list against a manual sweep. The corollary for exemptions is
+  §"A new gate's exemptions are where the next bug lives" above — delete the exemption once and
+  confirm the elements relying on it actually redden, or it is passing everything nearby.

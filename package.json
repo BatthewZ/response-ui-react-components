@@ -1,6 +1,6 @@
 {
   "name": "@batthewz/response-ui-react-components",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "type": "module",
   "description": "React component library for the response-ui design system. Pairs with @batthewz/response-ui-css.",
   "sideEffects": false,
@@ -68,9 +68,11 @@
     "verify:chart-palette": "node scripts/verify-chart-palette.mjs --check",
     "verify:example-themes": "node scripts/verify-example-themes.mjs --check",
     "verify:slot-annotations": "node scripts/verify-slot-annotations.mjs",
+    "verify:scrollport-containing-block": "node scripts/verify-scrollport-containing-block.mjs",
     "verify:bugs": "node scripts/bugs-ledger.mjs --check",
     "probe:cascade-layer": "node scripts/probe-cascade-layer.mjs",
-    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && node scripts/gen-docs.mjs --check && node scripts/verify-component-docs.mjs && node scripts/verify-focus-affordance.mjs && node scripts/verify-no-css-imports.mjs && node scripts/verify-css-layering.mjs && node scripts/verify-token-mirror.mjs && node scripts/verify-omit-discipline.mjs --check && node scripts/verify-chart-palette.mjs --check && node scripts/verify-example-themes.mjs --check && node scripts/verify-slot-annotations.mjs && bun run lint && bun run typecheck && bun run test"
+    "probe:scrollport": "node scripts/probe-scrollport-containing-block.mjs",
+    "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && node scripts/gen-docs.mjs --check && node scripts/verify-component-docs.mjs && node scripts/verify-focus-affordance.mjs && node scripts/verify-no-css-imports.mjs && node scripts/verify-css-layering.mjs && node scripts/verify-token-mirror.mjs && node scripts/verify-omit-discipline.mjs --check && node scripts/verify-chart-palette.mjs --check && node scripts/verify-example-themes.mjs --check && node scripts/verify-slot-annotations.mjs && node scripts/verify-scrollport-containing-block.mjs && bun run lint && bun run typecheck && bun run test"
   },
   "peerDependencies": {
     "react": "^19.0.0",

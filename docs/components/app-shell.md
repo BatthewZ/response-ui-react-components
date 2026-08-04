@@ -272,7 +272,17 @@ when `pathname === to` **or** `pathname.startsWith(to + "/")`. So `/settings` st
 ## The main landmark
 
 `AppShell.Main` renders a real `<main>`, so a shell built from the parts above exposes
-`banner`, `navigation` and `main` landmarks with nothing asked of you. Landmark navigation
+`banner`, `navigation` and `main` landmarks with nothing asked of you.
+
+**One positioning note, because it can move your content.** `.app-shell-main` is
+`overflow-x: auto`, and since 0.17.0 it is also `position: relative` — so an element you
+absolutely position *inside* `AppShell.Main` now resolves against the main region rather than
+against whatever ancestor it previously reached (usually the viewport). That is the fix for a
+real defect: an unpositioned scrollport lets absolutely-positioned descendants escape its clip
+and be laid out in its unscrolled coordinates, which took `documentElement.scrollWidth` to 3885
+at a 375px viewport from a single [Badge](badge.md) at the end of wide content. `position: fixed`
+is **unaffected** — only `absolute` resolves against a `relative` ancestor — so a full-viewport
+overlay still behaves as it did. Landmark navigation
 reaches the content and a skip link has something to target — give it an `id` and a
 `tabIndex={-1}` so the link can move focus there. (The `role="main"` in the example below is
 redundant on a real `<main>` and only restates the element's own role; `id` and `tabIndex`

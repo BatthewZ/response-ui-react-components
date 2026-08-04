@@ -55,7 +55,37 @@ export type VirtualizedDataTableProps<T> = {
   rowLabel?: (row: T, index: number) => string;
 
   // Virtualization
-  /** Fixed height of every row, in pixels. Required. Content must fit this height. */
+  /**
+   * Fixed height of every row, in pixels. Required.
+   *
+   * `height` on a `<tr>` is a MINIMUM in CSS table layout, so a value smaller
+   * than the row's natural content height is silently ignored — the rows render
+   * taller than you declared and the mounted window no longer lines up with the
+   * spacers. The error is **bounded by the mounted window, not the dataset**:
+   * both spacers are `index * rowHeight` and the index math divides by the same
+   * `rowHeight`, so nothing accumulates. Measured at `rowHeight={44}` over
+   * 10 000 `comfortable` rows: `scrollHeight` 440 072 against a nominal
+   * 440 045 — a 27px excess and a few pixels of misalignment in the visible
+   * window, not the tens of thousands an earlier draft of this comment claimed.
+   * It is still worth getting right; it is not a runaway.
+   *
+   * Budget from the WIDE end of the responsive scale and round up. A row is not
+   * one height: cell font-size is `text-[length:var(--BodyText-*)]`, which steps
+   * at `@media (min-width: 40rem)`, and the inherited unitless line-height
+   * follows it. (Only font-size — the paired `--BodyText-*-line-height` is
+   * deliberately NOT applied here; see the `densityClassMap` docblock in
+   * `Table.tsx`.)
+   *
+   * CELL CONTENT DOMINATES, and there is no constant that is right for every
+   * cell. `Text` applies `text-body-1`, which DOES bring the paired
+   * `--BodyText-1-line-height` (2rem) with it, so `<Text>` in a `render` makes a
+   * `comfortable` row 32 + 10 + 10 + 1 = **53px** where the same row as a bare
+   * string is ~45px. `48` fits bare strings at `comfortable` and `32` fits
+   * `dense` (both verified at 375px and 1280px); both are 5px short with a
+   * `Text` in the row. Measure your own worst row —
+   * `getBoundingClientRect()` on a rendered `<tr>` — and round up. See
+   * `docs/components/virtualized-data-table.md` §"Fixed row height".
+   */
   rowHeight: number;
   /** Height of the scrollable viewport. Defaults to 400. */
   height?: number | string;

@@ -699,6 +699,17 @@ difference was drift.
 - Don't reach into `node_modules/@batthewz/response-ui-css/src/...` from JS. CSS goes in CSS via `@import`.
 - Don't write CSS-in-JS. The library's styling boundary is Tailwind utilities + design tokens — with the enumerated exceptions under *Decision: what stays in CSS…* above, which are the only places a stylesheet is still the right answer.
 - When a component paints marks directly on a surface, follow the **Contrast contract** in `response-ui-css/AGENTS.md` (Colour): use text tokens (`--C-TEXT-*`) for ink/lines/borders on `--C-SURFACE-*`, and outline filled chips in their `on-*` token. Don't use `--C-PRIMARY` / `--C-ACCENT` as a border/line/text colour on a surface — a theme may set them ≈ the surface.
+- **Don't write a scroll container without `relative`.** Any element you give `overflow-auto` /
+  `overflow-scroll` (on either axis) needs `relative` too — `<div className="relative overflow-y-auto">`.
+  Every scrollport this library ships already has it; this is about the ones **you** author,
+  including the scrolling body a `Swimlane` expects you to supply. Without it, absolutely-positioned
+  descendants resolve against an ancestor outside the scroll clip and are laid out in the
+  scroller's *unscrolled* coordinates, so scrolling strands them down the page and
+  `document.documentElement.scrollHeight` grows by the whole scroll range. You will hit this even
+  if you never write `position: absolute` yourself: this library's visually-hidden text is
+  `position: absolute` with no offsets, and `Badge`, `Alert` and `AvatarUpload` all render some.
+  `relative` is the right answer over `contain`/`transform` — it creates no stacking context and
+  does not capture a `position: fixed` overlay.
 - **Don't name an example theme.** `events`, `grimdark` and `tech` are sample code. Never put one in a selector, a type, a default value, a config list, or a test fixture — invent a name (`aurora`, `midnight`) instead. If a rule really needs to vary per theme, express it as a token the consumer also controls, so their theme gets the same deal. `bun run verify:example-themes` fails the build on violations; `src/examples/` is the only exception. The one legitimate use is a demo that has explicitly imported the example CSS — then import `EXAMPLE_THEMES`.
 
 ## Testing

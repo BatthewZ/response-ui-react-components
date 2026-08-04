@@ -43,8 +43,19 @@ import { IconButton } from "./IconButton";
  * sorts it. Breaking, and named in the changelog: a consumer styling
  * `.carousel-track--dragging` must retarget `[data-dragging]`.
  */
+/**
+ * `relative` is here for the same reason as `Table`'s wrapper and `DialogBody`:
+ * the track is the scrollport, so an absolutely-positioned descendant of a slide
+ * otherwise resolves against `.carousel-viewport` — one level OUTSIDE the scroll
+ * clip — and is laid out at its static position in the track's unscrolled
+ * content coordinates. Measured at 375px with 40 slides each holding one
+ * `Badge` (whose visually-hidden variant word is `position: absolute` with no
+ * offsets), the escaped boxes took the enclosing `AppShell.Main`'s `scrollWidth`
+ * from a true 4000 to 11 266. It does not move the arrows: they are siblings of
+ * the track, so their containing block is still the viewport.
+ */
 const carouselTrackClasses =
-  "flex cursor-grab snap-x snap-proximity gap-[var(--MEDIA-CAROUSEL-GAP)] overflow-x-auto scroll-smooth px-[var(--MEDIA-CAROUSEL-PEEK)] py-r5 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden motion-reduce:scroll-auto data-dragging:cursor-grabbing data-dragging:snap-none data-dragging:scroll-auto data-dragging:select-none";
+  "relative flex cursor-grab snap-x snap-proximity gap-[var(--MEDIA-CAROUSEL-GAP)] overflow-x-auto scroll-smooth px-[var(--MEDIA-CAROUSEL-PEEK)] py-r5 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden motion-reduce:scroll-auto data-dragging:cursor-grabbing data-dragging:snap-none data-dragging:scroll-auto data-dragging:select-none";
 
 /**
  * The arrows are `IconButton`s, so ink, ring, radius, press feedback — and the
