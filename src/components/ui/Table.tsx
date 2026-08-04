@@ -113,7 +113,7 @@ const rowClasses = "border-b border-border-default last:border-b-0";
  * Rung 2 for the band: a mild recession within the rung-0 sheet, not a raised
  * panel. Against the sheet that measures 1.08–1.21:1 across the themes.
  */
-const rowStripedClasses = "bg-surface-2";
+const rowStripedClasses = "bg-surface-1";
 const rowSelectedClasses = "bg-[color-mix(in_oklch,var(--C-ACCENT)_8%,transparent)]";
 
 /**
