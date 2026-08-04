@@ -97,7 +97,39 @@ good. These are the ways they have still let defects through.
   because the generator only ever reads the `return` JSX as text. Any example demonstrating an
   overlay, a trap, or anything `fixed` and full-viewport must be driven by its own `open` state,
   with every action that looks like a way out actually wired to one. Load the gallery after
-  touching one.
+  touching one. The published docs site mounts them too, one component's set per page rather
+  than all at once, which narrows the blast radius to that component's page without removing
+  the hazard — and its deploy only *builds*, so a green pipeline still says nothing about
+  whether anything rendered. Nothing in CI opens a browser; the 567 mounts have only ever been
+  confirmed by a crawl run by hand.
+- **A relative path into a sibling checkout is invisible to every gate and fatal in CI.** The
+  scratch harness reaches the foundation package through `../../response-ui-css/src/…`, which is
+  correct there and was copied wholesale into a stylesheet that CI builds. Nothing local can
+  catch it: typecheck, lint, the whole verify chain and the build itself all pass on a machine
+  where the sibling is checked out, which is every machine anyone tests on. `actions/checkout`
+  clones one repository, so the first `@import` fails and the deploy produces nothing at all —
+  not a degraded site, no site. **Before trusting any build that CI will run, rebuild it from a
+  copy of the repo alone, with `node_modules` linked and no siblings on disk.** Two minutes with
+  `rsync --exclude`, and it is the only thing that distinguishes "builds" from "builds anywhere".
+  The tell is any `../..` that leaves the package; resolving through the package name gets the
+  installed dependency and makes the file a specimen of the documented install as a side effect.
+- **A hand-kept list used as a filter turns an addition into a silent subtraction.** A map of
+  group directory → display title was also, without anyone deciding it, the set of groups the
+  navigation would render. Add `src/components/charts/`, and its pages exist, its components are
+  counted in the "All 92 components" label, and nothing links to any of them — while `gen-docs`
+  and the site's own gate both stay green, because each checks that a doc exists rather than
+  that anything points at it. **Derive the set from the tree and let the hand-kept list carry
+  only the ordering**, so an unknown member sorts last with a derived label instead of vanishing.
+  Any literal collection keyed on directory names deserves the question: is this an *order*, or
+  is it secretly a *whitelist*?
+- **"The link resolves" and "the page exists" are different claims, and only one of them had a
+  gate.** The link checker proves every relative target is a real file, which is exactly right
+  for a repository and silently wrong for a site: `docs/project-docs/` is a real directory, is
+  excluded from the npm tarball, and is not published, so a link into it passes the file check
+  and is dead in the browser. The generalisation is that a guard written for one consumer of an
+  artifact does not transfer to a second consumer for free — when something new starts reading
+  the docs, ask what *it* can fail on that the existing checks were never asking about, rather
+  than counting the existing green.
 - **The consequence for anyone verifying in the browser: on the generated-examples tab, a clean
   console and a clickable page are not available signals.** Examples are mounted standalone, so
   one written as a doc snippet that assumes an ambient provider throws the moment it renders —

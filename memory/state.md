@@ -49,6 +49,25 @@ whether a safeguard is needed at all, and the two duplications that are load-bea
   VirtualizedDataTable keeps the loading/empty early returns that DataTable collapsed —
   `use-virtual-rows` expects `scrollRef.current` to be null in those branches, and attaching it
   perturbs `endIndex` → `nearBottom` → `onEndReached`.
+- **The `<!-- example -->` marker pattern is a second copy on purpose, and the property it
+  encodes travels with it.** The generator that injects fences into the docs and the site that
+  renders them both have to agree about where a block ends, and they cannot share a module: one
+  is plain Node run before any build, the other is TypeScript inside the bundle. So the pattern is
+  written twice — and what must be copied is not the regex but the reason it is shaped that way.
+  A body that is lazy and unconstrained cannot grow past its own close marker; a body spelled as
+  an optional fence can, and did, swallowing every heading and paragraph up to the *next* block's
+  close marker. In the generator that deleted prose from two pages. In a renderer it would only
+  put one example's documentation under another's name — silent in a different way, and not
+  caught by anything, because both files still parse. Whichever copy you touch, re-read the other
+  and keep the containment claim, not just the characters.
+- **A consumer of the docs must treat fenced blocks as opaque, and the counterexample is in the
+  docs already.** Rewriting relative links to site routes across a whole page looks safe until you
+  remember that `markdown.md` documents a markdown renderer, so it quotes markdown *source*
+  — link syntax included — inside a `tsx` fence. Rewriting there puts a site URL into a snippet
+  the reader is invited to copy, and inside an example fence it makes the code on the page differ
+  from the code the generator injected, which is the single thing those fences exist to
+  guarantee. Any pass over doc text — link rewriting, heading detection, anchor generation —
+  needs the fence state machine, not just the one that obviously does.
 - **The dependency direction is the ownership rule for docs, not just for code.** The foundation
   package owns the design language; this package owns only what exists *because components
   exist*. When a doc here restates the foundation's contract, that copy is not a convenience —

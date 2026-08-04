@@ -8,7 +8,9 @@ import tseslint from "typescript-eslint";
  * The recommended presets (typescript-eslint, react/recommended) are not enabled —
  * they would bury these signals under hundreds of stylistic findings.
  *
- * Scope is `src/` only; `dev/` is a scratch harness and `scripts/` is plain Node.
+ * Scope is `src/` and `site/`; `dev/` is a scratch harness and `scripts/` is plain Node.
+ * `site/` is in because it is published — it builds the documentation site from `../src`,
+ * and it maps over ~90 components, which is the shape `jsx-key` exists to catch.
  */
 export default tseslint.config(
   // The project rule is "never suppress, only fix". `noInlineConfig` enforces it
@@ -17,7 +19,7 @@ export default tseslint.config(
   { linterOptions: { noInlineConfig: true } },
   { ignores: ["dist/**", "node_modules/**", "dev/**", "scripts/**"] },
   {
-    files: ["src/**/*.{ts,tsx}"],
+    files: ["src/**/*.{ts,tsx}", "site/**/*.{ts,tsx}"],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {

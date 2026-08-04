@@ -104,10 +104,50 @@ scripts/                    (repo-only; none of these are published — `ls scri
   gen-docs.mjs              verify-chart-palette.mjs    verify-component-docs.mjs
   verify-css-layering.mjs   verify-directives.mjs       verify-docs.mjs
   verify-example-themes.mjs verify-focus-affordance.mjs verify-no-css-imports.mjs
-  verify-omit-discipline.mjs verify-slot-annotations.mjs verify-token-mirror.mjs
-  bugs-ledger.mjs           probe-cascade-layer.mjs     probe-scrollport-containing-block.mjs
-  verify-scrollport-containing-block.mjs
+  verify-omit-discipline.mjs verify-site.mjs            verify-slot-annotations.mjs
+  verify-token-mirror.mjs   bugs-ledger.mjs             probe-cascade-layer.mjs
+  probe-scrollport-containing-block.mjs                 verify-scrollport-containing-block.mjs
+dev/                        (repo-only; scratch harness, `bun run dev`)
+site/                       (repo-only; the published docs site — see below)
 ```
+
+## The docs site
+
+`site/` builds <https://batthewz.github.io/response-ui-react-components/> from `docs/` and
+`../src`. `bun run site:dev` serves it; `bun run site:build` writes `site-dist/`; pushing to
+`main` deploys it via `.github/workflows/pages.yml`.
+
+**Adding a component to the site is not a thing you do.** The site globs
+`src/components/*/*.examples.tsx` and `docs/components/*.md` and derives every route, every
+nav entry and every group from what it finds — so a component gets a page by having the two
+files `gen-docs.mjs` already requires, and by nothing else. That is deliberate: a per-component
+registration list is the one file every doc branch would have to touch, and it would be a
+permanent merge-conflict surface for no gain. If you find yourself editing `site/registry.ts`
+to add a component, something upstream is wrong.
+
+The page a reader sees is the doc, unchanged, with each `<!-- example:Name -->` block replaced
+by that module rendering live above the fence `gen-docs` injected into it. One module is
+therefore the source of the typecheck, the snippet and the render at once, and nothing on the
+site can drift from the component.
+
+`bun run verify:site` is the gate. It does not re-check what `verify-component-docs.mjs`
+already proves (that a link resolves to a real file) — it proves each of those files is
+reachable **as a page**, which is a different claim: `docs/project-docs/` exists, resolves, and
+is not published, so a link into it is dead on the site with every other gate green.
+
+Three things about `site/` that look like defensiveness and are not, each recorded where it
+lives: examples render under a **reset router adapter** (`ExampleBlock.tsx`), because the site's
+own adapter would otherwise make `AppShell.SidebarLink` contradict the sentence documenting it;
+the registry's globs are **not `eager`** (`registry.ts`), because eager ones put all 1.6MB of
+markdown and all 567 examples into the first response; and `site/styles.css` imports the
+foundation **by package name**, not through `../../response-ui-css/` the way `dev/` does — the
+sibling checkout does not exist in CI, and that one path is the difference between a deploy and
+no deploy.
+
+That last one generalises: **CI builds this from a clone of this repository alone.** Anything
+`site/` reaches for outside the package has to come from `node_modules`. It passes locally
+either way, so verify a change to the site's inputs against a copy of the repo with no siblings
+on disk before trusting it.
 
 ## The focus ring lives in one place
 

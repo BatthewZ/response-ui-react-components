@@ -1,0 +1,67 @@
+name: Deploy docs site
+
+# Publishes site/ to GitHub Pages. Enable it once under
+# Settings → Pages → Source → "GitHub Actions"; nothing here can turn it on.
+#
+# The site is built from source (../src), not from dist/, so a push that breaks a
+# component breaks the deploy — which is the point. The gates run first for the same
+# reason: a site that renders 89 of 91 components looks exactly like one that renders all
+# of them, and verify-site.mjs is what tells the two apart.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it — a half-published site is worse
+# than a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Verify the docs the site renders
+        run: |
+          bun run verify:site
+          bun run verify:component-docs
+          bun run verify:examples
+
+      - run: bun run typecheck
+
+      # `site/` is inside the lint scope, and the rule that matters here is `jsx-key`:
+      # this site maps over ~90 components in three places.
+      - run: bun run lint
+
+      - run: bun run site:build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site-dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,51 @@
+/* Documentation-site stylesheet.
+
+   The design system's two ordered imports, exactly as README.md tells a consumer to wire
+   them — the foundation first, then this package's per-component styles.
+
+   The foundation comes from the INSTALLED package, not from the sibling checkout that
+   `dev/styles.css` reaches into with `../../response-ui-css/src/…`. That path is fine for
+   a scratch harness on the author's disk and fatal here: `actions/checkout` clones this
+   repository only, so the sibling does not exist in CI and the whole build fails at the
+   first `@import` — no `site-dist`, no artifact, no deploy. Resolving through the package
+   name also makes this file a specimen of the install the docs prescribe rather than of a
+   layout only one machine has.
+
+   The React components still come from `../src`, which is deliberate: those are this
+   repo's own sources and the site should show what the repo currently is.
+
+   response-ui-css's entry already does `@import "tailwindcss"`, so there is one Tailwind
+   entry here, not two. */
+
+/* Example-theme FONTS first: `@import` must precede every other rule in the flattened
+   stylesheet, so these cannot live inside the theme files that load below — put there they
+   are silently dropped and the palettes render in the wrong typeface with no error. */
+@import "@batthewz/response-ui-css/examples/themes/events-fonts";
+@import "@batthewz/response-ui-css/examples/themes/grimdark-fonts";
+@import "@batthewz/response-ui-css/examples/themes/tech-fonts";
+
+@import "@batthewz/response-ui-css";
+
+/* The example themes, opted into explicitly. The foundation entry does not load them and
+   nothing in the library names them — this site is a consumer that picks them up the same
+   way an app picks up its own theme file. */
+@import "@batthewz/response-ui-css/examples/themes/events";
+@import "@batthewz/response-ui-css/examples/themes/grimdark";
+@import "@batthewz/response-ui-css/examples/themes/tech";
+
+@import "../src/styles.css";
+
+/* Chart ramps and media-card feel for those example themes — also opt-in. */
+@import "../src/examples/example-theme-tuning.css";
+
+/* The site's own files. A glob rather than a list so a new view needs no edit here. */
+@source "./**/*.tsx";
+
+/* An example renders on the page floor, not on the sheet the doc sits on, so a component
+   painting `--C-SURFACE-0` reads as raised the way it would in an app. Background only —
+   no `isolation`, `transform` or `contain`, each of which would change what a
+   fixed-position child is positioned against and make a drawer or dialog behave
+   differently here than in the consumer's app. */
+.example-preview {
+  background: var(--C-CANVAS);
+}

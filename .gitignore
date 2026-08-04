@@ -14,3 +14,4 @@ coverage/
 
 # cascade-layer probe scratch builds (scripts/probe-cascade-layer.mjs --keep)
 scripts/.cascade-probe/
+site-dist/
