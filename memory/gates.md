@@ -410,3 +410,20 @@ good. These are the ways they have still let defects through.
   what it matched and compare that list against a manual sweep. The corollary for exemptions is
   §"A new gate's exemptions are where the next bug lives" above — delete the exemption once and
   confirm the elements relying on it actually redden, or it is passing everything nearby.
+- **A local typecheck can be green on types the repo never declared.** TypeScript resolves types
+  by walking *up* the directory tree, so a `node_modules` in any ancestor of the checkout satisfies
+  an import this package's own manifest does not. `tsc --noEmit` passed here for as long as
+  `site/vite.config.ts` has imported `node:fs`, because an unrelated `@types/node` sat two
+  directories above the repo. CI checks out the repository alone, has no ancestor to walk to, and
+  failed on the first line of that file. The green was an accident of one machine's folder layout.
+
+  The tell is that the failure names a dependency rather than a symbol: "cannot find module
+  `node:fs`" is a manifest problem, not a code problem. To reproduce it without pushing, move the
+  ancestor `node_modules` aside and re-run — the errors appear immediately and the same move
+  proves the fix. Anything a config or script file imports has to be a declared devDependency
+  even when nothing in `src/` touches it; a build-tooling import is still an import.
+
+  Keep such a package out of `compilerOptions.types`. That array governs which globals load
+  everywhere, and adding `node` there would hand `process` and `Buffer` to every file in `src/` —
+  a library that must run in a browser. An explicit `node:*` import pulls its own declarations in
+  where it is written, which is the whole scope that should have them.
