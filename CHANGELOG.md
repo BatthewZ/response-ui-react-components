@@ -4,6 +4,27 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.17.1] — 2026-08-08
+
+### Fixed
+
+- **The `lucide-react` peer range made the package uninstallable.** It was `^0.500.0`, and under
+  npm's 0.x caret rule that resolves `>=0.500.0 <0.501.0` — a single minor. lucide-react has
+  published every icon addition as a minor since, and is now past 1.0, so any consumer on a
+  current version got a hard `ERESOLVE` failure rather than a warning:
+
+  ```
+  Could not resolve dependency:
+  peer lucide-react@"^0.500.0" from @batthewz/response-ui-react-components@0.17.0
+  ```
+
+  The range is now `>=0.500.0 <2.0.0`. Nothing in the library's use of lucide changed — it imports
+  named icon components, all of which survive 1.x under the same names. Verified by running the
+  full suite against 1.30.0: 2792 tests and `tsc --noEmit` pass unchanged.
+
+  The declared range is wider than the one dev dependency the suite pins, which is the gap that
+  produced the bug. Both ends are now exercised deliberately rather than assumed.
+
 ## [0.17.0] — 2026-08-04
 
 ### Fixed
