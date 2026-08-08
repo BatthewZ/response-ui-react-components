@@ -118,6 +118,11 @@ export interface MenuContextValue {
   listRef: React.RefObject<(HTMLElement | null)[]>;
   listContentRef: React.RefObject<(string | null)[]>;
   activeIndex: number | null;
+  /**
+   * Where the menu is portalled — the nearest `<dialog>` ancestor of the
+   * trigger, or `undefined` for `<body>`. See `useFloating`.
+   */
+  portalRoot: ReturnType<typeof useFloating>["portalRoot"];
   /** `string | undefined` because Floating UI types its own id that way. */
   menuId: string | undefined;
 }
@@ -245,7 +250,7 @@ export function useMenuRoot(options: UseMenuRootOptions = {}) {
   const listRef = useRef<(HTMLElement | null)[]>([]);
   const listContentRef = useRef<(string | null)[]>([]);
 
-  const { refs, floatingStyles, context } = useFloating({
+  const { refs, floatingStyles, context, portalRoot } = useFloating({
     placement,
     offsetPx,
     open,
@@ -328,6 +333,7 @@ export function useMenuRoot(options: UseMenuRootOptions = {}) {
     listContentRef,
     activeIndex,
     menuId,
+    portalRoot,
   };
 }
 
@@ -339,7 +345,7 @@ export type MenuContentProps = ComponentPropsWithRef<"div">;
 
 export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
   function MenuContent({ children, className, style, ...props }, ref) {
-    const { open, refs, floatingStyles, context, getFloatingProps, menuId } =
+    const { open, refs, floatingStyles, context, getFloatingProps, menuId, portalRoot } =
       useMenuContext("MenuContent");
 
     const duration = useFadeDuration(open);
@@ -352,7 +358,7 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
     if (!isMounted) return null;
 
     return (
-      <FloatingPortal>
+      <FloatingPortal root={portalRoot}>
         <FloatingFocusManager context={context} initialFocus={-1}>
           <div
             ref={mergeRefs(ref, refs.setFloating)}

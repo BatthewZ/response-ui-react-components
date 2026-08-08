@@ -263,7 +263,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
 
     const { invalid, ariaProps } = useFieldError(error);
 
-    const { refs, floatingStyles, context } = useFloating({
+    const { refs, floatingStyles, context, portalRoot } = useFloating({
       placement,
       open,
       onOpenChange: setOpen,
@@ -404,7 +404,7 @@ export const ColorPicker = forwardRef<HTMLButtonElement, ColorPickerProps>(
         </button>
 
         {open && (
-          <FloatingPortal>
+          <FloatingPortal root={portalRoot}>
             {/* `initialFocus={-1}`: opening leaves focus on the trigger rather
                 than moving it onto the first tabbable, which here is the
                 Saturation slider — so the arrow key a user presses next would

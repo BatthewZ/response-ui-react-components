@@ -149,6 +149,12 @@ interface MultiSelectContextValue {
   chipRefs: React.RefObject<(HTMLButtonElement | null)[]>;
   refs: ReturnType<typeof useFloating>["refs"];
   floatingStyles: React.CSSProperties;
+  /**
+   * Where the listbox is portalled — the nearest `<dialog>` ancestor of the
+   * trigger, or `undefined` for `<body>`. See `useFloating`.
+   */
+  portalRoot: ReturnType<typeof useFloating>["portalRoot"];
+
   getFloatingProps: ReturnType<typeof useInteractions>["getFloatingProps"];
   getItemProps: ReturnType<typeof useInteractions>["getItemProps"];
   toggle: (value: string) => void;
@@ -302,7 +308,7 @@ const MultiSelectRoot = forwardRef<HTMLDivElement, MultiSelectProps>(
 
     const { invalid, ariaProps } = useFieldError(error);
 
-    const { refs, floatingStyles, context } = useFloating({
+    const { refs, floatingStyles, context, portalRoot } = useFloating({
       placement,
       open,
       onOpenChange: (next) => {
@@ -444,6 +450,7 @@ const MultiSelectRoot = forwardRef<HTMLDivElement, MultiSelectProps>(
       optionId,
       listRef,
       chipRefs,
+      portalRoot,
       refs,
       floatingStyles,
       getFloatingProps,
@@ -623,13 +630,13 @@ type MultiSelectContentProps = ComponentPropsWithRef<"div">;
  */
 const Content = forwardRef<HTMLDivElement, MultiSelectContentProps>(
   function MultiSelectContent({ children, className, style, ...props }, ref) {
-    const { open, refs, floatingStyles, getFloatingProps, listboxId } =
+    const { open, refs, floatingStyles, getFloatingProps, listboxId, portalRoot } =
       useMultiSelectContext("MultiSelect.Content");
 
     if (!open) return null;
 
     return (
-      <FloatingPortal>
+      <FloatingPortal root={portalRoot}>
         <div
           {...getFloatingProps({
             ref: mergeRefs(ref, refs.setFloating),

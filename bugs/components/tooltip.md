@@ -25,3 +25,15 @@ No prop exists to redirect the portal.
 **Fix:** accept an optional portal target (`root`/`portalId`) forwarded to
 `FloatingPortal`, or render in place. #127 (low) touches the same
 `getFloatingProps`-overwrites-`id` line and can ride along.
+
+**SUPERSEDED — do not copy this row's remedy.** The escape-hatch prop shipped (`container`) and
+fixed Tooltip alone; the same defect sat unfixed in **nine** other components — `Popover`,
+`HoverCard`, `DropdownMenu`, `ContextMenu`, `Combobox`, `MultiSelect`, `ColorPicker`,
+`DatePicker`, `DateRangePicker` — for several releases, because a prop cannot tell anyone a
+problem exists. All ten now resolve the portal target automatically from the trigger
+(`useDialogPortalRoot`, `src/hooks/use-floating.ts`), and `container` is demoted to an override.
+Two things this row got wrong and the next reader should not inherit: **painting is only half of
+it** — `showModal()` also makes everything outside the dialog inert, so an element lifted into
+the top layer at `<body>` level still takes no click — and the remaining bound after the fix is
+clipping, not stacking (#506). Where the right value is derivable, derive it; keep the prop for
+the case nobody can derive.

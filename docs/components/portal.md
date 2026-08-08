@@ -172,7 +172,10 @@ Before you build that, check whether you need a portal at all: [Dialog](dialog.m
 native `<dialog>` element with `showModal()`, which promotes them to the browser's top layer
 — above every stacking context, with no DOM relocation and no `z-index` at all. [Popover](popover.md),
 [Tooltip](tooltip.md), [HoverCard](hover-card.md), [DropdownMenu](dropdown-menu.md), [ContextMenu](context-menu.md), and the form comboboxes portal through
-Floating UI's own `FloatingPortal`, which also does the anchoring. [Toast](toast.md) never portals
+Floating UI's own `FloatingPortal`, which also does the anchoring — and which they aim at the
+nearest `<dialog>` ancestor of the trigger when there is one, so that a panel opened inside a
+[Dialog](dialog.md) or [Drawer](drawer.md) is neither under its top layer nor inside the inert
+subtree `showModal()` creates. [Toast](toast.md) never portals
 itself either — `ToastProvider` wraps the whole stack in one `Portal` into `<body>`. That
 provider and [AppShell](app-shell.md)'s mobile sidebar are the only two places in this library
 that reach for `Portal` directly.

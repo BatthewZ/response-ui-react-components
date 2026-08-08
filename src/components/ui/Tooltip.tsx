@@ -65,9 +65,12 @@ export interface TooltipProps {
   delay?: number;
   offset?: number;
   /**
-   * Where the bubble is portalled. Defaults to `<body>`, which paints *under* a
-   * native `<dialog>`'s top layer — pass the dialog element (or any node inside
-   * it) for a tooltip used inside `Dialog`/`Drawer`/`CommandPalette`.
+   * Where the bubble is portalled, overriding the default. There is nothing to
+   * pass for a tooltip inside `Dialog`/`Drawer`/`CommandPalette`: the default
+   * already resolves to the nearest `<dialog>` ancestor of the trigger, and to
+   * `<body>` when there is none. This is for a mount node of your own.
+   *
+   * `null` is read as "no override", not as "the body" — the same as omitting it.
    */
   container?: HTMLElement | null;
   /**
@@ -119,6 +122,7 @@ export function Tooltip({
     context,
     placement: resolvedPlacement,
     middlewareData,
+    portalRoot,
   } = useFloating({
     placement,
     offsetPx,
@@ -190,7 +194,7 @@ export function Tooltip({
           "aria-describedby": describedBy,
         } as Record<string, unknown>)}
       {isMounted && (
-        <FloatingPortal root={container}>
+        <FloatingPortal root={container ?? portalRoot}>
           <div
             ref={refs.setFloating}
             className={cn("tooltip", bubbleClasses, className)}

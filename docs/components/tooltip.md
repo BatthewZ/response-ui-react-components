@@ -21,16 +21,16 @@ names it, and it should hold nothing interactive.
 | `placement`  | `Placement`              | `"top"`   |
 | `delay`      | `number` (ms)            | `300`     |
 | `offset`     | `number` (px)            | `8`       |
-| `container`  | `HTMLElement \| null`    | `<body>`  |
+| `container`  | `HTMLElement \| null`    | nearest `<dialog>`, else `<body>` |
 | `className`  | `string`                 | —         |
 | `arrow`      | `boolean`                | `false`   |
 | `classNames` | `{ arrow?: string }`     | —         |
 
 That is the entire surface. There is no `open`/`onOpenChange` (the component owns its own
 state), no `id`, and no `disabled` — and no rest spread, so anything not in that table is a
-compile error rather than a prop that quietly does nothing. `container` redirects the portal —
-the prop to reach for inside a [Dialog](dialog.md) or [Drawer](drawer.md); see
-[Gotchas](#gotchas). `className` reaches the bubble and nothing else; see [Slots](#slots).
+compile error rather than a prop that quietly does nothing. `container` redirects the portal to a
+mount node of your own — there is nothing to pass inside a [Dialog](dialog.md) or [Drawer](drawer.md),
+which the default already handles; see [Gotchas](#gotchas). `className` reaches the bubble and nothing else; see [Slots](#slots).
 `TooltipProps` is internal, so a wrapper of your own re-declares the props; `Placement` **is**
 exported from the package barrel, so a variable holding one can be typed.
 
@@ -151,8 +151,9 @@ buttons waits the full `delay` at every one.
 
 **Keep it non-interactive anyway.** The pointer can reach the bubble — `safePolygon()` keeps
 it open across the gap — so a link inside it is technically clickable with a mouse. But the
-bubble is portalled to the end of `<body>` by default, so anything focusable in it becomes a
-tab stop at the end of the document rather than after the trigger. A user who tabs off the
+bubble is portalled to the end of `<body>` by default — or to the end of the enclosing
+`<dialog>` — so anything focusable in it becomes a tab stop at the end of *that*, rather than
+after the trigger. A user who tabs off the
 trigger lands there with no idea where "there" is. When you need
 content the user can act on — a link, a button, a form — reach for [Popover](popover.md), which is built
 to be entered.
@@ -309,11 +310,9 @@ a substitute — that is `border-color: inherit` only, and cannot carry a width 
 - **Escape dismisses it, but not durably.** Press Escape and the bubble closes; move the
   pointer even slightly *without leaving the trigger* and it comes back after `delay` ms. To
   make it stay away you have to move off the trigger.
-- **Inside a [Dialog](dialog.md) or [Drawer](drawer.md) it paints underneath — unless you pass
-  `container`.** Both use a native `<dialog>` with `showModal()`, which promotes them to the
-  browser's top layer; by default the tooltip portals to a `<div>` at the end of `<body>`,
-  which is not in the top layer, and no `z-index` can climb into it. Pass the dialog element
-  (or any node inside it) as `container` and the bubble portals into the top layer with it.
+- **`container={null}` means "no override", not "the body".** `null` and omitting the prop are
+  the same thing. (Floating UI reads a literal `null` root as *wait for a root that has not
+  arrived yet* and renders no bubble at all, so the value is never forwarded raw.)
 - **It is a client component.** `Tooltip.tsx` carries `"use client"`, so importing it opts its
   module into the client bundle. Unlike [Button](button.md) it is not itself usable as a server
   component — it is a client boundary, and both the bubble and the cloned trigger are painted

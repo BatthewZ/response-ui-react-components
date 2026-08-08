@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- **`Tooltip`'s `container` is now an override rather than the only route into a dialog.** There
+  is nothing to pass for a tooltip inside `Dialog`/`Drawer`/`CommandPalette` any more. `container`
+  still wins where you supply one, and **`container={null}` now means "no override"** instead of
+  being forwarded to Floating UI — which read it as "wait for a root that never arrives" and
+  rendered no bubble at all.
+
 - **A dismissing toast now collapses its row, so the stack above it glides down instead of
   snapping.** The slide-out is unchanged. What changed is what happens after it: the card was
   gone but its row was not, so the whole gap came back in the single frame where the node
@@ -33,10 +39,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **`useFloating` returns a `portalRoot`** — the nearest `<dialog>` ancestor of the trigger, or
+  `undefined` for `<body>`. The hook is exported, so this is an addition to the public surface;
+  every floating component in the library passes it to `FloatingPortal`.
 - **`ToastProvider` gains a `classNames.item` slot** — the collapsing wrapper around each toast,
   and the route to the spacing between them. That spacing is now set in two places that have to
   agree (`gap-r5` on `list`, and the `-mt-r5` the wrapper collapses to), so retuning it means
   both: `{ list: "gap-r6", item: "motion-safe:data-[dismissing]:-mt-r6" }`.
+
+### Fixed
+
+- **Floating panels work inside `Dialog`, `Drawer` and `CommandPalette`.** Every component that
+  portals a panel — `Popover`, `Tooltip`, `HoverCard`, `DropdownMenu`, `ContextMenu`, `Combobox`,
+  `MultiSelect`, `ColorPicker`, `DatePicker`, `DateRangePicker` — sent it to `document.body`,
+  which put it *under* a modal `<dialog>`'s top layer **and** inside `showModal()`'s inert
+  subtree. A `Drawer` containing a `DropdownMenu` opened a panel that was positioned correctly,
+  invisible, and took no clicks; nothing a consumer could pass fixed it. The panel now portals
+  into the nearest `<dialog>` ancestor of its trigger, so it paints and hit-tests with the
+  dialog. Measured in Chromium by `bun run probe:floating-in-dialog`, which drives a real click
+  through to the component's own handler — painting above is *not* sufficient, since an inert
+  subtree paints and still swallows the press.
+
+  **Nothing to configure, and nothing changes outside a `<dialog>`:** with no dialog ancestor the
+  panel still lands in `<body>`, in the same shape as before. (The portal target is resolved from
+  the trigger, which the library learns on commit — so a panel rendered *already open* on its very
+  first render appears one commit later than it used to, rather than in the wrong place. A panel
+  opened by a click is unaffected: its trigger has been known since mount.) Any `<dialog>` counts, including one you
+  wrote by hand — the ancestor is read off the trigger, not injected by our components.
+
+  **What it does not remove — read this if your panels are large.** Inside a dialog the panel is
+  now *bounded* by that dialog: a modal `<dialog>` carries `overflow: auto` from the user agent
+  stylesheet, so it is a scrollport, and Floating UI treats it as the clipping ancestor. A panel
+  that fits is unaffected, which is the common case. **Height is where it bites**: a `Drawer` is
+  full-height, but a `Dialog` is content-sized, and `DropdownMenu`/`ContextMenu` set no
+  `max-height`. Measured in Chromium, a 14-item menu inside a 260px-tall `Dialog` has **1 of 14
+  items reachable by a click**. Width is milder — a 375px-viewport `DatePicker` panel is 351px
+  inside a 337px `Drawer` and loses the 22px past the edge, which becomes the dialog's horizontal
+  scroll range rather than being painted. Nothing is worse than before (those panels were
+  previously unreachable in full, every item of them), but this is a real bound: cap a large
+  panel's height, or give the dialog room. Tracked as finding #506, with the reason the
+  `popover`-attribute fix was not taken in the same change.
+
+Two consequences worth knowing, both from the DOM parent changing. Inside a dialog the panel
+  inherits from the `<dialog>` element rather than from `<body>`, so a custom property scoped to
+  your `Dialog`/`Drawer` now reaches it. And **form association now depends on which side of the
+  dialog your `<form>` is**: the panel is appended to the `<dialog>` itself, so a form rendered
+  *inside* the dialog is the panel's sibling and its fields still need `form="<id>"` — but a form
+  that *wraps* the `Dialog` is the panel's ancestor, and fields in a panel now reach its
+  `FormData` where before they could not.
 
 ## [0.17.1] — 2026-08-08
 

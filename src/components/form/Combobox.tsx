@@ -110,6 +110,12 @@ interface ComboboxContextValue {
   loading: boolean;
   refs: ReturnType<typeof useFloating>["refs"];
   floatingStyles: React.CSSProperties;
+  /**
+   * Where the listbox is portalled — the nearest `<dialog>` ancestor of the
+   * trigger, or `undefined` for `<body>`. See `useFloating`.
+   */
+  portalRoot: ReturnType<typeof useFloating>["portalRoot"];
+
   context: ReturnType<typeof useFloating>["context"];
   getReferenceProps: ReturnType<typeof useInteractions>["getReferenceProps"];
   getFloatingProps: ReturnType<typeof useInteractions>["getFloatingProps"];
@@ -204,7 +210,7 @@ function ComboboxRoot({
   const listRef = useRef<(HTMLElement | null)[]>([]);
   const itemDataRef = useRef<(ItemData | null)[]>([]);
 
-  const { refs, floatingStyles, context } = useFloating({
+  const { refs, floatingStyles, context, portalRoot } = useFloating({
     placement,
     open,
     onOpenChange: setOpen,
@@ -293,6 +299,7 @@ function ComboboxRoot({
     loading,
     refs,
     floatingStyles,
+    portalRoot,
     context,
     getReferenceProps,
     getFloatingProps,
@@ -475,6 +482,7 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
       getFloatingProps,
       listboxId,
       registerRenderedCount,
+      portalRoot,
     } = useComboboxContext("Combobox.Content");
 
     // Count the rendered options so Root can truncate `listRef` and reset the
@@ -490,7 +498,7 @@ const ComboboxContent = forwardRef<HTMLDivElement, ComboboxContentProps>(
     if (!open) return null;
 
     return (
-      <FloatingPortal>
+      <FloatingPortal root={portalRoot}>
         <div
           {...getFloatingProps({
             ref: mergeRefs(ref, refs.setFloating),

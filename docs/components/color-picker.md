@@ -301,8 +301,8 @@ compiles [Button](button.md)'s `bg-primary` to `background-color: var(--C-PRIMAR
 contract variable itself, resolved against whatever is inherited at the element, so a
 wrapper override reaches every descendant that reads it. (Without `inline` the utility
 would reference `--color-primary`, a copy computed once at `:root`, and the override would
-do nothing.) Two caveats: the panel is portalled to `<body>`, so a wrapper-scoped
-override does **not** reach the picker's own panel (the general portal caveat that
+do nothing.) Two caveats: the panel is portalled clear of your JSX — to `<body>`, or to the
+enclosing `<dialog>` — so a wrapper-scoped override does **not** reach the picker's own panel (the general portal caveat that
 [Portal](portal.md) documents), and overriding one variable in isolation can break the
 [pairings](../theme-contract.md#the-contrast-pairing) the theme defines — `--C-PRIMARY` has
 a matching `--C-TEXT-ON-PRIMARY` that does not move with it.
@@ -457,9 +457,11 @@ border standing while the control is focused.
   `<button type="button">`, which the browser never submits — so a plain `<form>` post
   carries no value for it however the control is named. Bind it to a form store instead, or
   mirror the hex into a hidden input of your own. See [In a form](#in-a-form).
-- **Client component.** `"use client"`, and the panel is portalled to `<body>`, so it needs
-  a client boundary in an RSC tree and inherits custom properties from the document rather
-  than from the JSX ancestor you wrote it inside.
+- **Client component.** `"use client"`, and the panel is portalled out of your JSX — to
+  `<body>`, or to the nearest `<dialog>` ancestor when the control sits inside a
+  [Dialog](dialog.md)/[Drawer](drawer.md) — so it needs a client boundary in an RSC tree and
+  inherits custom properties from *that* element rather than from the JSX ancestor you wrote it
+  inside.
 - **Both CSS imports are required.** `.colorpicker-*` lives in this package's `styles`
   entry and reads `--C-*`/`--RADIUS-*`/`--SHADOW-*` from `@batthewz/response-ui-css`.
   Import the foundation first. Without them the panel has no size, and a click on the

@@ -84,6 +84,11 @@ interface PopoverContextValue {
   /** The *resolved* placement, so a flip carries the arrow to the other edge. */
   placement: Placement;
   middlewareData: ReturnType<typeof useFloating>["middlewareData"];
+  /**
+   * Where the panel is portalled — the nearest `<dialog>` ancestor of the
+   * trigger, or `undefined` for `<body>`. See `useFloating`.
+   */
+  portalRoot: ReturnType<typeof useFloating>["portalRoot"];
 }
 
 const PopoverContext = createContext<PopoverContextValue | null>(null);
@@ -141,6 +146,7 @@ function PopoverRoot({
     context,
     placement: resolvedPlacement,
     middlewareData,
+    portalRoot,
   } = useFloating({
     placement,
     offsetPx,
@@ -178,6 +184,7 @@ function PopoverRoot({
       arrowRef,
       placement: resolvedPlacement,
       middlewareData,
+      portalRoot,
     }),
     [
       open,
@@ -190,6 +197,7 @@ function PopoverRoot({
       contentId,
       resolvedPlacement,
       middlewareData,
+      portalRoot,
     ]
   );
 
@@ -276,6 +284,7 @@ const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
       arrowRef,
       placement,
       middlewareData,
+      portalRoot,
     } = usePopoverContext();
 
     const duration = useFadeDuration(open);
@@ -288,7 +297,7 @@ const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
     if (!isMounted) return null;
 
     return (
-      <FloatingPortal>
+      <FloatingPortal root={portalRoot}>
         <FloatingFocusManager context={context} modal={false}>
           <div
             ref={mergeRefs(ref, refs.setFloating)}

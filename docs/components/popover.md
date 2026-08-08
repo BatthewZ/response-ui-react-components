@@ -22,8 +22,8 @@ it clear of any clipping ancestor; you supply the trigger and the contents.
 state and the Floating UI context, nothing more. `Popover.Trigger` is the anchor: it renders a
 `<button class="popover-trigger">`, carries the click handler, and holds the ARIA that ties it
 to the panel. `Popover.Content` is the panel; it renders through Floating UI's `FloatingPortal`
-into a `<div>` at the end of `<body>`, and is **unmounted while closed** — so its children do
-not exist in the DOM until you open it.
+into a `<div>` at the end of the nearest `<dialog>` ancestor of the trigger, or the end of `<body>` when there is none, and is
+**unmounted while closed** — so its children do not exist in the DOM until you open it.
 
 | Part              | Renders             | Props                                                                          |
 | ----------------- | ------------------- | ------------------------------------------------------------------------------ |
@@ -64,7 +64,8 @@ and by touch. [HoverCard](hover-card.md), [DropdownMenu](dropdown-menu.md) and [
 open gestures and, for the menus, a different keyboard model.
 
 Popover is non-modal all the way down: nothing on screen dims, the page keeps scrolling, the
-panel paints at an ordinary `z-index`, and its **focus management is non-modal too** —
+panel paints at an ordinary `z-index` (inside a [Dialog](dialog.md) or [Drawer](drawer.md) it
+paints in the top layer, because it is portalled into the dialog and rides along with it), and its **focus management is non-modal too** —
 `FloatingFocusManager` runs with `modal={false}`, so Tab leaves the panel, nothing outside it
 is marked `aria-hidden` or `inert`, and the trigger stays readable while the panel is open.
 Focus still *moves* into the panel on open and comes back on close. See
@@ -307,9 +308,10 @@ a heading, point `aria-labelledby` at it and let the two stay in sync.
 
 Four variables is the whole contract. The rest of the panel's appearance is off it:
 
-- **No text colour is set.** The panel inks whatever it inherits — and because it is portalled
-  to `<body>`, that is the document's colour, not the colour of the JSX ancestor you wrote it
-  inside. A `color` (or any custom property) scoped to a wrapper `<div>` does not reach it.
+- **No text colour is set.** The panel inks whatever it inherits — and it inherits from the
+  element it is portalled into, not from the JSX ancestor you wrote it inside. That is `<body>`
+  normally, and the enclosing `<dialog>` when there is one. Either way a `color` (or any custom
+  property) scoped to a wrapper `<div>` does not reach it.
   Scope theme overrides on `:root` or on the panel itself. This is the general portal caveat
   that [Portal](portal.md) documents, and it applies here for the same reason.
 - **Padding is a literal** `0.75rem 1rem`, not the responsive `r`-scale, so it does not step up
@@ -317,7 +319,10 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
 - **`z-index: 40` is a literal**, the same layer [DropdownMenu](dropdown-menu.md), [Combobox](combobox.md), [MultiSelect](multi-select.md) and
   [ColorPicker](color-picker.md) sit on. [Tooltip](tooltip.md) (50) and [AppShell](app-shell.md)'s mobile sidebar (49 scrim, 50 panel)
   paint above a popover; anything in the browser's top layer — [Dialog](dialog.md),
-  [Drawer](drawer.md) — is above all of it regardless of `z-index`.
+  [Drawer](drawer.md) — is above all of it regardless of `z-index`. That is not a problem for a
+  popover *inside* one: it is portalled into the dialog, so it paints and hit-tests with the
+  dialog's own subtree rather than under it. (The panel is a descendant of a top-layer element,
+  not itself in the top layer — which is why the dialog's box still bounds it, below.)
 - **The fade reads the theme, and is dropped under reduced motion.** The open/close opacity
   transition takes its duration from `--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT`,
   read from `:root` at runtime (the measured themes set these between 120ms and 500ms), and
@@ -351,11 +356,30 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   `className` merges through `cn()` and `style` merges by key. Putting the handler and ref on
   `Popover.Trigger` itself still works and is equivalent. (Before this was fixed the child lost
   `onClick`, `onKeyDown`, `onPointerDown`, `onMouseDown` and its ref, silently.)
-- **A popover inside a [Dialog](dialog.md) lands outside it.** `FloatingPortal` appends the
-  panel to `<body>`, and a `<dialog>` opened with `showModal()` puts itself in the top layer
-  with the rest of the document inert — so the panel paints under the dialog and takes no
-  clicks. Nest a popover in a [Drawer](drawer.md) or a [Dialog](dialog.md) and it will look
-  broken. Inline the content instead.
+- **A popover inside a [Dialog](dialog.md) or [Drawer](drawer.md) lands inside it**, and there
+  is nothing to configure. `showModal()` puts the dialog in the top layer with the rest of the
+  document inert, so a panel appended to `<body>` would paint underneath it *and* take no
+  clicks — being in the top layer is not enough on its own, because inertness is a separate
+  mechanism. The panel is therefore portalled into the nearest `<dialog>` ancestor of the
+  trigger, which answers both. Any `<dialog>` counts, including one you wrote by hand.
+  (Form association depends on which side of the dialog your `<form>` is. The panel is appended
+  to the `<dialog>` itself, so a form you rendered *inside* the dialog is the panel's **sibling**
+  and its fields still need `form="<id>"` — but a form that *wraps* the Dialog is the panel's
+  **ancestor**, and fields in the panel now reach its `FormData` where before they could not.)
+- **Inside a dialog the panel is bounded by that dialog's box.** `dialog:modal` carries
+  `overflow: auto` in the user agent stylesheet, so a modal dialog is a scrollport — and
+  Floating UI, correctly, treats it as the clipping ancestor, so `flip` and `shift` keep the
+  panel inside the dialog rather than inside the viewport. A panel that fits is unaffected,
+  which is the common case. One that does not is clamped to the dialog's leading edge and the
+  overflow becomes the dialog's *scrollable* area rather than being painted.
+  **Height is the axis that costs you something real.** A [Drawer](drawer.md) is full-height so
+  it never shows this, but a [Dialog](dialog.md) is as tall as its content, and
+  [DropdownMenu](dropdown-menu.md)/[ContextMenu](context-menu.md) set no `max-height` (unlike
+  [Combobox](combobox.md), which caps its list). Measured in Chromium: of a 14-item menu inside
+  a 260px-tall Dialog, a click reaches **1 item of 14**. Width is milder — at a 375px viewport a
+  [DatePicker](date-picker.md) panel is 351px inside a 337px Drawer and loses the 22px past the
+  edge. Give the dialog room, cap the panel's height yourself, or keep a large panel out of a
+  small dialog. Tracked as finding #506.
 - **`open` without `onOpenChange` freezes it — and the mode is fixed at mount.** A first render
   with `open` defined makes the component fully controlled for its life: it writes no state of
   its own, so with no handler (or a handler that ignores the value) the trigger clicks and

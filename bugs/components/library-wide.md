@@ -349,3 +349,46 @@ hash the prose span a doc claim depends on, store it beside the claim — would 
 **Fix direction:** extend the gate beyond `## Theme tokens` to at least the `## Gotchas` section
 (90/90 spokes ship one, and `scripts/bugs-ledger.mjs:182-196` already flags them for re-reading when a
 row closes), keying on the utility strings resolved from source rather than on prose matching.
+
+### 506 · Library-wide — a floating panel is bounded by the `<dialog>` it opens inside (med)
+
+`dialog:modal` carries `overflow: auto` in the **user agent** stylesheet, so every modal
+`<dialog>` is a scrollport and clips its descendants. Since `useDialogPortalRoot` portals a
+panel into the nearest `<dialog>` ancestor of its trigger, Floating UI now — correctly —
+treats that dialog as the clipping ancestor, so `flip`/`shift` keep the panel inside the
+dialog's box rather than inside the viewport.
+
+**Introduced knowingly, and strictly better than what it replaced.** Before the portal fix the
+same panel was *entirely* invisible and inert inside a Dialog or Drawer. Nothing here is worse
+than it was. This row exists because the first draft of it understated the residue twice, and
+because "the panel works inside a dialog now" is a claim that needs a bound written next to it.
+
+**The vertical axis is the one that costs function.** A `Drawer` is `100dvh`, so it cannot show
+this; a `Dialog` is content-sized, so it can. Measured in Chromium at 1280x900 by
+`scripts/probe-floating-in-dialog.mjs`, case *"Tall DropdownMenu in a short Dialog"*: of a
+14-item `DropdownMenu` inside a 260px-tall `Dialog`, a real `mouse.click` reaches **1 item of
+14**. The probe *reports* that count rather than asserting it, so the figure is regenerated on
+every run and cannot go stale. `.menu-content` sets no `max-height` and no `overflow`, where
+`.combobox-content` sets `max-h-64 overflow-y-auto` — the menus are precisely the unbounded
+panels, which is why they are the worst case.
+
+**The horizontal axis is cosmetic by comparison, and its first numbers were wrong.** At a 375px
+viewport a `DatePicker` panel is 351px inside a 337px `Drawer`. The *width difference* is 14px,
+but the band actually lost is **22px**: `shift({padding: 8})` insets the panel 8px from the
+leading edge, so it spans x 8..359 against an edge at 337, and a hit-test sweep puts the first
+lost pixel exactly at 337. Nor is it simply "cut off" — the dialog reports `scrollWidth` 359
+against `clientWidth` 337, so it becomes horizontally **scrollable**. At 1280px the same panel
+is 344px inside 384px and nothing is clipped.
+
+**The fix, and why it is not taken here.** The `popover` attribute on the panel promotes it into
+the top layer in its own right, escaping the ancestor clip while remaining a flat-tree
+descendant of the dialog — so it does not become inert. That much is measured to work. It is
+still not a one-liner: a top-layer element resolves against the **viewport** containing block,
+so the panel's positioning strategy has to move in step or every coordinate is off by the
+dialog's offset; it also needs a `showPopover`/`hidePopover` lifecycle tied to mount, and a
+feature detect. That is a focused change of its own, touching every panel rather than only the
+ones inside a dialog.
+
+**A tripwire exists.** The probe asserts the horizontal bound is *still present*, so anyone who
+adds the `popover` half turns it red and is sent here rather than discovering the docs are now
+wrong.

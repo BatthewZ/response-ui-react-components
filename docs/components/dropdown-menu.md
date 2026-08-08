@@ -27,7 +27,11 @@ End to the ends, typeahead by first letter, and Escape back to the trigger.
 the open state and the Floating UI wiring. `DropdownMenu.Trigger` is the anchor and the toggle.
 `DropdownMenu.Content` is the floating `role="menu"` surface; it renders through Floating UI's
 `FloatingPortal` into `<body>`, so it escapes `overflow: hidden` and stacking contexts without a
-[Portal](portal.md) of your own. Everything inside it is your composition: `DropdownMenu.Item`s
+[Portal](portal.md) of your own — or into the nearest `<dialog>` ancestor of the trigger, so a
+menu opened inside a [Dialog](dialog.md) or [Drawer](drawer.md) is visible and clickable rather
+than stranded under the modal's top layer. A menu **taller than its dialog** is the one case that
+is still cut short there; the dialog is a scrollport and bounds it. See
+[Popover](popover.md#gotchas). Everything inside it is your composition: `DropdownMenu.Item`s
 are the focusable actions; `DropdownMenu.Divider` and `DropdownMenu.GroupHeader` are decoration.
 
 | Part                       | Renders                                                         | Props                                                             |

@@ -1115,3 +1115,61 @@ collision, left alone because briefs in flight cite the later one by letter.)
   already the final height — in less time than reasoning about any one of them, and without a
   single edit to the source. The component run afterwards then confirms the wiring rather than
   the physics.
+
+## AB · From the pass that asked why a menu inside a drawer did nothing
+
+- **A default that is wrong only inside one container is a defect every test agrees with.** Ten
+  components portalled their panel to `<body>`, which is right everywhere except inside a modal
+  `<dialog>` — and the suite could not see it, because jsdom implements no top layer, no
+  `::backdrop`, no `inert` and no `showModal` at all. In jsdom a panel appended to `<body>` is
+  perfectly visible and every simulated click on it lands. Coverage is not evidence when the
+  environment cannot represent the failure mode; find out what your runner *cannot* model before
+  reading its green as a verdict.
+- **One symptom, two mechanisms — and the obvious fix only answers one of them.** `showModal()`
+  both promotes the dialog to the top layer (so no `z-index` reaches past it) *and* makes
+  everything outside it inert. The second is the surprise: an element at `<body>` level carrying
+  the `popover` attribute *is* promoted into the top layer and **still takes no click**. So the
+  assertion that decides the bug is "did the press reach the handler", not "is it painted on
+  top" — a paint-only fix passes the pretty check and leaves the feature dead.
+- **An escape-hatch prop fixes it for whoever already knew.** One of the ten had shipped a
+  `container` prop for exactly this, documented, for several releases; the other nine stayed
+  broken, because a prop cannot tell anyone that a problem exists. Where the right value is
+  derivable from what the component already holds, derive it and demote the prop to an override.
+- **`FloatingPortal`'s `root` has three values, not two.** An element means "portal here";
+  `undefined` means "`<body>`"; **`null` means *wait*** — it creates no node at all, and once a
+  node exists it never moves it, whatever `root` becomes later. Two consequences that are easy
+  to get wrong in opposite directions: the root must be correct in the *first* commit the panel
+  renders in (a panel already open at mount is pinned before any state-derived root arrives, so
+  "not known yet" must be spelled `null`), and a caller's nullable value must never be forwarded
+  raw — passing a `container={null}` straight through silently renders nothing at all, forever.
+- **Resolve the ancestor from the DOM, not from a context you own.** `reference.closest("dialog")`
+  covers a `<dialog>` the *consumer* wrote by hand, which no provider of ours would ever reach —
+  and it is less wiring, not more.
+- **Do not qualify such a lookup by state the container has not reached yet.** `dialog[open]`
+  reads correctly and is still wrong: the children of a closed `Drawer` are mounted, so a trigger
+  routinely resolves its root before the dialog has ever been opened. Find the ancestor by
+  identity; let its state change underneath.
+- **A sentinel that means "wait" must be bounded, or it eventually means "never".** Deferring a
+  portal until the reference element is known is right, and unbounded it is worse than the bug: a
+  reference that never resolves — a trigger whose child drops the ref it is handed — leaves the
+  panel rendering *nothing at all*, while the trigger still advertises `aria-expanded="true"`.
+  The failure is silent, total, and only reachable through a composition nobody tests. Bound
+  every "not yet" to the commit it was written for, and make the fallback the old behaviour.
+- **Measuring the wrong quantity looks exactly like measuring.** A number badged "measured, not
+  reasoned" was still wrong: the *width difference* between a panel and its container (14px) is
+  not the *band the container eats* (22px), because the positioner insets the panel from the
+  leading edge first. Both come from the same browser session; only one answers the sentence.
+  Before writing a measured number into a record, re-read the sentence it is going into and ask
+  which quantity that sentence claims — then measure that one, by sweeping for the boundary
+  rather than by subtracting two figures you happen to have.
+- **When you accept a residue, test both of its axes — the one you didn't try is the one that
+  costs function.** A clipping bound was characterised on width, where it loses a few cosmetic
+  pixels, and shipped as "cosmetic". On height the same bound made **1 of 14** menu items
+  clickable, because the container that is full-height in one component is content-sized in
+  another and the panel caps neither. A residue's severity is a property of the worst axis, not
+  the first one measured.
+- **Documenting a limitation in one place while six other pages assert its opposite is worse
+  than not documenting it.** The sentences that break are the ones shaped *"portalled out, **so**
+  nothing can clip it"* — adding the new destination into that clause leaves the old consequence
+  standing and turns a true sentence false. When a change adds an exception, grep for the
+  *consequence* the docs draw from the old behaviour, not for the mechanism you changed.

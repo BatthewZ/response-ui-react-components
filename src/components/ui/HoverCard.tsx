@@ -51,6 +51,11 @@ interface HoverCardContextValue {
   /** The *resolved* placement, so a flip carries the arrow to the other edge. */
   placement: Placement;
   middlewareData: ReturnType<typeof useFloating>["middlewareData"];
+  /**
+   * Where the card is portalled — the nearest `<dialog>` ancestor of the
+   * trigger, or `undefined` for `<body>`. See `useFloating`.
+   */
+  portalRoot: ReturnType<typeof useFloating>["portalRoot"];
 }
 
 const HoverCardContext = createContext<HoverCardContextValue | null>(null);
@@ -101,6 +106,7 @@ function HoverCardRoot({
     context,
     placement: resolvedPlacement,
     middlewareData,
+    portalRoot,
   } = useFloating({
     placement,
     arrowRef,
@@ -142,6 +148,7 @@ function HoverCardRoot({
       arrowRef,
       placement: resolvedPlacement,
       middlewareData,
+      portalRoot,
     }),
     [
       open,
@@ -154,6 +161,7 @@ function HoverCardRoot({
       contentId,
       resolvedPlacement,
       middlewareData,
+      portalRoot,
     ]
   );
 
@@ -278,6 +286,7 @@ const HoverCardContent = forwardRef<HTMLDivElement, HoverCardContentProps>(
       arrowRef,
       placement,
       middlewareData,
+      portalRoot,
     } = useHoverCardContext();
 
     // Only as a default: an explicit name from the caller must not be beaten by
@@ -294,7 +303,7 @@ const HoverCardContent = forwardRef<HTMLDivElement, HoverCardContentProps>(
     if (!isMounted) return null;
 
     return (
-      <FloatingPortal>
+      <FloatingPortal root={portalRoot}>
         <div
           ref={mergeRefs(ref, refs.setFloating)}
           id={contentId}

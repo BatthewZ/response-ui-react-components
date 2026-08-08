@@ -278,8 +278,9 @@ opened at all. The wrapper also carries `data-disabled`, which is what greys the
 
 `placement` is a preference, not a guarantee: the listbox is positioned by floating-ui with
 `flip` and `shift`, so it moves to the opposite side or slides along the axis rather than
-leaving the viewport. It renders through a portal appended to `<body>`, so an
-`overflow: hidden` or `transform` ancestor cannot clip it.
+leaving the viewport. It renders through a portal appended to `<body>`, so an `overflow: hidden`
+or `transform` ancestor cannot clip it — or to the nearest `<dialog>` ancestor of the control, so
+it stays visible and clickable inside a [Dialog](dialog.md) or [Drawer](drawer.md). Inside a `<dialog>` that is where the escape stops: a modal dialog is a scrollport (`overflow: auto`, from the user agent stylesheet), so a panel bigger than the dialog is bounded by it — see [Popover](popover.md#gotchas).
 
 ## Composition
 

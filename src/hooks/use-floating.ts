@@ -8,8 +8,58 @@ import {
   shift,
   useFloating as useFloatingUI,
 } from "@floating-ui/react";
+import { useEffect, useMemo, useState } from "react";
 
 export type { Placement };
+
+/**
+ * Where a floating panel has to be portalled so that it is both visible and
+ * clickable.
+ *
+ * `FloatingPortal`'s default is `<body>`, and inside a modal `<dialog>` that is
+ * wrong twice over. `showModal()` promotes the dialog to the **top layer**, a
+ * paint phase above the whole document that no `z-index` reaches — and it makes
+ * everything outside the dialog **inert**, so a body-level panel takes no click
+ * even when something else lifts it into view. Both are spec behaviour, so
+ * neither is a browser to work around. Only being a DOM descendant of the dialog
+ * answers both, which is what this returns.
+ *
+ * Read off the reference element rather than injected by `Dialog`/`Drawer`,
+ * because the ancestor that matters is any `<dialog>` — including one the
+ * consumer wrote themselves, which no context of ours would reach.
+ *
+ * The three return values are floating-ui's own vocabulary, and the distinction
+ * between the last two is load-bearing:
+ *
+ * - an element — portal into it.
+ * - `undefined` — no dialog ancestor; portal into `<body>`, exactly as before.
+ * - `null` — *wait*. `useFloatingPortalNode` creates no node while the root is
+ *   `null` and never moves one afterwards, so a panel already open on its first
+ *   render would otherwise be pinned to `<body>` by the commit that runs before
+ *   floating-ui has told us what the reference element is.
+ *
+ * **The wait is bounded to that first commit, and that is not a detail.** A
+ * reference floating-ui never accepts leaves this `null` forever, and a portal
+ * that waits forever renders *nothing* — which is worse than the bug being fixed,
+ * because the trigger still reports `aria-expanded="true"`. It happens for real:
+ * `asChild` with a child whose ref is not a DOM element (a class component) makes
+ * `setReference` ignore the node, so `domReference` stays null for the component's
+ * whole life. After mount, an unresolved reference therefore degrades to `<body>`
+ * — the old behaviour — rather than to silence.
+ *
+ * `[open]` is deliberately not part of the selector. The children of a `Drawer`
+ * stay mounted while it is closed, so a trigger commonly resolves its root
+ * before the dialog has ever been opened.
+ */
+function useDialogPortalRoot(reference: Element | null): HTMLElement | null | undefined {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  return useMemo(() => {
+    if (reference) return reference.closest("dialog") ?? undefined;
+    return mounted ? undefined : null;
+  }, [reference, mounted]);
+}
 
 interface UseFloatingConfig {
   placement?: Placement;
@@ -84,13 +134,19 @@ export function useFloating(config: UseFloatingConfig = {}) {
     ...(arrowRef ? [arrow({ element: arrowRef })] : []),
   ];
 
-  return useFloatingUI({
+  const floating = useFloatingUI({
     placement,
     middleware,
     whileElementsMounted: autoUpdate,
     open,
     onOpenChange,
   });
+
+  // `domReference`, not `reference`: ContextMenu positions against a virtual
+  // reference at the cursor, which has no place in the DOM to ask about.
+  const portalRoot = useDialogPortalRoot(floating.elements.domReference);
+
+  return { ...floating, portalRoot };
 }
 
 export {

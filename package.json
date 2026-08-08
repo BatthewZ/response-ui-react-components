@@ -75,6 +75,7 @@
     "verify:bugs": "node scripts/bugs-ledger.mjs --check",
     "probe:cascade-layer": "node scripts/probe-cascade-layer.mjs",
     "probe:scrollport": "node scripts/probe-scrollport-containing-block.mjs",
+    "probe:floating-in-dialog": "node scripts/probe-floating-in-dialog.mjs",
     "prepublishOnly": "bun run build && node scripts/verify-directives.mjs && node scripts/verify-docs.mjs && node scripts/gen-docs.mjs --check && node scripts/verify-component-docs.mjs && node scripts/verify-focus-affordance.mjs && node scripts/verify-no-css-imports.mjs && node scripts/verify-css-layering.mjs && node scripts/verify-token-mirror.mjs && node scripts/verify-omit-discipline.mjs --check && node scripts/verify-chart-palette.mjs --check && node scripts/verify-example-themes.mjs --check && node scripts/verify-slot-annotations.mjs && node scripts/verify-scrollport-containing-block.mjs && bun run lint && bun run typecheck && bun run test",
     "verify:site": "node scripts/verify-site.mjs"
   },

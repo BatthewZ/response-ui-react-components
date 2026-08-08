@@ -41,15 +41,18 @@ That is also the line between the three floating primitives:
 **Anatomy.** `HoverCard` is state and context only — it renders no DOM of its own, so
 `Trigger` and `Content` can sit anywhere beneath it, in either order. `HoverCard.Trigger` is
 the anchor the card measures itself against and the element the pointer has to reach.
-`HoverCard.Content` renders into a Floating UI portal appended to `<body>`, so it escapes
-`overflow: hidden` and every `z-index` on the way up — the same escape [Portal](portal.md)
-gives you, with the positioning included. It is not in the DOM at all while closed.
+`HoverCard.Content` renders into a Floating UI portal appended to the end of `<body>`, so it
+escapes `overflow: hidden` and every `z-index` on the way up — the same escape
+[Portal](portal.md) gives you, with the positioning included. Inside a [Dialog](dialog.md) or
+[Drawer](drawer.md) it is appended to that `<dialog>` instead, so it paints and hit-tests with
+the modal rather than under it; a card bigger than the dialog is bounded by it, because a modal
+dialog is a scrollport. It is not in the DOM at all while closed.
 
 | Part                | Renders                                              | Props                                                                              |
 | ------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `HoverCard`         | nothing — a context provider                          | `open?` · `defaultOpen?` · `onOpenChange?` · `openDelay?` · `closeDelay?` · `placement?` · `children` |
 | `HoverCard.Trigger` | `<button type="button">`, or its own child when `asChild` | `asChild?` (+ all `button` props)                                              |
-| `HoverCard.Content` | `<div role="dialog">`, portalled into `<body>`        | `arrow?` · `classNames?` (+ all `div` props)                                        |
+| `HoverCard.Content` | `<div role="dialog">`, portalled into the nearest `<dialog>`, else `<body>` | `arrow?` · `classNames?` (+ all `div` props)                                        |
 
 | Root prop      | Type                      | Default    |
 | -------------- | ------------------------- | ---------- |
@@ -275,9 +278,9 @@ fade is on it — an inline `opacity` transition whose duration comes from
 `0` under `prefers-reduced-motion: reduce`, which removes the fade and the delayed unmount
 with it.
 
-The card also sets no text colour and no type scale, so it inherits both — but it is portalled
-to `<body>`, so it inherits from *there*, not from where it sits in your JSX. A `--C-TEXT-*`
-override scoped to a wrapper `<div>` never reaches the card; scope those on `:root`, or set the
+The card also sets no text colour and no type scale, so it inherits both — but it inherits from
+the element it is portalled into (`<body>`, or the enclosing `<dialog>`), not from where it sits
+in your JSX. A `--C-TEXT-*` override scoped to a wrapper `<div>` never reaches the card; scope those on `:root`, or set the
 colour on the card itself with `className`. See the [theme contract](../theme-contract.md).
 
 ## Gotchas
@@ -326,8 +329,9 @@ Three consequences, in the order they'll bite you:
   *description*, so a screen reader re-reading the focused trigger gets the card's text — but
   descriptions are announced late, at reduced verbosity, or only on request. If the
   information matters, it belongs in the page, not the card.
-- **Focus cannot get into it.** The card is portalled to the end of `<body>` with no focus
-  management and no tab guards, so Tab from the trigger goes to the next control on the page —
+- **Focus cannot get into it.** The card is portalled to the end of `<body>` — or of the
+  enclosing `<dialog>` — with no focus management and no tab guards, so Tab from the trigger
+  goes to the next control after the trigger, never into the card —
   and that blur closes the card. Interactive content inside a HoverCard (a "Follow" button, a
   link) is unreachable by keyboard. Put those actions on the page instead.
 - **The default name is the whole trigger.** `aria-labelledby` pointing at the trigger means

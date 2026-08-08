@@ -14,4 +14,8 @@ coverage/
 
 # cascade-layer probe scratch builds (scripts/probe-cascade-layer.mjs --keep)
 scripts/.cascade-probe/
+
+# floating-in-dialog probe scratch builds (scripts/probe-floating-in-dialog.mjs --keep)
+scripts/.floating-in-dialog-probe/
+
 site-dist/

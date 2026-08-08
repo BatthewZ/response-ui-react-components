@@ -65,7 +65,8 @@ One `relative` wrapper containing, in DOM order: two hidden `<input type="hidden
 when `name` is set), a field row holding the start [Input](input.md), an `aria-hidden` en-dash
 separator, the end [Input](input.md) and an [IconButton](icon-button.md) that toggles the
 popover — and after that row, the refusal message element. The popover itself is portalled to
-the end of `<body>` and holds a [RangeCalendar](range-calendar.md).
+the end of `<body>`, or of the nearest `<dialog>` ancestor when the field sits inside one, and
+holds a [RangeCalendar](range-calendar.md).
 
 The two text fields are the primary control — the calendar is an alternative, not the only
 way in. Typing commits on **Enter** or on **blur**; there is no per-keystroke parsing, so a
@@ -439,7 +440,7 @@ ever opening the calendar.
   `role="gridcell"` wrapper, and today gets `aria-current="date"`. At every layout the
   header caption is a button that drills into a month and then a year picker.
 - **The popover is non-modal and is not a focus trap.** It is portalled to the end of
-  `<body>`, and it holds only a handful of tab stops — ‹, the caption button, ›, then the
+  `<body>` (or of the enclosing `<dialog>`), and it holds only a handful of tab stops — ‹, the caption button, ›, then the
   one day button that owns the roving tab index. Tabbing past the last of them moves focus
   on to whatever follows the picker in the page **and closes the popover**. `Escape` also
   closes it, and returns focus to the start field.

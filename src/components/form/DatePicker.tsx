@@ -199,7 +199,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         .join(" ") || undefined;
     const fieldErrorProps = { ...ariaProps, "aria-describedby": describedBy };
 
-    const { refs, floatingStyles, context } = useFloating({
+    const { refs, floatingStyles, context, portalRoot } = useFloating({
       placement: "bottom-start",
       open,
       onOpenChange: setOpen,
@@ -381,7 +381,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         </p>
 
         {open && (
-          <FloatingPortal>
+          <FloatingPortal root={portalRoot}>
             {/* `initialFocus={-1}`: the calendar focuses its own roving day, so
                 focus lands on the grid rather than on "Previous month". */}
             <FloatingFocusManager context={context} modal={false} initialFocus={-1}>
