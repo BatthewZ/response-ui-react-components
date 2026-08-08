@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 
+import { usePrefersReducedMotion } from "../../hooks/use-reduced-motion";
 import { cn, type SlotClassNames } from "../../util/style";
 
 import { Portal } from "./Portal";
@@ -54,23 +55,63 @@ type ToastEntry = {
   dismissing: boolean;
 };
 
-/** Used only when `--MOTION-DURATION-EXIT` cannot be read (no token layer). */
+/** Used only when the motion tokens cannot be read (no token layer). */
 const FALLBACK_EXIT_MS = 300;
+const FALLBACK_COLLAPSE_MS = 400;
 const DEFAULT_DURATION_MS = 5000;
 const MAX_VISIBLE = 5;
 
 /**
- * How long a dismissing toast stays mounted, read from the theme rather than
- * frozen: a theme owns `--MOTION-DURATION-EXIT`, and a fixed wait truncates the
- * exit animation of any theme slower than the guess. Across the themes measured
- * here it ranges 120ms to 350ms; a consumer theme may set anything.
+ * The stack item. It is what makes the toasts above a dismissing one *glide*
+ * down into its place instead of snapping there the moment it unmounts: the
+ * card's slide-out empties the row but leaves it standing, so this collapses it
+ * — `grid-template-rows` 1fr to 0fr, plus a negative margin that swallows the
+ * list's `gap-r5` above it, which the row height alone would leave behind.
+ * `delay` is the exit duration, so the collapse starts on an already
+ * faded-out card and the two read as one gesture rather than fighting.
+ *
+ * `min-h-0` is what lets the track reach zero: a grid item's automatic minimum
+ * size otherwise floors it at min-content. `Collapsible` spells that same thing
+ * `overflow-hidden`, which here would clip the card's `shadow-lg` and cut the
+ * slide-out off at the edge of the stack.
+ *
+ * The collapsed track is variant-scoped so it wins on specificity (0,2,0)
+ * rather than on where Tailwind sorts it against the base's 0,1,0 — the same
+ * reason `Collapsible` scopes its open track.
+ *
+ * `motion-safe:` is load-bearing, not decoration. The card carries
+ * `motion-reduce:animate-none`, so under reduced motion it never fades, and
+ * collapsing the row under a still-solid toast would drag it across the stack.
+ * That branch keeps the pre-collapse behaviour, and `readRemovalDelayMs` drops
+ * the collapse from its wait to match.
  */
-function readExitDurationMs(el: Element | null): number {
-  if (!el) return FALLBACK_EXIT_MS;
-  const raw = getComputedStyle(el).getPropertyValue("--MOTION-DURATION-EXIT").trim();
+const itemClasses =
+  "grid grid-rows-[1fr] transition-[grid-template-rows,margin-top] duration-[var(--MOTION-DURATION-SHIFT)] delay-[var(--MOTION-DURATION-EXIT)] ease-[var(--MOTION-EASE-SHIFT)] motion-safe:data-[dismissing]:grid-rows-[0fr] motion-safe:data-[dismissing]:-mt-r5";
+
+function readDurationMs(el: Element, token: string, fallback: number): number {
+  const raw = getComputedStyle(el).getPropertyValue(token).trim();
   const value = Number.parseFloat(raw);
-  if (!Number.isFinite(value)) return FALLBACK_EXIT_MS;
+  if (!Number.isFinite(value)) return fallback;
   return raw.endsWith("ms") ? value : value * 1000;
+}
+
+/**
+ * How long a dismissing toast stays mounted, read from the theme rather than
+ * frozen: a theme owns these durations, and a fixed wait truncates the exit of
+ * any theme slower than the guess. Across the themes measured here the exit
+ * alone ranges 120ms to 350ms; a consumer theme may set anything.
+ *
+ * Two phases, in the order `itemClasses` plays them: the card's slide-out
+ * (`--MOTION-DURATION-EXIT`), then the row collapse that closes the gap it left
+ * (`--MOTION-DURATION-SHIFT`, the token `Collapsible` animates on too). Under
+ * reduced motion there is no collapse to wait for — waiting anyway would only
+ * hold a finished toast in the DOM.
+ */
+function readRemovalDelayMs(el: Element | null, reducedMotion: boolean): number {
+  if (!el) return reducedMotion ? FALLBACK_EXIT_MS : FALLBACK_EXIT_MS + FALLBACK_COLLAPSE_MS;
+  const exit = readDurationMs(el, "--MOTION-DURATION-EXIT", FALLBACK_EXIT_MS);
+  if (reducedMotion) return exit;
+  return exit + readDurationMs(el, "--MOTION-DURATION-SHIFT", FALLBACK_COLLAPSE_MS);
 }
 
 let idSequence = 0;
@@ -122,14 +163,20 @@ export type ToastProviderProps = {
    * inserted into. It positions the stack, so this is the route to moving toasts
    * to another corner. Its `aria-live` and its mounting are not negotiable: a
    * live region inserted with its message already inside is not announced.
+   *
+   * `item` is the collapsing wrapper around each toast. It is the route to the
+   * spacing *between* toasts, which `list`'s `gap-r5` sets but this one takes
+   * back down as a toast leaves — so a gap changed on `list` alone is a gap that
+   * no longer closes smoothly.
    */
-  classNames?: SlotClassNames<"list">;
+  classNames?: SlotClassNames<"list" | "item">;
 };
 
 export function ToastProvider({ children, classNames }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
+  const reducedMotion = usePrefersReducedMotion();
 
   const dismiss = useCallback((id: string) => {
     setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, dismissing: true } : t)));
@@ -195,7 +242,7 @@ export function ToastProvider({ children, classNames }: ToastProviderProps) {
       const { id } = entry;
       if (entry.dismissing) {
         clear(`${id}:auto`);
-        schedule(`${id}:remove`, readExitDurationMs(containerRef.current), () => {
+        schedule(`${id}:remove`, readRemovalDelayMs(containerRef.current, reducedMotion), () => {
           setToasts((prev) => prev.filter((t) => t.id !== id));
         });
       } else if (entry.duration > 0) {
@@ -204,7 +251,7 @@ export function ToastProvider({ children, classNames }: ToastProviderProps) {
         });
       }
     }
-  }, [toasts]);
+  }, [toasts, reducedMotion]);
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -236,19 +283,32 @@ export function ToastProvider({ children, classNames }: ToastProviderProps) {
           aria-live="polite"
         >
           {toasts.map((t) => (
-            <Toast
+            <div
               key={t.id}
-              variant={t.variant}
-              title={t.title}
-              statusLabel={t.statusLabel}
-              statusIcon={t.statusIcon}
-              dismissLabel={t.dismissLabel}
-              dismissing={t.dismissing}
-              onDismiss={() => dismiss(t.id)}
-              {...liveOverride(t.variant)}
+              data-dismissing={t.dismissing || undefined}
+              className={cn(itemClasses, classNames?.item)}
             >
-              {t.message}
-            </Toast>
+              <div
+                // slot:(a) the shrinker, and the class is the whole of it:
+                // `min-h-0` is what lets the row above collapse to zero.
+                // Varying it is not a restyle — it is the glide-down not
+                // happening.
+                className="min-h-0"
+              >
+                <Toast
+                  variant={t.variant}
+                  title={t.title}
+                  statusLabel={t.statusLabel}
+                  statusIcon={t.statusIcon}
+                  dismissLabel={t.dismissLabel}
+                  dismissing={t.dismissing}
+                  onDismiss={() => dismiss(t.id)}
+                  {...liveOverride(t.variant)}
+                >
+                  {t.message}
+                </Toast>
+              </div>
+            </div>
           ))}
         </div>
       </Portal>

@@ -4,6 +4,40 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [Unreleased]
+
+### Changed
+
+- **A dismissing toast now collapses its row, so the stack above it glides down instead of
+  snapping.** The slide-out is unchanged. What changed is what happens after it: the card was
+  gone but its row was not, so the whole gap came back in the single frame where the node
+  unmounted, and every toast above it jumped. Each toast now sits in a wrapper that animates
+  `grid-template-rows` from `1fr` to `0fr` over `--MOTION-DURATION-SHIFT`/`--MOTION-EASE-SHIFT`,
+  delayed by `--MOTION-DURATION-EXIT` so it starts only once the slide has finished, and takes
+  `-mt-r5` with it so the list's `gap-r5` closes too — a collapse that left the gap standing
+  would just make the snap smaller. Measured in a browser: the column reaches its final height
+  before the node is removed, so removal moves nothing.
+
+  `min-h-0` rather than `overflow-hidden` is what lets the track reach zero. Both work by
+  removing the grid item's automatic minimum size, but clipping would cut off the card's
+  `shadow-lg` and the slide-out itself.
+
+  Reduced motion keeps the previous behaviour exactly: `motion-safe:` scopes the collapse, so
+  the row never shrinks under a card that (per `motion-reduce:animate-none`) never faded, and
+  the provider drops the collapse from its removal wait to match.
+
+  **A dismissing toast is therefore mounted for longer** — `--MOTION-DURATION-EXIT` plus
+  `--MOTION-DURATION-SHIFT`, 700 ms on the default tokens against 200 ms before. Nothing visible
+  lasts longer; the extra time is a collapsed, empty row. Tests that advanced a fake timer by a
+  fixed amount to reach removal need the larger number.
+
+### Added
+
+- **`ToastProvider` gains a `classNames.item` slot** — the collapsing wrapper around each toast,
+  and the route to the spacing between them. That spacing is now set in two places that have to
+  agree (`gap-r5` on `list`, and the `-mt-r5` the wrapper collapses to), so retuning it means
+  both: `{ list: "gap-r6", item: "motion-safe:data-[dismissing]:-mt-r6" }`.
+
 ## [0.17.1] — 2026-08-08
 
 ### Fixed

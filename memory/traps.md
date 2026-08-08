@@ -1076,3 +1076,42 @@ collision, left alone because briefs in flight cite the later one by letter.)
   command away."* The trap is not ignorance of the tooling; it is that "we don't have X" is a
   conclusion that feels like a fact and is never checked. When a requester names an instrument,
   the burden is to look for it, not to argue the substitute is broadly better.
+
+## AA · From the pass that asked why a stack of toasts snapped after each one left
+
+- **An exit animation that only moves the card leaves the layout exactly where it was, so the
+  jolt everyone blames on the animation is the unmount.** A slide-and-fade can look finished
+  while the element still occupies its full height; nothing above it moves until the node goes,
+  and then all of it moves in one frame. The tell is that the reported ugliness happens *after*
+  the part that "looks nice" — which is the reader's clue that the fix is not in the keyframes.
+  Anything that leaves a flow container wants its box animated out as well as its pixels.
+- **What disappears at unmount is the row *and* the gap, and collapsing only the row leaves a
+  smaller copy of the same snap.** A flex/grid `gap` is not part of any child, so a height that
+  animates to zero still hands back the separator in one frame. Whatever closes the row has to
+  take an equal negative margin with it. Generally: before animating a removal, add up every
+  contribution the element makes to its parent's size, not just the obvious one.
+- **`overflow: hidden` is the usual spelling of the `1fr`→`0fr` collapse, but it is not the
+  mechanism.** What lets the track reach zero is the absence of a grid item's *automatic minimum
+  size*, and `min-height: 0` removes it just as well without clipping anything. That distinction
+  is the whole difference between a working collapse and one that guillotines the item's
+  `box-shadow` and cuts its outbound slide off at the container's edge. Copying the idiom from
+  the nearest component that already collapses something is how you inherit a clip you did not
+  want; copy the reason instead.
+- **Two-phase exits do not need a second state and a second timer — `transition-delay` sequences
+  them for free — but the unmount wait then has to sum phases that live in CSS.** The
+  cheap-looking half is the class; the expensive half is remembering that the JS which decides
+  when the node dies now reads two tokens instead of one, and truncating the second phase puts
+  the snap straight back.
+- **A `motion-safe:`/`motion-reduce:` fork in CSS is a fork the timer has to know about too.**
+  Under reduced motion the card here never fades (it already carried `motion-reduce:animate-none`),
+  so collapsing the row under it would have dragged a solid toast across the stack, and waiting
+  out a collapse that never runs would strand a finished toast on screen. One decision, written
+  in two languages that cannot see each other — which is exactly the shape that needs a test
+  holding the two ends together rather than a comment at each end.
+- **Prove a layout claim on a throwaway page before you put it in the component.** Compiling the
+  candidate class strings, hand-writing the DOM they are meant to produce, and measuring it under
+  a real browser settled four questions — does the track reach zero, does the negative margin
+  cancel the gap exactly, does the stack stay still during the delay, is the height at unmount
+  already the final height — in less time than reasoning about any one of them, and without a
+  single edit to the source. The component run afterwards then confirms the wiring rather than
+  the physics.

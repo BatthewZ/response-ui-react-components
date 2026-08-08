@@ -46,9 +46,10 @@ Three exports, and they are the whole API.
 
 `ToastProvider` takes `children` and **one** other prop, `classNames` — see
 [Slots](#slots). It still has no `className`: it renders `children` untouched beside a
-portalled stack, so there is no outermost element for one to land on. Corner, gap and width
-live on that stack and `classNames.list` reaches them. Stack limit and the default duration
-are still fixed in the source, with no prop and no context override.
+portalled stack, so there is no outermost element for one to land on. Corner and width live
+on that stack and `classNames.list` reaches them; the gap between toasts is `classNames.item`,
+for the reason given under [Slots](#slots). Stack limit and the default duration are still
+fixed in the source, with no prop and no context override.
 
 `Toast` itself is exported too, for when you want the surface without the queue — see
 [Rendering a Toast yourself](#rendering-a-toast-yourself).
@@ -141,10 +142,13 @@ HTML `title` attribute — `ToastProps` omits the native one, so there is no too
 
 ## Timing, stacking, and dismissal
 
-A toast lives for `duration` milliseconds (5000 by default), then animates out and is removed
-from the DOM after the theme's `--MOTION-DURATION-EXIT` (300 ms when no token layer is
-present). Pass `duration: 0` — or any non-positive number — and no timer is
-scheduled at all, so the toast stays until you dismiss it:
+A toast lives for `duration` milliseconds (5000 by default), then leaves in two movements: it
+slides out over the theme's `--MOTION-DURATION-EXIT`, and then — with the card already gone —
+its row collapses over `--MOTION-DURATION-SHIFT`, which is what lets the toasts above *glide*
+down into the space instead of dropping into it the instant the DOM node goes. Removal is
+after both (300 ms + 400 ms when no token layer is present). Pass `duration: 0` — or any
+non-positive number — and no timer is scheduled at all, so the toast stays until you dismiss
+it:
 
 <!-- example:Persistent -->
 ```tsx
@@ -182,7 +186,8 @@ Five things about the queue are worth knowing, because none of them are configur
 - **Newest first.** A new toast is prepended, and the column is anchored to the bottom of the
   viewport, so it appears above the existing ones and nothing already on screen moves.
 - **The limit is five.** A sixth toast pushes the oldest into its exit animation — so six are
-  briefly on screen together, settling back to five once the exit duration has run.
+  briefly on screen together, settling back to five once that exit has run and its row has
+  finished collapsing.
 - **Hovering does not pause anything.** Nothing pauses or extends the timer — not hover, not
   focus on the dismiss button; it runs to completion whether or not the user is reading it.
 - **The stack does not block the page.** The portal container is `pointer-events-none` and
@@ -252,6 +257,7 @@ than a prop that does nothing.
 | On              | Slot      | Element                              | What it addresses                       |
 | --------------- | --------- | ------------------------------------ | --------------------------------------- |
 | `ToastProvider` | `list`    | the portalled `aria-live` container  | where the stack sits, and how it stacks  |
+| `ToastProvider` | `item`    | the collapsing wrapper around each toast | the spacing between toasts, and the collapse |
 | `Toast`         | `icon`    | the severity glyph's first-line box  | the box, not the glyph — the glyph is the `statusIcon` prop |
 | `Toast`         | `body`    | the message column                   | the `flex-1` column holding title and message |
 | `Toast`         | `title`   | the `<p>` carrying `title`           | the title line, when `title` is set      |
@@ -267,6 +273,13 @@ than a prop that does nothing.
 `aria-live` and its always-mounted lifetime are not negotiable and no slot touches them: a
 live region inserted with its message already inside it is not announced, which is the whole
 reason the container exists separately from the toasts.
+
+**`classNames.item` is the route to the spacing between toasts** — and the reason it is a
+separate slot rather than something you set as a `gap` on `list`. The gap has to *close* as a
+toast leaves, so it is set in two places that have to agree: `gap-r5` on the list, and the
+`-mt-r5` the wrapper animates to as it collapses. Change one and the other no longer cancels
+it. Retuning it means both, e.g.
+`{ list: "gap-r6", item: "motion-safe:data-[dismissing]:-mt-r6" }`.
 
 **The visually-hidden severity word takes no slot.** `sr-only` *is* its mechanism — the tint
 is the visible channel and the word is the spoken one — so a route there would print "Error"
@@ -326,9 +339,24 @@ are `@theme` animations from `@batthewz/response-ui-css`, built from
 `--MOTION-EASE-EXIT`. The CSS package's `prefers-reduced-motion` block covers the `.fade-*`/
 `.slide-*` *classes*, not the `animate-*` utilities — so the component carries
 `motion-reduce:animate-none` itself, and both slides are suppressed for users who ask for
-less motion. The provider's removal delay is read from `--MOTION-DURATION-EXIT` at dismiss
-time rather than hard-coded, so a theme with a longer exit — the `grimdark` example sets
-`350ms` — gets its full slide-out instead of being cut off.
+less motion. The provider's removal delay is read from the tokens at dismiss time rather than
+hard-coded, so a theme with a longer exit — the `grimdark` example sets `350ms` — gets its
+full slide-out instead of being cut off.
+
+**The row outlives the card, on purpose.** A toast that slid away still holds its place in
+the column, and unmounting it hands the whole gap back in one frame — the toasts above snap
+down. So each toast sits in a wrapper that animates `grid-template-rows` from `1fr` to `0fr`
+on `--MOTION-DURATION-SHIFT`/`--MOTION-EASE-SHIFT` (the pair
+[Collapsible](collapsible.md) opens on), delayed by `--MOTION-DURATION-EXIT` so it begins
+only once the slide has finished. The wrapper also takes `-mt-r5` as it goes, because the
+row height is only part of what disappears: the list's `gap-r5` above it goes too, and a
+collapse that left the gap standing would put a smaller version of the same snap back. By the
+time the node is removed the column is already at its final height, so nothing moves.
+
+Reduced motion takes the pre-collapse behaviour instead: `motion-safe:` scopes both halves,
+so the row never shrinks under a card that — thanks to `motion-reduce:animate-none` — never
+faded, and the provider drops the collapse from its wait to match. The class and the timer
+are one decision written in two places, which is why a test pins them together.
 
 The dismiss button is an [IconButton](icon-button.md), and takes its radius, padding and focus
 tokens from there — but **not its hover and active fills.** `IconButton` reaches for the neutral

@@ -104,9 +104,9 @@ describe("ToastContext", () => {
     await act(async () => {
       vi.advanceTimersByTime(1000);
     });
-    // Then past the exit animation.
+    // Then past the exit sequence — the slide out *and* the row collapse after it.
     await act(async () => {
-      vi.advanceTimersByTime(400);
+      vi.advanceTimersByTime(800);
     });
 
     expect(screen.queryByText("Short toast")).not.toBeInTheDocument();
@@ -121,9 +121,9 @@ describe("ToastContext", () => {
 
     await user.click(screen.getByRole("button", { name: "Dismiss last" }));
 
-    // Advance past dismiss animation (300ms)
+    // Advance past the dismiss sequence: slide out, then row collapse.
     await act(async () => {
-      vi.advanceTimersByTime(400);
+      vi.advanceTimersByTime(800);
     });
 
     expect(screen.queryByText("Hello toast")).not.toBeInTheDocument();
@@ -253,9 +253,58 @@ describe("ToastContext", () => {
     }
   });
 
-  it("waits out the theme's --MOTION-DURATION-EXIT before removing", async () => {
-    // grimdark ships 350ms; a fixed 300ms wait truncates its exit animation.
+  it("waits out the theme's exit slide *and* its row collapse before removing", async () => {
+    // grimdark ships a 350ms exit; a fixed wait truncates its animation. The
+    // collapse that follows is a second themeable phase, and cutting that one
+    // short is what puts the snap back into the toasts above.
     document.documentElement.style.setProperty("--MOTION-DURATION-EXIT", "600ms");
+    document.documentElement.style.setProperty("--MOTION-DURATION-SHIFT", "500ms");
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      renderWithProvider();
+
+      await user.click(screen.getByRole("button", { name: "Add toast" }));
+      await user.click(screen.getByRole("button", { name: "Dismiss last" }));
+
+      // Mid-slide.
+      await act(async () => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(screen.getByText("Hello toast")).toBeInTheDocument();
+
+      // Slide done, mid-collapse — the row is still there for the stack to
+      // glide down into.
+      await act(async () => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(screen.getByText("Hello toast")).toBeInTheDocument();
+
+      await act(async () => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(screen.queryByText("Hello toast")).not.toBeInTheDocument();
+    } finally {
+      document.documentElement.style.removeProperty("--MOTION-DURATION-EXIT");
+      document.documentElement.style.removeProperty("--MOTION-DURATION-SHIFT");
+    }
+  });
+
+  it("under reduced motion, waits out the slide only — there is no collapse to wait for", async () => {
+    // The item's collapse is behind `motion-safe:`, so under `reduce` the row
+    // never shrinks. Waiting the collapse out anyway would hold a finished
+    // toast on screen for as long again as its exit took. This and the class
+    // are one decision in two places; the pair is what keeps them together.
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockImplementation((query: string) => ({
+        matches: query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+    document.documentElement.style.setProperty("--MOTION-DURATION-EXIT", "600ms");
+    document.documentElement.style.setProperty("--MOTION-DURATION-SHIFT", "500ms");
     try {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       renderWithProvider();
@@ -264,17 +313,39 @@ describe("ToastContext", () => {
       await user.click(screen.getByRole("button", { name: "Dismiss last" }));
 
       await act(async () => {
-        vi.advanceTimersByTime(400);
+        vi.advanceTimersByTime(500);
       });
       expect(screen.getByText("Hello toast")).toBeInTheDocument();
 
       await act(async () => {
-        vi.advanceTimersByTime(300);
+        vi.advanceTimersByTime(200);
       });
       expect(screen.queryByText("Hello toast")).not.toBeInTheDocument();
     } finally {
       document.documentElement.style.removeProperty("--MOTION-DURATION-EXIT");
+      document.documentElement.style.removeProperty("--MOTION-DURATION-SHIFT");
+      vi.unstubAllGlobals();
     }
+  });
+
+  it("collapses the dismissing toast's row so the stack glides into it", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderWithProvider();
+
+    await user.click(screen.getByRole("button", { name: "Add toast" }));
+    const item = screen.getByText("Hello toast").closest("div.grid");
+    expect(item).not.toBeNull();
+    expect(item).not.toHaveAttribute("data-dismissing");
+
+    await user.click(screen.getByRole("button", { name: "Dismiss last" }));
+
+    // The flag the collapse hangs off. Both halves matter: the row height, and
+    // the negative margin that takes the list's gap above it with it.
+    expect(item).toHaveAttribute("data-dismissing");
+    expect(item?.className).toContain("motion-safe:data-[dismissing]:grid-rows-[0fr]");
+    expect(item?.className).toContain("motion-safe:data-[dismissing]:-mt-r5");
+    // Held back until the slide has finished, so the two do not compete.
+    expect(item?.className).toContain("delay-[var(--MOTION-DURATION-EXIT)]");
   });
 
   it("cancels every pending timer on unmount", async () => {
@@ -302,7 +373,7 @@ describe("ToastContext", () => {
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
 
     await act(async () => {
-      vi.advanceTimersByTime(400);
+      vi.advanceTimersByTime(800);
     });
 
     expect(screen.queryByText("Hello toast")).not.toBeInTheDocument();
