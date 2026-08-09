@@ -4,7 +4,7 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
-## [Unreleased]
+## [0.18.0] — 2026-08-09
 
 ### Changed
 
@@ -42,6 +42,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **`useFloating` returns a `portalRoot`** — the nearest `<dialog>` ancestor of the trigger, or
   `undefined` for `<body>`. The hook is exported, so this is an addition to the public surface;
   every floating component in the library passes it to `FloatingPortal`.
+
+  The hook also now **promotes its floating element into the top layer when that root is a
+  `<dialog>`**, which is what stops the dialog clipping it (below). If you build your own panel on
+  `useFloating`, that happens without your asking: the element it positions gains
+  `popover="manual"`, a `floating-top-layer` class, and `position: fixed` for as long as it is
+  open inside a dialog, and gives all three back when it closes. The class carries a reset for the
+  box the user agent attaches to `[popover]` and ships in `@layer components`, so your own
+  utilities still out-rank it. Outside a dialog nothing is added and the strategy stays
+  `absolute` — verified by measuring a control panel's geometry either side of the change.
 - **`ToastProvider` gains a `classNames.item` slot** — the collapsing wrapper around each toast,
   and the route to the spacing between them. That spacing is now set in two places that have to
   agree (`gap-r5` on `list`, and the `-mt-r5` the wrapper collapses to), so retuning it means
@@ -67,20 +76,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   opened by a click is unaffected: its trigger has been known since mount.) Any `<dialog>` counts, including one you
   wrote by hand — the ancestor is read off the trigger, not injected by our components.
 
-  **What it does not remove — read this if your panels are large.** Inside a dialog the panel is
-  now *bounded* by that dialog: a modal `<dialog>` carries `overflow: auto` from the user agent
-  stylesheet, so it is a scrollport, and Floating UI treats it as the clipping ancestor. A panel
-  that fits is unaffected, which is the common case. **Height is where it bites**: a `Drawer` is
-  full-height, but a `Dialog` is content-sized, and `DropdownMenu`/`ContextMenu` set no
-  `max-height`. Measured in Chromium, a 14-item menu inside a 260px-tall `Dialog` has **1 of 14
-  items reachable by a click**. Width is milder — a 375px-viewport `DatePicker` panel is 351px
-  inside a 337px `Drawer` and loses the 22px past the edge, which becomes the dialog's horizontal
-  scroll range rather than being painted. Nothing is worse than before (those panels were
-  previously unreachable in full, every item of them), but this is a real bound: cap a large
-  panel's height, or give the dialog room. Tracked as finding #506, with the reason the
-  `popover`-attribute fix was not taken in the same change.
+  **A panel bigger than the dialog is not bounded by it.** Being a descendant of the dialog is
+  what makes a panel visible and clickable, and on its own it would also make the dialog *clip*
+  the panel — a modal `<dialog>` carries `overflow: auto` from the user agent stylesheet, so it
+  is a scrollport, and Floating UI would correctly treat it as the clipping ancestor. So a panel
+  inside a dialog also promotes **itself** into the top layer, with the `popover` attribute: that
+  takes it out of every ancestor's clip while leaving it a *flat-tree* descendant of the dialog,
+  so it stays interactive and never becomes inert. Its positioning strategy switches to `fixed`
+  in the same step, because a top-layer element resolves against the viewport. Measured in
+  Chromium: a 14-item menu inside a content-sized `Dialog` reaches **the same number of items as
+  the identical menu with no dialog on the page at all**, which is the property the probe now
+  asserts — parity, rather than a number that would go stale.
 
-Two consequences worth knowing, both from the DOM parent changing. Inside a dialog the panel
+  On an engine without `popover` (it is Baseline 2024) both halves fall back together and you get
+  the previous behaviour — the panel is a plain descendant of the dialog, visible and clickable,
+  and bounded by it. Never nothing.
+
+  **What is still true of very tall panels, dialog or no dialog:** `DropdownMenu`/`ContextMenu`
+  set no `max-height`, so a menu with enough items is taller than the *viewport* and its last
+  items fall below the fold. That is unchanged by any of the above and is the same on a bare
+  page; it is tracked as finding #507.
+
+  Two consequences worth knowing, both from the DOM parent changing. Inside a dialog the panel
   inherits from the `<dialog>` element rather than from `<body>`, so a custom property scoped to
   your `Dialog`/`Drawer` now reaches it. And **form association now depends on which side of the
   dialog your `<form>` is**: the panel is appended to the `<dialog>` itself, so a form rendered
