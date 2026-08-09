@@ -37,15 +37,15 @@ colour of it on the theme contract. Reach for it when you own the rows; reach fo
 <!-- /example -->
 
 **Anatomy.** `Table` renders a wrapper `<div class="table-wrapper">` — the horizontal
-scroller, the border and the rounded corners — around a `<table>` that holds your
-`children`. **Its base class list includes `relative`, and that is load-bearing**: the wrapper
+scroller, and (under the default `chrome`) the border and the rounded corners — around a
+`<table>` that holds your `children`. **Its base class list includes `relative`, and that is load-bearing**: the wrapper
 is a scrollport, so without it every absolutely-positioned descendant would resolve against an
 ancestor outside the scroll clip and be laid out in the wrapper's *unscrolled* coordinates —
 stranding it down the page as you scroll. The library's visually-hidden text is
 `position: absolute` with no offsets, so a [Badge](badge.md) in a status cell was enough to take
 a consumer's page to a 530 060px `scrollHeight` before 0.17.0. `z-index` stays `auto`, so it
 creates no stacking context; passing `static`/`absolute`/`fixed` in `className` overrides it and
-brings the defect back. It is also the provider: `density` and `striped` are set once on the root and
+brings the defect back. It is also the provider: `density`, `striped` and `chrome` are set once on the root and
 travel by context, so the five sub-parts never take them. `Table.Head` and `Table.Body`
 are near-passthroughs for `<thead>`/`<tbody>` — `Table.Body` also numbers its direct
 `Table.Row` children so the zebra can key off data position. `Table.Row` is the `<tr>` that
@@ -55,7 +55,7 @@ header cell is where sorting lives.
 
 | Part               | Renders   | Own props                                                                             |
 | ------------------ | --------- | ------------------------------------------------------------------------------------- |
-| `Table`            | `<div>` › `<table>` | `density?: "dense" \| "comfortable" \| "spacious"` (default `"comfortable"`) · `striped?: boolean` · `stickyHeader?: boolean` · `maxHeight?: number \| string` (caps the wrapper — what `stickyHeader` pins against; a number is px) · `tableProps?: ComponentPropsWithRef<"table">` (the only route to the inner `<table>`) |
+| `Table`            | `<div>` › `<table>` | `density?: "dense" \| "comfortable" \| "spacious"` (default `"comfortable"`) · `striped?: boolean` · `chrome?: "boxed" \| "rules" \| "plain"` (default `"boxed"`; how much box the table draws — see [Chrome](#chrome)) · `stickyHeader?: boolean` · `maxHeight?: number \| string` (caps the wrapper — what `stickyHeader` pins against; a number is px) · `tableProps?: ComponentPropsWithRef<"table">` (the only route to the inner `<table>`) |
 | `Table.Head`       | `<thead>` | —                                                                                     |
 | `Table.Body`       | `<tbody>` | —                                                                                     |
 | `Table.Row`        | `<tr>`    | `selected?: boolean` (emits `aria-selected` + `data-selected`; **omit it entirely** on a table with no selection) · `index?: number` (data position; decides the zebra band — `Table.Body` supplies it for its own children) |
@@ -106,6 +106,112 @@ included:
 `dense` is `0.25rem 0.75rem` with the smaller body type; `comfortable` (the default) is
 `0.625rem 1rem`; `spacious` is `1rem` all round. Both cell types get the same class, so a
 header row and its body rows always agree.
+
+## Chrome
+
+`chrome` is how much box the table draws around and between its own content. The default,
+`"boxed"`, spends three mechanisms on one job — an outer frame, a filled and
+double-ruled header band, and a rule under every row but the last.
+
+| Value     | Outer frame | Header                                    | Row rules |
+| --------- | ----------- | ----------------------------------------- | --------- |
+| `"boxed"` | yes         | filled band + 2px rule                    | yes       |
+| `"rules"` | none        | single rule, no fill (banded when pinned) | yes       |
+| `"plain"` | none        | no rule, no fill (banded when pinned)     | none — the density padding separates the rows |
+
+The prop decides **which** mechanisms a table spends; the tokens below decide **how heavy**
+each one is. `"boxed"` and `"rules"` therefore rule rows in the same ink — the difference
+between them is the frame and the band, not the weight of a hairline.
+
+**Reach for a lighter chrome when something around the table already draws a frame.** A
+`"boxed"` table inside a [`Card`](./card.md) — which has its own border, radius and shadow —
+gives you two concentric borders a few pixels apart, and neither is doing work the other
+is not:
+
+```tsx
+<Card>
+  <Table chrome="rules">{/* … */}</Table>
+</Card>
+```
+
+<!-- example:Chrome -->
+```tsx
+<Table chrome="rules">
+  <Table.Head>
+    <Table.Row>
+      <Table.HeaderCell>Region</Table.HeaderCell>
+      <Table.HeaderCell>Zone</Table.HeaderCell>
+      <Table.HeaderCell className="text-right">Latency</Table.HeaderCell>
+    </Table.Row>
+  </Table.Head>
+  <Table.Body>
+    <Table.Row>
+      <Table.Cell>Frankfurt</Table.Cell>
+      <Table.Cell>eu-central-1</Table.Cell>
+      <Table.Cell className="text-right">18 ms</Table.Cell>
+    </Table.Row>
+    <Table.Row>
+      <Table.Cell>Oregon</Table.Cell>
+      <Table.Cell>us-west-2</Table.Cell>
+      <Table.Cell className="text-right">142 ms</Table.Cell>
+    </Table.Row>
+    <Table.Row>
+      <Table.Cell>Singapore</Table.Cell>
+      <Table.Cell>ap-southeast-1</Table.Cell>
+      <Table.Cell className="text-right">231 ms</Table.Cell>
+    </Table.Row>
+  </Table.Body>
+</Table>
+```
+<!-- /example -->
+
+Three things `chrome` deliberately does **not** touch, because none of them is chrome:
+
+- **`striped`** stays yours to turn on, and bands paint in every value — including
+  `"plain"`, where the band becomes the only separation left.
+- **`selected`** keeps its wash and its leading marker. The marker is a
+  `background-image`, so it survives a chrome that paints no fill.
+- **The sortable header's hover and focus affordances.** A control you cannot see is a
+  different bug from a table that draws too many boxes.
+
+**A pinned header takes the band back, in every chrome.** `stickyHeader` re-adds
+`bg-surface-1` under `"rules"` and `"plain"`, for two reasons that both only apply while
+the head floats:
+
+- A `position: sticky` head is out of flow over rows that keep painting, so an unfilled
+  one shows the data sliding through the column labels.
+- **Its rule stops painting.** The table sets `border-collapse`, and in the collapsed
+  model a browser paints collapsed borders with the *table*, not with the row group — so
+  a pinned `<thead>` translates away from its own rule. Measured gone in both Chromium
+  and Firefox while scrolled. `"boxed"` loses its rule the same way and never showed it,
+  because its fill survives the scroll; the lighter chromes have no fill to fall back on
+  unless one is supplied.
+
+So a pinned head cannot be separated by a rule at all, and the fill is the only
+separation left. An unpinned `"rules"`/`"plain"` head is still unfilled — this is scoped
+to `stickyHeader`, and it only equals what `"boxed"` has always rendered.
+
+One thing the chrome does **not** vary: the `shadow-sm` each header cell casts when
+pinned. Chromium paints no `box-shadow` on a cell in the collapsed border model, so it is
+not a separation you can rely on in any chrome.
+
+**If every table in your app reads as a grid, the prop is the wrong tool — reach for the
+tokens.** `chrome` is per call site. The four tokens below are read by *every* chrome,
+including the default, so a theme retunes every table at once and no call site changes:
+
+```css
+:root[data-theme="aurora"] {
+  --TABLE-FRAME-COLOR: transparent;
+  --TABLE-FRAME-RADIUS: 0;
+  --TABLE-RULE-COLOR: color-mix(in oklch, var(--C-BORDER-DEFAULT) 30%, transparent);
+  --TABLE-HEAD-FILL: transparent;
+}
+```
+
+Each one defaults to the value that was hard-coded before it existed, so adding them moved
+nothing. The reason they exist rather than "just retune `--C-BORDER-DEFAULT`" is that the
+contract token also paints every card, input and divider — these separate *how much box a
+table draws* from *how much border everything draws*.
 
 ## Striped rows
 
@@ -382,19 +488,20 @@ every one of them.
 
 | Where                           | Utility / class                                       | Override                                                  |
 | ------------------------------- | ----------------------------------------------------- | --------------------------------------------------------- |
-| Wrapper border · corners        | `border-border-default` · `rounded-md`                | `--C-BORDER-DEFAULT` · `--RADIUS-MD`                      |
+| Wrapper frame · corners         | `border-[color:var(--TABLE-FRAME-COLOR)]` · `rounded-[var(--TABLE-FRAME-RADIUS)]` | `--TABLE-FRAME-COLOR` (defaults to the contract's border ink) · `--TABLE-FRAME-RADIUS` (defaults to the medium radius). Set the colour to `transparent` for a frameless default everywhere |
 | Table background                | `bg-surface-0`                                        | `--C-SURFACE-0`                                           |
-| Header band · its 2px underline | `bg-surface-1` · `border-border-default`              | `--C-SURFACE-1` · `--C-BORDER-DEFAULT`                    |
+| Header band · its 2px underline | `bg-[color:var(--TABLE-HEAD-FILL)]`                   | `--TABLE-HEAD-FILL` (defaults to the rung-1 surface) · the underline is `--TABLE-RULE-COLOR` |
 | Header label ink · weight       | `text-fg-primary` · `font-semibold`                   | `--C-TEXT-PRIMARY` · `--Semibold-Weight`                  |
 | Sortable header hover · active  | `hover:bg-surface-2` · `active:bg-surface-3`          | `--C-SURFACE-2` · `--C-SURFACE-3`                         |
 | Sortable header focus outline   | `focus-visible:outline-border-focus`                  | `--C-BORDER-FOCUS`                                        |
 | Sort button focus outline       | `.table-header-cell__sort-button`                     | `--C-BORDER-FOCUS`                                        |
 | Sort arrow                      | `text-fg-muted` unsorted · `text-accent` sorted       | `--C-TEXT-MUTED` · `--C-ACCENT`                           |
-| Row divider                     | `border-border-default`                               | `--C-BORDER-DEFAULT`                                      |
-| Striped row                     | `bg-surface-2`                                        | `--C-SURFACE-2`                                           |
+| Row divider, boxed and rules    | `border-[color:var(--TABLE-RULE-COLOR)]`              | `--TABLE-RULE-COLOR` (defaults to the contract's border ink). One override retunes every ruled table in the app; the plain chrome draws no divider at all |
+| Striped row                     | `bg-surface-1`                                        | `--C-SURFACE-1`                                           |
 | Selected row wash               | `bg-[color-mix(in_oklch,var(--C-ACCENT)_8%,transparent)]` | `--C-ACCENT`, mixed to 8% in oklch                    |
 | Selected row marker             | `.table-row--selected`                                | `--C-ACCENT` at full strength · width `--_table-marker-width` (3px, private) |
-| Expanded detail row             | `bg-surface-2` · `.data-table-expanded-cell`          | `--C-SURFACE-2` fill · `--C-BORDER-STRONG` leading marker at `--_table-marker-width` |
+| Expanded detail row's leading marker | `.data-table-expanded-cell`                      | `--C-BORDER-STRONG` at `--_table-marker-width`. The row's fill is `DataTable`'s — see [its theme tokens](./data-table.md#theme-tokens) |
+| Pinned header fill, rules and plain chrome | `bg-[color:var(--TABLE-HEAD-FILL)]`       | `--TABLE-HEAD-FILL` — the same band boxed uses. A pinned head's rule does not survive scrolling in the collapsed border model, so the fill is its only separation |
 | Cell ink                        | `text-fg-primary`                                     | `--C-TEXT-PRIMARY`                                        |
 | Cell type step                  | `text-[length:var(--BodyText-2)]` (dense) · `text-[length:var(--BodyText-1)]` (comfortable, spacious) | `--BodyText-2` · `--BodyText-1` |
 | Sticky header shadow            | `shadow-sm`                                           | `--SHADOW-SM`                                             |

@@ -4,6 +4,84 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.19.0] — 2026-08-09
+
+### Added
+
+- **`chrome` on `Table`, `DataTable` and `VirtualizedDataTable` — which box mechanisms a table
+  spends.** `"boxed"` (the default) keeps the outer frame, the filled header band and a rule
+  under every row but the last. `"rules"` drops the frame and the band. `"plain"` drops the rules
+  too and lets the density padding separate the rows.
+
+  The case it exists for is a table inside something that already has a frame — a `Card` draws
+  its own border, radius and shadow, so a `"boxed"` table inside one is two concentric borders a
+  few pixels apart. `Card`'s and `Table`'s doc pages both say so now.
+
+  Three things it deliberately does not touch. `striped` still bands whatever you turn it on for,
+  in every chrome. A `selected` row keeps its wash and its leading marker — the marker is a
+  `background-image`, so it composes with a chrome that paints no fill rather than depending on
+  one. And the sortable header keeps its hover, press and focus affordances: a control you cannot
+  see is a different defect from a table that draws too many boxes.
+
+  `DataTable` carries it one step further: the detail row a `renderExpanded` opens is the largest
+  contiguous block the component draws, so under the lighter chromes it drops its fill and lets
+  its leading marker carry the relationship to the row above. `classNames.expandedCell` still
+  puts a fill back.
+
+- **`--TABLE-FRAME-COLOR`, `--TABLE-FRAME-RADIUS`, `--TABLE-RULE-COLOR`, `--TABLE-HEAD-FILL` and
+  `--TABLE-DETAIL-FILL` — the inks a table draws box with, now themeable.** Every chrome reads
+  them, **the default included**, and each defaults to the exact value that was hard-coded
+  before it existed — so the rendering does not move. Verified in a browser: computed
+  `border-color`, `border-radius` and `background-color` are identical to the previous literals
+  on all four surfaces.
+
+  They exist because `chrome` is a per-call-site lever and "all our tables feel boxy" is not a
+  per-call-site problem. The alternative was retuning `--C-BORDER-DEFAULT` and `--RADIUS-MD`,
+  which also move every card, input and divider in the app. These separate *how much box a table
+  draws* from *how much border everything draws* — the distinction a heavy-ink theme actually
+  needs, and one the universal contract cannot express. Set `--TABLE-FRAME-COLOR: transparent`
+  and every table in the app loses its frame with no code change.
+
+  Domain extensions, not contract tokens: the names encode a component, so they live in this
+  package. They cascade by name, so a consumer theme overrides them exactly like contract tokens.
+  There is deliberately no width token — a theme should not be able to change a table's box model
+  and reflow the app.
+
+  Consequence worth stating: `"boxed"` and `"rules"` now rule rows in the **same** ink. An earlier
+  draft had `"rules"` soften the rule itself; measured across the shipped themes that softening
+  was 1.05–1.10:1 against the surface, i.e. very nearly `"plain"` already, while doing real work
+  only on heavy-ink themes. Rule weight is a theme decision, so it moved to the token, and the
+  prop is left deciding which mechanisms exist rather than how heavy they are.
+
+- **`TableChrome` is exported from `Table`** (not from the barrel), so the two data tables share
+  one definition rather than re-spelling the union.
+
+### Fixed
+
+- **A pinned header takes the band back, in every chrome.** Two reasons, and the second is
+  measured. `position: sticky` takes the head out of flow over rows that keep painting, so an
+  unfilled one shows the data sliding through the column labels. And the head's *rule* does not
+  survive scrolling: the table sets `border-collapse`, and in the collapsed model a browser paints
+  collapsed borders with the table rather than with the row group, so a pinned `<thead>` translates
+  away from its own rule — verified gone in both Chromium and Firefox while scrolled. `boxed` loses
+  its rule identically and never showed it, because its fill survives the scroll.
+
+  So the fill is a pinned head's only separation, and `rules`/`plain` re-add `--TABLE-HEAD-FILL`
+  when — and only when — `stickyHeader` is on. An unpinned head is genuinely unfilled.
+
+  Not chrome-varied, and worth knowing: the `--SHADOW-SM` each header cell casts when pinned.
+  Chromium paints no `box-shadow` on a cell in the collapsed border model, so it is not a
+  separation to rely on in any chrome.
+
+- **An unrecognised `chrome` degrades to `"boxed"` instead of stripping all chrome.** A
+  destructuring default fires only on `undefined`, so `chrome={null}` or a misspelling from an
+  untyped caller reached the class maps as a missing key, rendering no frame, no rules and — worse
+  — no fill on a pinned header. TypeScript callers could never reach this; not every caller is one.
+
+- **`docs/components/table.md` and `docs/components/virtualized-data-table.md` described the
+  striped row as the rung-2 surface.** It has been the rung-1 surface in code since before this
+  release; the prose is now correct.
+
 ## [0.18.0] — 2026-08-09
 
 ### Changed

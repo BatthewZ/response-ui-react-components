@@ -109,6 +109,12 @@ component, if you want cards to sit on a different surface globally.
 
 ## Gotchas
 
+- **A framed child inside a framed card gives you two borders.** `Card` draws its own
+  border, radius and shadow, so a component that also draws a frame — most visibly a
+  [Table](table.md), whose default `chrome` is a bordered, rounded wrapper — reads as two
+  concentric boxes a few pixels apart. Nothing is broken, but neither frame is doing work
+  the other is not: reach for the child's own way of dropping it (`chrome="rules"` on a
+  `Table` or a `DataTable`) rather than fighting it from the card's side.
 - **The `r`-scale is inverted.** `padding="r1"` is the *largest* inset, `r6` the smallest —
   the number is a rung on the responsive scale, not a pixel size. There is no zero-padding
   option; the tightest you can go is `r6` (0.25rem).

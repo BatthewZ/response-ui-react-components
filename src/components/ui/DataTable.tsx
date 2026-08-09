@@ -27,7 +27,7 @@ import {
 import { EmptyState, EmptyStateDescription, EmptyStateTitle } from "./EmptyState";
 import { Pagination } from "./Pagination";
 import { Skeleton } from "./Skeleton";
-import { Table, type TableProps } from "./Table";
+import { Table, type TableChrome, type TableProps } from "./Table";
 
 // Re-export shared types so existing import paths (`./DataTable`, the `ui`
 // barrel) stay valid.
@@ -102,6 +102,14 @@ export type DataTableProps<T> = {
   // Display
   density?: "dense" | "comfortable" | "spacious";
   striped?: boolean;
+  /**
+   * How much box the table draws — see `Table`'s own `chrome`.
+   *
+   * The detail row a `renderExpanded` opens follows it: under `"boxed"` that row
+   * is a recessed `surface-2` block, and under the lighter chromes its leading
+   * marker carries the relationship to the row above instead of a fill.
+   */
+  chrome?: TableChrome;
   stickyHeader?: boolean;
   /**
    * Caps the height of the scrolling area, in px for a number. `stickyHeader`
@@ -216,6 +224,7 @@ export function DataTable<T>({
   onPageChange,
   density = "comfortable",
   striped = false,
+  chrome = "boxed",
   stickyHeader = false,
   maxHeight,
   loading = false,
@@ -551,6 +560,7 @@ export function DataTable<T>({
               open={isExpanded}
               colSpan={totalColumns}
               density={density}
+              chrome={chrome}
               classNames={classNames}
             >
               {() => renderExpanded(row, i)}
@@ -576,6 +586,7 @@ export function DataTable<T>({
       <Table
         density={density}
         striped={hasRows && striped}
+        chrome={chrome}
         stickyHeader={stickyHeader}
         maxHeight={maxHeight}
         // Merged into, not replaced by, the caller's bag: `aria-busy` is
@@ -630,7 +641,24 @@ function transitionDurationMs(el: HTMLElement): number {
  * back. The zeroing is what lets the row collapse to zero height; the visible
  * padding lives on the inner body.
  */
-const expandedCellClasses = "p-0 bg-surface-2";
+const expandedCellClasses = "p-0";
+
+/**
+ * The detail row's fill, per chrome. `Table.css` already argues that the leading
+ * marker — not the fill — is what says "this belongs to the row above", and that
+ * the fill only reinforces it. The lighter chromes take that argument to its
+ * conclusion and drop the reinforcement: a recessed block is the single largest
+ * box a `DataTable` draws, so leaving it under `chrome="plain"` would put back
+ * more box than the row rules ever were.
+ *
+ * The marker survives all three — it is a `background-image` and this is a
+ * `background-color`, so they compose rather than replace each other.
+ */
+const expandedCellChromeMap: Record<TableChrome, string> = {
+  boxed: "bg-[color:var(--TABLE-DETAIL-FILL)]",
+  rules: "",
+  plain: "",
+};
 
 /** Animate height via grid-template-rows: 0fr (collapsed) -> 1fr (natural). */
 const expandedContentClasses =
@@ -673,12 +701,14 @@ function ExpandableDetailRow({
   open,
   colSpan,
   density,
+  chrome,
   classNames,
   children,
 }: {
   open: boolean;
   colSpan: number;
   density: "dense" | "comfortable" | "spacious";
+  chrome: TableChrome;
   classNames?: SlotClassNames<"expandToggle" | "expandedCell" | "expandedBody">;
   children: () => ReactNode;
 }) {
@@ -734,7 +764,12 @@ function ExpandableDetailRow({
           depth — see the rationale there. */}
       <Table.Cell
         colSpan={colSpan}
-        className={cn("data-table-expanded-cell", expandedCellClasses, classNames?.expandedCell)}
+        className={cn(
+          "data-table-expanded-cell",
+          expandedCellClasses,
+          expandedCellChromeMap[chrome] ?? expandedCellChromeMap.boxed,
+          classNames?.expandedCell
+        )}
       >
         <div
           ref={contentRef}

@@ -667,14 +667,25 @@ describe("#368 · the zebra follows the dataset, not the scroll window", () => {
     });
 
     const scrolled = bandsByRow(container);
+
+    // Both loops below are guarded, so an empty or unrecognisable `scrolled`
+    // would run zero assertions and pass green having checked nothing. These
+    // three say the loops actually ran, and over the rows this test is about.
+    const overlap = Object.keys(scrolled).filter((label) => label in atTop);
+    expect(Object.keys(scrolled).length).toBeGreaterThan(0);
+    expect(overlap.length).toBeGreaterThan(0);
+    expect(
+      Object.keys(scrolled).filter((label) => !Number.isFinite(Number(label.replace("Row ", "")))),
+    ).toEqual([]);
+
     // Every row still rendered must report the band it had before the scroll.
-    for (const [label, banded] of Object.entries(scrolled)) {
-      if (label in atTop) expect(banded).toBe(atTop[label]);
+    for (const label of overlap) {
+      expect(scrolled[label]).toBe(atTop[label]);
     }
     // And the parity is still the dataset's, not the window's.
     for (const [label, banded] of Object.entries(scrolled)) {
       const n = Number(label.replace("Row ", ""));
-      if (Number.isFinite(n)) expect(banded).toBe(n % 2 === 1);
+      expect(banded).toBe(n % 2 === 1);
     }
   });
 
@@ -761,5 +772,35 @@ describe("#368 · the zebra follows the dataset, not the scroll window", () => {
         empty.container.querySelector(".table-wrapper")!.getAttribute("class"),
       ).toContain("sentinel-root");
     });
+  });
+});
+
+
+// Three separate <Table> call sites render this component — loading, empty and
+// data — so `chrome` is three separate forwards. An unforwarded one is a table
+// that silently keeps its frame in exactly one state, which is the kind of gap
+// no single-state test would show.
+describe("chrome reaches every render state", () => {
+  const base = { data: makeData(20), columns, rowKey, rowHeight: 40 };
+  const frameOf = (c: HTMLElement) =>
+    [...c.querySelector(".table-wrapper")!.classList];
+
+  it.each([
+    ["data", { ...base }],
+    ["loading", { ...base, loading: true }],
+    ["empty", { ...base, data: [] }],
+  ])("drops the frame in the %s state", (_label, props) => {
+    const { container } = render(<VirtualizedDataTable {...props} chrome="rules" />);
+    expect(frameOf(container)).not.toContain("border-[color:var(--TABLE-FRAME-COLOR)]");
+    expect(frameOf(container)).toContain("relative");
+  });
+
+  it.each([
+    ["data", { ...base }],
+    ["loading", { ...base, loading: true }],
+    ["empty", { ...base, data: [] }],
+  ])("still draws it by default in the %s state", (_label, props) => {
+    const { container } = render(<VirtualizedDataTable {...props} />);
+    expect(frameOf(container)).toContain("border-[color:var(--TABLE-FRAME-COLOR)]");
   });
 });

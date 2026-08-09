@@ -74,6 +74,8 @@ import {
   StatCard,
   Stepper,
   Switch,
+  Table,
+  type TableChrome,
   TagInput,
   Textarea,
   Timeline,
@@ -187,6 +189,109 @@ function MenuInDrawerSpecimen() {
         <DatePicker aria-label="Deploy date" value={date} onValueChange={setDate} />
         <TallMenu onSelect={() => {}} />
       </Drawer>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Table chrome                                                       */
+/* ------------------------------------------------------------------ */
+
+const CHROMES: TableChrome[] = ["boxed", "rules", "plain"];
+
+/**
+ * The de-boxing tokens a theme would set. Applied here as an inline style on one
+ * wrapper rather than in a stylesheet, purely so the toggle can show the before
+ * and after on the same page — a real consumer puts these in their theme block
+ * and every table in the app follows, which is the whole point of them being
+ * tokens rather than a prop.
+ *
+ * Note what is NOT here: `--C-BORDER-DEFAULT`. That is the difference these buy.
+ * The Card wrapping each table keeps its own full-strength border throughout,
+ * because it reads the contract token and these do not touch it.
+ */
+const SOFTENED_TABLE_TOKENS = {
+  "--TABLE-FRAME-COLOR": "transparent",
+  "--TABLE-FRAME-RADIUS": "0",
+  "--TABLE-RULE-COLOR": "color-mix(in oklch, var(--C-BORDER-DEFAULT) 30%, transparent)",
+  "--TABLE-HEAD-FILL": "transparent",
+} as React.CSSProperties;
+
+function ChromeSpecimen({ chrome }: { chrome: TableChrome }) {
+  return (
+    <Table chrome={chrome} density="dense">
+      <Table.Head>
+        <Table.Row>
+          <Table.HeaderCell>Region</Table.HeaderCell>
+          <Table.HeaderCell className="text-right">Latency</Table.HeaderCell>
+        </Table.Row>
+      </Table.Head>
+      <Table.Body>
+        <Table.Row>
+          <Table.Cell>Frankfurt</Table.Cell>
+          <Table.Cell className="text-right">18 ms</Table.Cell>
+        </Table.Row>
+        <Table.Row>
+          <Table.Cell>Oregon</Table.Cell>
+          <Table.Cell className="text-right">142 ms</Table.Cell>
+        </Table.Row>
+        <Table.Row>
+          <Table.Cell>Singapore</Table.Cell>
+          <Table.Cell className="text-right">231 ms</Table.Cell>
+        </Table.Row>
+      </Table.Body>
+    </Table>
+  );
+}
+
+function TableChromeDemo() {
+  const [softened, setSoftened] = useState(false);
+
+  return (
+    <div className="flex w-full flex-col gap-r4">
+      <div className="flex flex-wrap items-center justify-between gap-r5">
+        <p className="text-body-3 text-fg-muted">
+          <strong className="text-fg-secondary">Two independent levers.</strong>{" "}
+          The <code>chrome</code> prop picks which box mechanisms each table spends.
+          The <code>--TABLE-*</code> tokens set how heavy those mechanisms are, for
+          every table at once — including the default one on the left.
+        </p>
+        <Button
+          size="sm"
+          variant={softened ? "primary" : "secondary"}
+          onClick={() => setSoftened((v) => !v)}
+        >
+          {softened ? "Softened --TABLE-* tokens" : "Default --TABLE-* tokens"}
+        </Button>
+      </div>
+
+      <div
+        style={softened ? SOFTENED_TABLE_TOKENS : undefined}
+        className="grid gap-r4 md:grid-cols-3"
+      >
+        {CHROMES.map((chrome) => (
+          <Card key={chrome} padding="r4" shadow="sm" className="flex flex-col gap-r5">
+            <span className="text-body-3 font-semibold uppercase tracking-wide text-fg-muted">
+              chrome=&quot;{chrome}&quot;{chrome === "boxed" && " (default)"}
+            </span>
+            <ChromeSpecimen chrome={chrome} />
+            <span className="text-body-3 text-fg-muted">
+              {chrome === "boxed"
+                ? "Frame + banded head + row rules. Inside this Card that is two concentric borders."
+                : chrome === "rules"
+                  ? "No frame, no band. The row rules stay — their weight is the token's job."
+                  : "No frame, no rules. Only the density padding separates the rows."}
+            </span>
+          </Card>
+        ))}
+      </div>
+
+      <p className="text-body-3 text-fg-muted">
+        Press the button and watch the <em>left-hand</em> table — it never changes
+        prop. Every Card keeps its own full-strength border throughout, because the
+        tokens move table chrome without touching{" "}
+        <code>--C-BORDER-DEFAULT</code>.
+      </p>
     </div>
   );
 }
@@ -1263,6 +1368,10 @@ export function App() {
             </ActivityFeed.Item>
           </ActivityFeed>
         </Tile>
+
+        <div className="w-full">
+          <TableChromeDemo />
+        </div>
 
         <div className="w-full">
           <DataTable<Person>

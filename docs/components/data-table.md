@@ -46,6 +46,7 @@ row or a cell yourself.
 | `onPageChange`      | `(page: number) => void`                                                 | —                    |
 | `density`           | `"dense" \| "comfortable" \| "spacious"`                                 | `"comfortable"`      |
 | `striped`           | `boolean`                                                                | `false`              |
+| `chrome`            | `"boxed" \| "rules" \| "plain"`                                        | `"boxed"`            |
 | `stickyHeader`      | `boolean`                                                                | `false`              |
 | `maxHeight`         | `number \| string`                                                       | —                    |
 | `loading`           | `boolean`                                                                | `false`              |
@@ -373,9 +374,16 @@ way back to page 2. See [Gotchas](#gotchas) for what that costs.
 
 ## Density and stripes
 
-`density` and `striped` are forwarded straight to the underlying [Table](table.md). `dense` also
-steps the type down a size; `comfortable` and `spacious` share a type size and differ only
-in padding. Striping is suppressed in the loading and empty states.
+`density`, `striped` and `chrome` are forwarded straight to the underlying [Table](table.md).
+`dense` also steps the type down a size; `comfortable` and `spacious` share a type size and
+differ only in padding. Striping is suppressed in the loading and empty states.
+
+`chrome` decides how much box the table draws — see
+[Table › Chrome](table.md#chrome) for the three values and what each one keeps. One thing is
+this component's own: the detail row a `renderExpanded` opens fills `--C-SURFACE-2` under
+`"boxed"`, and under the lighter chromes drops that fill so its leading marker carries the
+relationship to the row above instead. Worth reaching for whenever the table already sits
+inside a [Card](card.md) or another framed panel.
 
 <!-- example:DenseStriped -->
 ```tsx
@@ -512,7 +520,7 @@ utilities in `DataTable.tsx`. Change the variable and it re-tints at runtime, no
 
 | Where                          | Utility              | Override              |
 | ------------------------------ | -------------------- | --------------------- |
-| Expanded detail-row backdrop   | `bg-surface-2`       | `--C-SURFACE-2`       |
+| Expanded detail-row backdrop, boxed chrome | `bg-[color:var(--TABLE-DETAIL-FILL)]` | `--TABLE-DETAIL-FILL` (defaults to the rung-2 surface). The lighter chromes drop the fill entirely and let the row's leading marker carry the relationship |
 | Expander chevron ink           | `text-fg-secondary`  | `--C-TEXT-SECONDARY`  |
 | Expander hover wash            | `hover:bg-surface-2` | `--C-SURFACE-2`       |
 | Expander corner radius         | `rounded-md`         | `--RADIUS-MD`         |

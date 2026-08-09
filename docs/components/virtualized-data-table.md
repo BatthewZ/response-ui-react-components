@@ -46,6 +46,7 @@ your row with no annotation.
 | `endReachedThreshold` | `number` — rows from the end that arm `onEndReached`                     | `8`                      |
 | `density`             | `"dense" \| "comfortable" \| "spacious"`                                 | `"comfortable"`          |
 | `striped`             | `boolean`                                                                | `false`                  |
+| `chrome`              | `"boxed" \| "rules" \| "plain"`                                        | `"boxed"`                |
 | `stickyHeader`        | `boolean`                                                                | `true`                   |
 | `loading`             | `boolean`                                                                | `false`                  |
 | `loadingRowCount`     | `number`                                                                 | `5`                      |
@@ -423,12 +424,16 @@ Everything you can see is painted by the components it renders through, so there
 per-component variable to reach for and any override you make re-tints those components
 everywhere else too:
 
-- **The table itself** — `Table.css`. The wrapper takes a 1px `--C-BORDER-DEFAULT` border and
-  `--RADIUS-MD` corners; the table fills `--C-SURFACE-0`; the head fills `--C-SURFACE-1` under a
-  2px `--C-BORDER-DEFAULT` rule and, when sticky, casts `--SHADOW-SM` from each header cell.
+- **The table itself** — `Table.css`. The wrapper takes a 1px `--TABLE-FRAME-COLOR` border and
+  `--TABLE-FRAME-RADIUS` corners; the table fills `--C-SURFACE-0`; the head fills
+  `--TABLE-HEAD-FILL` under a 2px `--TABLE-RULE-COLOR` rule and, when sticky, carries a
+  `--SHADOW-SM` on each header cell — which Chromium does not paint on a cell in the collapsed
+  border model, so treat the fill, not the shadow, as the pinned head's separation.
   Header and body text ink `--C-TEXT-PRIMARY`, and cell type is `--BodyText-2` at `dense`,
-  `--BodyText-1` otherwise. Rows are separated by 1px of `--C-BORDER-DEFAULT`; a striped row
-  fills `--C-SURFACE-2`, and a selected row an 8% `--C-ACCENT` wash plus a 3px `--C-ACCENT`
+  `--BodyText-1` otherwise. Which of the outer frame, header fill and row rule a table spends
+  is what `chrome` varies, and how heavy each one is comes from the `--TABLE-*` tokens — see
+  [Table › Chrome](table.md#chrome); the figures here describe the default `"boxed"`. Rows are
+  separated by 1px of `--TABLE-RULE-COLOR`; a striped row fills `--C-SURFACE-1`, and a selected row an 8% `--C-ACCENT` wash plus a 3px `--C-ACCENT`
   bar down its leading edge (the wash alone measures 1.07–1.13:1 — see
   [Table](table.md#accessibility)). A sortable header hovers to
   `--C-SURFACE-2`, presses to `--C-SURFACE-3`, and focuses with a 2px `--C-BORDER-FOCUS`

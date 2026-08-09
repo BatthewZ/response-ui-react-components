@@ -32,6 +32,30 @@
   --BUTTON-GAP-SM: 0.375rem;
   --BUTTON-GAP-MD: 0.5rem;
   --BUTTON-GAP-LG: 0.625rem;
+  /* Table chrome — the four inks a table draws box with. EVERY chrome reads
+     these, the default `boxed` included, and each default resolves to the exact
+     value that was hard-coded before they existed: the rendering does not move.
+
+     That is the whole point of them. A prop is a per-call-site lever, so a theme
+     that finds every table too heavy would otherwise have to edit every call site
+     — or retune --C-BORDER-DEFAULT and --RADIUS-MD, which also move every card,
+     input and divider in the app. These four separate "how much box a TABLE
+     draws" from "how much border everything draws", which is the distinction a
+     heavy-ink theme actually needs and the contract cannot express.
+
+     Not in the universal contract: the names encode a component, which makes them
+     domain extensions by the test in the repo's CLAUDE.md. They cascade by name,
+     so a consumer theme overrides them exactly like contract tokens.
+
+     Set --TABLE-FRAME-COLOR to `transparent` for a frameless default everywhere;
+     the 1px still occupies layout, which is deliberate — a width token would let
+     a theme change the table's box model, and reflowing every table in the app is
+     not a thing a colour-scheme override should be able to do. */
+  --TABLE-FRAME-COLOR: var(--C-BORDER-DEFAULT);
+  --TABLE-FRAME-RADIUS: var(--RADIUS-MD);
+  --TABLE-RULE-COLOR: var(--C-BORDER-DEFAULT);
+  --TABLE-HEAD-FILL: var(--C-SURFACE-1);
+  --TABLE-DETAIL-FILL: var(--C-SURFACE-2);
 }
 @theme inline {
   /* Only trend + chart are consumed as Tailwind utilities (text-trend-up, bg-chart-3, …) */

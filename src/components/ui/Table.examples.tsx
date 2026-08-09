@@ -66,6 +66,42 @@ export function Dense() {
   );
 }
 
+/**
+ * A table that already sits inside something with a frame draws a second one under the
+ * default `chrome`. `"rules"` keeps the row separation and drops the box; `"plain"` drops
+ * the rules too and lets the density padding do the work.
+ */
+export function Chrome() {
+  return (
+    <Table chrome="rules">
+      <Table.Head>
+        <Table.Row>
+          <Table.HeaderCell>Region</Table.HeaderCell>
+          <Table.HeaderCell>Zone</Table.HeaderCell>
+          <Table.HeaderCell className="text-right">Latency</Table.HeaderCell>
+        </Table.Row>
+      </Table.Head>
+      <Table.Body>
+        <Table.Row>
+          <Table.Cell>Frankfurt</Table.Cell>
+          <Table.Cell>eu-central-1</Table.Cell>
+          <Table.Cell className="text-right">18 ms</Table.Cell>
+        </Table.Row>
+        <Table.Row>
+          <Table.Cell>Oregon</Table.Cell>
+          <Table.Cell>us-west-2</Table.Cell>
+          <Table.Cell className="text-right">142 ms</Table.Cell>
+        </Table.Row>
+        <Table.Row>
+          <Table.Cell>Singapore</Table.Cell>
+          <Table.Cell>ap-southeast-1</Table.Cell>
+          <Table.Cell className="text-right">231 ms</Table.Cell>
+        </Table.Row>
+      </Table.Body>
+    </Table>
+  );
+}
+
 /** `striped` bands every second row by data index; `Table.Body` numbers these itself. */
 export function Striped() {
   return (

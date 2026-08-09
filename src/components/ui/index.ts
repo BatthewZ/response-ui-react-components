@@ -62,7 +62,7 @@ export { Spotlight } from "./Spotlight";
 export { StatCard } from "./StatCard";
 export { Stepper } from "./Stepper";
 export { Swimlane } from "./Swimlane";
-export { Table, type TableProps } from "./Table";
+export { Table, type TableChrome, type TableProps } from "./Table";
 export { Tabs } from "./Tabs";
 export { Text } from "./Text";
 export { ThemeSwitcher } from "./ThemeSwitcher";

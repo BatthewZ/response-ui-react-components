@@ -117,3 +117,33 @@ whether a safeguard is needed at all, and the two duplications that are load-bea
   needs no cascade-layer migration to be safe, which makes it available earlier than the phase it
   looks like it belongs to. When a comment justifies a rule by what out-ranks what, re-read it after
   changing either side.
+
+## A downstream generator constrains HOW you deduplicate a union, not WHETHER
+
+Something downstream reads this package's **emitted `.d.ts`** to harvest the value sets of
+string-union props. It accepts only a *pure* literal union, and a prop it cannot parse is not an
+error anywhere: the prop is simply omitted from both the generated reference and the generated
+check, so the check still passes on both sides because it is comparing a generation against
+itself. The failure is invisible from inside this package and invisible from outside it.
+
+That is a real constraint, and it is easy to over-read. This exact over-read happened here: a
+props type spelled its union out inline in several places, with a comment claiming the
+duplication was load-bearing and that referencing a shared type would cost the downstream check.
+**The comment was wrong, and measurably so.** Under test, three shapes behave differently:
+
+- `Foo["bar"]` (indexed access) — breaks harvesting. Silently.
+- `Pick<Foo, "bar">` — breaks it worse.
+- A **named, exported type alias**, imported by the siblings — works perfectly. The generated
+  artifacts came out byte-identical to the duplicated version.
+
+The resolver falls back to scanning every declaration file for the alias by name, which is why —
+and the shared layout scales already relied on this, so the evidence was in the tree the whole
+time. So the rule is: deduplicate with a named alias, never with a derived type. And before
+writing "this duplication is deliberate" at a site, *run the thing that supposedly needs it*.
+A plausible mechanism plus an unverified consequence is how a copy-paste acquires a defender.
+
+Second-order, and the reason this cost more than the edit: that comment was **public**. It sat in
+the JSDoc of an exported prop, so it was emitted into the shipped `.d.ts` and into every
+consumer's IDE tooltip — which also made it a one-way-knowledge leak, an upstream package naming
+its downstream in its published API. Internal rationale goes next to the implementation, never in
+the doc comment of a public prop.

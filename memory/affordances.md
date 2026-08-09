@@ -203,3 +203,39 @@ part of a recipe land at once.
 
 Both are invisible to every gate in this package, and to a screenshot of the start or the end
 state. Only a frame *between* them shows either one.
+
+## Removing decoration removes whatever was leaning on it
+
+A prop that lets a caller take chrome away — a frame, a fill, a rule — has to be read twice:
+once for what the decoration *looked* like, and once for what else was quietly using it. The
+case that nearly shipped: a table's header fill is decoration, but a **pinned** header is
+`position: sticky`, out of flow over rows that keep painting, and the fill is the only thing
+making it opaque. Take it away for the lighter look and the data scrolls visibly through the
+column labels — a correctness defect introduced by a taste prop.
+
+The fix is not to refuse the removal; it is to supply the mechanism separately, and only where
+the mechanism is actually needed — the header takes a fill back **when pinned** and nothing at
+all otherwise, because an unconditional fill is the band coming back.
+
+**But the first answer to "supply it separately" was wrong, and the way it was wrong is the
+real lesson.** The obvious replacement was the table's *own* background: opaque, yet the same
+colour as what sits behind it, so the head still reads as unfilled. It satisfied the stated
+requirement exactly and was still a defect, because the decoration had been carrying a *second*
+job nobody had enumerated. Under `border-collapse` a browser paints collapsed borders with the
+table, not with the row group, so a pinned head translates away from its own rule — measured
+gone in both Chromium and Firefox. The old fill had been hiding that for years. Replacing it
+with a same-colour fill produced a header measuring 1.00:1 against the rows it floated over:
+opaque, and invisible.
+
+So the question is not "what was this decoration doing?" but "what *else* was it doing?" — and
+it is answered by rendering the thing in a browser and looking, not by reasoning about the
+class list. Every gate in this package was green across that whole mistake, and jsdom cannot
+see any of it: `toHaveClass("bg-surface-0")` passes just as happily on a header that has
+vanished into its own data.
+
+Generalise it as a question to ask of every "less of this" prop: **for each thing being
+removed, is it load-bearing anywhere, under any other prop's value?** Layering, opacity,
+hit-testing and scroll containment are where the answers hide, and none of them is visible in
+a screenshot of the default state. The wrapper's `relative` in the same component is the same
+lesson learned the hard way once already — which is why it is deliberately kept out of the
+per-value map, where no value can reach it.

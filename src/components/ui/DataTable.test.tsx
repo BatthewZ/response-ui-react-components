@@ -1335,7 +1335,7 @@ describe("#463 · defaultPage seeds the uncontrolled page", () => {
           "table-cell",
           "table-cell--comfortable",
           "data-table-expanded-cell",
-          "bg-surface-2",
+          "bg-[color:var(--TABLE-DETAIL-FILL)]",
           "p-0",
         ]),
       );
@@ -1453,5 +1453,65 @@ describe("#463 · defaultPage seeds the uncontrolled page", () => {
         "page",
       );
     });
+  });
+});
+
+// The detail row is the largest contiguous block a DataTable draws, so it is the
+// one place where leaving a fill in would put back more box than the row rules
+// ever were. `Table.css` already argues the leading marker — not the fill — is
+// what binds the detail row to the row above it.
+describe("chrome", () => {
+  const rows = [{ id: "1", name: "Ada" }];
+  const columns = [{ key: "name", header: "Name" }];
+
+  function renderExpanded(chrome?: "boxed" | "rules" | "plain") {
+    return render(
+      <DataTable
+        data={rows}
+        columns={columns}
+        rowKey={(r) => r.id}
+        chrome={chrome}
+        renderExpanded={() => <div>detail</div>}
+        expandedKeys={new Set(["1"])}
+        onExpandedChange={() => {}}
+      />,
+    );
+  }
+
+  it("reaches the wrapper", () => {
+    const { container } = renderExpanded("plain");
+    expect([...container.querySelector(".table-wrapper")!.classList]).not.toContain(
+      "border-[color:var(--TABLE-FRAME-COLOR)]",
+    );
+  });
+
+  it("keeps the recessed detail fill under boxed", () => {
+    const { container } = renderExpanded();
+    expect(container.querySelector(".data-table-expanded-cell")).toHaveClass("bg-[color:var(--TABLE-DETAIL-FILL)]");
+  });
+
+  it.each(["rules", "plain"] as const)("drops the detail fill under %s", (chrome) => {
+    const { container } = renderExpanded(chrome);
+    const cell = container.querySelector(".data-table-expanded-cell")!;
+    expect([...cell.classList]).not.toContain("bg-[color:var(--TABLE-DETAIL-FILL)]");
+    // The marker rule keys off the BEM class and paints a background-IMAGE, so
+    // it composes with (rather than depends on) the fill that just went away.
+    expect(cell).toHaveClass("data-table-expanded-cell");
+  });
+
+  it("still lets a caller put the fill back", () => {
+    const { container } = render(
+      <DataTable
+        data={rows}
+        columns={columns}
+        rowKey={(r) => r.id}
+        chrome="plain"
+        classNames={{ expandedCell: "bg-surface-3" }}
+        renderExpanded={() => <div>detail</div>}
+        expandedKeys={new Set(["1"])}
+        onExpandedChange={() => {}}
+      />,
+    );
+    expect(container.querySelector(".data-table-expanded-cell")).toHaveClass("bg-surface-3");
   });
 });

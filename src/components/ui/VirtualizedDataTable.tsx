@@ -18,7 +18,7 @@ import {
 } from "./data-table-utils";
 import { EmptyState, EmptyStateDescription, EmptyStateTitle } from "./EmptyState";
 import { Skeleton } from "./Skeleton";
-import { Table, type TableProps } from "./Table";
+import { Table, type TableChrome, type TableProps } from "./Table";
 
 export type VirtualizedDataTableProps<T> = {
   // Data
@@ -101,6 +101,12 @@ export type VirtualizedDataTableProps<T> = {
   // Display
   density?: "dense" | "comfortable" | "spacious";
   striped?: boolean;
+  /**
+   * How much box the table draws — see `Table`'s own `chrome`. Worth more here
+   * than on a short table: this component's whole point is a long scroll, so a
+   * rule under every row is repeated further than anywhere else in the package.
+   */
+  chrome?: TableChrome;
   /** Pin the header while scrolling. Defaults to true (recommended for tall lists). */
   stickyHeader?: boolean;
 
@@ -254,6 +260,7 @@ export function VirtualizedDataTable<T>({
   endReachedThreshold = 8,
   density = "comfortable",
   striped = false,
+  chrome = "boxed",
   stickyHeader = true,
   loading = false,
   loadingRowCount = 5,
@@ -420,6 +427,7 @@ export function VirtualizedDataTable<T>({
       <Table
         density={density}
         striped={false}
+        chrome={chrome}
         stickyHeader={stickyHeader}
         // Raw, and deliberately: this branch adds no class of its own, and
         // `Table`'s root is `cn("table-wrapper", className)`, so the merge
@@ -467,6 +475,7 @@ export function VirtualizedDataTable<T>({
       <Table
         density={density}
         striped={false}
+        chrome={chrome}
         stickyHeader={stickyHeader}
         // Raw for the same reason as the loading branch above: no base class
         // here, and `Table` merges.
@@ -498,6 +507,7 @@ export function VirtualizedDataTable<T>({
       ref={scrollRef}
       density={density}
       striped={striped}
+      chrome={chrome}
       stickyHeader={stickyHeader}
       // `table-virtual-scroll` is now a declaration-free marker (AGENTS.md
       // §"Class names outlive their declarations"): it used to scope the

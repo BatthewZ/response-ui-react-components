@@ -39,7 +39,7 @@ DropdownMenu, EmptyState + EmptyState{Title,Description,Icon,Actions}, ErrorBoun
 FileUpload, Hero, HoverCard, IconButton, Kbd, Markdown + type MarkdownProps, MasonryGrid,
 MediaCard, Pagination,
 Popover, Portal, ProgressBar, Rating, Skeleton, Spinner, Spotlight, StatCard, Stepper,
-Swimlane, Table + type TableProps, Tabs, Text, ThemeSwitcher, Timeline, Toast + type ToastVariant,
+Swimlane, Table + types TableProps/TableChrome, Tabs, Text, ThemeSwitcher, Timeline, Toast + type ToastVariant,
 ToastProvider, useToast, Tooltip, VirtualizedDataTable + type
 VirtualizedDataTableProps, Wizard + useWizard + types
 WizardProps/WizardStep/UseWizardOptions/UseWizardReturn

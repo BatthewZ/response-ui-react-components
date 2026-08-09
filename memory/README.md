@@ -22,13 +22,13 @@ lesson readable without the measurement, and cite rather than restate.
 | Spoke                      | The lesson                                                  |
 | -------------------------- | ------------------------------------------------------------ |
 | [traps.md](./traps.md)     | What every fix pass so far got wrong. Read before planning — including why state derived during render tears when React replays it, why a motion defect can be invisible to the DOM, the computed style and the suite at once, why a scroll container that is not a containing block leaks its contents into the consumer's page, why an exit animation that looks finished still leaves a hole in the layout, and why a panel that jsdom says is visible and clickable can be neither, and why a measuring harness that answers a nearby question is indistinguishable from one that answers yours. |
-| [state.md](./state.md)     | Where one fact ends up stored twice, and which copies are deliberate. |
+| [state.md](./state.md)     | Where one fact ends up stored twice, and which copies are deliberate — including how a downstream generator constrains the WAY you deduplicate a union but not whether, and how an unverified 'this duplication is deliberate' comment defended a copy-paste from inside a public API doc. |
 | [gates.md](./gates.md)     | What a green gate does *not* mean.                           |
 | [ledger.md](./ledger.md)   | How a written record goes wrong, and which errors are worst. |
 | [testing.md](./testing.md) | Ways a test here passes for the wrong reason.                |
 | [history.md](./history.md) | Why an inherited claim is worth less than you think.         |
 | [example-themes.md](./example-themes.md) | How sample data becomes API without anyone deciding to, and the one test that catches it. |
-| [affordances.md](./affordances.md) | Adding a visual cue or an override hook: why a slot `className` only looks like it works, how to read a "the library overwrote my class" report, how to move a rail without moving everyone's, and why depth is the wrong channel on a large region. |
+| [affordances.md](./affordances.md) | Adding a visual cue or an override hook: why a slot `className` only looks like it works, how to read a "the library overwrote my class" report, how to move a rail without moving everyone's, why depth is the wrong channel on a large region, and what to check before letting a prop take decoration away, since layering and opacity lean on it invisibly. |
 | [css-to-utilities.md](./css-to-utilities.md) | Moving a declaration out of a stylesheet into a class list: the emission order that makes every reset invert, which cascade inversions are real and which only look it, and the three quiet ways a vendor pseudo-element conversion goes wrong. |
 
 ## The short version

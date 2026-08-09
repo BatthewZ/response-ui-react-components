@@ -22,9 +22,23 @@ import { cn, type SlotClassNames } from "../../util/style";
 
 type Density = "dense" | "comfortable" | "spacious";
 
+/**
+ * How much box the table draws around and between its own content. Separation is
+ * the axis, and `boxed` spends three mechanisms on it at once — an outer frame, a
+ * filled and double-ruled head, and a rule under every row but the last — which
+ * is why a `boxed` table inside a `Card` reads as two concentric frames.
+ *
+ * `rules` keeps one horizontal rule and softens it; `plain` keeps none and lets
+ * the density padding separate the rows. Neither touches `striped`, `selected`
+ * or the sort affordance: banding is the caller's, selection is a state, and a
+ * control that cannot be seen is a different bug.
+ */
+export type TableChrome = "boxed" | "rules" | "plain";
+
 type TableContextValue = {
   density: Density;
   striped: boolean;
+  chrome: TableChrome;
   /**
    * Read by `Table.Head` and `Table.HeaderCell`, which used to be reached by the
    * `.table--sticky-header .table-head` descendant selectors in `Table.css`. The
@@ -33,6 +47,24 @@ type TableContextValue = {
    */
   stickyHeader: boolean;
 };
+
+/**
+ * Every chrome map is read through this, never indexed directly.
+ *
+ * A destructuring default fires only on `undefined`, so `chrome={null}` from an
+ * untyped caller — a JS consumer, or a `props` bag deserialised from somewhere —
+ * reaches the maps as a key that is not there. A bare lookup then returns `undefined`, `cn()` drops it silently, and the
+ * table renders with NO chrome at all: no frame, no rules, and no fill on a
+ * pinned header, which is the one state that is an actual defect rather than a
+ * look nobody asked for. TypeScript callers cannot reach this; the point is that
+ * not every caller is one.
+ *
+ * Falling back to `boxed` rather than throwing: an unrecognised *decorative*
+ * value should degrade to the documented default rather than to no chrome at all.
+ */
+function chromeClass(map: Record<TableChrome, string>, chrome: TableChrome): string {
+  return map[chrome] ?? map.boxed;
+}
 
 const TableContext = createContext<TableContextValue | null>(null);
 
@@ -79,11 +111,69 @@ function useTableContext() {
  * 8 — so this wrapper now paints over an earlier-in-tree positioned element that has
  * no `z-index`. Measured on a consumer `sticky` toolbar; see the 0.17.0 changelog.
  */
-const wrapperClasses = "relative overflow-x-auto border border-border-default rounded-md";
+const wrapperClasses = "relative overflow-x-auto";
+
+/**
+ * The frame, and ONLY the frame. `relative overflow-x-auto` stays out of this map
+ * on purpose: both are load-bearing (see `wrapperClasses` above — `relative` is
+ * what keeps absolutely-positioned descendants inside the scroll clip, and
+ * `verify:scrollport-containing-block` gates it), so no value of a *decorative*
+ * prop may reach them. A chrome that could delete `relative` would strand every
+ * `sr-only` span in a wide table down the document.
+ */
+const wrapperChromeMap: Record<TableChrome, string> = {
+  boxed:
+    "border border-[color:var(--TABLE-FRAME-COLOR)] rounded-[var(--TABLE-FRAME-RADIUS)]",
+  rules: "",
+  plain: "",
+};
 
 const tableClasses = "w-full border-collapse bg-surface-0";
 
-const headClasses = "bg-surface-1 border-b-2 border-border-default";
+/**
+ * `boxed` spends a fill AND a double rule on one boundary. `rules` keeps the
+ * rule and drops the band — the head is the one place a rule still separates two
+ * *kinds* of row rather than two rows. `plain` keeps neither and leaves the head
+ * distinguished by its own weight.
+ */
+const headChromeMap: Record<TableChrome, string> = {
+  boxed: "bg-[color:var(--TABLE-HEAD-FILL)] border-b-2 border-[color:var(--TABLE-RULE-COLOR)]",
+  rules: "border-b border-[color:var(--TABLE-RULE-COLOR)]",
+  plain: "",
+};
+
+/**
+ * A pinned head takes the band back, in every chrome. Two separate reasons, and
+ * the second is why this is `bg-surface-1` rather than the table's own fill:
+ *
+ * 1. It must be OPAQUE. `position: sticky` takes the head out of flow over rows
+ *    that keep painting, so an unfilled one shows the data sliding through the
+ *    column labels.
+ *
+ * 2. **Its rule does not survive scrolling.** `tableClasses` sets
+ *    `border-collapse`, and in the collapsed model both Chromium and Firefox
+ *    paint collapsed borders with the TABLE, not with the row group — so a
+ *    sticky `<thead>` translates away from its own `border-b` the moment it
+ *    pins. Measured in both engines: the head rule is simply gone while
+ *    scrolled. That is not new and not this prop's doing — `boxed` loses its
+ *    `border-b-2` the same way — but `boxed` never noticed, because its
+ *    `bg-surface-1` survives the scroll and keeps the boundary visible.
+ *
+ * So a pinned head cannot be separated by a rule at all, and the fill is the
+ * only separation left. An earlier revision used `bg-surface-0` here to keep the
+ * head reading as unfilled; measured against scrolled rows that is 1.00:1 in
+ * Chromium — a header literally indistinguishable from its data. The band is
+ * worth more than the flatness in the one state where the head floats.
+ *
+ * The cost is bounded and stated: `stickyHeader` gates it, so an ordinary
+ * `rules`/`plain` table is still unfilled, and this only equals what `boxed`
+ * has always rendered.
+ */
+const headStickyFillMap: Record<TableChrome, string> = {
+  boxed: "",
+  rules: "bg-[color:var(--TABLE-HEAD-FILL)]",
+  plain: "bg-[color:var(--TABLE-HEAD-FILL)]",
+};
 
 const headerCellClasses = "text-left font-semibold text-fg-primary whitespace-nowrap";
 
@@ -97,7 +187,23 @@ const headerCellSortableClasses =
 
 const sortIconClasses = "inline-flex ml-1 align-middle";
 
-const rowClasses = "border-b border-border-default last:border-b-0";
+/**
+ * `boxed` rules every row at the same ink as the outer frame, so nothing in the
+ * table recedes and the whole thing reads as a grid. `rules` keeps the rule and
+ * drops its weight to `--TABLE-RULE-COLOR` (this package's token — the name
+ * encodes a component, so it is a domain extension and lives in `tokens.css`,
+ * not in the universal contract), which is what lets a theme with heavy border
+ * ink stop painting a spreadsheet without touching a call site.
+ *
+ * `color:` is not decoration in that bracket: a bare `border-[var(--x)]` is
+ * ambiguous between width and colour, and Tailwind guesses. Same disambiguation
+ * as `text-[length:var(--BodyText-1)]` in the density map below.
+ */
+const rowChromeMap: Record<TableChrome, string> = {
+  boxed: "border-b border-[color:var(--TABLE-RULE-COLOR)] last:border-b-0",
+  rules: "border-b border-[color:var(--TABLE-RULE-COLOR)] last:border-b-0",
+  plain: "",
+};
 
 /**
  * The zebra band and the selection wash, in the order they must be passed.
@@ -145,6 +251,25 @@ const densityClassMap: Record<Density, string> = {
 export type TableProps = {
   density?: Density;
   striped?: boolean;
+  /**
+   * How much box the table draws. `"boxed"` (the default) keeps the outer frame,
+   * the filled header band and a rule under every row but the last. `"rules"`
+   * drops the frame and the band; `"plain"` drops the rules too and separates
+   * rows by padding alone.
+   *
+   * This picks WHICH mechanisms a table spends. How heavy each one is comes from
+   * the `--TABLE-*` tokens, which every chrome reads — so if *every* table in an
+   * app is too boxy, retune those once rather than passing this at each call
+   * site.
+   *
+   * Reach for a lighter chrome when the table already sits inside something that
+   * draws a frame — a `Card`, a bordered panel — where `"boxed"` gives you two
+   * concentric borders a few pixels apart.
+   *
+   * Independent of `striped` and of `selected`: banding is still yours to turn
+   * on, and a selected row keeps its wash and its leading marker in every chrome.
+   */
+  chrome?: TableChrome;
   stickyHeader?: boolean;
   /**
    * Caps the wrapper's height, in px for a number. The wrapper is the header's
@@ -167,6 +292,7 @@ const TableRoot = forwardRef<HTMLDivElement, TableProps>(function Table(
   {
     density = "comfortable",
     striped = false,
+    chrome = "boxed",
     stickyHeader = false,
     maxHeight,
     tableProps,
@@ -178,10 +304,10 @@ const TableRoot = forwardRef<HTMLDivElement, TableProps>(function Table(
   ref
 ) {
   return (
-    <TableContext.Provider value={{ density, striped, stickyHeader }}>
+    <TableContext.Provider value={{ density, striped, chrome, stickyHeader }}>
       <div
         ref={ref}
-        className={cn("table-wrapper", wrapperClasses, className)}
+        className={cn("table-wrapper", wrapperClasses, chromeClass(wrapperChromeMap, chrome), className)}
         style={maxHeight !== undefined ? { maxHeight, ...style } : style}
         {...props}
       >
@@ -211,15 +337,25 @@ type TableHeadProps = ComponentPropsWithRef<"thead">;
 
 const TableHead = forwardRef<HTMLTableSectionElement, TableHeadProps>(
   function TableHead({ className, ...props }, ref) {
-    const { stickyHeader } = useTableContext();
+    const { stickyHeader, chrome } = useTableContext();
     return (
       <thead
         ref={ref}
         // The pin is read from context rather than from an
         // `in-[.table--sticky-header]:` variant: that variant matches ANY
         // ancestor carrying the class, so a table nested inside a sticky one
-        // would pin its head too.
-        className={cn("table-head", headClasses, stickyHeader && "sticky top-0 z-1", className)}
+        // would pin its head too. `chrome` rides the same channel.
+        //
+        // The opacity fill is passed only when the head actually pins, so an
+        // unpinned `rules`/`plain` head stays genuinely unfilled — and it sits
+        // before `className` so a caller's own `bg-*` still wins the merge.
+        className={cn(
+          "table-head",
+          chromeClass(headChromeMap, chrome),
+          stickyHeader && chromeClass(headStickyFillMap, chrome),
+          stickyHeader && "sticky top-0 z-1",
+          className
+        )}
         {...props}
       />
     );
@@ -282,7 +418,7 @@ type TableRowProps = {
 
 const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
   function TableRow({ selected, index, className, ...props }, ref) {
-    const { striped } = useTableContext();
+    const { striped, chrome } = useTableContext();
     // #351. A `<tr>` inside a `<table>` maps to role `row`, and `aria-selected`
     // is a supported state of that role in exactly that context — checked
     // offline against `aria-query`'s role table
@@ -302,7 +438,7 @@ const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
         ref={ref}
         className={cn(
           "table-row",
-          rowClasses,
+          chromeClass(rowChromeMap, chrome),
           // Striped BEFORE selected: two `bg-*` in one class list resolve by
           // argument order, and a selected banded row must take the selection
           // wash. See `rowSelectedClasses`. The class is emitted only on the rows

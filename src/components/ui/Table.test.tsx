@@ -962,4 +962,168 @@ describe("Table", () => {
       expect(container.querySelector("table")).toHaveAttribute("aria-label", "Invoices");
     });
   });
+
+  describe("chrome", () => {
+    function renderChrome(props: ComponentPropsWithoutRef<typeof Table> = {}) {
+      return render(
+        <Table {...props}>
+          <Table.Head>
+            <Table.Row>
+              <Table.HeaderCell>H</Table.HeaderCell>
+            </Table.Row>
+          </Table.Head>
+          <Table.Body>
+            <Table.Row>
+              <Table.Cell>a</Table.Cell>
+            </Table.Row>
+            <Table.Row>
+              <Table.Cell>b</Table.Cell>
+            </Table.Row>
+          </Table.Body>
+        </Table>,
+      );
+    }
+
+    const wrapperOf = (c: HTMLElement) => c.querySelector(".table-wrapper")!;
+    const headOf = (c: HTMLElement) => c.querySelector("thead")!;
+    const bodyRowsOf = (c: HTMLElement) => [...c.querySelectorAll("tbody tr")];
+
+    it("defaults to boxed, which draws the frame", () => {
+      const { container } = renderChrome();
+      expect(wrapperOf(container)).toHaveClass(
+        "border",
+        "border-[color:var(--TABLE-FRAME-COLOR)]",
+        "rounded-[var(--TABLE-FRAME-RADIUS)]",
+      );
+    });
+
+    it.each(["rules", "plain"] as const)("%s removes the outer frame entirely", (chrome) => {
+      const { container } = renderChrome({ chrome });
+      const classes = [...wrapperOf(container).classList];
+      expect(classes).not.toContain("border");
+      expect(classes).not.toContain("border-[color:var(--TABLE-FRAME-COLOR)]");
+      expect(classes).not.toContain("rounded-[var(--TABLE-FRAME-RADIUS)]");
+    });
+
+    // The wrapper is a scrollport. `relative` is what keeps an absolutely
+    // positioned descendant — every `sr-only` span this library renders — inside
+    // the scroll clip instead of stranding it down the document, and
+    // `overflow-x-auto` is the scrolling itself. Neither is decoration, so no
+    // value of a decorative prop may drop them. `verify:scrollport-containing-block`
+    // gates the source; this gates the rendered output.
+    it.each(["boxed", "rules", "plain"] as const)(
+      "%s keeps the scrollport and its containing block",
+      (chrome) => {
+        const { container } = renderChrome({ chrome });
+        expect(wrapperOf(container)).toHaveClass("relative", "overflow-x-auto");
+      },
+    );
+
+    // `boxed` and `rules` rule rows with the SAME ink, deliberately. The weight of
+    // a row rule is a theme decision now (`--TABLE-RULE-COLOR`), not a value of
+    // this prop — measured, a per-value softening was 1.05–1.10:1 on the default
+    // theme, i.e. very nearly `plain` already. What `rules` drops is the frame and
+    // the header band; what `plain` drops on top of that is the rules themselves.
+    it("boxed and rules both rule every row; plain draws none", () => {
+      for (const chrome of ["boxed", "rules"] as const) {
+        const view = renderChrome({ chrome });
+        expect(bodyRowsOf(view.container)[0]).toHaveClass(
+          "border-b",
+          "border-[color:var(--TABLE-RULE-COLOR)]",
+        );
+        view.unmount();
+      }
+      const plain = renderChrome({ chrome: "plain" });
+      expect([...bodyRowsOf(plain.container)[0].classList]).not.toContain("border-b");
+    });
+
+    it("drops the header band under the lighter chromes", () => {
+      const boxed = renderChrome({ chrome: "boxed" });
+      expect(headOf(boxed.container)).toHaveClass(
+        "bg-[color:var(--TABLE-HEAD-FILL)]",
+        "border-b-2",
+      );
+      boxed.unmount();
+
+      const rules = renderChrome({ chrome: "rules" });
+      const ruledHead = rules.container.querySelector("thead")!;
+      expect(ruledHead).toHaveClass("border-b", "border-[color:var(--TABLE-RULE-COLOR)]");
+      expect([...ruledHead.classList]).not.toContain("bg-[color:var(--TABLE-HEAD-FILL)]");
+      expect([...ruledHead.classList]).not.toContain("border-b-2");
+      rules.unmount();
+
+      const plain = renderChrome({ chrome: "plain" });
+      const plainClasses = [...plain.container.querySelector("thead")!.classList];
+      expect(plainClasses).not.toContain("bg-[color:var(--TABLE-HEAD-FILL)]");
+      expect(plainClasses).not.toContain("border-b");
+    });
+
+    // A pinned head needs the band back for TWO reasons, and jsdom can see
+    // neither directly — hence the comments.
+    //
+    // 1. Opacity: `position: sticky` is out of flow over rows that keep
+    //    painting, so an unfilled head shows data sliding through the labels.
+    // 2. Separation: `border-collapse` makes the head's rule part of the TABLE,
+    //    not the row group, so it does NOT travel with the pinned head —
+    //    measured gone in both Chromium and Firefox while scrolled. `boxed`
+    //    loses its rule the same way and never noticed, because its fill
+    //    survives. So the fill is the only separation a pinned head has.
+    //
+    // `bg-surface-1` and not `bg-surface-0`: the table's own fill would leave a
+    // pinned head measuring 1.00:1 against the rows it floats over.
+    it.each(["rules", "plain"] as const)(
+      "%s gives a pinned header the band back, opaque and separated",
+      (chrome) => {
+        const head = headOf(renderChrome({ chrome, stickyHeader: true }).container);
+        expect(head).toHaveClass("sticky", "bg-[color:var(--TABLE-HEAD-FILL)]");
+        expect([...head.classList]).not.toContain("bg-surface-0");
+      },
+    );
+
+    it.each(["rules", "plain"] as const)(
+      "does not fill an UNPINNED %s header, or the band would never go away",
+      (chrome) => {
+        const classes = [...headOf(renderChrome({ chrome }).container).classList];
+        expect(classes).not.toContain("sticky");
+        expect(classes).not.toContain("bg-[color:var(--TABLE-HEAD-FILL)]");
+        expect(classes).not.toContain("bg-surface-0");
+      },
+    );
+
+    it("leaves selection intact under plain, where no row rule remains", () => {
+      const { container } = render(
+        <Table chrome="plain">
+          <Table.Body>
+            <Table.Row selected>
+              <Table.Cell>a</Table.Cell>
+            </Table.Row>
+          </Table.Body>
+        </Table>,
+      );
+      const row = container.querySelector("tbody tr")!;
+      // The marker rule keys off this class, and the wash rides the bg utility.
+      expect(row).toHaveClass("table-row--selected");
+      expect(row).toHaveClass("bg-[color-mix(in_oklch,var(--C-ACCENT)_8%,transparent)]");
+      expect(row).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("leaves banding intact under plain", () => {
+      const { container } = renderChrome({ chrome: "plain", striped: true });
+      const rows = bodyRowsOf(container);
+      expect(rows[0]).not.toHaveClass("table-row--striped");
+      expect(rows[1]).toHaveClass("table-row--striped");
+      // The band's own rung is deliberately NOT pinned here: the docs and two
+      // source comments say rung 2 while the code says rung 1, and that
+      // disagreement predates `chrome`. What this test owns is that a chrome
+      // which removes the row RULES does not also remove the BAND.
+      expect([...rows[1].classList].filter((c) => c.startsWith("bg-"))).toHaveLength(1);
+    });
+
+    it("loses to a caller's own frame, because className merges last", () => {
+      const { container } = renderChrome({ chrome: "boxed", className: "rounded-none" });
+      const classes = [...wrapperOf(container).classList];
+      expect(classes).toContain("rounded-none");
+      expect(classes).not.toContain("rounded-[var(--TABLE-FRAME-RADIUS)]");
+    });
+  });
 });
