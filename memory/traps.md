@@ -1173,3 +1173,50 @@ collision, left alone because briefs in flight cite the later one by letter.)
   nothing can clip it"* — adding the new destination into that clause leaves the old consequence
   standing and turns a true sentence false. When a change adds an exception, grep for the
   *consequence* the docs draw from the old behaviour, not for the mechanism you changed.
+
+## AC · From the pass that removed the dialog's clip
+
+- **A measurement instrument that answers a nearby question looks exactly like one that answers
+  yours.** A probe counted "how many of 14 menu items a real click can reach" by clicking all 14
+  in sequence — but selecting an item closes the menu, and the fade keeps the panel in the DOM
+  for a few frames, so it was really counting how much of the closing animation each press
+  caught. It read 1/14 before a fix and 6/14 after, while a hit test of the same two builds said
+  1/14 and 13/14. The old figure was right by coincidence. **Before trusting a number a harness
+  produces, make the harness explain a number you already know by another route** — and where an
+  action mutates the thing being measured, reset between measurements rather than sweeping.
+- **Prefer a parity assertion to an absolute one whenever the fix's claim is "X is now as good as
+  Y".** A 14-item menu cannot fit a 900px viewport from a trigger 438px down it, so no fix could
+  ever make that case 14/14 and any absolute target would have been a lie or a moving goalpost.
+  Rendering the *same* panel with the container removed and asserting the two counts are equal
+  says exactly what the fix claims, cannot rot as the theme's type scale or the viewport change,
+  and fails loudly when the fix regresses. Guard it: if the two fixtures' triggers ever stop
+  being at the same coordinates, that is a broken harness (exit 2), not a passing comparison.
+- **The cheap alternative deserves a measurement, not an estimate — and it can lose outright.**
+  Capping the menu's own height was the obvious low-risk route and was reasoned about at length.
+  Applied, it moved the count **1/14 → 1/14**: the bound was the *dialog's* height (88px, because
+  it is content-sized and the `260px` in the fixture is a `max-height`), not the panel's, and a
+  panel's internal scrollbar cannot scroll a box that is itself clipped. Ten minutes of measuring
+  settled a decision that an hour of argument had not.
+- **A feature detect must gate every part of a change that only makes sense together.** Promotion
+  into the top layer and `strategy: "fixed"` are one mechanism; gating only the promotion produced
+  a *third* behaviour on an older engine rather than the previous one, because fixed positioning
+  alone escapes a plain `Dialog`'s clip (a fixed box is not bounded by an ancestor scrollport) but
+  not a `Drawer`'s (it slides on a `transform`, and a transformed ancestor becomes the containing
+  block for fixed descendants and clips them again). "Degrades gracefully" is a claim to *run*:
+  the probe deletes `showPopover` before the app boots and requires the old behaviour exactly.
+- **The `popover` attribute brings a whole user-agent box with it.** `[popover]` sets `position`,
+  `inset: 0`, `width`/`height: fit-content`, `margin`, `border`, `padding`, `overflow: auto`,
+  `color: CanvasText` and `background-color: Canvas`. Preflight already out-ranks the UA for
+  margin/padding/border and floating-ui writes position/top/left inline, so the survivors are the
+  easy ones to miss: `overflow` amputates anything seated outside the panel's border box (an
+  arrow), `color` replaces inherited ink with solid black — invisible under a light theme and
+  wrong under every dark one — and `inset`'s leftover `right`/`bottom` are harmless only while
+  the box is over-constrained. Put the reset in a layer *below* utilities so each panel's own
+  `overflow-y-auto` still wins, and **verify each line by deleting it and re-measuring**; three of
+  six looked redundant and were not.
+- **jsdom applies `[popover]:not(:popover-open) { display: none }` while implementing neither
+  `showPopover` nor `hidePopover`.** So a panel that asks to be promoted in jsdom is hidden and
+  never shown, and vanishes from every accessible-name query. Stubbing those two methods globally
+  in a `beforeEach` turned 21 unrelated tests red. Stub them per test; jsdom's real lack of them
+  is also the shipped feature-detect branch, which is the branch the rest of the suite was
+  written against.

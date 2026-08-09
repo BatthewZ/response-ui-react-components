@@ -35,6 +35,7 @@
 @import "./components/ui/CommandPalette.css" layer(components);
 @import "./components/ui/Drawer.css" layer(components);
 @import "./components/ui/EmptyState.css" layer(components);
+@import "./components/ui/floating-top-layer.css" layer(components);
 @import "./components/ui/Hero.css" layer(components);
 @import "./components/ui/Markdown.css" layer(components);
 @import "./components/ui/menu-internals.css" layer(components);

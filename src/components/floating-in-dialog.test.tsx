@@ -16,10 +16,10 @@
  * than sampled, because a portal default is the kind of defect that hides in the
  * member nobody enumerated.
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { Combobox } from "./form/Combobox";
 import { ColorPicker } from "./form/ColorPicker";
@@ -50,6 +50,43 @@ beforeAll(() => {
       this.dispatchEvent(new Event("close"));
     };
   }
+});
+
+/**
+ * Lends jsdom a `showPopover`/`hidePopover` pair for the length of one test.
+ *
+ * Spies rather than a polyfill, because there is nothing here to polyfill: jsdom
+ * has no top layer, so the only honest question is whether the library asks the
+ * platform for one at the right moments. What the platform then does with the
+ * request is measured in Chromium by `scripts/probe-floating-in-dialog.mjs`.
+ *
+ * **Per test, never globally, and that is not tidiness.** jsdom applies the UA's
+ * `[popover]:not(:popover-open) { display: none }` while implementing neither
+ * method — so a panel that asks to be promoted here is hidden and never shown,
+ * and disappears from every accessible-name query in the file. Installing these
+ * in a `beforeEach` turned 21 unrelated tests red. Their real absence is also the
+ * shipped feature detect, so leaving jsdom as it is keeps every other test on the
+ * fallback path, which is exactly the path they were written against.
+ */
+function lendPopoverSupport() {
+  const showPopover = vi.fn();
+  const hidePopover = vi.fn();
+  Object.defineProperty(HTMLElement.prototype, "showPopover", {
+    value: showPopover,
+    configurable: true,
+    writable: true,
+  });
+  Object.defineProperty(HTMLElement.prototype, "hidePopover", {
+    value: hidePopover,
+    configurable: true,
+    writable: true,
+  });
+  return { showPopover, hidePopover };
+}
+
+afterEach(() => {
+  delete (HTMLElement.prototype as Partial<HTMLElement>).showPopover;
+  delete (HTMLElement.prototype as Partial<HTMLElement>).hidePopover;
 });
 
 function required<T>(value: T | null | undefined, what: string): T {
@@ -417,6 +454,147 @@ describe("floating panels inside a <dialog> — ordering and overrides", () => {
     expect(outer.contains(panel)).toBe(true);
     expect([...new FormData(outer).keys()]).toContain("panelField");
     expect([...new FormData(inner).keys()]).not.toContain("panelField");
+  });
+
+  it("promotes the panel into the top layer, and positions it against the viewport", async () => {
+    // jsdom implements no top layer, so what is asserted here is the MECHANISM —
+    // the attribute, the reset marker and the positioning strategy that must move
+    // with it. That a promoted panel actually escapes the dialog's clip is
+    // measured in Chromium by `scripts/probe-floating-in-dialog.mjs`; this test
+    // exists because the mechanism is what a regression breaks first, and because
+    // the strategy and the promotion being out of step is a bug that LOOKS
+    // correct in jsdom and puts every panel out by the dialog's origin in a
+    // browser.
+    const { showPopover } = lendPopoverSupport();
+    const user = userEvent.setup();
+    render(
+      <Dialog open onClose={() => {}}>
+        <Popover>
+          <Popover.Trigger>Theme</Popover.Trigger>
+          <Popover.Content>Panel body</Popover.Content>
+        </Popover>
+      </Dialog>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Theme" }));
+
+    const panel = bySelector(".popover-content");
+    expect(panel.getAttribute("popover")).toBe("manual");
+    expect(panel).toHaveClass("floating-top-layer");
+    expect(showPopover).toHaveBeenCalled();
+    // A top-layer element resolves against the viewport, so anything but
+    // `fixed` puts it out by the dialog's origin.
+    expect(panel.style.position).toBe("fixed");
+  });
+
+  it("leaves a panel with no dialog ancestor entirely alone", async () => {
+    const { showPopover } = lendPopoverSupport();
+    const user = userEvent.setup();
+    render(
+      <Popover>
+        <Popover.Trigger>Theme</Popover.Trigger>
+        <Popover.Content>Panel body</Popover.Content>
+      </Popover>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Theme" }));
+
+    const panel = bySelector(".popover-content");
+    expect(panel.hasAttribute("popover")).toBe(false);
+    expect(panel).not.toHaveClass("floating-top-layer");
+    expect(showPopover).not.toHaveBeenCalled();
+    expect(panel.style.position).toBe("absolute");
+  });
+
+  it("takes the panel back out of the top layer when it closes", async () => {
+    // An element left showing in the top layer outlives the React tree that owns
+    // it, and one left carrying `popover` without being shown is hidden outright
+    // by the UA's `[popover]:not(:popover-open) { display: none }`.
+    const { hidePopover } = lendPopoverSupport();
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return (
+        <Dialog open onClose={() => {}}>
+          <button onClick={() => setOpen(false)}>Close the panel</button>
+          <Popover open={open} onOpenChange={setOpen}>
+            <Popover.Trigger>Theme</Popover.Trigger>
+            <Popover.Content>Panel body</Popover.Content>
+          </Popover>
+        </Dialog>
+      );
+    }
+
+    render(<Harness />);
+    const panel = bySelector(".popover-content");
+    expect(panel.getAttribute("popover")).toBe("manual");
+
+    await user.click(screen.getByRole("button", { name: "Close the panel" }));
+
+    // `waitFor`, because the panel outlives the close by its fade: it is still
+    // in the DOM — and still in the top layer — until `useTransitionStyles`
+    // unmounts it, which is exactly the window in which forgetting to hide it
+    // would leave a stranded top-layer element behind.
+    await waitFor(() => expect(hidePopover).toHaveBeenCalled());
+    expect(panel.hasAttribute("popover")).toBe(false);
+    expect(panel).not.toHaveClass("floating-top-layer");
+  });
+
+  it("keeps the previous behaviour whole on an engine with no popover support", async () => {
+    // `popover` is Baseline 2024. The fallback owes the user what shipped before
+    // — a plain descendant of the dialog — and NOT half of the new behaviour:
+    // `strategy: "fixed"` on its own escapes a Dialog's clip but not a Drawer's,
+    // because Drawer slides in on a transform and a transformed ancestor becomes
+    // the containing block for fixed descendants. So the strategy has to fall
+    // back with the promotion, not independently of it.
+    // Nothing installed: jsdom's own lack of `showPopover` IS the older engine.
+    expect(HTMLElement.prototype.showPopover).toBeUndefined();
+
+    const user = userEvent.setup();
+    render(
+      <Dialog open onClose={() => {}}>
+        <Popover>
+          <Popover.Trigger>Theme</Popover.Trigger>
+          <Popover.Content>Panel body</Popover.Content>
+        </Popover>
+      </Dialog>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Theme" }));
+
+    const panel = bySelector(".popover-content");
+    expect(theDialog().contains(panel)).toBe(true);
+    expect(panel.hasAttribute("popover")).toBe(false);
+    expect(panel.style.position).toBe("absolute");
+  });
+
+  it("does not leave the attribute behind when the engine refuses to promote", async () => {
+    // `[popover]:not(:popover-open) { display: none }` is a UA rule, so an
+    // element that carries the attribute and was never shown renders NOTHING.
+    // A refused promotion has to take the attribute back off with it or the
+    // failure mode is an invisible panel rather than an unpromoted one.
+    const { showPopover } = lendPopoverSupport();
+    showPopover.mockImplementation(() => {
+      throw new DOMException("not supported here", "InvalidStateError");
+    });
+
+    const user = userEvent.setup();
+    render(
+      <Dialog open onClose={() => {}}>
+        <Popover>
+          <Popover.Trigger>Theme</Popover.Trigger>
+          <Popover.Content>Panel body</Popover.Content>
+        </Popover>
+      </Dialog>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Theme" }));
+
+    const panel = bySelector(".popover-content");
+    expect(panel.hasAttribute("popover")).toBe(false);
+    expect(panel).not.toHaveClass("floating-top-layer");
+    expect(panel).toHaveTextContent("Panel body");
   });
 
   it("renders the bubble when Tooltip's container prop is explicitly null", async () => {

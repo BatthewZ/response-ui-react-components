@@ -37,8 +37,9 @@ it, your filter reads it. Combobox never sees either.
 markup starts at its children. `Combobox.Input` renders the text
 field (`role="combobox"`) plus a chevron `<button>`; `Combobox.Content` renders the popup
 (`role="listbox"`) through a `FloatingPortal`, so it escapes any `overflow: hidden` ancestor —
-bar a `<dialog>` it is opened inside, which it is portalled *into* and bounded by (see
-[Popover](popover.md#gotchas)) — and it returns `null` while closed. Each `Combobox.Item` is one `role="option"`, and
+including a `<dialog>` it is opened inside, which it is portalled *into* and then promoted above,
+so that dialog does not bound it either (see [Popover](popover.md#gotchas)) — and it returns
+`null` while closed. Each `Combobox.Item` is one `role="option"`, and
 `Combobox.Empty` is a plain no-results slot that is *not* an option.
 
 | Part               | Renders                                                  | Adds                              |

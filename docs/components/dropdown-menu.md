@@ -29,9 +29,10 @@ the open state and the Floating UI wiring. `DropdownMenu.Trigger` is the anchor 
 `FloatingPortal` into `<body>`, so it escapes `overflow: hidden` and stacking contexts without a
 [Portal](portal.md) of your own — or into the nearest `<dialog>` ancestor of the trigger, so a
 menu opened inside a [Dialog](dialog.md) or [Drawer](drawer.md) is visible and clickable rather
-than stranded under the modal's top layer. A menu **taller than its dialog** is the one case that
-is still cut short there; the dialog is a scrollport and bounds it. See
-[Popover](popover.md#gotchas). Everything inside it is your composition: `DropdownMenu.Item`s
+than stranded under the modal's top layer — and, while it is open there, promoted into the top
+layer in its own right so the dialog cannot clip it either. A menu taller than the **viewport**
+is still cut short, dialog or no dialog, because this menu sets no `max-height`; see
+[Popover](popover.md#gotchas) and finding #507. Everything inside it is your composition: `DropdownMenu.Item`s
 are the focusable actions; `DropdownMenu.Divider` and `DropdownMenu.GroupHeader` are decoration.
 
 | Part                       | Renders                                                         | Props                                                             |
@@ -179,6 +180,43 @@ and the ref on `DropdownMenu.Trigger` itself is equivalent. See [Gotchas](#gotch
 not a guarantee — the menu flips to the opposite side and shifts along the cross axis to stay in
 the viewport, and it repositions on scroll and resize. The 4px trigger gap is fixed and not
 exposed as a prop.
+
+## Inside a Dialog or Drawer
+
+<!-- example:InsideADialog -->
+```tsx
+<Button type="button" onClick={() => setOpen(true)}>
+  Restore a revision
+</Button>
+{chosen && <p>Restoring {chosen}.</p>}
+<Dialog open={open} onClose={() => setOpen(false)} aria-labelledby="restore-title">
+  <h2 id="restore-title">Restore a revision</h2>
+  <DropdownMenu>
+    <DropdownMenu.Trigger type="button">Choose a revision</DropdownMenu.Trigger>
+    <DropdownMenu.Content>
+      {Array.from({ length: 14 }, (_, i) => (
+        <DropdownMenu.Item
+          key={i}
+          index={i}
+          onSelect={() => {
+            setChosen(`revision ${i + 1}`);
+            setOpen(false);
+          }}
+        >
+          {`Revision ${i + 1}`}
+        </DropdownMenu.Item>
+      ))}
+    </DropdownMenu.Content>
+  </DropdownMenu>
+</Dialog>
+```
+<!-- /example -->
+
+There is nothing to configure. The menu is portalled into the nearest `<dialog>` ancestor of
+its trigger — which is what makes it clickable at all, since `showModal()` makes everything
+outside the dialog inert — and then promoted into the browser's **top layer** while it is open,
+which is what stops that dialog clipping it. See [Popover](popover.md#gotchas) for the full
+mechanism, which every floating panel in this library shares.
 
 ## Keyboard and focus
 

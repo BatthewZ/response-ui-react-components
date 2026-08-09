@@ -45,8 +45,9 @@ the anchor the card measures itself against and the element the pointer has to r
 escapes `overflow: hidden` and every `z-index` on the way up — the same escape
 [Portal](portal.md) gives you, with the positioning included. Inside a [Dialog](dialog.md) or
 [Drawer](drawer.md) it is appended to that `<dialog>` instead, so it paints and hit-tests with
-the modal rather than under it; a card bigger than the dialog is bounded by it, because a modal
-dialog is a scrollport. It is not in the DOM at all while closed.
+the modal rather than under it — and is promoted into the top layer while open, so a card bigger
+than the dialog is not bounded by it either, though a modal dialog is a scrollport and would
+otherwise clip it. It is not in the DOM at all while closed.
 
 | Part                | Renders                                              | Props                                                                              |
 | ------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |

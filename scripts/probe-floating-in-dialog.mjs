@@ -30,23 +30,41 @@
 //   A. `document.elementFromPoint(centre of the target)` resolves inside the panel.
 //   B. a real mouse click at that point fires the component's own handler.
 //
-// THE BOUND THIS FIX DOES NOT REMOVE, AND WHY THE PROBE ASSERTS IT
+// THE THIRD MECHANISM, AND WHY IT NEEDED A THIRD ANSWER
 //
-// `dialog:modal` carries `overflow: auto` in the UA stylesheet, so a modal dialog
-// is a SCROLLPORT and clips its descendants. Portalling into it therefore bounds
-// the panel to the dialog's box: Floating UI correctly treats the dialog as the
-// clipping ancestor, so `flip`/`shift` keep the panel inside it, and a panel wider
-// than the dialog is clamped to its leading edge with the remainder clipped.
-// Measured: at a 375px viewport a `DatePicker` panel is 351px inside a 337px
-// Drawer, and ~14px of it is cut off — against being ENTIRELY invisible and inert
-// before, which is why this ships as it is.
+// Being a DOM descendant of the dialog answers both mechanisms above and creates
+// one of its own. `dialog:modal` carries `overflow: auto` in the UA stylesheet,
+// so a modal dialog is a SCROLLPORT and clips its descendants — Floating UI
+// correctly treats it as the clipping ancestor, so `flip`/`shift` bound the panel
+// to the dialog's box rather than the viewport's. That was measured and accepted
+// knowingly for one change, as strictly better than the total invisibility it
+// replaced, and it cost real function: 1 of 14 items reachable in a tall menu.
 //
-// The `popover` attribute would lift the panel into the top layer in its own
-// right and escape the clip while staying a DOM descendant (so still not inert).
-// That is deliberately NOT done here: it is a much larger change to every panel
-// in the library, not only the ones inside a dialog. The "clipped at the dialog's
-// edge" check below therefore asserts the bound is STILL THERE — if someone adds
-// that half, this probe goes red and the docs that describe the bound get revisited.
+// `useTopLayer` closes it. The `popover` attribute lifts the panel into the top
+// layer in its own right, which takes it out of every ancestor clip, while
+// leaving it a FLAT-TREE descendant of the dialog — so it is still not inert, and
+// both mechanisms above stay answered. Floating UI knows the same trick from the
+// other side: `isTopLayer()` reports no clipping ancestors, and `strategy:
+// "fixed"` matches the viewport containing block a top-layer element resolves
+// against. The two go together; either alone leaves the panel misplaced.
+//
+// So the two checks that measured the bound now measure its ABSENCE:
+//
+//   C. the band of a too-wide panel hanging past the drawer is HIT-TESTABLE.
+//   D. a tall menu inside a short dialog reaches as many items as the same menu
+//      with no dialog on the page — parity, not an absolute count, because a
+//      472px menu opened 438px down a 900px viewport loses its last item to the
+//      SCREEN either way and no fix can change that.
+//
+// Check C was `expectClippedByHost: true` for one change, as a tripwire: it
+// asserted the bound still existed so nobody could remove it without being sent
+// to the docs describing it. It has been INVERTED rather than deleted, so it is
+// the same tripwire pointing the other way.
+//
+// `--no-popover` deletes `showPopover` before the app boots and asserts the
+// PREVIOUS behaviour comes back whole — clipped, but painted and clickable.
+// `popover` is Baseline 2024, so on every browser anyone runs this in the fallback
+// is dead code; the one way to know it still works is to take the platform away.
 //
 // WHAT IT DRIVES, AND WHAT IT DOES NOT
 //
@@ -61,10 +79,17 @@
 //
 // SELF-CHECK, BECAUSE A PROBE THAT MEASURES NOTHING AGREES WITH YOU
 //
-// `--self-test` re-parents each portal node back to `<body>` after opening it —
-// which is EXACTLY the pre-fix DOM — and requires every check to go red. A green
-// self-test run means the probe cannot see the defect and its verdict is worth
-// nothing, so that is a failure too.
+// `--self-test` reproduces EXACTLY the pre-fix DOM and requires every check to go
+// red. A green self-test run means the probe cannot see the defect and its verdict
+// is worth nothing, so that is a failure too.
+//
+// Reproducing it now takes two undo steps rather than one: the popover attribute
+// comes off FIRST, then the portal node goes back under `<body>`. Re-parenting a
+// `:popover-open` element takes it out of the top layer, and
+// `[popover]:not(:popover-open) { display: none }` is a UA rule — so re-parenting
+// alone leaves every panel with no box at all, which this script correctly reads
+// as a broken fixture (exit 2) rather than as a detected defect. The self-test
+// would then fail for the wrong reason and assert nothing.
 //
 // EXIT CODES: 0 pass · 1 a real violation · 2 the probe could not run (never "safe").
 
@@ -78,6 +103,14 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const WORK = join(ROOT, "scripts", ".floating-in-dialog-probe");
 const KEEP = process.argv.includes("--keep");
 const SELF_TEST = process.argv.includes("--self-test");
+// Deletes `HTMLElement.prototype.showPopover` before the app boots, so
+// `useTopLayer`'s feature detect takes its other branch. `popover` is Baseline
+// 2024 and this is what an older engine gets: the panel must fall back to the
+// PREVIOUS behaviour — a plain descendant of the dialog, painted, clickable and
+// clipped by it — and never to nothing. A degrade-to-nothing is the failure mode
+// a feature detect is supposed to prevent and the one nobody would notice, since
+// every modern browser takes the other branch.
+const NO_POPOVER = process.argv.includes("--no-popover");
 const PLAYWRIGHT = join(
   process.env.HOME ?? "",
   ".bun/install/global/node_modules/playwright/index.mjs"
@@ -103,32 +136,100 @@ function record(name) {
   window.__hits[name] = (window.__hits[name] ?? 0) + 1;
 }
 
-/**
- * A tall menu inside a CONTENT-SIZED Dialog — the vertical face of the same
- * bound, and the one that costs items rather than pixels. Drawers are 100dvh so
- * they cannot show it; a Dialog is as tall as its content.
- */
-function TallMenuInDialog() {
+/** 14 items, so the menu is far taller than the Dialog that hosts it. */
+function TallMenu({ name }) {
   return (
-    <Dialog open onClose={() => {}} style={{ maxHeight: "260px" }}>
-      <DropdownMenu>
-        <DropdownMenu.Trigger data-trigger="tallmenu">Tall menu trigger</DropdownMenu.Trigger>
-        <DropdownMenu.Content>
-          {Array.from({ length: 14 }, (_, i) => (
-            <DropdownMenu.Item key={i} index={i} onSelect={() => record("tallmenu" + i)}>
-              {"Item " + i}
-            </DropdownMenu.Item>
-          ))}
-        </DropdownMenu.Content>
-      </DropdownMenu>
+    <DropdownMenu>
+      <DropdownMenu.Trigger data-trigger={name}>Tall menu trigger</DropdownMenu.Trigger>
+      <DropdownMenu.Content>
+        {Array.from({ length: 14 }, (_, i) => (
+          <DropdownMenu.Item key={i} index={i} onSelect={() => record(name + i)}>
+            {"Item " + i}
+          </DropdownMenu.Item>
+        ))}
+      </DropdownMenu.Content>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * A tall menu inside a CONTENT-SIZED Dialog — the vertical face of the bound,
+ * and the one that costs items rather than pixels. Drawers are 100dvh so they
+ * cannot show it; a Dialog is as tall as its content.
+ */
+/**
+ * A Popover inside a plain Dialog, which is NOT the same test as any of the
+ * Drawer cases below even though it looks like it.
+ *
+ * Drawer slides in on a transform, and a transformed ancestor is a containing
+ * block for fixed-position descendants; a Dialog has no transform, so it is not.
+ * This change is sensitive to exactly that difference in both directions — it is
+ * why fixed positioning alone escapes one and not the other, and it is why the
+ * feature-detect fallback had to gate the strategy as well as the promotion.
+ * It also holds a Tooltip INSIDE the panel — two floating surfaces open at once,
+ * nested, both promoted. That is the composition that decides popover="manual"
+ * versus "auto": measured, switching the promotion to "auto" leaves this panel
+ * permanently hidden (attached, carrying the attribute, never :popover-open),
+ * because the platform's own light dismiss acts on the click that opened it. Every
+ * other case in this file — all of them a single panel in a Drawer — stayed green
+ * under that same mutation, so without this one the choice of "manual" would be an
+ * unchecked assertion in a docblock.
+ */
+function PopoverInDialog() {
+  return (
+    <Dialog open onClose={() => {}}>
+      <Popover>
+        <Popover.Trigger data-trigger="dialogpopover">Panel trigger</Popover.Trigger>
+        <Popover.Content>
+          <Tooltip content="Bubble text" delay={0}>
+            <button data-target="dialogpopover" onClick={() => record("dialogpopover")}>
+              Choose this
+            </button>
+          </Tooltip>
+        </Popover.Content>
+      </Popover>
     </Dialog>
   );
 }
 
+function TallMenuInDialog() {
+  return (
+    <Dialog open onClose={() => {}} style={{ maxHeight: "260px" }}>
+      <TallMenu name="tallmenu" />
+    </Dialog>
+  );
+}
+
+/**
+ * The SAME menu, from a trigger at the SAME viewport coordinates, with no dialog
+ * anywhere on the page — the control the in-dialog count is compared against.
+ *
+ * This exists because an absolute count cannot say whether the fix worked. A
+ * 14-item menu is 472px tall and no fix can put that inside a 900px viewport
+ * from a trigger 438px down it: the last item falls off the SCREEN, which is a
+ * property of menus everywhere and not of dialogs (filed separately as #507).
+ * What the fix claims is *parity* — that opening a panel inside a dialog costs
+ * nothing that opening it outside one does not — so parity is what the probe
+ * asserts, and it stays true whatever the viewport, the item height or the
+ * theme's type scale turn out to be.
+ *
+ * The offsets match TallMenuInDialog's trigger, and the probe FAILS rather than
+ * compares if they ever drift apart. (No backticks in this docblock: it lives
+ * inside the FIXTURE template literal, where one would end the string.)
+ */
+function TallMenuNoDialog() {
+  return (
+    <div style={{ position: "absolute", top: "438px", left: "352px" }}>
+      <TallMenu name="tallmenucontrol" />
+    </div>
+  );
+}
+
 function Fixture() {
-  if (new URLSearchParams(location.search).get("host") === "tallmenu") {
-    return <TallMenuInDialog />;
-  }
+  const host = new URLSearchParams(location.search).get("host");
+  if (host === "tallmenu") return <TallMenuInDialog />;
+  if (host === "dialogpopover") return <PopoverInDialog />;
+  if (host === "tallmenucontrol") return <TallMenuNoDialog />;
   return (
     <>
 {/* Left-hand side deliberately: it puts the band of a too-wide panel that
@@ -311,30 +412,65 @@ const CASES = [
   },
   {
     // The bug report left one question open: portalling into a 24rem Drawer
-    // "risks clipping a panel that wants to overflow it". It does — `dialog:modal`
-    // is `overflow: auto`, so the dialog is a scrollport. `mustOverflowHost` makes
-    // the fixture prove the panel really does hang past the drawer before the
-    // point beyond it is hit-tested, so the case cannot pass by being vacuous.
+    // "risks clipping a panel that wants to overflow it". It did, until the panel
+    // started promoting itself into the top layer — `dialog:modal` is
+    // `overflow: auto`, so the dialog is a scrollport, and only leaving that
+    // scrollport's clip escapes it.
+    //
+    // `mustOverflowHost` makes the fixture prove the panel really does hang past
+    // the drawer before the point beyond it is hit-tested, so the case cannot
+    // pass by being vacuous — it is the guard that keeps `expectClippedByHost:
+    // false` meaning "the band beyond the drawer is REACHABLE" rather than "there
+    // was no band to test".
+    //
+    // This flag was `true` for one release, deliberately, as a tripwire: it
+    // asserted the bound was still there so that whoever removed it could not do
+    // so without being sent to the docs that describe it. It has now been
+    // inverted rather than deleted, which is the same tripwire pointing the other
+    // way — reintroduce the clip and this goes red.
     name: "Popover wider than the Drawer",
     trigger: "[data-trigger='overflow']",
     panel: ".popover-content",
     target: "[data-target='overflow']",
     hit: "overflow",
     mustOverflowHost: true,
-    expectClippedByHost: true,
+    expectClippedByHost: false,
   },
   {
-    // The vertical face of the bound, and the one that costs FUNCTION rather than
-    // pixels: a menu taller than its Dialog loses whole items to the scrollport,
-    // and `.menu-content` sets no `max-height` (unlike `.combobox-content`). This
-    // case does not assert a pass/fail count — it REPORTS how many of 14 items a
-    // real click can reach, so the number in the docs is produced here and cannot
-    // silently rot. It fails only if the fix regresses to reaching none.
+    // A Popover in a plain Dialog rather than a Drawer — no transform on the
+    // host, so a different containing block for the panel. See PopoverInDialog.
+    name: "Popover in a plain Dialog",
+    host: "dialogpopover",
+    trigger: "[data-trigger='dialogpopover']",
+    panel: ".popover-content",
+    target: "[data-target='dialogpopover']",
+    hit: "dialogpopover",
+  },
+  {
+    // The vertical face of the bound, and the one that cost FUNCTION rather than
+    // pixels: a menu taller than its Dialog lost whole items to the scrollport.
+    //
+    // The count is REPORTED, not asserted against a fixed number — the figure in
+    // the docs is produced here and cannot silently rot. What IS asserted is
+    // `parity`: the same menu, from a trigger at the same coordinates, with no
+    // dialog on the page at all, must reach exactly the same number of items. An
+    // absolute target could not be honest, because a 472px menu opened 438px down
+    // a 900px viewport loses its last item to the SCREEN whether or not a dialog
+    // is involved. See TallMenuNoDialog in the fixture.
     name: "Tall DropdownMenu in a short Dialog",
     host: "tallmenu",
     trigger: "[data-trigger='tallmenu']",
     panel: ".menu-content",
     countItems: { selector: "[role='menuitem']", hitPrefix: "tallmenu" },
+    // Keyboard and dismissal through the promoted panel — the branch jsdom
+    // cannot reach. See runInteractionChecks.
+    interaction: { hitPrefix: "tallmenu" },
+    parityControl: {
+      host: "tallmenucontrol",
+      trigger: "[data-trigger='tallmenucontrol']",
+      panel: ".menu-content",
+      countItems: { selector: "[role='menuitem']", hitPrefix: "tallmenucontrol" },
+    },
   },
   {
     name: "Tooltip",
@@ -349,6 +485,62 @@ const CASES = [
 /*  4. Measure                                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * How many of a panel's items a real click can reach, with the panel REOPENED
+ * before every one. That reopening is the whole correctness of this number.
+ * Selecting an item closes the menu, and `useTransitionStyles` keeps the panel in
+ * the DOM while it fades — so a straight sweep of clicks measures how much of the
+ * fade each press caught, not what a user can reach. The same two builds read
+ * 1/14 and 6/14 by a straight sweep, and 1/14 and 13/14 by hit test; the sweep
+ * was answering a question nobody asked. One press per freshly-opened panel is
+ * the only version of this that means what its sentence says.
+ */
+async function countReachableItems(page, { trigger, panel, countItems }) {
+  const total = await page.evaluate(
+    (sel) => document.querySelectorAll(sel).length,
+    countItems.selector
+  );
+  let landed = 0;
+  for (let i = 0; i < total; i += 1) {
+    // Reopen if the previous press closed it — by select, or by landing outside
+    // the panel and tripping `useDismiss`.
+    if (!(await page.$(panel))) {
+      await page.click(trigger);
+      await page.waitForSelector(panel, { state: "attached", timeout: 5000 });
+    }
+    const point = await page.evaluate(
+      ({ sel, index }) => {
+        const el = document.querySelectorAll(sel)[index];
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) return null;
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      },
+      { sel: countItems.selector, index: i }
+    );
+    if (!point) continue;
+    await page.evaluate(() => {
+      window.__hits = {};
+    });
+    await page.mouse.click(point.x, point.y);
+    await page.waitForTimeout(40);
+    if (await page.evaluate((k) => (window.__hits?.[k] ?? 0) > 0, `${countItems.hitPrefix}${i}`)) {
+      landed += 1;
+    }
+  }
+  return { landed, total };
+}
+
+/** The trigger's viewport box, so two runs can prove they are comparable. */
+function triggerRect(page, selector) {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
+  }, selector);
+}
+
 async function runCase(page, testCase, selfTest) {
   const { name, trigger, panel, target, hit, hover, openKey, mustOverflowHost, expectClippedByHost, countItems } =
     testCase;
@@ -361,15 +553,46 @@ async function runCase(page, testCase, selfTest) {
   }
 
   try {
-    await page.waitForSelector(panel, { state: "attached", timeout: 5000 });
+    // `visible`, not `attached`. A panel carrying `popover` that was never
+    // successfully shown is `display: none` under the UA's
+    // `[popover]:not(:popover-open)` rule while still being perfectly attached —
+    // so `attached` alone accepts the exact failure this file exists to catch.
+    // Measured: switching the promotion to `popover="auto"` leaves a Popover in a
+    // Dialog hidden (the platform's own light dismiss closes it on the very click
+    // that opened it), and every case here passed anyway until this said `visible`.
+    await page.waitForSelector(panel, { state: "visible", timeout: 5000 });
   } catch {
-    return { name, error: `the panel (${panel}) never appeared — the fixture, not the defect` };
+    return {
+      name,
+      error:
+        `the panel (${panel}) never became visible. Either the fixture is wrong, or the ` +
+        `promotion left it \`display: none\` — an element carrying \`popover\` that was never ` +
+        `successfully shown is hidden by the UA rule. Check \`useTopLayer\`.`,
+    };
   }
 
   if (selfTest) {
-    // Exactly the pre-fix DOM: floating-ui's portal node back under <body>.
+    // Exactly the pre-fix DOM, which is now TWO undo steps rather than one.
+    //
+    // Un-promote first: moving a `:popover-open` element in the DOM takes it out
+    // of the top layer, and `[popover]:not(:popover-open) { display: none }` is a
+    // UA rule — so re-parenting alone leaves a panel with no box at all, and
+    // every case below reports "no box to aim at", which this script correctly
+    // classifies as a broken FIXTURE rather than a detected defect. The self-test
+    // would then exit 2 for the wrong reason and never assert what it exists to
+    // assert. Strip the attribute deliberately, then re-parent.
     await page.evaluate((sel) => {
-      const node = document.querySelector(sel)?.closest("[data-floating-ui-portal]");
+      const el = document.querySelector(sel);
+      if (el?.hasAttribute("popover")) {
+        try {
+          el.hidePopover();
+        } catch {
+          // already out of the top layer
+        }
+        el.removeAttribute("popover");
+        el.classList.remove("floating-top-layer");
+      }
+      const node = el?.closest("[data-floating-ui-portal]");
       if (node) document.body.append(node);
     }, panel);
   }
@@ -463,30 +686,108 @@ async function runCase(page, testCase, selfTest) {
   }
 
   // A tall panel: count how many of its items a real click can actually reach.
-  let reachable = null;
-  if (countItems) {
-    const points = await page.evaluate((sel) => {
-      return [...document.querySelectorAll(sel)].map((el) => {
-        const r = el.getBoundingClientRect();
-        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-      });
-    }, countItems.selector);
-    let landed = 0;
-    for (const [i, pt] of points.entries()) {
-      await page.evaluate(() => {
-        window.__hits = {};
-      });
-      await page.mouse.click(pt.x, pt.y);
-      await page.waitForTimeout(30);
-      if (await page.evaluate((k) => (window.__hits?.[k] ?? 0) > 0, `${countItems.hitPrefix}${i}`)) {
-        landed += 1;
-      }
-    }
-    reachable = { landed, total: points.length };
+  const reachable = countItems
+    ? await countReachableItems(page, { trigger, panel, countItems })
+    : null;
+  const triggerBox = countItems ? await triggerRect(page, trigger) : null;
+
+  return {
+    name,
+    painted: painted.inPanel,
+    got: painted.got,
+    clicked,
+    clippedByHost,
+    expectClippedByHost,
+    reachable,
+    triggerBox,
+  };
+}
+
+/**
+ * Keyboard and dismissal through a PROMOTED panel.
+ *
+ * This is the one path with no other coverage at all. `floating-in-dialog.test.tsx`
+ * exercises keyboard navigation thoroughly, but jsdom implements no `showPopover`,
+ * so every one of those tests runs the *fallback* branch — the promoted branch is
+ * invisible to the whole suite. And promotion is exactly the kind of change that
+ * could break it: `FloatingFocusManager` runs modal focus management over the
+ * panel, `useDismiss` closes it on an outside press, and `Dialog` has its own
+ * Escape handling underneath. Three things that must each still be true:
+ *
+ *   E1. arrow keys move through the items and Enter fires the item's own handler.
+ *   E2. Escape closes the MENU and leaves the dialog open — one layer at a time.
+ *   E3. a press elsewhere inside the dialog closes the menu, not the dialog.
+ */
+async function runInteractionChecks(page, spec) {
+  const open = async () => {
+    await page.click(spec.trigger);
+    await page.waitForSelector(spec.panel, { state: "attached", timeout: 5000 });
+    await page.evaluate(() => {
+      window.__hits = {};
+    });
+  };
+  const settled = async () => {
+    // Long enough for the close transition to unmount the panel; `useDismiss`
+    // and Escape both go through the same fade.
+    await page.waitForTimeout(400);
+    return page.evaluate(
+      (sel) => ({
+        panel: !!document.querySelector(sel),
+        dialog: !!document.querySelector("dialog[open]"),
+      }),
+      spec.panel
+    );
+  };
+
+  await open();
+  for (let i = 0; i < 3; i += 1) await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(150);
+  const keyboardSelect = await page.evaluate(
+    (k) => (window.__hits?.[k] ?? 0) > 0,
+    `${spec.hitPrefix}2`
+  );
+
+  await page.waitForTimeout(400);
+  await open();
+  await page.keyboard.press("Escape");
+  const afterEscape = await settled();
+
+  await open();
+  const spot = await page.evaluate(() => {
+    const r = document.querySelector("dialog[open]").getBoundingClientRect();
+    return { x: r.right - 6, y: r.top + 6 };
+  });
+  await page.mouse.click(spot.x, spot.y);
+  const afterOutsidePress = await settled();
+
+  return {
+    keyboardSelect,
+    escapeClosedMenu: !afterEscape.panel,
+    escapeKeptDialog: afterEscape.dialog,
+    pressClosedMenu: !afterOutsidePress.panel,
+    pressKeptDialog: afterOutsidePress.dialog,
+  };
+}
+
+/**
+ * The same panel opened with NO dialog anywhere on the page, so the in-dialog
+ * count has something to be equal to. Deliberately not a `CASES` entry: it has no
+ * dialog, so `runCase`'s checks — and the self-test, which re-parents portal
+ * nodes back to `<body>` — have nothing to say about it. It is an input to
+ * another case's assertion, not a case.
+ */
+async function runParityControl(page, spec) {
+  await page.click(spec.trigger);
+  try {
+    await page.waitForSelector(spec.panel, { state: "attached", timeout: 5000 });
+  } catch {
+    return { error: `the control panel (${spec.panel}) never appeared` };
   }
-
-
-  return { name, painted: painted.inPanel, got: painted.got, clicked, clippedByHost, expectClippedByHost, reachable };
+  return {
+    reachable: await countReachableItems(page, spec),
+    triggerBox: await triggerRect(page, spec.trigger),
+  };
 }
 
 async function main() {
@@ -520,6 +821,11 @@ async function main() {
       // be in the top layer and would hit-test in front of the next.
       const ctx = await browser.newContext({ viewport: VIEWPORT });
       const page = await ctx.newPage();
+      if (NO_POPOVER) {
+        await page.addInitScript(() => {
+          delete HTMLElement.prototype.showPopover;
+        });
+      }
       await page.goto(testCase.host ? `${site.url}?host=${testCase.host}` : site.url);
       await page.waitForSelector("dialog[open]", { timeout: 15000 });
 
@@ -535,8 +841,50 @@ async function main() {
         modal = await page.evaluate(() => !!document.querySelector("dialog")?.matches(":modal"));
       }
 
-      results.push(await runCase(page, testCase, SELF_TEST));
+      const result = await runCase(page, testCase, SELF_TEST);
       await ctx.close();
+
+      if (NO_POPOVER) {
+        // Without the promotion the dialog is the clipping ancestor again, so
+        // the bound is EXPECTED back. Asserting its return is what makes this
+        // mode a check rather than a demonstration: a fallback that quietly
+        // produced no panel at all would otherwise read as "not clipped".
+        if (result.expectClippedByHost !== undefined) result.expectClippedByHost = true;
+        // Parity is a property of the fix, not of the fallback.
+        delete result.parity;
+      }
+
+      if (testCase.interaction && !SELF_TEST && !result.error) {
+        const iCtx = await browser.newContext({ viewport: VIEWPORT });
+        const iPage = await iCtx.newPage();
+        if (NO_POPOVER) {
+          await iPage.addInitScript(() => {
+            delete HTMLElement.prototype.showPopover;
+          });
+        }
+        await iPage.goto(`${site.url}?host=${testCase.host}`);
+        await iPage.waitForSelector("dialog[open]", { timeout: 15000 });
+        result.interaction = await runInteractionChecks(iPage, {
+          trigger: testCase.trigger,
+          panel: testCase.panel,
+          ...testCase.interaction,
+        });
+        await iCtx.close();
+      }
+
+      // The control run is skipped under --self-test: that mode deliberately
+      // breaks the in-dialog case, and comparing a broken figure against a
+      // healthy one is the point rather than a fault to report twice.
+      if (testCase.parityControl && !SELF_TEST && !NO_POPOVER && !result.error) {
+        const controlCtx = await browser.newContext({ viewport: VIEWPORT });
+        const controlPage = await controlCtx.newPage();
+        await controlPage.goto(`${site.url}?host=${testCase.parityControl.host}`);
+        await controlPage.waitForSelector(testCase.parityControl.trigger, { timeout: 15000 });
+        result.parity = await runParityControl(controlPage, testCase.parityControl);
+        await controlCtx.close();
+      }
+
+      results.push(result);
     }
   } finally {
     await browser.close();
@@ -559,11 +907,35 @@ async function main() {
     );
     process.exit(2);
   }
-  const broken = results.filter((r) => r.error);
+  const broken = results.filter((r) => r.error || r.parity?.error);
   if (broken.length) {
     console.error(
       `probe:floating-in-dialog — ${broken.length} case(s) could not be driven:\n` +
-        broken.map((r) => `    ${r.name}: ${r.error}`).join("\n")
+        broken.map((r) => `    ${r.name}: ${r.error ?? r.parity.error}`).join("\n")
+    );
+    process.exit(2);
+  }
+
+  // Comparing two counts taken from triggers at different coordinates would be
+  // comparing nothing. A drift here is a FIXTURE fault, not a defect in the
+  // library, so it exits 2 — the probe could not run, rather than "the code is
+  // wrong".
+  const misaligned = results.filter(
+    (r) =>
+      r.parity &&
+      JSON.stringify(r.triggerBox) !== JSON.stringify(r.parity.triggerBox)
+  );
+  if (misaligned.length) {
+    console.error(
+      `probe:floating-in-dialog — a parity control's trigger is not where the case's trigger is,\n` +
+        `so the two counts are not comparable and the assertion below would mean nothing:\n` +
+        misaligned
+          .map(
+            (r) =>
+              `    ${r.name}: in dialog ${JSON.stringify(r.triggerBox)} vs control ` +
+              `${JSON.stringify(r.parity.triggerBox)} — realign TallMenuNoDialog in the fixture.`
+          )
+          .join("\n")
     );
     process.exit(2);
   }
@@ -572,16 +944,30 @@ async function main() {
     (r) =>
       !r.painted ||
       r.clicked === false ||
-      (r.expectClippedByHost && r.clippedByHost !== true) ||
-      (r.reachable && r.reachable.landed === 0)
+      (r.expectClippedByHost !== undefined && r.clippedByHost !== r.expectClippedByHost) ||
+      (r.reachable && r.reachable.landed === 0) ||
+      (r.parity && r.parity.reachable.landed !== r.reachable.landed) ||
+      (r.interaction && Object.values(r.interaction).some((ok) => !ok))
   );
   const line = (r) =>
     `${r.name}: painted-on-top ${r.painted ? "yes" : `NO (got ${r.got})`}` +
     (r.clicked === null ? "" : `, click landed ${r.clicked ? "yes" : "NO"}`) +
     (r.clippedByHost === null || r.clippedByHost === undefined
       ? ""
-      : `, clipped at the dialog's edge ${r.clippedByHost ? "yes (documented)" : "NO"}`) +
-    (r.reachable ? `, items a click can reach ${r.reachable.landed}/${r.reachable.total}` : "");
+      : `, clipped at the dialog's edge ${r.clippedByHost ? "YES" : "no"}`) +
+    (r.reachable ? `, items a click can reach ${r.reachable.landed}/${r.reachable.total}` : "") +
+    (r.interaction
+      ? `, keyboard+dismiss ${
+          Object.entries(r.interaction)
+            .filter(([, ok]) => !ok)
+            .map(([k]) => `${k} NO`)
+            .join(" ") || "all ok"
+        }`
+      : "") +
+    (r.parity
+      ? ` (same menu with no dialog: ${r.parity.reachable.landed}/${r.parity.reachable.total}` +
+        `${r.parity.reachable.landed === r.reachable.landed ? " — parity" : " — NO PARITY"})`
+      : "");
 
   if (SELF_TEST) {
     if (failures.length === results.length) {
@@ -605,16 +991,26 @@ async function main() {
     console.error(
       `probe:floating-in-dialog — FAIL (${failures.length} of ${results.length} cases)\n\n` +
         results.map((r) => `    ${line(r)}`).join("\n") +
-        "\n\nA panel portalled to `<body>` sits under a modal dialog's top layer AND inside\n" +
-        "`showModal()`'s inert subtree. Portal it into the dialog instead — see\n" +
-        "`useDialogPortalRoot` in src/hooks/use-floating.ts.\n"
+        "\n\nTwo different regressions land here, and the columns above tell them apart.\n\n" +
+        "  `painted-on-top NO` or `click landed NO` — the panel is back at `<body>`,\n" +
+        "  where it sits under a modal dialog's top layer AND inside `showModal()`'s\n" +
+        "  inert subtree. Portal it into the dialog: `useDialogPortalRoot` in\n" +
+        "  src/hooks/use-floating.ts.\n\n" +
+        "  `clipped at the dialog's edge YES` or `NO PARITY` — the panel reaches the\n" +
+        "  dialog but is bounded by it, because `dialog:modal` is `overflow: auto` and\n" +
+        "  so a scrollport. The panel has to promote ITSELF into the top layer to leave\n" +
+        "  that clip while staying interactive inside the dialog: `useTopLayer` in the\n" +
+        "  same file, and the reset it depends on in\n" +
+        "  src/components/ui/floating-top-layer.css. Note that the promotion and\n" +
+        "  `strategy: \"fixed\"` are a pair — either alone misplaces the panel.\n"
     );
     process.exit(1);
   }
 
   console.log(
     `probe:floating-in-dialog — OK (${results.length} cases in Chromium at ` +
-      `${VIEWPORT.width}x${VIEWPORT.height}, inside a real :modal <dialog>)\n` +
+      `${VIEWPORT.width}x${VIEWPORT.height}, inside a real :modal <dialog>` +
+      `${NO_POPOVER ? ", with showPopover DELETED — the pre-Baseline-2024 fallback" : ""})\n` +
       results.map((r) => `    ${line(r)}`).join("\n")
   );
 }

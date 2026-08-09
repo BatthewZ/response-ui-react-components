@@ -52,9 +52,10 @@ The component renders a `<div>` wrapper containing the hidden input (only when y
 right edge, and — while open — a portalled `role="dialog"` popover holding a [Calendar](calendar.md).
 The popover is portalled to `<body>`, or into the nearest `<dialog>` ancestor when the field sits
 inside a [Dialog](dialog.md) or [Drawer](drawer.md) — which is what keeps it visible and clickable
-there. A modal dialog is a scrollport, so in a narrow one the panel is bounded by it: measured at a
-375px viewport, this panel is 351px inside a 337px [Drawer](drawer.md) and loses the 22px past its
-edge. See [Popover](popover.md#gotchas).
+there. A modal dialog is a scrollport and would clip a panel wider than itself, so the panel is
+also promoted into the top layer while open and keeps its full width: measured at a 375px
+viewport, this 351px panel inside a 337px [Drawer](drawer.md) used to lose the 22px past its edge
+and now loses none of it. See [Popover](popover.md#gotchas).
 
 ## Typing, and when the value commits
 

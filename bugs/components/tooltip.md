@@ -34,6 +34,7 @@ problem exists. All ten now resolve the portal target automatically from the tri
 (`useDialogPortalRoot`, `src/hooks/use-floating.ts`), and `container` is demoted to an override.
 Two things this row got wrong and the next reader should not inherit: **painting is only half of
 it** — `showModal()` also makes everything outside the dialog inert, so an element lifted into
-the top layer at `<body>` level still takes no click — and the remaining bound after the fix is
-clipping, not stacking (#506). Where the right value is derivable, derive it; keep the prop for
-the case nobody can derive.
+the top layer at `<body>` level still takes no click — and the bound that remained after the fix
+was clipping, not stacking (#506, since closed: the panel now promotes *itself* into the top
+layer from inside the dialog, which escapes the clip without leaving the dialog's flat tree).
+Where the right value is derivable, derive it; keep the prop for the case nobody can derive.

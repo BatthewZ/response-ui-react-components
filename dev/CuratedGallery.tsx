@@ -96,6 +96,102 @@ import { COLOR_PRESETS, SAMPLE_MARKDOWN, SKILL_OPTIONS } from "./sample-data";
    right place — structure stays one-section-per-group. */
 
 /* ------------------------------------------------------------------ */
+/*  Floating panels inside a dialog                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The composition finding #506 was about, and the one the rest of this gallery
+ * cannot show: a floating panel opened from a trigger that sits INSIDE a modal
+ * `<dialog>`.
+ *
+ * A modal dialog is two hostile things at once. `showModal()` makes everything
+ * outside it inert, so a panel portalled to `<body>` takes no clicks however it
+ * paints — which is why the panel is portalled into the dialog. And
+ * `dialog:modal` is `overflow: auto` in the user agent stylesheet, so being
+ * inside it means being clipped by it — which is why the panel then promotes
+ * itself into the browser's top layer.
+ *
+ * Fourteen items in a dialog barely taller than the trigger, so the menu is far
+ * larger than its host. Every item is reachable. The control beside it is the
+ * same menu with no dialog anywhere near it: the two should be indistinguishable,
+ * and that equivalence is what the Chromium probe asserts rather than any
+ * absolute count (`bun run probe:floating-in-dialog`).
+ */
+function TallMenu({ onSelect }: { onSelect: (label: string) => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Trigger type="button">Choose a revision</DropdownMenu.Trigger>
+      <DropdownMenu.Content>
+        {Array.from({ length: 14 }, (_, i) => (
+          <DropdownMenu.Item key={i} index={i} onSelect={() => onSelect(`Revision ${i + 1}`)}>
+            {`Revision ${i + 1}`}
+          </DropdownMenu.Item>
+        ))}
+      </DropdownMenu.Content>
+    </DropdownMenu>
+  );
+}
+
+function MenuInDialogSpecimen() {
+  const [open, setOpen] = useState(false);
+  const [chosen, setChosen] = useState<string | null>(null);
+
+  return (
+    <div className="flex max-w-[24rem] flex-col items-start gap-r5">
+      <Button type="button" onClick={() => setOpen(true)}>
+        Open a short dialog
+      </Button>
+      <span className="text-body-3 text-fg-muted">
+        {chosen ? `Picked ${chosen} — all 14 were reachable.` : "Nothing picked yet."}
+      </span>
+      {/* Sat near the top of the viewport rather than centred (Dialog's own
+          `m-auto`), because a 472px menu opening from a centred 120px dialog
+          runs off the TOP of a 900px screen — the viewport bound of #507, which
+          has nothing to do with the dialog and would read here as the dialog
+          still clipping. Inline, so it beats the utility. */}
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        aria-labelledby="gallery-restore-title"
+        style={{ marginTop: "2rem", marginBottom: "auto" }}
+      >
+        <h2 id="gallery-restore-title" className="text-h5 text-fg-primary">
+          Restore a revision
+        </h2>
+        <TallMenu
+          onSelect={(label) => {
+            setChosen(label);
+            setOpen(false);
+          }}
+        />
+      </Dialog>
+    </div>
+  );
+}
+
+function MenuInDrawerSpecimen() {
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState<Date | null>(null);
+
+  return (
+    <div className="flex max-w-[24rem] flex-col items-start gap-r5">
+      <Button type="button" variant="secondary" onClick={() => setOpen(true)}>
+        Open a drawer
+      </Button>
+      <span className="text-body-3 text-fg-muted">
+        Switch the viewport control above to Mobile (375) — the calendar is wider than the
+        drawer, and used to lose the 22px past its edge.
+      </span>
+      <Drawer open={open} onClose={() => setOpen(false)} aria-label="Schedule">
+        <h2 className="text-h5 text-fg-primary">Schedule a deploy</h2>
+        <DatePicker aria-label="Deploy date" value={date} onValueChange={setDate} />
+        <TallMenu onSelect={() => {}} />
+      </Drawer>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Sample data (DataTable)                                            */
 /* ------------------------------------------------------------------ */
 
@@ -1342,6 +1438,39 @@ export function App() {
               <Timeline.Item icon={<CheckCircle2 size={20} aria-hidden />} title="Delivered" />
             </Timeline>
           </div>
+        </Tile>
+      </Group>
+
+      {/* Not a component group — a COMPOSITION group. Everything above renders on
+          an ordinary page, where a floating panel has nothing to fight. These
+          three exist because the modal `<dialog>` is the one host that breaks
+          both halves of a panel (inert subtree, then clipping scrollport), and
+          nothing else in this file puts a panel inside one. See #506. */}
+      <Group id="group-floating-in-dialog" title="Floating panels inside a dialog">
+        <Tile label="14-item menu in a short Dialog" id="tile-menu-in-dialog">
+          <MenuInDialogSpecimen />
+        </Tile>
+
+        <Tile label="The same menu, no dialog — the control" id="tile-menu-control">
+          <div className="flex max-w-[24rem] flex-col items-start gap-r5">
+            <TallMenu onSelect={() => {}} />
+            {/* Deliberately NOT "compare the counts". Both menus are bounded by the
+                viewport, and these two triggers sit at different places on a
+                scrolled page — so the number of items each can reach differs for
+                reasons that have nothing to do with dialogs. What is comparable is
+                the BEHAVIOUR: same opening, same keyboard, same overflow against
+                the screen. The count comparison only means something with both
+                triggers at identical coordinates, which is what the Chromium probe
+                sets up and asserts. */}
+            <span className="text-body-3 text-fg-muted">
+              The same menu with no dialog anywhere near it. It should behave identically to the
+              one inside the dialog — that equivalence is the whole fix.
+            </span>
+          </div>
+        </Tile>
+
+        <Tile label="Panels in a Drawer — try it at 375px" id="tile-panels-in-drawer">
+          <MenuInDrawerSpecimen />
         </Tile>
       </Group>
     </main>

@@ -321,8 +321,9 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   paint above a popover; anything in the browser's top layer — [Dialog](dialog.md),
   [Drawer](drawer.md) — is above all of it regardless of `z-index`. That is not a problem for a
   popover *inside* one: it is portalled into the dialog, so it paints and hit-tests with the
-  dialog's own subtree rather than under it. (The panel is a descendant of a top-layer element,
-  not itself in the top layer — which is why the dialog's box still bounds it, below.)
+  dialog's own subtree rather than under it. (It is also promoted into the top layer in its own
+  right while it is open there, which is what keeps the dialog from clipping it — see
+  [Gotchas](#gotchas).)
 - **The fade reads the theme, and is dropped under reduced motion.** The open/close opacity
   transition takes its duration from `--MOTION-DURATION-ENTER` / `--MOTION-DURATION-EXIT`,
   read from `:root` at runtime (the measured themes set these between 120ms and 500ms), and
@@ -366,20 +367,26 @@ Four variables is the whole contract. The rest of the panel's appearance is off 
   to the `<dialog>` itself, so a form you rendered *inside* the dialog is the panel's **sibling**
   and its fields still need `form="<id>"` — but a form that *wraps* the Dialog is the panel's
   **ancestor**, and fields in the panel now reach its `FormData` where before they could not.)
-- **Inside a dialog the panel is bounded by that dialog's box.** `dialog:modal` carries
-  `overflow: auto` in the user agent stylesheet, so a modal dialog is a scrollport — and
-  Floating UI, correctly, treats it as the clipping ancestor, so `flip` and `shift` keep the
-  panel inside the dialog rather than inside the viewport. A panel that fits is unaffected,
-  which is the common case. One that does not is clamped to the dialog's leading edge and the
-  overflow becomes the dialog's *scrollable* area rather than being painted.
-  **Height is the axis that costs you something real.** A [Drawer](drawer.md) is full-height so
-  it never shows this, but a [Dialog](dialog.md) is as tall as its content, and
+- **Inside a dialog the panel is *not* bounded by that dialog's box, and it takes a second
+  mechanism to say so.** Being a descendant of the dialog is what makes the panel clickable, and
+  by itself it would also make the dialog clip it: `dialog:modal` carries `overflow: auto` in the
+  user agent stylesheet, so a modal dialog is a scrollport, and Floating UI would correctly treat
+  it as the clipping ancestor. So while it is open inside a dialog the panel also promotes itself
+  into the **top layer**, using the `popover` attribute — which takes it out of every ancestor's
+  clip while leaving it a *flat-tree* descendant of the dialog, so it stays interactive rather
+  than becoming inert. Its positioning strategy moves to `fixed` in the same step, because a
+  top-layer element resolves against the viewport. Nothing to configure, and nothing outside a
+  dialog is touched.
+  **The panel is still bounded by the viewport**, exactly as it is on a bare page — that is not
+  special to dialogs. It bites hardest on menus, because
   [DropdownMenu](dropdown-menu.md)/[ContextMenu](context-menu.md) set no `max-height` (unlike
-  [Combobox](combobox.md), which caps its list). Measured in Chromium: of a 14-item menu inside
-  a 260px-tall Dialog, a click reaches **1 item of 14**. Width is milder — at a 375px viewport a
-  [DatePicker](date-picker.md) panel is 351px inside a 337px Drawer and loses the 22px past the
-  edge. Give the dialog room, cap the panel's height yourself, or keep a large panel out of a
-  small dialog. Tracked as finding #506.
+  [Combobox](combobox.md), which caps its list): measured in Chromium, a 14-item menu is 472px
+  tall, so from a trigger 438px down a 900px viewport a click reaches 13 of its 14 items —
+  **the same 13 of 14 as the identical menu with no dialog anywhere on the page.** Cap a very
+  tall panel's height yourself. Tracked as finding #507.
+  **On an engine without `popover`** — it is Baseline 2024 — the promotion and the `fixed`
+  strategy fall back together, and you get the older behaviour: the panel is a plain descendant
+  of the dialog, visible and clickable, and clipped by it. Never nothing.
 - **`open` without `onOpenChange` freezes it — and the mode is fixed at mount.** A first render
   with `open` defined makes the component fully controlled for its life: it writes no state of
   its own, so with no handler (or a handler that ignores the value) the trigger clicks and

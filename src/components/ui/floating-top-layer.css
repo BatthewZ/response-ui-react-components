@@ -1,0 +1,58 @@
+/* ------------------------------------------------------------------ */
+/*  Floating panels promoted into the top layer                        */
+/* ------------------------------------------------------------------ */
+
+/* `useTopLayer` in `src/hooks/use-floating.ts` gives a panel opened inside a
+   `<dialog>` the `popover` attribute, which is the only way to escape that
+   dialog's clip while staying interactive inside it. The promotion is all this
+   package wants; the box the user agent attaches to `[popover]` comes with it
+   whether or not it is asked for, and is what this file takes back off.
+
+   Chromium's UA rule is:
+
+       [popover] { position: fixed; inset: 0; width: fit-content;
+                   height: fit-content; margin: auto; border: solid;
+                   padding: 0.25em; overflow: auto;
+                   color: CanvasText; background-color: Canvas; }
+
+   Three of those never arrive: Preflight is author-origin, so its `margin: 0`,
+   `padding: 0` and `border: 0 solid` already out-rank the user agent whatever
+   the specificity. `position` and the top/left pair are written inline by
+   floating-ui, which out-ranks everything here. Measured in Chromium, not
+   assumed — see `scripts/probe-floating-in-dialog.mjs`.
+
+   What DID arrive, and what each line below is for:
+
+   - `overflow: auto` turned every panel into a scrollport. `.popover-content`
+     seats its arrow half outside the panel's own border box, so the UA value
+     amputates it — and a promoted panel is exactly the case where the arrow
+     matters most, since it is the only thing tying a top-layer box back to its
+     trigger. `.combobox-content` and `.multiselect-content` DO want a scrollport
+     and say so in a utility, which is why this is a reset and not a lock.
+   - `color: CanvasText` computed to solid black. A panel inherits its ink from
+     the dialog and most declare none of their own, so the user agent's value is
+     the one that lands — correct-looking under the default theme and wrong under
+     every dark one, which is the worst way for a regression to arrive.
+   - `inset: 0` leaves `right` and `bottom` at 0 once floating-ui has written
+     `top`/`left`. Today the panel is over-constrained and the browser drops
+     them, so the box measures right; the moment anything gives the panel
+     `width: auto` it stretches to the viewport instead. Reset rather than relied
+     upon.
+   - `width`/`height: fit-content` measure the same as `auto` for a positioned
+     box, so this pair changes nothing today. They are here because the claim
+     this file makes is "the panel keeps the box it has everywhere else", and a
+     property left to the user agent is not that.
+
+   Every declaration is a *floor*, not a lock: this file ships in
+   `@layer components`, below `@layer utilities`, so each panel's own
+   `bg-surface-0` / `max-h-64 overflow-y-auto` — and any utility a consumer
+   passes through `className` — still wins. That is the whole reason the reset
+   lives in CSS and not in the inline styles the hook already controls. */
+.floating-top-layer {
+  inset: auto;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  color: inherit;
+  background-color: transparent;
+}

@@ -175,7 +175,10 @@ native `<dialog>` element with `showModal()`, which promotes them to the browser
 Floating UI's own `FloatingPortal`, which also does the anchoring — and which they aim at the
 nearest `<dialog>` ancestor of the trigger when there is one, so that a panel opened inside a
 [Dialog](dialog.md) or [Drawer](drawer.md) is neither under its top layer nor inside the inert
-subtree `showModal()` creates. [Toast](toast.md) never portals
+subtree `showModal()` creates. Being *inside* that dialog would make it a clipping ancestor in
+turn — a modal `<dialog>` is `overflow: auto` in the user agent stylesheet — so those panels also
+promote themselves into the top layer while open there, which escapes the clip without leaving
+the dialog's flat tree. [Toast](toast.md) never portals
 itself either — `ToastProvider` wraps the whole stack in one `Portal` into `<body>`. That
 provider and [AppShell](app-shell.md)'s mobile sidebar are the only two places in this library
 that reach for `Portal` directly.

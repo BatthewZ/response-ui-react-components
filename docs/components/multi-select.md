@@ -280,7 +280,7 @@ opened at all. The wrapper also carries `data-disabled`, which is what greys the
 `flip` and `shift`, so it moves to the opposite side or slides along the axis rather than
 leaving the viewport. It renders through a portal appended to `<body>`, so an `overflow: hidden`
 or `transform` ancestor cannot clip it — or to the nearest `<dialog>` ancestor of the control, so
-it stays visible and clickable inside a [Dialog](dialog.md) or [Drawer](drawer.md). Inside a `<dialog>` that is where the escape stops: a modal dialog is a scrollport (`overflow: auto`, from the user agent stylesheet), so a panel bigger than the dialog is bounded by it — see [Popover](popover.md#gotchas).
+it stays visible and clickable inside a [Dialog](dialog.md) or [Drawer](drawer.md). That dialog does not bound it: a modal dialog is a scrollport (`overflow: auto`, from the user agent stylesheet) and would clip a panel bigger than itself, so the panel promotes itself into the top layer while it is open there — see [Popover](popover.md#gotchas). The list caps its own height at `max-h-64` and scrolls, so it is short by construction anyway.
 
 ## Composition
 

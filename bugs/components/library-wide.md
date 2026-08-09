@@ -350,45 +350,120 @@ hash the prose span a doc claim depends on, store it beside the claim — would 
 (90/90 spokes ship one, and `scripts/bugs-ledger.mjs:182-196` already flags them for re-reading when a
 row closes), keying on the utility strings resolved from source rather than on prose matching.
 
-### 506 · Library-wide — a floating panel is bounded by the `<dialog>` it opens inside (med)
+### 506 · Library-wide — a floating panel is bounded by the `<dialog>` it opens inside (med · **fixed** this pass)
 
 `dialog:modal` carries `overflow: auto` in the **user agent** stylesheet, so every modal
 `<dialog>` is a scrollport and clips its descendants. Since `useDialogPortalRoot` portals a
-panel into the nearest `<dialog>` ancestor of its trigger, Floating UI now — correctly —
-treats that dialog as the clipping ancestor, so `flip`/`shift` keep the panel inside the
-dialog's box rather than inside the viewport.
+panel into the nearest `<dialog>` ancestor of its trigger, Floating UI — correctly — treated
+that dialog as the clipping ancestor, so `flip`/`shift` kept the panel inside the dialog's box
+rather than inside the viewport.
 
 **Introduced knowingly, and strictly better than what it replaced.** Before the portal fix the
-same panel was *entirely* invisible and inert inside a Dialog or Drawer. Nothing here is worse
-than it was. This row exists because the first draft of it understated the residue twice, and
-because "the panel works inside a dialog now" is a claim that needs a bound written next to it.
+same panel was *entirely* invisible and inert inside a Dialog or Drawer. This row existed
+because "the panel works inside a dialog now" is a claim that needed a bound written next to it.
 
-**The vertical axis is the one that costs function.** A `Drawer` is `100dvh`, so it cannot show
-this; a `Dialog` is content-sized, so it can. Measured in Chromium at 1280x900 by
-`scripts/probe-floating-in-dialog.mjs`, case *"Tall DropdownMenu in a short Dialog"*: of a
-14-item `DropdownMenu` inside a 260px-tall `Dialog`, a real `mouse.click` reaches **1 item of
-14**. The probe *reports* that count rather than asserting it, so the figure is regenerated on
-every run and cannot go stale. `.menu-content` sets no `max-height` and no `overflow`, where
-`.combobox-content` sets `max-h-64 overflow-y-auto` — the menus are precisely the unbounded
-panels, which is why they are the worst case.
+**What it cost, measured before the fix.** Vertical was the axis that cost function: of a
+14-item `DropdownMenu` inside a content-sized `Dialog`, a real click reached **1 item of 14**.
+Horizontal was milder — at a 375px viewport a `DatePicker` panel is 351px inside a 337px
+`Drawer`, and the band actually lost is **22px**, because `shift({padding: 8})` insets the panel
+from the leading edge first; the dialog reported `scrollWidth` 359 against `clientWidth` 337, so
+the remainder became *scrollable* rather than simply cut off.
 
-**The horizontal axis is cosmetic by comparison, and its first numbers were wrong.** At a 375px
-viewport a `DatePicker` panel is 351px inside a 337px `Drawer`. The *width difference* is 14px,
-but the band actually lost is **22px**: `shift({padding: 8})` insets the panel 8px from the
-leading edge, so it spans x 8..359 against an edge at 337, and a hit-test sweep puts the first
-lost pixel exactly at 337. Nor is it simply "cut off" — the dialog reports `scrollWidth` 359
-against `clientWidth` 337, so it becomes horizontally **scrollable**. At 1280px the same panel
-is 344px inside 384px and nothing is clipped.
+**Fixed by promoting the panel into the top layer in its own right.** `useTopLayer` in
+`src/hooks/use-floating.ts` gives a panel whose portal root is a `<dialog>` the
+`popover="manual"` attribute and calls `showPopover()`. A top-layer element is outside every
+ancestor's clip while remaining a **flat-tree** descendant of the dialog — so it is still not
+inert, and the two mechanisms the portal fix answered stay answered. Floating UI already knows
+the same trick from the other side: `isTopLayer()` returns *no* clipping ancestors for such an
+element, and its `topLayer && isFixed` branch skips the offsetParent conversion.
 
-**The fix, and why it is not taken here.** The `popover` attribute on the panel promotes it into
-the top layer in its own right, escaping the ancestor clip while remaining a flat-tree
-descendant of the dialog — so it does not become inert. That much is measured to work. It is
-still not a one-liner: a top-layer element resolves against the **viewport** containing block,
-so the panel's positioning strategy has to move in step or every coordinate is off by the
-dialog's offset; it also needs a `showPopover`/`hidePopover` lifecycle tied to mount, and a
-feature detect. That is a focused change of its own, touching every panel rather than only the
-ones inside a dialog.
+**Three things about it that are not obvious, each paid for during the fix.**
 
-**A tripwire exists.** The probe asserts the horizontal bound is *still present*, so anyone who
-adds the `popover` half turns it red and is sent here rather than discovering the docs are now
-wrong.
+1. **The promotion and `strategy: "fixed"` are one change, and the feature detect must gate
+   both.** Gating only the promotion produced a *third* behaviour on an engine without
+   `popover`, not the previous one: `position: fixed` alone escapes a plain `Dialog`'s clip,
+   because a fixed box is not bounded by an ancestor scrollport — but not a `Drawer`'s, because
+   `Drawer` slides in on a `transform` and a transformed ancestor becomes the containing block
+   for fixed descendants and clips them again. Measured in that broken state: 13 of 14 items in
+   a `Dialog`, still clipped in a `Drawer`. `probe:floating-in-dialog --no-popover` now holds
+   the fallback to *exactly* the old behaviour (1/14, clipped) rather than to "not nothing".
+2. **The UA attaches a whole box to `[popover]`, and it has to be taken back off.**
+   `src/components/ui/floating-top-layer.css` does it. Preflight already out-ranks the user
+   agent for `margin`/`padding`/`border`, and floating-ui writes `position`/`top`/`left` inline
+   — but `overflow: auto`, `color: CanvasText` and `inset: 0` all landed. Each reset line was
+   verified by deleting it and re-measuring: without them a panel's arrow sits in a scrollport,
+   a panel inheriting red ink from its dialog computes solid black, and a panel given
+   `width: auto` stretches to the full 1280px viewport. The reset ships in `@layer components`,
+   so `.combobox-content`'s own `overflow-y-auto` and every consumer utility still win.
+3. **The bug was harder to *measure* than to fix.** See the two entries below.
+
+**The number this row used to quote was measured by the wrong instrument.** The probe's
+"items a click can reach" swept clicks across all 14 items without reopening the menu — but
+selecting an item closes it, and `useTransitionStyles` keeps the panel in the DOM while it
+fades, so the sweep counted how much of the fade each press caught. It read 1/14 before and
+6/14 after, while a hit test of the same two builds said 1/14 and 13/14. The counter now
+reopens the menu before every item. The old figure of **1 of 14 survived the correction** — it
+was right for the wrong reason.
+
+**What replaced the absolute count, and why.** An absolute target could not be honest: a 14-item
+menu is 472px tall, and no fix puts that inside a 900px viewport from a trigger 438px down it —
+the last item falls off the *screen*, dialog or no dialog. So the probe now renders the same
+menu from a trigger at the same coordinates with **no dialog on the page** and asserts the two
+counts are **equal**. Measured: **13/14 both ways**. Parity is what this row ever claimed, and
+it stays true whatever the viewport, the row height or the theme's type scale become. The
+probe exits 2 rather than comparing if the two triggers ever drift apart.
+
+**The cheap alternative was measured and declined, not reasoned about.** Capping `.menu-content`
+with `max-h-64 overflow-y-auto`, the way `.combobox-content` already does, was the obvious
+lower-risk route and it targets the axis that cost function. Applied on its own it moved the
+count **1/14 → 1/14**. The reason is that the bound is the *dialog's* height, not the panel's:
+the fixture's `Dialog` renders **88px** tall (it is content-sized; the `260px` in its style is a
+`max-height`), so a panel capped at 256px is still nine tenths outside it, and the panel's own
+internal scrollbar cannot scroll a box that is itself clipped. It also fixes neither the
+horizontal band nor any panel that is not a menu, and it changes how menus look everywhere
+rather than only inside dialogs. Declined on the measurement.
+
+**What is left, and it is not this row.** The 14th item is lost to the **viewport**, identically
+with and without a dialog, because `.menu-content` sets no `max-height` where
+`.combobox-content` sets one. That is a real defect and a separate one — it is filed as #507
+rather than left inside a closed row, because a residue recorded only as a clause in someone
+else's fix is a residue nobody will ever work.
+
+**The tripwire was inverted, not deleted.** The probe asserted `expectClippedByHost: true` so
+that whoever removed the bound would turn it red and be sent here. It now asserts `false`, which
+is the same tripwire pointing the other way: put the clip back and the probe fails.
+
+### 507 · DropdownMenu · ContextMenu — a tall menu is unbounded, so it runs off the viewport (med)
+
+`.menu-content` sets no `max-height` and no `overflow`, where the sibling `.combobox-content`
+and `.multiselect-content` both set `max-h-64 overflow-y-auto`. A menu is therefore as tall as
+its items, and `flip`/`shift` cannot rescue one that fits neither above nor below its trigger:
+`shift` works the cross axis, and `flip` has nowhere to flip to.
+
+**Measured in Chromium at 1280x900** by `scripts/probe-floating-in-dialog.mjs`, case *"Tall
+DropdownMenu in a short Dialog"* and its no-dialog control: a 14-item menu is **472px** tall, so
+from a trigger 438px down the viewport it spans y 466..938 and its last item sits below the fold.
+A real click reaches **13 of 14** items — and reaches exactly 13 of 14 with **no dialog anywhere
+on the page**, which is the point of the row.
+
+**Split out of #506 rather than left as its clause.** #506 was "a dialog bounds the panel", and
+the top-layer fix closed it: inside a dialog a panel now behaves exactly as it does outside one,
+which the probe asserts as parity rather than as a count. This is what parity *converged on* —
+present before #506 was filed, unchanged by its fix, and equally true of a menu on a bare page.
+Recording it as a residue inside a closed row would have made it nobody's work.
+
+**Not fixed here, because it is a design decision rather than a defect with one right answer.**
+A `max-height` caps every menu in the library, inside a dialog or not, and trades "some items are
+off-screen" for "some items need a scroll" — reasonable, and visible on every menu in every app,
+which is an owner's call. The principled version is Floating UI's `size` middleware capping
+`maxHeight` to the measured `availableHeight`, which bounds only the menus that would otherwise
+overflow and leaves short ones untouched; it also changes panels **outside** dialogs, so it
+cannot ride along with a change whose safety argument is that nothing outside a dialog moves.
+
+**Whatever is chosen, do not measure it with the item count alone.** A capped menu scrolls
+internally, so a hit test reports *fewer* reachable items than an uncapped one while being more
+usable. Measured: with #506's fix in place, adding `max-h-64 overflow-y-auto` to `.menu-content`
+takes the probe's count from **13/14 to 8/14** — parity with the no-dialog control holds at both
+figures, and the six items the number loses are reachable by scrolling. The count answers "is the
+box on screen", not "can the user get to the item", so a change made for this row will look like
+a regression to it. Pick the metric before picking the fix.

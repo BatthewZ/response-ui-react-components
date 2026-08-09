@@ -33,8 +33,9 @@ and the Floating UI wiring. `ContextMenu.Trigger` is the region you right-click:
 registers itself as the anchor, sets `tabIndex={0}` so it can be focused, and listens for
 `contextmenu` plus the two keys that stand in for it. `ContextMenu.Content` is the
 menu panel; it renders through Floating UI's `FloatingPortal` (so no ancestor's `overflow`,
-`transform`, or `z-index` can clip it — bar a `<dialog>` it is opened inside, which it is
-portalled *into* and therefore bounded by; see [Popover](popover.md#gotchas)) and returns
+`transform`, or `z-index` can clip it — including a `<dialog>` it is opened inside, which it is
+portalled *into* and then promoted above, so that dialog does not bound it either; see
+[Popover](popover.md#gotchas)) and returns
 `null` while closed. Inside it,
 `ContextMenu.Item` is one action, and `ContextMenu.GroupHeader` / `ContextMenu.Divider` are
 non-interactive decoration.

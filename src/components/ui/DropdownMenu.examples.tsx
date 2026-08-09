@@ -2,6 +2,7 @@ import { Copy, Link2, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "./Button";
+import { Dialog } from "./Dialog";
 import { DropdownMenu } from "./DropdownMenu";
 
 /** Every `Item` needs an `index` — 0-based, in the order the arrow keys should walk. */
@@ -108,5 +109,46 @@ export function Placement() {
         <DropdownMenu.Item index={2}>Archive</DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu>
+  );
+}
+
+/**
+ * A menu opened inside a `Dialog` is not bounded by it. The dialog is a scrollport
+ * (`overflow: auto`, from the user agent stylesheet) and would clip a menu taller than
+ * itself, so the panel promotes itself into the browser's top layer while it is open —
+ * escaping the clip without leaving the dialog, where it would stop taking clicks. All
+ * fourteen items below are reachable inside a dialog barely taller than the trigger.
+ */
+export function InsideADialog() {
+  const [open, setOpen] = useState(false);
+  const [chosen, setChosen] = useState<string | null>(null);
+
+  return (
+    <>
+      <Button type="button" onClick={() => setOpen(true)}>
+        Restore a revision
+      </Button>
+      {chosen && <p>Restoring {chosen}.</p>}
+      <Dialog open={open} onClose={() => setOpen(false)} aria-labelledby="restore-title">
+        <h2 id="restore-title">Restore a revision</h2>
+        <DropdownMenu>
+          <DropdownMenu.Trigger type="button">Choose a revision</DropdownMenu.Trigger>
+          <DropdownMenu.Content>
+            {Array.from({ length: 14 }, (_, i) => (
+              <DropdownMenu.Item
+                key={i}
+                index={i}
+                onSelect={() => {
+                  setChosen(`revision ${i + 1}`);
+                  setOpen(false);
+                }}
+              >
+                {`Revision ${i + 1}`}
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.Content>
+        </DropdownMenu>
+      </Dialog>
+    </>
   );
 }
