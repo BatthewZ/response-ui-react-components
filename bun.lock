@@ -5,7 +5,7 @@
     "": {
       "name": "@batthewz/response-ui-react-components",
       "dependencies": {
-        "@batthewz/response-ui-css": "^0.14.0",
+        "@batthewz/response-ui-css": "^0.15.0",
         "@batthewz/response-ui-tw-merge": "^0.1.3",
         "clsx": "^2.1.1",
         "tailwind-merge": "^3.6.0",
@@ -88,7 +88,7 @@
 
     "@babel/types": ["@babel/types@7.29.7", "", { "dependencies": { "@babel/helper-string-parser": "^7.29.7", "@babel/helper-validator-identifier": "^7.29.7" } }, "sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA=="],
 
-    "@batthewz/response-ui-css": ["@batthewz/response-ui-css@0.14.0", "", { "peerDependencies": { "tailwindcss": "^4" }, "optionalPeers": ["tailwindcss"] }, "sha512-HOa7k4wNW5KPB2R/4H2dKQiB77JHKX1M8sPc8ZLllh1LvCjz1VT5vnW1UP6ncXwxtJ16HmOfyK/wvWaZ6/Z9Rg=="],
+    "@batthewz/response-ui-css": ["@batthewz/response-ui-css@0.15.0", "", { "peerDependencies": { "tailwindcss": "^4" }, "optionalPeers": ["tailwindcss"] }, "sha512-pQeBL54FknC1cUMcXRwdthHoLm5+nKzagyvY2PquEJoJmXJIAIvoPlH3HAg291AC/yNcP3Ui9uxyvn/q+BnZ7w=="],
 
     "@batthewz/response-ui-tw-merge": ["@batthewz/response-ui-tw-merge@0.1.3", "", { "peerDependencies": { "clsx": "^2.1.0", "tailwind-merge": "^3.5.0" } }, "sha512-I3ij+xsv9tPx6pstBEp+jrLfTbS6yn2tULrrGSmPwu6yMtqmbmheceZe59S2/MC2yPxcmRkBpxjDOoanTJ2XjA=="],
 
