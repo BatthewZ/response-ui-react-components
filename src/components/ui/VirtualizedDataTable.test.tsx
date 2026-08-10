@@ -791,7 +791,7 @@ describe("chrome reaches every render state", () => {
     ["empty", { ...base, data: [] }],
   ])("drops the frame in the %s state", (_label, props) => {
     const { container } = render(<VirtualizedDataTable {...props} chrome="rules" />);
-    expect(frameOf(container)).not.toContain("border-[color:var(--TABLE-FRAME-COLOR)]");
+    expect(frameOf(container)).not.toContain("border-[color:var(--TABLE-FRAME-COLOR,var(--C-BORDER-DEFAULT))]");
     expect(frameOf(container)).toContain("relative");
   });
 
@@ -801,6 +801,6 @@ describe("chrome reaches every render state", () => {
     ["empty", { ...base, data: [] }],
   ])("still draws it by default in the %s state", (_label, props) => {
     const { container } = render(<VirtualizedDataTable {...props} />);
-    expect(frameOf(container)).toContain("border-[color:var(--TABLE-FRAME-COLOR)]");
+    expect(frameOf(container)).toContain("border-[color:var(--TABLE-FRAME-COLOR,var(--C-BORDER-DEFAULT))]");
   });
 });

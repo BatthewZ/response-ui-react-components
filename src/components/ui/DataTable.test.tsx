@@ -1335,7 +1335,7 @@ describe("#463 · defaultPage seeds the uncontrolled page", () => {
           "table-cell",
           "table-cell--comfortable",
           "data-table-expanded-cell",
-          "bg-[color:var(--TABLE-DETAIL-FILL)]",
+          "bg-[color:var(--TABLE-DETAIL-FILL,var(--C-SURFACE-2))]",
           "p-0",
         ]),
       );
@@ -1481,19 +1481,19 @@ describe("chrome", () => {
   it("reaches the wrapper", () => {
     const { container } = renderExpanded("plain");
     expect([...container.querySelector(".table-wrapper")!.classList]).not.toContain(
-      "border-[color:var(--TABLE-FRAME-COLOR)]",
+      "border-[color:var(--TABLE-FRAME-COLOR,var(--C-BORDER-DEFAULT))]",
     );
   });
 
   it("keeps the recessed detail fill under boxed", () => {
     const { container } = renderExpanded();
-    expect(container.querySelector(".data-table-expanded-cell")).toHaveClass("bg-[color:var(--TABLE-DETAIL-FILL)]");
+    expect(container.querySelector(".data-table-expanded-cell")).toHaveClass("bg-[color:var(--TABLE-DETAIL-FILL,var(--C-SURFACE-2))]");
   });
 
   it.each(["rules", "plain"] as const)("drops the detail fill under %s", (chrome) => {
     const { container } = renderExpanded(chrome);
     const cell = container.querySelector(".data-table-expanded-cell")!;
-    expect([...cell.classList]).not.toContain("bg-[color:var(--TABLE-DETAIL-FILL)]");
+    expect([...cell.classList]).not.toContain("bg-[color:var(--TABLE-DETAIL-FILL,var(--C-SURFACE-2))]");
     // The marker rule keys off the BEM class and paints a background-IMAGE, so
     // it composes with (rather than depends on) the fill that just went away.
     expect(cell).toHaveClass("data-table-expanded-cell");

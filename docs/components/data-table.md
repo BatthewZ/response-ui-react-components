@@ -520,7 +520,7 @@ utilities in `DataTable.tsx`. Change the variable and it re-tints at runtime, no
 
 | Where                          | Utility              | Override              |
 | ------------------------------ | -------------------- | --------------------- |
-| Expanded detail-row backdrop, boxed chrome | `bg-[color:var(--TABLE-DETAIL-FILL)]` | `--TABLE-DETAIL-FILL` (defaults to the rung-2 surface). The lighter chromes drop the fill entirely and let the row's leading marker carry the relationship |
+| Expanded detail-row backdrop, boxed chrome | `bg-[color:var(--TABLE-DETAIL-FILL,var(--C-SURFACE-2))]` | `--TABLE-DETAIL-FILL` (defaults to the rung-2 surface). The lighter chromes drop the fill entirely and let the row's leading marker carry the relationship |
 | Expander chevron ink           | `text-fg-secondary`  | `--C-TEXT-SECONDARY`  |
 | Expander hover wash            | `hover:bg-surface-2` | `--C-SURFACE-2`       |
 | Expander corner radius         | `rounded-md`         | `--RADIUS-MD`         |

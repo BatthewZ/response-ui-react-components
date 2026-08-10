@@ -55,7 +55,7 @@ import { IconButton } from "./IconButton";
  * the track, so their containing block is still the viewport.
  */
 const carouselTrackClasses =
-  "relative flex cursor-grab snap-x snap-proximity gap-[var(--MEDIA-CAROUSEL-GAP)] overflow-x-auto scroll-smooth px-[var(--MEDIA-CAROUSEL-PEEK)] py-r5 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden motion-reduce:scroll-auto data-dragging:cursor-grabbing data-dragging:snap-none data-dragging:scroll-auto data-dragging:select-none";
+  "relative flex cursor-grab snap-x snap-proximity gap-[var(--MEDIA-CAROUSEL-GAP,var(--R-SIZE-5))] overflow-x-auto scroll-smooth px-[var(--MEDIA-CAROUSEL-PEEK)] py-r5 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden motion-reduce:scroll-auto data-dragging:cursor-grabbing data-dragging:snap-none data-dragging:scroll-auto data-dragging:select-none";
 
 /**
  * The arrows are `IconButton`s, so ink, ring, radius, press feedback — and the

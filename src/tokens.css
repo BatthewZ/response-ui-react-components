@@ -3,18 +3,29 @@
    these are this package's data-viz + component-feel extensions. They cascade by
    name, so a consumer theme can still override them. */
 :root {
-  /* Trend (data-viz) — alias the contract's status colors so they track the theme */
-  --C-TREND-UP: var(--C-STATUS-SUCCESS);
-  --C-TREND-UP-BG: var(--C-STATUS-SUCCESS-BG);
-  --C-TREND-DOWN: var(--C-STATUS-ERROR);
-  --C-TREND-DOWN-BG: var(--C-STATUS-ERROR-BG);
+  /* Trend (data-viz) — alias the contract's status colors so they track the theme.
+     Declared as fallbacks in the @theme inline block below, not here: an alias
+     declared at :root is substituted against :root's status ink and inherits down
+     as a fixed colour, which a subtree-scoped theme cannot move. See the TABLE
+     note at the foot of this block for the full argument. */
   /* Chart — 5-hue categorical palette.
      1–3 alias the contract so a retuned theme carries the chart with it; 4–5 have no
      contract twin and stay literal. The alias is deliberately partial: the palette's
      job is that five series stay tellable apart, and aliasing 4 measurably breaks that:
      the default theme sets --C-STATUS-INFO byte-identical to --C-ACCENT, so pointing
      chart-4 at it collapses chart-1 and chart-4 into one colour.
-     `scripts/verify-chart-palette.mjs` holds the measurement and gates it. */
+     `scripts/verify-chart-palette.mjs` holds the measurement and gates it.
+
+     THESE STAY DECLARED, unlike the trend and table tokens above, and the exception is
+     deliberate. Undeclaring them in favour of a use-site fallback would make a subtree
+     that retunes --C-ACCENT carry chart-1 with it — but it also makes
+     `getComputedStyle(el).getPropertyValue("--C-CHART-1")` return the empty string, and
+     docs/extending.md documents exactly that read as the way to feed a charting library
+     (Recharts, visx, D3) values that stay themable. A chart needs its colours in JS in a
+     way a table's chrome never does. The scoped case this gives up is also the smallest
+     of the set: overriding --C-CHART-1 itself on a subtree already works, and
+     docs/extending.md already tells dark-theme authors to override --C-CHART-1..5
+     directly, because the contract's ink values do not supply a legible dark ramp. */
   --C-CHART-1: var(--C-ACCENT);
   --C-CHART-2: var(--C-STATUS-SUCCESS);
   --C-CHART-3: var(--C-STATUS-WARNING);
@@ -25,7 +36,8 @@
   --MEDIA-CARD-HOVER-SCALE: 1.02;
   --MEDIA-CARD-HOVER-LIFT: -0.25rem;
   --MEDIA-CAROUSEL-PEEK: 3rem;
-  --MEDIA-CAROUSEL-GAP: var(--R-SIZE-5);
+  /* --MEDIA-CAROUSEL-GAP defaults to var(--R-SIZE-5) as a fallback at its use
+     site in Carousel.tsx, for the reason given in the TABLE note below. */
   /* Button — gap between an icon/spinner and the label. Static, not on the
      responsive r-scale: button padding doesn't reflow at the breakpoint, so a
      gap that did would drift out of proportion with it. */
@@ -50,19 +62,31 @@
      Set --TABLE-FRAME-COLOR to `transparent` for a frameless default everywhere;
      the 1px still occupies layout, which is deliberate — a width token would let
      a theme change the table's box model, and reflowing every table in the app is
-     not a thing a colour-scheme override should be able to do. */
-  --TABLE-FRAME-COLOR: var(--C-BORDER-DEFAULT);
-  --TABLE-FRAME-RADIUS: var(--RADIUS-MD);
-  --TABLE-RULE-COLOR: var(--C-BORDER-DEFAULT);
-  --TABLE-HEAD-FILL: var(--C-SURFACE-1);
-  --TABLE-DETAIL-FILL: var(--C-SURFACE-2);
+     not a thing a colour-scheme override should be able to do.
+
+     THEY ARE NOT DECLARED HERE, AND THAT IS THE POINT. Each default lives as a
+     var() fallback at the use site in Table.tsx / DataTable.tsx
+     (`var(--TABLE-HEAD-FILL, var(--C-SURFACE-1))`). A declaration here would be
+     substituted against THIS element's --C-SURFACE-1 and inherit down as a fixed
+     colour, so a theme scoped to a subtree — `[data-theme]` on a wrapper, or
+     inline custom properties — would move the surface and leave the table's
+     chrome on the root theme's ink. Written as a fallback, the derivation is
+     re-evaluated at the element that paints, so a scoped theme carries the table
+     with it. A consumer setting --TABLE-HEAD-FILL still wins: the fallback only
+     fires when the token is unset. */
 }
 @theme inline {
-  /* Only trend + chart are consumed as Tailwind utilities (text-trend-up, bg-chart-3, …) */
-  --color-trend-up: var(--C-TREND-UP);
-  --color-trend-up-bg: var(--C-TREND-UP-BG);
-  --color-trend-down: var(--C-TREND-DOWN);
-  --color-trend-down-bg: var(--C-TREND-DOWN-BG);
+  /* Only trend + chart are consumed as Tailwind utilities (text-trend-up, bg-chart-3, …)
+
+     `inline` means the utility emits this var() chain verbatim, so it resolves at
+     the element that paints — which is why the trend defaults live here as
+     fallbacks rather than as :root declarations. `text-trend-up` becomes
+     `var(--C-TREND-UP, var(--C-STATUS-SUCCESS))`, so a subtree-scoped theme that
+     retunes the status ink carries the trend colour with it. */
+  --color-trend-up: var(--C-TREND-UP, var(--C-STATUS-SUCCESS));
+  --color-trend-up-bg: var(--C-TREND-UP-BG, var(--C-STATUS-SUCCESS-BG));
+  --color-trend-down: var(--C-TREND-DOWN, var(--C-STATUS-ERROR));
+  --color-trend-down-bg: var(--C-TREND-DOWN-BG, var(--C-STATUS-ERROR-BG));
   --color-chart-1: var(--C-CHART-1);
   --color-chart-2: var(--C-CHART-2);
   --color-chart-3: var(--C-CHART-3);

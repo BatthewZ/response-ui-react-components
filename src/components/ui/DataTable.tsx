@@ -655,7 +655,7 @@ const expandedCellClasses = "p-0";
  * `background-color`, so they compose rather than replace each other.
  */
 const expandedCellChromeMap: Record<TableChrome, string> = {
-  boxed: "bg-[color:var(--TABLE-DETAIL-FILL)]",
+  boxed: "bg-[color:var(--TABLE-DETAIL-FILL,var(--C-SURFACE-2))]",
   rules: "",
   plain: "",
 };

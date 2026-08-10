@@ -4,6 +4,59 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.20.0] — 2026-08-10
+
+### Fixed
+
+- **The `--TABLE-*`, `--C-TREND-*` and `--MEDIA-CAROUSEL-GAP` defaults now track a theme scoped to a
+  subtree, not just one set at `:root`.** Each alias moved out of the `:root` block in
+  `src/tokens.css` and into the place that reads it, as a `var()` fallback — the arbitrary utility
+  values in `Table.tsx` / `DataTable.tsx` / `Carousel.tsx`, and the `@theme inline` entries the
+  trend utilities are generated from.
+
+  The two forms are not equivalent, and a table made it obvious. `var()` inside a custom-property
+  *declaration* is substituted at the element the declaration applies to — `:root` — and descendants
+  inherit the already-resolved value; re-pointing `--C-SURFACE-1` further down the tree never
+  re-runs that substitution. So `--TABLE-HEAD-FILL: var(--C-SURFACE-1)` baked in the root theme's
+  light surface, and a dark theme applied to a subtree (a `[data-theme]` wrapper, or the inline
+  custom properties `@batthewz/response-ui-renderer` writes for `themeOverrides`) darkened the card
+  and left the table's header band bright. `text-trend-up` failed the same way against a scoped
+  `--C-STATUS-SUCCESS`, which is why `docs/theme-contract.md` said trend "tracks every theme
+  automatically" while it tracked only root ones.
+
+  Written as a fallback the derivation is re-evaluated at the element that paints, so a scoped theme
+  carries the chrome with it. This is the same fix, and the same reasoning, as the
+  `var(--sparkline-color, currentColor)` default documented in `docs/components/sparkline.md`.
+
+  **Nothing moves where a theme is applied at `:root`** — every default resolves to the byte it did
+  before. Two consequences if you reach past the utilities: these tokens are no longer declared, so
+  `getComputedStyle(…).getPropertyValue("--TABLE-HEAD-FILL")` reports the empty string until you set
+  one, and your own `var(--TABLE-HEAD-FILL)` with no fallback now resolves to nothing. Setting any
+  of them still wins everywhere — the fallback only fires when the token is unset.
+
+  **`--C-CHART-1..3` are deliberately excluded** and stay declared on `:root`. `docs/extending.md`
+  documents `getComputedStyle(el).getPropertyValue("--C-CHART-1")` as the way to feed a charting
+  library themable values, and undeclaring them would return the empty string there — a chart needs
+  its colours in JS in a way a table's chrome never does. The scoped case given up is also the
+  smallest of the set: overriding `--C-CHART-1` itself on a subtree already works, and a dark theme
+  is already told to override `--C-CHART-1..5` directly, because the contract's ink values do not
+  supply a legible dark ramp. Both `src/tokens.css` and `docs/theme-contract.md` record the
+  exception.
+
+### Changed
+
+- `scripts/verify-component-docs.mjs` reads the fallback form. Its token map required
+  `--alias: var(--target)` to close immediately, so an alias carrying a fallback vanished from the
+  map and every utility resolving through it reported "resolves to no token in the contract"; and a
+  token defaulted at its use site is now counted as defined, since that fallback *is* its
+  declaration. A token sitting in a fallback is not attributed to the row that names the utility —
+  it is what the row's token defaults to, not a second token the component reads — so genuine
+  multi-token values like `bg-[linear-gradient(…,var(--C-ACCENT),var(--C-ACCENT-HOVER))]` are
+  unaffected. Verified against the pre-change tree: same 915 claims resolved, and the
+  arbitrary-value route the header tracks stayed live.
+- `@batthewz/response-ui-css` dependency raised to `^0.15.0`, which carries the same fix for
+  `--C-SELECTION` / `--C-TEXT-ON-SELECTION`.
+
 ## [0.19.0] — 2026-08-09
 
 ### Added

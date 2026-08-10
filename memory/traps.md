@@ -1220,3 +1220,35 @@ collision, left alone because briefs in flight cite the later one by letter.)
   in a `beforeEach` turned 21 unrelated tests red. Stub them per test; jsdom's real lack of them
   is also the shipped feature-detect branch, which is the branch the rest of the suite was
   written against.
+
+## AD · From the pass that asked why a table's header stayed light inside a dark card
+
+- **`var()` inside a custom-property *declaration* is substituted where the DECLARATION lives, not
+  where the token is read.** `:root { --TABLE-HEAD-FILL: var(--C-SURFACE-1) }` resolves against
+  `:root`'s surface once, and descendants inherit the resulting *colour*. Re-pointing
+  `--C-SURFACE-1` further down the tree never re-runs that substitution, so an alias declared at
+  `:root` silently stops tracking its own upstream the moment a theme is scoped to a subtree.
+  Measured in a browser rather than argued: inside a wrapper setting `--C-SURFACE-1` to a dark
+  ink, `--C-SURFACE-1` read back dark and `--TABLE-HEAD-FILL` read back the light root value.
+- **It hides because root-level theming works.** A theme authored `:root[data-theme="…"]` lands on
+  the same element as the alias, so the cascade resolves the upstream first and the alias tracks
+  it perfectly. Only subtree theming — a `[data-theme]` wrapper, or inline custom properties —
+  exposes it. A package whose own themes are all root-level can carry this defect indefinitely
+  without a single failing test, and did.
+- **The fix is to move the default to the READ, as a fallback:** `var(--TABLE-HEAD-FILL,
+  var(--C-SURFACE-1))`. It re-evaluates at the element that paints, is byte-identical where
+  nothing overrides, and still loses to an explicit override because a fallback only fires when
+  the token is unset. Sparkline had already reached the same shape for a neighbouring cascade bug
+  (`var(--sparkline-color, currentColor)`) — check whether the pattern already exists here before
+  inventing one.
+- **Not every alias should take the fix, and "all of them" is the tempting wrong answer.**
+  `--C-CHART-1..3` stay declared because `docs/extending.md` documents
+  `getComputedStyle(el).getPropertyValue("--C-CHART-1")` as the way to feed a charting library, and
+  an undeclared token reads back as the empty string. Undeclaring a token is only free when
+  nothing reads it from JS — so grep for `getPropertyValue` and the docs before converting one.
+- **A token that stops being declared breaks tooling that equates "declared" with "exists".**
+  `verify-component-docs.mjs` built its token map from `--alias: var(--target)` with the closing
+  paren required, so an alias carrying a fallback vanished and every utility resolving through it
+  reported "resolves to no token in the contract". The gate was right to fail; its model of a
+  token was what needed updating. Check the count in its headline before and after — the totals
+  moving is the signal that the change shifted attribution rather than coverage.

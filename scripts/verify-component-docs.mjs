@@ -126,6 +126,51 @@ const stripComments = (text) =>
 const varsIn = (value) => [...value.matchAll(/var\(\s*(--[A-Za-z0-9-]+)/g)].map((m) => m[1]);
 
 /**
+ * Split each `var(…)` in `value` at its first top-level comma and hand back both halves:
+ * the token being read, and whatever it falls back to.
+ *
+ * Parens are balanced rather than regex-matched because these values nest — the fallback
+ * of one `var()` is routinely another `var()`, which is exactly the shape this exists to
+ * read. Tokens inside a fallback are themselves fallbacks at every depth, so collecting
+ * `varsIn` over the whole fallback span is correct without recursing.
+ */
+function varFallbackSpans(value) {
+  const spans = [];
+  for (let i = value.indexOf("var("); i !== -1; i = value.indexOf("var(", i + 1)) {
+    let depth = 0;
+    let comma = -1;
+    let end = -1;
+    for (let j = i + 3; j < value.length; j += 1) {
+      const ch = value[j];
+      if (ch === "(") depth += 1;
+      else if (ch === ")") {
+        depth -= 1;
+        if (depth === 0) {
+          end = j;
+          break;
+        }
+      } else if (ch === "," && depth === 1 && comma === -1) comma = j;
+    }
+    if (end === -1 || comma === -1) continue;
+    spans.push({ token: value.slice(i + 4, comma).trim(), fallback: value.slice(comma + 1, end) });
+  }
+  return spans;
+}
+
+/**
+ * Tokens given a DEFAULT by a `var(--X, …)` fallback — the declaration form for a token
+ * that must resolve at the element that paints rather than at `:root`.
+ */
+const defaultedTokens = (text) =>
+  varFallbackSpans(text)
+    .map((s) => s.token)
+    .filter((t) => t.startsWith("--"));
+
+/** Tokens appearing only as somebody else's fallback: `var(--A, var(--B))` -> `{--B}`. */
+const fallbackOnlyTokens = (value) =>
+  new Set(varFallbackSpans(value).flatMap((s) => varsIn(s.fallback)));
+
+/**
  * Contract variables a component reaches through a Tailwind ARBITRARY value written in
  * its own TS/TSX — `bg-[linear-gradient(90deg,var(--C-ACCENT),var(--C-ACCENT-HOVER))]`.
  *
@@ -260,12 +305,27 @@ for (const dir of [CSS_PKG, SRC]) {
   if (!existsSync(dir)) continue;
   for (const file of walk(dir, (f) => f.endsWith(".css"))) {
     const text = readFileSync(file, "utf8");
-    for (const m of text.matchAll(/(--[a-zA-Z0-9-]+):\s*var\((--[A-Za-z0-9-]+)\)/g)) {
+    // No `\)` after the token: an alias may carry a fallback —
+    // `--color-trend-up: var(--C-TREND-UP, var(--C-STATUS-SUCCESS))`. The alias TARGET is
+    // still the first argument; requiring the close paren silently dropped every aliased
+    // token the moment its default moved into a fallback, and every utility resolving
+    // through it then reported "resolves to no token in the contract".
+    for (const m of text.matchAll(/(--[a-zA-Z0-9-]+):\s*var\(\s*(--[A-Za-z0-9-]+)/g)) {
       tokenMap.set(m[1], m[2]);
       if (m[1].endsWith("--line-height")) lineHeightCompanions.add(m[2]);
     }
     for (const m of text.matchAll(/(--[a-zA-Z0-9-]+):\s*[^;]/g)) definedTokens.add(m[1]);
+    for (const token of defaultedTokens(text)) definedTokens.add(token);
   }
+}
+// A token whose DEFAULT lives at the use site rather than in a `:root` block is defined by
+// that fallback — `var(--TABLE-HEAD-FILL, var(--C-SURFACE-1))` in Table.tsx is the whole
+// declaration of --TABLE-HEAD-FILL. Those tokens are deliberately undeclared (a `:root`
+// alias resolves against `:root` and inherits down already-substituted, so a subtree-scoped
+// theme cannot move it), so a declaration-only scan cannot see them.
+for (const file of walk(SRC, (f) => f.endsWith(".tsx") || f.endsWith(".ts"))) {
+  if (file.includes(".test.")) continue;
+  for (const token of defaultedTokens(readFileSync(file, "utf8"))) definedTokens.add(token);
 }
 
 if (!tokenMap.size) {
@@ -354,8 +414,20 @@ function resolveUtility(util) {
   const bare = bareUtility(util);
 
   // Arbitrary value: `gap-[var(--BUTTON-GAP-MD)]` names its tokens outright.
+  //
+  // A token sitting in a FALLBACK is not one of them. `var(--TABLE-HEAD-FILL,
+  // var(--C-SURFACE-1))` is themed by --TABLE-HEAD-FILL; --C-SURFACE-1 is only what that
+  // token defaults to, and is not something the row's author chose or a theme would set to
+  // re-tint this component. Counting it would force every such row to tabulate the default
+  // beside the token — noise that says nothing about what the component reads. Genuine
+  // multi-token values still report every token, because none of theirs is a fallback:
+  // `bg-[linear-gradient(90deg,var(--C-ACCENT),var(--C-ACCENT-HOVER))]` keeps both.
   const open = bare.indexOf("[");
-  if (open !== -1) return varsIn(bare.slice(open)).filter((t) => definedTokens.has(t));
+  if (open !== -1) {
+    const value = bare.slice(open);
+    const fallbacks = fallbackOnlyTokens(value);
+    return varsIn(value).filter((t) => definedTokens.has(t) && !fallbacks.has(t));
+  }
 
   for (const [prefixes, namespaces] of [...PREFIX_NAMESPACES, ...OPTIONAL_TOKEN_PREFIXES]) {
     for (const prefix of prefixes) {

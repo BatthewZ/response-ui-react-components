@@ -254,7 +254,7 @@ what you actually override to re-tint the arrows.
 | Slide width (component local)          |                                   | `--carousel-item-width`                        |
 
 The gap, the peek and the easing are read as custom properties
-(`gap-[var(--MEDIA-CAROUSEL-GAP)]`, `px-[var(--MEDIA-CAROUSEL-PEEK)]`,
+(`gap-[var(--MEDIA-CAROUSEL-GAP,var(--R-SIZE-5))]`, `px-[var(--MEDIA-CAROUSEL-PEEK)]`,
 `ease-[var(--MOTION-EASE-ENTER)]`): none of those three tokens sits in a Tailwind namespace,
 so there is no name-resolved utility for them.
 

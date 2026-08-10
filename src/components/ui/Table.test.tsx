@@ -992,8 +992,8 @@ describe("Table", () => {
       const { container } = renderChrome();
       expect(wrapperOf(container)).toHaveClass(
         "border",
-        "border-[color:var(--TABLE-FRAME-COLOR)]",
-        "rounded-[var(--TABLE-FRAME-RADIUS)]",
+        "border-[color:var(--TABLE-FRAME-COLOR,var(--C-BORDER-DEFAULT))]",
+        "rounded-[var(--TABLE-FRAME-RADIUS,var(--RADIUS-MD))]",
       );
     });
 
@@ -1001,8 +1001,8 @@ describe("Table", () => {
       const { container } = renderChrome({ chrome });
       const classes = [...wrapperOf(container).classList];
       expect(classes).not.toContain("border");
-      expect(classes).not.toContain("border-[color:var(--TABLE-FRAME-COLOR)]");
-      expect(classes).not.toContain("rounded-[var(--TABLE-FRAME-RADIUS)]");
+      expect(classes).not.toContain("border-[color:var(--TABLE-FRAME-COLOR,var(--C-BORDER-DEFAULT))]");
+      expect(classes).not.toContain("rounded-[var(--TABLE-FRAME-RADIUS,var(--RADIUS-MD))]");
     });
 
     // The wrapper is a scrollport. `relative` is what keeps an absolutely
@@ -1029,7 +1029,7 @@ describe("Table", () => {
         const view = renderChrome({ chrome });
         expect(bodyRowsOf(view.container)[0]).toHaveClass(
           "border-b",
-          "border-[color:var(--TABLE-RULE-COLOR)]",
+          "border-[color:var(--TABLE-RULE-COLOR,var(--C-BORDER-DEFAULT))]",
         );
         view.unmount();
       }
@@ -1040,21 +1040,21 @@ describe("Table", () => {
     it("drops the header band under the lighter chromes", () => {
       const boxed = renderChrome({ chrome: "boxed" });
       expect(headOf(boxed.container)).toHaveClass(
-        "bg-[color:var(--TABLE-HEAD-FILL)]",
+        "bg-[color:var(--TABLE-HEAD-FILL,var(--C-SURFACE-1))]",
         "border-b-2",
       );
       boxed.unmount();
 
       const rules = renderChrome({ chrome: "rules" });
       const ruledHead = rules.container.querySelector("thead")!;
-      expect(ruledHead).toHaveClass("border-b", "border-[color:var(--TABLE-RULE-COLOR)]");
-      expect([...ruledHead.classList]).not.toContain("bg-[color:var(--TABLE-HEAD-FILL)]");
+      expect(ruledHead).toHaveClass("border-b", "border-[color:var(--TABLE-RULE-COLOR,var(--C-BORDER-DEFAULT))]");
+      expect([...ruledHead.classList]).not.toContain("bg-[color:var(--TABLE-HEAD-FILL,var(--C-SURFACE-1))]");
       expect([...ruledHead.classList]).not.toContain("border-b-2");
       rules.unmount();
 
       const plain = renderChrome({ chrome: "plain" });
       const plainClasses = [...plain.container.querySelector("thead")!.classList];
-      expect(plainClasses).not.toContain("bg-[color:var(--TABLE-HEAD-FILL)]");
+      expect(plainClasses).not.toContain("bg-[color:var(--TABLE-HEAD-FILL,var(--C-SURFACE-1))]");
       expect(plainClasses).not.toContain("border-b");
     });
 
@@ -1075,7 +1075,7 @@ describe("Table", () => {
       "%s gives a pinned header the band back, opaque and separated",
       (chrome) => {
         const head = headOf(renderChrome({ chrome, stickyHeader: true }).container);
-        expect(head).toHaveClass("sticky", "bg-[color:var(--TABLE-HEAD-FILL)]");
+        expect(head).toHaveClass("sticky", "bg-[color:var(--TABLE-HEAD-FILL,var(--C-SURFACE-1))]");
         expect([...head.classList]).not.toContain("bg-surface-0");
       },
     );
@@ -1085,7 +1085,7 @@ describe("Table", () => {
       (chrome) => {
         const classes = [...headOf(renderChrome({ chrome }).container).classList];
         expect(classes).not.toContain("sticky");
-        expect(classes).not.toContain("bg-[color:var(--TABLE-HEAD-FILL)]");
+        expect(classes).not.toContain("bg-[color:var(--TABLE-HEAD-FILL,var(--C-SURFACE-1))]");
         expect(classes).not.toContain("bg-surface-0");
       },
     );
@@ -1123,7 +1123,7 @@ describe("Table", () => {
       const { container } = renderChrome({ chrome: "boxed", className: "rounded-none" });
       const classes = [...wrapperOf(container).classList];
       expect(classes).toContain("rounded-none");
-      expect(classes).not.toContain("rounded-[var(--TABLE-FRAME-RADIUS)]");
+      expect(classes).not.toContain("rounded-[var(--TABLE-FRAME-RADIUS,var(--RADIUS-MD))]");
     });
   });
 });

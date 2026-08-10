@@ -123,7 +123,7 @@ const wrapperClasses = "relative overflow-x-auto";
  */
 const wrapperChromeMap: Record<TableChrome, string> = {
   boxed:
-    "border border-[color:var(--TABLE-FRAME-COLOR)] rounded-[var(--TABLE-FRAME-RADIUS)]",
+    "border border-[color:var(--TABLE-FRAME-COLOR,var(--C-BORDER-DEFAULT))] rounded-[var(--TABLE-FRAME-RADIUS,var(--RADIUS-MD))]",
   rules: "",
   plain: "",
 };
@@ -137,8 +137,8 @@ const tableClasses = "w-full border-collapse bg-surface-0";
  * distinguished by its own weight.
  */
 const headChromeMap: Record<TableChrome, string> = {
-  boxed: "bg-[color:var(--TABLE-HEAD-FILL)] border-b-2 border-[color:var(--TABLE-RULE-COLOR)]",
-  rules: "border-b border-[color:var(--TABLE-RULE-COLOR)]",
+  boxed: "bg-[color:var(--TABLE-HEAD-FILL,var(--C-SURFACE-1))] border-b-2 border-[color:var(--TABLE-RULE-COLOR,var(--C-BORDER-DEFAULT))]",
+  rules: "border-b border-[color:var(--TABLE-RULE-COLOR,var(--C-BORDER-DEFAULT))]",
   plain: "",
 };
 
@@ -171,8 +171,8 @@ const headChromeMap: Record<TableChrome, string> = {
  */
 const headStickyFillMap: Record<TableChrome, string> = {
   boxed: "",
-  rules: "bg-[color:var(--TABLE-HEAD-FILL)]",
-  plain: "bg-[color:var(--TABLE-HEAD-FILL)]",
+  rules: "bg-[color:var(--TABLE-HEAD-FILL,var(--C-SURFACE-1))]",
+  plain: "bg-[color:var(--TABLE-HEAD-FILL,var(--C-SURFACE-1))]",
 };
 
 const headerCellClasses = "text-left font-semibold text-fg-primary whitespace-nowrap";
@@ -200,8 +200,8 @@ const sortIconClasses = "inline-flex ml-1 align-middle";
  * as `text-[length:var(--BodyText-1)]` in the density map below.
  */
 const rowChromeMap: Record<TableChrome, string> = {
-  boxed: "border-b border-[color:var(--TABLE-RULE-COLOR)] last:border-b-0",
-  rules: "border-b border-[color:var(--TABLE-RULE-COLOR)] last:border-b-0",
+  boxed: "border-b border-[color:var(--TABLE-RULE-COLOR,var(--C-BORDER-DEFAULT))] last:border-b-0",
+  rules: "border-b border-[color:var(--TABLE-RULE-COLOR,var(--C-BORDER-DEFAULT))] last:border-b-0",
   plain: "",
 };
 

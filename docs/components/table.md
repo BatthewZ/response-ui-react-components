@@ -488,20 +488,20 @@ every one of them.
 
 | Where                           | Utility / class                                       | Override                                                  |
 | ------------------------------- | ----------------------------------------------------- | --------------------------------------------------------- |
-| Wrapper frame · corners         | `border-[color:var(--TABLE-FRAME-COLOR)]` · `rounded-[var(--TABLE-FRAME-RADIUS)]` | `--TABLE-FRAME-COLOR` (defaults to the contract's border ink) · `--TABLE-FRAME-RADIUS` (defaults to the medium radius). Set the colour to `transparent` for a frameless default everywhere |
+| Wrapper frame · corners         | `border-[color:var(--TABLE-FRAME-COLOR,var(--C-BORDER-DEFAULT))]` · `rounded-[var(--TABLE-FRAME-RADIUS,var(--RADIUS-MD))]` | `--TABLE-FRAME-COLOR` (defaults to the contract's border ink) · `--TABLE-FRAME-RADIUS` (defaults to the medium radius). Set the colour to `transparent` for a frameless default everywhere |
 | Table background                | `bg-surface-0`                                        | `--C-SURFACE-0`                                           |
-| Header band · its 2px underline | `bg-[color:var(--TABLE-HEAD-FILL)]`                   | `--TABLE-HEAD-FILL` (defaults to the rung-1 surface) · the underline is `--TABLE-RULE-COLOR` |
+| Header band · its 2px underline | `bg-[color:var(--TABLE-HEAD-FILL,var(--C-SURFACE-1))]`                   | `--TABLE-HEAD-FILL` (defaults to the rung-1 surface) · the underline is `--TABLE-RULE-COLOR` |
 | Header label ink · weight       | `text-fg-primary` · `font-semibold`                   | `--C-TEXT-PRIMARY` · `--Semibold-Weight`                  |
 | Sortable header hover · active  | `hover:bg-surface-2` · `active:bg-surface-3`          | `--C-SURFACE-2` · `--C-SURFACE-3`                         |
 | Sortable header focus outline   | `focus-visible:outline-border-focus`                  | `--C-BORDER-FOCUS`                                        |
 | Sort button focus outline       | `.table-header-cell__sort-button`                     | `--C-BORDER-FOCUS`                                        |
 | Sort arrow                      | `text-fg-muted` unsorted · `text-accent` sorted       | `--C-TEXT-MUTED` · `--C-ACCENT`                           |
-| Row divider, boxed and rules    | `border-[color:var(--TABLE-RULE-COLOR)]`              | `--TABLE-RULE-COLOR` (defaults to the contract's border ink). One override retunes every ruled table in the app; the plain chrome draws no divider at all |
+| Row divider, boxed and rules    | `border-[color:var(--TABLE-RULE-COLOR,var(--C-BORDER-DEFAULT))]`              | `--TABLE-RULE-COLOR` (defaults to the contract's border ink). One override retunes every ruled table in the app; the plain chrome draws no divider at all |
 | Striped row                     | `bg-surface-1`                                        | `--C-SURFACE-1`                                           |
 | Selected row wash               | `bg-[color-mix(in_oklch,var(--C-ACCENT)_8%,transparent)]` | `--C-ACCENT`, mixed to 8% in oklch                    |
 | Selected row marker             | `.table-row--selected`                                | `--C-ACCENT` at full strength · width `--_table-marker-width` (3px, private) |
 | Expanded detail row's leading marker | `.data-table-expanded-cell`                      | `--C-BORDER-STRONG` at `--_table-marker-width`. The row's fill is `DataTable`'s — see [its theme tokens](./data-table.md#theme-tokens) |
-| Pinned header fill, rules and plain chrome | `bg-[color:var(--TABLE-HEAD-FILL)]`       | `--TABLE-HEAD-FILL` — the same band boxed uses. A pinned head's rule does not survive scrolling in the collapsed border model, so the fill is its only separation |
+| Pinned header fill, rules and plain chrome | `bg-[color:var(--TABLE-HEAD-FILL,var(--C-SURFACE-1))]`       | `--TABLE-HEAD-FILL` — the same band boxed uses. A pinned head's rule does not survive scrolling in the collapsed border model, so the fill is its only separation |
 | Cell ink                        | `text-fg-primary`                                     | `--C-TEXT-PRIMARY`                                        |
 | Cell type step                  | `text-[length:var(--BodyText-2)]` (dense) · `text-[length:var(--BodyText-1)]` (comfortable, spacious) | `--BodyText-2` · `--BodyText-1` |
 | Sticky header shadow            | `shadow-sm`                                           | `--SHADOW-SM`                                             |

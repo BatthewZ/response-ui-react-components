@@ -17,7 +17,9 @@ This page covers only what _this_ package adds on top: tokens that exist because
 
 For data-viz / dashboard UIs. All optional. Defined in [`src/tokens.css`](../src/tokens.css) — these are the component layer's own, and the css package has no knowledge of them.
 
-**Trend** is aliased to status on `:root`, so it inherits your status colors automatically — you don't need to set it. Override only to decouple trend direction from semantic status.
+**Trend** is aliased to status, so it inherits your status colors automatically — you don't need to set it. Override only to decouple trend direction from semantic status.
+
+The alias is a `var()` fallback carried by the utility (`text-trend-up` emits `var(--C-TREND-UP, var(--C-STATUS-SUCCESS))`), not a `:root` declaration — so nothing declares these tokens and `getComputedStyle` reports them empty until you set one. That is what lets the alias track a theme scoped to a **subtree**: a `:root` declaration is substituted against `:root`'s status ink and inherits downward already resolved, so a wrapper that retunes `--C-STATUS-SUCCESS` would otherwise keep the root's trend colour. Setting `--C-TREND-UP` yourself still wins everywhere — the fallback only fires when the token is unset.
 
 | Token | Default (aliases) |
 | --- | --- |
@@ -27,6 +29,8 @@ For data-viz / dashboard UIs. All optional. Defined in [`src/tokens.css`](../src
 | `--C-TREND-DOWN-BG` | `var(--C-STATUS-ERROR-BG)` |
 
 **Chart** is a 5-hue categorical palette for series colors. The first three alias the contract so a retuned theme carries the chart with it; the last two have no contract twin and are literal.
+
+Unlike trend, these stay **declared on `:root`**, so `getComputedStyle(el).getPropertyValue("--C-CHART-1")` returns a real colour — [extending.md](./extending.md#charts--dashboards-specifically) documents that read as the way to feed a charting library, and a chart needs its colours in JS in a way a table's chrome never does. The cost is that retuning `--C-ACCENT` on a **subtree** does not move `chart-1`; override `--C-CHART-1..5` directly there, which is what a dark theme needs to do anyway.
 
 | Token | Default |
 | --- | --- |
