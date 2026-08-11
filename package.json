@@ -1,6 +1,6 @@
 {
   "name": "@batthewz/response-ui-react-components",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "type": "module",
   "description": "React component library for the response-ui design system. Pairs with @batthewz/response-ui-css.",
   "sideEffects": false,
@@ -42,6 +42,10 @@
     "./util/style": {
       "types": "./dist/util/style.d.ts",
       "import": "./dist/util/style.js"
+    },
+    "./util/url": {
+      "types": "./dist/util/url.d.ts",
+      "import": "./dist/util/url.js"
     }
   },
   "publishConfig": {
