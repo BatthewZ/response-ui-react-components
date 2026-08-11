@@ -124,7 +124,7 @@ useVirtualRows + type UseVirtualRowsParams + type UseVirtualRowsReturn
 
 ```
 cn, createCn, mergeExtension, twMerge, tailwindMergeExtension, mergeRefs,
-mergeProps, composeEventHandlers, formatBytes, type SlotClassNames,
+mergeProps, composeEventHandlers, formatBytes, safeUrl, type SlotClassNames,
 date helpers: addDays, addMonths, buildMonthGrid, clampDate, formatDate,
 getDateFieldOrder, getMonthLabel, getMonthNames, getWeekdayNames, isAfter, isBefore,
 isSameDay, parseDateInput, startOfDay, startOfMonth, toISODate

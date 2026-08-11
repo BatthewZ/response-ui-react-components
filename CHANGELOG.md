@@ -4,6 +4,31 @@ All notable changes to `@batthewz/response-ui-react-components` will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Until 1.0.0, breaking changes will bump the **minor** version.
 
+## [0.21.0] — 2026-08-11
+
+### Added
+
+- **`safeUrl` is now a public export.** It has always existed — the markdown parser has to judge a
+  link whose source it did not write — but it was reachable only as an internal of
+  `components/ui/markdown-parse`. It moves to `util/url` and is exported from the barrel and from
+  `@batthewz/response-ui-react-components/util/url`.
+
+  The reason it deserves to be public is that markdown is not the only place this library renders
+  a URL it did not write, and it is the only place that asks. `Avatar`, `Hero`, `MediaCard` and
+  `Spotlight` all take a `src` and pass it through unexamined — correctly, because in React the
+  caller is the developer and sanitising a developer's own prop would be presumptuous. But a
+  consumer whose URLs come from a CMS, an API or a model is in the parser's position, not the
+  developer's, and had to write their own answer or reach into an internal path. Now they can ask
+  the same question this library asks itself, and get the same answer.
+
+  It judges the **scheme only**: an allowlist of `http:`, `https:`, `mailto:`, `tel:`, relative
+  URLs, and `data:` for the six bitmap image types. It returns the URL, or `""` to refuse — the
+  caller is expected to drop the element rather than emit an empty attribute, since an `<a>` with
+  no `href` is not a link and an `<img>` with no `src` is not a broken image. It is not an origin
+  policy and will not stop a link to a host you would rather it did not reach.
+
+  `markdown-parse` re-exports it, so nothing importing it from there breaks.
+
 ## [0.20.0] — 2026-08-10
 
 ### Fixed

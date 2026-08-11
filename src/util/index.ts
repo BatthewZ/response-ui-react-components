@@ -20,3 +20,4 @@ export { formatBytes } from "./format";
 export { composeEventHandlers, mergeProps } from "./merge-props";
 export { mergeRefs } from "./merge-refs";
 export { cn, type SlotClassNames } from "./style";
+export { safeUrl } from "./url";
